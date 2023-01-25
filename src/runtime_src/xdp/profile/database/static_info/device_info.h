@@ -142,6 +142,8 @@ namespace xdp {
     XDP_EXPORT
     void addAIEShimEventResources(uint32_t numEvents, uint32_t numTiles) ;
     XDP_EXPORT
+    void addAIEMemTileEventResources(uint32_t numEvents, uint32_t numTiles) ;
+    XDP_EXPORT
     void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) ;
   } ;
 

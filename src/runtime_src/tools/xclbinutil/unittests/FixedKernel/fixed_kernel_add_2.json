@@ -1,0 +1,57 @@
+{
+  "ps-kernels" : {             
+    "kernels" : [
+      {
+        "name" : "DPU",   
+        "type" : "dpu",
+        "extended-data" : {
+            "subtype" : "DPU",
+            "functional" : "1",
+            "dpu_kernel_id" : "0x101"
+        },
+        "arguments" : [         
+          {
+            "name" : "ifm",
+            "memory-connection" : "HOST",  
+            "address-qualifier" : "GLOBAL",
+            "type" : "char *",           
+            "offset" : "0x00"              
+          },
+          {
+            "name" : "param",
+            "memory-connection" : "HOST",  
+            "address-qualifier" : "GLOBAL",
+            "type" : "char *",           
+            "offset" : "0x08"              
+          },
+          {
+            "name" : "ofm",
+            "memory-connection" : "HOST",  
+            "address-qualifier" : "GLOBAL",
+            "type" : "char *",           
+            "offset" : "0x10"              
+          },
+          {
+            "name" : "inter",
+            "memory-connection" : "HOST",  
+            "address-qualifier" : "GLOBAL",
+            "type" : "char *",           
+            "offset" : "0x18"              
+          },
+          {
+            "name" : "nistruct",
+            "address-qualifier" : "SCALAR",
+            "type" : "uint32_t",           
+            "offset" : "0x20"              
+          }
+        ],
+        "instances" : [
+          {
+            "name" : "IPUV1CNN"
+          }
+        ]
+      } 
+    ]
+  }
+}
+

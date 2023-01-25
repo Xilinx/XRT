@@ -26,3 +26,20 @@ function(xrt_add_subdirectory subdir)
     add_subdirectory(${ARGV})
   endif()
 endfunction()
+
+# Override CMake include to conditionally exclude include dirs
+# Same behavior as xrt_add_subdirectory
+function(xrt_include filename)
+  # convert ../blah to absolute path
+  get_filename_component(path ${CMAKE_CURRENT_SOURCE_DIR}/${filename} ABSOLUTE)
+
+  # exclusion is specified relative to XRT root directory
+  get_filename_component(xrtroot ${XRT_SOURCE_DIR} DIRECTORY)
+  file(RELATIVE_PATH relpath ${xrtroot} ${path})
+  if (${relpath} IN_LIST XRT_EXCLUDE_INCLUDE_FILE)
+    message("-- xrt_include excludes ${filename}")
+  else()
+    message("-- include(${ARGV})")
+    include(${ARGV})
+  endif()
+endfunction()

@@ -134,6 +134,7 @@ namespace xdp {
     std::map<uint32_t, uint32_t> aieCoreEventsMap ;
     std::map<uint32_t, uint32_t> aieMemoryEventsMap ;
     std::map<uint32_t, uint32_t> aieShimEventsMap ;
+    std::map<uint32_t, uint32_t> aieMemTileEventsMap ;
     std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList ;
 
     // A list of all the NoC nodes identified at compile time used by

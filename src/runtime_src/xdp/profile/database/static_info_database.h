@@ -289,6 +289,8 @@ namespace xdp {
     XDP_EXPORT
     std::map<uint32_t, uint32_t>* getAIEShimEventResources(uint64_t deviceId) ;
     XDP_EXPORT
+    std::map<uint32_t, uint32_t>* getAIEMemTileEventResources(uint64_t deviceId);
+    XDP_EXPORT
     std::vector<std::unique_ptr<aie_cfg_tile>>*
     getAIECfgTiles(uint64_t deviceId) ;
     XDP_EXPORT TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx) ;
@@ -309,6 +311,9 @@ namespace xdp {
     XDP_EXPORT void addAIEMemoryEventResources(uint64_t deviceId,
                                                uint32_t numEvents,
                                                uint32_t numTiles) ;
+    XDP_EXPORT void addAIEMemTileEventResources(uint64_t deviceId,
+                                                uint32_t numEvents,
+                                                uint32_t numTiles) ;
     XDP_EXPORT void addAIECfgTile(uint64_t deviceId,
                                   std::unique_ptr<aie_cfg_tile>& tile) ;
     XDP_EXPORT uint64_t getNumTracePLIO(uint64_t deviceId) ;

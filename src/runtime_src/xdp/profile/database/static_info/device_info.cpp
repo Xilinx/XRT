@@ -360,6 +360,16 @@ namespace xdp {
     xclbin->aie.aieShimEventsMap[numEvents] = numTiles ;
   }
 
+  void DeviceInfo::addAIEMemTileEventResources(uint32_t numEvents,
+                                               uint32_t numTiles)
+  {
+    XclbinInfo* xclbin = currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->aie.aieMemTileEventsMap[numEvents] = numTiles ;
+  }
+
   void DeviceInfo::addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile)
   {
     XclbinInfo* xclbin = currentXclbin() ;

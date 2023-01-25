@@ -13,7 +13,7 @@
 #include "scope_guard.h"
 #include "uuid.h"
 
-#include "core/include/xcl_hwctx.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
@@ -46,7 +46,7 @@ class device : public ishim
   class xclbin_map
   {
   public:
-    using slot_id = xrt_hwctx_handle;
+    using slot_id = hwctx_handle::slot_id;
 
   private:
     std::map<slot_id, xrt::uuid> m_slot2uuid;
@@ -472,6 +472,7 @@ public:
   std::vector<uint64_t> m_cus;                // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
+  mutable std::mutex m_mutex;
 };
 
 /**

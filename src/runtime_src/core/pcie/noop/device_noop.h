@@ -24,16 +24,12 @@ private:
   virtual const query::request&
   lookup_query(query::key_type query_key) const override;
 
-  xrt_hwctx_handle
-  create_hw_context(const xrt::uuid& xclbin_uuid, const xrt::hw_context::qos_type& qos, xrt::hw_context::access_mode mode) const override
+  std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::qos_type& qos,
+                    xrt::hw_context::access_mode mode) const override
   {
     return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
-  }
-
-  void
-  destroy_hw_context(xrt_hwctx_handle ctxhdl) const override
-  {
-    xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
   }
 
   void

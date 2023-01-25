@@ -622,12 +622,22 @@ namespace {
                << coreEvent.second << ",\n" ;
         }
       }
+
       auto memoryEvents =
         db->getStaticInfo().getAIEMemoryEventResources(device->deviceId) ;
       if (memoryEvents != nullptr) {
         for (auto const& memoryEvent : *memoryEvents) {
           fout << "AIE_MEMORY_EVENT_RESOURCES," << memoryEvent.first << ","
                << memoryEvent.second << ",\n" ;
+        }
+      }
+
+      auto memTileEvents =
+        db->getStaticInfo().getAIEMemTileEventResources(device->deviceId) ;
+      if (memTileEvents != nullptr) {
+        for (auto const& memTileEvent : *memTileEvents) {
+          fout << "AIE_MEM_TILE_EVENT_RESOURCES," << memTileEvent.first << ","
+               << memTileEvent.second << ",\n" ;
         }
       }
     }

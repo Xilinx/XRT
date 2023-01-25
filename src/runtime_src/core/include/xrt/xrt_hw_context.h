@@ -9,11 +9,14 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "xcl_hwctx.h"
-
 #ifdef __cplusplus
 
 #include <map>
+
+// Opaque handle for internal use
+namespace xrt_core {
+class hwctx_handle;
+}
 
 namespace xrt {
 
@@ -140,7 +143,7 @@ public:
   // Undocumented internal access to low level context handle
   // Subject to change without warning
   XRT_API_EXPORT
-  explicit operator xrt_hwctx_handle () const;
+  explicit operator xrt_core::hwctx_handle* () const;
   /// @endcond
 };
 

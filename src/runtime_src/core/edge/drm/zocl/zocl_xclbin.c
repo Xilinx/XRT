@@ -1187,8 +1187,6 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	struct connectivity     *connectivity = NULL;
 	struct aie_metadata      aie_data = { 0 };
 	uint64_t		 size = 0;
-	int			 ret = 0;
-	int slot_id = slot->slot_idx;
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
@@ -1747,6 +1745,7 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
 		struct drm_zocl_slot *slot, char *dtbo_path, uint32_t len)
 {
         char *path = slot->slot_xclbin->zx_dtbo_path;
+	int ret = 0;
 
         if (path) {
                 vfree(path);
@@ -1757,7 +1756,11 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
 		path = vmalloc(len + 1);
 		if (!path)
 			return -ENOMEM;
-		copy_from_user(path, dtbo_path, len);
+
+		ret = copy_from_user(path, dtbo_path, len);
+		if (ret)
+			return ret;
+
 		path[len] = '\0';
 	}
 

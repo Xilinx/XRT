@@ -20,7 +20,7 @@ set -e
 # Update to scan.coverity.com using the version and description per covbuild.sh output
 # Make sure to upload from a host with direct access to xrt.tgz (342M)
 
-OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
+OSDIST=`awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake

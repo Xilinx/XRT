@@ -1,0 +1,94 @@
+{
+    "version" : {"major" : 1, "minor" : 0},
+    "kernels"  :
+    [{
+        "name" : "read_data",
+        "deadlock_register_list" :
+        [
+           {
+             "register_name" : "dl_diagnosis_info_P0_blocks",
+             "register_word_offset" : "0x05",
+             "register_bit_info" :
+             [
+                {"bit" : "0", "message" : "Process P0 blocks port S1"},
+                {"bit" : "1", "message" : "Process P0 blocks port S6"},
+                {"bit" : "2", "message" : "Process P0 blocks port S7"},
+                {"bit" : "3", "message" : "Process P0 blocks port S8"},
+                {"bit" : "4", "message" : "Process P0 blocks FIFO F1"},
+                {"bit" : "5", "message" : "Process P0 blocks FIFO F2"},
+                {"bit" : "6", "message" : "Process P0 blocks FIFO F3"} 
+             ]
+           },
+           {
+             "register_name" : "dl_diagnosis_info_P0_is_blocked_by",
+             "register_word_offset" : "0x06",
+             "register_bit_info" :
+             [  
+                {"bit" : "0", "message" : "Process P0 is blocked by port S1"},
+                {"bit" : "1", "message" : "Process P0 is blocked by port S6"},
+                {"bit" : "2", "message" : "Process P0 is blocked by port S7"},
+                {"bit" : "3", "message" : "Process P0 is blocked by port S8"},
+                {"bit" : "4", "message" : "Process P0 is blocked by FIFO F1"},
+                {"bit" : "5", "message" : "Process P0 is blocked by FIFO F2"},
+                {"bit" : "6", "message" : "Process P0 is blocked by FIFO F3"}
+             ]
+           },
+           {
+             "register_name" : "dl_diagnosis_info_P1_blocks",
+             "register_word_offset" : "0x07",
+             "register_bit_info" :
+             [
+                {"bit" : "0", "message" : "Process P1 blocks port S1"},
+                {"bit" : "1", "message" : "Process P1 blocks port S6"},
+                {"bit" : "2", "message" : "Process P1 blocks port S7"},
+                {"bit" : "3", "message" : "Process P1 blocks port S8"},
+                {"bit" : "4", "message" : "Process P1 blocks FIFO F1"},
+                {"bit" : "5", "message" : "Process P1 blocks FIFO F2"},
+                {"bit" : "6", "message" : "Process P1 blocks FIFO F3"} 
+             ]
+           },
+           {
+             "register_name" : "dl_diagnosis_info_P1_is_blocked_by",
+             "register_word_offset" : "0x08",
+             "register_bit_info" :
+             [  
+                {"bit" : "0", "message" : "Process P1 is blocked by port S1"},
+                {"bit" : "1", "message" : "Process P1 is blocked by port S6"},
+                {"bit" : "2", "message" : "Process P1 is blocked by port S7"},
+                {"bit" : "3", "message" : "Process P1 is blocked by port S8"},
+                {"bit" : "4", "message" : "Process P1 is blocked by FIFO F1"},
+                {"bit" : "5", "message" : "Process P1 is blocked by FIFO F2"},
+                {"bit" : "6", "message" : "Process P1 is blocked by FIFO F3"}
+             ]
+           },   
+           {
+             "register_name" : "dl_diagnosis_info_P7_blocks",
+             "register_word_offset" : "0x11",
+             "register_bit_info" :
+             [
+                {"bit" : "0", "message" : "Process P7 blocks port S1"},
+                {"bit" : "1", "message" : "Process P7 blocks port S6"},
+                {"bit" : "2", "message" : "Process P7 blocks port S7"},
+                {"bit" : "3", "message" : "Process P7 blocks port S8"},
+                {"bit" : "4", "message" : "Process P7 blocks FIFO F1"},
+                {"bit" : "5", "message" : "Process P7 blocks FIFO F2"},
+                {"bit" : "6", "message" : "Process P7 blocks FIFO F3"} 
+             ]
+           },
+           {
+             "register_name" : "dl_diagnosis_info_P7_is_blocked_by",
+             "register_word_offset" : "0x12",
+             "register_bit_info" :
+             [  
+                {"bit" : "0", "message" : "Process P7 is blocked by port S1"},
+                {"bit" : "1", "message" : "Process P7 is blocked by port S6"},
+                {"bit" : "2", "message" : "Process P7 is blocked by port S7"},
+                {"bit" : "3", "message" : "Process P7 is blocked by port S8"},
+                {"bit" : "4", "message" : "Process P7 is blocked by FIFO F1"},
+                {"bit" : "5", "message" : "Process P7 is blocked by FIFO F2"},
+                {"bit" : "6", "message" : "Process P7 is blocked by FIFO F3"}
+             ]
+           }   
+       ]
+    }]
+}

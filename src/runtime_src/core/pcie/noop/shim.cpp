@@ -19,6 +19,7 @@
 #include "core/common/system.h"
 #include "core/common/task.h"
 #include "core/common/thread.h"
+#include "core/common/shim/hwctx_handle.h"
 
 #include "core/common/api/hw_context_int.h"
 
@@ -114,11 +115,12 @@ free(unsigned int handle)
 // chosen by the driver (this code).
 namespace pl {
 
+
 class device
 {
   // model multiple partitions, but for simplicity slot is
   // used for context handle also.
-  using slot_id = xrt_hwctx_handle;
+  using slot_id = xrt_core::hwctx_handle::slot_id;
 
   // registered xclbins
   std::map<xrt::uuid, xrt::xclbin> m_xclbins;
@@ -146,12 +148,6 @@ class device
   // exclusive locking to prevent race
   std::mutex m_mutex;
 
-  static slot_id
-  get_slot(const xrt::hw_context& hwctx)
-  {
-    return static_cast<xrt_hwctx_handle>(hwctx);
-  }
-
 public:
   // device ctor, initialize free cu indices
   device()
@@ -168,7 +164,7 @@ public:
     m_xclbins[xclbin.get_uuid()] = xclbin;
   }
 
-  xrt_hwctx_handle
+  slot_id
   create_hw_context(const xrt::uuid& xid)
   {
     std::lock_guard lk(m_mutex);
@@ -180,25 +176,23 @@ public:
   }
 
   void
-  destroy_hw_context(xrt_hwctx_handle ctxhdl)
+  destroy_hw_context(slot_id slot)
   {
     std::lock_guard lk(m_mutex);
-    m_slots.erase(ctxhdl);   // for simplicity context handle is same as slot
+    m_slots.erase(slot);   // for simplicity context handle is same as slot
   }
 
   xrt_core::cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+  open_cu_context(slot_id slot, const xrt::uuid& xid, const std::string& cuname)
   {
     std::lock_guard lk(m_mutex);
-
-    auto slot = get_slot(hwctx);
 
     // this xclbin must have been registered
     const auto& xclbin = m_slots[slot];
     if (!xclbin)
       throw xrt_core::error("Slot xclbin mismatch, no such registered xclbin in slot: " + std::to_string(slot));
 
-    if (xclbin.get_uuid() != hwctx.get_xclbin_uuid())
+    if (xclbin.get_uuid() != xid)
       throw xrt_core::error("Slot xclbin uuid mismatch in slot: " + std::to_string(slot));
 
     // find cu in xclbin
@@ -381,7 +375,92 @@ struct shim
   // load_xclbin is legacy and creates a hw_context implicitly.  If an
   // xclbin is loaded with load_xclbin, an explicit hw_context cannot
   // be created for that xclbin.
-  std::map<xrt::uuid, uint32_t> m_load_xclbin_slots;
+  std::map<xrt::uuid, std::unique_ptr<xrt_core::hwctx_handle>> m_load_xclbin_slots;
+
+  class hwcontext : public xrt_core::hwctx_handle
+  {
+    shim* m_shim;
+    xrt::uuid m_uuid;
+    slot_id m_slotidx;
+    bool m_null = false;
+
+public:
+    hwcontext(shim* shim, slot_id slotidx, xrt::uuid uuid)
+      : m_shim(shim)
+      , m_uuid(std::move(uuid))
+      , m_slotidx(slotidx)
+
+    {}
+
+    ~hwcontext()
+    {
+      m_shim->destroy_hw_context(m_slotidx);
+    }
+
+    slot_id
+    get_slotidx() const override
+    {
+      return m_slotidx;
+    }
+
+    xrt::uuid
+    get_xclbin_uuid() const
+    {
+      return m_uuid;
+    }
+
+    std::unique_ptr<xrt_core::hwqueue_handle>
+    create_hw_queue() override
+    {
+      return nullptr;
+    }
+
+    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    alloc_bo(void* userptr, size_t size, unsigned int flags) override
+    {
+      // The hwctx is embedded in the flags, use regular shim path
+      auto bo = m_shim->alloc_user_ptr_bo(userptr, size, flags);
+      if (bo == XRT_NULL_BO)
+        throw std::bad_alloc();
+
+      return to_xrt_buffer_handle(bo);
+    }
+
+    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    alloc_bo(size_t size, unsigned int flags) override
+    {
+      // The hwctx is embedded in the flags, use regular shim path
+      auto bo = m_shim->alloc_bo(size, flags);
+      if (bo == XRT_NULL_BO)
+        throw std::bad_alloc();
+
+      return to_xrt_buffer_handle(bo);
+    }
+
+    xrt_core::cuidx_type
+    open_cu_context(const std::string& cuname) override
+    {
+      return m_shim->open_cu_context(this, cuname);
+    }
+
+    void
+    close_cu_context(xrt_core::cuidx_type cuidx) override
+    {
+      m_shim->close_cu_context(this, cuidx);
+    }
+
+    void
+    exec_buf(xrt_buffer_handle cmd) override
+    {
+      m_shim->exec_buf(to_xclBufferHandle(cmd));
+    }
+
+    bool
+    is_null() const
+    {
+      return m_null;
+    }
+  }; // class shim::hwccontext
 
   // create shim object, open the device, store the device handle
   shim(unsigned int devidx)
@@ -435,22 +514,16 @@ struct shim
     return 0;
   }
 
-  int
-  open_cu_context(const xrt::uuid&, unsigned int, bool)
-  {
-    return 0;
-  }
-
   xrt_core::cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+  open_cu_context(const hwcontext* hwctx, const std::string& cuname)
   {
-    return m_pldev->open_cu_context(hwctx, cuname);
+    return m_pldev->open_cu_context(hwctx->get_slotidx(), hwctx->get_xclbin_uuid(), cuname);
   }
 
   void
-  close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+  close_cu_context(const hwcontext* hwctx, xrt_core::cuidx_type cuidx)
   {
-    return m_pldev->close_context(hwctx.get_xclbin_uuid(), cuidx.index);
+    return m_pldev->close_context(hwctx->get_xclbin_uuid(), cuidx.index);
   }
 
   int
@@ -538,21 +611,22 @@ struct shim
     return 0;
   }
 
-  uint32_t // ctxhdl aka slotidx
+  std::unique_ptr<xrt_core::hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid)
   {
     if (m_load_xclbin_slots.find(xclbin_uuid) != m_load_xclbin_slots.end())
       throw xrt_core::ishim::not_supported_error(__func__);
 
-    return m_pldev->create_hw_context(xclbin_uuid);
+    auto slot = m_pldev->create_hw_context(xclbin_uuid);
+    return std::make_unique<hwcontext>(this, slot, xclbin_uuid);
   }
 
   void
-  destroy_hw_context(uint32_t ctxhdl)
+  destroy_hw_context(uint32_t slot)
   {
-    m_pldev->destroy_hw_context(ctxhdl);
-    for (const auto& [uuid, slot] : m_load_xclbin_slots) {
-      if (slot != ctxhdl)
+    m_pldev->destroy_hw_context(slot);
+    for (const auto& [uuid, hwctx] : m_load_xclbin_slots) {
+      if (slot != hwctx->get_slotidx())
         continue;
 
       m_load_xclbin_slots.erase(uuid);
@@ -609,21 +683,7 @@ xclbin_slots(const xrt_core::device* device)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-xrt_core::cuidx_type
-open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
-{
-  auto shim = get_shim_object(handle);
-  return shim->open_cu_context(hwctx, cuname);
-}
-
-void
-close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
-{
-  auto shim = get_shim_object(handle);
-  return shim->close_cu_context(hwctx, cuidx);
-}
-
-xrt_hwctx_handle
+std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type&,
@@ -631,13 +691,6 @@ create_hw_context(xclDeviceHandle handle,
 {
   auto shim = get_shim_object(handle);
   return shim->create_hw_context(xclbin_uuid);
-}
-
-void
-destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
-{
-  auto shim = get_shim_object(handle);
-  shim->destroy_hw_context(ctxhdl);
 }
 
 void
@@ -767,35 +820,13 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
 int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "xclOpenContext()");
-  auto shim = get_shim_object(handle);
-
-  // Virtual resources are not currently supported by driver
-  return (ipIndex == (unsigned int)-1)
-    ? 0
-    : shim->open_cu_context(xclbinId, ipIndex, shared);
+  return 0;
 }
 
 int
 xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "xclCloseContext()");
-  auto shim = get_shim_object(handle);
-
-  try {
-    // Virtual resources are not currently supported by driver
-    return (ipIndex == (unsigned int) -1) ? 0 : shim->close_context(xclbinId, ipIndex);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
+  return 0;
 }
 
 int

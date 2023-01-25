@@ -321,13 +321,46 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   static void 
   check_versal_boot(const std::shared_ptr<xrt_core::device> &device)
   {
-    if (xrt_core::vmr::is_default_boot(device.get()))
+    std::vector<std::string> warnings;
+
+    try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::boot_on_default);
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT in default boot");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    if (warnings.empty())
       return;
 
-    std::cout << "***********************************************************\n";
+    const std::string star_line = "***********************************************************";
+
+    std::cout << star_line << "\n";
     std::cout << "*        WARNING          WARNING          WARNING        *\n";
-    std::cout << "*             Versal Platform in backup boot              *\n";
-    std::cout << "***********************************************************\n";
+
+    // Print all warnings
+    for (const auto& warning : warnings) {
+      // Subtract the:
+      // 1. Side stars
+      // 2. Single space next to the side star
+      const size_t available_space = star_line.size() - 2 - 2;
+      // Account for strings who are larger than the star line
+      size_t warning_index = 0;
+      while (warning_index < warning.size()) {
+        // Extract the largest possible string from the warning
+        const auto warning_msg = warning.substr(warning_index, available_space);
+        // Update the index so the next substring is valid
+        warning_index += warning_msg.size();
+        const auto side_spaces = available_space - warning_msg.size();
+        // The left side should be larger than the right if there is an imbalance
+        const size_t left_spaces = (side_spaces % 2 == 0) ? side_spaces / 2 : (side_spaces / 2) + 1;
+        const size_t right_spaces = side_spaces / 2;
+        std::cout << "* " << std::string(left_spaces, ' ') << warning_msg << std::string(right_spaces, ' ') << " *\n";
+      }
+    }
+
+    std::cout << star_line << "\n";
   }
 
   std::shared_ptr<xrt_core::device>
@@ -345,7 +378,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     else
       device = xrt_core::get_mgmtpf_device(index);
 
-    if (xrt_core::device_query<xq::is_versal>(device))
+    if (xrt_core::device_query_default<xq::is_versal>(device, false))
       check_versal_boot(device);
 
     return device;

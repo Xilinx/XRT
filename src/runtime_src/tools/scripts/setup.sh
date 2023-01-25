@@ -8,8 +8,12 @@
 # be sourced from that location
 
 # Check OS version requirement
-OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
-OSREL=`lsb_release -r |awk -F: '{print tolower($2)}' |tr -d ' \t' | awk -F. '{print $1*100+$2}'`
+OSDIST=`cat /etc/os-release | grep -i "^ID=" | awk -F= '{print $2}'`
+if [[ $OSDIST == "centos" ]]; then
+    OSREL=`cat /etc/redhat-release | awk '{print $4}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
+else
+    OSREL=`cat /etc/os-release | grep -i "^VERSION_ID=" | awk -F= '{print $2}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
+fi
 
 if [[ $OSDIST == "ubuntu" ]]; then
     if (( $OSREL < 1604 )); then
@@ -18,7 +22,7 @@ if [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "redhat"* ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "rhel"* ]]; then
     if (( $OSREL < 704 )); then
         echo "ERROR: Centos or RHEL release version must be 7.4 or later"
         return 1

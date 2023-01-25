@@ -7,6 +7,8 @@
 #include "error.h"
 #include "xcl_graph.h"
 #include "xrt.h"
+
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/shim_int.h"
 
 #include "xrt/xrt_aie.h"
@@ -14,7 +16,7 @@
 #include "xrt/xrt_graph.h"
 #include "xrt/xrt_uuid.h"
 
-#include "experimental/xrt_hw_context.h"
+#include "xrt/xrt_hw_context.h"
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
@@ -138,49 +140,6 @@ struct ishim
   virtual void
   user_reset(xclResetKind kind) = 0;
 
-  virtual cuidx_type
-  open_cu_context(xrt_hwctx_handle, const std::string& /*cuname*/)
-  { throw not_supported_error{__func__}; }
-
-  virtual void
-  close_cu_context(xrt_hwctx_handle, cuidx_type /*ip_index*/)
-  { throw not_supported_error{__func__}; }
-
-  // Deprecated API to be removed when all shims manage a hwctx handle
-  virtual cuidx_type
-  open_cu_context(const xrt::hw_context&, const std::string& /*cuname*/)
-  { throw not_supported_error{__func__}; }
-
-  // Deprecated API to be removed when all shims manage a hwctx handle
-  virtual void
-  close_cu_context(const xrt::hw_context&, cuidx_type /*ip_index*/)
-  { throw not_supported_error{__func__}; }
-
-  // Wrapper used by upper level code to ensure that the handle
-  // version of open / close is called if defined. This wrapper
-  // is needed because there is no way to get from handle to hwctx.
-  cuidx_type
-  open_cu_context_wrap(const xrt::hw_context& hwctx, const std::string& cuname)
-  {
-    try {
-      return open_cu_context(static_cast<xrt_hwctx_handle>(hwctx), cuname);
-    }
-    catch (const not_supported_error&) {
-      return open_cu_context(hwctx, cuname);
-    }
-  }
-
-  void
-  close_cu_context_wrap(const xrt::hw_context& hwctx, cuidx_type ip_index)
-  {
-    try {
-      close_cu_context(static_cast<xrt_hwctx_handle>(hwctx), ip_index);
-    }
-    catch (const not_supported_error&) {
-      close_cu_context(hwctx, ip_index);
-    }
-  }
-
   ////////////////////////////////////////////////////////////////
   // Interfaces for hw context handling
   // Implemented explicitly by concrete shim device class
@@ -189,66 +148,16 @@ struct ishim
   // cannot be created for that xclbin.  This function throws
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
-  virtual xrt_hwctx_handle
-  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
-  { throw not_supported_error{__func__}; }
-
-  virtual void
-  destroy_hw_context(xrt_hwctx_handle /*ctxhdl*/) const
-  { throw not_supported_error{__func__}; }
-
-  // Return default sentinel for legacy platforms without hw_queue support
-  virtual xcl_hwqueue_handle
-  create_hw_queue(xrt_hwctx_handle) const
-  { return XRT_NULL_HWQUEUE; }
-
-  // Default noop for legacy platforms without hw_queue support
-  virtual void
-  destroy_hw_queue(xcl_hwqueue_handle) const
-  {}
-
-  // Submits command for execution through hw queue
-  virtual void
-  submit_command(xcl_hwqueue_handle, xrt_buffer_handle /*cmdbo*/) const
-  { throw not_supported_error{__func__}; }
-
-  // Wait for command completion through hw queue
-  // Returns 0 on timeout else a value that indicates specified
-  // cmdbo completed.  If cmdbo is XRT_NULL_BO then function must
-  // returns when some previously submitted command completes.
-  virtual int
-  wait_command(xcl_hwqueue_handle, xrt_buffer_handle /*cmdbo*/, int /*timeout_ms*/) const
-  { throw not_supported_error{__func__}; }
+  virtual std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/,
+                    const xrt::hw_context::qos_type& /*qos*/,
+                    xrt::hw_context::access_mode /*mode*/) const = 0;
 
   // Registers an xclbin with shim, but does not load it.
   // This is no-op for most platform shims
   virtual void
   register_xclbin(const xrt::xclbin&) const
   { throw not_supported_error{__func__}; }
-
-  // Allocate a bo within ctx.  This is opt-in, currently reverts to
-  // legacy alloc_bo
-  virtual xrt_buffer_handle
-  alloc_bo(xrt_hwctx_handle, size_t size, unsigned int flags)
-  {
-    return alloc_bo(size, flags);
-  }
-
-  // Allocate a userptr bo within ctx.  This is opt-in, currently
-  // reverts to legacy alloc_bo
-  virtual xrt_buffer_handle
-  alloc_bo(xrt_hwctx_handle, void* userptr, size_t size, unsigned int flags)
-  {
-    return alloc_bo(userptr, size, flags);
-  }
-
-  // Execute a command bo within a ctx.  This is opt-in,  if not supported, then
-  // just call legacy exec_buf without the hardware context.
-  virtual void
-  exec_buf(xrt_buffer_handle boh, xrt_hwctx_handle /*ctxhdl*/)
-  {
-    exec_buf(boh);
-  }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
@@ -368,18 +277,6 @@ struct shim : public DeviceType
   close_device() override
   {
     xclClose(DeviceType::get_device_handle());
-  }
-
-  cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) override
-  {
-    return xrt::shim_int::open_cu_context(DeviceType::get_device_handle(), hwctx, cuname);
-  }
-
-  void
-  close_cu_context(const xrt::hw_context& hwctx, cuidx_type cuidx) override
-  {
-    xrt::shim_int::close_cu_context(DeviceType::get_device_handle(), hwctx, cuidx);
   }
 
   // Legacy, to be removed
