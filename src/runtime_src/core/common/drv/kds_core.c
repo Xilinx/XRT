@@ -283,7 +283,7 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 	/* Populate the SCUs information */
 	cu_mgmt = &kds->scu_mgmt;
 	cu_fmt = "  SCU[%d] usage(%llu) shared(%d) refcnt(%d) intr(%s)\n";
-	mutex_unlock(&cu_mgmt->lock);
+	mutex_lock(&cu_mgmt->lock);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of SCUs: %d\n",
 			cu_mgmt->num_cus);
 	for (i = 0; i < MAX_CUS; ++i) {

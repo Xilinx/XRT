@@ -910,11 +910,16 @@ int xocl_cleanup_mem_all(struct xocl_drm *drm_p)
 {
 	int ret = 0;
 	uint32_t slot_id = 0;
-	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
-		ret = xocl_cleanup_mem(drm_p, slot_id);
+
+	mutex_lock(&drm_p->mm_lock);
+	
+    for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
+		ret = xocl_cleanup_mem_nolock(drm_p, slot_id);
 		if (ret)
 			break;
 	}
+	
+    mutex_unlock(&drm_p->mm_lock);
 	return ret;
 }
 

@@ -469,11 +469,12 @@ static bool icap_any_bitstream_in_use(struct icap *icap)
 
 		BUG_ON(islot->icap_bitstream_ref < 0);
 		if (islot->icap_bitstream_ref != 0)
-			return false;
+			return true;
 	}
 
-	return true;
+	return false;
 }
+
 static bool icap_bitstream_in_use(struct icap *icap, uint32_t slot_id)
 {
 	struct islot_info *islot = icap->slot_info[slot_id];
