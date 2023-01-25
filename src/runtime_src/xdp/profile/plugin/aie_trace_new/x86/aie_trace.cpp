@@ -62,26 +62,30 @@ namespace xdp {
     return size;
   }
 
+  module_type AieTrace_x86Impl::getTileType(uint16_t absRow) {
+    if (absRow == 0)
+      return module_type::shim;
+    if (absRow < metadata->getAIETileRowOffset())
+      return module_type::mem_tile;
+    return module_type::core;
+  }
+
   bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle) {
       
     constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
     constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
-    constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
+    constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 
+    ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
 
     //Gather data to send to PS Kernel
 
     if (!metadata->getIsValidMetrics()) {
+      std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
       return false;
     }
 
-    uint64_t delayCycles = metadata->getDelay();
-    uint32_t iterationCount = metadata->getIterationCount();
-    bool useUserControl = metadata->getUseUserControl();
-    bool useDelay = metadata->getUseDelay();
-    bool useGraphIterator = metadata->getUseGraphIterator();
-    bool useOneDelayCounter = metadata->getUseOneDelayCounter();
     std::string counterScheme = metadata->getCounterScheme();
-
     uint8_t counterSchemeInt;
     if (counterScheme.compare("es1")) {
       counterSchemeInt = static_cast<uint8_t>(xdp::built_in::CounterScheme::ES1);
@@ -95,13 +99,15 @@ namespace xdp {
     std::size_t total_size = sizeof(TraceInputConfiguration) + sizeof(TraceTileType[numTiles - 1]);
     TraceInputConfiguration* input_params = (TraceInputConfiguration*)malloc(total_size);
     input_params->numTiles = numTiles;
-    input_params->delayCycles = delayCycles;
-    input_params->iterationCount = iterationCount;
-    input_params->useUserControl = useUserControl;
-    input_params->useDelay = useDelay;
-    input_params->useGraphIterator = useGraphIterator;
-    input_params->useOneDelayCounter = useOneDelayCounter;
+    input_params->delayCycles = metadata->getDelay();
+    input_params->iterationCount = metadata->getIterationCount();
+    input_params->useUserControl = metadata->getUseUserControl();
+    input_params->useDelay = metadata->getUseDelay();
+    input_params->useGraphIterator = metadata->getUseGraphIterator();
+    input_params->useOneDelayCounter = metadata->getUseOneDelayCounter();
     input_params->counterScheme = counterSchemeInt;
+    input_params->hwGen = metadata->getHardwareGen();
+    input_params->offset = metadata->getAIETileRowOffset();
     
     TraceTileType traceTiles[numTiles];
     
@@ -120,13 +126,11 @@ namespace xdp {
 
     //Attempt to schedule the kernel and parse the tile configuration output
     try {
-      
       auto spdevice = xrt_core::get_userpf_device(handle);
       auto device = xrt::device(spdevice);
     
       auto uuid = device.get_xclbin_uuid();
       auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config");
-
 
       //input bo  
       auto bo0 = xrt::bo(device, INPUT_SIZE, 2);
@@ -160,7 +164,8 @@ namespace xdp {
       for (uint32_t i = 0; i < cfg->numTiles; ++i) {
         auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row);
         cfgTile->trace_metric_set = metadata->getMetricString(cfg->tiles[i].trace_metric_set);
-    
+        cfgTile->type = getTileType(cfg->tiles[i].row);
+ 
         for (uint32_t corePC = 0; corePC < NUM_TRACE_PCS; ++corePC) {
           auto& cfgData = cfgTile->core_trace_config.pc[corePC];
           cfgData.start_event = cfg->tiles[i].core_trace_config.pc[corePC].start_event;
