@@ -20,51 +20,67 @@
 
 namespace xdp {
 
-XrtIP::XrtIP(
-  Device* handle,
-  std::shared_ptr<ip_metadata> ip_metadata_section,
-  const std::string& fullname,
-  uint64_t baseAddress
-) : xdpDevice(handle)
-  , ip_metadata_section(ip_metadata_section)
+constexpr uint32_t REGISTER_ACCESS_RANGE = 0x1000;
+
+XrtIP::
+XrtIP
+  ( Device* handle
+  , std::shared_ptr<ip_metadata> ip_metadata_section
+  , const std::string& fullname
+  , uint64_t baseAddress
+  )
+  : xdpDevice(handle)
   , fullname(fullname)
   , baseAddress(baseAddress)
   , deadlockDiagnosis(std::string())
+  , initialized(false)
+  , index(0)
 {
-  size_t pos = fullname.find(':') ;
-  kernelName = fullname.substr(0, pos) ;
-  std::cout << "Initialize CU " << fullname << std::endl;
-}
+  size_t pos = fullname.find(':');
+  kernelName = fullname.substr(0, pos);
 
-int XrtIP::read(uint32_t offset, uint32_t* data) {
-  return xdpDevice->readXrtIP(fullname.c_str(), offset, baseAddress, data);
-}
-
-std::string& XrtIP::getDeadlockDiagnosis(bool print)
-{
   // Find register info for our kernel
-  kernel_reginfo info;
   for (auto& pair : ip_metadata_section->kernel_infos) {
     auto& kname = pair.first;
     if (kname.find(kernelName) != std::string ::npos) {
-      info = pair.second;
+      regInfo = pair.second;
       break;
     }
   }
 
-  if (info.empty())
+  if (regInfo.empty())
+    return;
+
+  // Try to enable register access
+  uint32_t base = regInfo.begin()->first;
+  int ret = xdpDevice->initXrtIP(fullname.c_str(), base, REGISTER_ACCESS_RANGE);
+  if (ret > 0) {
+    initialized = true;
+    index = ret;
+  }
+}
+
+int XrtIP::
+read(uint32_t offset, uint32_t* data)
+{
+  return xdpDevice->readXrtIP(index, offset, data);
+}
+
+std::string& XrtIP::
+getDeadlockDiagnosis(bool print)
+{
+  if (regInfo.empty() || !initialized)
     return deadlockDiagnosis;
 
   // Query this IP
-  for (const auto& e: info) {
-    uint32_t reg = 0;
+  for (const auto& e: regInfo) {
+    uint32_t regdata = 0;
     auto offset = e.first;
     auto& messages = e.second;
 
-    read(offset, &reg);
-    std::cout << std::hex << "Read : 0x" << offset << " Val : 0x" << reg << std::endl;
+    read(offset, &regdata);
     for (unsigned int i=0; i < num_bits_deadlock_diagnosis; i++) {
-      uint32_t bit_i = ((reg >> i) & 0x1);
+      uint32_t bit_i = ((regdata >> i) & 0x1);
       if (bit_i)
         deadlockDiagnosis += messages[bit_i] + "\n";
     }

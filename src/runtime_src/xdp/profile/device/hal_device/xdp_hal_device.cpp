@@ -80,23 +80,31 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 }
 
 // This uses mmap and is recommended way to access an XRT IP
-int HalDevice::readXrtIP(const char *name, uint32_t offset, uint64_t base, uint32_t *data)
+int HalDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
 {
-  // Work in progress
-  xclOpenContext(devHandle, currentXclbin->uuid.get(), 0, true);
-  xclOpenContext(devHandle, currentXclbin->uuid.get(), 1, true);
+  return xclRegRead(mHalDevice, index, offset, data);
+}
+
+int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
+{
   // We cannot always get index from ip_layout
   // For some cases, this is determined by the driver
   int index = xclIPName2Index(mHalDevice, name);
   if (index < 0)
     return index;
-  uint32_t idx = static_cast<uint32_t>(index);
-  int ret = xclIPSetReadRange(mHalDevice, idx, offset, 4);
+
+  // A shared context is needed
+  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(mHalDevice);
+  xclOpenContext(mHalDevice, device->get_xclbin_uuid().get(), index, true);
+
+  // Open access to IP Registers. base should be > 0x10
+  int ret = xclIPSetReadRange(mHalDevice, index, base, range);
   if (ret < 0)
     return ret;
-  return xclRegRead(mHalDevice, idx, offset, data);
 
+  return index;
 }
+
 
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
 {

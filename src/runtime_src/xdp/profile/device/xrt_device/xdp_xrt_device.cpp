@@ -51,7 +51,12 @@ int XrtDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 
 // Right now, xrt/xocl layer doesn't have access to xclReadReg and xclIPName2Index
 // This should be updated if required in future
-int XrtDevice::readXrtIP(const char* /*name*/, uint32_t /*offset*/, uint64_t /*base*/, uint32_t* /*data*/)
+int XrtDevice::readXrtIP(uint32_t /*id*/, uint32_t /*offset*/, uint32_t* /*data*/)
+{
+  return -1;
+}
+
+int XrtDevice::initXrtIP(const char* /*name*/, uint64_t /*base*/, uint32_t /*range*/)
 {
   return -1;
 }

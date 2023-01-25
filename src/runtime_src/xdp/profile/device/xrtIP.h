@@ -54,11 +54,13 @@ public:
 
 private:
   Device* xdpDevice;
-  std::shared_ptr<ip_metadata> ip_metadata_section;
   std::string fullname;
   uint64_t baseAddress;
   std::string deadlockDiagnosis;
   std::string kernelName;
+  bool initialized;
+  kernel_reginfo regInfo;
+  uint32_t index;
 
 private:
   int read(uint32_t offset, uint32_t* data);

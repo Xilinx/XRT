@@ -237,7 +237,8 @@ namespace xdp {
     spTag = ddr;
   }
 
-  ip_metadata::ip_metadata(const boost::property_tree::ptree& pt)
+  ip_metadata::
+  ip_metadata(const boost::property_tree::ptree& pt)
   : s_major(0)
   , s_minor(0)
   {
@@ -268,7 +269,8 @@ namespace xdp {
   /*
    * Useful for debug
    */
-  void ip_metadata::print()
+  void ip_metadata::
+  print()
   {
     std::cout << "Major : " << s_major << std::endl;
     std::cout << "Minor : " << s_minor << std::endl;

@@ -1602,21 +1602,18 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    // temp until new section is supported
-    //auto data = device->get_axlf_section(IP_METADATA);
-    //if (!data.first || !data.second)
-    //  return;
+    auto data = device->get_axlf_section(AIE_METADATA);
+    if (!data.first || !data.second)
+      return;
 
+    std::stringstream ss;
     boost::property_tree::ptree pt;
-    boost::property_tree::read_json("dlinfo", pt);
-
-    //std::stringstream ss;
-    //ss.write(data.first, data.second);
-    //boost::property_tree::read_json(ss,pt);
+    ss.write(data.first, data.second);
+    boost::property_tree::read_json(ss,pt);
 
     xclbin->pl.ip_metadata_section = std::make_shared<ip_metadata>(pt);
     // Debug
-    xclbin->pl.ip_metadata_section->print();
+    //xclbin->pl.ip_metadata_section->print();
   }
 
   bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
