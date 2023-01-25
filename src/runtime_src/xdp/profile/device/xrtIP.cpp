@@ -62,6 +62,7 @@ std::string& XrtIP::getDeadlockDiagnosis(bool print)
     auto& messages = e.second;
 
     read(offset, &reg);
+    std::cout << std::hex << "Read : 0x" << offset << " Val : 0x" << reg << std::endl;
     for (unsigned int i=0; i < num_bits_deadlock_diagnosis; i++) {
       uint32_t bit_i = ((reg >> i) & 0x1);
       if (bit_i)

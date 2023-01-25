@@ -176,6 +176,10 @@ namespace xdp {
     // Device Trace Buffer Fullness Status - PL
     XDP_EXPORT void setPLTraceBufferFull(uint64_t deviceId, bool val);
     XDP_EXPORT bool isPLTraceBufferFull(uint64_t deviceId);
+
+    // Deadlock Diagnosis metadata
+    XDP_EXPORT void setPLDeadlockInfo(uint64_t deviceId, const std::string& str);
+    XDP_EXPORT std::string getPLDeadlockInfo();
   } ;
   
 }

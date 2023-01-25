@@ -50,13 +50,10 @@ int XrtDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 }
 
 // Right now, xrt/xocl layer doesn't have access to xclReadReg and xclIPName2Index
-// So we use existing read_register API which uses xclRead internally
-// This should be updated if xclRead/xclWrite are removed in future
-int XrtDevice::readXrtIP(const char* /*name*/, uint32_t offset, uint64_t base, uint32_t *data)
+// This should be updated if required in future
+int XrtDevice::readXrtIP(const char* /*name*/, uint32_t /*offset*/, uint64_t /*base*/, uint32_t* /*data*/)
 {
-  size_t absolute_address = static_cast<size_t>(base + offset);
-  mXrtDevice->read_register(absolute_address, static_cast<void*>(data), 4);
-  return 0;
+  return -1;
 }
 
 int XrtDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)

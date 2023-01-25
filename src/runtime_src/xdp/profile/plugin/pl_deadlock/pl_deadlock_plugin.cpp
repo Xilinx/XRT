@@ -27,11 +27,11 @@
 #include "pl_deadlock_plugin.h"
 
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
-
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/writer/pl_deadlock/pl_deadlock.h"
 
 #include "core/common/system.h"
 #include "core/common/message.h"
@@ -40,7 +40,9 @@ namespace xdp {
 
   using severity_level = xrt_core::message::severity_level;
 
-  PLDeadlockPlugin::PLDeadlockPlugin() : XDPPlugin()
+  PLDeadlockPlugin::PLDeadlockPlugin()
+  : XDPPlugin()
+  , fileExists(false)
   {
     db->registerPlugin(this);
   }
@@ -91,11 +93,32 @@ namespace xdp {
         ". Please manually terminate and debug the application.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
 
-        deviceIntf->getDeadlockDiagnosis(true);
+        std::string deadlockInfo = deviceIntf->getDeadlockDiagnosis(true);
+        if (!deadlockInfo.empty()) {
+          deadlockInfo += deviceName + " :\n";
+          db->getDynamicInfo().setPLDeadlockInfo(deviceId, deadlockInfo);
+          // There is only one file for all the devices
+          // In case of a deadlock, the application is hung
+          // So, we have to write this data ASAP
+          forceWrite(deadlockInfo);
+        }
         return;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(mPollingIntervalMs));
     }
+  }
+
+  void PLDeadlockPlugin::forceWrite(const std::string& msg)
+  {
+    std::lock_guard<std::mutex> lock(writeLock);
+    std::string outputFile = "pl_deadlock_diagnosis.txt";
+    if (!fileExists) {
+      db->getStaticInfo().addOpenedFile(outputFile, "PL_DEADLOCK_DIAGNOSIS");
+      fileExists = true;
+    }
+    // Don't allocate memory because this application is
+    // potentially hung and could be killed
+    PlDeadlockWriter(outputFile.c_str()).write(false);
   }
 
   void PLDeadlockPlugin::flushDevice(void* handle)
