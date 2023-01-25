@@ -1066,7 +1066,8 @@ static int xgq_program_scfw(struct platform_device *pdev)
 
 /* Note: caller is responsibe for vfree(*fw) */
 static int xgq_log_page_fw(struct platform_device *pdev,
-	char **fw, size_t *fw_size, enum xgq_cmd_log_page_type req_pid)
+	char **fw, size_t *fw_size, enum xgq_cmd_log_page_type req_pid,
+	loff_t off, size_t req_size)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1092,10 +1093,13 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 		goto acquire_failed;
 	}
 
+	/* adjust requested len based on req_size */
+	len = (req_size && req_size < len) ? req_size : len;
+
 	payload = &(cmd->xgq_cmd_entry.log_payload);
 	payload->address = address;
 	payload->size = len;
-	payload->offset = 0;
+	payload->offset = off;
 	payload->pid = req_pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1173,7 +1177,7 @@ acquire_failed:
 static int xgq_log_page_metadata(struct platform_device *pdev,
 	char **fw, size_t *fw_size)
 {
-	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW);
+	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW, 0, 0);
 }
 
 static int xgq_refresh_plm_log(struct xocl_xgq_vmr *xgq)
@@ -1182,7 +1186,7 @@ static int xgq_refresh_plm_log(struct xocl_xgq_vmr *xgq)
 		vfree(xgq->xgq_vmr_plm_log);
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_plm_log,
-		&xgq->xgq_vmr_plm_log_size, XGQ_CMD_LOG_PLM_LOG);
+		&xgq->xgq_vmr_plm_log_size, XGQ_CMD_LOG_PLM_LOG, 0, 0);
 }
 
 static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
@@ -1191,7 +1195,14 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		vfree(xgq->xgq_vmr_system_dtb);
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_system_dtb,
-		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
+		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB, 0, 0);
+}
+
+static int xgq_vmr_apu_log(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
+	loff_t off, size_t req_size)
+{
+	return xgq_log_page_fw(xgq->xgq_pdev, fw, fw_size, XGQ_CMD_LOG_APU_LOG,
+		off, req_size);
 }
 
 static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr)
@@ -1215,7 +1226,8 @@ static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status
 	return 0;
 }
 
-static int xgq_vmr_healthy_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
+static int xgq_vmr_healthy_op(struct platform_device *pdev,
+	enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -3042,6 +3054,39 @@ static struct bin_attribute bin_attr_vmr_plm_log = {
 	.size = 0
 };
 
+static ssize_t vmr_apu_log_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xgq_vmr *xgq =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	char *log_buf = NULL;
+	ssize_t log_size = 0;
+	int ret = 0;
+
+	/* return count should be less or equal to count */
+	ret = xgq_vmr_apu_log(xgq, &log_buf, &log_size, off, count);
+	if (ret)
+		return ret;
+
+	/* adjust log_size to be within requested count range */
+	log_size = log_size > count ? count : log_size;
+
+	memcpy(buf, log_buf, log_size);
+	vfree(log_buf);
+
+	return log_size;
+}
+
+static struct bin_attribute bin_attr_vmr_apu_log = {
+	.attr = {
+		.name = "vmr_apu_log",
+		.mode = 0444
+	},
+	.read = vmr_apu_log_read,
+	.write = NULL,
+	.size = 0
+};
+
 static struct attribute *vmr_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
@@ -3069,6 +3114,7 @@ static struct attribute *vmr_attrs[] = {
 static struct bin_attribute *vmr_bin_attrs[] = {
 	&bin_attr_vmr_system_dtb,
 	&bin_attr_vmr_plm_log,
+	&bin_attr_vmr_apu_log,
 	NULL,
 };
 static struct attribute_group xgq_attr_group = {
