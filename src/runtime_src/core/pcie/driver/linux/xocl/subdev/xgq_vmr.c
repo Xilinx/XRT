@@ -189,6 +189,8 @@ struct xocl_xgq_vmr {
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
 static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
+static uint64_t xgq_get_data(struct platform_device *pdev,
+	enum data_kind kind);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -1481,9 +1483,38 @@ static int vmr_memory_info_query(struct platform_device *pdev,
 	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_MEM_STATS);
 }
 
+static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs)
+{
+	int ret = 0, i = 0;
+	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	//TO DO:- Need to enhance the following Hard Coded Part by creating new Interface using Call Backs.
+	enum data_kind kinds[3] = {FREQ_COUNTER_0, FREQ_COUNTER_1, FREQ_COUNTER_2};
+
+	for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i)
+	{
+		if (!target_freqs[i])
+			continue;
+
+		clock_freq_counter = (u32)xgq_get_data(pdev, kinds[i]);
+
+		lookup_freq = target_freqs[i];
+		request_in_khz = lookup_freq*1000;
+		tolerance = lookup_freq*50;
+		if (tolerance < abs(clock_freq_counter-request_in_khz))
+		{
+			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
+					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+			ret = -EDOM;
+			break;
+		}
+	}
+	return ret;
+}
+
 /* On versal, verify is enforced. */
-static int xgq_freq_scaling(struct platform_device *pdev,
-	unsigned short *freqs, int num_freqs, int verify)
+static int xgq_freq_scaling_impl(struct platform_device *pdev,
+	unsigned short *freqs, int num_freqs)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1556,6 +1587,22 @@ done:
 cid_alloc_failed:
 	kfree(cmd);
 
+	return ret;
+}
+
+static int xgq_freq_scaling(struct platform_device *pdev,
+	unsigned short *freqs, int num_freqs, int verify)
+{
+	int ret = 0;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	ret = xgq_freq_scaling_impl(pdev, freqs, num_freqs);
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+		return ret;
+	}
+	if (verify) {
+		ret = xgq_freq_verify(pdev, freqs, num_freqs);
+	}
 	return ret;
 }
 
