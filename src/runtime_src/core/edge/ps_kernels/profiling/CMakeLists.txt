@@ -5,3 +5,4 @@
 add_subdirectory(aie_trace_config)
 add_subdirectory(aie_trace_gmio)
 add_subdirectory(aie_profile_config)
+add_subdirectory(aie2_trace_config)

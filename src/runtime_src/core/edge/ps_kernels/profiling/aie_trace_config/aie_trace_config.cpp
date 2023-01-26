@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+/* Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,6 @@
 #include "xaiengine.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
-// #include "trace_functions.h"
 
 // User private data structure container (context object) definition
 class xrtHandles : public pscontext
@@ -559,7 +558,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
         }
 
         // Odd absolute rows change east mask end even row change west mask
-        if ((row) % 2) {
+        if (row % 2) {
           cfgTile.core_trace_config.broadcast_mask_east = coreToMemBcMask;
         } else {
           cfgTile.core_trace_config.broadcast_mask_west = coreToMemBcMask;
