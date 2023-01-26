@@ -1501,7 +1501,6 @@ static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_f
 		lookup_freq = target_freqs[i];
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
-		XGQ_WARN(xgq,"Idx = %d, tolerance = %ul, request_in_khz = %ul",i, tolerance, request_in_khz);
 		if (tolerance < abs(clock_freq_counter-request_in_khz))
 		{
 			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
