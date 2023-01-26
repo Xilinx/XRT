@@ -618,7 +618,7 @@ extern "C" {
 
 // The PS kernel initialization function
 __attribute__((visibility("default")))
-xrtHandles* aie_trace_config_t_init (xclDeviceHandle handle, const xuid_t xclbin_uuid) {
+xrtHandles* aie_trace_config_init (xclDeviceHandle handle, const xuid_t xclbin_uuid) {
 
     xrtHandles* constructs = new xrtHandles;
     if (!constructs)
@@ -630,7 +630,7 @@ xrtHandles* aie_trace_config_t_init (xclDeviceHandle handle, const xuid_t xclbin
 
 // The main PS kernel functionality
 __attribute__((visibility("default")))
-int aie_trace_config_t(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xrtHandles* constructs)
+int aie_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xrtHandles* constructs)
 {
   if (constructs == nullptr)
     return 0;
@@ -678,7 +678,7 @@ int aie_trace_config_t(uint8_t* input, uint8_t* output, uint8_t* messageOutput, 
 
 // The final function for the PS kernel
 __attribute__((visibility("default")))
-int aie_trace_config_t_fini(xrtHandles* handles)
+int aie_trace_config_fini(xrtHandles* handles)
 {
   if (handles != nullptr)
     delete handles;
