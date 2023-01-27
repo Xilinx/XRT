@@ -54,6 +54,7 @@ namespace xdp {
                                       int numMemoryCounters);
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, 
                           XAie_LocType& loc, 
+                          const module_type type,
                           const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, 
                           const tile_type& tile);
