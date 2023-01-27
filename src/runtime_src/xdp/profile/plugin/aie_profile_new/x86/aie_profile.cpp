@@ -125,7 +125,6 @@ namespace xdp {
       for (uint32_t i = 0; i < cfg->numCounters; i++){
         // Store counter info in database
         auto& counter = cfg->counters[i];
-        std::cout << "Module Name: " << counter.moduleName << std::endl;
         std::string counterName = "AIE Counter " + std::to_string(counter.counterId);
         (db->getStaticInfo()).addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
         counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload, metadata->getClockFreqMhz() , 
