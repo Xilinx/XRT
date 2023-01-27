@@ -90,7 +90,6 @@ MODULE_PARM_DESC(vmr_sc_ready_timeout,
 
 #define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
 
-static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_INVALID_CID	0xFFFF
 
 #define SC_WAIT_INTERVAL_MSEC       1000
@@ -155,6 +154,7 @@ struct xocl_xgq_vmr {
 	void __iomem		*xgq_cq_base;
 	struct mutex 		xgq_lock;
 	struct mutex 		clk_scaling_lock;
+	struct idr		xgq_vmr_cid_idr;
 	struct vmr_shared_mem	xgq_vmr_shared_mem;
 	bool 			xgq_polling;
 	bool 			xgq_boot_from_backup;
@@ -876,7 +876,7 @@ static inline int get_xgq_cid(struct xocl_xgq_vmr *xgq)
 	int id = 0;
 
 	mutex_lock(&xgq->xgq_lock);
-	id = idr_alloc_cyclic(&xocl_xgq_vmr_cid_idr, xgq, 0, 0, GFP_KERNEL);
+	id = idr_alloc_cyclic(&xgq->xgq_vmr_cid_idr, xgq, 0, 0, GFP_KERNEL);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return id;
@@ -885,7 +885,7 @@ static inline int get_xgq_cid(struct xocl_xgq_vmr *xgq)
 static inline void remove_xgq_cid(struct xocl_xgq_vmr *xgq, int id)
 {
 	mutex_lock(&xgq->xgq_lock);
-	idr_remove(&xocl_xgq_vmr_cid_idr, id);
+	idr_remove(&xgq->xgq_vmr_cid_idr, id);
 	mutex_unlock(&xgq->xgq_lock);
 }
 
@@ -3246,6 +3246,7 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	xgq_stop_services(xgq);
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
+	idr_destroy(&xgq->xgq_vmr_cid_idr);
 
 	if (xgq->xgq_payload_base)
 		iounmap(xgq->xgq_payload_base);
@@ -3403,6 +3404,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	if (ret)
 		goto attach_failed;
 
+	/* init cid_idr per card */
+	idr_init(&xgq->xgq_vmr_cid_idr);
 	/* init condition veriable */
 	init_completion(&xgq->xgq_irq_complete);
 
