@@ -173,6 +173,9 @@ struct kds_sched {
 	bool                    force_polling;
 	u32			cu_intr;
 
+	/* APU Timestamp Set Flag */
+	bool			timestamp_set;
+
 	/* KDS polling thread */
 	struct task_struct     *polling_thread;
 	struct list_head	alive_cus; /* alive CU list */
