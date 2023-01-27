@@ -78,6 +78,7 @@ namespace xdp {
     std::size_t total_size = sizeof(ProfileInputConfiguration) + sizeof(ProfileTileType[numTiles-1]);
     ProfileInputConfiguration* input_params = (ProfileInputConfiguration*)malloc(total_size);
     input_params->numTiles = numTiles;
+    input_params->offset = metadata->getAIETileRowOffset();
     
     //Create the Profile Tile Struct with All Tiles
     ProfileTileType profileTiles[numTiles];
@@ -124,6 +125,7 @@ namespace xdp {
       for (uint32_t i = 0; i < cfg->numCounters; i++){
         // Store counter info in database
         auto& counter = cfg->counters[i];
+        std::cout << "Module Name: " << counter.moduleName << std::endl;
         std::string counterName = "AIE Counter " + std::to_string(counter.counterId);
         (db->getStaticInfo()).addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
         counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload, metadata->getClockFreqMhz() , 

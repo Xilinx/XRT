@@ -78,6 +78,8 @@ namespace built_in {
     static constexpr int NUM_MODULES = 3;
 
     uint16_t numTiles;
+    uint8_t offset;
+ 
     // uint16_t numTiles[NUM_MODULES]; // Make unique variab
     ProfileTileType tiles[1]; //flexible array member
   };
