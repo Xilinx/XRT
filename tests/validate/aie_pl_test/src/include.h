@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2019-2022 Xilinx, Inc
+* Copyright (C) 2019-2023 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -23,5 +23,6 @@
 #define NUM_ITERATIONS2 8
 #define AIE_CORE_COL 25
 #define AIE_CORE_ROW 0
+#define SLEEP_COUNT_CYCLES 128
 
 #endif
