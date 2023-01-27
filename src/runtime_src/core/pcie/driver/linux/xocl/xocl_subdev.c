@@ -548,6 +548,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 		goto error;
 	priv_data->debug_hdl = reg.hdl;
 	priv_data->data_sz = data_len;
+	priv_data->inst_idx = subdev->info.override_idx;
 
 	retval = platform_device_add_data(subdev->pldev, priv_data,
 			sizeof(*priv_data) + data_len);
