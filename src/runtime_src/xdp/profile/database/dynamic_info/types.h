@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +39,16 @@ namespace xdp {
     const char* label;
     const char* tooltip;
     uint64_t startTimestamp;
+  };
+
+  // Used for keeping track of a pair of events in the database that
+  // correspond to a single event on the XRT side.  For example, when
+  // keeping track of Native XRT sync calls that we want to display as
+  // both an API event and a data transfer event.
+  struct EventPair
+  {
+    uint64_t APIEventId;
+    uint64_t transferEventId;
   };
 
 } // end namespace xdp
