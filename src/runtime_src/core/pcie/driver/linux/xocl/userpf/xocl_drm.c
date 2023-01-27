@@ -901,11 +901,14 @@ int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_ban
 int xocl_cleanup_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 {
 	int ret;
+
 	mutex_lock(&drm_p->mm_lock);
 	ret = xocl_cleanup_mem_nolock(drm_p, slot_id);
 	mutex_unlock(&drm_p->mm_lock);
+
 	return ret;
 }
+
 int xocl_cleanup_mem_all(struct xocl_drm *drm_p)
 {
 	int ret = 0;
