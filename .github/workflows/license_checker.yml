@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
+name: Check License Lines
+on:
+  pull_request:
+jobs:
+  check-license-lines:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install jq curl
+    - name: Checkout branch
+      uses: actions/checkout@v2
+    - name: Check License for changed files
+      run: |
+        URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
+        if echo $FILES | grep -q ".json"; then
+          echo "json file changed!!"
+        else
+          echo "no json file changed!!"
+        fi
