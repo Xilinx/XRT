@@ -439,19 +439,19 @@ bool AIETraceOffload::isTraceBufferFull()
 
 void AIETraceOffload::checkCircularBufferSupport()
 {
-  if (!deviceIntf->supportsCircBufAIE())
-    return;
-
-  mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
-  if (!mEnCircularBuf)
-    return;
-
   // gmio not supported
   if (!isPLIO) {
     mEnCircularBuf = false;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_WARN_REUSE_GMIO);
     return;
   }
+
+  if (!deviceIntf->supportsCircBufAIE())
+    return;
+
+  mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
+  if (!mEnCircularBuf)
+    return;
 
   if (!continuousTrace()) {
     mEnCircularBuf = false;
