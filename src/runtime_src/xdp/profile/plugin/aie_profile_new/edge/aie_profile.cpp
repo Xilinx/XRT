@@ -569,8 +569,12 @@ namespace xdp {
         if ((aie->column != prevColumn) || (aie->row != prevRow)) {
           prevColumn = aie->column;
           prevRow = aie->row;
+          auto moduleType = getModuleType(aie->row, XAIE_CORE_MOD);
+          auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
+                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
+                             : XAIE_MEM_MOD);
           XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
-          XAie_ReadTimer(aieDevInst, tileLocation, XAIE_CORE_MOD, &timerValue);
+          XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
         }
         values.push_back(timerValue);
         values.push_back(aie->payload);
