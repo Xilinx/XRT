@@ -451,8 +451,10 @@ void AIETraceOffload::checkCircularBufferSupport()
   }
 
   // old datamover not supported for PLIO
-  if (!deviceIntf->supportsCircBufAIE())
+  if (!deviceIntf->supportsCircBufAIE()) {
+    mEnCircularBuf = false;
     return;
+  }
 
   // check for periodic offload
   if (!continuousTrace()) {
