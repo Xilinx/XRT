@@ -784,11 +784,10 @@ namespace xdp {
           break;
 
         // Update memory packet type in config file
-        // NOTE: Use time packets for memory module (type 1)
         if (type == module_type::mem_tile)
-          cfgTile->mem_tile_trace_config.packet_type = 1;
+          cfgTile->mem_tile_trace_config.packet_type = packetType;
         else
-          cfgTile->memory_trace_config.packet_type = 1;
+          cfgTile->memory_trace_config.packet_type = packetType;
       }
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
