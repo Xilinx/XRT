@@ -18,13 +18,15 @@
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
+#include <cstring>
 #include <iostream>
 #include <memory>
-#include <cstring>
 #include <regex>
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/edge/user/shim.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -33,11 +35,8 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace_new/aie_trace_metadata.h"
-#include "core/edge/user/shim.h"
-
-#include "core/include/xrt/xrt_kernel.h"
-
-#include "aie_trace.h"
+#include "xdp/profile/plugin/aie_trace_new/edge/aie_trace.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 constexpr unsigned int NUM_CORE_TRACE_EVENTS = 8;
 constexpr unsigned int NUM_MEMORY_TRACE_EVENTS = 8;
@@ -853,52 +852,37 @@ namespace xdp {
 
   uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize) 
   {
-#ifndef _WIN32
-    try {
-      std::string line;
-      std::ifstream ifs;
-      ifs.open("/proc/meminfo");
-      while (getline(ifs, line)) {
-        if (line.find("CmaTotal") == std::string::npos)
-          continue;
-          
-        // Memory sizes are always expressed in kB
-        std::vector<std::string> cmaVector;
-        boost::split(cmaVector, line, boost::is_any_of(":"));
-        auto deviceMemorySize = std::stoull(cmaVector.at(1)) * 1024;
-        if (deviceMemorySize == 0)
-          break;
+    uint64_t deviceMemorySize = getPSMemorySize();
+    if (deviceMemorySize == 0)
+      return aieTraceBufSize;
 
-        double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
-        std::stringstream percentSizeStr;
-        percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
+    double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
 
-        // Limit size of trace buffer if requested amount is too high
-        if (percentSize >= 80.0) {
-          uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
-          aieTraceBufSize = newAieTraceBufSize;
+    std::stringstream percentSizeStr;
+    percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
 
-          std::stringstream newBufSizeStr;
-          newBufSizeStr << std::fixed << std::setprecision(3) << (newAieTraceBufSize / (1024.0 * 1024.0));
-          
-          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory."
-              + " You may run into errors depending upon memory usage of your application."
-              + " Limiting to " + newBufSizeStr.str() + " MB.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg);
-        }
-        else {
-          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
-          xrt_core::message::send(severity_level::info, "XRT", msg);
-        }
-        
-        break;
-      }
-      ifs.close();
+    // Limit size of trace buffer if requested amount is too high
+    if (percentSize >= 80.0) {
+      aieTraceBufSize =
+        static_cast<uint64_t>(std::ceil(0.8 * deviceMemorySize));
+
+      std::stringstream newBufSizeStr;
+      newBufSizeStr << std::fixed << std::setprecision(3)
+                    << (aieTraceBufSize / (1024.0 * 1024.0)); // In MB
+
+      std::string msg = "Requested AIE trace buffer is " +
+                        percentSizeStr.str() + "% of device memory." +
+                        " You may run into errors depending upon memory usage"
+                        " of your application." + " Limiting to " +
+                        newBufSizeStr.str() + " MB.";
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
-    catch (...) {
-        // Do nothing
+    else {
+      std::string msg = "Requested AIE trace buffer is " +
+                        percentSizeStr.str() + "% of device memory.";
+      xrt_core::message::send(severity_level::info, "XRT", msg);
     }
-#endif
+
     return aieTraceBufSize;
   }
 
