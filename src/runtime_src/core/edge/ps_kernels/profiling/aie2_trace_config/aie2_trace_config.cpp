@@ -88,7 +88,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
     }
 
     // Core resources not needed in MEM tiles 
-    if (type == module_type::mem_tile)
+    if (type == xdp::module_type::mem_tile)
       return true;
 
     // Core Module perf counters
@@ -310,8 +310,8 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
       auto type       = getTileType(row, params->offset);
 
       // NOTE: resource manager requires absolute row number
-      xaiefal::XaieMod core;
-      if (type == module_type::core)
+      xaiefal::XAieMod core;
+      if (type == xdp::module_type::core)
         core   = aieDevice->tile(col, row).core();
 
       auto& memory = aieDevice->tile(col, row).mem();
@@ -666,7 +666,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
-        uint8_t packetType = (type == module_type::mem_tile) ? 3 : 1;
+        uint8_t packetType = (type == xdp::module_type::mem_tile) ? 3 : 1;
         XAie_Packet pkt = {0, packetType};
 
         if (memoryTrace->setPkt(pkt) != XAIE_OK) 
@@ -681,7 +681,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
         else 
           cfgTile.memory_trace_config.packet_type = packetType;
 
-        std::vector<uint32_t> src = {static_cast<uint32_t>(numCoreTraceEvents), static_cast<uint32_t(numMemoryTraceEvents), col, row};
+        std::vector<uint32_t> src = {static_cast<uint32_t>(numCoreTraceEvents), static_cast<uint32_t>m(numMemoryTraceEvents), col, row};
         addMessage(msgcfg, Messages::ALL_TRACE_EVENTS_RESERVED, src);
           
       }
