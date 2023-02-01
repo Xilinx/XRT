@@ -229,7 +229,7 @@ namespace xdp {
         //Add Mem-tile specific metrics
         for (uint32_t channel = 0; channel < NUM_MEM_TILE_CHAN_SEL; channel++){
           cfgTile->mem_tile_trace_config.port_trace_ids[channel] = cfg->tiles[i].mem_tile_trace_config.port_trace_ids[channel];
-          cfgTile->mem_tile_trace_config.port_trace_is_master[channel] = cfg->tiles[i].mem_tile_trace_config.port_trace_is_master[channel] == 1 ? "true" : "false";
+          cfgTile->mem_tile_trace_config.port_trace_is_master[channel] = cfg->tiles[i].mem_tile_trace_config.port_trace_is_master[channel] == 1 ? true : false;
 
           cfgTile->mem_tile_trace_config.s2mm_channels[channel] = cfg->tiles[i].mem_tile_trace_config.s2mm_channels[channel];
           cfgTile->mem_tile_trace_config.mm2s_channels[channel] = cfg->tiles[i].mem_tile_trace_config.mm2s_channels[channel];
@@ -328,6 +328,12 @@ namespace xdp {
           msg << "Reserved " << packet.params[0] << " memory trace events for AIE tile (" << packet.params[1] << "," << packet.params[2] << ").";
           xrt_core::message::send(severity_level::debug, "XRT", msg.str());
           break; 
+        case Messages::ALL_TRACE_EVENTS_RESERVED:
+          msg << "Reserved " << packet.params[0] << " core and " << packet.params[1] 
+            << " memory trace events for AIE tile (" << packet.params[2] << "," << packet.params[3] 
+            << "). Adding tile to static database.";
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          break;
       }
     }
   }

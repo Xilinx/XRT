@@ -63,11 +63,33 @@ namespace {
 
 bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
    EventConfiguration& config, const xdp::built_in::TraceInputConfiguration* params,
-   xdp::built_in::MessageConfiguration* msgcfg, const xdp::built_in::MetricSet metricSet)
+   xdp::built_in::MessageConfiguration* msgcfg, xdp::module_type type, const xdp::built_in::MetricSet metricSet)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
     uint32_t required = 0;
+
+    // Memory Module perf counters
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    required = config.memoryCounterStartEvents.size();
+    if (available < required) {
+      std::vector<uint32_t> src = {available, required, 0, 0};
+      addMessage(msgcfg, Messages::NO_MEM_MODULE_PCS, src);
+      return false;
+    }
+
+    // Memory Module trace slots
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase[metricSet].size();
+    if (available < required) {
+      std::vector<uint32_t> src = {available, required, 0, 0};
+      addMessage(msgcfg, Messages::NO_MEM_MODULE_TRACE_SLOTS, src);
+      return false;
+    }
+
+    // Core resources not needed in MEM tiles 
+    if (type == module_type::mem_tile)
+      return true;
 
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
@@ -103,26 +125,6 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
       addMessage(msgcfg, Messages::NO_CORE_MODULE_BROADCAST_CHANNELS, src);
       return false;
     }
-
-   // Memory Module perf counters
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-    required = config.memoryCounterStartEvents.size();
-    if (available < required) {
-      std::vector<uint32_t> src = {available, required, 0, 0};
-      addMessage(msgcfg, Messages::NO_MEM_MODULE_PCS, src);
-      return false;
-    }
-
-    // Memory Module trace slots
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase[metricSet].size();
-    if (available < required) {
-      std::vector<uint32_t> src = {available, required, 0, 0};
-      addMessage(msgcfg, Messages::NO_MEM_MODULE_TRACE_SLOTS, src);
-      return false;
-    }
-
-    // No need to check memory module broadcast
 
     return true;
   }
@@ -308,7 +310,10 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
       auto type       = getTileType(row, params->offset);
 
       // NOTE: resource manager requires absolute row number
-      auto& core   = aieDevice->tile(col, row).core();
+      xaiefal::XaieMod core;
+      if (type == module_type::core)
+        core   = aieDevice->tile(col, row).core();
+
       auto& memory = aieDevice->tile(col, row).mem();
       auto loc = XAie_TileLoc(col, row);
 
@@ -333,17 +338,21 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
 
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, config, params, msgcfg, static_cast<xdp::built_in::MetricSet>(metricSet))) {
+      if (!tileHasFreeRsc(aieDevice, loc, config, params, msgcfg, type, static_cast<xdp::built_in::MetricSet>(metricSet))) {
         std::cout << "Tile has no Free RSC block hit!" << std::endl;
         std::vector<uint32_t> src = {0, 0, 0, 0};
         addMessage(msgcfg, Messages::NO_RESOURCES, src);
         return 1;
       }
 
+      int numCoreCounters = 0;
+      int numMemoryCounters = 0;
+      int numCoreTraceEvents = 0;
+      int numMemoryTraceEvents = 0;
+
       //
       // 1. Reserve and start core module counters (as needed)
       //
-      int numCoreCounters = 0;
       if (type == xdp::module_type::core) {
         XAie_ModuleType mod = XAIE_CORE_MOD;
 
@@ -392,7 +401,6 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
       //
       // 2. Reserve and start memory module counters (as needed)
       //
-      int numMemoryCounters = 0;
       if (type == xdp::module_type::core) {
         XAie_ModuleType mod = XAIE_MEM_MOD;
 
@@ -472,14 +480,13 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
           return 1;
         }
 
-        int numTraceEvents = 0;
         for (int i=0; i < coreEvents.size(); i++) {
           uint8_t slot;
           if (coreTrace->reserveTraceSlot(slot) != XAIE_OK) 
             break;
           if (coreTrace->setTraceEvent(slot, coreEvents[i]) != XAIE_OK) 
             break;
-          numTraceEvents++;
+          numCoreTraceEvents++;
 
           // Update config file
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
@@ -492,10 +499,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
         cfgTile.core_trace_config.stop_event = phyEvent;
         
         coreEvents.clear();
-        numTileCoreTraceEvents[numTraceEvents]++;
-
-        std::vector<uint32_t> src = {static_cast<uint32_t>(numTraceEvents), col, row, 0};
-        addMessage(msgcfg, Messages::CORE_TRACE_EVENTS_RESERVED, src);
+        numTileCoreTraceEvents[numCoreTraceEvents]++;
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
@@ -554,8 +558,6 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
             cfgTile.mem_tile_trace_config.mm2s_channels[1] = channel1;
           }
         }
-
-        int numTraceEvents = 0;
         
         // Configure cross module events
         // NOTE: this is only applicable for memory modules, not MEM tiles
@@ -571,7 +573,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
 
           if (TraceE->start() != XAIE_OK) 
             break;
-          numTraceEvents++;
+          numMemoryTraceEvents++;
 
           // Update config file
           uint32_t S = 0;
@@ -599,7 +601,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
             break;
           if (TraceE->start() != XAIE_OK) 
             break;
-          numTraceEvents++;
+          numMemoryTraceEvents++;
 
           // Update config file
           // Get Trace slot
@@ -658,16 +660,15 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
 
         memoryEvents.clear();
         if (type == xdp::module_type::core)
-          numTileMemoryTraceEvents[numTraceEvents]++;
+          numTileMemoryTraceEvents[numMemoryTraceEvents]++;
         else
-          numTileMemTileTraceEvents[numTraceEvents]++;
-
-        std::vector<uint32_t> src = {static_cast<uint32_t>(numTraceEvents), col, row, 0};
-        addMessage(msgcfg, Messages::MEMORY_TRACE_EVENTS_RESERVED, src);
+          numTileMemTileTraceEvents[numMemoryTraceEvents]++;
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
-        XAie_Packet pkt = {0, 1};
+        uint8_t packetType = (type == module_type::mem_tile) ? 3 : 1;
+        XAie_Packet pkt = {0, packetType};
+
         if (memoryTrace->setPkt(pkt) != XAIE_OK) 
           break;
         if (memoryTrace->start() != XAIE_OK) 
@@ -676,9 +677,13 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
         // Update memory packet type in config file
         // NOTE: Use time packets for memory module (type 1)
         if (type == xdp::module_type::mem_tile)
-          cfgTile.mem_tile_trace_config.packet_type = 1;
+          cfgTile.mem_tile_trace_config.packet_type = packetType;
         else 
-          cfgTile.memory_trace_config.packet_type = 1;
+          cfgTile.memory_trace_config.packet_type = packetType;
+
+        std::vector<uint32_t> src = {static_cast<uint32_t>(numCoreTraceEvents), static_cast<uint32_t(numMemoryTraceEvents), col, row};
+        addMessage(msgcfg, Messages::ALL_TRACE_EVENTS_RESERVED, src);
+          
       }
       tilecfg->tiles[tile_idx] = cfgTile;
       tile_idx++;
