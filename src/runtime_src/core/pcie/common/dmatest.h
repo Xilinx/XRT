@@ -56,8 +56,7 @@ namespace xcldev {
             while (b < e) {
                 try {
                     mHandle->sync_bo(b->first, dir, mSize, 0);
-                }
-                catch (const std::exception&) {
+                } catch (const std::exception&) {
                     throw xrt_core::error(result, "DMA failed");
                     break;
                 }
