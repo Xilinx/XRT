@@ -31,6 +31,7 @@ namespace po = boost::program_options;
 #include "tools/common/Report.h"
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportAieShim.h"
+#include "tools/common/ReportAieMem.h"
 #include "tools/common/ReportAsyncError.h"
 #include "tools/common/ReportBOStats.h"
 #include "tools/common/ReportCmcStatus.h"
@@ -53,6 +54,7 @@ namespace po = boost::program_options;
   // Common reports
     std::make_shared<ReportAie>(),
     std::make_shared<ReportAieShim>(),
+    std::make_shared<ReportAieMem>(),
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportBOStats>(),
     std::make_shared<ReportDebugIpStatus>(),

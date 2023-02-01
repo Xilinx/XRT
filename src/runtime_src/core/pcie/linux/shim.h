@@ -14,6 +14,7 @@
 #include "core/common/shim/hwqueue_handle.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
+#include "core/pcie/common/asd_parser.h"
 
 #include "core/include/xdp/app_debug.h"
 #include "core/include/xstream.h" /* for stream_opt_type */
@@ -160,6 +161,16 @@ public:
   // Exec Buf with hw ctx handle.
   void
   exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* ctxhdl);
+
+  void
+  get_aie_status_version_info(uint16_t &aie_ver_major, uint16_t &aie_ver_minor);
+
+  asd_parser::aie_tiles_info
+  get_aie_tiles_info();
+
+  void
+  get_aie_col_info(char *buf, uint32_t size, uint32_t start_col, uint32_t cols);
+
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
   std::shared_ptr<xrt_core::pci::dev> mDev;

@@ -2539,6 +2539,28 @@ exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* hwctx_hdl)
   }
 }
 
+void
+shim::
+get_aie_status_version_info(uint16_t &aie_ver_major, uint16_t &aie_ver_minor)
+{
+  // TODO: add driver call
+}
+
+asd_parser::aie_tiles_info
+shim::
+get_aie_tiles_info()
+{
+  // TODO: add driver call
+  return asd_parser::aie_tiles_info{};
+}
+
+void
+shim::
+get_aie_col_info(char *buf, uint32_t size, uint32_t start_col, uint32_t cols)
+{
+  // TODO: add driver call
+}
+
 } // namespace xocl
 
 ////////////////////////////////////////////////////////////////
@@ -3149,4 +3171,37 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
   if(size_ret)
     *size_ret = 0;
   return;
+}
+
+void
+asd_parser::
+get_aie_status_version_info(xclDeviceHandle hdl, uint16_t &aie_ver_major, uint16_t &aie_ver_minor)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(hdl);
+  if(!drv)
+    throw std::runtime_error("Unable to get shim handle of the device");
+
+  drv->get_aie_status_version_info(aie_ver_major, aie_ver_minor);
+}
+
+asd_parser::aie_tiles_info
+asd_parser::
+get_aie_tiles_info(xclDeviceHandle hdl)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(hdl);
+  if(!drv)
+    throw std::runtime_error("Unable to get shim handle of the device");
+
+  return drv->get_aie_tiles_info();
+}
+
+void
+asd_parser::
+get_aie_col_info(xclDeviceHandle hdl, char *buf, uint32_t size, uint32_t start_col, uint32_t cols)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(hdl);
+  if(!drv)
+    throw std::runtime_error("Unable to get shim handle of the device");
+
+  drv->get_aie_col_info(buf, size, start_col, cols); 
 }

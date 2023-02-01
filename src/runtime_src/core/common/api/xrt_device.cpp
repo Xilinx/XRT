@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2020-2023 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_device.h
@@ -179,6 +179,8 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
     return json_str(xrt_core::aie::aie_core(device), abi);
   case xrt::info::device::aie_shim : // std::string
     return json_str(xrt_core::aie::aie_shim(device), abi);
+  case xrt::info::device::aie_mem : // std::string
+    return json_str(xrt_core::aie::aie_mem(device), abi);
   case xrt::info::device::host : // std::string
     boost::property_tree::ptree pt;
     xrt_core::get_xrt_build_info(pt);

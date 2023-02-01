@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2023 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -32,6 +33,10 @@ aie_core(const xrt_core::device * device);
 // Get AIE shim information for this device
 boost::property_tree::ptree
 aie_shim(const xrt_core::device * device);
+
+// Get AIE mem information for this device
+boost::property_tree::ptree
+aie_mem(const xrt_core::device * device);
 
 }} // aie, xrt_core
 

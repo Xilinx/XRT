@@ -1,5 +1,6 @@
 /*
-  Copyright (C) 2020-2022 Xilinx, Inc
+  Copyright (C) 2020-2023 Xilinx, Inc
+  Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  
   Licensed under the Apache License, Version 2.0 (the "License"). You may
   not use this file except in compliance with the License. A copy of the
@@ -102,8 +103,8 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       for (auto& node : graph.get_child("tile")) {
         const boost::property_tree::ptree& tile = node.second;
 
-	if (tile.get<std::string>("memory_column", "") == "")
-	  continue;
+	      if (tile.get<std::string>("memory_column", "") == "")
+	        continue;
 
         _output << boost::format("    [%2d]   %-20s%-30s%-30d\n") % count
             % (tile.get<std::string>("column") + ":" + tile.get<std::string>("row"))
@@ -117,7 +118,7 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       for (auto& tile : graph.get_child("tile")) {
         int curr_core = count++;
         if(aieCoreList.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
-		     std::to_string(curr_core)) == aieCoreList.end()))
+            std::to_string(curr_core)) == aieCoreList.end()))
           continue;
 
         _output << boost::format("Core [%2d]\n") % curr_core;
@@ -130,20 +131,20 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
         _output << fmt8("%s") % "Link Register" % tile.second.get<std::string>("core.link_register");
         _output << fmt8("%s") % "Stack Pointer" % tile.second.get<std::string>("core.stack_pointer");
 
-	if(is_less) {
-	  _output << std::endl;
-	  continue;
-	}
+	      if(is_less) {
+	        _output << std::endl;
+	        continue;
+	      }
 
-	if(tile.second.find("dma") != tile.second.not_found()) {
+	      if(tile.second.find("dma") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "DMA";
 
-	  if(tile.second.find("dma.fifo") != tile.second.not_found()) {
+	        if(tile.second.find("dma.fifo") != tile.second.not_found()) {
             _output << boost::format("%12s:\n") % "FIFO";
             for(const auto& node : tile.second.get_child("dma.fifo.counters")) {
               _output << fmt16("%s") % node.second.get<std::string>("index")
-		    % node.second.get<std::string>("count");
-	    }
+		              % node.second.get<std::string>("count");
+	          }
           }
 
           _output << boost::format("        %s:\n") % "MM2S";

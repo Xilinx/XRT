@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2020-2023 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -13,9 +13,10 @@
 
 #include <iomanip>
 #include <map>
-#include <string>
+#include <stdint.h>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <boost/any.hpp>
@@ -113,8 +114,10 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
+  aie_tiles_row_info,
   aie_core_info,
   aie_shim_info,
+  aie_mem_info,
   idcode,
   data_retention,
   sec_level,
@@ -1310,6 +1313,29 @@ struct aie_shim_info : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct aie_mem_info : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_mem_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/* Get aie core, shim, mem tiles information
+* 1. Number of columns 2. Starting Row of tile 3. Number of corresponding tiles
+*/
+struct aie_tiles_row_info : request
+{
+  using result_type = std::tuple<uint16_t, uint16_t, uint16_t>;
+  static const key_type key = key_type::aie_tiles_row_info;
+
+  enum class tile_type { core, shim, mem };
+
+  virtual boost::any
+  get(const device*, const boost::any&) const = 0;
 };
 
 struct clock_freqs_mhz : request
