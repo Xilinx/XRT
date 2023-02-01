@@ -14,9 +14,7 @@
  * under the License.
  */
 
-#include <vector>
-
-#include "xdp/profile/writer/power/power_writer.h"
+#include "pl_deadlock.h"
 #include "xdp/profile/database/database.h"
 
 namespace xdp {

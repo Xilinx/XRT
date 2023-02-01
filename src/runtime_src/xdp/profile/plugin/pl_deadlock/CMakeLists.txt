@@ -14,6 +14,8 @@ file(GLOB PL_DEADLOCK_PLUGIN_FILES
   "${PROFILE_DIR}/plugin/pl_deadlock/*.cpp"
   "${PROFILE_DIR}/device/hal_device/*.h"
   "${PROFILE_DIR}/device/hal_device/*.cpp"
+  "${PROFILE_DIR}/writer/pl_deadlock/*.h"
+  "${PROFILE_DIR}/writer/pl_deadlock/*.cpp"
 )
 
 add_library(xdp_pl_deadlock_plugin MODULE ${PL_DEADLOCK_PLUGIN_FILES})
