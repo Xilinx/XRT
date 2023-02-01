@@ -439,9 +439,6 @@ bool AIETraceOffload::isTraceBufferFull()
 
 void AIETraceOffload::checkCircularBufferSupport()
 {
-  if (!deviceIntf->supportsCircBufAIE())
-    return;
-
   mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
   if (!mEnCircularBuf)
     return;
@@ -453,6 +450,13 @@ void AIETraceOffload::checkCircularBufferSupport()
     return;
   }
 
+  // old datamover not supported for PLIO
+  if (!deviceIntf->supportsCircBufAIE()) {
+    mEnCircularBuf = false;
+    return;
+  }
+
+  // check for periodic offload
   if (!continuousTrace()) {
     mEnCircularBuf = false;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_WARN_REUSE_PERIODIC);

@@ -327,6 +327,8 @@ zocl_destroy_aie(struct drm_zocl_dev *zdev)
 
 	mutex_lock(&zdev->aie_lock);
 	vfree(zdev->aie_information);
+	zdev->aie_information = NULL;
+
 	if (!zdev->aie) {
 		mutex_unlock(&zdev->aie_lock);
 		return;

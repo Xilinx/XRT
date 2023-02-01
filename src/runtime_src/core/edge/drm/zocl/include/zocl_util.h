@@ -103,6 +103,7 @@ struct aie_metadata {
 
 struct drm_zocl_slot {
 	u32			 slot_idx;
+	u32			 slot_type;
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;

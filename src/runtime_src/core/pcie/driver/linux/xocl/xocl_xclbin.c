@@ -24,6 +24,7 @@ struct xclbin_arg {
 	struct axlf 		*xclbin;
 	struct xocl_subdev 	*urpdevs;
 	int 			num_dev;
+	uint32_t 		slot_id;
 };
 
 static int versal_xclbin_pre_download(xdev_handle_t xdev, void *args)
@@ -206,13 +207,14 @@ static const struct xocl_xclbin_info versal_info = {
 #endif
 
 static int xocl_xclbin_download_impl(xdev_handle_t xdev, const void *xclbin,
-	struct xocl_xclbin_ops *ops)
+	uint32_t slot_id, struct xocl_xclbin_ops *ops)
 {
 	/* args are simular, thus using the same pattern among all ops*/
 	struct xclbin_arg args = {
 		.xdev = xdev,
 		.xclbin = (struct axlf *)xclbin,
 		.num_dev = 0,
+		.slot_id = slot_id,
 	};
 	int ret = 0;
 
@@ -241,26 +243,28 @@ done:
 	return ret;
 }
 
-int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin)
+int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin, uint32_t slot_id)
 {
 	int rval = 0;
 
 	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		rval = xocl_xclbin_download_impl(xdev, xclbin, &xgq_ops);
+		rval = xocl_xclbin_download_impl(xdev, xclbin, slot_id, &xgq_ops);
 		/* Legacy shell doesn't have xgq resources */
 		if (rval == -ENODEV)
-			return xocl_xclbin_download_impl(xdev, xclbin, &versal_ops);
+			return xocl_xclbin_download_impl(xdev, xclbin, slot_id,
+					&versal_ops);
 	} else {
 		/*
 		 * TODO:
 		 * return xocl_xclbin_download_impl(xdev, xclbin, &icap_ops);
 		 */
-		rval = xocl_icap_download_axlf(xdev, xclbin, false);
+		rval = xocl_icap_download_axlf(xdev, xclbin, slot_id);
 		if (!rval && XOCL_DSA_IS_MPSOC(xdev))
-			rval = xocl_xclbin_download_impl(xdev, xclbin, &mpsoc_ops);
+			rval = xocl_xclbin_download_impl(xdev, xclbin, slot_id,
+					&mpsoc_ops);
 
 		if (rval)
-			xocl_icap_clean_bitstream(xdev);
+			xocl_icap_clean_bitstream(xdev, slot_id);
 	}
 
 	return rval;

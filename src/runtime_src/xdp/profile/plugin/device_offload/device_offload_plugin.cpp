@@ -183,6 +183,12 @@ namespace xdp {
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
                                          DeviceIntf* devInterface)
   {
+    if (!devInterface->hasFIFO() && !devInterface->hasTs2mm()) {
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+           "No FIFO or PL TS2MM present in the design. So, the trace offload infrastructure must be using HSDP.");
+      return;
+    }
+
     uint64_t trace_buffer_size = 0;
     std::vector<uint64_t> buf_sizes;
 

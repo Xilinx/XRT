@@ -78,6 +78,7 @@ namespace xdp {
     std::size_t total_size = sizeof(ProfileInputConfiguration) + sizeof(ProfileTileType[numTiles-1]);
     ProfileInputConfiguration* input_params = (ProfileInputConfiguration*)malloc(total_size);
     input_params->numTiles = numTiles;
+    input_params->offset = metadata->getAIETileRowOffset();
     
     //Create the Profile Tile Struct with All Tiles
     ProfileTileType profileTiles[numTiles];

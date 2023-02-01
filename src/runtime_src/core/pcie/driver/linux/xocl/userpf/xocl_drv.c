@@ -207,6 +207,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
+	uint32_t slot_id = DEFAULT_PL_SLOT;
 	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
@@ -239,7 +240,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
-		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, slot_id);
 		if (ret) {
 			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
 			return;
@@ -260,7 +261,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		}
 
 		xocl_kds_reset(xdev, xclbin_id);
-		XOCL_PUT_XCLBIN_ID(xdev);
+		XOCL_PUT_XCLBIN_ID(xdev, slot_id);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
 			if (!xdev->core.drm) {
@@ -1166,6 +1167,32 @@ static int identify_bar(struct xocl_dev *xdev)
 		identify_bar_legacy(xdev);
 }
 
+static void xocl_cleanup_axlf_obj(struct xocl_dev *xdev)
+{
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	uint32_t slot_id = 0;
+
+	mutex_lock(&xdev->dev_lock);
+	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
+		axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
+		if (axlf_obj != NULL) {
+			if (axlf_obj->ulp_blob)
+				vfree(axlf_obj->ulp_blob);
+
+			if (axlf_obj->kernels)
+				vfree(axlf_obj->kernels);
+
+			axlf_obj->kernels = NULL;
+			axlf_obj->ksize = 0;
+
+			vfree(axlf_obj);
+			XDEV(xdev)->axlf_obj[slot_id] = NULL;
+		}
+	}
+
+	mutex_unlock(&xdev->dev_lock);
+}
+
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
@@ -1211,8 +1238,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	unmap_bar(xdev);
 
 	xocl_subdev_fini(xdev);
-	if (xdev->ulp_blob)
-		vfree(xdev->ulp_blob);
+	xocl_cleanup_axlf_obj(xdev);
 	mutex_destroy(&xdev->dev_lock);
 
 	if (xdev->core.bars)
@@ -1613,8 +1639,9 @@ void xocl_cma_bank_free(struct xocl_dev	*xdev)
 {
 	__xocl_cma_bank_free(xdev);
 	if (xdev->core.drm)
-		xocl_cleanup_mem(xdev->core.drm);
-	xocl_icap_clean_bitstream(xdev);
+		xocl_cleanup_mem_all(xdev->core.drm);
+
+	xocl_icap_clean_bitstream_all(xdev);
 }
 
 int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *cma_info)
@@ -1622,8 +1649,8 @@ int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *c
 	int err = 0;
 	int num = MAX_SB_APERTURES;
 
-	xocl_cleanup_mem(xdev->core.drm);
-	xocl_icap_clean_bitstream(xdev);
+	xocl_cleanup_mem_all(xdev->core.drm);
+	xocl_icap_clean_bitstream_all(xdev);
 
 	if (xdev->cma_bank) {
 		uint64_t allocated_size = xdev->cma_bank->entry_num * xdev->cma_bank->entry_sz;

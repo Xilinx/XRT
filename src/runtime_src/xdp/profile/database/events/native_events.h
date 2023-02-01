@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,45 +25,43 @@ namespace xdp {
   class NativeAPICall : public APICall
   {
   public:
-    XDP_EXPORT NativeAPICall(uint64_t s_id, double ts, uint64_t name) ;
-    XDP_EXPORT ~NativeAPICall() ;
+    XDP_EXPORT NativeAPICall(uint64_t s_id, double ts, uint64_t name);
+    XDP_EXPORT ~NativeAPICall() = default;
 
-    XDP_EXPORT virtual bool isNativeHostEvent() { return true ; }
-    XDP_EXPORT virtual bool isWrite() { return false ; }
-    XDP_EXPORT virtual bool isRead()  { return false ; }
+    XDP_EXPORT virtual bool isNativeHostEvent() { return true; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
-
-    // For printing out the event in a different bucket as a different
-    //  type of event, without having to store additional events in the database
-    XDP_EXPORT virtual void dumpSync(std::ofstream& fout, uint32_t bucket);
-  } ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
+  };
 
   class NativeSyncRead : public NativeAPICall
   {
   private:
-    uint64_t readStr ;
+    uint64_t readStr;
   public:
-    XDP_EXPORT NativeSyncRead(uint64_t s_id, double ts, uint64_t name,
-                              uint64_t r) ;
-    XDP_EXPORT ~NativeSyncRead() = default ;
+    XDP_EXPORT NativeSyncRead(uint64_t s_id, double ts, uint64_t name);
+    XDP_EXPORT ~NativeSyncRead() = default;
 
-    XDP_EXPORT virtual bool isRead() { return true ; }
-    XDP_EXPORT virtual void dumpSync(std::ofstream& fout, uint32_t bucket) ;
-  } ;
+    XDP_EXPORT virtual bool isNativeRead() override { return true; }
+
+    // For printing out the event in a different bucket as a different
+    //  type of event, without having to store additional events in the database
+    XDP_EXPORT virtual void dumpSync(std::ofstream& fout, uint32_t bucket) override;
+  };
 
   class NativeSyncWrite : public NativeAPICall
   {
   private:
-    uint64_t writeStr ;
+    uint64_t writeStr;
   public:
-    XDP_EXPORT NativeSyncWrite(uint64_t s_id, double ts, uint64_t name,
-                               uint64_t w) ;
-    XDP_EXPORT ~NativeSyncWrite() = default ;
+    XDP_EXPORT NativeSyncWrite(uint64_t s_id, double ts, uint64_t name);
+    XDP_EXPORT ~NativeSyncWrite() = default;
 
-    XDP_EXPORT virtual bool isWrite() { return true ; }
-    XDP_EXPORT virtual void dumpSync(std::ofstream& fout, uint32_t bucket) ;
-  } ;
+    XDP_EXPORT virtual bool isNativeWrite() override { return true; }
+
+    // For printing out the event in a different bucket as a different
+    //  type of event, without having to store additional events in the databaes
+    XDP_EXPORT virtual void dumpSync(std::ofstream& fout, uint32_t bucket) override;
+  };
 
 } // end namespace xdp
 
