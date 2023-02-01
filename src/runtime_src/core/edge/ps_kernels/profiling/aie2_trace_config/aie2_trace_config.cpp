@@ -681,7 +681,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
         else 
           cfgTile.memory_trace_config.packet_type = packetType;
 
-        std::vector<uint32_t> src = {static_cast<uint32_t>(numCoreTraceEvents), static_cast<uint32_t>m(numMemoryTraceEvents), col, row};
+        std::vector<uint32_t> src = {static_cast<uint32_t>(numCoreTraceEvents), static_cast<uint32_t>(numMemoryTraceEvents), col, row};
         addMessage(msgcfg, Messages::ALL_TRACE_EVENTS_RESERVED, src);
           
       }
