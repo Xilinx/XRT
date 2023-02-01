@@ -9,7 +9,6 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
-#include "xrt.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/error.h"

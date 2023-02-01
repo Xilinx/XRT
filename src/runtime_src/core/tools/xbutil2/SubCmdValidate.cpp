@@ -393,7 +393,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
  * helper function for M2M and P2P test
  */
 static void
-free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t bo_size)
+free_unmap_bo(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer_handle boh, void * boptr, size_t bo_size)
 {
 #ifdef __linux__
   if (boptr != nullptr)
@@ -408,7 +408,7 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
 #endif
 
   if (boh)
-    xclFreeBO(handle, boh);
+    handle->free_bo(boh);
 }
 
 /*
@@ -441,7 +441,7 @@ p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data
  * helper function for P2P test
  */
 static bool
-p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t size)
+p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint64_t dev_addr, uint64_t size)
 {
   char *buf = nullptr;
 
@@ -458,8 +458,11 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   // Perform one large write
   const auto buf_size = xrt_core::getpagesize();
   p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
-  if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
+  try {
+    handle->unmgd_pwrite(buf, buf_size, dev_addr);
+  } catch (const std::exception&) {
     return false;
+  }
   if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, false))
     return false;
 
@@ -467,16 +470,22 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   valid_data.clear();
   valid_data.push_back('A');
   p2ptest_set_or_cmp(buf, size, valid_data, true);
-  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+  try {
+    handle->unmgd_pwrite(buf, buf_size, dev_addr);
+  } catch (const std::exception&) {
     return false;
+  }
   if (!p2ptest_set_or_cmp(boptr, size, valid_data, false))
     return false;
 
   valid_data.clear();
   valid_data.push_back('B');
   p2ptest_set_or_cmp(boptr, size, valid_data, true);
-  if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0)
+  try {
+    handle->unmgd_pread(buf, buf_size, dev_addr);
+  } catch (const std::exception&) {
     return false;
+  }
   if (!p2ptest_set_or_cmp(buf, size, valid_data, false))
     return false;
 
@@ -486,18 +495,16 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
 
 //Since no DMA platforms don't have a DMA engine, we copy p2p buffer
 //to host only buffer and run the test through m2m
-
 static bool
-p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_size, int bank)
+p2ptest_chunk_no_dma(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer_handle bop2p, size_t bo_size, int bank)
 {
-   // testing p2p write flow host -> device
-
-  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_HOST_ONLY|bank);
-  if (boh == NULLBO) {
+  // testing p2p write flow host -> device
+  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_HOST_ONLY|bank);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     return false;
   }
 
-  char *boptr = reinterpret_cast<char *> (xclMapBO(handle, boh, true));
+  char *boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
@@ -505,12 +512,16 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
 
   memset(boptr, 'A', bo_size);
 
-  if (xclCopyBO(handle, bop2p, boh, bo_size, 0, 0)) {
+  try {
+    handle->copy_bo(bop2p, boh, bo_size, 0, 0);
+  } catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
 
-  if (xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0);
+  } catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
@@ -524,12 +535,12 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
   free_unmap_bo(handle, boh, boptr, bo_size);
 
   // testing p2p read flow device -> host
-  boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_HOST_ONLY|bank);
-  if (boh == NULLBO) {
+  boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_HOST_ONLY|bank);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     return false;
   }
 
-  boptr = reinterpret_cast<char *> (xclMapBO(handle, boh, true));
+  boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
@@ -537,12 +548,16 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
 
   memset(boptr, 'B', bo_size);
 
-  if (xclCopyBO(handle, bop2p, boh, bo_size, 0, 0)) {
+  try {
+    handle->copy_bo(bop2p, boh, bo_size, 0, 0);
+  } catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
 
-  if (xclSyncBO(handle, boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+  } catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
@@ -563,19 +578,20 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
  * helper function for P2P test
  */
 static bool
-p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, const std::string&,
+p2ptest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, const std::string&,
              unsigned int mem_idx, uint64_t addr, uint64_t bo_size, uint32_t no_dma)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
   const size_t mem_size = 256 * 1024 * 1024 ; //256 MB
 
-  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
-  if (boh == NULLBO) {
+  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_P2P | mem_idx);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
-  char *boptr = (char *)xclMapBO(handle, boh, true);
+
+  char *boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -609,24 +625,28 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, const
  * helper function for M2M test
  */
 static int
-m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, xclBufferHandle &boh,
+m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, xrt_buffer_handle &boh,
                    char * &boptr, size_t bo_size, int bank, char pattern)
 {
-  boh = xclAllocBO(handle, bo_size, 0, bank);
-  if (boh == NULLBO) {
+  boh = handle->alloc_bo(bo_size, bank);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return 1;
   }
-  boptr = (char*) xclMapBO(handle, boh, true);
+
+  boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
     return 1;
   }
+
   memset(boptr, pattern, bo_size);
-  if (xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+  } catch (const std::exception&) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't sync BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
@@ -639,10 +659,10 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
  * helper function for M2M test
  */
 static double
-m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
+m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
-  xclBufferHandle bo_src = NULLBO;
-  xclBufferHandle bo_tgt = NULLBO;
+  xrt_buffer_handle bo_src = XRT_INVALID_BUFFER_HANDLE;
+  xrt_buffer_handle bo_tgt = XRT_INVALID_BUFFER_HANDLE;
   char *bo_src_ptr = nullptr;
   char *bo_tgt_ptr = nullptr;
   double bandwidth = 0;
@@ -658,11 +678,16 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   XBU::Timer timer;
-  if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
+  try {
+    handle->copy_bo(bo_tgt, bo_src, bo_size, 0, 0);
+  } catch (const std::exception&) {
     return bandwidth;
+  }
   double timer_duration_sec = timer.get_elapsed_time().count();
 
-  if (xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+  } catch (const std::exception&) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
     free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
     _ptTest.put("status", test_token_failed);
@@ -687,33 +712,16 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   return static_cast<double>(total_Mb / timer_duration_sec);
 }
 
-static int
-program_xclbin(const xclDeviceHandle hdl, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+static void
+program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
-  std::ifstream stream(xclbin, std::ios::binary);
-  if (!stream) {
-    logger(_ptTest, "Error", boost::str(boost::format("Could not open %s for reding") % xclbin));
-    return 1;
+  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+  auto xclbin_obj = xrt::xclbin{xclbin};
+  try {
+    device->load_xclbin(xclbin_obj);
+  } catch (const std::exception& e) {
+    XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
   }
-
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-
-  std::vector<char> raw(size);
-  stream.read(raw.data(),size);
-
-  std::string v(raw.data(),raw.data()+7);
-  if (v != "xclbin2") {
-    logger(_ptTest, "Error", boost::str(boost::format("Bad binary version '%s'") % v));
-    return 1;
-  }
-
-  if (xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data()))) {
-    logger(_ptTest, "Error", "Could not program device");
-    return 1;
-  }
-  return 0;
 }
 
 static bool
@@ -749,26 +757,30 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
     return false;
   }
 
-  if (program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
+  try {
+    program_xclbin(dev, xclbinPath, ptTest);
+  } catch (const std::exception&) {
     ptTest.put("status", test_token_failed);
     return false;
   }
+
   return true;
 }
 
 static bool
-bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
+bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
 {
   int ret;
   const uint32_t bo_size = 0x1000;
-  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_EXECBUF);
 
-  if (boh == NULLBO) {
+  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_EXECBUF);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
-  auto boptr = reinterpret_cast<char *>(xclMapBO(handle, boh, true));
+
+  auto boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -782,15 +794,17 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
   ecmd->type = ERT_CTRL;
   ecmd->count = 5;
 
-  if (xclExecBuf(handle,boh)) {
-      logger(_ptTest, "Error", "Couldn't map BO");
-      return false;
+  try {
+    handle->exec_buf(boh);
+  } catch (const std::exception&) {
+    logger(_ptTest, "Error", "Couldn't map BO");
+    return false;
   }
 
   do {
-      ret = xclExecWait(handle, 1);
-      if (ret == -1)
-          break;
+    ret = handle->exec_wait(1);
+    if (ret == -1)
+        break;
   }
   while (ecmd->state < ERT_CMD_STATE_COMPLETED);
 
@@ -798,18 +812,18 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
 }
 
 static bool
-clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   const int sleep_secs = 2, one_million = 1000000;
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_CLK_CALIB, _ptTest))
     return false;
 
   auto start = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
 
   std::this_thread::sleep_for(std::chrono::seconds(sleep_secs));
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_CLK_CALIB, _ptTest))
     return false;
 
   auto end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
@@ -822,13 +836,13 @@ clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle
 }
 
 static bool
-ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+ert_validate(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_ACCESS_TEST_C, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_ACCESS_TEST_C, _ptTest))
     return false;
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_MB_VALIDATE, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_MB_VALIDATE, _ptTest))
     return false;
 
   auto cq_write_cnt = xrt_core::device_query<xrt_core::query::ert_cq_write>(_dev);
@@ -1118,7 +1132,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
     for (const auto& x : sup_list) {
       if (mem_tag.find(x) != std::string::npos && mem.m_used) {
-        if (!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma))
+        if (!p2ptest_bank(_dev, _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma))
            break;
         else
           logger(_ptTest, "Details", mem_tag +  " validated");
@@ -1187,7 +1201,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       if (!used_banks[i].m_size || !used_banks[j].m_size)
         continue;
 
-      double m2m_bandwidth = m2mtest_bank(_dev->get_device_handle(), _ptTest, i, j, bo_size);
+      double m2m_bandwidth = m2mtest_bank(_dev, _ptTest, i, j, bo_size);
       logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
                   %used_banks[j].m_tag % m2m_bandwidth));
 
@@ -1249,10 +1263,10 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 
   XBU::xclbin_lock xclbin_lock(_dev.get());
 
-  if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
+  if (!clock_calibration(_dev, _ptTest))
      _ptTest.put("status", test_token_failed);
 
-  if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
+  if (!ert_validate(_dev, _ptTest))
     _ptTest.put("status", test_token_failed);
 
   _ptTest.put("status", test_token_passed);
