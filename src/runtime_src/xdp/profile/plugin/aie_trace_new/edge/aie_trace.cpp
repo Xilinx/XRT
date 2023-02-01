@@ -219,14 +219,39 @@ namespace xdp {
     }
   }
 
-  bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet)
+  bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
+                                         const module_type type, const std::string& metricSet)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
     uint32_t required = 0;
     std::stringstream msg;
 
-    // Core Module perf counters
+    // Memory module/tile perf counters
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    required = mMemoryCounterStartEvents.size();
+    if (available < required) {
+      msg << "Available memory module performance counters for aie trace : " << available << std::endl
+          << "Required memory module performance counters for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+    // Memory module/tile trace slots
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    required = mMemoryCounterStartEvents.size() + mMemoryEventSets[metricSet].size();
+    if (available < required) {
+      msg << "Available memory module trace slots for aie trace : " << available << std::endl
+          << "Required memory module trace slots for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+    // Core resources not needed in MEM tiles 
+    if (type == module_type::mem_tile)
+      return true;
+
+    // Core module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = mCoreCounterStartEvents.size();
     if (metadata->getUseDelay()) {
@@ -243,7 +268,7 @@ namespace xdp {
       return false;
     }
 
-    // Core Module trace slots
+    // Core module trace slots
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = mCoreCounterStartEvents.size() + mCoreEventSets[metricSet].size();
     if (available < required) {
@@ -253,7 +278,7 @@ namespace xdp {
       return false;
     }
 
-    // Core Module broadcasts. 2 events for starting/ending trace
+    // Core module broadcasts. 2 events for starting/ending trace
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = mMemoryEventSets[metricSet].size() + 2;
     if (available < required) {
@@ -262,28 +287,6 @@ namespace xdp {
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
-
-   // Memory Module perf counters
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-    required = mMemoryCounterStartEvents.size();
-    if (available < required) {
-      msg << "Available memory module performance counters for aie trace : " << available << std::endl
-          << "Required memory module performance counters for aie trace : "  << required;
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return false;
-    }
-
-    // Memory Module trace slots
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    required = mMemoryCounterStartEvents.size() + mMemoryEventSets[metricSet].size();
-    if (available < required) {
-      msg << "Available memory module trace slots for aie trace : " << available << std::endl
-          << "Required memory module trace slots for aie trace : "  << required;
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return false;
-    }
-
-    // No need to check memory module broadcast
 
     return true;
   }
@@ -367,10 +370,9 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    // Uncomment once these are available and supported on all platforms
-    //XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
-    //XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
-    //XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
+    XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
+    XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
 
   bool
@@ -399,7 +401,9 @@ namespace xdp {
       auto row        = tile.row;
       auto type       = getTileType(row);
 
-      auto& core      = aieDevice->tile(col, row).core();
+      xaiefal::XAieMod core;
+      if (type == module_type::core)
+        core          = aieDevice->tile(col, row).core();
       auto& memory    = aieDevice->tile(col, row).mem();
       auto loc        = XAie_TileLoc(col, row);
 
@@ -431,16 +435,20 @@ namespace xdp {
 
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
+      if (!tileHasFreeRsc(aieDevice, loc, type, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         printTileStats(aieDevice, tile);
         return false;
       }
 
+      int numCoreCounters = 0;
+      int numMemoryCounters = 0;
+      int numCoreTraceEvents = 0;
+      int numMemoryTraceEvents = 0;
+
       //
       // 1. Reserve and start core module counters (as needed)
       //
-      int numCoreCounters = 0;
       if (type == module_type::core) {
         XAie_ModuleType mod = XAIE_CORE_MOD;
 
@@ -489,7 +497,6 @@ namespace xdp {
       //
       // 2. Reserve and start memory module counters (as needed)
       //
-      int numMemoryCounters = 0;
       if (type == module_type::core) {
         XAie_ModuleType mod = XAIE_MEM_MOD;
 
@@ -580,14 +587,13 @@ namespace xdp {
           return false;
         }
 
-        int numTraceEvents = 0;
         for (int i=0; i < coreEvents.size(); i++) {
           uint8_t slot;
           if (coreTrace->reserveTraceSlot(slot) != XAIE_OK) 
             break;
           if (coreTrace->setTraceEvent(slot, coreEvents[i]) != XAIE_OK) 
             break;
-          numTraceEvents++;
+          numCoreTraceEvents++;
 
           // Update config file
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
@@ -600,11 +606,7 @@ namespace xdp {
         cfgTile->core_trace_config.stop_event = phyEvent;
         
         coreEvents.clear();
-        numTileCoreTraceEvents[numTraceEvents]++;
-
-        std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        numTileCoreTraceEvents[numCoreTraceEvents]++;
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
@@ -654,20 +656,18 @@ namespace xdp {
           cfgTile->mem_tile_trace_config.port_trace_ids[0] = channel0;
           cfgTile->mem_tile_trace_config.port_trace_ids[1] = channel1;
           if (metricSet.find("input") != std::string::npos) {
-            cfgTile->mem_tile_trace_config.port_trace_is_master[0] = "true";
-            cfgTile->mem_tile_trace_config.port_trace_is_master[1] = "true";
+            cfgTile->mem_tile_trace_config.port_trace_is_master[0] = true;
+            cfgTile->mem_tile_trace_config.port_trace_is_master[1] = true;
             cfgTile->mem_tile_trace_config.s2mm_channels[0] = channel0;
             cfgTile->mem_tile_trace_config.s2mm_channels[1] = channel1;
           }
           else {
-            cfgTile->mem_tile_trace_config.port_trace_is_master[0] = "false";
-            cfgTile->mem_tile_trace_config.port_trace_is_master[1] = "false";
+            cfgTile->mem_tile_trace_config.port_trace_is_master[0] = false;
+            cfgTile->mem_tile_trace_config.port_trace_is_master[1] = false;
             cfgTile->mem_tile_trace_config.mm2s_channels[0] = channel0;
             cfgTile->mem_tile_trace_config.mm2s_channels[1] = channel1;
           }
         }
-
-        int numTraceEvents = 0;
         
         // Configure cross module events
         // NOTE: this is only applicable for memory modules, not MEM tiles
@@ -683,7 +683,7 @@ namespace xdp {
 
           if (TraceE->start() != XAIE_OK) 
             break;
-          numTraceEvents++;
+          numMemoryTraceEvents++;
 
           // Update config file
           uint32_t S = 0;
@@ -711,7 +711,7 @@ namespace xdp {
             break;
           if (TraceE->start() != XAIE_OK) 
             break;
-          numTraceEvents++;
+          numMemoryTraceEvents++;
 
           // Update config file
           // Get Trace slot
@@ -769,34 +769,33 @@ namespace xdp {
 
         memoryEvents.clear();
         if (type == module_type::core)
-          numTileMemoryTraceEvents[numTraceEvents]++;
+          numTileMemoryTraceEvents[numMemoryTraceEvents]++;
         else
-          numTileMemTileTraceEvents[numTraceEvents]++;
-
-        std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" 
-            << col << "," << row << ").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          numTileMemTileTraceEvents[numMemoryTraceEvents]++;
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
-        XAie_Packet pkt = {0, 1};
+        uint8_t packetType = (type == module_type::mem_tile) ? 3 : 1;
+        XAie_Packet pkt = {0, packetType};
         if (memoryTrace->setPkt(pkt) != XAIE_OK) 
           break;
         if (memoryTrace->start() != XAIE_OK) 
           break;
 
         // Update memory packet type in config file
-        // NOTE: Use time packets for memory module (type 1)
         if (type == module_type::mem_tile)
-          cfgTile->mem_tile_trace_config.packet_type = 1;
+          cfgTile->mem_tile_trace_config.packet_type = packetType;
         else
-          cfgTile->memory_trace_config.packet_type = 1;
+          cfgTile->memory_trace_config.packet_type = packetType;
       }
 
-      std::stringstream msg;
-      msg << "Adding tile (" << col << "," << row << ") to static database";
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
+        std::stringstream msg;
+        msg << "Reserved " << numCoreTraceEvents << " core and " << numMemoryTraceEvents 
+            << " memory trace events for AIE tile (" << col << "," << row 
+            << "). Adding tile to static database.";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
 
       // Add config info to static database
       // NOTE: Do not access cfgTile after this
