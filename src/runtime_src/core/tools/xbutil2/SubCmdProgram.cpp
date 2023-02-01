@@ -87,7 +87,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     auto xclbin_obj = xrt::xclbin{xclbin};
     try {
       device->load_xclbin(xclbin_obj);
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
       XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
     }
 

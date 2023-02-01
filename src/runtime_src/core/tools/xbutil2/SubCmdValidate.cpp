@@ -460,7 +460,8 @@ p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint
   p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
   try {
     handle->unmgd_pwrite(buf, buf_size, dev_addr);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     return false;
   }
   if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, false))
@@ -472,7 +473,8 @@ p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint
   p2ptest_set_or_cmp(buf, size, valid_data, true);
   try {
     handle->unmgd_pwrite(buf, buf_size, dev_addr);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     return false;
   }
   if (!p2ptest_set_or_cmp(boptr, size, valid_data, false))
@@ -483,7 +485,8 @@ p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint
   p2ptest_set_or_cmp(boptr, size, valid_data, true);
   try {
     handle->unmgd_pread(buf, buf_size, dev_addr);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     return false;
   }
   if (!p2ptest_set_or_cmp(buf, size, valid_data, false))
@@ -514,14 +517,16 @@ p2ptest_chunk_no_dma(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer
 
   try {
     handle->copy_bo(bop2p, boh, bo_size, 0, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
 
   try {
     handle->sync_bo(boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
@@ -550,14 +555,16 @@ p2ptest_chunk_no_dma(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer
 
   try {
     handle->copy_bo(bop2p, boh, bo_size, 0, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
 
   try {
     handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
@@ -646,7 +653,8 @@ m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::proper
   memset(boptr, pattern, bo_size);
   try {
     handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't sync BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
@@ -680,14 +688,16 @@ m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tr
   XBU::Timer timer;
   try {
     handle->copy_bo(bo_tgt, bo_src, bo_size, 0, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     return bandwidth;
   }
   double timer_duration_sec = timer.get_elapsed_time().count();
 
   try {
     handle->sync_bo(bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
     free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
     _ptTest.put("status", test_token_failed);
@@ -719,7 +729,8 @@ program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::strin
   auto xclbin_obj = xrt::xclbin{xclbin};
   try {
     device->load_xclbin(xclbin_obj);
-  } catch (const std::exception& e) {
+  }
+  catch (const std::exception& e) {
     XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
   }
 }
@@ -759,7 +770,8 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
 
   try {
     program_xclbin(dev, xclbinPath, ptTest);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     ptTest.put("status", test_token_failed);
     return false;
   }
@@ -796,7 +808,8 @@ bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& handle, enu
 
   try {
     handle->exec_buf(boh);
-  } catch (const std::exception&) {
+  }
+  catch (const std::exception&) {
     logger(_ptTest, "Error", "Couldn't map BO");
     return false;
   }
