@@ -84,25 +84,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- process "program" option -----------------------------------------------
   if (!xclbin.empty()) {
-    std::ifstream stream(xclbin, std::ios::binary);
-    if (!stream)
-      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
-
-    stream.seekg(0,stream.end);
-    size_t size = stream.tellg();
-    stream.seekg(0,stream.beg);
-
-    std::vector<char> raw(size);
-    stream.read(raw.data(),size);
-
-    std::string v(raw.data(),raw.data()+7);
-    if (v != "xclbin2")
-      throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % v));
-
-    auto hdl = device->get_device_handle();
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-    if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
-      throw xrt_core::error(err, "Could not program device " + bdf);
+    auto xclbin_obj = xrt::xclbin{xclbin};
+    try {
+      device->load_xclbin(xclbin_obj);
+    } catch (const std::exception& e) {
+      XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
+    }
 
     std::cout << "INFO: xbutil program succeeded on " << bdf << std::endl;
     return;
