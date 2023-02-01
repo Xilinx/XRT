@@ -1040,7 +1040,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     else
       totalSize = std::min((mem.m_size * 1024), 2_gb); // minimum of mem size in bytes and 2 GB
 
-    xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
+    xcldev::DMARunner runner(_dev, block_size, static_cast<unsigned int>(midx), totalSize);
     try {
       runner.run(run_details);
       _ptTest.put("status", test_token_passed);
