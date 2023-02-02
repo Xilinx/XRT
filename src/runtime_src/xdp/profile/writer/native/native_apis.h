@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -64,6 +64,15 @@ constexpr const char* APIs[] = {
   "xrt::error::to_string",
   "xrtErrorGetLast",
   "xrtErrorGetString",
+  "xrt::graph::reset",
+  "xrt::graph::get_timestamp",
+  "xrt::graph::run",
+  "xrt::graph::wait",
+  "xrt::graph::suspend",
+  "xrt::graph::resume",
+  "xrt::graph::end",
+  "xrt::graph::update_port",
+  "xrt::graph::read_port",
   "xrt::run::run",
   "xrt::run::start",
   "xrt::run::wait",
