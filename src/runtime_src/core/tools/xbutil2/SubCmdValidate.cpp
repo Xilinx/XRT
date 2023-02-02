@@ -1516,7 +1516,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
   if (testObjectsToRun.size() == 1)
     XBU::setVerbose(true);// setting verbose true for single_case.
-  
+
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
@@ -1649,7 +1649,6 @@ extendedKeysOptions()
   static unsigned int m_maxColumnWidth = 100;
   std::stringstream fmt_output;
   // Formatting color parameters
-  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
   const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
   const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
   const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
