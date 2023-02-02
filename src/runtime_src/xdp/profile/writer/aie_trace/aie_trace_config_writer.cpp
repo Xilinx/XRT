@@ -19,6 +19,7 @@
 #include "aie_trace_config_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -38,22 +39,8 @@ namespace xdp {
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 
     EventTraceConfigs_C.put("datacorrelation", 1);
-
-    std::string currentDate = "0000 00 00 0000";
-    auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    struct tm* p_tstruct = std::localtime(&time);
-    if (p_tstruct) {
-      char buf[80] = {0};
-      strftime(buf, sizeof(buf), "%Y %m %d %X", p_tstruct);
-      currentDate = std::string(buf);
-    }
-    EventTraceConfigs_C.put("date", currentDate);
-    
-    std::string msecSinceEpoch = "";
-    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
-    auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch);
-    msecSinceEpoch = std::to_string(value.count());
-    EventTraceConfigs_C.put("timestamp", msecSinceEpoch);
+    EventTraceConfigs_C.put("date", getCurrentDateTime());
+    EventTraceConfigs_C.put("timestamp", getMsecSinceEpoch());
 
     bpt::ptree TraceConfig;
     bpt::ptree AieTileTraceConfig;
