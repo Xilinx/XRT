@@ -65,7 +65,7 @@ namespace xcldev {
             return result;
         }
 
-        int runSync(xclBOSyncDirection dir, unsigned int count) const {
+        int runSync(xclBOSyncDirection dir, size_t count) const {
             auto b = mBOList.begin();
             const auto e = mBOList.end();
             if (count == 1) {
@@ -82,9 +82,9 @@ namespace xcldev {
              * --------------------------------------
              *          4        |   2   |     b+4
              */
-            unsigned int len = (((unsigned int)(e - b)) < count) ? 1 : ((unsigned int)(e - b))/count;
-            auto bo_cnt = static_cast<unsigned int>(e - b);
-            const auto adjust_e = b + len * ((len == 1) ? bo_cnt : std::min<unsigned int>(count, len));
+            size_t len = (((size_t)(e - b)) < count) ? 1 : ((size_t)(e - b))/count;
+            auto bo_cnt = static_cast<size_t>(e - b);
+            const auto adjust_e = b + len * ((len == 1) ? bo_cnt : std::min<size_t>(count, len));
 
             std::vector<std::future<int>> threads;
             while (b < adjust_e) {
@@ -150,11 +150,11 @@ namespace xcldev {
             if (dma_threads.empty())
                 throw xrt_core::error(-EINVAL, "Unable to determine number of DMA channels.");
 
-            size_t result = 0;
+            int result = 0;
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, dma_threads.size());
             if (result)
-                throw xrt_core::error(static_cast<int>(result), "DMA from host to device failed.");
+                throw xrt_core::error(result, "DMA from host to device failed.");
 
             auto timer_stop = timer.stop();
             double rate = static_cast<double>(mBOList.size() * mSize);
@@ -166,7 +166,7 @@ namespace xcldev {
             timer.reset();
             result = runSync(XCL_BO_SYNC_BO_FROM_DEVICE, dma_threads.size());
             if (result)
-                throw xrt_core::error(static_cast<int>(result), "DMA from device to host failed.");
+                throw xrt_core::error(result, "DMA from device to host failed.");
 
             timer_stop = timer.stop();
             rate = static_cast<double>(mBOList.size() * mSize);
