@@ -136,6 +136,10 @@ namespace xdp {
                          const struct debug_ip_data* debugIpData) ;
     double findClockRate(std::shared_ptr<xrt_core::device> device) ;
 
+    bool initializeStructure(XclbinInfo*, xrt::xclbin);
+    bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
+    double findClockRate(xrt::xclbin) ;
+
   public:
     VPStaticDatabase(VPDatabase* d) ;
     ~VPStaticDatabase() ;
@@ -261,6 +265,11 @@ namespace xdp {
     XDP_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
+
+    // *********************************************************
+    // ***** Functions related to trace_processor tool *****
+    // ***** which creates events from raw PL trace    *****
+    XDP_EXPORT void updateDevice(uint64_t deviceId, std::string xclbinFile);
 
     // *********************************************************
     // ***** Functions related to AIE specific information *****

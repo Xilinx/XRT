@@ -37,6 +37,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/api/xclbin_int.h"
 #include "core/include/xclbin.h"
 
 #define XDP_SOURCE
@@ -2110,5 +2111,213 @@ namespace xdp {
 
     commandQueueAddresses.emplace(a) ;
   }
+
+  // This function is called from "trace_processor" tool 
+  // The tool creates events from raw PL trace data
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, std::string xclbinFile)
+  {
+    xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
+
+    // We need to update the device, but if we had an xclbin previously loaded
+    //  then we need to mark it
+    if (deviceInfo.find(deviceId) != deviceInfo.end()) {
+      XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+      if (xclbin)
+        db->getDynamicInfo().markXclbinEnd(deviceId) ;
+    }
+
+    DeviceInfo* devInfo = nullptr ;
+    auto itr = deviceInfo.find(deviceId);
+    if (itr == deviceInfo.end()) {
+      // This is the first time this device was loaded with an xclbin
+      devInfo = new DeviceInfo();
+      devInfo->deviceId = deviceId ;
+      if (isEdge())
+        devInfo->isEdgeDevice = true ;
+//      if (device->is_nodma())
+//        devInfo->isNoDMADevice = true ;
+      deviceInfo[deviceId] = devInfo ;
+
+    } else {
+      // This is a previously used device being reloaded with a new xclbin
+      devInfo = itr->second ;
+      devInfo->cleanCurrentXclbinInfo() ;
+    }
+    
+    XclbinInfo* currentXclbin = new XclbinInfo() ;
+    currentXclbin->uuid = xrtXclbin.get_uuid();
+    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
+ 
+//    setAIEClockRateMHz(device,deviceId);
+    /* Configure AMs if context monitoring is supported
+     * else disable alll AMs on this device
+     */
+    devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
+
+    initializeStructure(currentXclbin, xrtXclbin);
+
+    devInfo->addXclbin(currentXclbin);
+    initializeProfileMonitors(devInfo, xrtXclbin);
+    devInfo->isReady = true;
+  }
+
+  double VPStaticDatabase::findClockRate(xrt::xclbin xrtXclbin)
+  {
+    double defaultClockSpeed = 300.0 ;
+
+    const clock_freq_topology* clockSection =
+      reinterpret_cast<const clock_freq_topology*>(
+        xrt_core::xclbin_int::get_axlf_section(xrtXclbin, CLOCK_FREQ_TOPOLOGY).first);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        return clk->m_freq_Mhz ;
+      }
+    }
+
+    if (isEdge()) {
+      // On Edge, we can try to get the "DATA_CLK" from the embedded metadata
+      std::pair<const char*, size_t> metadataSection =
+        xrt_core::xclbin_int::get_axlf_section(xrtXclbin, EMBEDDED_METADATA);
+
+      const char* rawXml = metadataSection.first ;
+      size_t xmlSize = metadataSection.second ;
+      if (rawXml == nullptr || xmlSize == 0)
+        return defaultClockSpeed ;
+
+      // Convert the raw character stream into a boost::property_tree
+      std::string xmlFile ;
+      xmlFile.assign(rawXml, xmlSize) ;
+      std::stringstream xmlStream ;
+      xmlStream << xmlFile ;
+      boost::property_tree::ptree xmlProject ;
+      boost::property_tree::read_xml(xmlStream, xmlProject) ;
+
+      // Dig in and find all of the kernel clocks
+      for (auto& clock : xmlProject.get_child("project.platform.device.core.kernelClocks")) {
+        if (clock.first != "clock")
+          continue ;
+
+        try {
+          std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
+          if (port != "DATA_CLK")
+            continue ;
+          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
+          std::string freqNumeral = freq.substr(0, freq.find('M')) ;
+          double frequency = defaultClockSpeed ;
+          std::stringstream convert ;
+          convert << freqNumeral ;
+          convert >> frequency ;
+          return frequency ;
+        }
+        catch (std::exception& /*e*/) {
+          continue ;
+        }
+      }
+    }
+    return defaultClockSpeed;
+  }
+
+  bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin, xrt::xclbin xrtXclbin)
+  {
+    // Step 1 -> Create the compute units based on the IP_LAYOUT section
+    const ip_layout* ipLayoutSection =
+      reinterpret_cast<const ip_layout*>(xrt_core::xclbin_int::get_axlf_section(xrtXclbin, IP_LAYOUT).first);
+
+    if(ipLayoutSection == nullptr)
+      return true;
+
+    createComputeUnits(currentXclbin, ipLayoutSection);
+
+    // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
+    const mem_topology* memTopologySection =
+      reinterpret_cast<const mem_topology*>(xrt_core::xclbin_int::get_axlf_section(xrtXclbin, MEM_TOPOLOGY).first);
+
+    if(memTopologySection == nullptr)
+      return false;
+
+    createMemories(currentXclbin, memTopologySection);
+
+    // Step 3 -> Connect the CUs with the memory resources using the
+    //           CONNECTIVITY section
+    const connectivity* connectivitySection =
+      reinterpret_cast<const connectivity*>(xrt_core::xclbin_int::get_axlf_section(xrtXclbin, CONNECTIVITY).first);
+
+    if(connectivitySection == nullptr)
+      return true;
+
+    createConnections(currentXclbin, ipLayoutSection, memTopologySection,
+                      connectivitySection);
+
+    // Step 4 -> Annotate all the compute units with workgroup size using
+    //           the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata =
+       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, EMBEDDED_METADATA);
+
+    annotateWorkgroupSize(currentXclbin, embeddedMetadata.first,
+                          embeddedMetadata.second);
+
+    // Step 5 -> Fill in the details like the name of the xclbin using
+    //           the SYSTEM_METADATA section
+    std::pair<const char*, size_t> systemMetadata =
+       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, SYSTEM_METADATA);
+
+    setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
+    updateSystemDiagram(systemMetadata.first, systemMetadata.second);
+    addPortInfo(currentXclbin, systemMetadata.first, systemMetadata.second);
+
+    return true;
+  }
+
+  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, xrt::xclbin xrtXclbin)
+  {
+    // Look into the debug_ip_layout section and load information about Profile Monitors
+    // Get DEBUG_IP_LAYOUT section
+    const debug_ip_layout* debugIpLayoutSection =
+      reinterpret_cast<const debug_ip_layout*>(xrt_core::xclbin_int::get_axlf_section(xrtXclbin, DEBUG_IP_LAYOUT).first);
+
+    if(debugIpLayoutSection == nullptr) return false;
+
+    for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
+      const struct debug_ip_data* debugIpData =
+        &(debugIpLayoutSection->m_debug_ip_data[i]);
+      uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
+        (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
+
+      std::string name(debugIpData->m_name);
+
+      std::stringstream msg;
+      msg << "Initializing profile monitor " << i
+          << ": name = " << name << ", index = " << index;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+                              msg.str());
+
+      switch (debugIpData->m_type) {
+      case ACCEL_MONITOR:
+        initializeAM(devInfo, name, debugIpData) ;
+        break ;
+      case AXI_MM_MONITOR:
+        initializeAIM(devInfo, name, debugIpData) ;
+        break ;
+      case AXI_STREAM_MONITOR:
+        initializeASM(devInfo, name, debugIpData) ;
+       break ;
+      case AXI_NOC:
+        initializeNOC(devInfo, debugIpData) ;
+        break ;
+      case TRACE_S2MM:
+        initializeTS2MM(devInfo, debugIpData) ;
+        break ;
+      default:
+        break ;
+      }
+    }
+
+    return true;
+  }  
 
 } // end namespace xdp
