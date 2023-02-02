@@ -723,7 +723,7 @@ m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tr
 }
 
 static void
-program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin)
 {
   auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
   auto xclbin_obj = xrt::xclbin{xclbin};
@@ -769,9 +769,10 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   }
 
   try {
-    program_xclbin(dev, xclbinPath, ptTest);
+    program_xclbin(dev, xclbinPath);
   }
-  catch (const std::exception&) {
+  catch (const std::exception& e) {
+    logger(ptTest, "Error", e.what());
     ptTest.put("status", test_token_failed);
     return false;
   }
