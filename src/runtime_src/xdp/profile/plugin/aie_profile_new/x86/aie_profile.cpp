@@ -105,11 +105,11 @@ namespace xdp {
         profileTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second, metadata->getModuleType(module));
         profileTiles[tile_idx].tile_mod = module;
 
-      //If the tile is a memtile, check if any channel specification is present
-      if (configChannel0.count(tileMetric.first))
-        profileTiles[tile_idx].channel0 = configChannel0[tileMetric.first];
-      if (configChannel1.count(tileMetric.first))
-        profileTiles[tile_idx].channel1 = configChannel1[tileMetric.first];
+        //If the tile is a memtile, check if any channel specification is present
+        if (configChannel0.count(tileMetric.first))
+          profileTiles[tile_idx].channel0 = configChannel0[tileMetric.first];
+        if (configChannel1.count(tileMetric.first))
+          profileTiles[tile_idx].channel1 = configChannel1[tileMetric.first];
 
         input_params->tiles[tile_idx] = profileTiles[tile_idx];
         tile_idx++;
