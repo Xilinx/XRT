@@ -2,8 +2,8 @@
 /*
  * Xilinx Alveo User Function Driver
  *
- * Copyright (C) 2020-2022 Xilinx, Inc.
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2020-2023 Xilinx, Inc.
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -1998,7 +1998,11 @@ xocl_kds_xgq_set_timestamp(struct xocl_dev *xdev)
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = NULL;
 	struct kds_command *xcmd = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+	struct timespec64 ts;
+#else
 	struct timespec ts;
+#endif
 	int ret = 0;
 
 	client = kds->anon_client;
@@ -2011,8 +2015,13 @@ xocl_kds_xgq_set_timestamp(struct xocl_dev *xdev)
 	timeset->hdr.opcode = XGQ_CMD_OP_TIMESET;
 	timeset->hdr.count = 12;
 	timeset->hdr.state = 1;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+	ktime_get_real_ts64(&ts);
+	timeset->ts = timespec64_to_ns(&ts);
+#else
 	getnstimeofday(&ts);
 	timeset->ts = timespec_to_ns(&ts);
+#endif
 
 	xcmd->cb.notify_host = xocl_kds_xgq_notify;
 	xcmd->cb.free = kds_free_command;

@@ -38,7 +38,22 @@ namespace xdp {
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 
     EventTraceConfigs_C.put("datacorrelation", 1);
-    EventTraceConfigs_C.put("timestamp", 0);
+
+    std::string currentDate = "0000 00 00 0000";
+    auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm* p_tstruct = std::localtime(&time);
+    if (p_tstruct) {
+      char buf[80] = {0};
+      strftime(buf, sizeof(buf), "%Y %m %d %X", p_tstruct);
+      currentDate = std::string(buf);
+    }
+    EventTraceConfigs_C.put("date", currentDate);
+    
+    std::string msecSinceEpoch = "";
+    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
+    auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch);
+    msecSinceEpoch = std::to_string(value.count());
+    EventTraceConfigs_C.put("timestamp", msecSinceEpoch);
 
     bpt::ptree TraceConfig;
     bpt::ptree AieTileTraceConfig;
@@ -304,11 +319,18 @@ namespace xdp {
       }
     }
 
+    // Write tile trace configs
+    // NOTE: TileTraceConfig and ShimTraceConfig are required
+    //       MemTileTraceConfig is optional based on family
     TraceConfig.add_child("TileTraceConfig", AieTileTraceConfig);
-    if (!MemTileTraceConfig.empty())
+    if (!MemTileTraceConfig.empty()) {
       TraceConfig.add_child("MemTileTraceConfig", MemTileTraceConfig);
-    if (!ShimTileTraceConfig.empty())
-      TraceConfig.add_child("ShimTraceConfig", ShimTileTraceConfig);
+    }
+    if (ShimTileTraceConfig.empty()) {
+      bpt::ptree dummy;
+      ShimTileTraceConfig.push_back(std::make_pair("", dummy));
+    }
+    TraceConfig.add_child("ShimTraceConfig", ShimTileTraceConfig);
     EventTraceConfigs_C.add_child("TraceConfig", TraceConfig);
 
     EventTraceConfigs.push_back(std::make_pair("", EventTraceConfigs_C));

@@ -305,10 +305,9 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    // Uncomment once these are available and supported on all platforms
-    //XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
-    //XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
-    //XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
+    XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
+    XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
 
   // Get reportable payload specific for this tile and/or counter
@@ -570,8 +569,12 @@ namespace xdp {
         if ((aie->column != prevColumn) || (aie->row != prevRow)) {
           prevColumn = aie->column;
           prevRow = aie->row;
+          auto moduleType = getModuleType(aie->row, XAIE_CORE_MOD);
+          auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
+                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
+                             : XAIE_MEM_MOD);
           XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
-          XAie_ReadTimer(aieDevInst, tileLocation, XAIE_CORE_MOD, &timerValue);
+          XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
         }
         values.push_back(timerValue);
         values.push_back(aie->payload);
