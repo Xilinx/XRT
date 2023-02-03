@@ -258,7 +258,7 @@ enum class module_type {
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
     aie_cfg_mem_tile mem_tile_trace_config;
-    aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
+    aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
 } // end namespace xdp

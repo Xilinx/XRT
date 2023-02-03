@@ -175,10 +175,10 @@ namespace xdp {
       parseMessages(msgStruct);
 
       // Update the config tiles
-      for (uint32_t i = 0; i < cfg->numTiles; ++i) {
-        auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row);
+      for (int i = 0; i < numTiles; ++i) {
+        module_type type = getTileType(cfg->tiles[i].row);
+        auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row, type);
         cfgTile->trace_metric_set = metadata->getMetricString(cfg->tiles[i].trace_metric_set);
-        cfgTile->type = getTileType(cfg->tiles[i].row);
  
         for (uint32_t corePC = 0; corePC < NUM_TRACE_PCS; ++corePC) {
           auto& cfgData = cfgTile->core_trace_config.pc[corePC];
