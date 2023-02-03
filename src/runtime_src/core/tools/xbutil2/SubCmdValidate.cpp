@@ -472,7 +472,7 @@ p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint
   valid_data.push_back('A');
   p2ptest_set_or_cmp(buf, size, valid_data, true);
   try {
-    handle->unmgd_pwrite(buf, buf_size, dev_addr);
+    handle->unmgd_pwrite(buf, size, dev_addr);
   }
   catch (const std::exception&) {
     return false;
@@ -484,7 +484,7 @@ p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint
   valid_data.push_back('B');
   p2ptest_set_or_cmp(boptr, size, valid_data, true);
   try {
-    handle->unmgd_pread(buf, buf_size, dev_addr);
+    handle->unmgd_pread(buf, size, dev_addr);
   }
   catch (const std::exception&) {
     return false;
