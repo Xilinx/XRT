@@ -53,7 +53,11 @@ namespace xdp {
     device = xrt::device(spdevice);
   
     auto uuid = device.get_xclbin_uuid();
-    aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
+
+    if (metadata->getHardwareGen() == 1)
+      aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
+    else 
+      aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie2_profile_config");
   }
 
   void AieProfile_x86Impl::updateDevice()
@@ -80,9 +84,15 @@ namespace xdp {
     input_params->numTiles = numTiles;
     input_params->offset = metadata->getAIETileRowOffset();
     
+    
+
     //Create the Profile Tile Struct with All Tiles
     ProfileTileType profileTiles[numTiles];
     int tile_idx = 0;
+
+    auto configChannel0 = metadata->getConfigChannel0();
+    auto configChannel1 = metadata->getConfigChannel1();
+
     for(int module = 0; module < NUM_MODULES; ++module) {
       auto configMetrics = metadata->getConfigMetrics(module);
       for (auto &tileMetric : configMetrics){
@@ -94,6 +104,13 @@ namespace xdp {
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
         profileTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second, metadata->getModuleType(module));
         profileTiles[tile_idx].tile_mod = module;
+
+        //If the tile is a memtile, check if any channel specification is present
+        if (configChannel0.count(tileMetric.first))
+          profileTiles[tile_idx].channel0 = configChannel0[tileMetric.first];
+        if (configChannel1.count(tileMetric.first))
+          profileTiles[tile_idx].channel1 = configChannel1[tileMetric.first];
+
         input_params->tiles[tile_idx] = profileTiles[tile_idx];
         tile_idx++;
       }
