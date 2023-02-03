@@ -84,7 +84,7 @@ namespace xclemulation{
     mTimeOutScale = TIMEOUT_SCALE::NA;
     mIsPlatformDataAvailable = false;
     mIsDisabledHostBuffer = false;
-    mIsFasterNocDDRAccessEnabled = false;
+    mIsFasterNocDDRAccessEnabled = true;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -237,7 +237,7 @@ namespace xclemulation{
       }
       else if(name == "fast_nocddr_access")
       {
-        mIsFasterNocDDRAccessEnabled = getBoolValue(value, false);
+        mIsFasterNocDDRAccessEnabled = getBoolValue(value, true);
       }
       else if(name == "packet_size")
       {
