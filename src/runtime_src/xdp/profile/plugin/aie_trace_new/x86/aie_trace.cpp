@@ -161,7 +161,7 @@ namespace xdp {
       parseMessages(msgStruct);
 
       // Update the config tiles
-      for (uint32_t i = 0; i < numTiles; ++i) {
+      for (int i = 0; i < numTiles; ++i) {
         module_type type = getTileType(cfg->tiles[i].row);
         auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row, type);
         cfgTile->trace_metric_set = metadata->getMetricString(cfg->tiles[i].trace_metric_set);
