@@ -122,19 +122,13 @@ static void zchan_cmd_identify(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	r->minor = ZCHAN_CMD_HANDLER_VER_MINOR;
 }
 
-static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
-	struct xgq_com_queue_entry *resp)
+static int zchan_cmd_log_page_info(struct zocl_rpu_channel *chan, u32 add_off, u32 size,
+	u32 *total_countp)
 {
-	struct xgq_cmd_sq *sq = (struct xgq_cmd_sq *)cmd;
-	struct xgq_cmd_cq *cq = (struct xgq_cmd_cq *)resp;
-	u32 add_off = sq->log_payload.address;
-	u32 size = sq->log_payload.size;
 	u32 count = 0;
 	u32 total_count = 0;
 	int ret = 0;
-
-	zchan_info(chan, "addr_off 0x%x, size %d", add_off, size);
-
+	
 	count = snprintf(info_buf, sizeof(info_buf), "ZOCL Version:");
 	if (count > size) {
 		zchan_err(chan, "message is trunked to %d len", total_count);
@@ -144,7 +138,8 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	memcpy_toio(chan->mem_base + add_off, info_buf, count);
 	total_count += count;
 
-	count = snprintf(info_buf, sizeof(info_buf), "%s%s%s\n", XRT_DRIVER_VERSION, ", ", XRT_HASH);
+	count = snprintf(info_buf, sizeof(info_buf), "%s%s%s\n",
+		XRT_DRIVER_VERSION, ", ", XRT_HASH);
 	if (total_count + count > size) {
 		zchan_err(chan, "message is trunked to %d len", total_count);
 		ret = -EINVAL;
@@ -170,6 +165,72 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	}
 	memcpy_toio(chan->mem_base + add_off + total_count, info_buf, count);
 	total_count += count;
+
+done:
+	*total_countp = total_count;
+	return ret;
+}
+
+
+/*
+ * add code here copying data back into chan->mem_base.
+ * note: copy data start from logs data + offset instead of data + 0
+ *       size is the request size, copy data within this range
+ *       set return value as data total size copied out.
+ *
+ */
+static int zchan_cmd_log_apu_log(struct zocl_rpu_channel *chan, u32 add_off, u32 size,
+	u32 offset, u32 *total_countp)
+{
+	u32 count = 0;
+
+	memset(info_buf, 0, sizeof(info_buf));
+	/*
+	 * Example code of collecting data based on request size and offset
+	 */
+	if (offset == 0) {
+		count = snprintf(info_buf, sizeof(info_buf), "first 4096");
+		memcpy_toio(chan->mem_base + add_off, info_buf, count);
+		count = 4096;
+	} else if (offset == 4096) {
+		count = snprintf(info_buf, sizeof(info_buf), "second 4096");
+		memcpy_toio(chan->mem_base + add_off, info_buf, count);
+		count = 4096;
+	} else {
+		count = 0;
+	}
+
+	*total_countp = count;
+	return 0;
+}
+
+static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
+	struct xgq_com_queue_entry *resp)
+{
+	struct xgq_cmd_sq *sq = (struct xgq_cmd_sq *)cmd;
+	struct xgq_cmd_cq *cq = (struct xgq_cmd_cq *)resp;
+	u32 add_off = sq->log_payload.address;
+	u32 size = sq->log_payload.size;
+	u16 pid = sq->log_payload.pid;
+	u32 offset = sq->log_payload.offset;
+	u32 total_count = 0;
+	int ret = 0;
+
+	zchan_info(chan, "addr_off 0x%x, size %d, offset %d, pid %d",
+		add_off, size, offset, pid);
+
+	switch (pid) {
+	case XGQ_CMD_LOG_INFO:
+		ret = zchan_cmd_log_page_info(chan, add_off, size, &total_count);
+		break;
+	case XGQ_CMD_LOG_APU_LOG:
+		ret = zchan_cmd_log_apu_log(chan, add_off, size, offset, &total_count);
+		break;
+	default:
+		zchan_err(chan, "unsupported pid: %d", pid);
+		ret = -EINVAL;
+		total_count = 0;
+	}
 
 done:
 	init_resp(resp, cmd->cid, ret);
