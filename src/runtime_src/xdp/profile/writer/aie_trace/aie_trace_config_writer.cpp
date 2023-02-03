@@ -309,6 +309,10 @@ namespace xdp {
     // Write tile trace configs
     // NOTE: TileTraceConfig and ShimTraceConfig are required
     //       MemTileTraceConfig is optional based on family
+    if (AieTileTraceConfig.empty()) {
+      bpt::ptree dummy;
+      AieTileTraceConfig.push_back(std::make_pair("", dummy));
+    }
     TraceConfig.add_child("TileTraceConfig", AieTileTraceConfig);
     if (!MemTileTraceConfig.empty()) {
       TraceConfig.add_child("MemTileTraceConfig", MemTileTraceConfig);
