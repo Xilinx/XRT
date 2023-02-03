@@ -408,7 +408,7 @@ namespace xdp {
       auto loc        = XAie_TileLoc(col, row);
 
       // AIE config object for this tile
-      auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row);
+      auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
 
