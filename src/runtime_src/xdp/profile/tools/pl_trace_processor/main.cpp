@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
   std::vector<uint64_t> traceData;
 
   uint64_t packet = 0;
-  char* ch = static_cast<char*>(&packet);
+  char* ch = reinterpret_cast<char*>(&packet);
 
   while(fin.read(ch, 8)) {
     traceData.push_back(packet);
