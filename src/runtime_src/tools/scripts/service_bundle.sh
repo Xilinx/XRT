@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
-# This script program plp based on input xclbin
-# This will be obsoleted after plp auto download is fully impletmented
+# This script collects debugging logs for XRT managed sub-systems
 
 TIME=`date +%F-%T`
 ID=`id -un`
@@ -21,6 +20,7 @@ usage() {
     echo "  options:"
     echo "  --out, -o           output directory"
     echo "  --device, -d        card device bdf"
+    echo "  --all, -a           collect all, including large size system core dump"
     echo "  --verbose, -v       verbose output"
     exit $1
 }
@@ -40,6 +40,9 @@ while [ $# -gt 0 ]; do
 			;;
 		-v | --verbose)
 			VERBOSE=1
+			;;
+		-a | --all)
+			ALL_LOG=1
 			;;
 		* | -* | --*)
 			echo "$1 invalid argument."
@@ -71,15 +74,15 @@ xbmgmt_output()
 debug_logs()
 {
 	dmesg -T > $1/dmesg_current.txt
-	cp /var/log/dmesg* $1/
-	cp /var/log/syslog* $1/
+	cp -r /var/log/** $1/
 	cat /sys/kernel/debug/xclmgmt/trace > $1/sys_kernel_debug_xclmgmt.txt &
 	PID1=$!
 	cat /sys/kernel/debug/xocl/trace > $1/sys_kernel_debug_xocl.txt &
 	PID2=$!
 	sleep 2
-	kill $PID1
-	kill $PID2
+	# -s 2(SIGINT)
+	kill -s 2 $PID1
+	kill -s 2 $PID2
 }
 
 vmr_logs()
@@ -112,8 +115,9 @@ funcArray=(
 	xbmgmt_output
 	xbutil_output
 )
+
 #############################
-# Read program starts here
+# Real program starts here
 #############################
 
 if [ -z $DEVICE_BDF ];then
