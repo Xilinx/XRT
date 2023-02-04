@@ -2181,6 +2181,7 @@ namespace xdp {
 
   void VPStaticDatabase::getDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin)
   {
+#if 0
      auto buildSection =
        xrt_core::xclbin_int::get_axlf_section(xrtXclbin, BUILD_METADATA);
 
@@ -2201,6 +2202,7 @@ namespace xdp {
 std::cout << " platformName " << platformName << std::endl;
 
       setDeviceName(deviceId, platformName);
+#endif
   }
 
 
