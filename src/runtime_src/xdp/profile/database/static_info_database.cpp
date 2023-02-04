@@ -1404,6 +1404,15 @@ namespace xdp {
       return;
     }
     
+    xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin);
+    if (device->is_nodma())
+      devInfo->isNoDMADevice = true ;
+
+  }
+
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin)
+  {    
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
@@ -1420,8 +1429,6 @@ namespace xdp {
       devInfo->deviceId = deviceId ;
       if (isEdge())
         devInfo->isEdgeDevice = true ;
-      if (device->is_nodma())
-        devInfo->isNoDMADevice = true ;
       deviceInfo[deviceId] = devInfo ;
 
     } else {
@@ -1430,6 +1437,29 @@ namespace xdp {
       devInfo->cleanCurrentXclbinInfo() ;
     }
     
+    XclbinInfo* currentXclbin = new XclbinInfo() ;
+    currentXclbin->uuid = xrtXclbin.get_uuid();
+    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
+ 
+    setAIEClockRateMHz(deviceId, xrtXclbin);
+    /* Configure AMs if context monitoring is supported
+     * else disable alll AMs on this device
+     */
+    devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
+
+    getDeviceNameFromXclbin(deviceId, xrtXclbin);
+    if (!initializeStructure(currentXclbin, xrtXclbin)) {
+      delete currentXclbin;
+      return devInfo;
+    }
+
+    devInfo->addXclbin(currentXclbin);
+    initializeProfileMonitors(devInfo, xrtXclbin);
+    devInfo->isReady = true;
+
+    return devInfo;
+
+#if 0    
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = device->get_xclbin_uuid() ;
     currentXclbin->pl.clockRatePLMHz = findClockRate(device) ;  
@@ -1447,6 +1477,7 @@ namespace xdp {
     devInfo->addXclbin(currentXclbin);
     initializeProfileMonitors(devInfo, device);
     devInfo->isReady = true;
+#endif
   }
 
   // Return true if we should reset the device information.
@@ -2118,6 +2149,8 @@ namespace xdp {
   {
     xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
 
+    updateDevice(deviceId, xrtXclbin);
+#if 0
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
@@ -2143,23 +2176,33 @@ namespace xdp {
       devInfo = itr->second ;
       devInfo->cleanCurrentXclbinInfo() ;
     }
-    
-    XclbinInfo* currentXclbin = new XclbinInfo() ;
-    currentXclbin->uuid = xrtXclbin.get_uuid();
-    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
- 
-//    setAIEClockRateMHz(device,deviceId);
-    /* Configure AMs if context monitoring is supported
-     * else disable alll AMs on this device
-     */
-    devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
-
-    initializeStructure(currentXclbin, xrtXclbin);
-
-    devInfo->addXclbin(currentXclbin);
-    initializeProfileMonitors(devInfo, xrtXclbin);
-    devInfo->isReady = true;
+#endif
   }
+
+  void VPStaticDatabase::getDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin)
+  {
+     auto buildSection =
+       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, BUILD_METADATA);
+
+      const char* rawXml = buildSection.first ;
+      size_t xmlSize = buildSection.second ;
+      if (rawXml == nullptr || xmlSize == 0)
+        return;
+
+      // Convert the raw character stream into a boost::property_tree
+      std::string xmlFile ;
+      xmlFile.assign(rawXml, xmlSize) ;
+      std::stringstream xmlStream ;
+      xmlStream << xmlFile ;
+      boost::property_tree::ptree xmlProject ;
+      boost::property_tree::read_xml(xmlStream, xmlProject) ;
+
+      auto platformName = xmlProject.get<std::string>("dsa.name", "");
+std::cout << " platformName " << platformName << std::endl;
+
+      setDeviceName(deviceId, platformName);
+  }
+
 
   double VPStaticDatabase::findClockRate(xrt::xclbin xrtXclbin)
   {
@@ -2319,5 +2362,31 @@ namespace xdp {
 
     return true;
   }  
+  
+  void VPStaticDatabase::setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return;
+
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    if (!data.first || !data.second)
+      return;
+
+    boost::property_tree::ptree aie_meta;
+
+    std::stringstream aie_stream;
+    aie_stream.write(data.first, data.second);
+    boost::property_tree::read_json(aie_stream,aie_meta);
+
+    //read_aie_metadata(data.first, data.second, aie_meta);
+    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+    
+    xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
+  }
 
 } // end namespace xdp

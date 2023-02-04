@@ -135,10 +135,16 @@ namespace xdp {
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
     double findClockRate(std::shared_ptr<xrt_core::device> device) ;
+    void setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId) ;
 
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
     double findClockRate(xrt::xclbin) ;
+    void getDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
+    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+
+    
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -240,7 +246,6 @@ namespace xdp {
     XDP_EXPORT void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId) ;
     XDP_EXPORT bool isDeviceReady(uint64_t deviceId) ;
     XDP_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
-    XDP_EXPORT void setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId) ;
     XDP_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ; 
     XDP_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_EXPORT void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf) ;
