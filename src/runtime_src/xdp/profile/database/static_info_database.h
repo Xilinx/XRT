@@ -137,12 +137,12 @@ namespace xdp {
     double findClockRate(std::shared_ptr<xrt_core::device> device) ;
     void setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId) ;
 
+    void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
+    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
-    double findClockRate(xrt::xclbin) ;
-    void getDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
+    double findClockRate(xrt::xclbin);
     DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
-    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
 
     
 
