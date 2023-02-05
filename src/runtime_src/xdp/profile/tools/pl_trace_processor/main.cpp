@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
   logger.processTraceData(traceData.data(), numBytes);
 
   // Create a writer and have it write.
-  xdp::DeviceTraceWriter writer("output.csv", deviceId, "", "", "", "");
+  xdp::DeviceTraceWriter writer("output.csv", deviceId, "1.1", xdp::getCurrentDateTime(), xdp::getXRTVersion(), xdp::getToolVersion());
   writer.write(false);
 
   fin.close();
