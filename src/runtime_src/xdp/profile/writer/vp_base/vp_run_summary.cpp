@@ -33,6 +33,7 @@
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/common/time.h"
 #include "core/common/message.h"
@@ -86,9 +87,7 @@ namespace xdp {
     {
       auto pid = (db->getStaticInfo()).getPid() ;
       bool aieApplication = db->getStaticInfo().getAieApplication();
-      auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
-      auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
-      uint64_t timeMsec = value.count() ;
+      auto msecSinceEpoch = getMsecSinceEpoch();
 
       std::string pathToFile = "" ;
 #ifdef _WIN32
@@ -110,7 +109,7 @@ namespace xdp {
       }
       ptGeneration.put("source", "vp") ;
       ptGeneration.put("PID", std::to_string(pid)) ;
-      ptGeneration.put("timestamp", std::to_string(timeMsec)) ;
+      ptGeneration.put("timestamp", msecSinceEpoch) ;
       // Adding a generic flag field to handle arbitrary information
       boost::property_tree::ptree flags;
       if (aieApplication) {

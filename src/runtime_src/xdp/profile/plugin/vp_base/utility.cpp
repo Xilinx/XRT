@@ -50,9 +50,16 @@ namespace xdp {
     return std::string("0000-00-00 0000");
   }
 
+  std::string getMsecSinceEpoch() 
+  {
+    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
+    auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch);
+    return std::to_string(value.count());
+  }
+
   const char* getToolVersion()
   {
-    return "2022.2";
+    return "2023.1";
   }
 
   std::string getXRTVersion()
