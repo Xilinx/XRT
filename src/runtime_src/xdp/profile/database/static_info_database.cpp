@@ -2213,32 +2213,29 @@ namespace xdp {
 
     if (isEdge()) {
       // On Edge, we can try to get the "DATA_CLK" from the embedded metadata
-      std::pair<const char*, size_t> metadataSection =
+      std::pair<const char*, size_t> embeddedMetadata =
         xrt_core::xclbin_int::get_axlf_section(xrtXclbin, EMBEDDED_METADATA);
 
-      const char* rawXml = metadataSection.first ;
-      size_t xmlSize = metadataSection.second ;
-      if (rawXml == nullptr || xmlSize == 0)
-        return defaultClockSpeed ;
+      if (nullptr == embeddedMetadata.first || 0 == embeddedMetadata.second)
+        return defaultClockSpeed;
 
-      // Convert the raw character stream into a boost::property_tree
-      std::string xmlFile ;
-      xmlFile.assign(rawXml, xmlSize) ;
-      std::stringstream xmlStream ;
-      xmlStream << xmlFile ;
-      boost::property_tree::ptree xmlProject ;
-      boost::property_tree::read_xml(xmlStream, xmlProject) ;
+      std::stringstream ss;
+      ss.write(embeddedMetadata.first, embeddedMetadata.second);
+
+      // Create a property tree based off of the JSON
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
 
       // Dig in and find all of the kernel clocks
-      for (auto& clock : xmlProject.get_child("project.platform.device.core.kernelClocks")) {
+      for (auto& clock : pt.get_child("project.platform.device.core.kernelClocks")) {
         if (clock.first != "clock")
-          continue ;
+          continue;
 
         try {
-          std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
+          std::string port = clock.second.get<std::string>("<xmlattr>.port");
           if (port != "DATA_CLK")
-            continue ;
-          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
+            continue;
+          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency");
           std::string freqNumeral = freq.substr(0, freq.find('M')) ;
           double frequency = defaultClockSpeed ;
           std::stringstream convert ;
