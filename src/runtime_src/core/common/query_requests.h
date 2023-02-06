@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2020-2023 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -1297,6 +1297,7 @@ struct dna_serial_num : request
   }
 };
 
+// Used to retrive aie core tile status information
 struct aie_core_info : request
 {
   using result_type = std::string;
@@ -1306,6 +1307,7 @@ struct aie_core_info : request
   get(const device*) const = 0;
 };
 
+// Used to retrive aie shim tile status information
 struct aie_shim_info : request
 {
   using result_type = std::string;
@@ -1315,6 +1317,7 @@ struct aie_shim_info : request
   get(const device*) const = 0;
 };
 
+// Used to retrive aie mem tile status information
 struct aie_mem_info : request
 {
   using result_type = std::string;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021-2023 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -57,7 +57,7 @@ addnodelist(const std::string& search_str, const std::string& node_str,
 
     pt.put("name", node.first);
     pt.put("value", val);
-    pt_array.push_back(std::make_pair("", pt));
+    pt_array.push_back({"", pt});
   }
   output_pt.add_child(node_str, pt_array);
 }
@@ -86,7 +86,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
     index += std::to_string(id++);
     fifo_counter.put("index", index);
     fifo_counter.put("count", node.second.data());
-    fifo_pt.push_back(std::make_pair("", fifo_counter));
+    fifo_pt.push_back({"", fifo_counter});
   }
 
   pt_dma.add_child("dma.fifo.counters", fifo_pt);
@@ -106,7 +106,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
     queue_size++;
     queue_status++;
     current_bd++;
-    mm2s_array.push_back(std::make_pair("", channel));
+    mm2s_array.push_back({"", channel});
   }
 
   pt_dma.add_child("dma.mm2s.channel", mm2s_array);
@@ -125,7 +125,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
     queue_size++;
     queue_status++;
     current_bd++;
-    s2mm_array.push_back(std::make_pair("", channel));
+    s2mm_array.push_back({"", channel});
   }
 
   pt_dma.add_child("dma.s2mm.channel", s2mm_array);
@@ -154,11 +154,11 @@ populate_aie_errors(const boost::property_tree::ptree& pt, boost::property_tree:
       }
 
       enode.put("value", val);
-      type_array.push_back(std::make_pair("", enode));
+      type_array.push_back({"", enode});
     }
 
     module.add_child("error", type_array);
-    module_array.push_back(std::make_pair("", module));
+    module_array.push_back({"", module});
   }
 
   pt_err.add_child("errors", module_array);
@@ -311,12 +311,13 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
       if (oshim.find("event") != oshim.not_found())
         addnodelist("event", "events", oshim, ishim);
 
-      tile_array.push_back(std::make_pair("tile" + std::to_string(col), ishim));
+      tile_array.push_back({"tile" + std::to_string(col), ishim});
     }
 
     pt.add_child("tiles", tile_array);
 
-  } catch (const std::exception& ex){
+  }
+  catch (const std::exception& ex) {
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
   }
 
@@ -377,12 +378,13 @@ populate_aie_mem(const xrt_core::device *device, const std::string& desc)
       if (imem.find("event") != imem.not_found())
         addnodelist("event", "events", imem, omem);
 
-      tile_array.push_back(std::make_pair("tile" + std::to_string(col), omem));
+      tile_array.push_back({"tile" + std::to_string(col), omem});
     }
 
     pt.add_child("tiles", tile_array);
 
-  } catch (const std::exception& ex){
+  }
+  catch (const std::exception& ex) {
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
   }
 
@@ -537,7 +539,8 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
     if (pt.find("event") != pt.not_found())
       addnodelist("event", "events", pt, tile);
 
-  } catch (const std::exception& ex){
+  }
+  catch (const std::exception& ex) {
     tile.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE core"));
   }
 }
@@ -573,7 +576,7 @@ populate_aie_core_rtp(const boost::property_tree::ptree& pt, boost::property_tre
     rtp.put("is_asynchronous", rtp_node.second.get<bool>("is_asynchronous"));
     rtp.put("is_connected", rtp_node.second.get<bool>("is_connected"));
     rtp.put("requires_lock", rtp_node.second.get<bool>("requires_lock"));
-    rtp_array.push_back(std::make_pair(rtp_node.first, rtp));
+    rtp_array.push_back({rtp_node.first, rtp});
   }
 
   pt_array.add_child("rtps", rtp_array);
@@ -598,7 +601,7 @@ populate_aie_core_gmio(const boost::property_tree::ptree& pt, boost::property_tr
     gmio.put("burst_length_in_16byte", gmio_node.second.get<uint16_t>("burst_length_in_16byte"));
     gmio.put("pl_port_name", gmio_node.second.get<std::string>("PL_port_name","N/A"));
     gmio.put("pl_parameter_name", gmio_node.second.get<std::string>("PL_parameter_name","N/A"));
-    gmio_array.push_back(std::make_pair(gmio_node.first, gmio));
+    gmio_array.push_back({gmio_node.first, gmio});
   }
 
   pt_array.add_child("gmios",gmio_array);
@@ -641,7 +644,7 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
         continue;
 
       populate_aie_core(core_info, tile);
-      tile_array.push_back(std::make_pair("", tile));
+      tile_array.push_back({"", tile});
       if (dma_row_it != g_node.second.end())
         dma_row_it++;
     }
@@ -656,7 +659,7 @@ populate_aie_from_metadata(const xrt_core::device *device, boost::property_tree:
   boost::property_tree::ptree gh_status;
   boost::property_tree::ptree core_info;
   boost::property_tree::ptree empty_pt;
-  
+
   try {
     std::vector<std::string> graph_status = xrt_core::device_query<qr::graph_status>(device);
     std::stringstream ss;
@@ -778,7 +781,7 @@ populate_aie_from_metadata(const xrt_core::device *device, boost::property_tree:
       memcol_it++;
       memrow_it++;
       memaddr_it++;
-      tile_array.push_back(std::make_pair("", tile));
+      tile_array.push_back({"", tile});
     }
 
     populate_buffer_only_cores(pt_aie, core_info, gr_id, tile_array);
@@ -788,12 +791,12 @@ populate_aie_from_metadata(const xrt_core::device *device, boost::property_tree:
     for (const auto& node : gr.second.get_child("pl_kernel_instance_names", empty_pt)) {
       boost::property_tree::ptree plkernel;
       plkernel.put("", node.second.data());
-      plkernel_array.push_back(std::make_pair("", plkernel));
+      plkernel_array.push_back({"", plkernel});
     }
 
     ograph.add_child("tile", tile_array);
     ograph.add_child("pl_kernel", plkernel_array);
-    graph_array.push_back(std::make_pair("", ograph));
+    graph_array.push_back({"", ograph});
   }
   pt.add_child("graphs", graph_array);
 
@@ -816,7 +819,7 @@ add_dummy_graphs(boost::property_tree::ptree &pt, boost::property_tree::ptree &t
   graph.put("status", "");
   graph.add_child("tile", tile_array);
   
-  graph_array.push_back(std::make_pair("", graph));
+  graph_array.push_back({"", graph});
     
   pt.add_child("graphs", graph_array);
 }
@@ -845,7 +848,7 @@ _populate_aie(const xrt_core::device *device, boost::property_tree::ptree &pt)
         tile.put("row", row);
         populate_aie_core(core_info, tile);
 
-        tile_array.push_back(std::make_pair("", tile));
+        tile_array.push_back({"", tile});
       }
     }
 

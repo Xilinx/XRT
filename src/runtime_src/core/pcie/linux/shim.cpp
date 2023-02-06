@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
@@ -2539,13 +2539,15 @@ exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* hwctx_hdl)
   }
 }
 
+// Get aie tiles status version
 void
 shim::
-get_aie_status_version_info(uint16_t &aie_ver_major, uint16_t &aie_ver_minor)
+get_aie_status_version_info(uint16_t& aie_ver_major, uint16_t& aie_ver_minor)
 {
   // TODO: add driver call
 }
 
+// Get aie tiles overview (no of core, mem, shim tiles and their positions etc)
 asd_parser::aie_tiles_info
 shim::
 get_aie_tiles_info()
@@ -2554,9 +2556,10 @@ get_aie_tiles_info()
   return asd_parser::aie_tiles_info{};
 }
 
+// Get aie columns status in raw buffer format
 void
 shim::
-get_aie_col_info(char *buf, uint32_t size, uint32_t start_col, uint32_t cols)
+get_aie_col_info(char* buf, uint32_t size, uint32_t start_col, uint32_t cols)
 {
   // TODO: add driver call
 }
@@ -3175,9 +3178,9 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
 
 void
 asd_parser::
-get_aie_status_version_info(xclDeviceHandle hdl, uint16_t &aie_ver_major, uint16_t &aie_ver_minor)
+get_aie_status_version_info(const xrt_core::device* dev, uint16_t& aie_ver_major, uint16_t& aie_ver_minor)
 {
-  xocl::shim *drv = xocl::shim::handleCheck(hdl);
+  xocl::shim *drv = xocl::shim::handleCheck(dev->get_user_handle());
   if(!drv)
     throw std::runtime_error("Unable to get shim handle of the device");
 
@@ -3186,9 +3189,9 @@ get_aie_status_version_info(xclDeviceHandle hdl, uint16_t &aie_ver_major, uint16
 
 asd_parser::aie_tiles_info
 asd_parser::
-get_aie_tiles_info(xclDeviceHandle hdl)
+get_aie_tiles_info(const xrt_core::device* dev)
 {
-  xocl::shim *drv = xocl::shim::handleCheck(hdl);
+  xocl::shim *drv = xocl::shim::handleCheck(dev->get_user_handle());
   if(!drv)
     throw std::runtime_error("Unable to get shim handle of the device");
 
@@ -3197,9 +3200,9 @@ get_aie_tiles_info(xclDeviceHandle hdl)
 
 void
 asd_parser::
-get_aie_col_info(xclDeviceHandle hdl, char *buf, uint32_t size, uint32_t start_col, uint32_t cols)
+get_aie_col_info(const xrt_core::device* dev, char* buf, uint32_t size, uint32_t start_col, uint32_t cols)
 {
-  xocl::shim *drv = xocl::shim::handleCheck(hdl);
+  xocl::shim *drv = xocl::shim::handleCheck(dev->get_user_handle());
   if(!drv)
     throw std::runtime_error("Unable to get shim handle of the device");
 

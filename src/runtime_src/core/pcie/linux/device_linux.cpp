@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2019-2023 Xilinx, Inc
+// Copyright (C) 2019-2022 Xilinx, Inc
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
@@ -897,9 +897,9 @@ struct aie_tiles_row_info
   using result_type = boost::any;
 
   static result_type
-  get(const xrt_core::device* dev,  key_type key, const boost::any& type)
+  get(const xrt_core::device* dev, key_type key, const boost::any& type)
   {
-    auto tiles_info = asd_parser::get_aie_tiles_info(dev->get_user_handle());
+    auto tiles_info = asd_parser::get_aie_tiles_info(dev);
 
     auto tile_type = boost::any_cast<xrt_core::query::aie_tiles_row_info::tile_type>(type);
 
@@ -928,7 +928,7 @@ struct aie_status_helper
 
     // Get Aie column status from driver
     std::vector<char> buf(info.col_size * num_cols);
-    asd_parser::get_aie_col_info(dev->get_user_handle(), buf.data(), info.col_size * num_cols, start_col, num_cols);
+    asd_parser::get_aie_col_info(dev, buf.data(), info.col_size * num_cols, start_col, num_cols);
 
     return buf;
   }
@@ -937,14 +937,15 @@ struct aie_status_helper
   static std::string
   aie_info(const xrt_core::device* dev)
   {
-    uint16_t major_ver, minor_ver;
+    uint16_t major_ver = 0;
+    uint16_t minor_ver = 0;
 
     // Get Aie status version and check compatibility
-    asd_parser::get_aie_status_version_info(dev->get_user_handle(), major_ver, minor_ver);
+    asd_parser::get_aie_status_version_info(dev, major_ver, minor_ver);
     asd_parser::aie_status_version_check(major_ver, minor_ver);
 
     // Get Aie tiles metadata info from driver
-    auto tiles_info = asd_parser::get_aie_tiles_info(dev->get_user_handle());
+    auto tiles_info = asd_parser::get_aie_tiles_info(dev);
 
     // get all columns info for now 
     // TODO: add argument in function to get start col and num of cols from user
@@ -953,7 +954,7 @@ struct aie_status_helper
     
     auto buf = get_aie_cols_buf(dev, start_col, num_cols, tiles_info);
     // convert buffer into respective structure and format
-    auto aie_cols = std::move(asd_parser::parse_data_from_buf<tile_type>(buf.data(), tiles_info));
+    auto aie_cols = asd_parser::parse_data_from_buf<tile_type>(buf.data(), tiles_info);
     auto ptarray = asd_parser::format_aie_info<tile_type>(aie_cols, start_col, num_cols, tiles_info);
 
     // fill version info for core tile which is used in top layer

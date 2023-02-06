@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
@@ -12,9 +12,9 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
+#include "core/pcie/common/asd_parser.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
-#include "core/pcie/common/asd_parser.h"
 
 #include "core/include/xdp/app_debug.h"
 #include "core/include/xstream.h" /* for stream_opt_type */
@@ -163,13 +163,13 @@ public:
   exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* ctxhdl);
 
   void
-  get_aie_status_version_info(uint16_t &aie_ver_major, uint16_t &aie_ver_minor);
+  get_aie_status_version_info(uint16_t& aie_ver_major, uint16_t& aie_ver_minor);
 
   asd_parser::aie_tiles_info
   get_aie_tiles_info();
 
   void
-  get_aie_col_info(char *buf, uint32_t size, uint32_t start_col, uint32_t cols);
+  get_aie_col_info(char* buf, uint32_t size, uint32_t start_col, uint32_t cols);
 
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020-2023 Xilinx, Inc
+  Copyright (C) 2020-2022 Xilinx, Inc
   Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  
   Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -142,8 +142,8 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
 	        if(tile.second.find("dma.fifo") != tile.second.not_found()) {
             _output << boost::format("%12s:\n") % "FIFO";
             for(const auto& node : tile.second.get_child("dma.fifo.counters")) {
-              _output << fmt16("%s") % node.second.get<std::string>("index")
-		              % node.second.get<std::string>("count");
+              _output << fmt16("%s") % node.second.get<std::string>("index") 
+                  % node.second.get<std::string>("count");
 	          }
           }
 
