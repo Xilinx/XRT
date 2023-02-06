@@ -2076,7 +2076,7 @@ namespace xdp {
 
   // This function is called from "trace_processor" tool 
   // The tool creates events from raw PL trace data
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, std::string xclbinFile)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, const std::string& xclbinFile)
   {
     xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
 

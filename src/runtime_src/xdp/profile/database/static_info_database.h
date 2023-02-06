@@ -274,7 +274,7 @@ namespace xdp {
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
     // ***** which creates events from raw PL trace    *****
-    XDP_EXPORT void updateDevice(uint64_t deviceId, std::string xclbinFile);
+    XDP_EXPORT void updateDevice(uint64_t deviceId, const std::string& xclbinFile);
 
     // *********************************************************
     // ***** Functions related to AIE specific information *****
