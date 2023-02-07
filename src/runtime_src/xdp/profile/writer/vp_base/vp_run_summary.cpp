@@ -144,31 +144,28 @@ namespace xdp {
         flags.push_back(std::make_pair("", empty));
       }
       ptGeneration.add_child("flags", flags);
-      ptRunSummary.add_child("generation", ptGeneration) ;
+      ptRunSummary.add_child("generation", ptGeneration);
     }
 
-    boost::property_tree::ptree ptFiles ;
-    for (auto f : files)
-    {
-      boost::property_tree::ptree ptFile ;
-      ptFile.put("name", f.first.c_str()) ;
-      ptFile.put("type", f.second.c_str()) ;
-      ptFiles.push_back(std::make_pair("", ptFile)) ;
+    boost::property_tree::ptree ptFiles;
+    for (auto f : files) {
+      boost::property_tree::ptree ptFile;
+      ptFile.put("name", f.first.c_str());
+      ptFile.put("type", f.second.c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
     }
-    ptRunSummary.add_child("files", ptFiles) ;
+    ptRunSummary.add_child("files", ptFiles);
 
     // Add the system diagram information if available
-    std::string systemDiagram = (db->getStaticInfo()).getSystemDiagram() ;
-    if (systemDiagram != "")
-    {
-      boost::property_tree::ptree ptSystemDiagram ;
-      ptSystemDiagram.put("payload_16bitEnc", systemDiagram.c_str()) ;
-      ptRunSummary.add_child("system_diagram", ptSystemDiagram) ;
+    std::string systemDiagram = (db->getStaticInfo()).getSystemDiagram();
+    if (systemDiagram != "") {
+      boost::property_tree::ptree ptSystemDiagram;
+      ptSystemDiagram.put("payload_16bitEnc", systemDiagram.c_str());
+      ptRunSummary.add_child("system_diagram", ptSystemDiagram);
     }
 
-    boost::property_tree::write_json(fout, ptRunSummary, true) ;
+    boost::property_tree::write_json(fout, ptRunSummary, true);
     return true;
   }
 
 } // end namespace xdp
-
