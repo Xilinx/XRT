@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -135,6 +135,16 @@ namespace xdp {
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
     double findClockRate(std::shared_ptr<xrt_core::device> device) ;
+    void setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId) ;
+
+    void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
+    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    bool initializeStructure(XclbinInfo*, xrt::xclbin);
+    bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
+    double findClockRate(xrt::xclbin);
+    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+
+    
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -236,7 +246,6 @@ namespace xdp {
     XDP_EXPORT void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId) ;
     XDP_EXPORT bool isDeviceReady(uint64_t deviceId) ;
     XDP_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
-    XDP_EXPORT void setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId) ;
     XDP_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ; 
     XDP_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_EXPORT void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf) ;
@@ -261,6 +270,11 @@ namespace xdp {
     XDP_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
+
+    // *********************************************************
+    // ***** Functions related to trace_processor tool *****
+    // ***** which creates events from raw PL trace    *****
+    XDP_EXPORT void updateDevice(uint64_t deviceId, const std::string& xclbinFile);
 
     // *********************************************************
     // ***** Functions related to AIE specific information *****
