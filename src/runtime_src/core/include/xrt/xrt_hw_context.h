@@ -51,7 +51,7 @@ public:
    * Currently ignored for legacy platforms
    */
   using cfg_param_type = std::map<std::string, uint32_t>;
-  using qos_type = cfg_param_type //alias to old type
+  using qos_type = cfg_param_type; //alias to old type
 
   /**
    * @enum access_mode - legacy access mode
