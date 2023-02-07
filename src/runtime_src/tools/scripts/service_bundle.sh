@@ -214,7 +214,6 @@ fi
 PATH_TO_BUNDLE=$PATH_TO_OUTPUT/xrt_bundle
 echo "dump into: $PATH_TO_BUNDLE"
 
-#a=${!funcArray[@]}
 total=${#funcArray[@]}
 index=0
 for func in "${funcArray[@]}"
