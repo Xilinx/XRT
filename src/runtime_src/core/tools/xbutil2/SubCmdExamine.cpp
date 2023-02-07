@@ -64,7 +64,6 @@ namespace po = boost::program_options;
     std::make_shared<ReportPsKernels>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
-    std::make_shared<ReportCmcStatus>(),
     std::make_shared<ReportElectrical>(),
     std::make_shared<ReportFirewall>(),
     std::make_shared<ReportMailbox>(),
