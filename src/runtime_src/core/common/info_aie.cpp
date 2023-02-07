@@ -15,6 +15,7 @@
  * under the License.
  */
 #define XRT_CORE_COMMON_SOURCE
+#include "asd_parser.h"
 #include "info_aie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -264,16 +265,24 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 
   try {
     // Read AIE Shim information of the device
-    std::string aie_data = xrt_core::device_query<qr::aie_shim_info>(device);
+    // On Edge platforms this info is populated using sysfs
+    std::string aie_data = xrt_core::device_query<qr::aie_shim_info_sysfs>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_shim);
   }
-  catch (const xrt_core::query::no_such_key&) {
-    pt.put("error_msg", "AIE information is not available");
-    return pt;
+  catch (const qr::no_such_key&) {
+    try {
+      asd_parser::aie_tiles_info tiles_info{0};
+      // On Pcie platforms use driver calls to get AIE Shim info
+      pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim, tiles_info);
+    }
+    catch (const std::exception& ex) {
+      pt.put("error_msg", "AIE shim tile information is not available");
+      return pt;
+    }
   }
   catch (const xrt_core::query::exception&) {
-    pt.put("error_msg", "AIE information is not available");
+    pt.put("error_msg", "AIE shim tile information is not available");
     return pt;
   }
   catch (const std::exception& ex) {
@@ -326,7 +335,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 
 // Populate the AIE Mem tile information from the input XRT device
 boost::property_tree::ptree
-populate_aie_mem(const xrt_core::device *device, const std::string& desc)
+populate_aie_mem(const xrt_core::device* device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   pt.put("description", desc);
@@ -334,14 +343,21 @@ populate_aie_mem(const xrt_core::device *device, const std::string& desc)
 
   try {
     // Read AIE Mem information of the device
-    std::string aie_data = xrt_core::device_query<qr::aie_mem_info>(device);
+    // On Edge platforms this info is populated using sysfs
+    std::string aie_data = xrt_core::device_query<qr::aie_mem_info_sysfs>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_mem);
   }
   catch (const xrt_core::query::no_such_key&) {
-    // Memory tile is not present in all aie devices
-    pt.put("error_msg", "AIE mem tile information is not present");
-    return pt;
+    try {
+      asd_parser::aie_tiles_info tiles_info{0};
+      // On Pcie platforms use driver calls to get AIE memm info
+      pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem, tiles_info);
+    }
+    catch (const std::exception& ex) {
+      pt.put("error_msg", "AIE mem tile information is not available");
+      return pt;
+    }
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
@@ -653,7 +669,8 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
 
 // Populate AIE core information from aie metadata
 static void
-populate_aie_from_metadata(const xrt_core::device *device, boost::property_tree::ptree &pt_aie, boost::property_tree::ptree &pt)
+populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree::ptree& pt_aie,
+                           boost::property_tree::ptree& pt)
 {
   boost::property_tree::ptree graph_array;
   boost::property_tree::ptree gh_status;
@@ -672,7 +689,7 @@ populate_aie_from_metadata(const xrt_core::device *device, boost::property_tree:
 
   try {
     // version checks are done in below call
-    std::string aie_core_data = xrt_core::device_query<qr::aie_core_info>(device);
+    std::string aie_core_data = xrt_core::device_query<qr::aie_core_info_sysfs>(device);
     std::stringstream ss(aie_core_data);
     boost::property_tree::read_json(ss, core_info);
   }
@@ -809,7 +826,7 @@ populate_aie_from_metadata(const xrt_core::device *device, boost::property_tree:
 
 // TODO: Remove this function
 static void
-add_dummy_graphs(boost::property_tree::ptree &pt, boost::property_tree::ptree &tile_array)
+add_dummy_graphs(boost::property_tree::ptree& pt, boost::property_tree::ptree& tile_array)
 {
   boost::property_tree::ptree graph;
   boost::property_tree::ptree graph_array;
@@ -826,23 +843,18 @@ add_dummy_graphs(boost::property_tree::ptree &pt, boost::property_tree::ptree &t
 
 // Populate AIE core information
 static void
-_populate_aie(const xrt_core::device *device, boost::property_tree::ptree &pt)
+_populate_aie(const xrt_core::device* device, boost::property_tree::ptree& pt)
 {
   boost::property_tree::ptree core_info;
-  uint16_t max_cols, core_row_start, num_core_rows;
 
   try {
     boost::property_tree::ptree tile_array;
-    std::string aie_core_data = xrt_core::device_query<qr::aie_core_info>(device);
-    std::stringstream ss(aie_core_data);
-    boost::property_tree::read_json(ss, core_info);
+    asd_parser::aie_tiles_info tiles_info{0};
 
-    // get max_cols, core row start and num of core rows from device_query
-    auto core_tiles_info = xrt_core::device_query<qr::aie_tiles_row_info>(device, qr::aie_tiles_row_info::tile_type::core);
-    std::tie(max_cols, core_row_start, num_core_rows) = core_tiles_info;
+    core_info = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::core, tiles_info);
 
-    for (uint16_t col = 0; col < max_cols; col++) {
-      for (uint16_t row = core_row_start; row < core_row_start + num_core_rows; row++) {
+    for (uint16_t col = 0; col < tiles_info.cols; col++) {
+      for (uint16_t row = tiles_info.core_row_start; row < tiles_info.core_row_start + tiles_info.core_rows; row++) {
         boost::property_tree::ptree tile;
         tile.put("column", col);
         tile.put("row", row);
@@ -863,7 +875,7 @@ _populate_aie(const xrt_core::device *device, boost::property_tree::ptree &pt)
 }
 
 boost::property_tree::ptree
-populate_aie(const xrt_core::device *device, const std::string& desc)
+populate_aie(const xrt_core::device* device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
 

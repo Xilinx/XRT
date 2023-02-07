@@ -271,14 +271,8 @@ format_aie_info(std::vector<aie_col_status>& aie_cols,
   return tile_type::format_status(aie_cols, start_col, cols, tiles_info);
 }
 
-void
-get_aie_status_version_info(const xrt_core::device* dev, uint16_t& aie_ver_major, uint16_t& aie_ver_minor);
-
-aie_tiles_info
-get_aie_tiles_info(const xrt_core::device* dev);
- 
-void
-get_aie_col_info(const xrt_core::device* dev, char* buf, uint32_t size, uint32_t start_col, uint32_t cols); 
+boost::property_tree::ptree
+get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info); 
 } // asd_parser
 
 #endif

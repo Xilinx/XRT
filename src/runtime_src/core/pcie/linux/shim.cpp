@@ -2548,12 +2548,11 @@ get_aie_status_version_info(uint16_t& aie_ver_major, uint16_t& aie_ver_minor)
 }
 
 // Get aie tiles overview (no of core, mem, shim tiles and their positions etc)
-asd_parser::aie_tiles_info
+void
 shim::
-get_aie_tiles_info()
+get_aie_tiles_info(char* buf, uint32_t size)
 {
   // TODO: add driver call
-  return asd_parser::aie_tiles_info{};
 }
 
 // Get aie columns status in raw buffer format
@@ -3176,35 +3175,3 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
   return;
 }
 
-void
-asd_parser::
-get_aie_status_version_info(const xrt_core::device* dev, uint16_t& aie_ver_major, uint16_t& aie_ver_minor)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(dev->get_user_handle());
-  if(!drv)
-    throw std::runtime_error("Unable to get shim handle of the device");
-
-  drv->get_aie_status_version_info(aie_ver_major, aie_ver_minor);
-}
-
-asd_parser::aie_tiles_info
-asd_parser::
-get_aie_tiles_info(const xrt_core::device* dev)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(dev->get_user_handle());
-  if(!drv)
-    throw std::runtime_error("Unable to get shim handle of the device");
-
-  return drv->get_aie_tiles_info();
-}
-
-void
-asd_parser::
-get_aie_col_info(const xrt_core::device* dev, char* buf, uint32_t size, uint32_t start_col, uint32_t cols)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(dev->get_user_handle());
-  if(!drv)
-    throw std::runtime_error("Unable to get shim handle of the device");
-
-  drv->get_aie_col_info(buf, size, start_col, cols); 
-}

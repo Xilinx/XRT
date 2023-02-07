@@ -193,9 +193,9 @@ struct aie_metadata
   }
 };
 
-struct aie_core_info : aie_metadata
+struct aie_core_info_sysfs : aie_metadata
 {
-  using result_type = query::aie_core_info::result_type;
+  using result_type = query::aie_core_info_sysfs::result_type;
   static result_type
   get(const xrt_core::device* device,key_type key)
   {
@@ -220,7 +220,7 @@ struct aie_core_info : aie_metadata
   }
 };
 
-struct aie_shim_info : aie_metadata
+struct aie_shim_info_sysfs : aie_metadata
 {
   using result_type = query::aie_shim_info::result_type;
   static result_type
@@ -859,10 +859,10 @@ initialize_query_table()
   emplace_func0_request<query::rom_time_since_epoch,    dev_info>();
 
   emplace_func0_request<query::clock_freqs_mhz,         dev_info>();
-  emplace_func0_request<query::aie_core_info,		aie_core_info>();
-  emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
+  emplace_func0_request<query::aie_core_info_sysfs,     aie_core_info_sysfs>();
+  emplace_func0_request<query::aie_shim_info_sysfs,     aie_shim_info_sysfs>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
-  emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
+  emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");

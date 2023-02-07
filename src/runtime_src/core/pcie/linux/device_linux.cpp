@@ -3,6 +3,7 @@
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
+#include "shim.h"
 
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
@@ -13,7 +14,6 @@
 #include "core/include/xdp/asm.h"
 #include "core/include/xdp/app_debug.h"
 #include "core/include/xdp/spc.h"
-#include "core/pcie/common/asd_parser.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 #include "pcidev.h"
@@ -891,119 +891,69 @@ struct accel_deadlock_status
   }
 };
 
-// structure to get aie tiles(core, shim, mem) row start and num of rows 
-struct aie_tiles_row_info
+// structure to get Aie tiles status version info
+// This version is used for handshake b/w userspace and driver
+struct aie_status_version
+{
+  using result_type = query::aie_status_version::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    result_type version{0};
+
+    xocl::shim *drv = xocl::shim::handleCheck(device->get_user_handle());
+    if(!drv)
+      throw std::runtime_error("Unable to get shim handle of the device");
+      
+    drv->get_aie_status_version_info(version.major, version.minor);
+
+    return version;
+  }
+};
+
+// Structure to get device specific Aie tiles information like
+// Total rows, cols and num of core, mem, shim rows and thier start row num
+// num of dma channels, locks, events etc
+struct aie_tiles_stats
+{
+  using result_type = query::aie_tiles_stats::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    uint32_t size = sizeof(result_type);
+    std::vector<char> buf(size, 0);
+
+    xocl::shim *drv = xocl::shim::handleCheck(device->get_user_handle());
+    if(!drv)
+      throw std::runtime_error("Unable to get shim handle of the device");
+      
+    drv->get_aie_tiles_info(buf.data(), size);
+
+    return *(reinterpret_cast<result_type*>(buf.data()));
+  }
+};
+
+// structure to get aie tiles status raw buffer
+struct aie_cols_status_info
 {
   using result_type = boost::any;
 
   static result_type
-  get(const xrt_core::device* dev, key_type key, const boost::any& type)
+  get(const xrt_core::device* device, key_type key, const boost::any& param)
   {
-    auto tiles_info = asd_parser::get_aie_tiles_info(dev);
+    auto data = boost::any_cast<xrt_core::query::aie_cols_status_info::meta_data>(param);
 
-    auto tile_type = boost::any_cast<xrt_core::query::aie_tiles_row_info::tile_type>(type);
+    std::vector<char> buf(data.col_size * data.num_cols, 0);
 
-    switch (tile_type) {
-      case xrt_core::query::aie_tiles_row_info::tile_type::core :
-        return std::make_tuple(tiles_info.cols, tiles_info.core_row_start, tiles_info.core_rows);
-      case xrt_core::query::aie_tiles_row_info::tile_type::shim :
-        return std::make_tuple(tiles_info.cols, tiles_info.shim_row_start, tiles_info.shim_rows);
-      case xrt_core::query::aie_tiles_row_info::tile_type::mem :
-        return std::make_tuple(tiles_info.cols, tiles_info.mem_row_start, tiles_info.mem_rows);
-      default :
-        throw std::runtime_error("Invalid tile type");
-    }
-  }
-}; 
-
-// common helper structure to get aie tiles(core, mem, shim) info from driver
-struct aie_status_helper
-{
-  static std::vector<char>
-  get_aie_cols_buf(const xrt_core::device* dev, uint32_t start_col, uint32_t num_cols, 
-      asd_parser::aie_tiles_info &info)
-  {
-    // do sanity checks
-    asd_parser::aie_info_sanity_check(start_col, num_cols, info);
-
-    // Get Aie column status from driver
-    std::vector<char> buf(info.col_size * num_cols);
-    asd_parser::get_aie_col_info(dev, buf.data(), info.col_size * num_cols, start_col, num_cols);
+    xocl::shim *drv = xocl::shim::handleCheck(device->get_user_handle());
+    if(!drv)
+      throw std::runtime_error("Unable to get shim handle of the device");
+      
+    drv->get_aie_col_info(buf.data(), data.col_size * data.num_cols, data.start_col, data.num_cols);
 
     return buf;
-  }
-
-  template <typename tile_type>
-  static std::string
-  aie_info(const xrt_core::device* dev)
-  {
-    uint16_t major_ver = 0;
-    uint16_t minor_ver = 0;
-
-    // Get Aie status version and check compatibility
-    asd_parser::get_aie_status_version_info(dev, major_ver, minor_ver);
-    asd_parser::aie_status_version_check(major_ver, minor_ver);
-
-    // Get Aie tiles metadata info from driver
-    auto tiles_info = asd_parser::get_aie_tiles_info(dev);
-
-    // get all columns info for now 
-    // TODO: add argument in function to get start col and num of cols from user
-    uint32_t start_col = 0;
-    uint32_t num_cols = tiles_info.cols;
-    
-    auto buf = get_aie_cols_buf(dev, start_col, num_cols, tiles_info);
-    // convert buffer into respective structure and format
-    auto aie_cols = asd_parser::parse_data_from_buf<tile_type>(buf.data(), tiles_info);
-    auto ptarray = asd_parser::format_aie_info<tile_type>(aie_cols, start_col, num_cols, tiles_info);
-
-    // fill version info for core tile which is used in top layer
-    if (tile_type::type() == asd_parser::aie_tile_type::core) {
-      ptarray.put("schema_version.major", major_ver);
-      ptarray.put("schema_version.minor", minor_ver);
-    }
-
-    // convert ptree to string
-    std::ostringstream oss;
-    boost::property_tree::write_json(oss, ptarray);
-
-    return oss.str();
-  }
-};
-
-// structure to get aie core tile status
-struct aie_core_info : aie_status_helper
-{
-  using result_type = boost::any;
-
-  static result_type
-  get(const xrt_core::device* dev,  key_type key)
-  {
-    return aie_info<asd_parser::aie_core_tile_status>(dev);
-  }
-};
-
-// structure to get aie shim status
-struct aie_shim_info : aie_status_helper
-{
-  using result_type = boost::any;
-
-  static result_type
-  get(const xrt_core::device* dev,  key_type key)
-  {
-    return aie_info<asd_parser::aie_shim_tile_status>(dev);
-  }
-};
-
-// structure to get aie mem tile status
-struct aie_mem_info : aie_status_helper
-{
-  using result_type = boost::any;
-
-  static result_type
-  get(const xrt_core::device* dev,  key_type key)
-  {
-    return aie_info<asd_parser::aie_mem_tile_status>(dev);
   }
 };
 
@@ -1439,10 +1389,9 @@ initialize_query_table()
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
 
-  emplace_func4_request<query::aie_tiles_row_info,             aie_tiles_row_info>();
-  emplace_func0_request<query::aie_core_info,                  aie_core_info>();
-  emplace_func0_request<query::aie_shim_info,                  aie_shim_info>();
-  emplace_func0_request<query::aie_mem_info,                   aie_mem_info>();
+  emplace_func0_request<query::aie_status_version,             aie_status_version>();
+  emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
+  emplace_func4_request<query::aie_cols_status_info,           aie_cols_status_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

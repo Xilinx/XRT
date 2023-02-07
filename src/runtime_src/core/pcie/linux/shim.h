@@ -12,7 +12,6 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
-#include "core/pcie/common/asd_parser.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 
@@ -165,8 +164,8 @@ public:
   void
   get_aie_status_version_info(uint16_t& aie_ver_major, uint16_t& aie_ver_minor);
 
-  asd_parser::aie_tiles_info
-  get_aie_tiles_info();
+  void
+  get_aie_tiles_info(char* buf, uint32_t size);
 
   void
   get_aie_col_info(char* buf, uint32_t size, uint32_t start_col, uint32_t cols);

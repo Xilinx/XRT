@@ -4,6 +4,7 @@
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
+#include "asd_parser.h"
 #include "error.h"
 #include "query.h"
 #include "uuid.h"
@@ -11,9 +12,9 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/xclerr_int.h"
 
+#include <cstdint>
 #include <iomanip>
 #include <map>
-#include <stdint.h>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -21,6 +22,7 @@
 
 #include <boost/any.hpp>
 #include <boost/format.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 struct debug_ip_data;
 
@@ -114,10 +116,15 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
-  aie_tiles_row_info,
-  aie_core_info,
-  aie_shim_info,
-  aie_mem_info,
+
+  aie_core_info_sysfs,
+  aie_shim_info_sysfs,
+  aie_mem_info_sysfs,
+
+  aie_status_version,
+  aie_tiles_stats,
+  aie_cols_status_info,
+
   idcode,
   data_retention,
   sec_level,
@@ -1297,48 +1304,80 @@ struct dna_serial_num : request
   }
 };
 
-// Used to retrive aie core tile status information
-struct aie_core_info : request
+// Used to retrive aie core tile status information from sysfs
+struct aie_core_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_core_info;
+  static const key_type key = key_type::aie_core_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-// Used to retrive aie shim tile status information
-struct aie_shim_info : request
+// Used to retrive aie shim tile status information from sysfs
+struct aie_shim_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_shim_info;
+  static const key_type key = key_type::aie_shim_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-// Used to retrive aie mem tile status information
-struct aie_mem_info : request
+// Used to retrive aie mem tile status information from sysfs
+struct aie_mem_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_mem_info;
+  static const key_type key = key_type::aie_mem_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-/* Get aie core, shim, mem tiles information
-* 1. Number of columns 2. Starting Row of tile 3. Number of corresponding tiles
-*/
-struct aie_tiles_row_info : request
+// Retrive aie status version
+// We use binary parser for parsing info from driver
+// This version is used as handshake b/w userspace and driver
+struct aie_status_version : request
 {
-  using result_type = std::tuple<uint16_t, uint16_t, uint16_t>;
-  static const key_type key = key_type::aie_tiles_row_info;
+  struct aie_version {
+    uint16_t major;
+    uint16_t minor;
+  };
 
-  enum class tile_type { core, shim, mem };
+  using result_type = aie_version;
+  static const key_type key = key_type::aie_status_version;
 
   virtual boost::any
-  get(const device*, const boost::any&) const = 0;
+  get(const device*) const = 0;
+};
+
+// Retrive device specific Aie tiles(core, mem, shim) tiles info
+// like total num of rows, cols, and num of core, mem, shim rows
+// num of dma channels, locks, events
+struct aie_tiles_stats : request
+{
+  using result_type = asd_parser::aie_tiles_info;
+  static const key_type key = key_type::aie_tiles_stats;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Used to retrive aie tiles status info
+struct aie_cols_status_info : request
+{
+  struct meta_data
+  {
+    uint32_t col_size;
+    uint16_t start_col;
+    uint16_t num_cols;
+  };
+
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::aie_cols_status_info;
+
+  virtual boost::any
+  get(const device* device, const boost::any& param) const = 0;
 };
 
 struct clock_freqs_mhz : request

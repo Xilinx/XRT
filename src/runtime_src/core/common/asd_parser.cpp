@@ -2,6 +2,7 @@
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "asd_parser.h"
+#include "query_requests.h"
 
 namespace asd_parser {
 namespace bpt = boost::property_tree;
@@ -635,6 +636,61 @@ aie_info_sanity_check(uint32_t start_col, uint32_t num_cols, aie_tiles_info& inf
   // check calucalted size is same as size info from driver
   if (calculated_size != info.col_size)
     throw std::runtime_error("calculated size doesnot match size information from driver, version mismatch\n");
+}
+
+boost::property_tree::ptree
+get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info)
+{
+  // Get Aie status version and check compatibility
+  auto version = xrt_core::device_query<xrt_core::query::aie_status_version>(device);
+  aie_status_version_check(version.major, version.minor);
+
+  // Get Aie tiles metadata info from driver
+  info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
+  // verify version to check consistency of aie_tiles_info struct with firmware
+  if (!((info.major == asd_parser::aie_tiles_info_version_major) && (info.minor == asd_parser::aie_tiles_info_version_minor)))
+    throw std::runtime_error("version mismatch for aie_tiles_info structure");
+
+  // get all columns info for now 
+  // TODO: add argument in function to get start col and num of cols from user
+  uint32_t start_col = 0;
+  uint32_t num_cols = info.cols;
+
+  // sanity checks
+  aie_info_sanity_check(start_col, num_cols, info);
+  
+  // Get Aie column status from driver
+  xrt_core::query::aie_cols_status_info::meta_data arg{0};
+  arg.start_col = start_col;
+  arg.num_cols = num_cols;
+  arg.col_size = info.col_size;
+
+  auto buf = xrt_core::device_query<xrt_core::query::aie_cols_status_info>(device, arg);
+
+  boost::property_tree::ptree pt;
+  std::vector<asd_parser::aie_col_status> aie_cols;
+  // convert buffer into respective structure and format
+  switch (tile_type) {
+    case aie_tile_type::core :
+      aie_cols = parse_data_from_buf<aie_core_tile_status>(buf.data(), info);
+      pt = format_aie_info<aie_core_tile_status>(aie_cols, start_col, num_cols, info);
+
+      // fill version info for core tile which is used in top layer
+      pt.put("schema_version.major", version.major);
+      pt.put("schema_version.minor", version.minor);
+      break;
+    case aie_tile_type::shim :
+      aie_cols = parse_data_from_buf<aie_core_tile_status>(buf.data(), info);
+      pt = format_aie_info<aie_core_tile_status>(aie_cols, start_col, num_cols, info);
+      break;
+    case aie_tile_type::mem :
+      aie_cols = parse_data_from_buf<aie_core_tile_status>(buf.data(), info);
+      pt = format_aie_info<aie_core_tile_status>(aie_cols, start_col, num_cols, info);
+      break;
+    default :
+      throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
+  }
+  return pt;
 }
 }
 
