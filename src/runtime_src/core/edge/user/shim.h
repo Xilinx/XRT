@@ -159,7 +159,7 @@ public:
   close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx);
 
   std::unique_ptr<xrt_core::hwctx_handle>
-  create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
+  create_hw_context(const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
 ////////////////////////////////////////////////////////////////
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);

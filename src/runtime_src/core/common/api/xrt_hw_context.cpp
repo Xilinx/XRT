@@ -21,22 +21,23 @@ namespace xrt {
 //
 class hw_context_impl
 {
-  using qos_type = xrt::hw_context::qos_type;
+  using cfg_param_type = xrt::hw_context::cfg_param_type;
+  using qos_type = cfg_param_type;
   using access_mode = xrt::hw_context::access_mode;
 
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
-  qos_type m_qos;
+  cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
 
 public:
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const qos_type& qos)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const cfg_param_type& cfg_param)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
-    , m_qos(qos)
+    , m_cfg_param(cfg_param)
     , m_mode(xrt::hw_context::access_mode::shared)
-    , m_hdl{m_core_device->create_hw_context(xclbin_id, m_qos, m_mode)}
+    , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
   {
   }
 
@@ -44,7 +45,7 @@ public:
     : m_core_device{std::move(device)}
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_mode{mode}
-    , m_hdl{m_core_device->create_hw_context(xclbin_id, m_qos, m_mode)}
+    , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
   {}
 
 void
@@ -117,8 +118,8 @@ set_exclusive(xrt::hw_context& hwctx)
 namespace xrt {
 
 hw_context::
-hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::qos_type& qos)
-  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, qos))
+hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
+  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
 {}
 
 
