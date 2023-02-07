@@ -783,6 +783,7 @@ static ssize_t vmr_status_show(struct device *dev,
 		return 0;
 	}
 
+	cnt += sprintf(buf + cnt, "HAS_FPT:%d\n", vmr_status->has_fpt);
 	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
 	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
 	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);

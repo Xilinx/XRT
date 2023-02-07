@@ -79,6 +79,9 @@ get_vmr_status(const xrt_core::device* device, vmr_status_type status)
     case vmr_status_type::boot_on_default:
       status_string = "Boot on default";
       break;
+    case vmr_status_type::has_fpt:
+      status_string = "Has fpt";
+      break;
     default:
       throw xrt_core::error(boost::str(boost::format("Unexpected key for VMR Status type %u") % static_cast<uint32_t>(status)));
   }
