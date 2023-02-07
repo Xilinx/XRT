@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2023 Xilinx, Inc. All rights reserved.
 #
 # This script collects debugging logs for XRT managed sub-systems
 
@@ -10,9 +10,9 @@ ID=`id -un`
 FULL_CMD=${BASH_SOURCE[0]}
 BASE_CMD=`basename "$0"`
 
+# $1 index, $2 total, $3 func name
 progress() {
-	echo -n "running: $func - progress: $(($1+1))/$2"
-	#echo -ne "running: $func - progress: \b\b\b$(($1+1))/$(($2+1))\b\b\b"
+	echo -n "running: $3 - progress: $(($1+1))/$2"
 }
 
 usage() {
@@ -57,6 +57,8 @@ done
 #############################
 # Funcs start here
 #############################
+
+# $1 output directory
 core_dumps()
 {
 	if [ -z $ALL_LOG ];then
@@ -79,6 +81,7 @@ core_dumps()
 	fi
 }
 
+# $1 output directory
 xbutil_output()
 {
 	xbutil examine -d $DEVICE_BDF:0 > $1/xbutil_examine.txt
@@ -86,6 +89,7 @@ xbutil_output()
 	xbutil validate -d $DEVICE_BDF:0 -r quick --verbose> $1/xbutil_validate.txt
 }
 
+# $1 output directory
 xbmgmt_output()
 {
 	xbmgmt examine > $1/xbmgmt_examine.txt
@@ -94,6 +98,7 @@ xbmgmt_output()
 	xbmgmt examine -d $DEVICE_BDF:0 -r all > $1/xbmgmt_examine_all.txt
 }
 
+# $1 output directory
 debug_logs()
 {
 	mkdir -p $1/var/log/
@@ -121,6 +126,7 @@ debug_logs()
 	kill -s 2 $PID2
 }
 
+# $1 output directory
 vmr_logs()
 {
 	xbmgmt examine -d $DEVICE_BDF:0 -r vmr --verbose > $1/xbmgmt_vmr_verbose.txt
@@ -145,6 +151,7 @@ vmr_logs()
 	done
 }
 
+# $1 output directory
 host_info()
 {
 	cat /proc/iomem > $1/proc_iomem.txt
@@ -165,6 +172,9 @@ host_info()
 	kill -s 2 $PID3
 }
 
+#
+# all collecting methods should be defined in this array
+#
 funcArray=(
 	host_info
 	xbmgmt_output
