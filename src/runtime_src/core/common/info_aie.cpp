@@ -843,7 +843,7 @@ add_dummy_graphs(boost::property_tree::ptree& pt, boost::property_tree::ptree& t
 
 // Populate AIE core information
 static void
-_populate_aie(const xrt_core::device* device, boost::property_tree::ptree& pt)
+populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree& pt)
 {
   boost::property_tree::ptree core_info;
 
@@ -890,7 +890,7 @@ populate_aie(const xrt_core::device* device, const std::string& desc)
   }
   catch (const qr::no_such_key&) {
     // pcie platforms dont have aie metadata
-    _populate_aie(device, pt);
+    populate_aie_helper(device, pt);
   }
   catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));

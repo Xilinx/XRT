@@ -22,7 +22,6 @@
 
 #include <boost/any.hpp>
 #include <boost/format.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 struct debug_ip_data;
 
@@ -123,7 +122,7 @@ enum class key_type
 
   aie_status_version,
   aie_tiles_stats,
-  aie_cols_status_info,
+  aie_tiles_status_info,
 
   idcode,
   data_retention,
@@ -1364,9 +1363,9 @@ struct aie_tiles_stats : request
 };
 
 // Used to retrive aie tiles status info
-struct aie_cols_status_info : request
+struct aie_tiles_status_info : request
 {
-  struct meta_data
+  struct parameters
   {
     uint32_t col_size;
     uint16_t start_col;
@@ -1374,7 +1373,7 @@ struct aie_cols_status_info : request
   };
 
   using result_type = std::vector<char>;
-  static const key_type key = key_type::aie_cols_status_info;
+  static const key_type key = key_type::aie_tiles_status_info;
 
   virtual boost::any
   get(const device* device, const boost::any& param) const = 0;

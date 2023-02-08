@@ -3,7 +3,6 @@
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
-#include "shim.h"
 
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
@@ -902,11 +901,7 @@ struct aie_status_version
   {
     result_type version{0};
 
-    xocl::shim *drv = xocl::shim::handleCheck(device->get_user_handle());
-    if(!drv)
-      throw std::runtime_error("Unable to get shim handle of the device");
-      
-    drv->get_aie_status_version_info(version.major, version.minor);
+    // TODO : Add code to get the data
 
     return version;
   }
@@ -925,33 +920,25 @@ struct aie_tiles_stats
     uint32_t size = sizeof(result_type);
     std::vector<char> buf(size, 0);
 
-    xocl::shim *drv = xocl::shim::handleCheck(device->get_user_handle());
-    if(!drv)
-      throw std::runtime_error("Unable to get shim handle of the device");
-      
-    drv->get_aie_tiles_info(buf.data(), size);
+    // TODO : Add code to get the data
 
     return *(reinterpret_cast<result_type*>(buf.data()));
   }
 };
 
 // structure to get aie tiles status raw buffer
-struct aie_cols_status_info
+struct aie_tiles_status_info
 {
   using result_type = boost::any;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& param)
   {
-    auto data = boost::any_cast<xrt_core::query::aie_cols_status_info::meta_data>(param);
+    auto data = boost::any_cast<xrt_core::query::aie_tiles_status_info::parameters>(param);
 
     std::vector<char> buf(data.col_size * data.num_cols, 0);
 
-    xocl::shim *drv = xocl::shim::handleCheck(device->get_user_handle());
-    if(!drv)
-      throw std::runtime_error("Unable to get shim handle of the device");
-      
-    drv->get_aie_col_info(buf.data(), data.col_size * data.num_cols, data.start_col, data.num_cols);
+    // TODO : Add code to get the data
 
     return buf;
   }
@@ -1391,7 +1378,7 @@ initialize_query_table()
 
   emplace_func0_request<query::aie_status_version,             aie_status_version>();
   emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
-  emplace_func4_request<query::aie_cols_status_info,           aie_cols_status_info>();
+  emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

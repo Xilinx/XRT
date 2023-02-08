@@ -2539,30 +2539,6 @@ exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* hwctx_hdl)
   }
 }
 
-// Get aie tiles status version
-void
-shim::
-get_aie_status_version_info(uint16_t& aie_ver_major, uint16_t& aie_ver_minor)
-{
-  // TODO: add driver call
-}
-
-// Get aie tiles overview (no of core, mem, shim tiles and their positions etc)
-void
-shim::
-get_aie_tiles_info(char* buf, uint32_t size)
-{
-  // TODO: add driver call
-}
-
-// Get aie columns status in raw buffer format
-void
-shim::
-get_aie_col_info(char* buf, uint32_t size, uint32_t start_col, uint32_t cols)
-{
-  // TODO: add driver call
-}
-
 } // namespace xocl
 
 ////////////////////////////////////////////////////////////////

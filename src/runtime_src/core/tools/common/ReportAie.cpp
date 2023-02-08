@@ -102,9 +102,9 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
            % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
       for (auto& node : graph.get_child("tile")) {
         const boost::property_tree::ptree& tile = node.second;
-
-	      if (tile.get<std::string>("memory_column", "") == "")
-	        continue;
+        
+        if (tile.get<std::string>("memory_column", "") == "")
+          continue;
 
         _output << boost::format("    [%2d]   %-20s%-30s%-30d\n") % count
             % (tile.get<std::string>("column") + ":" + tile.get<std::string>("row"))
@@ -139,7 +139,7 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
 	      if(tile.second.find("dma") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "DMA";
 
-	        if(tile.second.find("dma.fifo") != tile.second.not_found()) {
+          if(tile.second.find("dma.fifo") != tile.second.not_found()) {
             _output << boost::format("%12s:\n") % "FIFO";
             for(const auto& node : tile.second.get_child("dma.fifo.counters")) {
               _output << fmt16("%s") % node.second.get<std::string>("index") 
