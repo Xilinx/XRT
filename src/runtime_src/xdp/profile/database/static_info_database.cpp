@@ -346,33 +346,6 @@ namespace xdp {
       return xclbin->aie.clockRateAIEMHz ;
   }
   
-  void VPStaticDatabase::setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId){
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return;
-
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-    if (!xclbin)
-      return;
-
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return;
-
-    boost::property_tree::ptree aie_meta;
-
-    std::stringstream aie_stream;
-    aie_stream.write(data.first, data.second);
-    boost::property_tree::read_json(aie_stream,aie_meta);
-
-    //read_aie_metadata(data.first, data.second, aie_meta);
-    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    
-    xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
-  }
-
-
   void VPStaticDatabase::setDeviceName(uint64_t deviceId, const std::string& name)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -1327,68 +1300,6 @@ namespace xdp {
     return true;
   }
 
-  double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)
-  {
-    double defaultClockSpeed = 300.0 ;
-
-    // First, check the clock frequency topology
-    const clock_freq_topology* clockSection =
-      device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
-
-    if(clockSection) {
-      for(int32_t i = 0; i < clockSection->m_count; i++) {
-        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
-        if(clk->m_type != CT_DATA) {
-          continue;
-        }
-        return clk->m_freq_Mhz ;
-      }
-    }
-
-    if (isEdge()) {
-      // On Edge, we can try to get the "DATA_CLK" from the embedded metadata
-      std::pair<const char*, size_t> metadataSection =
-        device->get_axlf_section(EMBEDDED_METADATA) ;
-      const char* rawXml = metadataSection.first ;
-      size_t xmlSize = metadataSection.second ;
-      if (rawXml == nullptr || xmlSize == 0)
-        return defaultClockSpeed ;
-
-      // Convert the raw character stream into a boost::property_tree
-      std::string xmlFile ;
-      xmlFile.assign(rawXml, xmlSize) ;
-      std::stringstream xmlStream ;
-      xmlStream << xmlFile ;
-      boost::property_tree::ptree xmlProject ;
-      boost::property_tree::read_xml(xmlStream, xmlProject) ;
-
-      // Dig in and find all of the kernel clocks
-      for (auto& clock : xmlProject.get_child("project.platform.device.core.kernelClocks")) {
-        if (clock.first != "clock")
-          continue ;
-
-        try {
-          std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
-          if (port != "DATA_CLK")
-            continue ;
-          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
-          std::string freqNumeral = freq.substr(0, freq.find('M')) ;
-          double frequency = defaultClockSpeed ;
-          std::stringstream convert ;
-          convert << freqNumeral ;
-          convert >> frequency ;
-          return frequency ;
-        }
-        catch (std::exception& /*e*/) {
-          continue ;
-        }
-      }
-    }
-
-    // We didn't find it in any section, so just assume 300 MHz for now
-    return defaultClockSpeed ;
-  }
-
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
@@ -1570,58 +1481,6 @@ namespace xdp {
     } catch(...) {
       // If we catch an exception, leave the rest of the port info as is.
     }
-  }
-
-  bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
-                                             const std::shared_ptr<xrt_core::device>& device)
-  {
-    // Step 1 -> Create the compute units based on the IP_LAYOUT section
-    const ip_layout* ipLayoutSection =
-      device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
-
-    if(ipLayoutSection == nullptr)
-      return true;
-
-    createComputeUnits(currentXclbin, ipLayoutSection);
-
-    // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
-    const mem_topology* memTopologySection =
-      device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
-
-    if(memTopologySection == nullptr)
-      return false;
-
-    createMemories(currentXclbin, memTopologySection);
-
-    // Step 3 -> Connect the CUs with the memory resources using the
-    //           CONNECTIVITY section
-    const connectivity* connectivitySection =
-      device->get_axlf_section<const connectivity*>(CONNECTIVITY);
-
-    if(connectivitySection == nullptr)
-      return true;
-
-    createConnections(currentXclbin, ipLayoutSection, memTopologySection,
-                      connectivitySection);
-
-    // Step 4 -> Annotate all the compute units with workgroup size using
-    //           the EMBEDDED_METADATA section
-    std::pair<const char*, size_t> embeddedMetadata =
-      device->get_axlf_section(EMBEDDED_METADATA);
-
-    annotateWorkgroupSize(currentXclbin, embeddedMetadata.first,
-                          embeddedMetadata.second);
-
-    // Step 5 -> Fill in the details like the name of the xclbin using
-    //           the SYSTEM_METADATA section
-    std::pair<const char*, size_t> systemMetadata =
-      device->get_axlf_section(SYSTEM_METADATA);
-
-    setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
-    updateSystemDiagram(systemMetadata.first, systemMetadata.second);
-    addPortInfo(currentXclbin, systemMetadata.first, systemMetadata.second);
-
-    return true;
   }
 
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
@@ -2019,52 +1878,6 @@ namespace xdp {
       xclbin->aie.numTracePLIO++ ;
     else
       xclbin->pl.usesTs2mm = true ;
-  }
-
-  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
-  {
-    // Look into the debug_ip_layout section and load information about Profile Monitors
-    // Get DEBUG_IP_LAYOUT section
-    const debug_ip_layout* debugIpLayoutSection =
-      device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
-    if(debugIpLayoutSection == nullptr) return false;
-
-    for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
-      const struct debug_ip_data* debugIpData =
-        &(debugIpLayoutSection->m_debug_ip_data[i]);
-      uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
-        (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-
-      std::string name(debugIpData->m_name);
-
-      std::stringstream msg;
-      msg << "Initializing profile monitor " << i
-          << ": name = " << name << ", index = " << index;
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-                              msg.str());
-
-      switch (debugIpData->m_type) {
-      case ACCEL_MONITOR:
-        initializeAM(devInfo, name, debugIpData) ;
-        break ;
-      case AXI_MM_MONITOR:
-        initializeAIM(devInfo, name, debugIpData) ;
-        break ;
-      case AXI_STREAM_MONITOR:
-        initializeASM(devInfo, name, debugIpData) ;
-        break ;
-      case AXI_NOC:
-        initializeNOC(devInfo, debugIpData) ;
-        break ;
-      case TRACE_S2MM:
-        initializeTS2MM(devInfo, debugIpData) ;
-        break ;
-      default:
-        break ;
-      }
-    }
-
-    return true; 
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
