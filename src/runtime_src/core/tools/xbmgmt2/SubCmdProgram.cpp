@@ -22,10 +22,6 @@ namespace XBU = XBUtilities;
 #include "core/common/utils.h"
 #include "flash/flasher.h"
 #include "core/common/info_vmr.h"
-// Remove linux specific code
-#ifdef __linux__
-#include "core/pcie/linux/pcidev.cpp"
-#endif
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
