@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Script to setup environment for XRT
 # This script is installed in /opt/xilinx/xrt and must
@@ -38,12 +39,11 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
 fi
 
 COMP_FILE="/usr/share/bash-completion/bash_completion"
-# 1. This is a hack to get around set -e
-# The issue is chaining conditionals with actual commands and is
-# documented here: http://mywiki.wooledge.org/BashFAQ/105\
+# 1. This is a workaround for set -e
+# The issue is chaining conditionals with actual commands
 # The issue is caused when sourcing the ${COMP_FILE}.
 # Specifically ${COMP_FILE}::_sysvdirs. Each check in that function
-# will fail the script due to the issues documented in the FAQ above.
+# will fail the script due to the issues.
 # If set -e is removed from the pipeline then check can be removed
 # 2. Make sure that the shell is bash! The completion may not function
 # correctly or setup on other shells.
