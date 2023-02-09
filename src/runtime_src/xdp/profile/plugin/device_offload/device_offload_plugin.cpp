@@ -220,15 +220,16 @@ namespace xdp {
         }
 
         uint64_t memorySz = (memory->size) * 1024;
-        // If we are requesting over 80% of the total memory, then cut it
-        // down so it fits.
-        auto eightyPercent =
-          static_cast<uint64_t>(static_cast<double>(memorySz) * 0.8);
-        if (memorySz > 0 && each_buffer_size >= eightyPercent) {
-            buf_sizes[i] = eightyPercent;
-            std::string msg = "Trace buffer size for TS2MM " + std::to_string(i)
-                              + " is too big for memory resource.  Using " + std::to_string(eightyPercent) + " (80% of total resource) instead.";
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        if (memorySz > 0 && each_buffer_size > memorySz) {
+          // If we are requesting more than the total available memory, then
+          // reduce it to a reasonable size so it fits
+          auto eightyPercent =
+            static_cast<uint64_t>(static_cast<double>(memorySz) * 0.8);
+
+          buf_sizes[i] = eightyPercent;
+          std::string msg = "Trace buffer size for TS2MM " + std::to_string(i)
+                            + " is too big for memory resource.  Using " + std::to_string(eightyPercent) + " (80% of total resource) instead.";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
       }
     }
