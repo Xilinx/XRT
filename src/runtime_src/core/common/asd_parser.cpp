@@ -686,8 +686,8 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
 
   // get all columns info for now 
   // TODO: add argument in function to get start col and num of cols from user
-  uint32_t start_col = 0;
-  uint32_t num_cols = info.cols;
+  uint16_t start_col = 0;
+  uint16_t num_cols = info.cols;
 
   // sanity checks
   aie_info_sanity_check(start_col, num_cols, info);

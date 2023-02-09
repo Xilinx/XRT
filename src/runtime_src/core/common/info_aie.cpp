@@ -276,7 +276,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
       // On Pcie platforms use driver calls to get AIE Shim info
       pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim, tiles_info);
     }
-    catch (const std::exception& ex) {
+    catch (const std::exception&) {
       pt.put("error_msg", "AIE shim tile information is not available");
       return pt;
     }
@@ -354,7 +354,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
       // On Pcie platforms use driver calls to get AIE memm info
       pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem, tiles_info);
     }
-    catch (const std::exception& ex) {
+    catch (const std::exception&) {
       pt.put("error_msg", "AIE mem tile information is not available");
       return pt;
     }
