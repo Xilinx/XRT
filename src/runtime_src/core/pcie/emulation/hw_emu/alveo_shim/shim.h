@@ -227,7 +227,7 @@ using addr_type = uint64_t;
 
       // aka xclCreateHWContext, internal shim API for native C++ applications only
       std::unique_ptr<xrt_core::hwctx_handle>
-      create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
+      create_hw_context(const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
 
       // aka xclRegisterXclbin, internal shim API for native C++ applications only
       void
