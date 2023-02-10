@@ -11,6 +11,7 @@ set(XRT_LOADER_SCRIPTS
   loader)
 
 set (XRT_SCRIPTS
+  service_bundle.sh
   plp_program.sh)
 
 else()

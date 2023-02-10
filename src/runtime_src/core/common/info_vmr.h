@@ -16,7 +16,8 @@ boost::property_tree::ptree
 vmr_info(const xrt_core::device * device);
 
 enum class vmr_status_type {
-  boot_on_default = 0
+  boot_on_default = 0,
+  has_fpt,
 };
 
 XRT_CORE_COMMON_EXPORT

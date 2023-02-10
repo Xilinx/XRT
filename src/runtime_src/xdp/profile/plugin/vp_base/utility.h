@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,10 +25,12 @@
 
 namespace xdp {
 
-  XDP_EXPORT std::string getCurrentDateTime() ;
-  XDP_EXPORT const char* getToolVersion() ;
-  XDP_EXPORT std::string getXRTVersion() ;
-  XDP_EXPORT bool isEdge() ;
+  XDP_EXPORT std::string getCurrentDateTime();
+  XDP_EXPORT std::string getMsecSinceEpoch();
+  XDP_EXPORT const char* getToolVersion();
+  XDP_EXPORT std::string getXRTVersion();
+  XDP_EXPORT bool isEdge();
+  XDP_EXPORT uint64_t getPSMemorySize();
 
   enum Flow {
     SW_EMU  = 0,
@@ -50,7 +53,7 @@ namespace xdp {
     constexpr double ddr4_2400_bandwidth = 19250.00;
   }
 
-  XDP_EXPORT Flow getFlowMode() ;
+  XDP_EXPORT Flow getFlowMode();
 
 } // end namespace xdp
 

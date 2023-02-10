@@ -23,13 +23,22 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	xuid_t *xclbin_id = NULL;
 	ssize_t cnt = 0;
 	int err = 0;
+	int i = 0;
 
-	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
-	if (err)
-		return cnt;
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, i);
+		if (err)
+			return cnt;
 
-	cnt = sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
-	XOCL_PUT_XCLBIN_ID(xdev);
+		if (!xclbin_id)
+			continue;
+
+		cnt += sprintf(buf + cnt, "%pUb\n", xclbin_id ? xclbin_id : 0);
+
+		XOCL_PUT_XCLBIN_ID(xdev, i);
+		xclbin_id = NULL;
+	}
+
 	return cnt;
 }
 
@@ -89,16 +98,26 @@ static ssize_t kdsstat_show(struct device *dev,
 	int size = 0, err;
 	xuid_t *xclbin_id = NULL;
 	pid_t *plist = NULL;
-	u32 clients, i;
+	u32 clients = 0;
+	u32 i = 0;
 
-	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
-	if (err) {
-		size += sprintf(buf + size, "unable to give xclbin id");
-		return size;
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, i);
+		if (err) {
+			size += sprintf(buf + size, "unable to give xclbin id");
+			return size;
+		}
+
+		if (!xclbin_id)
+			continue;
+
+		size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
+				xclbin_id ? xclbin_id : 0);
+		
+		XOCL_PUT_XCLBIN_ID(xdev, i);
+		xclbin_id = NULL;
 	}
 
-	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
-		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
 		atomic_read(&xdev->outstanding_execs));
 	size += sprintf(buf + size, "total execs:\t\t%lld\n",
@@ -110,7 +129,6 @@ static ssize_t kdsstat_show(struct device *dev,
 	for (i = 0; i < clients; i++)
 		size += sprintf(buf + size, "\t\t\t%d\n", plist[i]);
 	vfree(plist);
-	XOCL_PUT_XCLBIN_ID(xdev);
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -129,10 +147,11 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	struct drm_xocl_mm_stat stat;
 	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
 	const char *bo_types[XOCL_BO_USAGE_TOTAL];
+	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 
 	mutex_lock(&xdev->dev_lock);
 
-	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
+	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo, legacy_slot_id);
 	if (err) {
 		mutex_unlock(&xdev->dev_lock);
 		return err;
@@ -204,7 +223,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 done:
-	XOCL_PUT_GROUP_TOPOLOGY(xdev);
+	XOCL_PUT_MEM_TOPOLOGY(xdev, legacy_slot_id);
 	mutex_unlock(&xdev->dev_lock);
 	return size;
 }
@@ -764,6 +783,7 @@ static ssize_t vmr_status_show(struct device *dev,
 		return 0;
 	}
 
+	cnt += sprintf(buf + cnt, "HAS_FPT:%d\n", vmr_status->has_fpt);
 	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
 	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
 	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
@@ -821,14 +841,24 @@ static ssize_t ulp_uuids_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	const void *uuid;
 	int node = -1, off = 0;
+	int ret = 0;
+	uint32_t slot_id = 0;
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 
-	if (!xdev->ulp_blob || fdt_check_header(xdev->ulp_blob))
+	ret = xocl_get_pl_slot(xdev, &slot_id);
+        if (ret) {
+                userpf_err(xdev, "Xclbin is not present");
+                return ret;
+        }
+
+	axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
+	if (!axlf_obj->ulp_blob || fdt_check_header(axlf_obj->ulp_blob))
 		return -EINVAL;
 
-	for (node = xocl_fdt_get_next_prop_by_name(xdev, xdev->ulp_blob,
-		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+	for (node = xocl_fdt_get_next_prop_by_name(xdev, axlf_obj->ulp_blob,
+			-1, PROP_INTERFACE_UUID, &uuid, NULL);
 	    uuid && node > 0;
-	    node = xocl_fdt_get_next_prop_by_name(xdev, xdev->ulp_blob,
+	    node = xocl_fdt_get_next_prop_by_name(xdev, axlf_obj->ulp_blob,
 		node, PROP_INTERFACE_UUID, &uuid, NULL))
 		off += sprintf(buf + off, "%s\n", (char *)uuid);
 

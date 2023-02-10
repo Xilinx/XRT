@@ -238,14 +238,11 @@ enum class module_type {
   class aie_cfg_mem_tile : public aie_cfg_base
   {
   public:
+    bool port_trace_is_master[NUM_MEM_TILE_PORTS] = {};
     uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
-    std::string port_trace_is_master[NUM_MEM_TILE_PORTS];
     uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
     uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
-    aie_cfg_mem_tile() : aie_cfg_base(4) {
-      for (uint32_t i=0; i < NUM_MEM_TILE_PORTS; ++i)
-        port_trace_is_master[i] = "false";
-    };
+    aie_cfg_mem_tile() : aie_cfg_base(4) {}
   };
 
   /*
@@ -261,7 +258,7 @@ enum class module_type {
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
     aie_cfg_mem_tile mem_tile_trace_config;
-    aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
+    aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
 } // end namespace xdp

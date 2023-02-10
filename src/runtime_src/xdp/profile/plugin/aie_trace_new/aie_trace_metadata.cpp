@@ -890,11 +890,16 @@ namespace xdp {
   }
 
    uint8_t AieTraceMetadata::getMetricSetIndex(std::string metricString){    
-    auto itr = std::find(metricSets.begin(), metricSets.end(), metricString);
-    if (itr == metricSets.cend()){
-      return 0;
+
+    //Check if the metricSet is valid for either regular tiles or memtiles, and convert to an index to pass to PS kernel.
+    auto metricSetItr = std::find(metricSets.begin(), metricSets.end(), metricString);
+    auto memTileMetricSetItr = std::find(memTileMetricSets.begin(), memTileMetricSets.end(), metricString);
+    if (metricSetItr == metricSets.cend() && memTileMetricSetItr == memTileMetricSets.cend()){
+      return 0; //Default
+    } else if (metricSetItr != metricSets.cend()){
+      return std::distance(metricSets.begin(), metricSetItr);
     } else {
-      return std::distance(metricSets.begin(), itr);
+      return std::distance(memTileMetricSets.begin(), memTileMetricSetItr);
     }
   }
   

@@ -156,6 +156,7 @@ done:
 static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 {
 	long err = 0;
+	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
 
@@ -206,8 +207,9 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
+	/* For legacy case always download to slot 0 */
 	if (lro->preload_xclbin)
-		xocl_xclbin_download(lro, lro->preload_xclbin);
+		xocl_xclbin_download(lro, lro->preload_xclbin, legacy_slot_id);
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)

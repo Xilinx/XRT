@@ -121,23 +121,6 @@ namespace xdp {
 
   void SummaryWriter::writeHeader()
   {
-    std::string currentTime = "0000-00-00 0000" ;
-
-    auto time = 
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) ;
-    struct tm* p_tstruct = std::localtime(&time) ;
-    if (p_tstruct) {
-      char buf[80] = {0} ;
-      strftime(buf, sizeof(buf), "%Y-%m-%d %X", p_tstruct) ;
-      currentTime = std::string(buf) ;
-    }
-
-    std::string msecSinceEpoch = "" ;
-    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
-    auto value =
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch) ;
-    msecSinceEpoch = std::to_string(value.count()) ;
-
     std::string execName = "" ;
 #if defined(__linux__) && defined (__x86_64__)
     const int maxLength = 1024 ;
@@ -158,8 +141,8 @@ namespace xdp {
     xrt_core::get_xrt_build_info(xrtInfo) ;
 
     fout << "Profile Summary\n" ;
-    fout << "Generated on: " << currentTime << "\n" ;
-    fout << "Msec since Epoch: " << msecSinceEpoch << "\n" ;
+    fout << "Generated on: " << getCurrentDateTime() << "\n" ;
+    fout << "Msec since Epoch: " << getMsecSinceEpoch() << "\n" ;
     fout << "Profiled application: " << execName << "\n" ;
     fout << "Target platform: " << "Xilinx" << "\n" ;
     fout << "Tool version: " << getToolVersion() << "\n" ;

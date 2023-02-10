@@ -119,6 +119,7 @@ struct FeatureRomHeader {
 // This struct contains the status of the VMR subdevice found
 // on certain cards like u50s and versal platforms.
 struct VmrStatus {
+	uint16_t has_fpt; // 1 if device metadata is available. If it is not available something is wrong with the card
 	uint16_t boot_on_default; // 1 If the VMR device is currently running on its "A" or default image
 	uint16_t boot_on_backup; // 1 If the VMR device is currently running on its "B" or backup image
 	uint16_t boot_on_recovery; // 1 If the VMR device is currently running on its recovery image

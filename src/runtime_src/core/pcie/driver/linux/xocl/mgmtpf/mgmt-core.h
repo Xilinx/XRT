@@ -200,7 +200,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro);
 void xclmgmt_ocl_reset(struct xclmgmt_dev *lro);
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro);
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro);
-int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf *xclbin);
+int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro,
+        const struct axlf *xclbin, uint32_t slot_id);
 
 /* bifurcation-reset.c */
 long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,

@@ -696,10 +696,12 @@ namespace xdp {
     }
   }
 
-  // Complete training to convert device timestamp to host time domain
-  // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
-  // clock training relation is linear within small durations (1 sec)
-  // x, y coordinates are used for clock training
+  // Clock training packets in hardware have pairs of device timestamps and
+  // corresponding host timestamps.  We need at least two training packets
+  // to plot a line and get the slopes we use for adjusting timestamps.
+  // As the device progresses, we'll encounter additional training packets and
+  // they may not be continuous, so this function uses static variables
+  // to keep track of the last packet we've seen.
   void DeviceTraceLogger::trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp)
   {
     static double y1 = 0.0;

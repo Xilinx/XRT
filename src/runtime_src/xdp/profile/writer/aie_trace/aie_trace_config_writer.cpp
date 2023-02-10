@@ -19,6 +19,7 @@
 #include "aie_trace_config_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -38,7 +39,8 @@ namespace xdp {
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 
     EventTraceConfigs_C.put("datacorrelation", 1);
-    EventTraceConfigs_C.put("timestamp", 0);
+    EventTraceConfigs_C.put("date", getCurrentDateTime());
+    EventTraceConfigs_C.put("timestamp", getMsecSinceEpoch());
 
     bpt::ptree TraceConfig;
     bpt::ptree AieTileTraceConfig;
@@ -304,11 +306,22 @@ namespace xdp {
       }
     }
 
+    // Write tile trace configs
+    // NOTE: TileTraceConfig and ShimTraceConfig are required
+    //       MemTileTraceConfig is optional based on family
+    if (AieTileTraceConfig.empty()) {
+      bpt::ptree dummy;
+      AieTileTraceConfig.push_back(std::make_pair("", dummy));
+    }
     TraceConfig.add_child("TileTraceConfig", AieTileTraceConfig);
-    if (!MemTileTraceConfig.empty())
+    if (!MemTileTraceConfig.empty()) {
       TraceConfig.add_child("MemTileTraceConfig", MemTileTraceConfig);
-    if (!ShimTileTraceConfig.empty())
-      TraceConfig.add_child("ShimTraceConfig", ShimTileTraceConfig);
+    }
+    if (ShimTileTraceConfig.empty()) {
+      bpt::ptree dummy;
+      ShimTileTraceConfig.push_back(std::make_pair("", dummy));
+    }
+    TraceConfig.add_child("ShimTraceConfig", ShimTileTraceConfig);
     EventTraceConfigs_C.add_child("TraceConfig", TraceConfig);
 
     EventTraceConfigs.push_back(std::make_pair("", EventTraceConfigs_C));

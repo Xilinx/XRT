@@ -24,7 +24,9 @@
 #include <vector>
 #include "xaiefal/xaiefal.hpp"
 #include "xaiengine.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_profile_new/x86/aie_profile_kernel_config.h"
+#include "xdp/profile/plugin/aie_profile_new/aie_profile_defs.h"
 
 // This struct encapsulates all of the internal configuration information
 // for a single AIE tile
@@ -35,9 +37,16 @@ struct EventConfiguration {
   std::map<xdp::built_in::MemoryMetrics, std::vector<XAie_Events>> mMemoryEndEvents;
   std::map<xdp::built_in::InterfaceMetrics, std::vector<XAie_Events>> mShimStartEvents;
   std::map<xdp::built_in::InterfaceMetrics, std::vector<XAie_Events>> mShimEndEvents;
+  std::map<xdp::module_type, uint32_t> mCounterBases;
 
-  
   void initialize() {
+    mCounterBases = {
+      {xdp::module_type::core,     0},
+      {xdp::module_type::dma,      BASE_MEMORY_COUNTER},
+      {xdp::module_type::shim,     BASE_SHIM_COUNTER},
+      {xdp::module_type::mem_tile, BASE_MEM_TILE_COUNTER}
+    };
+
     mCoreStartEvents = {
       {xdp::built_in::CoreMetrics::HEAT_MAP,              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
                                  XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},

@@ -21,6 +21,7 @@ namespace xdp {
 namespace built_in {
 
 
+
   enum class CoreMetrics : uint8_t 
   {
     HEAT_MAP = 0,
@@ -51,6 +52,16 @@ namespace built_in {
     PACKETS = 2
   };
 
+  enum class MemTileMetrics : uint8_t 
+  {
+    INPUT_CHANNELS = 0,
+    INPUT_CHANNELS_DETAILS = 1,
+    OUTPUT_CHANNELS = 2,
+    OUTPUT_CHANNELS_DETAILS = 3,
+    MEMORY_STATS = 4,
+    MEM_TRACE = 5
+  };
+
   // This struct is used for input for the PS kernel.  It contains all of
   // the information gathered from the user controls in the xrt.ini file
   // and the information we can infer from the debug ip layout file.
@@ -68,6 +79,8 @@ namespace built_in {
     bool     is_trigger;
     uint8_t metricSet;
     uint8_t tile_mod;
+    uint8_t channel0 = -1;
+    uint8_t channel1 = -1;
   };
 
   struct ProfileInputConfiguration
@@ -75,9 +88,11 @@ namespace built_in {
     static constexpr auto NUM_CORE_COUNTERS = 4;
     static constexpr auto NUM_MEMORY_COUNTERS = 2;
     static constexpr auto NUM_SHIM_COUNTERS = 2;
-    static constexpr int NUM_MODULES = 3;
+    static constexpr auto NUM_MEM_TILE_COUNTERS = 4;
 
     uint16_t numTiles;
+    uint8_t offset;
+ 
     // uint16_t numTiles[NUM_MODULES]; // Make unique variab
     ProfileTileType tiles[1]; //flexible array member
   };

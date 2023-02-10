@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -148,6 +148,16 @@ namespace xdp {
   uint64_t VPDynamicDatabase::matchingXRTUIDStart(uint64_t uid)
   {
     return host->matchingXRTUIDStart(uid);
+  }
+
+  void VPDynamicDatabase::markEventPairStart(uint64_t functionId, const EventPair& events)
+  {
+    host->registerEventPairStart(functionId, events);
+  }
+
+  EventPair VPDynamicDatabase::matchingEventPairStart(uint64_t functionId)
+  {
+    return host->matchingEventPairStart(functionId);
   }
 
   void VPDynamicDatabase::markRange(uint64_t functionID,

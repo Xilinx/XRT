@@ -38,7 +38,7 @@ int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
 	struct drm_zocl_axlf *axlf_obj, struct sched_client_ctx *client);
 int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_slot *slot);
-int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data);
+int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_id);
 bool zocl_xclbin_accel_adapter(int kds_mask);
 int zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
 		      struct drm_zocl_slot *slot, char *dtbo_path, uint32_t len);

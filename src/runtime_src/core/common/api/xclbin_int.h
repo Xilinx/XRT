@@ -29,6 +29,7 @@ xrt::xclbin
 get_xclbin(xrtXclbinHandle);
 
 // get_axlf_section() - Retrieve specified section
+XRT_CORE_COMMON_EXPORT
 std::pair<const char*, size_t>
 get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind);
 

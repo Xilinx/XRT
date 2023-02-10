@@ -90,7 +90,6 @@ MODULE_PARM_DESC(vmr_sc_ready_timeout,
 
 #define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
 
-static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_INVALID_CID	0xFFFF
 
 #define SC_WAIT_INTERVAL_MSEC       1000
@@ -155,6 +154,7 @@ struct xocl_xgq_vmr {
 	void __iomem		*xgq_cq_base;
 	struct mutex 		xgq_lock;
 	struct mutex 		clk_scaling_lock;
+	struct idr		xgq_vmr_cid_idr;
 	struct vmr_shared_mem	xgq_vmr_shared_mem;
 	bool 			xgq_polling;
 	bool 			xgq_boot_from_backup;
@@ -189,6 +189,8 @@ struct xocl_xgq_vmr {
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
 static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
+static uint64_t xgq_get_data(struct platform_device *pdev,
+	enum data_kind kind);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -874,7 +876,7 @@ static inline int get_xgq_cid(struct xocl_xgq_vmr *xgq)
 	int id = 0;
 
 	mutex_lock(&xgq->xgq_lock);
-	id = idr_alloc_cyclic(&xocl_xgq_vmr_cid_idr, xgq, 0, 0, GFP_KERNEL);
+	id = idr_alloc_cyclic(&xgq->xgq_vmr_cid_idr, xgq, 0, 0, GFP_KERNEL);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return id;
@@ -883,7 +885,7 @@ static inline int get_xgq_cid(struct xocl_xgq_vmr *xgq)
 static inline void remove_xgq_cid(struct xocl_xgq_vmr *xgq, int id)
 {
 	mutex_lock(&xgq->xgq_lock);
-	idr_remove(&xocl_xgq_vmr_cid_idr, id);
+	idr_remove(&xgq->xgq_vmr_cid_idr, id);
 	mutex_unlock(&xgq->xgq_lock);
 }
 
@@ -1066,7 +1068,8 @@ static int xgq_program_scfw(struct platform_device *pdev)
 
 /* Note: caller is responsibe for vfree(*fw) */
 static int xgq_log_page_fw(struct platform_device *pdev,
-	char **fw, size_t *fw_size, enum xgq_cmd_log_page_type req_pid)
+	char **fw, size_t *fw_size, enum xgq_cmd_log_page_type req_pid,
+	loff_t off, size_t req_size)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1092,10 +1095,13 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 		goto acquire_failed;
 	}
 
+	/* adjust requested len based on req_size */
+	len = (req_size && req_size < len) ? req_size : len;
+
 	payload = &(cmd->xgq_cmd_entry.log_payload);
 	payload->address = address;
 	payload->size = len;
-	payload->offset = 0;
+	payload->offset = off;
 	payload->pid = req_pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1173,7 +1179,7 @@ acquire_failed:
 static int xgq_log_page_metadata(struct platform_device *pdev,
 	char **fw, size_t *fw_size)
 {
-	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW);
+	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW, 0, 0);
 }
 
 static int xgq_refresh_plm_log(struct xocl_xgq_vmr *xgq)
@@ -1182,7 +1188,7 @@ static int xgq_refresh_plm_log(struct xocl_xgq_vmr *xgq)
 		vfree(xgq->xgq_vmr_plm_log);
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_plm_log,
-		&xgq->xgq_vmr_plm_log_size, XGQ_CMD_LOG_PLM_LOG);
+		&xgq->xgq_vmr_plm_log_size, XGQ_CMD_LOG_PLM_LOG, 0, 0);
 }
 
 static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
@@ -1191,7 +1197,14 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		vfree(xgq->xgq_vmr_system_dtb);
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_system_dtb,
-		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
+		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB, 0, 0);
+}
+
+static int xgq_vmr_apu_log(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
+	loff_t off, size_t req_size)
+{
+	return xgq_log_page_fw(xgq->xgq_pdev, fw, fw_size, XGQ_CMD_LOG_APU_LOG,
+		off, req_size);
 }
 
 static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr)
@@ -1211,11 +1224,13 @@ static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status
 	vmr_status_ptr->boot_on_default = vmr_status->boot_on_default;
 	vmr_status_ptr->boot_on_backup = vmr_status->boot_on_backup;
 	vmr_status_ptr->boot_on_recovery = vmr_status->boot_on_recovery;
+	vmr_status_ptr->has_fpt = vmr_status->has_fpt;
 
 	return 0;
 }
 
-static int xgq_vmr_healthy_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
+static int xgq_vmr_healthy_op(struct platform_device *pdev,
+	enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1481,9 +1496,38 @@ static int vmr_memory_info_query(struct platform_device *pdev,
 	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_MEM_STATS);
 }
 
+static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs)
+{
+	int ret = 0, i = 0;
+	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	//TO DO:- Need to enhance the following Hard Coded Part by creating new Interface using Call Backs.
+	enum data_kind kinds[3] = {FREQ_COUNTER_0, FREQ_COUNTER_1, FREQ_COUNTER_2};
+
+	for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i)
+	{
+		if (!target_freqs[i])
+			continue;
+
+		clock_freq_counter = (u32)xgq_get_data(pdev, kinds[i]);
+
+		lookup_freq = target_freqs[i];
+		request_in_khz = lookup_freq*1000;
+		tolerance = lookup_freq*50;
+		if (tolerance < abs(clock_freq_counter-request_in_khz))
+		{
+			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
+					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+			ret = -EDOM;
+			break;
+		}
+	}
+	return ret;
+}
+
 /* On versal, verify is enforced. */
-static int xgq_freq_scaling(struct platform_device *pdev,
-	unsigned short *freqs, int num_freqs, int verify)
+static int xgq_freq_scaling_impl(struct platform_device *pdev,
+	unsigned short *freqs, int num_freqs)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1556,6 +1600,22 @@ done:
 cid_alloc_failed:
 	kfree(cmd);
 
+	return ret;
+}
+
+static int xgq_freq_scaling(struct platform_device *pdev,
+	unsigned short *freqs, int num_freqs, int verify)
+{
+	int ret = 0;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	ret = xgq_freq_scaling_impl(pdev, freqs, num_freqs);
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+		return ret;
+	}
+	if (verify) {
+		ret = xgq_freq_verify(pdev, freqs, num_freqs);
+	}
 	return ret;
 }
 
@@ -3042,6 +3102,39 @@ static struct bin_attribute bin_attr_vmr_plm_log = {
 	.size = 0
 };
 
+static ssize_t vmr_apu_log_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xgq_vmr *xgq =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	char *log_buf = NULL;
+	ssize_t log_size = 0;
+	int ret = 0;
+
+	/* return count should be less or equal to count */
+	ret = xgq_vmr_apu_log(xgq, &log_buf, &log_size, off, count);
+	if (ret)
+		return ret;
+
+	/* adjust log_size to be within requested count range */
+	log_size = log_size > count ? count : log_size;
+
+	memcpy(buf, log_buf, log_size);
+	vfree(log_buf);
+
+	return log_size;
+}
+
+static struct bin_attribute bin_attr_vmr_apu_log = {
+	.attr = {
+		.name = "vmr_apu_log",
+		.mode = 0444
+	},
+	.read = vmr_apu_log_read,
+	.write = NULL,
+	.size = 0
+};
+
 static struct attribute *vmr_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
@@ -3069,6 +3162,7 @@ static struct attribute *vmr_attrs[] = {
 static struct bin_attribute *vmr_bin_attrs[] = {
 	&bin_attr_vmr_system_dtb,
 	&bin_attr_vmr_plm_log,
+	&bin_attr_vmr_apu_log,
 	NULL,
 };
 static struct attribute_group xgq_attr_group = {
@@ -3199,6 +3293,7 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	xgq_stop_services(xgq);
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
+	idr_destroy(&xgq->xgq_vmr_cid_idr);
 
 	if (xgq->xgq_payload_base)
 		iounmap(xgq->xgq_payload_base);
@@ -3356,6 +3451,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	if (ret)
 		goto attach_failed;
 
+	/* init cid_idr per card */
+	idr_init(&xgq->xgq_vmr_cid_idr);
 	/* init condition veriable */
 	init_completion(&xgq->xgq_irq_complete);
 
