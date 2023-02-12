@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
@@ -160,16 +160,6 @@ public:
   // Exec Buf with hw ctx handle.
   void
   exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* ctxhdl);
-
-  void
-  get_aie_status_version_info(uint16_t& aie_ver_major, uint16_t& aie_ver_minor);
-
-  void
-  get_aie_tiles_info(char* buf, uint32_t size);
-
-  void
-  get_aie_col_info(char* buf, uint32_t size, uint32_t start_col, uint32_t cols);
-
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
   std::shared_ptr<xrt_core::pci::dev> mDev;

@@ -163,7 +163,7 @@ get_aie_row_col(const xrt_core::device* device, uint32_t &row, uint32_t &col)
 {
   std::string err;
   std::string value;
-  static std::string AIE_TAG = "aie_metadata";
+  static const std::string AIE_TAG = "aie_metadata";
   constexpr uint32_t major = 1;
   constexpr uint32_t minor = 0;
   constexpr uint32_t patch = 0;

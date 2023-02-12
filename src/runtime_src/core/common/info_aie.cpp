@@ -263,30 +263,37 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
   pt.put("description", desc);
   boost::property_tree::ptree pt_shim;
 
+  // Read AIE Shim information of the device
   try {
-    // Read AIE Shim information of the device
     // On Edge platforms this info is populated using sysfs
     std::string aie_data = xrt_core::device_query<qr::aie_shim_info_sysfs>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_shim);
   }
   catch (const qr::no_such_key&) {
-    try {
-      asd_parser::aie_tiles_info tiles_info{0};
-      // On Pcie platforms use driver calls to get AIE Shim info
-      pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim, tiles_info);
-    }
-    catch (const std::exception&) {
-      pt.put("error_msg", "AIE shim tile information is not available");
-      return pt;
-    }
-  }
-  catch (const xrt_core::query::exception&) {
-    pt.put("error_msg", "AIE shim tile information is not available");
-    return pt;
+    // Not Edge device
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  try {
+    asd_parser::aie_tiles_info tiles_info{0};
+    // On Pcie platforms use driver calls to get AIE Shim info
+    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim, tiles_info);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Not Pcie device
+  }
+  catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  if (pt_shim.empty()) {
+    // AIE Shim tile not available
+    pt.put("error_msg", "AIE Shim tile information is not available");
     return pt;
   }
 
@@ -341,26 +348,37 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
   pt.put("description", desc);
   boost::property_tree::ptree pt_mem;
 
+  // Read AIE Mem information of the device
   try {
-    // Read AIE Mem information of the device
     // On Edge platforms this info is populated using sysfs
     std::string aie_data = xrt_core::device_query<qr::aie_mem_info_sysfs>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_mem);
   }
   catch (const xrt_core::query::no_such_key&) {
-    try {
-      asd_parser::aie_tiles_info tiles_info{0};
-      // On Pcie platforms use driver calls to get AIE memm info
-      pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem, tiles_info);
-    }
-    catch (const std::exception&) {
-      pt.put("error_msg", "AIE mem tile information is not available");
-      return pt;
-    }
+    // Not Edge device
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  try {
+    asd_parser::aie_tiles_info tiles_info{0};
+    // On Pcie platforms use driver calls to get AIE mem info
+    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem, tiles_info);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Not Pcie device
+  }
+  catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  if (pt_mem.empty()) {
+    // AIE Mem tile not available
+    pt.put("error_msg", "AIE Mem tile information is not available");
     return pt;
   }
 
@@ -887,15 +905,18 @@ populate_aie(const xrt_core::device* device, const std::string& desc)
     boost::property_tree::read_json(ss, pt_aie);
 
     populate_aie_from_metadata(device, pt_aie, pt);
+    return pt;
   }
   catch (const qr::no_such_key&) {
     // pcie platforms dont have aie metadata
-    populate_aie_helper(device, pt);
   }
   catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));
+    return pt;
   }
 
+  // Populate aie info for PCIe platforms
+  populate_aie_helper(device, pt);
   return pt;
 }
 

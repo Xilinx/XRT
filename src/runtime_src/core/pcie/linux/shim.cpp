@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
@@ -3150,4 +3150,3 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
     *size_ret = 0;
   return;
 }
-
