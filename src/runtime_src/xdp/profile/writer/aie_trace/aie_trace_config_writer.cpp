@@ -278,7 +278,7 @@ namespace xdp {
             }
 
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
-            port_trace_config.add_child("master", port_trace_is_master);
+            port_trace_config.add_child("master_str", port_trace_is_master);
             MemTileTraceConfig_C.add_child("PortTraceConfig", port_trace_config);
           }
 
