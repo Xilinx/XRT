@@ -1489,7 +1489,6 @@ namespace xdp {
     }
   }
 
-<<<<<<< HEAD
   void VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -1515,60 +1514,6 @@ namespace xdp {
     //xclbin->pl.ip_metadata_section->print();
   }
 
-  bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
-                                             const std::shared_ptr<xrt_core::device>& device)
-  {
-    // Step 1 -> Create the compute units based on the IP_LAYOUT section
-    const ip_layout* ipLayoutSection =
-      device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
-
-    if(ipLayoutSection == nullptr)
-      return true;
-
-    createComputeUnits(currentXclbin, ipLayoutSection);
-
-    // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
-    const mem_topology* memTopologySection =
-      device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
-
-    if(memTopologySection == nullptr)
-      return false;
-
-    createMemories(currentXclbin, memTopologySection);
-
-    // Step 3 -> Connect the CUs with the memory resources using the
-    //           CONNECTIVITY section
-    const connectivity* connectivitySection =
-      device->get_axlf_section<const connectivity*>(CONNECTIVITY);
-
-    if(connectivitySection == nullptr)
-      return true;
-
-    createConnections(currentXclbin, ipLayoutSection, memTopologySection,
-                      connectivitySection);
-
-    // Step 4 -> Annotate all the compute units with workgroup size using
-    //           the EMBEDDED_METADATA section
-    std::pair<const char*, size_t> embeddedMetadata =
-      device->get_axlf_section(EMBEDDED_METADATA);
-
-    annotateWorkgroupSize(currentXclbin, embeddedMetadata.first,
-                          embeddedMetadata.second);
-
-    // Step 5 -> Fill in the details like the name of the xclbin using
-    //           the SYSTEM_METADATA section
-    std::pair<const char*, size_t> systemMetadata =
-      device->get_axlf_section(SYSTEM_METADATA);
-
-    setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
-    updateSystemDiagram(systemMetadata.first, systemMetadata.second);
-    addPortInfo(currentXclbin, systemMetadata.first, systemMetadata.second);
-
-    return true;
-  }
-
-=======
->>>>>>> 2a0b617af41a222ebb166cb01e670ef3e3788cac
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
                                             const ip_layout* ipLayoutSection)
   {
