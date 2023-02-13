@@ -289,6 +289,7 @@ namespace xdp {
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
+    int startCount = 0;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
       auto currGraph = graph.second.get<std::string>("name");
@@ -296,7 +297,7 @@ namespace xdp {
            && (graph_name.compare("all") != 0))
         continue;
 
-      int count = 0;
+      int count = startCount;
       for (auto& node : graph.second.get_child(col_name)) {
         tiles.push_back(tile_type());
         auto& t = tiles.at(count++);
@@ -304,10 +305,11 @@ namespace xdp {
       }
 
       int num_tiles = count;
-      count = 0;
+      count = startCount;
       for (auto& node : graph.second.get_child(row_name))
         tiles.at(count++).row = std::stoul(node.second.data()) + rowOffset;
       throw_if_error(count < num_tiles, "rows < num_tiles");
+      startCount = count;
     }
 
     return tiles;
@@ -322,7 +324,7 @@ namespace xdp {
     tiles = get_event_tiles(device, graph_name, module_type::core);
     if (type == module_type::dma) {
       auto dmaTiles = get_event_tiles(device, graph_name, module_type::dma);
-      std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles));
+      std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), tileCompare);
     }
     return tiles;
   }
@@ -394,6 +396,13 @@ namespace xdp {
                  : ((mod == module_type::dma) ? "aie_memory"
                  : "mem_tile");
 
+    auto allValidKernels = get_kernels(device.get());
+    auto allValidGraphs = get_graphs(device.get());
+
+    std::set<tile_type> allValidTiles;
+    auto validTilesVec = get_tiles(device.get(), "all", mod);
+    std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), tileCompare);
+
     // STEP 1 : Parse per-graph or per-kernel settings
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -405,14 +414,6 @@ namespace xdp {
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
-
-    std::set<tile_type> allValidTiles;
-    auto allValidKernels = get_kernels(device.get());
-    auto allValidGraphs = get_graphs(device.get());
-    for (auto& graph : allValidGraphs) {
-      std::vector<tile_type> currTiles = get_tiles(device.get(), graph, mod);
-      std::copy(currTiles.begin(), currTiles.end(), std::inserter(allValidTiles, allValidTiles.end()));
-    }
 
     // Graph Pass 1 : process only "all" metric setting 
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
@@ -683,9 +684,9 @@ namespace xdp {
         configMetrics[moduleIdx][e] = defaultSets[moduleIdx];
     }
 
+    bool showWarning = true;
     std::vector<tile_type> offTiles;
 
-    bool showWarning = true;
     for (auto &tileMetric : configMetrics[moduleIdx]) {
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
