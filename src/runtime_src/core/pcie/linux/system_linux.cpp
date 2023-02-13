@@ -208,7 +208,6 @@ get_os_info(boost::property_tree::ptree &pt)
   }
 
   // The file is a requirement as per latest Linux standards
-  // https://www.freedesktop.org/software/systemd/man/os-release.html
   std::ifstream ifs("/etc/os-release");
   if ( ifs.good() ) {
       boost::property_tree::ptree opt;
@@ -244,7 +243,7 @@ get_device_id(const std::string& bdf) const
   // Treat non bdf as device index
   if (bdf.find_first_not_of("0123456789") == std::string::npos)
     return system::get_device_id(bdf);
-    
+
   unsigned int i = 0;
   for (auto dev = get_pcidev(0); dev; dev = get_pcidev(++i)) {
       // [dddd:bb:dd.f]
