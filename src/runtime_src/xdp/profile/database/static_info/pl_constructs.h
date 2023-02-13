@@ -177,7 +177,7 @@ namespace xdp {
     // The index of the Compute Unit in the IP_LAYOUT section of the xclbin
     int32_t index ;
 
-    // The base address and name of the CU in the IP_LAYOUT
+    // fullname of the CU in the IP_LAYOUT
     std::string fullname ;
 
     // The name of the compute unit, parsed out of the portion of the
@@ -216,11 +216,6 @@ namespace xdp {
     // the master ports of this compute unit that could connect to a memory
     // resource
     std::vector<Port> masterPorts;
-
-    // Deadlock Diagnosis registers
-    // Each entry in map looks like:
-    // Register Offset -> {message[0], message[1]...message[31]}
-    std::map<uint32_t, std::vector<std::string>> dlDiagRegInfo;
 
     // If this compute unit has any AIMs or ASMs attached to its ports,
     //  then these vectors will keep track of the slot IDs inside the
@@ -339,31 +334,34 @@ namespace xdp {
   } ;
 
 
-constexpr uint32_t num_bits_deadlock_diagnosis = 32;
-using kernel_reginfo = std::map<uint32_t, std::array<std::string, num_bits_deadlock_diagnosis>>;
-/* Class to handle parsing of IP_METADATA section in xclbin*/
-class ip_metadata {
-private:
-  uint32_t s_major;
-  uint32_t s_minor;
+  constexpr uint32_t num_bits_deadlock_diagnosis = 32;
+  // Deadlock Diagnosis registers
+  // Each entry in map looks like:
+  // Register Offset -> {message[0], message[1]...message[31]}
+  using kernel_reginfo = std::map<uint32_t, std::array<std::string, num_bits_deadlock_diagnosis>>;
+  /* Class to handle parsing of IP_METADATA section in xclbin*/
+  class ip_metadata {
+  private:
+    uint32_t s_major;
+    uint32_t s_minor;
 
-public:
-  std::vector<std::pair<std::string, kernel_reginfo>> kernel_infos;
+  public:
+    std::vector<std::pair<std::string, kernel_reginfo>> kernel_infos;
 
-public:
-  ip_metadata() = delete;
-  ip_metadata(const boost::property_tree::ptree& pt);
-  void print();
-  inline uint32_t get_offset_from_string(const std::string& str)
-  {
-    uint32_t offset = 0;
-    std::stringstream ss;
-    // Remove the 0x
-    ss << std::hex << str.substr(2);
-    ss >> offset;
-    return offset;
-  }
-};
+  public:
+    ip_metadata() = delete;
+    ip_metadata(const boost::property_tree::ptree& pt);
+    void print();
+    inline uint32_t get_offset_from_string(const std::string& str)
+    {
+      uint32_t offset = 0;
+      std::stringstream ss;
+      // Remove the 0x
+      ss << std::hex << str.substr(2);
+      ss >> offset;
+      return offset;
+    }
+  };
   
 } // end namespace xdp
 

@@ -205,8 +205,9 @@ class DeviceIntf {
 
     XDP_EXPORT
     void createXrtIP
-    ( std::shared_ptr<ip_metadata> ip_metadata_section
-    ,  const std::string& fullname
+    (
+      const std::unique_ptr<ip_metadata>& ip_metadata_section,
+      const std::string& fullname
     );
     XDP_EXPORT
     std::string getDeadlockDiagnosis(bool print);

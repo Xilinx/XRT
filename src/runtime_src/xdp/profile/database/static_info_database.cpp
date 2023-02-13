@@ -1507,11 +1507,14 @@ namespace xdp {
     std::stringstream ss;
     ss.write(data.first,data.second);
     boost::property_tree::ptree pt;
-    boost::property_tree::read_json(ss,pt);
-
-    xclbin->pl.ip_metadata_section = std::make_shared<ip_metadata>(pt);
-    // Debug
-    //xclbin->pl.ip_metadata_section->print();
+    try {
+      boost::property_tree::read_json(ss,pt);
+      xclbin->pl.ip_metadata_section = std::make_unique<ip_metadata>(pt);
+      // Debug
+      //xclbin->pl.ip_metadata_section->print();
+    } catch(...) {
+      xclbin->pl.ip_metadata_section.reset();
+    }
   }
 
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,

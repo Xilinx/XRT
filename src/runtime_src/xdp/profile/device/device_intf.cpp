@@ -1054,8 +1054,8 @@ DeviceIntf::~DeviceIntf()
   }
 
   void DeviceIntf::createXrtIP
-  ( std::shared_ptr<ip_metadata> ip_metadata_section
-  ,  const std::string& fullname
+  ( const std::unique_ptr<ip_metadata>& ip_metadata_section
+  , const std::string& fullname
   )
   {
     mXrtIPList.emplace_back(std::make_unique<XrtIP>(mDevice, ip_metadata_section, fullname));

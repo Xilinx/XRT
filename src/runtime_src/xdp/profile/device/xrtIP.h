@@ -43,7 +43,7 @@ public:
 
   XrtIP(
     Device* handle       /** < xrt or hal device handle */,
-    std::shared_ptr<ip_metadata> ip_metadata_section,
+    const std::unique_ptr<ip_metadata>& ip_metadata_section,
     const std::string& fullname /** < fullname of the IP in IP_LAYOUT */
   );
   ~XrtIP() {}

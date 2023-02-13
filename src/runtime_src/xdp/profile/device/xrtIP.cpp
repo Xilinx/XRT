@@ -25,7 +25,7 @@ constexpr uint32_t REGSIZE_BYTES = 0x4;
 XrtIP::
 XrtIP
   ( Device* handle
-  , std::shared_ptr<ip_metadata> ip_metadata_section
+  , const std::unique_ptr<ip_metadata>& ip_metadata_section
   , const std::string& fullname
   )
   : xdpDevice(handle)
