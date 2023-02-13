@@ -54,6 +54,7 @@ bool
 device::
 is_nodma() const
 {
+  std::lock_guard lk(m_mutex);
   if (m_nodma != boost::none)
     return *m_nodma;
 
