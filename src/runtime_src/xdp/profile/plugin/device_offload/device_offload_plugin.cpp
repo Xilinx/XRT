@@ -225,6 +225,8 @@ namespace xdp {
           // reduce it to a reasonable size so it fits
           auto eightyPercent =
             static_cast<uint64_t>(static_cast<double>(memorySz) * 0.8);
+          eightyPercent =
+            devInterface->getAlignedTraceBufferSize(eightyPercent, 1);
 
           buf_sizes[i] = eightyPercent;
           std::string msg = "Trace buffer size for TS2MM " + std::to_string(i)
