@@ -1589,13 +1589,13 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    auto data = device->get_axlf_section(AIE_METADATA);
+    auto data = device->get_axlf_section(IP_METADATA);
     if (!data.first || !data.second)
       return;
 
     std::stringstream ss;
+    ss.write(data.first,data.second);
     boost::property_tree::ptree pt;
-    ss.write(data.first, data.second);
     boost::property_tree::read_json(ss,pt);
 
     xclbin->pl.ip_metadata_section = std::make_shared<ip_metadata>(pt);

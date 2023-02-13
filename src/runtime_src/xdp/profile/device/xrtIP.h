@@ -56,12 +56,13 @@ private:
   std::string fullname;
   std::string deadlockDiagnosis;
   std::string kernelName;
-  bool initialized;
   kernel_reginfo regInfo;
-  uint32_t index;
+  int32_t index;
 
 private:
   int read(uint32_t offset, uint32_t* data);
+
+  bool initialized() { return index >= 0; }
 };
 
 } //  xdp

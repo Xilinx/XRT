@@ -27,7 +27,7 @@ namespace xdp {
   {
   public:
     PlDeadlockWriter(const char* filename);
-    ~PlDeadlockWriter() ;
+    ~PlDeadlockWriter();
 
     virtual bool write(bool openNewFile);
   };

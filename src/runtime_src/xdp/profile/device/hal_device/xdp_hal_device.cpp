@@ -95,10 +95,12 @@ int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
 
   // A shared context is needed
   std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(mHalDevice);
-  xclOpenContext(mHalDevice, device->get_xclbin_uuid().get(), index, true);
+  int ret = xclOpenContext(mHalDevice, device->get_xclbin_uuid().get(), index, true);
+  if (ret < 0)
+    return ret;
 
   // Open access to IP Registers. base should be > 0x10
-  int ret = xclIPSetReadRange(mHalDevice, index, base, range);
+  ret = xclIPSetReadRange(mHalDevice, index, base, range);
   if (ret < 0)
     return ret;
 

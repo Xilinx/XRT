@@ -20,7 +20,7 @@
 
 namespace xdp {
 
-constexpr uint32_t REGISTER_ACCESS_RANGE = 0x1000;
+constexpr uint32_t REGSIZE_BYTES = 0x4;
 
 XrtIP::
 XrtIP
@@ -31,8 +31,7 @@ XrtIP
   : xdpDevice(handle)
   , fullname(fullname)
   , deadlockDiagnosis(std::string())
-  , initialized(false)
-  , index(0)
+  , index(-1)
 {
   size_t pos = fullname.find(':');
   kernelName = fullname.substr(0, pos);
@@ -50,12 +49,9 @@ XrtIP
     return;
 
   // Try to enable register access
-  uint32_t base = regInfo.begin()->first;
-  int ret = xdpDevice->initXrtIP(fullname.c_str(), base, REGISTER_ACCESS_RANGE);
-  if (ret > 0) {
-    initialized = true;
-    index = ret;
-  }
+  uint32_t low  = regInfo.begin()->first;
+  uint32_t high = regInfo.rbegin()->first + REGSIZE_BYTES;
+  index = xdpDevice->initXrtIP(fullname.c_str(), low, (high - low));
 }
 
 int XrtIP::
@@ -67,7 +63,7 @@ read(uint32_t offset, uint32_t* data)
 std::string& XrtIP::
 getDeadlockDiagnosis(bool print)
 {
-  if (regInfo.empty() || !initialized)
+  if (regInfo.empty() || !initialized())
     return deadlockDiagnosis;
 
   // Query this IP
@@ -75,17 +71,15 @@ getDeadlockDiagnosis(bool print)
     uint32_t regdata = 0;
     auto offset = e.first;
     auto& messages = e.second;
-
     read(offset, &regdata);
     for (unsigned int i=0; i < num_bits_deadlock_diagnosis; i++) {
-      uint32_t bit_i = ((regdata >> i) & 0x1);
-      if (bit_i)
-        deadlockDiagnosis += messages[bit_i] + "\n";
+      if ((regdata >> i) & 0x1)
+        deadlockDiagnosis += messages[i] + "\n";
     }
-
-    if (print)
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", deadlockDiagnosis);
   }
+
+  if (print)
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", deadlockDiagnosis);
   return deadlockDiagnosis;
 }
 

@@ -93,9 +93,10 @@ namespace xdp {
         ". Please manually terminate and debug the application.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
 
-        std::string deadlockInfo = deviceIntf->getDeadlockDiagnosis(true);
-        if (!deadlockInfo.empty()) {
-          deadlockInfo += deviceName + " :\n";
+        std::string deadlockInfo = deviceName + " :\n";
+        auto regInfo = deviceIntf->getDeadlockDiagnosis(true);
+        if (!regInfo.empty()) {
+          deadlockInfo += regInfo;
           db->getDynamicInfo().setPLDeadlockInfo(deviceId, deadlockInfo);
           // There is only one file for all the devices
           // In case of a deadlock, the application is hung

@@ -19,6 +19,8 @@
 
 #define XDP_SOURCE
 
+#include "core/common/message.h"
+
 #include "xdp/profile/database/static_info/pl_constructs.h"
 
 // Anonymous namespace for local static helper functions
@@ -271,18 +273,20 @@ namespace xdp {
   void ip_metadata::
   print()
   {
-    std::cout << "Major : " << s_major << std::endl;
-    std::cout << "Minor : " << s_minor << std::endl;
+    std::stringstream ss;
+    ss << "Major : " << s_major << std::endl;
+    ss << "Minor : " << s_minor << std::endl;
     for (const auto& kernel_info : kernel_infos) {
-      std::cout << kernel_info.first << " : \n";
+      ss << kernel_info.first << " : \n";
       for (const auto& reginfo : kernel_info.second) {
-        std::cout <<std::hex << "0x" << reginfo.first << " :\n" << std::dec;
+        ss <<std::hex << "0x" << reginfo.first << " :\n" << std::dec;
         for (const auto& bitstring : reginfo.second)
           if (!bitstring.empty())
-            std::cout << " " << bitstring << "\n";
+            ss << " " << bitstring << "\n";
       }
-      std::cout << std::endl;
+      ss << std::endl;
     }
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", ss.str());
   }
 
 } // end namespace xdp
