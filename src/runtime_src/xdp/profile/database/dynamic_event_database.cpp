@@ -307,4 +307,21 @@ namespace xdp {
     auto device_db = getDeviceDB(deviceId);
     return device_db->isPLTraceBufferFull();
   }
+
+  void VPDynamicDatabase::
+  setPLDeadlockInfo(uint64_t deviceId, const std::string& info)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    device_db->setPLDeadlockInfo(info);
+  }
+
+  std::string VPDynamicDatabase::
+  getPLDeadlockInfo()
+  {
+    std::lock_guard<std::mutex> lock(deviceDBLock);
+    std::string info;
+    for (const auto& d : devices)
+      info += d.second->getPLDeadlockInfo();
+    return info;
+  }
 }

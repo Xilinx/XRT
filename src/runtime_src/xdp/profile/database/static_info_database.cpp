@@ -406,6 +406,8 @@ namespace xdp {
     xclbin->deviceIntf->setDevice(dev);
     try {
       xclbin->deviceIntf->readDebugIPlayout();
+      // XRT IP are needed for deadlock diagnosis
+      initializeXrtIP(xclbin);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -414,7 +416,7 @@ namespace xdp {
       xclbin->deviceIntf = nullptr;
     }
     return xclbin->deviceIntf;
-  } 
+  }
 
   void VPStaticDatabase::setKDMACount(uint64_t deviceId, uint64_t num)
   {
@@ -1306,20 +1308,24 @@ namespace xdp {
   void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
-    if(nullptr == device) return;
-
-    if(false == resetDeviceInfo(deviceId, device)) {
-      /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
-       * in the static data base. So, no need to read the xclbin information again.
-       */
+    if (nullptr == device)
       return;
-    }
-    
+
+    /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
+     * in the static data base. So, no need to read the xclbin information again.
+     */
+    if (!resetDeviceInfo(deviceId, device))
+      return;
+
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
     DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin);
     if (device->is_nodma())
-      devInfo->isNoDMADevice = true ;
+      devInfo->isNoDMADevice = true;
 
+    /*
+     * Initialize xrt IP for deadlock diagnosis
+     */
+    parseXrtIPMetadata(deviceId, device);
   }
 
   // Return true if we should reset the device information.
@@ -1480,6 +1486,34 @@ namespace xdp {
 
     } catch(...) {
       // If we catch an exception, leave the rest of the port info as is.
+    }
+  }
+
+  void VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return;
+
+    auto data = device->get_axlf_section(IP_METADATA);
+    if (!data.first || !data.second)
+      return;
+
+    std::stringstream ss;
+    ss.write(data.first,data.second);
+    boost::property_tree::ptree pt;
+    try {
+      boost::property_tree::read_json(ss,pt);
+      xclbin->pl.ip_metadata_section = std::make_unique<ip_metadata>(pt);
+      // Debug
+      //xclbin->pl.ip_metadata_section->print();
+    } catch(...) {
+      xclbin->pl.ip_metadata_section.reset();
     }
   }
 
@@ -1878,6 +1912,16 @@ namespace xdp {
       xclbin->aie.numTracePLIO++ ;
     else
       xclbin->pl.usesTs2mm = true ;
+  }
+
+  void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
+  {
+    auto& ip_metadata = xclbin->pl.ip_metadata_section;
+    if (!ip_metadata)
+      return;
+
+    for (const auto& cu : xclbin->pl.cus)
+      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname());
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)

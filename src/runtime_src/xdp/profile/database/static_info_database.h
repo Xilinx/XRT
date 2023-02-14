@@ -119,6 +119,7 @@ namespace xdp {
     void setXclbinName(XclbinInfo*, const char*, size_t);
     void updateSystemDiagram(const char*, size_t);
     void addPortInfo(XclbinInfo*, const char*, size_t);
+    void parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that initialize the structure of the debug/profiling IP
     void initializeAM(DeviceInfo* devInfo, const std::string& name,
@@ -131,6 +132,7 @@ namespace xdp {
                        const struct debug_ip_data* debugIpData) ;
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
+    void initializeXrtIP(XclbinInfo* xclbin);
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
     void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
