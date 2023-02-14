@@ -21,6 +21,7 @@
 // This file collects all of the data structures used in the static info
 //  database for constructs that exist in the PL portion of the design.
 
+#include <array>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <cstdint>
