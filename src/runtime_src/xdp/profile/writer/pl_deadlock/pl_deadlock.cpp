@@ -31,7 +31,7 @@ namespace xdp {
   }
 
   bool PlDeadlockWriter::
-  write(bool openNewFile)
+  write(bool /*openNewFile*/)
   {
     refreshFile();
     std::string msg = db->getDynamicInfo().getPLDeadlockInfo();

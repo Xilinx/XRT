@@ -101,7 +101,7 @@ namespace xdp {
           // There is only one file for all the devices
           // In case of a deadlock, the application is hung
           // So, we have to write this data ASAP
-          forceWrite(deadlockInfo);
+          forceWrite();
         }
         return;
       }
@@ -109,7 +109,7 @@ namespace xdp {
     }
   }
 
-  void PLDeadlockPlugin::forceWrite(const std::string& msg)
+  void PLDeadlockPlugin::forceWrite()
   {
     std::lock_guard<std::mutex> lock(writeLock);
     std::string outputFile = "pl_deadlock_diagnosis.txt";

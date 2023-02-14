@@ -28,7 +28,7 @@ namespace xdp {
   {
   private:
     XDP_EXPORT virtual void pollDeadlock(void* handle, uint64_t index);
-    void forceWrite(const std::string& msg);
+    void forceWrite();
   
   private:
     uint32_t mPollingIntervalMs = 100;
