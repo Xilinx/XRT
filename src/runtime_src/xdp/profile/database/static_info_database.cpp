@@ -818,21 +818,6 @@ namespace xdp {
   }
 
   std::map<uint32_t, uint32_t>*
-  VPStaticDatabase::getAIEMemTileCounterResources(uint64_t deviceId)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return nullptr ;
-
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-    if (!xclbin)
-      return nullptr ;
-
-    return &(xclbin->aie.aieMemTileCountersMap) ;
-  }
-
-  std::map<uint32_t, uint32_t>*
   VPStaticDatabase::getAIEShimCounterResources(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -845,6 +830,21 @@ namespace xdp {
       return nullptr ;
 
     return &(xclbin->aie.aieShimCountersMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEMemTileCounterResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieMemTileCountersMap) ;
   }
 
   std::map<uint32_t, uint32_t>*
@@ -878,21 +878,6 @@ namespace xdp {
   }
 
   std::map<uint32_t, uint32_t>*
-  VPStaticDatabase::getAIEMemTileEventResources(uint64_t deviceId)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return nullptr ;
-
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-    if (!xclbin)
-      return nullptr ;
-
-    return &(xclbin->aie.aieMemTileEventsMap) ;
-  }
-  
-  std::map<uint32_t, uint32_t>*
   VPStaticDatabase::getAIEShimEventResources(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -905,6 +890,21 @@ namespace xdp {
       return nullptr ;
 
     return &(xclbin->aie.aieShimEventsMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEMemTileEventResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieMemTileEventsMap) ;
   }
 
   std::vector<std::unique_ptr<aie_cfg_tile>>*
@@ -996,6 +996,17 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
     deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
+  }
+
+  void VPStaticDatabase::addAIEShimEventResources(uint64_t deviceId,
+                                                  uint32_t numEvents,
+                                                  uint32_t numTiles)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIEShimEventResources(numEvents, numTiles) ;
   }
 
   void VPStaticDatabase::addAIEMemTileEventResources(uint64_t deviceId,
