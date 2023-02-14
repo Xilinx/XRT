@@ -2187,11 +2187,11 @@ struct xocl_xgq_vmr_funcs {
 		const void __user *arg, uint64_t slot);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
 	int (*xgq_clear_firewall)(struct platform_device *pdev);
-	int (*xgq_freq_scaling)(struct platform_device *pdev,
+	int (*xgq_clk_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
-	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
+	int (*xgq_clk_scaling_by_topo)(struct platform_device *pdev,
 		struct clock_freq_topology *top, int verify);
-	uint64_t (*xgq_get_data)(struct platform_device *pdev,
+	uint64_t (*xgq_clk_counter_wiz_get)(struct platform_device *pdev,
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
@@ -2224,15 +2224,15 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_clear_firewall(xdev)				\
 	(XGQ_CB(xdev, xgq_clear_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_clear_firewall(XGQ_DEV(xdev)) : 0)
-#define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
-	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
-	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
-#define	xocl_xgq_freq_scaling_by_topo(xdev, topo, verify) 	\
-	(XGQ_CB(xdev, xgq_freq_scaling_by_topo) ?		\
-	XGQ_OPS(xdev)->xgq_freq_scaling_by_topo(XGQ_DEV(xdev), topo, verify) : -ENODEV)
-#define	xocl_xgq_clock_get_data(xdev, kind) 			\
-	(XGQ_CB(xdev, xgq_get_data) ?				\
-	XGQ_OPS(xdev)->xgq_get_data(XGQ_DEV(xdev), kind) : -ENODEV)
+#define	xocl_xgq_clk_scaling(xdev, freqs, num_freqs, verify) 	\
+	(XGQ_CB(xdev, xgq_clk_scaling) ?			\
+	XGQ_OPS(xdev)->xgq_clk_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
+#define	xocl_xgq_clk_scaling_by_topo(xdev, topo, verify) 	\
+	(XGQ_CB(xdev, xgq_clk_scaling_by_topo) ?		\
+	XGQ_OPS(xdev)->xgq_clk_scaling_by_topo(XGQ_DEV(xdev), topo, verify) : -ENODEV)
+#define	xocl_xgq_clk_counter_wiz_get(xdev, kind) 			\
+	(XGQ_CB(xdev, xgq_clk_counter_wiz_get) ?				\
+	XGQ_OPS(xdev)->xgq_clk_counter_wiz_get(XGQ_DEV(xdev), kind) : -ENODEV)
 #define	xocl_download_apu_firmware(xdev) 			\
 	(XGQ_CB(xdev, xgq_download_apu_firmware) ?		\
 	XGQ_OPS(xdev)->xgq_download_apu_firmware(XGQ_DEV(xdev)) : -ENODEV)

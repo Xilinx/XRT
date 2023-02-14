@@ -154,7 +154,7 @@ static int xgq_xclbin_post_download(xdev_handle_t xdev, void *args)
 		/* after download, update clock freq */
 		topo = (struct clock_freq_topology *)
 		    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
-		ret = xocl_xgq_freq_scaling_by_topo(xdev, topo, 1);
+		ret = xocl_xgq_clk_scaling_by_topo(xdev, topo, 1);
 	}
 
 	return ret;
