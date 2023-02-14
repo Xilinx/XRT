@@ -288,15 +288,18 @@ namespace xdp {
     getAIEMemoryCounterResources(uint64_t deviceId) ;
     XDP_EXPORT
     std::map<uint32_t, uint32_t>*
+    getAIEMemTileCounterResources(uint64_t deviceId) ;
+    XDP_EXPORT
+    std::map<uint32_t, uint32_t>*
     getAIEShimCounterResources(uint64_t deviceId) ;
     XDP_EXPORT
     std::map<uint32_t, uint32_t>* getAIECoreEventResources(uint64_t deviceId) ;
     XDP_EXPORT
-    std::map<uint32_t, uint32_t>* getAIEMemoryEventResources(uint64_t deviceId);
+    std::map<uint32_t, uint32_t>* getAIEMemoryEventResources(uint64_t deviceId) ;
+    XDP_EXPORT
+    std::map<uint32_t, uint32_t>* getAIEMemTileEventResources(uint64_t deviceId) ;
     XDP_EXPORT
     std::map<uint32_t, uint32_t>* getAIEShimEventResources(uint64_t deviceId) ;
-    XDP_EXPORT
-    std::map<uint32_t, uint32_t>* getAIEMemTileEventResources(uint64_t deviceId);
     XDP_EXPORT
     std::vector<std::unique_ptr<aie_cfg_tile>>*
     getAIECfgTiles(uint64_t deviceId) ;

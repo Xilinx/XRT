@@ -128,6 +128,7 @@ namespace xdp {
     std::map<uint32_t, uint32_t> aieCoreCountersMap ;
     std::map<uint32_t, uint32_t> aieMemoryCountersMap ;
     std::map<uint32_t, uint32_t> aieShimCountersMap ;
+    std::map<uint32_t, uint32_t> aieMemTileCountersMap ;
     std::map<uint32_t, uint32_t> aieCoreEventsMap ;
     std::map<uint32_t, uint32_t> aieMemoryEventsMap ;
     std::map<uint32_t, uint32_t> aieShimEventsMap ;
