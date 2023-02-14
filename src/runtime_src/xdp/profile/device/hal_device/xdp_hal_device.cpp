@@ -85,6 +85,7 @@ int HalDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
   return xclRegRead(mHalDevice, index, offset, data);
 }
 
+#ifndef _WIN32
 int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
 {
   // We cannot always get index from ip_layout
@@ -106,6 +107,13 @@ int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
 
   return index;
 }
+#else
+int HalDevice::initXrtIP(const char * /*name*/, uint64_t /*base*/, uint32_t /*range*/)
+{
+  // The required APIs are missing from windows shim
+  return -1;
+}
+#endif
 
 
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
