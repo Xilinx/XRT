@@ -34,6 +34,13 @@ public:
   virtual void
   get_os_info(boost::property_tree::ptree&) {}
 
+    virtual boost::property_tree::ptree
+  get_pcie_info(device::id_type)
+  {
+    boost::property_tree::ptree empty_ptree;
+    return empty_ptree;
+  }
+
   // REMOVE
   virtual void
   get_devices(boost::property_tree::ptree&) const {}
@@ -142,6 +149,12 @@ get_xrt_info(boost::property_tree::ptree& pt);
 XRT_CORE_COMMON_EXPORT
 void
 get_os_info(boost::property_tree::ptree& pt);
+
+/**
+ */
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+get_pcie_info(device::id_type id);
 
 /**
  */

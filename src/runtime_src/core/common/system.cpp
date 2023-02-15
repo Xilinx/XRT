@@ -111,6 +111,12 @@ get_os_info(boost::property_tree::ptree& pt)
   instance().get_os_info(pt);
 }
 
+boost::property_tree::ptree
+get_pcie_info(device::id_type id)
+{
+  return instance().get_pcie_info(id);
+}
+
 void
 get_devices(boost::property_tree::ptree& pt)
 {
