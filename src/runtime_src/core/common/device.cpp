@@ -52,6 +52,7 @@ bool
 device::
 is_nodma() const
 {
+  std::lock_guard lk(m_mutex);
   if (m_nodma != boost::none)
     return *m_nodma;
 
@@ -93,6 +94,7 @@ device::
 record_xclbin(const xrt::xclbin& xclbin)
 {
   register_xclbin(xclbin); // shim level registration
+  std::lock_guard lk(m_mutex);
   m_xclbins.insert(xclbin);
 
   // For single xclbin case, where shim doesn't implement
@@ -158,8 +160,10 @@ get_xclbin(const uuid& xclbin_id) const
   // Allow access to xclbin in process of loading via device::load_xclbin
   if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
     return m_xclbin;
-  if (xclbin_id)
+  if (xclbin_id) {
+    std::lock_guard lk(m_mutex);
     return m_xclbins.get(xclbin_id);
+  }
 
   // Single xclbin case
   return m_xclbin;
@@ -176,6 +180,7 @@ device::
 update_xclbin_info()
 {
   // Update cached slot xclbin uuid mapping
+  std::lock_guard lk(m_mutex);
   try {
     // [slot, xclbin_uuid]+
     auto xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(this);
@@ -195,6 +200,7 @@ update_cu_info()
   // Compute CU sort order, kernel driver zocl and xocl now assign and
   // control the sort order, which is accessible via a query request.
   // For emulation old xclbin_parser::get_cus is used.
+  std::lock_guard lk(m_mutex);
   m_cus.clear();
   m_cu2idx.clear();
   try {
@@ -261,6 +267,7 @@ register_axlf(const axlf* top)
     m_xclbin = xrt::xclbin{top};
 
   // Record the xclbin
+  std::lock_guard lk(m_mutex);
   m_xclbins.insert(m_xclbin);
 }
 

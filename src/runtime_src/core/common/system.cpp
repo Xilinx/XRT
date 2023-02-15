@@ -124,9 +124,12 @@ get_userpf_device(device::id_type id)
 std::shared_ptr<device>
 get_userpf_device(device::handle_type handle)
 {
-  // Look up core device from low level shim handle
-  // The handle is inserted into map as part of
-  // calling xclOpen
+  // Look up core device from low level shim handle The handle is
+  // inserted into map as part of calling xclOpen.  Protect against
+  // multiple threads calling xclOpen at the same time, e.g. one
+  // thread could be in process of inserting some handle while this
+  // thread is looking up another handle.
+  std::lock_guard lk(mutex);
   auto itr = userpf_device_map.find(handle);
   if (itr != userpf_device_map.end())
     return (*itr).second.lock();
@@ -145,7 +148,7 @@ get_userpf_device(device::handle_type handle, device::id_type id)
 
   // Construct a new device object and insert in map.
   auto device = instance().get_userpf_device(handle,id);
-  std::lock_guard<std::mutex> lk(mutex);
+  std::lock_guard lk(mutex);
   userpf_device_map[handle] = device;  // create or replace
   return device;
 }
@@ -154,6 +157,7 @@ std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id)
 {
   // Check cache
+  std::lock_guard lk(mutex);
   auto itr = mgmtpf_device_map.find(id);
   if (itr != mgmtpf_device_map.end())
     if (auto device = (*itr).second.lock())
