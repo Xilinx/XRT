@@ -615,6 +615,15 @@ namespace {
                << counter.second << ",\n";
         }
       }
+      
+      auto memTileCounters =
+        db->getStaticInfo().getAIEMemTileCounterResources(device->deviceId);
+      if (memTileCounters != nullptr) {
+        for (auto const& counter : *memTileCounters) {
+          fout << "AIE_MEM_TILE_COUNTER_RESOURCES," << counter.first << ","
+               << counter.second << ",\n";
+        }
+      }
     }
   }
 
@@ -639,6 +648,15 @@ namespace {
         for (auto const& memoryEvent : *memoryEvents) {
           fout << "AIE_MEMORY_EVENT_RESOURCES," << memoryEvent.first << ","
                << memoryEvent.second << ",\n" ;
+        }
+      }
+
+      auto interfaceEvents =
+        db->getStaticInfo().getAIEShimEventResources(device->deviceId) ;
+      if (interfaceEvents != nullptr) {
+        for (auto const& interfaceEvent : *interfaceEvents) {
+          fout << "AIE_INTERFACE_EVENT_RESOURCES," << interfaceEvent.first << ","
+               << interfaceEvent.second << ",\n" ;
         }
       }
 

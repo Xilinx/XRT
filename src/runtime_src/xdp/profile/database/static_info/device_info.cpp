@@ -324,8 +324,11 @@ namespace xdp {
     case 1:
       xclbin->aie.aieMemoryCountersMap[numCounters] = numTiles ;
       break ;
-    default:
+    case 2:
       xclbin->aie.aieShimCountersMap[numCounters] = numTiles ;
+      break ;
+    default:
+      xclbin->aie.aieMemTileCountersMap[numCounters] = numTiles ;
       break ;
     }
   }

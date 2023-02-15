@@ -835,6 +835,21 @@ namespace xdp {
   }
 
   std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEMemTileCounterResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieMemTileCountersMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
   VPStaticDatabase::getAIECoreEventResources(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -954,13 +969,13 @@ namespace xdp {
   void VPStaticDatabase::addAIECounterResources(uint64_t deviceId,
                                                 uint32_t numCounters,
                                                 uint32_t numTiles,
-                                                bool isCore)
+                                                uint8_t moduleType)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
-    deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles, isCore);
+    deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles, moduleType);
   }
 
   void VPStaticDatabase::addAIECoreEventResources(uint64_t deviceId,
@@ -983,6 +998,17 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
     deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
+  }
+
+  void VPStaticDatabase::addAIEShimEventResources(uint64_t deviceId,
+                                                  uint32_t numEvents,
+                                                  uint32_t numTiles)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIEShimEventResources(numEvents, numTiles) ;
   }
 
   void VPStaticDatabase::addAIEMemTileEventResources(uint64_t deviceId,
