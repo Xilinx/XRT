@@ -1545,7 +1545,7 @@ initialize_query_table()
 }
 
 struct X { X() { initialize_query_table(); }};
-static X x;
+static X x_xrt;
 
 }
 
