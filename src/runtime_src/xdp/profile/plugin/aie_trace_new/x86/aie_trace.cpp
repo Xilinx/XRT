@@ -49,6 +49,12 @@ namespace xdp {
   using Messages = xdp::built_in::Messages;
 
   void AieTrace_x86Impl::updateDevice() {
+
+    //compile-time trace
+    if (!metadata->getRuntimeMetrics()) {
+      return;
+    }
+
     // Set metrics for counters and trace events 
     if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
       std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");

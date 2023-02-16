@@ -25,6 +25,11 @@
 #include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
+  struct aiecompiler_options
+  {
+    bool broadcast_enable_core;
+    std::string event_trace;
+  };
 
 enum class module_type {
     core = 0,

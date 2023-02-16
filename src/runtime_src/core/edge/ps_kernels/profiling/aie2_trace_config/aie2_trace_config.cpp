@@ -58,10 +58,7 @@ namespace {
     }
   }
 
-
-  
-
-bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
+  bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
    EventConfiguration& config, const xdp::built_in::TraceInputConfiguration* params,
    xdp::built_in::MessageConfiguration* msgcfg, xdp::module_type type, const xdp::built_in::MetricSet metricSet)
   {
