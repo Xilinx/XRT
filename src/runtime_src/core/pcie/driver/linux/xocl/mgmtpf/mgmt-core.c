@@ -635,12 +635,12 @@ static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap = (struct xcl_pr_region *)buf;
 	ret = xocl_clock_get_data(lro, CLOCK_FREQ_0);
 	if (ret == -ENODEV) {
-		hwicap->freq_0 = xocl_xgq_clk_counter_wiz_get(lro, CLOCK_FREQ_0);
-		hwicap->freq_1 = xocl_xgq_clk_counter_wiz_get(lro, CLOCK_FREQ_1);
-		hwicap->freq_2 = xocl_xgq_clk_counter_wiz_get(lro, CLOCK_FREQ_2);
-		hwicap->freq_cntr_0 = xocl_xgq_clk_counter_wiz_get(lro, FREQ_COUNTER_0);
-		hwicap->freq_cntr_1 = xocl_xgq_clk_counter_wiz_get(lro, FREQ_COUNTER_1);
-		hwicap->freq_cntr_2 = xocl_xgq_clk_counter_wiz_get(lro, FREQ_COUNTER_2);
+		hwicap->freq_0 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_0);
+		hwicap->freq_1 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_1);
+		hwicap->freq_2 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_2);
+		hwicap->freq_cntr_0 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_0);
+		hwicap->freq_cntr_1 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_1);
+		hwicap->freq_cntr_2 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_2);
 		return;
 	}
 

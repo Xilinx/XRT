@@ -189,7 +189,7 @@ struct xocl_xgq_vmr {
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
 static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
-static uint64_t xgq_clk_counter_wiz_get(struct platform_device *pdev,
+static uint64_t xgq_get_data(struct platform_device *pdev,
 	enum data_kind kind);
 
 /*
@@ -1509,7 +1509,7 @@ static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_f
 		if (!target_freqs[i])
 			continue;
 
-		clock_freq_counter = (u32)xgq_clk_counter_wiz_get(pdev, kinds[i]);
+		clock_freq_counter = (u32)xgq_get_data(pdev, kinds[i]);
 
 		lookup_freq = target_freqs[i];
 		request_in_khz = lookup_freq*1000;
@@ -1772,7 +1772,7 @@ cid_alloc_failed:
 	return ret;
 }
 
-static uint64_t xgq_clk_counter_wiz_get(struct platform_device *pdev,
+static uint64_t xgq_get_data(struct platform_device *pdev,
 	enum data_kind kind)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -3513,7 +3513,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_clear_firewall = xgq_clear_firewall,
 	.xgq_clk_scaling = xgq_clk_scaling,
 	.xgq_clk_scaling_by_topo = xgq_clk_scaling_by_topo,
-	.xgq_clk_counter_wiz_get = xgq_clk_counter_wiz_get,
+	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
 	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,

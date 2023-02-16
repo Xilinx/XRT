@@ -2191,7 +2191,7 @@ struct xocl_xgq_vmr_funcs {
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*xgq_clk_scaling_by_topo)(struct platform_device *pdev,
 		struct clock_freq_topology *top, int verify);
-	uint64_t (*xgq_clk_counter_wiz_get)(struct platform_device *pdev,
+	uint64_t (*xgq_get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
@@ -2230,9 +2230,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_clk_scaling_by_topo(xdev, topo, verify) 	\
 	(XGQ_CB(xdev, xgq_clk_scaling_by_topo) ?		\
 	XGQ_OPS(xdev)->xgq_clk_scaling_by_topo(XGQ_DEV(xdev), topo, verify) : -ENODEV)
-#define	xocl_xgq_clk_counter_wiz_get(xdev, kind) 			\
-	(XGQ_CB(xdev, xgq_clk_counter_wiz_get) ?				\
-	XGQ_OPS(xdev)->xgq_clk_counter_wiz_get(XGQ_DEV(xdev), kind) : -ENODEV)
+#define	xocl_xgq_clock_get_data(xdev, kind) 			\
+	(XGQ_CB(xdev, xgq_get_data) ?				\
+	XGQ_OPS(xdev)->xgq_get_data(XGQ_DEV(xdev), kind) : -ENODEV)
 #define	xocl_download_apu_firmware(xdev) 			\
 	(XGQ_CB(xdev, xgq_download_apu_firmware) ?		\
 	XGQ_OPS(xdev)->xgq_download_apu_firmware(XGQ_DEV(xdev)) : -ENODEV)
