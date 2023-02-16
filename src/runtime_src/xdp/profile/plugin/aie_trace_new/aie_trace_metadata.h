@@ -91,6 +91,7 @@ class AieTraceMetadata{
     std::vector<std::string> get_kernels(const xrt_core::device* device);
     double get_clock_freq_mhz(const xrt_core::device* device);
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
+    aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
 
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
                                   std::vector<std::string>& graphMetricsSettings,
