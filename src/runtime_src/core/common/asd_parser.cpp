@@ -344,15 +344,16 @@ uint64_t
 aie_core_tile_status::
 size()
 {
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * events.size() +
-      sizeof(uint8_t) * lock_value.size() + sizeof(uint32_t) * 4 /*(cs,pc,sp,lr)*/;
+  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * core_mode_events.size() +
+      sizeof(uint32_t) * core_mode_events.size() + sizeof(uint8_t) * lock_value.size() + 
+      sizeof(uint32_t) * 4 /*(cs,pc,sp,lr)*/;
 }
 
 uint64_t
 aie_core_tile_status::
 size(aie_tiles_info& info)
 {
-  return sizeof(aie_dma_status) * info.core_dma_channels + sizeof(uint32_t) * info.core_events +
+  return sizeof(aie_dma_status) * info.core_dma_channels + sizeof(uint32_t) * info.core_events * 2 /*core, mem mode*/ +
       sizeof(uint8_t) * info.core_locks + sizeof(uint32_t) * 4 /*(cs,pc,sp,lr)*/;
 }
 
@@ -368,8 +369,13 @@ parse_buf(char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_st
       buf += size_cal;
 
       // Events
+      // core mode events
       size_cal = sizeof(uint32_t) * info.core_events;
-      std::memcpy(core.events.data(), buf, size_cal);
+      std::memcpy(core.core_mode_events.data(), buf, size_cal);
+      buf += size_cal;
+      // mem mode events
+      size_cal = sizeof(uint32_t) * info.core_events;
+      std::memcpy(core.mem_mode_events.data(), buf, size_cal);
       buf += size_cal;
 
       // core status

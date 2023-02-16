@@ -90,7 +90,8 @@ class aie_tiles_status;
 struct aie_core_tile_status
 {
   std::vector<aie_dma_status> dma;
-  std::vector<uint32_t> events;
+  std::vector<uint32_t> core_mode_events;
+  std::vector<uint32_t> mem_mode_events;
   uint32_t core_status;
   uint32_t program_counter;
   uint32_t stack_ptr;
@@ -213,7 +214,8 @@ class aie_tiles_status
      
     for (auto& core : core_tiles) {
       core.dma.resize(stats.core_dma_channels);
-      core.events.resize(stats.core_events);
+      core.core_mode_events.resize(stats.core_events);
+      core.mem_mode_events.resize(stats.core_events);
       core.lock_value.resize(stats.core_locks);
     }
       
