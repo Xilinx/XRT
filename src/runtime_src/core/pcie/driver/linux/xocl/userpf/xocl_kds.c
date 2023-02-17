@@ -889,6 +889,8 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		break;
 	case ERT_SK_START:
 		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
+		if (kecmd->stat_enabled)
+			xcmd->timestamp_enabled = 1;
 		xcmd->type = KDS_SCU;
 		xcmd->opcode = OP_START_SK;
 		xcmd->cu_mask[0] = kecmd->cu_mask;
@@ -899,6 +901,8 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		break;
 	case ERT_START_CU:
 		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
+		if (kecmd->stat_enabled)
+			xcmd->timestamp_enabled = 1;
 		xcmd->type = KDS_CU;
 		xcmd->opcode = OP_START;
 		xcmd->cu_mask[0] = kecmd->cu_mask;
@@ -937,6 +941,8 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		}
 		print_ecmd_info(ecmd);
 		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
+		if (kecmd->stat_enabled)
+			xcmd->timestamp_enabled = 1;
 		xcmd->type = KDS_CU;
 		xcmd->opcode = OP_START;
 		xcmd->cu_mask[0] = kecmd->cu_mask;
