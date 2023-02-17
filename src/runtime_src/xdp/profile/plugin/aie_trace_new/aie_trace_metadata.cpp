@@ -39,17 +39,13 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
   
-  void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data,size);
-    pt::read_json(aie_stream,aie_project);
-  }
-
   AieTraceMetadata::AieTraceMetadata(uint64_t deviceID, void* handle)
   : deviceID(deviceID)
   , handle(handle)
   {
+    // Verify settings from xrt.ini
+    checkSettings();
+
     counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
     
     // Check whether continuous trace is enabled in xrt.ini
@@ -72,15 +68,9 @@ namespace xdp {
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     auto device = xrt_core::get_userpf_device(handle);
-    auto compilerOptions = get_aiecompiler_options(device.get());
-    setRuntimeMetrics(compilerOptions.event_trace == "runtime");
-
-    if (!getRuntimeMetrics()){
-      std::stringstream msg;
-        msg << "Found compiler trace option of " << compilerOptions.event_trace
-            << ". No runtime AIE metrics will be changed.";
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-    }
+    // auto compilerOptions = get_aiecompiler_options(device.get());
+    // runtimeMetrics = (compilerOptions.event_trace == "runtime");
+    runtimeMetrics = true;
     
     // Process AIE_trace_settings metrics
     auto aieTileMetricsSettings = 
@@ -105,6 +95,30 @@ namespace xdp {
   bool tileCompare(tile_type tile1, tile_type tile2) 
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
+  }
+
+  void AieTraceMetadata::checkSettings()
+  {
+    using boost::property_tree::ptree;
+    const std::set<std::string> validSettings {
+      "graph_based_aie_tile_metrics", "tile_based_aie_tile_metrics",
+      "graph_based_mem_tile_metrics", "tile_based_mem_tile_metrics",
+      "start_type", "start_time", "start_iteration", 
+      "periodic_offload", "reuse_buffer", "buffer_size", 
+      "buffer_offload_interval_us", "file_dump_interval_s"
+    };
+
+    auto tree = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
+    for (ptree::iterator pos = tree.begin(); pos != tree.end(); pos++) {
+      if (validSettings.find(pos->first) == validSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting " << pos->first << " is not recognized. "
+            << "Please check the spelling and compare to supported list:";
+        for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
+          msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
   }
 
   int AieTraceMetadata::getHardwareGen()
@@ -265,6 +279,13 @@ namespace xdp {
       useUserControl = true;
     }
 
+  }
+
+  void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
+  {
+    std::stringstream aie_stream;
+    aie_stream.write(data,size);
+    pt::read_json(aie_stream,aie_project);
   }
 
   std::vector<std::string> 
@@ -853,21 +874,6 @@ namespace xdp {
     }
 
     return gmios;
-  }
-
-  aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device)
-  {
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return {};
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-
-    aiecompiler_options aiecompiler_options;
-    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
-    aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
-    return aiecompiler_options;
   }
 
   std::vector<tile_type>

@@ -35,6 +35,9 @@ namespace xdp {
   AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle)
     : deviceID(deviceID), handle(handle)
   {
+    // Verify settings from xrt.ini
+    checkSettings();
+
     configMetrics.resize(NUM_MODULES);
     // Get polling interval (in usec)
     pollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
@@ -76,6 +79,29 @@ namespace xdp {
   bool tileCompare(tile_type tile1, tile_type tile2) 
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
+  }
+
+  void AieProfileMetadata::checkSettings()
+  {
+    using boost::property_tree::ptree;
+    const std::set<std::string> validSettings {
+      "graph_based_aie_metrics", "graph_based_aie_memory_metrics",
+      "graph_based_mem_tile_metrics", "tile_based_aie_metrics", 
+      "tile_based_aie_memory_metrics", "tile_based_mem_tile_metrics", 
+      "tile_based_interface_tile_metrics", "interval_us"
+    };
+
+    auto tree = xrt_core::config::detail::get_ptree_value("AIE_profile_settings");
+    for (ptree::iterator pos = tree.begin(); pos != tree.end(); pos++) {
+      if (validSettings.find(pos->first) == validSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting " << pos->first << " is not recognized. "
+            << "Please check the spelling and compare to supported list:";
+        for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
+          msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
   }
 
   int AieProfileMetadata::getHardwareGen()
