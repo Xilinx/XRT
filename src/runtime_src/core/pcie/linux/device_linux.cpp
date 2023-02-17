@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -26,10 +26,12 @@
 #include <poll.h>
 #include <string>
 #include <sys/syscall.h>
+#include <type_traits>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 
 namespace {
@@ -888,6 +890,60 @@ struct accel_deadlock_status
   }
 };
 
+// structure to get Aie tiles status version info
+// This version is used for handshake b/w userspace and driver
+struct aie_status_version
+{
+  using result_type = query::aie_status_version::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    result_type version{0};
+
+    // TODO : Add code to get the data
+
+    return version;
+  }
+};
+
+// Structure to get device specific Aie tiles information like
+// Total rows, cols and num of core, mem, shim rows and thier start row num
+// num of dma channels, locks, events etc
+struct aie_tiles_stats
+{
+  using result_type = query::aie_tiles_stats::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    uint32_t size = sizeof(result_type);
+    std::vector<char> buf(size, 0);
+
+    // TODO : Add code to get the data
+
+    return *(reinterpret_cast<result_type*>(buf.data()));
+  }
+};
+
+// structure to get aie tiles status raw buffer
+struct aie_tiles_status_info
+{
+  using result_type = boost::any;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& param)
+  {
+    auto data = boost::any_cast<xrt_core::query::aie_tiles_status_info::parameters>(param);
+
+    std::vector<char> buf(data.col_size * data.num_cols, 0);
+
+    // TODO : Add code to get the data
+
+    return buf;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -1319,6 +1375,10 @@ initialize_query_table()
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
+
+  emplace_func0_request<query::aie_status_version,             aie_status_version>();
+  emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
+  emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

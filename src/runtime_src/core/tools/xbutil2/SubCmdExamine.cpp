@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -31,6 +31,7 @@ namespace po = boost::program_options;
 #include "tools/common/Report.h"
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportAieShim.h"
+#include "tools/common/ReportAieMem.h"
 #include "tools/common/ReportAsyncError.h"
 #include "tools/common/ReportBOStats.h"
 #include "tools/common/ReportCmcStatus.h"
@@ -53,6 +54,7 @@ namespace po = boost::program_options;
   // Common reports
     std::make_shared<ReportAie>(),
     std::make_shared<ReportAieShim>(),
+    std::make_shared<ReportAieMem>(),
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportBOStats>(),
     std::make_shared<ReportDebugIpStatus>(),

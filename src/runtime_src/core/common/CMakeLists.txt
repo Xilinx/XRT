@@ -4,6 +4,7 @@
 add_subdirectory(api)
 
 add_library(core_common_library_objects OBJECT
+  asd_parser.cpp
   config_reader.cpp
   debug.cpp
   debug_ip.cpp

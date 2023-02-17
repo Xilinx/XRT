@@ -1,5 +1,6 @@
 /*
   Copyright (C) 2020-2022 Xilinx, Inc
+  Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  
   Licensed under the Apache License, Version 2.0 (the "License"). You may
   not use this file except in compliance with the License. A copy of the
@@ -41,8 +42,9 @@ populate_aie(const xrt_core::device * _pDevice, const std::string& desc)
 }
 
 void
-ReportAie::getPropertyTreeInternal(const xrt_core::device * _pDevice, 
-                                   boost::property_tree::ptree &_pt) const
+ReportAie::
+getPropertyTreeInternal(const xrt_core::device * _pDevice,
+                        boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
@@ -50,17 +52,19 @@ ReportAie::getPropertyTreeInternal(const xrt_core::device * _pDevice,
 }
 
 void 
-ReportAie::getPropertyTree20202(const xrt_core::device * _pDevice, 
-                                boost::property_tree::ptree &_pt) const
+ReportAie::
+getPropertyTree20202(const xrt_core::device * _pDevice, 
+                     boost::property_tree::ptree &_pt) const
 {
   _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
 }
 
 void
-ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
-                       const boost::property_tree::ptree& _pt,
-                       const std::vector<std::string>& _elementsFilter,
-                       std::ostream & _output) const
+ReportAie::
+writeReport(const xrt_core::device* /*_pDevice*/,
+            const boost::property_tree::ptree& _pt,
+            const std::vector<std::string>& _elementsFilter,
+            std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
   std::vector<std::string> aieCoreList;
@@ -70,7 +74,7 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
   for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
     // Only show certain selected cores from aie that are passed under cores
     // Ex. -r aie -e cores 0,3,5
-    if(*it == "cores") {
+    if (*it == "cores") {
       auto core_list = std::next(it);
       if (core_list != _elementsFilter.end())
         boost::split(aieCoreList, *core_list, boost::is_any_of(","));
@@ -78,13 +82,13 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
     // Show less information (core Status, Program Counter, Link Register, Stack
     // Pointer) for each cores.
     // Ex. -r aie -e less
-    if(*it == "less") {
+    if (*it == "less") {
       is_less = true;
     }
   }
 
   // validate and print aie metadata by checking schema_version node
-  if(!_pt.get_child_optional("aie_metadata.schema_version"))
+  if (!_pt.get_child_optional("aie_metadata.schema_version"))
     return;
 
   _output << "Aie\n";
@@ -99,11 +103,12 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       _output << boost::format("            %-10s: %s\n") % "Status" % graph.get<std::string>("status");
       _output << boost::format("    SNo.  %-20s%-30s%-30s\n") % "Core [C:R]"
            % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
+
       for (auto& node : graph.get_child("tile")) {
         const boost::property_tree::ptree& tile = node.second;
 
-	if (tile.get<std::string>("memory_column", "") == "")
-	  continue;
+        if (tile.get<std::string>("memory_column", "") == "")
+          continue;
 
         _output << boost::format("    [%2d]   %-20s%-30s%-30d\n") % count
             % (tile.get<std::string>("column") + ":" + tile.get<std::string>("row"))
@@ -116,8 +121,8 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       count = 0;
       for (auto& tile : graph.get_child("tile")) {
         int curr_core = count++;
-        if(aieCoreList.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
-		     std::to_string(curr_core)) == aieCoreList.end()))
+        if (aieCoreList.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
+            std::to_string(curr_core)) == aieCoreList.end()))
           continue;
 
         _output << boost::format("Core [%2d]\n") % curr_core;
@@ -130,26 +135,26 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
         _output << fmt8("%s") % "Link Register" % tile.second.get<std::string>("core.link_register");
         _output << fmt8("%s") % "Stack Pointer" % tile.second.get<std::string>("core.stack_pointer");
 
-	if(is_less) {
-	  _output << std::endl;
-	  continue;
-	}
+        if (is_less) {
+          _output << std::endl;
+          continue;
+        }
 
-	if(tile.second.find("dma") != tile.second.not_found()) {
+        if (tile.second.find("dma") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "DMA";
 
-	  if(tile.second.find("dma.fifo") != tile.second.not_found()) {
+          if (tile.second.find("dma.fifo") != tile.second.not_found()) {
             _output << boost::format("%12s:\n") % "FIFO";
-            for(const auto& node : tile.second.get_child("dma.fifo.counters")) {
-              _output << fmt16("%s") % node.second.get<std::string>("index")
-		    % node.second.get<std::string>("count");
-	    }
+            for (const auto& node : tile.second.get_child("dma.fifo.counters")) {
+              _output << fmt16("%s") % node.second.get<std::string>("index") 
+                  % node.second.get<std::string>("count");
+            }
           }
 
           _output << boost::format("        %s:\n") % "MM2S";
 
           _output << boost::format("            %s:\n") % "Channel";
-          for(const auto& node : tile.second.get_child("dma.mm2s.channel")) {
+          for (const auto& node : tile.second.get_child("dma.mm2s.channel")) {
             _output << fmt16("%s") % "Id" % node.second.get<std::string>("id");
             _output << fmt16("%s") % "Channel Status" % node.second.get<std::string>("channel_status");
             _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
@@ -161,7 +166,7 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
           _output << boost::format("        %s:\n") % "S2MM";
 
           _output << boost::format("            %s:\n") % "Channel";
-          for(const auto& node : tile.second.get_child("dma.s2mm.channel")) {
+          for (const auto& node : tile.second.get_child("dma.s2mm.channel")) {
             _output << fmt16("%s") % "Id" % node.second.get<std::string>("id");
             _output << fmt16("%s") % "Channel Status" % node.second.get<std::string>("channel_status");
             _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
@@ -171,30 +176,30 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
           }
         }
 
-        if(tile.second.find("locks") != tile.second.not_found()) {
+        if (tile.second.find("locks") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "Locks";
-          for(const auto& node : tile.second.get_child("locks", empty_ptree)) {
+          for (const auto& node : tile.second.get_child("locks", empty_ptree)) {
             _output << fmt8("%s")  % node.second.get<std::string>("name")
                                    % node.second.get<std::string>("value");
           }
           _output << std::endl;
         }
 
-        if(tile.second.find("errors") != tile.second.not_found()) {
+        if (tile.second.find("errors") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "Errors";
-          for(const auto& node : tile.second.get_child("errors", empty_ptree)) {
+          for (const auto& node : tile.second.get_child("errors", empty_ptree)) {
             _output << boost::format("        %s:\n") % node.second.get<std::string>("module");
-            for(const auto& enode : node.second.get_child("error", empty_ptree)) {
+            for (const auto& enode : node.second.get_child("error", empty_ptree)) {
               _output << fmt12("%s")  % enode.second.get<std::string>("name")
-                                     % enode.second.get<std::string>("value");
+                                      % enode.second.get<std::string>("value");
             }
           }
           _output << std::endl;
         }
 
-        if(tile.second.find("events") != tile.second.not_found()) {
+        if (tile.second.find("events") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "Events";
-          for(const auto& node : tile.second.get_child("events", empty_ptree)) {
+          for (const auto& node : tile.second.get_child("events", empty_ptree)) {
             _output << fmt8("%s")  % node.second.get<std::string>("name")
                                    % node.second.get<std::string>("value");
           }
@@ -213,7 +218,6 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
 
     count = 0;
     for (const auto& rtp_node : _pt.get_child("aie_metadata.rtps")) {
-
       _output << boost::format("  %-3s:[%2d]\n") % "RTP" % count;
       _output << fmtCommon("%s") % "Port Name" % rtp_node.second.get<std::string>("port_name");
       _output << fmtCommon("%d") % "Selector Row" % rtp_node.second.get<uint16_t>("selector_row");
@@ -254,8 +258,8 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       count++;
       _output << std::endl;
     }
-
-  } catch(std::exception const& e) {
+  }
+  catch (const std::exception& e) {
     _output <<  e.what() << std::endl;
   }
   _output << std::endl;
