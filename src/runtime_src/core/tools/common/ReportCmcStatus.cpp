@@ -21,10 +21,6 @@
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
 
-// 3rd Party Library - Include Files
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/algorithm/string.hpp>
-
 void
 ReportCmcStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                               boost::property_tree::ptree &_pt) const
@@ -89,12 +85,6 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
 
-  xrt::device device(_pDevice->get_device_id());
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::dynamic_regions>();
-  boost::property_tree::read_json(ss, device_stat_tree);
-  cmc_tree.add_child("device_stats", device_stat_tree);
-
   // There can only be 1 root node
   _pt.add_child("cmc", cmc_tree);
 }
@@ -128,19 +118,9 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   try {
     boost::property_tree::ptree cmc_throttle = cmc.get_child("throttling");
     _output << boost::format("  %-22s:\n") % cmc_throttle.get<std::string>("Description");
-    boost::property_tree::ptree device_stats = cmc.get_child("device_stats");
-    const boost::property_tree::ptree& pt_dfx = device_stats.get_child("dynamic_regions");
-
-    for(auto& k_dfx : pt_dfx) {
-      const boost::property_tree::ptree& dfx = k_dfx.second;
-      if (boost::iequals(dfx.get<std::string>("xclbin_uuid", "N/A"), "N/A")) {
-        _output << "    Unable to show status without XCLBIN\n";
-        return;
-      }
-    }
 
     if (!cmc_throttle.get<bool>("supported")) {
-      _output << "    Not supported\n";
+      _output << "    Not supported. Ensure xclbin is loaded.\n";
       return;
     }
     if (!cmc_throttle.get<bool>("enabled")) {

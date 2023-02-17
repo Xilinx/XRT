@@ -25,7 +25,7 @@ constexpr const char* config_file  = "/etc/msd.conf";
 
 enum class config_type {
     security = 0,
-    clk_scaling,
+    clk_throttling,
     threshold_power_override,
     threshold_temp_override,
     reset
@@ -38,8 +38,8 @@ operator<<(std::ostream& os, const config_type& value)
     case config_type::security:
       os << "security";
       break;
-    case config_type::clk_scaling:
-      os << "runtime clock scaling";
+    case config_type::clk_throttling:
+      os << "clock throttling";
       break;
     case config_type::threshold_power_override:
       os << "threshold power override";
@@ -48,7 +48,7 @@ operator<<(std::ostream& os, const config_type& value)
       os << "threshold temp override";
       break;
     case config_type::reset:
-      os << "clock scaling option reset";
+      os << "clock throttling option reset";
       break;
     default:
       throw std::runtime_error("Configuration missing enumeration conversion");
@@ -120,30 +120,30 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
     bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(_dev);
     if (is_versal) {
       try {
-        if (!key.first.compare("scaling_enabled")) {
+        if (!key.first.compare("throttling_enabled")) {
           xrt_core::device_update<xrt_core::query::xgq_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
           continue;
         }
-        if (!key.first.compare("scaling_power_override")) {
+        if (!key.first.compare("throttling_power_override")) {
           xrt_core::device_update<xrt_core::query::xgq_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
           continue;
         }
-        if (!key.first.compare("scaling_temp_override")) {
+        if (!key.first.compare("throttling_temp_override")) {
           xrt_core::device_update<xrt_core::query::xgq_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
           continue;
         }
       } catch(const xrt_core::query::exception&) {}
     } else {
       try {
-        if (!key.first.compare("scaling_enabled")) {
+        if (!key.first.compare("throttling_enabled")) {
           xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
           continue;
         }
-        if (!key.first.compare("scaling_power_override")) {
+        if (!key.first.compare("throttling_power_override")) {
           xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
           continue;
         }
-        if (!key.first.compare("scaling_temp_override")) {
+        if (!key.first.compare("throttling_temp_override")) {
           xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
           continue;
         }
@@ -227,32 +227,32 @@ show_device_conf(xrt_core::device* device)
   }
   std::cout << node_data_format % "Security level" % sec_level;
 
-  std::string scaling_enabled = not_supported;
+  std::string throttling_enabled = not_supported;
   try {
-    scaling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
+    throttling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
   }
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
-  std::cout << node_data_format % "Runtime clock scaling enabled" % scaling_enabled;
+  std::cout << node_data_format % "Clock Throttling enabled" % throttling_enabled;
 
-  std::string scaling_power_override = not_supported;
+  std::string throttling_power_override = not_supported;
   try {
-    scaling_power_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
+    throttling_power_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
   }
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
-  std::cout << node_data_format % "Scaling threshold power override" % scaling_power_override;
+  std::cout << node_data_format % "Throttling threshold power override" % throttling_power_override;
 
-  std::string scaling_temp_override = not_supported;
+  std::string throttling_temp_override = not_supported;
   try {
-    scaling_temp_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
+    throttling_temp_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
   }
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
-  std::cout << node_data_format % "Scaling threshold temp override" % scaling_temp_override;
+  std::cout << node_data_format % "Throttling threshold temp override" % throttling_temp_override;
 
   std::string data_retention_string = not_supported;
   try {
@@ -326,7 +326,7 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
       case config_type::security:
         xrt_core::device_update<xrt_core::query::sec_level>(device, value);
         break;
-      case config_type::clk_scaling:
+      case config_type::clk_throttling:
         xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
         break;
       case config_type::threshold_power_override:
@@ -378,10 +378,10 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     bool purge  = false;
     std::string host;
     std::string security;
-    std::string clk_scale;
+    std::string clk_throttle;
     std::string power_override;
     std::string temp_override;
-    std::string cs_reset;
+    std::string ct_reset;
     bool showx = false;
 
     // Options previously under the load config command
@@ -412,10 +412,10 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         ("purge", boost::program_options::bool_switch(&purge), "Remove the daemon configuration file")
         ("host", boost::program_options::value<decltype(host)>(&host), "IP or hostname for device peer")
         ("security", boost::program_options::value<decltype(security)>(&security), "Update the security level for the device")
-        ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "Enable/disable the device runtime clock scaling")
-        ("cs_threshold_power_override", boost::program_options::value<decltype(power_override)>(&power_override), "Update the power threshold in watts")
-        ("cs_threshold_temp_override", boost::program_options::value<decltype(temp_override)>(&temp_override), "Update the temperature threshold in celsius")
-        ("cs_reset", boost::program_options::value<decltype(cs_reset)>(&cs_reset), "Reset all scaling options")
+        ("clk_throttle", boost::program_options::value<decltype(clk_throttle)>(&clk_throttle), "Enable/disable the device clock throttling")
+        ("ct_threshold_power_override", boost::program_options::value<decltype(power_override)>(&power_override), "Update the power threshold in watts")
+        ("ct_threshold_temp_override", boost::program_options::value<decltype(temp_override)>(&temp_override), "Update the temperature threshold in celsius")
+        ("ct_reset", boost::program_options::value<decltype(ct_reset)>(&ct_reset), "Reset all throttling options")
         ("showx", boost::program_options::bool_switch(&showx), "Display the device configuration settings")
     ;
 
@@ -518,9 +518,9 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     if (!security.empty())
         is_something_updated = update_device_conf(device.get(), security, config_type::security);
 
-    // Clock scaling
-    if (!clk_scale.empty())
-        is_something_updated = update_device_conf(device.get(), clk_scale, config_type::clk_scaling);
+    // Clock throttling
+    if (!clk_throttle.empty())
+        is_something_updated = update_device_conf(device.get(), clk_throttle, config_type::clk_throttling);
     
     // Update threshold power override
     if (!power_override.empty())
@@ -530,9 +530,9 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     if (!temp_override.empty())
         is_something_updated = update_device_conf(device.get(), temp_override, config_type::threshold_temp_override);
 
-    // cs_reset?? TODO needs better comment
-    if (!cs_reset.empty())
-        is_something_updated = update_device_conf(device.get(), cs_reset, config_type::reset);
+    // ct_reset?? TODO needs better comment
+    if (!ct_reset.empty())
+        is_something_updated = update_device_conf(device.get(), ct_reset, config_type::reset);
 
     // Enable/Disable Retention
     if (!retention.empty()) {
