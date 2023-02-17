@@ -26,6 +26,9 @@ class SubCmdConfigure : public SubCmd {
  public:
   SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary);
   virtual ~SubCmdConfigure() {};
+
+ private:
+  bool m_help;
 };
 
 #endif

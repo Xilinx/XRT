@@ -35,8 +35,8 @@ namespace XBUtilities {
   void 
      produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                       const ReportCollection & reportsToProcess, 
-                      Report::SchemaVersion schema, 
-                      std::vector<std::string> & elementFilter,
+                      const Report::SchemaVersion schema, 
+                      const std::vector<std::string> & elementFilter,
                       std::ostream & consoleStream,
                       std::ostream & schemaStream);
 };
