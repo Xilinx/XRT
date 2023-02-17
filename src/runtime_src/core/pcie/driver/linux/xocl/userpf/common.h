@@ -219,6 +219,9 @@ static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 	return 1ULL << (size + 20);
 }
 
+int xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
+	                     uint32_t qos, uint32_t *slot_id);
+
 /* KDS functions */
 int xocl_init_sched(struct xocl_dev *xdev);
 void xocl_fini_sched(struct xocl_dev *xdev);

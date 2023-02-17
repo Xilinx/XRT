@@ -25,18 +25,6 @@
 
 #define EV_ABORT	0x1
 
-/* Multiple CU context can be active under a single KDS client Context.
- */
-struct kds_client_cu_ctx {
-	u32				cu_idx;
-	u32		  		cu_domain;
-	u32				flags;
-	u32				ref_cnt;
-	struct kds_client_ctx		*ctx;
-	struct kds_client_hw_ctx	*hw_ctx;
-	struct list_head		link;
-};
-
 /* KDS CU information. */
 struct kds_client_cu_info {
 	u32				cu_idx;
@@ -56,25 +44,6 @@ struct kds_client_ctx {
 	/* To support zocl multiple PL slot case */
 	struct list_head		link;
 	u32				slot_idx;
-};
-
-/* Multiple xclbin context can be active under a single client.
- * Client should maintain all the active XCLBIN.
- */
-struct kds_client_hw_ctx {
-	uint32_t 			hw_ctx_idx;
-	void				*xclbin_id;
-	u32				slot_idx;
-	/* To support multiple context for multislot case */
-	struct list_head		link;
-	/* To support multiple CU context */
-	struct list_head		cu_ctx_list;
-
-	/* Per context statistics. Use percpu variable for two reasons
-	 * 1. no lock is need while modifying these counters
-	 * 2. do not need to worry about cache false share
-	 */
-	struct client_stats __percpu 	*stats;
 };
 
 struct kds_client_cu_refcnt {
