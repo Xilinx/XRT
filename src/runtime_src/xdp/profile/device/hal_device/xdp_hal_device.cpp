@@ -85,7 +85,7 @@ int HalDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
   return xclRegRead(mHalDevice, index, offset, data);
 }
 
-#if defined(_WIN32) || defined(XDP_HWEMU_BUILD)
+#if defined(_WIN32) || defined(XDP_HWEMU_USING_HAL_BUILD)
 int HalDevice::initXrtIP(const char * /*name*/, uint64_t /*base*/, uint32_t /*range*/)
 {
   // The required APIs are missing from windows shim
