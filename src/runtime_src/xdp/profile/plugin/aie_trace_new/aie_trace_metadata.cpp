@@ -107,15 +107,34 @@ namespace xdp {
       "periodic_offload", "reuse_buffer", "buffer_size", 
       "buffer_offload_interval_us", "file_dump_interval_s"
     };
+    const std::map<std::string, std::string> deprecatedSettings {
+      {"aie_trace_metrics", "AIE_trace_settings.graph_based_aie_tile_metrics or tile_based_aie_tile_metrics"},
+      {"aie_trace_start_time", "AIE_trace_settings.start_time"},
+      {"aie_trace_periodic_offload", "AIE_trace_settings.periodic_offload"},
+      {"aie_trace_buffer_size", "AIE_trace_settings.buffer_size"}
+    };
 
-    auto tree = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
-    for (ptree::iterator pos = tree.begin(); pos != tree.end(); pos++) {
+    // Verify settings in AIE_trace_settings section
+    auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
+    for (ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
       if (validSettings.find(pos->first) == validSettings.end()) {
         std::stringstream msg;
         msg << "The setting " << pos->first << " is not recognized. "
             << "Please check the spelling and compare to supported list:";
         for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
           msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
+
+    // Check for deprecated settings
+    auto tree2 = xrt_core::config::detail::get_ptree_value("Debug");
+    for (ptree::iterator pos = tree2.begin(); pos != tree2.end(); pos++) {
+      auto iter = deprecatedSettings.find(pos->first);
+      if (iter != deprecatedSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting " << pos->first << " is deprecated. "
+            << "Please use " << iter->second << " instead.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }
     }
