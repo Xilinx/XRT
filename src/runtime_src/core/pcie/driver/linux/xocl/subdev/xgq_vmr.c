@@ -1224,6 +1224,7 @@ static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status
 	vmr_status_ptr->boot_on_default = vmr_status->boot_on_default;
 	vmr_status_ptr->boot_on_backup = vmr_status->boot_on_backup;
 	vmr_status_ptr->boot_on_recovery = vmr_status->boot_on_recovery;
+	vmr_status_ptr->has_fpt = vmr_status->has_fpt;
 
 	return 0;
 }

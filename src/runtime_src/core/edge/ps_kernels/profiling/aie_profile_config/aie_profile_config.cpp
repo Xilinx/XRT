@@ -213,6 +213,19 @@ namespace {
   }
 
 
+  bool isValidType(xdp::module_type type, XAie_ModuleType mod)
+  {
+    if ((mod == XAIE_CORE_MOD) && ((type == xdp::module_type::core) 
+        || (type == xdp::module_type::dma)))
+      return true;
+    if ((mod == XAIE_MEM_MOD) && ((type == xdp::module_type::dma) 
+        || (type == xdp::module_type::mem_tile)))
+      return true;
+    if ((mod == XAIE_PL_MOD) && (type == xdp::module_type::shim)) 
+      return true;
+    return false;
+  }
+
   bool 
   setMetricsSettings(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
                  EventConfiguration& config,
@@ -254,7 +267,8 @@ namespace {
         auto row = tileMetric.first.row;
 
         auto type = getModuleType(row, params->offset, mod);
-
+        if (!isValidType(type, mod))
+          continue;
 
         // NOTE: resource manager requires absolute row number
         auto loc        = XAie_TileLoc(col, row);

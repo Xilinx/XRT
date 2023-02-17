@@ -324,6 +324,14 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     std::vector<std::string> warnings;
 
     try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::has_fpt);
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT migrated");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    try {
       const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::boot_on_default);
       if (!is_default)
         warnings.push_back("Versal Platform is NOT in default boot");
@@ -405,30 +413,6 @@ XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& er
   std::cout << info << "\n";
   if (!XBUtilities::can_proceed(getForce()))
     throw xrt_core::system_error(ECANCELED, error);
-}
-
-void
-XBUtilities::sudo_or_throw(const std::string& msg)
-{
-#ifndef _WIN32
-  if ((getuid() == 0) || (geteuid() == 0))
-    return;
-
-  std::cerr << "ERROR: " << msg << std::endl;
-  throw xrt_core::error(std::errc::operation_canceled);
-#endif
-}
-
-void
-XBUtilities::throw_cancel(const std::string& msg)
-{
-  throw_cancel(boost::format("%s") % msg);
-}
-
-void
-XBUtilities::throw_cancel(const boost::format& format)
-{
-  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
 }
 
 void

@@ -2207,7 +2207,7 @@ close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type c
 std::unique_ptr<xrt_core::hwctx_handle>
 SwEmuShim::
 create_hw_context(const xrt::uuid& xclbin_uuid,
-                  const xrt::hw_context::qos_type&,
+                  const xrt::hw_context::cfg_param_type&,
                   xrt::hw_context::access_mode mode)
 {
   return std::make_unique<hwcontext>(this, 0, xclbin_uuid, mode);

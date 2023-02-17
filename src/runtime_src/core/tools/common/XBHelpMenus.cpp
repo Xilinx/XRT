@@ -141,8 +141,8 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 void 
 XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                               const ReportCollection & reportsToProcess, 
-                              Report::SchemaVersion schemaVersion, 
-                              std::vector<std::string> & elementFilter,
+                              const Report::SchemaVersion schemaVersion, 
+                              const std::vector<std::string> & elementFilter,
                               std::ostream & consoleStream,
                               std::ostream & schemaStream)
 {

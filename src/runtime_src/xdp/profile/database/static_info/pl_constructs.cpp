@@ -19,6 +19,8 @@
 
 #define XDP_SOURCE
 
+#include "core/common/message.h"
+
 #include "xdp/profile/database/static_info/pl_constructs.h"
 
 // Anonymous namespace for local static helper functions
@@ -148,11 +150,11 @@ namespace xdp {
 
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string& n)
     : index(i)
+    , fullname(n)
   {
-    std::string fullName(n) ;
-    size_t pos = fullName.find(':') ;
-    kernelName = fullName.substr(0, pos) ;
-    name = fullName.substr(pos + 1) ;
+    size_t pos = fullname.find(':') ;
+    kernelName = fullname.substr(0, pos) ;
+    name = fullname.substr(pos + 1) ;
   }
 
   std::string ComputeUnitInstance::getDim()
@@ -234,6 +236,57 @@ namespace xdp {
     ddr += tag.substr(loc + 4);
     ddr += "]";
     spTag = ddr;
+  }
+
+  ip_metadata::
+  ip_metadata(const boost::property_tree::ptree& pt)
+  : s_major(0)
+  , s_minor(0)
+  {
+    auto& v = pt.get_child("version");
+    s_major = v.get<uint32_t>("major");
+    s_minor = v.get<uint32_t>("minor");
+    auto& kernels = pt.get_child("kernels");
+    for (const auto& k : kernels) {
+      auto kname = k.second.get<std::string>("name");
+      auto reglist = k.second.get_child("deadlock_register_list");
+      kernel_reginfo kinfo;
+      for (const auto& reg : reglist) {
+        std::array<std::string, num_bits_deadlock_diagnosis> reginfo;
+        auto offset_str = reg.second.get<std::string>("register_word_offset");
+        uint32_t reg_offset = get_offset_from_string(offset_str);
+        auto bitinfo = reg.second.get_child("register_bit_info");
+        for (const auto& bits : bitinfo) {
+          auto bit_offset = bits.second.get<uint32_t>("bit");
+          auto bit_msg = bits.second.get<std::string>("message");
+          reginfo[bit_offset] = bit_msg;
+        }
+        kinfo[reg_offset] = reginfo;
+      }
+      kernel_infos.push_back(std::make_pair(kname, kinfo));
+    }
+  }
+
+  /*
+   * Useful for debug
+   */
+  void ip_metadata::
+  print()
+  {
+    std::stringstream ss;
+    ss << "Major : " << s_major << std::endl;
+    ss << "Minor : " << s_minor << std::endl;
+    for (const auto& kernel_info : kernel_infos) {
+      ss << kernel_info.first << " : \n";
+      for (const auto& reginfo : kernel_info.second) {
+        ss <<std::hex << "0x" << reginfo.first << " :\n" << std::dec;
+        for (const auto& bitstring : reginfo.second)
+          if (!bitstring.empty())
+            ss << " " << bitstring << "\n";
+      }
+      ss << std::endl;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", ss.str());
   }
 
 } // end namespace xdp

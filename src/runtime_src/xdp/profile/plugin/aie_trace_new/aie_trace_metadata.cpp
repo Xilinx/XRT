@@ -39,6 +39,13 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
   
+  void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
+  {
+    std::stringstream aie_stream;
+    aie_stream.write(data,size);
+    pt::read_json(aie_stream,aie_project);
+  }
+
   AieTraceMetadata::AieTraceMetadata(uint64_t deviceID, void* handle)
   : deviceID(deviceID)
   , handle(handle)
@@ -65,9 +72,15 @@ namespace xdp {
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     auto device = xrt_core::get_userpf_device(handle);
-    // auto compilerOptions = get_aiecompiler_options(device.get());
-    // runtimeMetrics = (compilerOptions.event_trace == "runtime");
-    runtimeMetrics = true;
+    auto compilerOptions = get_aiecompiler_options(device.get());
+    setRuntimeMetrics(compilerOptions.event_trace == "runtime");
+
+    if (!getRuntimeMetrics()){
+      std::stringstream msg;
+        msg << "Found compiler trace option of " << compilerOptions.event_trace
+            << ". No runtime AIE metrics will be changed.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+    }
     
     // Process AIE_trace_settings metrics
     auto aieTileMetricsSettings = 
@@ -254,13 +267,6 @@ namespace xdp {
 
   }
 
-  void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data,size);
-    pt::read_json(aie_stream,aie_project);
-  }
-
   std::vector<std::string> 
   AieTraceMetadata::get_graphs(const xrt_core::device* device)
   {
@@ -325,13 +331,14 @@ namespace xdp {
     
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
+    int startCount = 0;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
       if ((graph.second.get<std::string>("name") != graph_name)
            && (graph_name.compare("all") != 0))
         continue;
 
-      int count = 0;
+      int count = startCount;
       for (auto& node : graph.second.get_child("core_columns")) {
         tiles.push_back(tile_type());
         auto& t = tiles.at(count++);
@@ -339,31 +346,32 @@ namespace xdp {
       }
 
       int num_tiles = count;
-      count = 0;
+      count = startCount;
       for (auto& node : graph.second.get_child("core_rows"))
         tiles.at(count++).row = std::stoul(node.second.data()) + rowOffset;
       throw_if_error(count < num_tiles,"core_rows < num_tiles");
 
-      count = 0;
+      count = startCount;
       for (auto& node : graph.second.get_child("iteration_memory_columns"))
         tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
       throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
 
-      count = 0;
+      count = startCount;
       for (auto& node : graph.second.get_child("iteration_memory_rows"))
         tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
       throw_if_error(count < num_tiles,"iteration_memory_rows < num_tiles");
 
-      count = 0;
+      count = startCount;
       for (auto& node : graph.second.get_child("iteration_memory_addresses"))
         tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
       throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
-      count = 0;
+      count = startCount;
       for (auto& node : graph.second.get_child("multirate_triggers"))
         tiles.at(count++).is_trigger = (node.second.data() == "true");
       throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
 
+      startCount = count;
     }
 
     return tiles;    
@@ -488,6 +496,13 @@ namespace xdp {
     auto tileName = (type == module_type::mem_tile) ? "mem" : "aie";
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
+    auto allValidKernels = get_kernels(device.get());
+    auto allValidGraphs = get_graphs(device.get());
+
+    std::set<tile_type> allValidTiles;
+    auto validTilesVec = get_tiles(device.get(), "all", type);
+    std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), tileCompare);
+
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
      * AI Engine Tiles
@@ -497,14 +512,6 @@ namespace xdp {
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
-
-    std::set<tile_type> allValidTiles;
-    auto allValidKernels = get_kernels(device.get());
-    auto allValidGraphs = get_graphs(device.get());
-    for (auto& graph : allValidGraphs) {
-      std::vector<tile_type> currTiles = get_tiles(device.get(), graph, type);
-      std::copy(currTiles.begin(), currTiles.end(), std::inserter(allValidTiles, allValidTiles.end()));
-    }
 
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
@@ -846,6 +853,21 @@ namespace xdp {
     }
 
     return gmios;
+  }
+
+  aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device)
+  {
+    auto data = device->get_axlf_section(AIE_METADATA);
+    if (!data.first || !data.second)
+      return {};
+
+    pt::ptree aie_meta;
+    read_aie_metadata(data.first, data.second, aie_meta);
+
+    aiecompiler_options aiecompiler_options;
+    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
+    aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
+    return aiecompiler_options;
   }
 
   std::vector<tile_type>

@@ -1903,6 +1903,10 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, 0, ip_layout, cu_info, MAX_CUS);
+
+	/* We have to reserve the subdevices before create them */
+	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
+
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
 	ret = xocl_ert_user_bulletin(xdev, &brd);

@@ -56,7 +56,7 @@ namespace {
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
-constexpr size_t max_sections = 13;
+constexpr size_t max_sections = 14;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -70,7 +70,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   CLOCK_FREQ_TOPOLOGY,
   BUILD_METADATA,
   SOFT_KERNEL,
-  AIE_PARTITION
+  AIE_PARTITION,
+  IP_METADATA
 };
 
 XRT_CORE_UNUSED

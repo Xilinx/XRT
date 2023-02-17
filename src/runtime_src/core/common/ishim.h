@@ -150,7 +150,7 @@ struct ishim
   // was explicitly loaded using load_xclbin
   virtual std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& /*xclbin_uuid*/,
-                    const xrt::hw_context::qos_type& /*qos*/,
+                    const xrt::hw_context::cfg_param_type& /*cfg_params*/,
                     xrt::hw_context::access_mode /*mode*/) const = 0;
 
   // Registers an xclbin with shim, but does not load it.

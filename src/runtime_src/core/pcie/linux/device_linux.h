@@ -62,10 +62,10 @@ public:
 
   std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid,
-                    const xrt::hw_context::qos_type& qos,
+                    const xrt::hw_context::cfg_param_type& cfg_param,
                     xrt::hw_context::access_mode mode) const override
   {
-    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, cfg_param, mode);
   }
 
   void

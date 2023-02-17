@@ -22,12 +22,10 @@ nocddr_fastaccess_hwemu::nocddr_fastaccess_hwemu()
 bool nocddr_fastaccess_hwemu::isAddressMapped(uint64_t addr,
                                               size_t size)
 {
-  std::cerr << __func__ << " PRASAD " << __LINE__ << " addr: " << addr << " size: " << size << std::endl;
   for (auto itr = mDDRMap.begin(); itr < mDDRMap.end(); itr++)
   {
     uint64_t addrI = std::get<0>(*itr);
     uint64_t sizeI = std::get<1>(*itr);
-    std::cerr << __func__ << " PRASAD " << __LINE__ << " addrI: " << addrI << " sizeI: " << sizeI << std::endl;
     if (addr >= addrI && (addr + size) <= (addrI + sizeI))
     {
       return true;
@@ -87,7 +85,6 @@ bool nocddr_fastaccess_hwemu::init(std::string filename, std::string simdir)
 
   while (std::getline(mapFile, line))
   {
-    std::cout << "LINE " << line << std::endl;
     std::stringstream ss(line);
     std::string fname;
     std::string foffset_str;

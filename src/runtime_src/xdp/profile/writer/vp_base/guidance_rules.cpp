@@ -585,24 +585,43 @@ namespace {
 
   static void aieCounterResources(xdp::VPDatabase* db, std::ofstream& fout)
   {
-    if (!db->infoAvailable(xdp::info::aie_profile)) return ;
+    if (!db->infoAvailable(xdp::info::aie_profile)) return;
 
-    auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
+    auto deviceInfos = db->getStaticInfo().getDeviceInfos();
     for (auto device : deviceInfos) {
       auto coreCounters =
-        db->getStaticInfo().getAIECoreCounterResources(device->deviceId) ;
+        db->getStaticInfo().getAIECoreCounterResources(device->deviceId);
       if (coreCounters != nullptr) {
         for (auto const& counter : *coreCounters) {
           fout << "AIE_CORE_COUNTER_RESOURCES," << counter.first << ","
-               << counter.second << ",\n" ;
+               << counter.second << ",\n";
         }
       }
+
       auto memoryCounters =
-        db->getStaticInfo().getAIEMemoryCounterResources(device->deviceId) ;
+        db->getStaticInfo().getAIEMemoryCounterResources(device->deviceId);
       if (memoryCounters != nullptr) {
         for (auto const& counter : *memoryCounters) {
           fout << "AIE_MEMORY_COUNTER_RESOURCES," << counter.first << ","
-               << counter.second << ",\n" ;
+               << counter.second << ",\n";
+        }
+      }
+
+      auto interfaceCounters =
+        db->getStaticInfo().getAIEShimCounterResources(device->deviceId);
+      if (interfaceCounters != nullptr) {
+        for (auto const& counter : *interfaceCounters) {
+          fout << "AIE_INTERFACE_COUNTER_RESOURCES," << counter.first << ","
+               << counter.second << ",\n";
+        }
+      }
+      
+      auto memTileCounters =
+        db->getStaticInfo().getAIEMemTileCounterResources(device->deviceId);
+      if (memTileCounters != nullptr) {
+        for (auto const& counter : *memTileCounters) {
+          fout << "AIE_MEM_TILE_COUNTER_RESOURCES," << counter.first << ","
+               << counter.second << ",\n";
         }
       }
     }
@@ -629,6 +648,15 @@ namespace {
         for (auto const& memoryEvent : *memoryEvents) {
           fout << "AIE_MEMORY_EVENT_RESOURCES," << memoryEvent.first << ","
                << memoryEvent.second << ",\n" ;
+        }
+      }
+
+      auto interfaceEvents =
+        db->getStaticInfo().getAIEShimEventResources(device->deviceId) ;
+      if (interfaceEvents != nullptr) {
+        for (auto const& interfaceEvent : *interfaceEvents) {
+          fout << "AIE_INTERFACE_EVENT_RESOURCES," << interfaceEvent.first << ","
+               << interfaceEvent.second << ",\n" ;
         }
       }
 

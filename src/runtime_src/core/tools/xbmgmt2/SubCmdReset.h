@@ -25,6 +25,11 @@ class SubCmdReset : public SubCmd {
 
  public:
   SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+
+ private:
+  std::string m_device;
+  std::string m_resetType;
+  bool        m_help;
 };
 
 #endif

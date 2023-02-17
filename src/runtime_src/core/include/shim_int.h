@@ -58,7 +58,7 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
 std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
-                  const xrt::hw_context::qos_type& qos,
+                  const xrt::hw_context::cfg_param_type& cfg_param,
                   xrt::hw_context::access_mode mode);
 
 // create_hw_queue() -

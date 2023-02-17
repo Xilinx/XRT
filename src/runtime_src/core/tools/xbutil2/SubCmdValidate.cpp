@@ -393,7 +393,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
  * helper function for M2M and P2P test
  */
 static void
-free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t bo_size)
+free_unmap_bo(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer_handle boh, void * boptr, size_t bo_size)
 {
 #ifdef __linux__
   if (boptr != nullptr)
@@ -408,7 +408,7 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
 #endif
 
   if (boh)
-    xclFreeBO(handle, boh);
+    handle->free_bo(boh);
 }
 
 /*
@@ -441,7 +441,7 @@ p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data
  * helper function for P2P test
  */
 static bool
-p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t size)
+p2ptest_chunk(const std::shared_ptr<xrt_core::device>& handle, char *boptr, uint64_t dev_addr, uint64_t size)
 {
   char *buf = nullptr;
 
@@ -458,8 +458,12 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   // Perform one large write
   const auto buf_size = xrt_core::getpagesize();
   p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
-  if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
+  try {
+    handle->unmgd_pwrite(buf, buf_size, dev_addr);
+  }
+  catch (const std::exception&) {
     return false;
+  }
   if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, false))
     return false;
 
@@ -467,16 +471,24 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   valid_data.clear();
   valid_data.push_back('A');
   p2ptest_set_or_cmp(buf, size, valid_data, true);
-  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+  try {
+    handle->unmgd_pwrite(buf, size, dev_addr);
+  }
+  catch (const std::exception&) {
     return false;
+  }
   if (!p2ptest_set_or_cmp(boptr, size, valid_data, false))
     return false;
 
   valid_data.clear();
   valid_data.push_back('B');
   p2ptest_set_or_cmp(boptr, size, valid_data, true);
-  if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0)
+  try {
+    handle->unmgd_pread(buf, size, dev_addr);
+  }
+  catch (const std::exception&) {
     return false;
+  }
   if (!p2ptest_set_or_cmp(buf, size, valid_data, false))
     return false;
 
@@ -486,18 +498,16 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
 
 //Since no DMA platforms don't have a DMA engine, we copy p2p buffer
 //to host only buffer and run the test through m2m
-
 static bool
-p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_size, int bank)
+p2ptest_chunk_no_dma(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer_handle bop2p, size_t bo_size, int bank)
 {
-   // testing p2p write flow host -> device
-
-  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_HOST_ONLY|bank);
-  if (boh == NULLBO) {
+  // testing p2p write flow host -> device
+  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_HOST_ONLY|bank);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     return false;
   }
 
-  char *boptr = reinterpret_cast<char *> (xclMapBO(handle, boh, true));
+  char *boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
@@ -505,12 +515,18 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
 
   memset(boptr, 'A', bo_size);
 
-  if (xclCopyBO(handle, bop2p, boh, bo_size, 0, 0)) {
+  try {
+    handle->copy_bo(bop2p, boh, bo_size, 0, 0);
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
 
-  if (xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0);
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
@@ -524,12 +540,12 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
   free_unmap_bo(handle, boh, boptr, bo_size);
 
   // testing p2p read flow device -> host
-  boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_HOST_ONLY|bank);
-  if (boh == NULLBO) {
+  boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_HOST_ONLY|bank);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     return false;
   }
 
-  boptr = reinterpret_cast<char *> (xclMapBO(handle, boh, true));
+  boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
@@ -537,12 +553,18 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
 
   memset(boptr, 'B', bo_size);
 
-  if (xclCopyBO(handle, bop2p, boh, bo_size, 0, 0)) {
+  try {
+    handle->copy_bo(bop2p, boh, bo_size, 0, 0);
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
 
-  if (xclSyncBO(handle, boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
   }
@@ -563,19 +585,20 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
  * helper function for P2P test
  */
 static bool
-p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, const std::string&,
+p2ptest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, const std::string&,
              unsigned int mem_idx, uint64_t addr, uint64_t bo_size, uint32_t no_dma)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
   const size_t mem_size = 256 * 1024 * 1024 ; //256 MB
 
-  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
-  if (boh == NULLBO) {
+  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_P2P | mem_idx);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
-  char *boptr = (char *)xclMapBO(handle, boh, true);
+
+  char *boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -609,24 +632,29 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, const
  * helper function for M2M test
  */
 static int
-m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, xclBufferHandle &boh,
+m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, xrt_buffer_handle &boh,
                    char * &boptr, size_t bo_size, int bank, char pattern)
 {
-  boh = xclAllocBO(handle, bo_size, 0, bank);
-  if (boh == NULLBO) {
+  boh = handle->alloc_bo(bo_size, bank);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return 1;
   }
-  boptr = (char*) xclMapBO(handle, boh, true);
+
+  boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
     return 1;
   }
+
   memset(boptr, pattern, bo_size);
-  if (xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+  }
+  catch (const std::exception&) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't sync BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
@@ -639,10 +667,10 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
  * helper function for M2M test
  */
 static double
-m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
+m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
-  xclBufferHandle bo_src = NULLBO;
-  xclBufferHandle bo_tgt = NULLBO;
+  xrt_buffer_handle bo_src = XRT_INVALID_BUFFER_HANDLE;
+  xrt_buffer_handle bo_tgt = XRT_INVALID_BUFFER_HANDLE;
   char *bo_src_ptr = nullptr;
   char *bo_tgt_ptr = nullptr;
   double bandwidth = 0;
@@ -658,11 +686,18 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   XBU::Timer timer;
-  if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
+  try {
+    handle->copy_bo(bo_tgt, bo_src, bo_size, 0, 0);
+  }
+  catch (const std::exception&) {
     return bandwidth;
+  }
   double timer_duration_sec = timer.get_elapsed_time().count();
 
-  if (xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
+  try {
+    handle->sync_bo(bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+  }
+  catch (const std::exception&) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
     free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
     _ptTest.put("status", test_token_failed);
@@ -687,33 +722,17 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   return static_cast<double>(total_Mb / timer_duration_sec);
 }
 
-static int
-program_xclbin(const xclDeviceHandle hdl, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+static void
+program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::string& xclbin)
 {
-  std::ifstream stream(xclbin, std::ios::binary);
-  if (!stream) {
-    logger(_ptTest, "Error", boost::str(boost::format("Could not open %s for reding") % xclbin));
-    return 1;
+  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+  auto xclbin_obj = xrt::xclbin{xclbin};
+  try {
+    device->load_xclbin(xclbin_obj);
   }
-
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-
-  std::vector<char> raw(size);
-  stream.read(raw.data(),size);
-
-  std::string v(raw.data(),raw.data()+7);
-  if (v != "xclbin2") {
-    logger(_ptTest, "Error", boost::str(boost::format("Bad binary version '%s'") % v));
-    return 1;
+  catch (const std::exception& e) {
+    XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
   }
-
-  if (xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data()))) {
-    logger(_ptTest, "Error", "Could not program device");
-    return 1;
-  }
-  return 0;
 }
 
 static bool
@@ -749,26 +768,32 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
     return false;
   }
 
-  if (program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
+  try {
+    program_xclbin(dev, xclbinPath);
+  }
+  catch (const std::exception& e) {
+    logger(ptTest, "Error", e.what());
     ptTest.put("status", test_token_failed);
     return false;
   }
+
   return true;
 }
 
 static bool
-bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
+bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
 {
   int ret;
   const uint32_t bo_size = 0x1000;
-  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_EXECBUF);
 
-  if (boh == NULLBO) {
+  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_EXECBUF);
+  if (boh == XRT_INVALID_BUFFER_HANDLE) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
-  auto boptr = reinterpret_cast<char *>(xclMapBO(handle, boh, true));
+
+  auto boptr = (char *)handle->map_bo(boh, true);
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -782,15 +807,18 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
   ecmd->type = ERT_CTRL;
   ecmd->count = 5;
 
-  if (xclExecBuf(handle,boh)) {
-      logger(_ptTest, "Error", "Couldn't map BO");
-      return false;
+  try {
+    handle->exec_buf(boh);
+  }
+  catch (const std::exception&) {
+    logger(_ptTest, "Error", "Couldn't map BO");
+    return false;
   }
 
   do {
-      ret = xclExecWait(handle, 1);
-      if (ret == -1)
-          break;
+    ret = handle->exec_wait(1);
+    if (ret == -1)
+        break;
   }
   while (ecmd->state < ERT_CMD_STATE_COMPLETED);
 
@@ -798,18 +826,18 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
 }
 
 static bool
-clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   const int sleep_secs = 2, one_million = 1000000;
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_CLK_CALIB, _ptTest))
     return false;
 
   auto start = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
 
   std::this_thread::sleep_for(std::chrono::seconds(sleep_secs));
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_CLK_CALIB, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_CLK_CALIB, _ptTest))
     return false;
 
   auto end = xrt_core::device_query<xrt_core::query::clock_timestamp>(_dev);
@@ -822,13 +850,13 @@ clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle
 }
 
 static bool
-ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
+ert_validate(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_ACCESS_TEST_C, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_ACCESS_TEST_C, _ptTest))
     return false;
 
-  if (!bist_alloc_execbuf_and_wait(handle, ERT_MB_VALIDATE, _ptTest))
+  if (!bist_alloc_execbuf_and_wait(_dev, ERT_MB_VALIDATE, _ptTest))
     return false;
 
   auto cq_write_cnt = xrt_core::device_query<xrt_core::query::ert_cq_write>(_dev);
@@ -1026,7 +1054,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     else
       totalSize = std::min((mem.m_size * 1024), 2_gb); // minimum of mem size in bytes and 2 GB
 
-    xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
+    xcldev::DMARunner runner(_dev, block_size, static_cast<unsigned int>(midx), totalSize);
     try {
       runner.run(run_details);
       _ptTest.put("status", test_token_passed);
@@ -1118,7 +1146,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
     for (const auto& x : sup_list) {
       if (mem_tag.find(x) != std::string::npos && mem.m_used) {
-        if (!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma))
+        if (!p2ptest_bank(_dev, _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma))
            break;
         else
           logger(_ptTest, "Details", mem_tag +  " validated");
@@ -1187,7 +1215,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       if (!used_banks[i].m_size || !used_banks[j].m_size)
         continue;
 
-      double m2m_bandwidth = m2mtest_bank(_dev->get_device_handle(), _ptTest, i, j, bo_size);
+      double m2m_bandwidth = m2mtest_bank(_dev, _ptTest, i, j, bo_size);
       logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
                   %used_banks[j].m_tag % m2m_bandwidth));
 
@@ -1249,10 +1277,10 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 
   XBU::xclbin_lock xclbin_lock(_dev.get());
 
-  if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
+  if (!clock_calibration(_dev, _ptTest))
      _ptTest.put("status", test_token_failed);
 
-  if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
+  if (!ert_validate(_dev, _ptTest))
     _ptTest.put("status", test_token_failed);
 
   _ptTest.put("status", test_token_passed);
@@ -1593,24 +1621,7 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
   return has_failures;
 }
 
-}
-//end anonymous namespace
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
-
-SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("validate",
-             "Validates the basic shell acceleration functionality")
-{
-  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
-  setLongDescription(longDescription);
-  setExampleSyntax("");
-  setIsHidden(_isHidden);
-  setIsDeprecated(_isDepricated);
-  setIsPreliminary(_isPreliminary);
-}
-
-XBU::VectorPairStrings
+static XBU::VectorPairStrings
 getTestNameDescriptions(bool addAdditionOptions)
 {
   XBU::VectorPairStrings reportDescriptionCollection;
@@ -1628,6 +1639,45 @@ getTestNameDescriptions(bool addAdditionOptions)
   }
 
   return reportDescriptionCollection;
+}
+
+}
+//end anonymous namespace
+
+// ----- C L A S S   M E T H O D S -------------------------------------------
+  // -- Build up the format options
+static const auto formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+static const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
+static const auto formatRunValues = XBU::create_suboption_list_string(testNameDescription);
+
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("validate",
+             "Validates the basic shell acceleration functionality")
+    , m_device("")
+    , m_tests_to_run({"all"})
+    , m_format("JSON")
+    , m_output("")
+    , m_param("")
+    , m_xclbin_location("")
+    , m_help(false)
+{
+  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The device of interest. This is specified as follows:\n"
+                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("param", boost::program_options::value<decltype(m_param)>(&m_param), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
+    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 }
 
 /*
@@ -1673,96 +1723,69 @@ extendedKeysOptions()
 
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
-
 {
-  // -- Build up the format options
-  const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-
-  const XBU::VectorPairStrings testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
-  const std::string formatRunValues = XBU::create_suboption_list_string(testNameDescription);
-
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::vector<std::string> testsToRun = {"all"};
-  std::string sFormat = "JSON";
-  std::string sOutput;
-  std::string sParam;
-  std::string xclbin_location;
-  bool help = false;
-
-  po::options_description commonOptions("Commmon Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The device of interest. This is specified as follows:\n"
-                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
-    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("param", boost::program_options::value<decltype(sParam)>(&sParam), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
-    ("path,p", boost::program_options::value<decltype(xclbin_location)>(&xclbin_location), "Path to the directory containing validate xclbins")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (help) {
-    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
+  if (m_help) {
+    printHelp(false, extendedKeysOptions());
     return;
   }
 
   // -- Process the options --------------------------------------------
   Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
   std::vector<std::string> param;
+  std::vector<std::string> validatedTests;
+  std::string validateXclbinPath = m_xclbin_location;
   try {
     // Output Format
-    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+    schemaVersion = Report::getSchemaDescription(m_format).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown)
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
+      throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
-    if (!sOutput.empty() && !XBU::getForce() && boost::filesystem::exists(sOutput))
-        throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
+    if (!m_output.empty() && !XBU::getForce() && boost::filesystem::exists(m_output))
+        throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
-    if (testsToRun.empty())
+    if (m_tests_to_run.empty())
       throw std::runtime_error("No test given to validate against.");
 
     // Validate the user test requests
-    for (auto &userTestName : testsToRun) {
-      userTestName = get_test_name(userTestName);
+    for (auto &userTestName : m_tests_to_run) {
+      const auto validateTestName = get_test_name(userTestName);
 
-      if ((userTestName == "all") && (testsToRun.size() > 1))
+      if ((validateTestName == "all") && (m_tests_to_run.size() > 1))
         throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
 
-      if ((userTestName == "quick") && (testsToRun.size() > 1))
+      if ((validateTestName == "quick") && (m_tests_to_run.size() > 1))
         throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
       // Verify the current user test request exists in the test suite
-      doesTestExist(userTestName, testNameDescription);
+      doesTestExist(validateTestName, testNameDescription);
+      validatedTests.push_back(validateTestName);
     }
 
     // check if xclbin folder path is provided
-    if (!xclbin_location.empty()) {
+    if (!validateXclbinPath.empty()) {
       XBU::verbose("Sub command: --path");
-      if (!boost::filesystem::exists(xclbin_location) || !boost::filesystem::is_directory(xclbin_location))
-        throw xrt_core::error((boost::format("Invalid directory path : '%s'") % xclbin_location).str());
-      if (xclbin_location.compare(".") == 0 || xclbin_location.compare("./") == 0)
-        xclbin_location = boost::filesystem::current_path().string();
-      if (xclbin_location.back() != '/')
-        xclbin_location.append("/");
+      if (!boost::filesystem::exists(validateXclbinPath) || !boost::filesystem::is_directory(validateXclbinPath))
+        throw xrt_core::error((boost::format("Invalid directory path : '%s'") % validateXclbinPath).str());
+      if (validateXclbinPath.compare(".") == 0 || validateXclbinPath.compare("./") == 0)
+        validateXclbinPath = boost::filesystem::current_path().string();
+      if (validateXclbinPath.back() != '/')
+        validateXclbinPath.append("/");
     }
 
     //check if param option is provided
-    if (!sParam.empty()) {
+    if (!m_param.empty()) {
       XBU::verbose("Sub command: --param");
-      boost::split(param, sParam, boost::is_any_of(":")); // eg: dma:block-size:1024
+      boost::split(param, m_param, boost::is_any_of(":")); // eg: dma:block-size:1024
 
       //check parameter format
       if (param.size() != 3)
-        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % sParam).str());
+        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % m_param).str());
 
       //check test case name
       doesTestExist(param[0], testNameDescription);
@@ -1777,7 +1800,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
+    printHelp(false, extendedKeysOptions());
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -1785,7 +1808,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -1800,7 +1823,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   for (size_t index = 0; index < testSuite.size(); ++index) {
     std::string testSuiteName = get_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     // The all option enqueues all test suites not marked explicit
-    if (testsToRun[0] == "all") {
+    if (validatedTests[0] == "all") {
       // Do not queue test suites that must be explicitly passed in
       if (testSuite[index].ptTest.get<bool>("explicit"))
         continue;
@@ -1809,31 +1832,31 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       if (!param.empty() && boost::equals(param[0], testSuiteName)) {
         testSuite[index].ptTest.put(param[1], param[2]);
       }
-      if (!xclbin_location.empty())
-        testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
+      if (!validateXclbinPath.empty())
+        testSuite[index].ptTest.put("xclbin_directory", validateXclbinPath);
       continue;
     }
 
     // The quick test option enqueues only the first three test suites
-    if (testsToRun[0] == "quick") {
+    if (validatedTests[0] == "quick") {
       testObjectsToRun.push_back(&testSuite[index]);
-      if (!xclbin_location.empty())
-        testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
+      if (!validateXclbinPath.empty())
+        testSuite[index].ptTest.put("xclbin_directory", validateXclbinPath);
       if (index == 3)
         break;
     }
 
     // Logic for individually defined tests
     // Enqueue the matching test suites to be executed
-    for (const auto & testName : testsToRun) {
+    for (const auto & testName : validatedTests) {
       if (boost::equals(testName, testSuiteName)) {
         testObjectsToRun.push_back(&testSuite[index]);
         // add custom param to the ptree if available
         if (!param.empty() && boost::equals(param[0], testSuiteName)) {
           testSuite[index].ptTest.put(param[1], param[2]);
         }
-        if (!xclbin_location.empty())
-          testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
+        if (!validateXclbinPath.empty())
+          testSuite[index].ptTest.put("xclbin_directory", validateXclbinPath);
         break;
       }
     }
@@ -1844,15 +1867,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
 
   // -- Write output file ----------------------------------------------
-  if (!sOutput.empty()) {
+  if (!m_output.empty()) {
     std::ofstream fOutput;
-    fOutput.open(sOutput, std::ios::out | std::ios::binary);
+    fOutput.open(m_output, std::ios::out | std::ios::binary);
     if (!fOutput.is_open())
-      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
+      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % m_output).str());
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
+    std::cout << boost::format("Successfully wrote the %s file: %s") % m_format % m_output << std::endl;
   }
 
   if (has_failures == true)
