@@ -78,9 +78,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- process "program" option -----------------------------------------------
-  if (!xclbin.empty()) {
+  if (!m_xclbin.empty()) {
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-    auto xclbin_obj = xrt::xclbin{xclbin};
+    auto xclbin_obj = xrt::xclbin{m_xclbin};
     try {
       device->load_xclbin(xclbin_obj);
     }
