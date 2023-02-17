@@ -38,6 +38,7 @@ file(GLOB HW_EMU_PL_DEADLOCK_PLUGIN_FILES
 add_library(xdp_hw_emu_pl_deadlock_plugin MODULE ${HW_EMU_PL_DEADLOCK_PLUGIN_FILES})
 add_dependencies(xdp_hw_emu_pl_deadlock_plugin xdp_core xrt_coreutil xrt_hwemu)
 target_link_libraries(xdp_hw_emu_pl_deadlock_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
+target_compile_definitions(xdp_hw_emu_pl_deadlock_plugin PRIVATE XDP_HWEMU_BUILD=1)
 
 set_target_properties(xdp_hw_emu_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
