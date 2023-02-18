@@ -183,9 +183,9 @@ namespace xdp {
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
                                          DeviceIntf* devInterface)
   {
-    if (!devInterface->hasFIFO() && !devInterface->hasTs2mm()) {
+    if (devInterface->hasHSDPforPL()) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-           "No FIFO or PL TS2MM present in the design. So, the trace offload infrastructure must be using HSDP.");
+           "HSDP Infrastructure is used for PL trace offload. So, just initialize PL monitors for trace and skip offload in XRT.");
       return;
     }
 
