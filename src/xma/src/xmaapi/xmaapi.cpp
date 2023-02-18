@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023, Advanced Micro Devices, Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -426,7 +427,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     else
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA for KDS 2.0. Default mode.");
     g_xma_singleton->cpu_mode = xrt_core::config::get_xma_cpu_mode();
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode.load());
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     g_xma_singleton->all_thread2.reserve(MAX_XILINX_DEVICES);
