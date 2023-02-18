@@ -38,10 +38,10 @@ class SubCmdConfigure : public SubCmd {
   bool        m_purge;
   std::string m_host;
   std::string m_security;
-  std::string m_clk_scale;
+  std::string m_clk_throttle;
   std::string m_power_override;
   std::string m_temp_override;
-  std::string m_cs_reset;
+  std::string m_ct_reset;
   bool        m_showx;
 };
 
