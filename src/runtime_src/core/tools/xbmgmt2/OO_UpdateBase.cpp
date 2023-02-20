@@ -2,52 +2,35 @@
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
 #include "OO_UpdateBase.h"
-#include "tools/common/XBHelpMenusCore.h"
-#include "tools/common/XBUtilitiesCore.h"
-#include "tools/common/XBUtilities.h"
-#include "tools/common/XBHelpMenus.h"
+
+// XRT - Include Files
+#include "core/common/info_vmr.h"
+#include "core/common/message.h"
+#include "flash/flasher.h"
+#include "ReportPlatform.h"
 #include "tools/common/ProgressBar.h"
-#include "tools/common/Process.h"
+#include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
 
-#include "xrt.h"
-#include "core/common/system.h"
-#include "core/common/device.h"
-#include "core/common/error.h"
-#include "core/common/query_requests.h"
-#include "core/common/message.h"
-#include "core/common/utils.h"
-#include "flash/flasher.h"
-#include "core/common/info_vmr.h"
-
 // 3rd Party Library - Include Files
-#include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 #include <boost/program_options.hpp>
-#include <boost/algorithm/string.hpp>
+#include <boost/tokenizer.hpp>
 namespace po = boost::program_options;
-
-// ---- Reports ------
-#include "ReportPlatform.h"
-#include "tools/common/Report.h"
-#include "tools/common/ReportHost.h"
 
 // System - Include Files
 #include <atomic>
 #include <chrono>
 #include <ctime>
-#include <fcntl.h>
 #include <fstream>
 #include <iostream>
-#include <locale>
 #include <map>
 #include <thread>
 
 #ifdef _WIN32
-#pragma warning(disable : 4996) //std::asctime
+#pragma warning(disable : 4996) // disable warning caused by std::asctime
 #endif
 
 /**
