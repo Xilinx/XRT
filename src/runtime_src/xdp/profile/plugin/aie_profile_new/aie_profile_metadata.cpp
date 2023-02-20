@@ -106,7 +106,7 @@ namespace xdp {
     for (ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
       if (validSettings.find(pos->first) == validSettings.end()) {
         std::stringstream msg;
-        msg << "The setting " << pos->first << " is not recognized. "
+        msg << "The setting AIE_profile_settings." << pos->first << " is not recognized. "
             << "Please check the spelling and compare to supported list:";
         for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
           msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
@@ -120,8 +120,8 @@ namespace xdp {
       auto iter = deprecatedSettings.find(pos->first);
       if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting " << pos->first << " is deprecated. "
-            << "Please use " << iter->second << " instead.";
+        msg << "The setting Debug." << pos->first << " is deprecated. "
+            << "Please instead use " << iter->second << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }
     }
