@@ -29,6 +29,7 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdDump.cpp"
   "SubCmdConfigure.cpp"
   "OO_Hotplug.cpp"
+  "OO_UpdateBase.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )

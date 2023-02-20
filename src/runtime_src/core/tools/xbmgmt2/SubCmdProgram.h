@@ -29,11 +29,9 @@ class SubCmdProgram : public SubCmd {
  private:
   std::string               m_device;
   std::string               m_plp;
-  std::string               m_update;
   std::string               m_xclbin;
   std::string               m_flashType;
   std::string               m_boot;
-  std::vector<std::string>  m_image;
   bool                      m_revertToGolden;
   bool                      m_help;
 };
