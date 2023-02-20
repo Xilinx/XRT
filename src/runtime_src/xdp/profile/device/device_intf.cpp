@@ -592,11 +592,11 @@ DeviceIntf::~DeviceIntf()
               break;
             case HSDP_TRACE :
             {
-	      // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
-	      uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
-	      if (1 == bitsForPL || 3 == bitsForPL) {
+              // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
+              uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
+              if (1 == bitsForPL || 3 == bitsForPL) {
                 mHSDPforPL = true;
-	      }
+              }
               break;
             }
             case AXI_STREAM_PROTOCOL_CHECKER :
@@ -716,11 +716,11 @@ DeviceIntf::~DeviceIntf()
             }
             case HSDP_TRACE :
             {
-	      // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
-	      uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
-	      if (1 == bitsForPL || 3 == bitsForPL) {
+              // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
+              uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
+              if (1 == bitsForPL || 3 == bitsForPL) {
                 mHSDPforPL = true;
-	      }
+              }
               break;
             }
             default :
@@ -827,11 +827,11 @@ DeviceIntf::~DeviceIntf()
             }
             case HSDP_TRACE :
             {
-	      // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
-	      uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
-	      if (1 == bitsForPL || 3 == bitsForPL) {
+              // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
+              uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
+              if (1 == bitsForPL || 3 == bitsForPL) {
                 mHSDPforPL = true;
-	      }
+              }
               break;
             }
             case AXI_STREAM_PROTOCOL_CHECKER :
