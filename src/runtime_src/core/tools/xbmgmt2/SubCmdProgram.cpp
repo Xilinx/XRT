@@ -39,6 +39,7 @@ namespace po = boost::program_options;
 #include "OO_UpdateBase.h"
 #include "OO_UpdateShell.h"
 #include "OO_FactoryReset.h"
+#include "OO_ChangeBoot.h"
 
 // System - Include Files
 #include <atomic>
@@ -55,47 +56,11 @@ namespace po = boost::program_options;
 #pragma warning(disable : 4996) //std::asctime
 #endif
 
-
-// =============================================================================
-
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
-
-namespace {
-
-static void
-switch_partition(xrt_core::device* device, int boot)
-{
-  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  std::cout << boost::format("Rebooting device: [%s] with '%s' partition")
-                % bdf % (boot ? "backup" : "default") << std::endl;
-  try {
-    // sets sysfs node boot_from_back [1:backup, 0:default], then hot reset
-    auto value = xrt_core::query::flush_default_only::value_type(boot);
-    xrt_core::device_update<xrt_core::query::boot_partition>(device, value);
-
-    std::cout << "Performing hot reset..." << std::endl;
-    device->device_shutdown();
-    device->device_online();
-    std::cout << "Rebooted successfully" << std::endl;
-  }
-  catch (const xrt_core::query::exception& ex) {
-    std::cout << "ERROR: " << ex.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-    // only available for versal devices
-  }
-}
-
-}
-//end anonymous namespace
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
-
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program",
              "Update image(s) for a given device")
     , m_device("")
     , m_xclbin("")
-    , m_boot("")
     , m_help(false)
 
 {
@@ -113,16 +78,10 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
-  m_hiddenOptions.add_options()
-    ("boot", boost::program_options::value<decltype(m_boot)>(&m_boot)->implicit_value("default"),
-    "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
-    "  DEFAULT - Reboot RPU to partition A\n"
-    "  BACKUP  - Reboot RPU to partition B\n")
-  ;
-
   addSubOption(std::make_shared<OO_UpdateBase>("base", "b"));
   addSubOption(std::make_shared<OO_UpdateShell>("shell", "s"));
   addSubOption(std::make_shared<OO_FactoryReset>("revert-to-golden"));
+  addSubOption(std::make_shared<OO_ChangeBoot>("boot", "", true));
 }
 
 void
@@ -194,21 +153,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
     }
     std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
-    return;
-  }
-
-  // -- process "boot" option ------------------------------------------
-  if (!m_boot.empty()) {
-    if (boost::iequals(m_boot, "DEFAULT"))
-      switch_partition(device.get(), 0);
-    else if (boost::iequals(m_boot, "BACKUP"))
-      switch_partition(device.get(), 1);
-    else {
-      std::cout << "ERROR: Invalid value.\n"
-                << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]"
-                << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
     return;
   }
 
