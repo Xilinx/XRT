@@ -37,6 +37,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportHost.h"
 
 #include "OO_UpdateBase.h"
+#include "OO_FactoryReset.h"
 
 // System - Include Files
 #include <atomic>
@@ -120,9 +121,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
     , m_device("")
     , m_plp("")
     , m_xclbin("")
-    , m_flashType("")
     , m_boot("")
-    , m_revertToGolden(false)
     , m_help(false)
 
 {
@@ -139,15 +138,10 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
                                                                       "  Name (and path) of the partition.")
     ("user,u", boost::program_options::value<decltype(m_xclbin)>(&m_xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
-    ("revert-to-golden", boost::program_options::bool_switch(&m_revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_hiddenOptions.add_options()
-    ("flash-type", boost::program_options::value<decltype(m_flashType)>(&m_flashType),
-      "Overrides the flash mode. Use with caution.  Valid values:\n"
-      "  ospi\n"
-      "  ospi_versal")
     ("boot", boost::program_options::value<decltype(m_boot)>(&m_boot)->implicit_value("default"),
     "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
     "  DEFAULT - Reboot RPU to partition A\n"
@@ -155,6 +149,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   ;
 
   addSubOption(std::make_shared<OO_UpdateBase>("base", "b"));
+  addSubOption(std::make_shared<OO_FactoryReset>("revert-to-golden"));
 }
 
 void
@@ -199,53 +194,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Populate flash type. Uses board's default when passing an empty input string.
-  if (!m_flashType.empty()) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-        "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
-  }
-  Flasher working_flasher(device->get_device_id());
-  auto flash_type = working_flasher.getFlashType(m_flashType);
-
-  // -- process "revert-to-golden" option ---------------------------------------
-  if (m_revertToGolden) {
-    XBU::verbose("Sub command: --revert-to-golden");
-    bool has_reset = false;
-
-    std::vector<Flasher> flasher_list;
-    //collect information of all the devices that will be reset
-    Flasher flasher(device->get_device_id());
-    if (!flasher.isValid())
-      xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
-
-    std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
-      % flasher.sGetDBDF() % "] back to factory mode.";
-    flasher_list.push_back(flasher);
-
-    XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
-
-    //ask user's permission
-    if (!XBU::can_proceed(XBU::getForce()))
-      throw xrt_core::error(std::errc::operation_canceled);
-
-    for (auto& f : flasher_list) {
-      if (!f.upgradeFirmware(flash_type, nullptr, nullptr, nullptr)) {
-        std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "]"
-                                   " is reset successfully.";
-        has_reset = true;
-      }
-    }
-
-    if (!has_reset)
-      return;
-
-    std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on device.\n";
-    std::cout << "****************************************************\n";
-
-    return;
   }
 
   // -- process "plp" option ---------------------------------------
