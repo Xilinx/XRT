@@ -611,7 +611,7 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL, devctl);
 	pci_write_config_word(bus->self, PCI_COMMAND, pci_cmd);
 
-	pci_enable_device(pdev);
+	(void)pci_enable_device(pdev);
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
