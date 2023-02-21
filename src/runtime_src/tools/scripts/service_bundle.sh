@@ -59,6 +59,12 @@ done
 #############################
 
 # $1 output directory
+iommu_dump()
+{
+	dmesg | grep iommu > $1/iommu_dump.txt
+}
+
+# $1 output directory
 core_dumps()
 {
 	if [ -z $ALL_LOG ];then
@@ -182,6 +188,7 @@ funcArray=(
 	vmr_logs
 	debug_logs
 	core_dumps
+	iommu_dump
 )
 
 #############################
