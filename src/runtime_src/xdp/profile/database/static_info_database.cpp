@@ -2105,9 +2105,9 @@ namespace xdp {
       std::stringstream ss;
       ss.write(embeddedMetadata.first, embeddedMetadata.second);
 
-      // Create a property tree based off of the JSON
+      // Create a property tree based off of the XML
       boost::property_tree::ptree pt;
-      boost::property_tree::read_json(ss, pt);
+      boost::property_tree::read_xml(ss, pt);
 
       // Dig in and find all of the kernel clocks
       for (auto& clock : pt.get_child("project.platform.device.core.kernelClocks")) {
