@@ -35,6 +35,9 @@ namespace xdp {
   AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle)
     : deviceID(deviceID), handle(handle)
   {
+    // Verify settings from xrt.ini
+    checkSettings();
+
     configMetrics.resize(NUM_MODULES);
     // Get polling interval (in usec)
     pollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
@@ -76,6 +79,52 @@ namespace xdp {
   bool tileCompare(tile_type tile1, tile_type tile2) 
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
+  }
+
+  void AieProfileMetadata::checkSettings()
+  {
+    using boost::property_tree::ptree;
+    const std::set<std::string> validSettings {
+      "graph_based_aie_metrics", "graph_based_aie_memory_metrics",
+      "graph_based_mem_tile_metrics", "tile_based_aie_metrics", 
+      "tile_based_aie_memory_metrics", "tile_based_mem_tile_metrics", 
+      "tile_based_interface_tile_metrics", "interval_us"
+    };
+    const std::map<std::string, std::string> deprecatedSettings {
+      {"aie_profile_core_metrics", 
+       "AIE_profile_settings.graph_based_aie_metrics or tile_based_aie_metrics"}, 
+      {"aie_profile_memory_metrics", 
+       "AIE_profile_settings.graph_based_aie_memory_metrics or tile_based_aie_memory_metrics"},
+      {"aie_profile_interface_metrics", 
+       "AIE_profile_settings.tile_based_interface_tile_metrics"}, 
+      {"aie_profile_interval_us", 
+       "AIE_profile_settings.interval_us"}
+    };
+    
+    // Verify settings in AIE_profile_settings section
+    auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_profile_settings");
+    for (ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
+      if (validSettings.find(pos->first) == validSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting AIE_profile_settings." << pos->first << " is not recognized. "
+            << "Please check the spelling and compare to supported list:";
+        for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
+          msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
+
+    // Check for usage of deprecated settings
+    auto tree2 = xrt_core::config::detail::get_ptree_value("Debug");
+    for (ptree::iterator pos = tree2.begin(); pos != tree2.end(); pos++) {
+      auto iter = deprecatedSettings.find(pos->first);
+      if (iter != deprecatedSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting Debug." << pos->first << " is deprecated. "
+            << "Please instead use " << iter->second << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
   }
 
   int AieProfileMetadata::getHardwareGen()

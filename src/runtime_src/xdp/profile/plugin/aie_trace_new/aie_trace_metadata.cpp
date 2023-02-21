@@ -39,17 +39,13 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
   
-  void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data,size);
-    pt::read_json(aie_stream,aie_project);
-  }
-
   AieTraceMetadata::AieTraceMetadata(uint64_t deviceID, void* handle)
   : deviceID(deviceID)
   , handle(handle)
   {
+    // Verify settings from xrt.ini
+    checkSettings();
+
     counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
     
     // Check whether continuous trace is enabled in xrt.ini
@@ -75,10 +71,10 @@ namespace xdp {
     auto compilerOptions = get_aiecompiler_options(device.get());
     setRuntimeMetrics(compilerOptions.event_trace == "runtime");
 
-    if (!getRuntimeMetrics()){
+    if (!getRuntimeMetrics()) {
       std::stringstream msg;
-        msg << "Found compiler trace option of " << compilerOptions.event_trace
-            << ". No runtime AIE metrics will be changed.";
+      msg << "Found compiler trace option of " << compilerOptions.event_trace
+          << ". No runtime AIE metrics will be changed.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
     
@@ -105,6 +101,56 @@ namespace xdp {
   bool tileCompare(tile_type tile1, tile_type tile2) 
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
+  }
+
+  void AieTraceMetadata::checkSettings()
+  {
+    using boost::property_tree::ptree;
+    const std::set<std::string> validSettings {
+      "graph_based_aie_tile_metrics", "tile_based_aie_tile_metrics",
+      "graph_based_mem_tile_metrics", "tile_based_mem_tile_metrics",
+      "start_type", "start_time", "start_iteration", 
+      "periodic_offload", "reuse_buffer", "buffer_size", 
+      "buffer_offload_interval_us", "file_dump_interval_s"
+    };
+    const std::map<std::string, std::string> deprecatedSettings {
+      {"aie_trace_metrics", "AIE_trace_settings.graph_based_aie_tile_metrics or tile_based_aie_tile_metrics"},
+      {"aie_trace_start_time", "AIE_trace_settings.start_time"},
+      {"aie_trace_periodic_offload", "AIE_trace_settings.periodic_offload"},
+      {"aie_trace_buffer_size", "AIE_trace_settings.buffer_size"}
+    };
+
+    // Verify settings in AIE_trace_settings section
+    auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
+    for (ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
+      if (validSettings.find(pos->first) == validSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting AIE_trace_settings." << pos->first << " is not recognized. "
+            << "Please check the spelling and compare to supported list:";
+        for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
+          msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
+
+    // Check for deprecated settings
+    auto tree2 = xrt_core::config::detail::get_ptree_value("Debug");
+    for (ptree::iterator pos = tree2.begin(); pos != tree2.end(); pos++) {
+      auto iter = deprecatedSettings.find(pos->first);
+      if (iter != deprecatedSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting Debug." << pos->first << " is deprecated. "
+            << "Please instead use " << iter->second << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    }
+  }
+
+  void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
+  {
+    std::stringstream aie_stream;
+    aie_stream.write(data,size);
+    pt::read_json(aie_stream,aie_project);
   }
 
   int AieTraceMetadata::getHardwareGen()

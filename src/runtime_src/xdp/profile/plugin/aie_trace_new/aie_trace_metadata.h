@@ -66,6 +66,7 @@ class AieTraceMetadata{
 
     std::string getMetricSet(const std::string& metricsStr);
 
+    void checkSettings();
     int getHardwareGen();
     uint16_t getAIETileRowOffset();
     std::vector<std::string> getSettingsVector(std::string settingsString); 
