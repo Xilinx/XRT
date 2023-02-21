@@ -25,40 +25,6 @@
 #include <map>
 #include <regex>
 
-
-#ifdef _WIN32
-
-# pragma warning( disable : 4189 4100 )
-# pragma comment(lib, "Ws2_32.lib")
-/* need to link the lib for the following to work */
-# define be32toh ntohl
-#else
-# include <unistd.h> // SUDO check
-#endif
-
-#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
-#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long long)(p), (a))))
-#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
-
-// ------ C O N S T A N T   V A R I A B L E S ---------------------------------
-static const uint32_t FDT_BEGIN_NODE = 0x1;
-static const uint32_t FDT_PROP = 0x3;
-static const uint32_t FDT_END = 0x9;
-
-// ------ L O C A L  F U N C T I O N S  A N D  S T R U C T S ------------------
-struct fdt_header {
-  uint32_t magic;
-  uint32_t totalsize;
-  uint32_t off_dt_struct;
-  uint32_t off_dt_strings;
-  uint32_t off_mem_rsvmap;
-  uint32_t version;
-  uint32_t last_comp_version;
-  uint32_t boot_cpuid_phys;
-  uint32_t size_dt_strings;
-  uint32_t size_dt_struct;
-};
-
 namespace xq = xrt_core::query;
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -462,48 +428,6 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   in.read(buf.data(), section->m_sectionSize);
 
   return buf;
-}
-
-std::vector<std::string>
-XBUtilities::get_uuids(const void *dtbuf)
-{
-  std::vector<std::string> uuids;
-  struct fdt_header *bph = (struct fdt_header *)dtbuf;
-  uint32_t version = be32toh(bph->version);
-  uint32_t off_dt = be32toh(bph->off_dt_struct);
-  const char *p_struct = (const char *)dtbuf + off_dt;
-  uint32_t off_str = be32toh(bph->off_dt_strings);
-  const char *p_strings = (const char *)dtbuf + off_str;
-  const char *p, *s;
-  uint32_t tag;
-  int sz;
-
-  p = p_struct;
-  uuids.clear();
-  while ((tag = be32toh(GET_CELL(p))) != FDT_END) {
-    if (tag == FDT_BEGIN_NODE) {
-      s = p;
-      p = PALIGN(p + strlen(s) + 1, 4);
-      continue;
-    }
-    if (tag != FDT_PROP)
-      continue;
-
-    sz = be32toh(GET_CELL(p));
-    s = p_strings + be32toh(GET_CELL(p));
-    if (version < 16 && sz >= 8)
-      p = PALIGN(p, 8);
-
-    if (!strcmp(s, "logic_uuid")) {
-      uuids.insert(uuids.begin(), std::string(p));
-    }
-    else if (!strcmp(s, "interface_uuid")) {
-      uuids.push_back(std::string(p));
-    }
-
-    p = PALIGN(p + sz, 4);
-  }
-  return uuids;
 }
 
 static const std::map<std::string, xrt_core::query::reset_type> reset_map = {

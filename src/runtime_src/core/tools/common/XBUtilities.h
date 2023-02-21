@@ -69,15 +69,6 @@ namespace XBUtilities {
   std::vector<char>
   get_axlf_section(const std::string& filename, axlf_section_kind section);
 
-  /**
-   * get_uuids() - Get UUIDs from the axlf section
-   *
-   * dtbuf: axlf section to be parsed
-   *
-   * Return: list of UUIDs
-   */
-  std::vector<std::string> get_uuids(const void *dtbuf);
-
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
   std::string

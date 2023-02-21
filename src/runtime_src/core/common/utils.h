@@ -129,6 +129,13 @@ XRT_CORE_COMMON_EXPORT
 std::string
 value_to_mac_addr(const uint64_t mac_addr_value);
 
+//get_uuids() - Get UUIDs from the axlf section
+//dtbuf: axlf section to be parsed
+//Return: list of UUIDs
+XRT_CORE_COMMON_EXPORT
+std::vector<std::string>
+get_uuids(const void* dtbuf);
+
 }} // utils, xrt_core
 
 #endif

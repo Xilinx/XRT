@@ -21,10 +21,11 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_xclbin.h"
 
-#include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "core/common/utils.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
 
@@ -56,7 +57,7 @@ namespace {
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
-constexpr size_t max_sections = 14;
+constexpr size_t max_sections = 15;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -71,7 +72,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   BUILD_METADATA,
   SOFT_KERNEL,
   AIE_PARTITION,
-  IP_METADATA
+  IP_METADATA,
+  PARTITION_METADATA
 };
 
 XRT_CORE_UNUSED
@@ -642,6 +644,13 @@ public:
   }
 
   virtual
+  std::vector<std::string>
+  get_interface_uuid() const
+  {
+      throw std::runtime_error("not implemented");
+  }
+
+  virtual
   std::string
   get_xsa_name() const
   {
@@ -836,6 +845,16 @@ public:
     return m_uuid;
   }
 
+  std::vector<std::string>
+  get_interface_uuid() const override
+  {
+    auto sec = get_axlf_section(PARTITION_METADATA);
+    if (sec.first && sec.second) {
+        return xrt_core::utils::get_uuids(sec.first);
+    }
+    throw std::runtime_error("Unable to get interface uuid because PARTITION_METADATA section is not available in given xclbin");
+  }
+
   std::string
   get_xsa_name() const override
   {
@@ -991,6 +1010,13 @@ xclbin::
 get_uuid() const
 {
   return handle ? handle->get_uuid() : uuid{};
+}
+
+std::vector<std::string>
+xclbin::
+get_interface_uuid() const
+{
+  return handle ? handle->get_interface_uuid() : std::vector<std::string>();
 }
 
 xclbin::target_type

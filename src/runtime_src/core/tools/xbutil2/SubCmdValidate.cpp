@@ -127,7 +127,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
           ++iter;
           continue;
         }
-        std::vector<std::string> uuids = XBUtilities::get_uuids(dtbbuf.data());
+        std::vector<std::string> uuids = xrt_core::utils::get_uuids(dtbbuf.data());
         if (!uuids.size()) {
           ++iter;
 		    }

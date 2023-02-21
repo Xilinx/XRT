@@ -735,6 +735,18 @@ public:
   get_uuid() const;
 
   /**
+   * get_interface_uuid() - Get the interface uuid of the xclbin and this can be a collection of UUIDs and not just one.
+   *
+   * @return
+   * Collection of UUIDs
+   *
+   * An exception is thrown if the data is missing.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::vector<std::string>
+  get_interface_uuid() const;
+
+  /**
    * get_target_type() - Get the type of this xclbin
    *
    * @return
