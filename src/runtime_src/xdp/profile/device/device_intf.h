@@ -213,6 +213,8 @@ class DeviceIntf {
     std::string getDeadlockDiagnosis(bool print);
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
+    bool hasHSDPforPL() { return mHSDPforPL; }
+
   private:
     // Turn on/off debug messages to stdout
     bool mVerbose = false;
@@ -220,6 +222,9 @@ class DeviceIntf {
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
+
+    // HSDP Trace IP is used for PL Trace offload
+    bool mHSDPforPL = false;
 
     std::mutex traceLock ;
 
