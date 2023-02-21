@@ -17,12 +17,8 @@
 import sys
 import getopt
 import struct
-# import ctypes
+import os
 import uuid
-# XRT modules imported from PYTHONPATH
-# from xclbin_binding import *
-# from xrt_binding import *
-# from ert_binding import *
 
 
 class Options(object):

@@ -29,14 +29,6 @@ import pyxrt
 sys.path.append('../')
 from utils_binding import *
 
-# # Define libc helpers
-# libc_name = ctypes.util.find_library("c")
-# libc = ctypes.CDLL(libc_name)
-# libc.memcmp.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)
-# libc.memcmp.restype = (ctypes.c_int)
-# libc.memcpy.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)
-# libc.memcpy.restype = (ctypes.c_void_p)
-
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
 DATASIZE = int(1024*1024*2)    #2 MB
@@ -66,8 +58,6 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     return bo, buf
 
 def runKernel(opt):
-    # kfunc = xrtKernelGetFunc(xrtBufferHandle, xrtBufferHandle, ctypes.c_int, ctypes.c_int)
-
     d = pyxrt.device(opt.index)
     xbin = pyxrt.xclbin(opt.bitstreamFile)
     uuid = d.load_xclbin(xbin)
@@ -78,8 +68,6 @@ def runKernel(opt):
     input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
 
     TYPESIZE = 512
-    # datasizeinbeats = DATASIZE/(TYPESIZE>>3)
-    # tests= int(math.log(datasizeinbeats, 2.0))+1
     beats = 16
 
     #lists
@@ -104,14 +92,11 @@ def runKernel(opt):
         while usduration < fiveseconds:
             start = current_micro_time()
             rhandle3 = khandle3(output_bo3, input_bo3, beats, reps)
-            # rhandle3 = kfunc(khandle3, output_bo3, input_bo3, beats, reps)
             rhandle3.wait()
             end = current_micro_time()
 
-            # xrtRunClose(rhandle3)
-
             usduration = end - start
-            limit = beats*(TYPESIZE>>3)
+            limit = beats * int(TYPESIZE / 8)
             output_bo3.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             failed = (input_buf3[:limit] != output_buf3[:limit])
             if (failed):
@@ -123,7 +108,7 @@ def runKernel(opt):
 
         dnsduration.append(usduration)
         dsduration.append(dnsduration[test]/1000000.0)
-        dbytes.append(reps*beats*int(TYPESIZE>>3))
+        dbytes.append(reps*beats*int(TYPESIZE / 8))
         dmbytes.append(dbytes[test]/(1024 * 1024))
         bpersec.append(2.0*dbytes[test]/dsduration[test])
         mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
@@ -131,11 +116,6 @@ def runKernel(opt):
         print("Test %d, Throughput: %d MB/s" %(test, throughput[test]))
         beats = beats*4
         test+=1
-
-    #cleanup
-    # xrtBOFree(input_bo3)
-    # xrtBOFree(output_bo3)
-    # xrtKernelClose(khandle3)
 
     if failed:
         raise RuntimeError("ERROR: Failed to copy entries")
@@ -150,9 +130,6 @@ def main(args):
     Options.getOptions(opt, args, b_file)
 
     try:
-        # initXRT(opt)
-        # assert (opt.first_mem >= 0), "Incorrect memory configuration"
-
         if (runKernel(opt) == errno.EOPNOTSUPP):
             print("NOT SUPPORTED TEST")
             sys.exit(errno.EOPNOTSUPP)
@@ -171,8 +148,6 @@ def main(args):
         print(e)
         print("FAILED TEST")
         sys.exit(1)
-    # finally:
-    #     xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

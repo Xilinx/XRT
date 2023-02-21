@@ -65,8 +65,6 @@ def runKernel(opt):
 
     TYPESIZE = 512
     threshold = 40000
-    # datasizeinbeats = DATASIZE/(typesize>>3)
-    # tests= int(math.log(datasizeinbeats, 2.0))+1
     beats = 16
 
     #lists
@@ -97,7 +95,7 @@ def runKernel(opt):
             end = current_micro_time()
 
             usduration = end-start
-            limit = beats*(TYPESIZE>>3)
+            limit = beats*int(TYPESIZE / 8)
             output_bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             output_bo2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             output_bo3.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
@@ -130,7 +128,7 @@ def runKernel(opt):
 
         dnsduration.append(usduration)
         dsduration.append(dnsduration[test]/1000000.0)
-        dbytes.append(reps*beats*(TYPESIZE>>3))
+        dbytes.append(reps*beats*int(TYPESIZE / 8))
         dmbytes.append(dbytes[test]/(1024 * 1024))
         bpersec.append(6.0*dbytes[test]/dsduration[test])
         mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
