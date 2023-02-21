@@ -84,7 +84,7 @@ static void xclmgmt_reset_pci_post(struct xclmgmt_dev *lro)
 	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL,
 					   (lro->devctl | PCI_EXP_DEVCTL_FERE));
 
-	(void)pci_enable_device(pdev);
+	pci_enable_device(pdev);
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
