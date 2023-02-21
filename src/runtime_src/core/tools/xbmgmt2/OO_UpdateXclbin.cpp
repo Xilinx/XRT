@@ -40,9 +40,6 @@ OO_UpdateXclbin::OO_UpdateXclbin(const std::string& _longName, const std::string
 
 void
 OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
-// Reference Command:  [-d card] [-r region] -p xclbin
-//                     Download the accelerator program for card 2
-//                       xbutil program -d 2 -p a.xclbin
 {
   XBU::verbose("SubCommand: program");
 

@@ -63,9 +63,6 @@ OO_ChangeBoot::OO_ChangeBoot(const std::string& _longName, const std::string& _s
 
 void
 OO_ChangeBoot::execute(const SubCmdOptions& _options) const
-// Reference Command:  [-d card] [-r region] -p xclbin
-//                     Download the accelerator program for card 2
-//                       xbutil program -d 2 -p a.xclbin
 {
   XBU::verbose("SubCommand: program");
 

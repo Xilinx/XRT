@@ -50,9 +50,6 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
 
 void
 SubCmdProgram::execute(const SubCmdOptions& _options) const
-// Reference Command:  [-d card] [-r region] -p xclbin
-//                     Download the accelerator program for card 2
-//                       xbutil program -d 2 -p a.xclbin
 {
   XBUtilities::verbose("SubCommand: program");
 

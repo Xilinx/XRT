@@ -25,16 +25,6 @@ namespace po = boost::program_options;
 #pragma warning(disable : 4996) //std::asctime
 #endif
 
-
-// =============================================================================
-
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
-
-namespace {
-
-}
-//end anonymous namespace
-
 // ----- C L A S S   M E T H O D S -------------------------------------------
 OO_FactoryReset::OO_FactoryReset(const std::string& _longName, const std::string& _shortName, bool _isHidden)
     : OptionOptions(_longName,
