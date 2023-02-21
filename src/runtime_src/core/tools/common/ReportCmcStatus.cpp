@@ -36,6 +36,7 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree runtime_tree;
   boost::property_tree::ptree cmc_tree;
+  boost::property_tree::ptree device_stat_tree;
   cmc_tree.put("Description", "CMC");
 
   try {
@@ -52,8 +53,8 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   catch(const xrt_core::query::sysfs_error&) {}
 
   try {
-    runtime_tree.put("Description", "Runtime Clock Scaling");
-	auto clk_scaling_data = xrt_core::device_query<xrt_core::query::clk_scaling_info>(_pDevice);
+    runtime_tree.put("Description", "Clock Throttling and Shutdown");
+	  auto clk_scaling_data = xrt_core::device_query<xrt_core::query::clk_scaling_info>(_pDevice);
     for (const auto& pt : clk_scaling_data) {
       runtime_tree.put("supported", pt.support);
       runtime_tree.put("enabled", pt.enable);
@@ -69,16 +70,16 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
       runtime_tree.add_child("override_threshold_limits", threshold_data);
 
       boost::property_tree::ptree temp_override_data;
-      temp_override_data.put("enabled", "true");
+      temp_override_data.put("enabled", pt.temp_scaling_ovrd_enable);
       temp_override_data.put("temp_celsius", pt.temp_scaling_ovrd_limit);
       runtime_tree.add_child("temp_threshold_override", temp_override_data);
 
       boost::property_tree::ptree pwr_override_data;
-      pwr_override_data.put("enabled", "true");
+      pwr_override_data.put("enabled", pt.pwr_scaling_ovrd_enable);
       pwr_override_data.put("power_watts", pt.pwr_scaling_ovrd_limit);
       runtime_tree.add_child("power_threshold_override", pwr_override_data);
 
-      cmc_tree.add_child("scaling", runtime_tree);
+      cmc_tree.add_child("throttling", runtime_tree);
     }
   }
   catch(const xrt_core::query::no_such_key&) {}
@@ -115,32 +116,35 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   }
 
   try {
-    boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
-    _output << boost::format("  %-22s:\n") % cmc_scale.get<std::string>("Description");
-    if (!cmc_scale.get<bool>("supported")) {
-      _output << "    Not supported\n";
+    boost::property_tree::ptree cmc_throttle = cmc.get_child("throttling");
+    _output << boost::format("  %-22s:\n") % cmc_throttle.get<std::string>("Description");
+
+    if (!cmc_throttle.get<bool>("supported")) {
+      _output << "    Not supported. Ensure xclbin is loaded.\n";
       return;
     }
-    if (!cmc_scale.get<bool>("enabled")) {
+    if (!cmc_throttle.get<bool>("enabled")) {
       _output << "    Not enabled\n";
+    } else {
+      _output << "    Enabled\n";
     }
 
-    cmc_scale = cmc.get_child("scaling").get_child("shutdown_threshold_limits");
+    cmc_throttle = cmc.get_child("throttling").get_child("shutdown_threshold_limits");
     _output << boost::format("    %-22s:\n") % "Critical threshold (clock shutdown) limits";
-    _output << boost::format("      %s : %s W\n") % "Power" % cmc_scale.get<std::string>("power_watts");
-    _output << boost::format("      %s : %s C\n") % "Temperature" % cmc_scale.get<std::string>("temp_celsius");
-    cmc_scale = cmc.get_child("scaling").get_child("override_threshold_limits");
+    _output << boost::format("      %s : %s W\n") % "Power" % cmc_throttle.get<std::string>("power_watts");
+    _output << boost::format("      %s : %s C\n") % "Temperature" % cmc_throttle.get<std::string>("temp_celsius");
+    cmc_throttle = cmc.get_child("throttling").get_child("override_threshold_limits");
     _output << boost::format("    %-22s:\n") % "Throttling threshold limits";
-    _output << boost::format("      %s : %s W\n") % "Power" % cmc_scale.get<std::string>("power_watts");
-    _output << boost::format("      %s : %s C\n") % "Temperature" % cmc_scale.get<std::string>("temp_celsius");
-    cmc_scale = cmc.get_child("scaling").get_child("power_threshold_override");
+    _output << boost::format("      %s : %s W\n") % "Power" % cmc_throttle.get<std::string>("power_watts");
+    _output << boost::format("      %s : %s C\n") % "Temperature" % cmc_throttle.get<std::string>("temp_celsius");
+    cmc_throttle = cmc.get_child("throttling").get_child("power_threshold_override");
     _output << boost::format("    %-22s:\n") % "Power threshold override";
-    _output << boost::format("      %s : %s\n") % "Override" % cmc_scale.get<std::string>("enabled");
-    _output << boost::format("      %s : %s W\n") % "Override limit" % cmc_scale.get<std::string>("power_watts");
-    cmc_scale = cmc.get_child("scaling").get_child("temp_threshold_override");
+    _output << boost::format("      %s : %s\n") % "Override" % cmc_throttle.get<std::string>("enabled");
+    _output << boost::format("      %s : %s W\n") % "Override limit" % cmc_throttle.get<std::string>("power_watts");
+    cmc_throttle = cmc.get_child("throttling").get_child("temp_threshold_override");
     _output << boost::format("    %-22s:\n") % "Temperature threshold override";
-    _output << boost::format("      %s : %s\n") % "Override" % cmc_scale.get<std::string>("enabled");
-    _output << boost::format("      %s : %s C\n") % "Override limit" % cmc_scale.get<std::string>("temp_celsius");
+    _output << boost::format("      %s : %s\n") % "Override" % cmc_throttle.get<std::string>("enabled");
+    _output << boost::format("      %s : %s C\n") % "Override limit" % cmc_throttle.get<std::string>("temp_celsius");
   } catch(...) {
     _output << "    Information unavailable\n";
   }

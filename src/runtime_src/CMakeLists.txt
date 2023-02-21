@@ -7,7 +7,7 @@
 if( NOT WIN32)
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_subdirectory(doc)
+  xrt_add_subdirectory(doc)
 endif()
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
@@ -30,24 +30,24 @@ endif(XRT_ENABLE_WERROR)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()
-add_subdirectory(xdp)
+xrt_add_subdirectory(xdp)
 
-add_subdirectory(tools/xclbinutil)
-add_subdirectory(xocl)
-add_subdirectory(xrt)
-add_subdirectory(ert)
+xrt_add_subdirectory(tools/xclbinutil)
+xrt_add_subdirectory(xocl)
+xrt_add_subdirectory(xrt)
+xrt_add_subdirectory(ert)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   # Only for host native build.
   # For embedded, headers and libraries are installed in /usr
   # Not requeired setup.sh/.csh
-  add_subdirectory(tools/scripts)
+  xrt_add_subdirectory(tools/scripts)
 endif()
 
 # Attach to the user's linker flags
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
 
-add_subdirectory(core)
+xrt_add_subdirectory(core)
 
 else()
 # = WINDOWS ===================================================================
@@ -67,12 +67,10 @@ else()
   endif()
 
   # Build Subdirectories
-  if (NOT MCDM)
-    add_subdirectory(xocl)
-    add_subdirectory(xrt)
-    add_subdirectory(tools/xclbinutil)
-    add_subdirectory(xdp)
-  endif (NOT MCDM)
-  add_subdirectory(tools/scripts)
-  add_subdirectory(core)
+  xrt_add_subdirectory(xocl)
+  xrt_add_subdirectory(xrt)
+  xrt_add_subdirectory(tools/xclbinutil)
+  xrt_add_subdirectory(xdp)
+  xrt_add_subdirectory(tools/scripts)
+  xrt_add_subdirectory(core)
 endif()

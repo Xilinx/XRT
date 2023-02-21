@@ -192,6 +192,7 @@ xrt_xclbin_kind_to_string(enum axlf_section_kind kind)
 	case ASK_GROUP_CONNECTIVITY: 	return "ASK_GROUP_CONNECTIVITY";
 	case SMARTNIC:			return "SMARTNIC";
 	case AIE_RESOURCES:		return "AIE_RESOURCES";
+	case IP_METADATA:		return "IP_METADATA";
 	default: 			return "UNKNOWN";
 	}
 }

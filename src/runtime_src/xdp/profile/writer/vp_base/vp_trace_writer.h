@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,8 +46,6 @@ namespace xdp {
     virtual void writeTraceEvents() = 0 ;
     virtual void writeDependencies() = 0 ;
 
-    // Trace formats can either be dumped as a binary or human readable
-    bool humanReadable ;
     unsigned int traceID = 0;
 
     // The different types of VTF file formats supported
@@ -62,8 +61,6 @@ namespace xdp {
     XDP_EXPORT VPTraceWriter(const char* filename, const std::string& v,
                              const std::string& c, uint16_t r) ;
     XDP_EXPORT ~VPTraceWriter() ;
-
-    void setHumanReadable() { humanReadable = true ; } 
   } ;
   
 }

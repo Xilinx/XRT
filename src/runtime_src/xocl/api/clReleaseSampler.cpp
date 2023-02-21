@@ -36,7 +36,7 @@ static cl_int
 clReleaseSampler(cl_sampler sampler)
 {
   validOrError(sampler);
-  if (xocl(sampler)->release())
+  if (xocl_or_error(sampler)->release())
     delete xocl(sampler);
   return CL_SUCCESS;
 }

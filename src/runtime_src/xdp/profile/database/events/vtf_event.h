@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -107,7 +108,9 @@ namespace xdp {
     virtual bool isLOPAPI()          { return false ; }
     virtual bool isHALAPI()          { return false ; }
     virtual bool isHostEvent()       { return false ; }
-    virtual bool isNativeHostEvent() { return false ; } 
+    virtual bool isNativeHostEvent() { return false ; }
+    virtual bool isNativeRead()      { return false ; }
+    virtual bool isNativeWrite()     { return false ; }
     virtual bool isOpenCLHostEvent()
       { return type == READ_BUFFER  || type == READ_BUFFER_P2P  ||
                type == WRITE_BUFFER || type == WRITE_BUFFER_P2P ||
@@ -131,6 +134,7 @@ namespace xdp {
 
     virtual uint64_t getDevice() { return 0 ; } // CHECK
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_EXPORT virtual void dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/) {};
   } ;
 
   // Used so the database can sort based on timestamp order

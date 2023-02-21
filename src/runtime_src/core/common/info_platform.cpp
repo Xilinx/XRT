@@ -88,6 +88,11 @@ add_board_info(const xrt_core::device* device, ptree_type& pt)
     bd_info.add("error_msg", ex.what());
   }
 
+  if (xrt_core::device_query<xq::is_versal>(device)) {
+    bd_info.put("revision", xrt_core::device_query<xq::hwmon_sdm_revision>(device));
+    bd_info.put("mfg_date", xrt_core::device_query<xq::hwmon_sdm_mfg_date>(device));
+  }
+
   pt.put_child("off_chip_board_info", bd_info);
 }
 
@@ -170,8 +175,20 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
         // Ignoring if not available
       }
     }
+
+    std::string exp_sc_ver = xrt_core::device_query<xq::expected_sc_version>(device);
+    if (exp_sc_ver.empty()) {
+      try {
+        exp_sc_ver = xrt_core::device_query<xq::hwmon_sdm_target_msp_ver>(device);
+      }
+      catch (const xq::exception&) {
+        // Ignoring if not available
+      }
+    }
+
     sc.add("version", sc_ver);
-    sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
+    sc.add("expected_version", exp_sc_ver);
+
     ptree_type cmc;
 
     /*

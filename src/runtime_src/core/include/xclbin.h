@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2022, Xilinx Inc
+ *  Copyright (C) 2015-2023, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -176,6 +176,7 @@ extern "C" {
         OVERLAY                = 30,
         VENDER_METADATA        = 31,
         AIE_PARTITION          = 32,
+        IP_METADATA           = 33,
     };
 
     enum MEM_TYPE {
@@ -329,6 +330,18 @@ extern "C" {
         FAST_ADAPTER = 5
     };
 
+    // m_subtype
+    enum PS_SUBTYPE {
+        ST_PS = 0,
+        ST_DPU = 1,
+    };
+
+    // m_functional
+    enum PS_FUNCTIONAL {
+        FC_DPU = 0,
+        FC_PREPOST = 1,
+    };
+
     #define IP_CONTROL_MASK  0xFF00
     #define IP_CONTROL_SHIFT 0x8
 
@@ -341,6 +354,19 @@ extern "C" {
                                  //         m_int_enable   : Bit  - 0x0000_0001;
                                  //         m_interrupt_id : Bits - 0x0000_00FE;
                                  //         m_ip_control   : Bits = 0x0000_FF00;
+                                 // properties is also used for ps kernel (i.e. -add-pskernel)
+       
+            // PS Kernels
+            // m_type: IP_PS_KERNEL
+            struct {
+               uint16_t m_subtype : 2;        // Bits - 0x0003 - PS_SUBTYPE enum values
+               uint16_t : 2;                  // Bits - 0x000C - Future use
+               uint16_t m_functional : 2;     // Bits - 0x0030 - PS_FUNCTIONAL enum values
+               uint16_t : 10;                 // Bits - 0xFFC0 - Future use
+               uint16_t m_kernel_id : 12;     // Bits - 0x0FFF
+               uint16_t : 4;                  // Bits - 0xF000 - Future use
+            } ps_kernel;
+
             struct {             // m_type: IP_MEM_*
                uint16_t m_index;
                uint8_t m_pc_index;
@@ -530,7 +556,8 @@ extern "C" {
     enum CDO_Type {
         CT_UNKNOWN = 0,
         CT_PRIMARY = 1,
-        CT_LITE    = 2
+        CT_LITE    = 2,
+        CT_PREPOST = 3
     };
 
     struct cdo_group {
@@ -570,11 +597,13 @@ extern "C" {
         uint32_t mpo_name;                  // Name of the aie_partition 
         uint32_t operations_per_cycle;      // Operations per cycle. Used later to create TOPS (operations_per_cycle * <AIE Clock Frequency>)
         uint8_t padding[4];
+        uint64_t inference_fingerprint;     // The unique hash value of the inference function
+        uint64_t pre_post_fingerprint;      // The unique hash value of pre post 
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         uint8_t reserved[54];               // Reserved
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 168, "aie_partition structure no longer is 168 bytes in size");
+    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 184 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) % sizeof(uint64_t) == 0, "aie_partition structure needs to be 64-bit word aligned");
 
     /**** END : Xilinx internal section *****/

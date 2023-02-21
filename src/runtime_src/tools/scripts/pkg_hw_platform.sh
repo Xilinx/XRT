@@ -679,7 +679,7 @@ doxsabin()
 
 dodebdev()
 {
-    uRel=`lsb_release -r -s`
+    uRel=`awk -F= '$1=="VERSION_ID" {print $2}' /etc/os-release | tr -d '"'`
     dir=debbuild/$xsa-$version-dev_${uRel}
     pkg_dirname=debbuild/$xsa-dev-${version}-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname
@@ -730,7 +730,7 @@ EOF
 
 dodeb()
 {
-    uRel=`lsb_release -r -s`
+    uRel=`awk -F= '$1=="VERSION_ID" {print $2}' /etc/os-release | tr -d '"'`
     dir=debbuild/$xsa-${version}_${uRel}
     pkg_dirname=debbuild/$xsa-${version}-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname

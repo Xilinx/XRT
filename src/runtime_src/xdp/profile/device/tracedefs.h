@@ -122,9 +122,10 @@ constexpr uint32_t EVENT_CORE_DISABLED = 29;
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t NUM_TRACE_PCS = 4;
 constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
-
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
+constexpr uint32_t NUM_MEM_TILE_PORTS = 8;
+constexpr uint32_t NUM_MEM_TILE_CHAN_SEL = 2;
 
 }
 

@@ -178,14 +178,6 @@ get_aie_profile()
   return value;
 }
 
-inline unsigned int
-get_aie_profile_interval_us()
-{
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_us", 1000) ;
-  return value ;
-}
-
 inline bool
 get_aie_status()
 {
@@ -252,13 +244,6 @@ get_trace_buffer_size()
   return value;
 }
 
-inline std::string
-get_aie_trace_buffer_size()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_buffer_size", "8M");
-  return value;
-}
-
 inline bool
 get_profile_api()
 {
@@ -310,79 +295,6 @@ inline bool
 get_aie_trace()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace", false);
-  return value;
-}
-
-inline bool
-get_aie_trace_flush()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
-  return value;
-}
-
-inline std::string
-get_aie_trace_counter_scheme()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es2");
-  return value;
-}
-
-inline std::string
-get_aie_trace_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
-  return value;
-}
-
-inline std::string
-get_aie_trace_start_time()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_start_time", "0");
-  return value;
-}
-
-inline bool
-get_aie_trace_periodic_offload()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
-  return value;
-}
-
-/**
- * Deprecated in future. Ms is too long for aie trace
- */
-inline unsigned int
-get_aie_trace_buffer_offload_interval_ms()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
-  return value;
-}
-
-inline unsigned int
-get_aie_trace_file_dump_interval_s()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);
-  return value;
-}
-
-inline std::string
-get_aie_profile_core_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "");
-  return value;
-}
-
-inline std::string
-get_aie_profile_memory_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "");
-  return value;
-}
-
-inline std::string
-get_aie_profile_interface_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_profile_interface_metrics", "");
   return value;
 }
 
@@ -545,6 +457,33 @@ get_ert_polling()
   return value;
 }
 
+/**
+  * Poll for XGQ command completion
+  */
+inline bool
+get_xgq_polling()
+{
+  /**
+   * xgq_polling flag will force KDS to poll XGQ commands regardless of interrupt config.
+   * This is added for XRT team interrupt debugging purpose and will not be documented.
+   */
+  static bool value = get_enable_flat() || detail::get_bool_value("Runtime.xgq_polling",false);
+  return value;
+}
+
+/**
+ * Use new hw context for multi slot application 
+ */
+inline bool
+get_hw_context_flag()
+{
+  /**
+   * Temporary flag to backward compatibility for legacy context over
+   * new hw context. Remove once hw context is fully functional.
+   */
+  static bool value = detail::get_bool_value("Runtime.hw_context",true);
+  return value;
+}
 
 /**
  * Enable embedded scheduler CUDMA module
@@ -793,11 +732,11 @@ get_flag_sw_emu_kernel_debug()
 }
 
 // This flag is added to exit device offline status check loop forcibly.
-// By default, device offline status loop runs for 120 seconds.
+// By default, device offline status loop runs for 320 seconds.
 inline unsigned int
 get_device_offline_timer()
 {
-  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 120);
+  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 320);
   return value;
 }
 
@@ -824,6 +763,13 @@ get_aie_profile_settings_graph_based_aie_memory_metrics()
 }
 
 inline std::string
+get_aie_profile_settings_graph_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_mem_tile_metrics", "");
+  return value;
+}
+
+inline std::string
 get_aie_profile_settings_tile_based_aie_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_metrics", "");
@@ -834,6 +780,13 @@ inline std::string
 get_aie_profile_settings_tile_based_aie_memory_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_memory_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_tile_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_mem_tile_metrics", "");
   return value;
 }
 
@@ -878,6 +831,20 @@ inline std::string
 get_aie_trace_settings_tile_based_aie_tile_metrics()
 {
   static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_aie_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_graph_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_based_mem_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_tile_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_mem_tile_metrics", "");
   return value;
 }
 

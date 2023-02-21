@@ -34,7 +34,7 @@
 #include "core/include/xdp/trace.h"
 
 #include "xdp/config.h"
-
+#include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/add.h"
 #include "xdp/profile/device/aim.h"
 #include "xdp/profile/device/am.h"
@@ -45,6 +45,7 @@
 #include "xdp/profile/device/traceFifoLite.h"
 #include "xdp/profile/device/traceFunnel.h"
 #include "xdp/profile/device/traceS2MM.h"
+#include "xdp/profile/device/xrtIP.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
@@ -202,7 +203,17 @@ class DeviceIntf {
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
 
+    XDP_EXPORT
+    void createXrtIP
+    (
+      const std::unique_ptr<ip_metadata>& ip_metadata_section,
+      const std::string& fullname
+    );
+    XDP_EXPORT
+    std::string getDeadlockDiagnosis(bool print);
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
+
+    bool hasHSDPforPL() { return mHSDPforPL; }
 
   private:
     // Turn on/off debug messages to stdout
@@ -211,6 +222,9 @@ class DeviceIntf {
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
+
+    // HSDP Trace IP is used for PL Trace offload
+    bool mHSDPforPL = false;
 
     std::mutex traceLock ;
 
@@ -229,7 +243,10 @@ class DeviceIntf {
 
     std::vector<TraceS2MM*> mPlTraceDmaList;
     std::vector<TraceS2MM*> mAieTraceDmaList;
+
+    // Deadlock Detection and Diagnosis
     DeadlockDetector*     mDeadlockDetector  = nullptr;
+    std::vector<std::unique_ptr<XrtIP>> mXrtIPList;
 
     /*
      * Set max bandwidths to reasonable defaults

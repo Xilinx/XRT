@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _XRT_DEVICE_H_
 #define _XRT_DEVICE_H_
 
@@ -78,6 +78,8 @@ namespace info {
  *  Information about xclbin on the device (std::string)
  * @var vmr
  *  Information about vmr on the device (std::string)
+ * @var aie_mem
+ *  AIE memory information of the device (std::string)
  */
 enum class device : unsigned int {
   bdf,
@@ -98,7 +100,8 @@ enum class device : unsigned int {
   aie,
   aie_shim,
   dynamic_regions,
-  vmr
+  vmr,
+  aie_mem
 };
 
 /// @cond
@@ -122,6 +125,7 @@ XRT_INFO_PARAM_TRAITS(device::pcie_info, std::string);
 XRT_INFO_PARAM_TRAITS(device::host, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie_shim, std::string);
+XRT_INFO_PARAM_TRAITS(device::aie_mem, std::string);
 XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
 XRT_INFO_PARAM_TRAITS(device::vmr, std::string);
 /// @endcond

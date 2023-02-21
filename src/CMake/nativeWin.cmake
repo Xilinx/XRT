@@ -54,6 +54,7 @@ if (MSVC)
     add_compile_options(
         /Zc:__cplusplus
         /Zi           # generate pdb files even in release mode
+	/sdl          # enable security checks
         /Qspectre     # compile with the Spectre mitigations switch
         /ZH:SHA_256   # enable secure source code hashing
         /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations

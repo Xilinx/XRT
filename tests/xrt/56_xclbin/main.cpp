@@ -120,6 +120,17 @@ operator << (std::ostream& ostr, const xrt::xclbin::kernel& kernel)
   return ostr;
 }
 
+std::ostream&
+operator << (std::ostream& ostr, const xrt::xclbin::aie_partition& aiep)
+{
+  ostr << "aie_partition\n";
+  ostr << "operations_per_cycle: " << aiep.get_operations_per_cycle() << '\n';
+  ostr << "inference_fingerprint: " << aiep.get_inference_fingerprint() << '\n';
+  ostr << "pre_post_fingerprint: " << aiep.get_pre_post_fingerprint() << '\n';
+
+  return ostr;
+}
+
 void
 run_cpp(const std::string& xclbin_fnm)
 {
@@ -137,6 +148,9 @@ run_cpp(const std::string& xclbin_fnm)
 
   for (auto& mem : xclbin.get_mems())
     std::cout << mem << '\n';
+
+  for (auto& aiep : xclbin.get_aie_partitions())
+    std::cout << aiep << '\n';
 }
 
 void

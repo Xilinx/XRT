@@ -121,23 +121,6 @@ namespace xdp {
 
   void SummaryWriter::writeHeader()
   {
-    std::string currentTime = "0000-00-00 0000" ;
-
-    auto time = 
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) ;
-    struct tm* p_tstruct = std::localtime(&time) ;
-    if (p_tstruct) {
-      char buf[80] = {0} ;
-      strftime(buf, sizeof(buf), "%Y-%m-%d %X", p_tstruct) ;
-      currentTime = std::string(buf) ;
-    }
-
-    std::string msecSinceEpoch = "" ;
-    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
-    auto value =
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch) ;
-    msecSinceEpoch = std::to_string(value.count()) ;
-
     std::string execName = "" ;
 #if defined(__linux__) && defined (__x86_64__)
     const int maxLength = 1024 ;
@@ -158,8 +141,8 @@ namespace xdp {
     xrt_core::get_xrt_build_info(xrtInfo) ;
 
     fout << "Profile Summary\n" ;
-    fout << "Generated on: " << currentTime << "\n" ;
-    fout << "Msec since Epoch: " << msecSinceEpoch << "\n" ;
+    fout << "Generated on: " << getCurrentDateTime() << "\n" ;
+    fout << "Msec since Epoch: " << getMsecSinceEpoch() << "\n" ;
     fout << "Profiled application: " << execName << "\n" ;
     fout << "Target platform: " << "Xilinx" << "\n" ;
     fout << "Tool version: " << getToolVersion() << "\n" ;
@@ -742,7 +725,7 @@ namespace xdp {
           static_cast<double>(stats.totalTime / one_billion);
         double totalSizeInMB =
           static_cast<double>(stats.totalSize / one_million);
-        double transferRate  = totalSizeInMB / totalTimeInS; 
+        double transferRate  = totalSizeInMB / totalTimeInS;
 
         double maxBW = (i == 0) ? db->getStaticInfo().getHostMaxReadBW(deviceID)
                                 : db->getStaticInfo().getHostMaxWriteBW(deviceID);
@@ -770,14 +753,15 @@ namespace xdp {
   void SummaryWriter::writeHostReadsFromGlobalMemory()
   {
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads =
-      (db->getStats()).getHostReads() ;
-    if (hostReads.size() == 0) return ;
+      db->getStats().getHostReads();
+    if (hostReads.size() == 0)
+      return;
 
-    fout << "TITLE:Host Reads from Global Memory\n" ;
-    fout << "SECTION:Host Data Transfers,Host Reads from Global Memory\n" ;
+    fout << "TITLE:Host Reads from Global Memory\n";
+    fout << "SECTION:Host Data Transfers,Host Reads from Global Memory\n";
     fout << "COLUMN:<html>Number<br>of Reads</html>,int,"
          << "Number of host reads (note: may contain OpenCL printf transfers),"
-         << "\n" ;
+         << "\n";
     fout << "COLUMN:<html>Maximum<br>Buffer<br>Size (KB)</html>,float,"
          << "Maximum buffer size of host reads,\n";
     fout << "COLUMN:<html>Minimum<br>Buffer<br>Size (KB)</html>,float,"
@@ -789,58 +773,66 @@ namespace xdp {
     if (getFlowMode() == HW) {
       fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
            << "Rate of host reads (in MB/s): "
-           << "Transfer Rate = (Total Bytes) / (Total Time in us),\n" ;
+           << "Transfer Rate = (Total Bytes) / (Total Time in us),\n";
       fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
            << "float,Average bandwidth of host reads: "
-           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n" ;
+           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n";
       fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
-           << "Maximum time of a single host read,\n" ;
+           << "Maximum time of a single host read,\n";
       fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
-           << "Minimum time of a single host read,\n" ;
+           << "Minimum time of a single host read,\n";
       fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
-           << "Combined time of all host reads,\n" ;
+           << "Combined time of all host reads,\n";
       fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
-           << "Average of read durations (in ms),\n" ;
+           << "Average of read durations (in ms),\n";
     }
 
-    for (auto read : hostReads)
-    {
-      auto contextAndDevice = read.first ;
-      auto deviceId = contextAndDevice.second ;
-      auto stats = read.second ;
+    for (auto& read : hostReads) {
+      auto contextAndDevice = read.first;
+      auto deviceId = contextAndDevice.second;
+      auto stats = read.second;
 
-      fout << "ENTRY:" << stats.count << "," ;
-      fout << ((double)(stats.maxSize) / one_thousand) << "," ;
-      fout << ((double)(stats.minSize) / one_thousand) << "," ;
-      fout << ((double)(stats.averageSize) / one_thousand) << "," ;
+      fout << "ENTRY:" << stats.count << ",";
+      fout << (static_cast<double>(stats.maxSize) / one_thousand) << ",";
+      fout << (static_cast<double>(stats.minSize) / one_thousand) << ",";
+      fout << (static_cast<double>(stats.averageSize) / one_thousand) << ",";
+
       if (getFlowMode() == HW) {
-        auto totalTimeInS   = (double)(stats.totalTime / one_billion);
-        auto totalSizeInMB  = (double)(stats.totalSize / one_million);
-        double transferRate = totalSizeInMB / totalTimeInS; 
-        double maxReadBW    = (db->getStaticInfo()).getHostMaxReadBW(deviceId);
-        double aveBWUtil    = (one_hundred * transferRate) / maxReadBW;
+        auto totalTimeInS   = static_cast<double>(stats.totalTime)/one_billion;
+        auto totalSizeInMB  = static_cast<double>(stats.totalSize)/one_million;
+        double transferRate =
+          (totalTimeInS == 0) ? 0 : totalSizeInMB / totalTimeInS;
+        double maxReadBW    = db->getStaticInfo().getHostMaxReadBW(deviceId);
+        double aveBWUtil =
+          (maxReadBW == 0) ? 0 : (one_hundred * transferRate) / maxReadBW;
 
-        fout << transferRate << "," ;
-        fout << aveBWUtil << "," ;
-        fout << (stats.maxTime / one_million) << "," ;
-        fout << (stats.minTime / one_million) << "," ;
-        fout << (stats.totalTime / one_million) << "," ;
-        fout << (stats.averageTime / one_million) << "," ;
+        // Average bandwidth is a percentage, so if something strange happened
+        // saturate it at 100%.
+        if (aveBWUtil > one_hundred)
+          aveBWUtil = one_hundred;
+
+        fout << transferRate << ",";
+        fout << aveBWUtil << ",";
+        fout << (stats.maxTime / one_million) << ",";
+        fout << (stats.minTime / one_million) << ",";
+        fout << (stats.totalTime / one_million) << ",";
+        fout << (stats.averageTime / one_million) << ",";
       }
-      fout << "\n" ;
+      fout << "\n";
     }
   }
 
   void SummaryWriter::writeHostWritesToGlobalMemory()
   {
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites =
-      (db->getStats()).getHostWrites() ;
-    if (hostWrites.size() == 0) return ;
+      db->getStats().getHostWrites();
+    if (hostWrites.size() == 0)
+      return;
 
-    fout << "TITLE:Host Writes to Global Memory\n" ;
-    fout << "SECTION:Host Data Transfers,Host Writes to Global Memory\n" ;
+    fout << "TITLE:Host Writes to Global Memory\n";
+    fout << "SECTION:Host Data Transfers,Host Writes to Global Memory\n";
     fout << "COLUMN:<html>Number<br>of Writes</html>,int,"
-         << "Number of host writes,\n" ;
+         << "Number of host writes,\n";
     fout << "COLUMN:<html>Maximum<br>Buffer<br>Size (KB)</html>,float,"
          << "Maximum buffer size of host writes,\n";
     fout << "COLUMN:<html>Minimum<br>Buffer<br>Size (KB)</html>,float,"
@@ -852,45 +844,51 @@ namespace xdp {
     if (getFlowMode() == HW) {
       fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
            << "Rate of host writes (in MB/s): "
-           << "Transfer Rate = (Total Bytes) / (Total Time in us),\n" ;
+           << "Transfer Rate = (Total Bytes) / (Total Time in us),\n";
       fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
            << "float,Average bandwidth of host writes: "
-           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n" ;
+           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n";
       fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
-           << "Maximum time of a single host write,\n" ;
+           << "Maximum time of a single host write,\n";
       fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
-           << "Minimum time of a single host write,\n" ;
+           << "Minimum time of a single host write,\n";
       fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
-           << "Combined time of all host write,\n" ;
+           << "Combined time of all host write,\n";
       fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
-           << "Average of write durations (in ms),\n" ;
+           << "Average of write durations (in ms),\n";
     }
 
-    for (auto write : hostWrites)
-    {
+    for (auto& write : hostWrites) {
       auto contextAndDevice = write.first ;
       auto deviceId = contextAndDevice.second ;
       auto stats = write.second ;
 
-      fout << "ENTRY:" << stats.count << "," ;
-      fout << ((double)(stats.maxSize) / one_thousand) << "," ;
-      fout << ((double)(stats.minSize) / one_thousand) << "," ;
-      fout << ((double)(stats.averageSize) / one_thousand) << "," ;
+      fout << "ENTRY:" << stats.count << ",";
+      fout << (static_cast<double>(stats.maxSize) / one_thousand) << ",";
+      fout << (static_cast<double>(stats.minSize) / one_thousand) << ",";
+      fout << (static_cast<double>(stats.averageSize) / one_thousand) << ",";
       if (getFlowMode() == HW) {
-        auto totalTimeInS   = (double)(stats.totalTime / one_billion);
-        auto totalSizeInMB  = (double)(stats.totalSize / one_million);
-        double transferRate = totalSizeInMB / totalTimeInS; 
-        double maxWriteBW   = (db->getStaticInfo()).getHostMaxWriteBW(deviceId);
-        double aveBWUtil    = (one_hundred * transferRate) / maxWriteBW;
+        auto totalTimeInS   = static_cast<double>(stats.totalTime)/one_billion;
+        auto totalSizeInMB  = static_cast<double>(stats.totalSize)/one_million;
+        double transferRate =
+          (totalTimeInS == 0) ? 0 : totalSizeInMB / totalTimeInS; 
+        double maxWriteBW   = db->getStaticInfo().getHostMaxWriteBW(deviceId);
+        double aveBWUtil =
+          (maxWriteBW == 0) ? 0 : (one_hundred * transferRate) / maxWriteBW;
 
-        fout << transferRate << "," ;
-        fout << aveBWUtil << "," ;
-        fout << (stats.maxTime / one_million) << "," ;
-        fout << (stats.minTime / one_million) << "," ;
-        fout << (stats.totalTime / one_million) << "," ;
-        fout << (stats.averageTime / one_million) << "," ;
+        // Average bandwidth is a percentage, so if something strange happened
+        // saturate it at 100%.
+        if (aveBWUtil > one_hundred)
+          aveBWUtil = one_hundred;
+
+        fout << transferRate << ",";
+        fout << aveBWUtil << ",";
+        fout << (stats.maxTime / one_million) << ",";
+        fout << (stats.minTime / one_million) << ",";
+        fout << (stats.totalTime / one_million) << ",";
+        fout << (stats.averageTime / one_million) << ",";
       }
-      fout << "\n" ;
+      fout << "\n";
     }
   }
 
@@ -1484,7 +1482,7 @@ namespace xdp {
                                               const std::string& args,
                                               const std::string& memoryName,
                                               bool isRead,
-                                              double numTransactions,
+                                              uint64_t numTransactions,
                                               double totalTransferTime,
                                               double bytes,
                                               double maxAchievableBW,
@@ -1505,8 +1503,8 @@ namespace xdp {
     if (idealBW > one_hundred)
       idealBW = one_hundred;
 
-    auto aveSize = (bytes / numTransactions) / one_thousand;
-    auto aveLatency = latency / numTransactions;
+    auto aveSize = (bytes / static_cast<double>(numTransactions)) / one_thousand;
+    auto aveLatency = latency / static_cast<double>(numTransactions);
 
     fout << deviceName << ",";
     fout << cuName << "/" << portName << ",";
@@ -1599,7 +1597,7 @@ namespace xdp {
                                     arguments,
                                     memoryName,
                                     false, // isRead
-                                    static_cast<double>(writeTranx),
+                                    writeTranx,
                                     transferTime,
                                     static_cast<double>(values.WriteBytes[monitorSlot]),
                                     maxAchievableBW,
@@ -1617,7 +1615,7 @@ namespace xdp {
                                     arguments,
                                     memoryName,
                                     true, // isRead
-                                    static_cast<double>(readTranx),
+                                    readTranx,
                                     transferTime,
                                     static_cast<double>(values.ReadBytes[monitorSlot]),
                                     maxAchievableBW,

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022-2023 Xilinx, Inc. All rights reserved.
 #
 set(TESTNAME "aie_pl.exe")
 
@@ -16,6 +16,7 @@ add_executable(${TESTNAME}
   ../common/includes/cmdparser/cmdlineparser.cpp
   ../common/includes/logger/logger.cpp
   src/pl_controller.cpp
+  src/pl_controller_aie2.cpp
   src/host.cpp
   )
 

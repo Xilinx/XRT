@@ -1,32 +1,23 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
+#include "asd_parser.h"
 #include "error.h"
 #include "query.h"
 #include "uuid.h"
 
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xclerr_int.h"
 
+#include <cstdint>
 #include <iomanip>
 #include <map>
-#include <string>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <boost/any.hpp>
@@ -124,8 +115,15 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
-  aie_core_info,
-  aie_shim_info,
+
+  aie_core_info_sysfs,
+  aie_shim_info_sysfs,
+  aie_mem_info_sysfs,
+
+  aie_status_version,
+  aie_tiles_stats,
+  aie_tiles_status_info,
+
   idcode,
   data_retention,
   sec_level,
@@ -209,6 +207,7 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
+  host_mem_addr,
   host_mem_size,
   kds_numcdmas,
 
@@ -278,10 +277,12 @@ enum class key_type
   hwmon_sdm_oem_id,
   hwmon_sdm_board_name,
   hwmon_sdm_active_msp_ver,
+  hwmon_sdm_target_msp_ver,
   hwmon_sdm_mac_addr0,
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
+  hwmon_sdm_mfg_date,
   hotplug_offline,
 
   cu_size,
@@ -289,70 +290,10 @@ enum class key_type
 
   clk_scaling_info,
 
+  xgq_scaling_enabled,
+  xgq_scaling_power_override,
+  xgq_scaling_temp_override,
   noop
-};
-
-// Base class for query request exceptions.
-//
-// Provides granularity for calling code to catch errors specific to
-// query request which are often acceptable errors because some
-// devices may not support all types of query requests.
-//
-// Other non query exceptions signal a different kind of error which
-// should maybe not be caught.
-//
-// The addition of the query request exception hierarchy does not
-// break existing code that catches std::exception (or all errors)
-// because ultimately the base query exception is-a std::exception
-class exception : public std::runtime_error
-{
-public:
-  explicit
-  exception(const std::string& err)
-    : std::runtime_error(err)
-  {}
-};
-
-class no_such_key : public exception
-{
-  key_type m_key;
-
-  using qtype = std::underlying_type<query::key_type>::type;
-public:
-  explicit
-  no_such_key(key_type k)
-    : exception(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
-    , m_key(k)
-  {}
-
-  no_such_key(key_type k, const std::string& msg)
-    : exception(msg)
-    , m_key(k)
-  {}
-
-  key_type
-  get_key() const
-  {
-    return m_key;
-  }
-};
-
-class sysfs_error : public exception
-{
-public:
-  explicit
-  sysfs_error(const std::string& msg)
-    : exception(msg)
-  {}
-};
-
-class not_supported : public exception
-{
-public:
-  explicit
-  not_supported(const std::string& msg)
-    : exception(msg)
-  {}
 };
 
 struct pcie_vendor : request
@@ -1362,22 +1303,80 @@ struct dna_serial_num : request
   }
 };
 
-struct aie_core_info : request
+// Used to retrive aie core tile status information from sysfs
+struct aie_core_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_core_info;
+  static const key_type key = key_type::aie_core_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-struct aie_shim_info : request
+// Used to retrive aie shim tile status information from sysfs
+struct aie_shim_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_shim_info;
+  static const key_type key = key_type::aie_shim_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+// Used to retrive aie mem tile status information from sysfs
+struct aie_mem_info_sysfs : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_mem_info_sysfs;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrive aie status version
+// We use binary parser for parsing info from driver
+// This version is used as handshake b/w userspace and driver
+struct aie_status_version : request
+{
+  struct aie_version {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  using result_type = aie_version;
+  static const key_type key = key_type::aie_status_version;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrive device specific Aie tiles(core, mem, shim) tiles info
+// like total num of rows, cols, and num of core, mem, shim rows
+// num of dma channels, locks, events
+struct aie_tiles_stats : request
+{
+  using result_type = asd_parser::aie_tiles_info;
+  static const key_type key = key_type::aie_tiles_stats;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Used to retrive aie tiles status info
+struct aie_tiles_status_info : request
+{
+  struct parameters
+  {
+    uint32_t col_size;
+    uint16_t start_col;
+    uint16_t num_cols;
+  };
+
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::aie_tiles_status_info;
+
+  virtual boost::any
+  get(const device* device, const boost::any& param) const = 0;
 };
 
 struct clock_freqs_mhz : request
@@ -2380,6 +2379,22 @@ struct power_warning : request
   }
 };
 
+struct host_mem_addr : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::host_mem_addr;
+  static const char* name() { return "host_mem_addr"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
 struct host_mem_size : request
 {
   using result_type = uint64_t;
@@ -2506,12 +2521,11 @@ struct is_recovery : request
   get(const device*) const = 0;
 };
 
-/*
- * struct is_versal - check if device is versal or not
- * A value of true means it is a versal device.
- * This entry is needed as some of the operations are handled
- * differently on versal devices compared to Alveo devices
- */
+
+// struct is_versal - check if device is versal or not
+// A value of true means it is a versal device.
+// This entry is needed as some of the operations are handled
+// differently on versal devices compared to Alveo devices
 struct is_versal : request
 {
   using result_type = bool;
@@ -2521,6 +2535,9 @@ struct is_versal : request
   get(const device*) const = 0;
 };
 
+// struct is_ready - A boolean stating
+// if the specified device is ready for
+// XRT operations such as program or reset
 struct is_ready : request
 {
   using result_type = bool;
@@ -2961,6 +2978,11 @@ struct program_sc : request
   put(const device*, const boost::any&) const = 0;
 };
 
+
+// Returns the status the vmr subdevice. This
+// includes boot information and other data.
+// In the user partition only the boot information
+// is returned.
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
@@ -2983,7 +3005,7 @@ struct extended_vmr_status : request
 // from xclbin uuid to the slot index created by the driver
 struct xclbin_slots : request
 {
-  using slot_id = uint32_t;
+  using slot_id = hwctx_handle::slot_id;
 
   struct slot_info {
     slot_id slot;
@@ -3001,6 +3023,7 @@ struct xclbin_slots : request
   get(const xrt_core::device* device) const = 0;
 };
 
+// Retrieve Board Serial number from xocl hwmon_sdm driver
 struct hwmon_sdm_serial_num : request
 {
   using result_type = std::string;
@@ -3010,6 +3033,7 @@ struct hwmon_sdm_serial_num : request
   get(const device*) const = 0;
 };
 
+// Retrieve OEM ID data from xocl hwmon_sdm driver
 struct hwmon_sdm_oem_id : request
 {
   using result_type = std::string;
@@ -3019,6 +3043,7 @@ struct hwmon_sdm_oem_id : request
   get(const device*) const = 0;
 };
 
+// Retrieve Board name from xocl hwmon_sdm driver
 struct hwmon_sdm_board_name : request
 {
   using result_type = std::string;
@@ -3028,6 +3053,7 @@ struct hwmon_sdm_board_name : request
   get(const device*) const = 0;
 };
 
+// Retrieve active SC version from xocl hwmon_sdm driver
 struct hwmon_sdm_active_msp_ver : request
 {
   using result_type = std::string;
@@ -3037,6 +3063,17 @@ struct hwmon_sdm_active_msp_ver : request
   get(const device*) const = 0;
 };
 
+// Retrieve expected SC version from xocl hwmon_sdm driver
+struct hwmon_sdm_target_msp_ver : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_target_msp_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrieve MAC ADDR0 from xocl hwmon_sdm driver
 struct hwmon_sdm_mac_addr0 : request
 {
   using result_type = std::string;
@@ -3046,6 +3083,7 @@ struct hwmon_sdm_mac_addr0 : request
   get(const device*) const = 0;
 };
 
+// Retrieve MAC ADDR1 from xocl hwmon_sdm driver
 struct hwmon_sdm_mac_addr1 : request
 {
   using result_type = std::string;
@@ -3055,6 +3093,7 @@ struct hwmon_sdm_mac_addr1 : request
   get(const device*) const = 0;
 };
 
+// Retrieve Revision data from xocl hwmon_sdm driver
 struct hwmon_sdm_revision : request
 {
   using result_type = std::string;
@@ -3064,10 +3103,21 @@ struct hwmon_sdm_revision : request
   get(const device*) const = 0;
 };
 
+// Retrieve FAN presence status from xocl hwmon_sdm driver
 struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_fan_presence;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrieve board MFG date from xocl hwmon_sdm driver
+struct hwmon_sdm_mfg_date : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mfg_date;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -3127,6 +3177,45 @@ struct clk_scaling_info : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct xgq_scaling_enabled : request
+{
+  using result_type = bool; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_power_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_power_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_temp_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_temp_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 } // query

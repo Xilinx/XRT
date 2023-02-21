@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,6 +25,62 @@
 #include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
+  struct aiecompiler_options
+  {
+    bool broadcast_enable_core;
+    std::string event_trace;
+  };
+
+enum class module_type {
+    core = 0,
+    dma,
+    shim,
+    mem_tile
+  };
+
+  struct tile_type
+  { 
+    uint16_t row;
+    uint16_t col;
+    uint16_t itr_mem_row;
+    uint16_t itr_mem_col;
+    uint64_t itr_mem_addr;
+    bool     is_trigger;
+    
+    bool operator==(const tile_type &tile) const {
+      return (col == tile.col) && (row == tile.row);
+    }
+    bool operator<(const tile_type &tile) const {
+      return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+    }
+  };
+
+  struct plio_config
+  { 
+    /// PLIO object id
+    int id;
+    /// PLIO variable name
+    std::string name;
+    /// PLIO loginal name
+    std::string logicalName;
+    /// Shim tile column to where the GMIO is mapped
+    short shimColumn;
+    /// slave or master. 0:slave, 1:master
+    short slaveOrMaster;
+    /// Shim stream switch port id
+    short streamId;
+  };  
+
+  struct gmio_type
+  {
+    std::string     name;
+    uint32_t        id;
+    uint16_t        type;
+    uint16_t        shimColumn;
+    uint16_t        channelNum;
+    uint16_t        streamId;
+    uint16_t        burstLength;
+  };
 
   /*
    * Represents AIE counter configuration for a single counter
@@ -181,6 +238,19 @@ namespace xdp {
   };
 
   /*
+   * MEM tiles have 4 Performance counters
+   */
+  class aie_cfg_mem_tile : public aie_cfg_base
+  {
+  public:
+    bool port_trace_is_master[NUM_MEM_TILE_PORTS] = {};
+    uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
+    uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    aie_cfg_mem_tile() : aie_cfg_base(4) {}
+  };
+
+  /*
    * Abstracted AIE tile configuration for trace
    */
   class aie_cfg_tile
@@ -188,10 +258,12 @@ namespace xdp {
   public:
     uint32_t column;
     uint32_t row;
+    module_type type;
     std::string trace_metric_set;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
-    aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
+    aie_cfg_mem_tile mem_tile_trace_config;
+    aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
 } // end namespace xdp

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,30 +14,86 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_H
-#define AIE_TRACE_H
+
+#ifndef AIE_TRACE_DOT_H
+#define AIE_TRACE_DOT_H
 
 #include <cstdint>
 
 #include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
+#include "xaiefal/xaiefal.hpp"
 
 namespace xdp {
 
-  class AieTraceEdgeImpl : public AieTraceImpl{
+  class AieTrace_EdgeImpl : public AieTraceImpl{
     public:
-      AieTraceEdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
-        : AieTraceImpl(database, metadata){}
-      ~AieTraceEdgeImpl();
+      XDP_EXPORT
+      AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
+        // : AieTraceImpl(database, metadata);
+      ~AieTrace_EdgeImpl() = default;
+      
+      XDP_EXPORT
+      virtual void updateDevice();
 
-      void updateDevice();
-      void flushDevice();
-      void finishFlushDevice();
+    private: 
+      typedef XAie_Events            EventType;
+      typedef std::vector<EventType> EventVector;
+      typedef std::vector<uint32_t>  ValueVector;
 
-      bool setMetrics(uint64_t deviceId, void* handle);
-      void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
-      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
-      void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+      module_type getTileType(uint16_t row);
+      void configEventSelections(XAie_DevInst* aieDevInst,
+                                 const XAie_LocType loc,
+                                 const XAie_ModuleType mod,
+                                 const module_type type,
+                                 const std::string metricSet,
+                                 const uint8_t channel0,
+                                 const uint8_t channel);
+      bool setMetricsSettings(uint64_t deviceId, 
+                      void* handle);
+      void releaseCurrentTileCounters(int numCoreCounters, 
+                                      int numMemoryCounters);
+      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, 
+                          XAie_LocType& loc, 
+                          const module_type type,
+                          const std::string& metricSet);
+      void printTileStats(xaiefal::XAieDev* aieDevice, 
+                          const tile_type& tile);
+      bool configureStartIteration(xaiefal::XAieMod& core);
+      bool configureStartDelay(xaiefal::XAieMod& core);
+     
+      bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
+      void setTraceStartControl(void* handle);
+      uint64_t checkTraceBufSize(uint64_t size);
       inline uint32_t bcIdToEvent(int bcId);
+
+    private:
+      XAie_DevInst*     aieDevInst = nullptr;
+      xaiefal::XAieDev* aieDevice  = nullptr;
+
+      std::set<std::string> metricSets;
+      std::map<std::string, EventVector> mCoreEventSets;
+      std::map<std::string, EventVector> mMemoryEventSets;
+      std::map<std::string, EventVector> mMemTileEventSets;
+
+      // AIE profile counters
+      std::vector<tile_type> mCoreCounterTiles;
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
+
+      // Counter metrics (same for all sets)
+      EventType   mCoreTraceStartEvent;
+      EventType   mCoreTraceEndEvent;
+      EventType   mMemTileTraceStartEvent;
+      EventType   mMemTileTraceEndEvent;
+
+      EventVector mCoreCounterStartEvents;
+      EventVector mCoreCounterEndEvents;
+      ValueVector mCoreCounterEventValues;
+
+      EventVector mMemoryCounterStartEvents;
+      EventVector mMemoryCounterEndEvents;
+      ValueVector mMemoryCounterEventValues;
+
   };
 
 }   

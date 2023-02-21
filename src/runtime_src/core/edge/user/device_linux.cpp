@@ -108,17 +108,6 @@ struct board_name
   }
 };
 
-struct is_ready
-{
-  using result_type = query::is_ready::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    return true;
-  }
-};
-
 static xclDeviceInfo2
 init_device_info(const xrt_core::device* device)
 {
@@ -168,52 +157,49 @@ struct dev_info
   }
 };
 
-struct aie_metadata
+// Function to get aie max rows and cols by parsing aie_metadata sysfs node
+static void
+get_aie_row_col(const xrt_core::device* device, uint32_t &row, uint32_t &col)
 {
-  // Function to read aie_metadata sysfs, and parse max rows and max
-  // columns from it.
-  static void
-  read_aie_metadata(const xrt_core::device* device, uint32_t &row, uint32_t &col)
-  {
-    std::string err;
-    std::string value;
-    static std::string AIE_TAG = "aie_metadata";
-    constexpr uint32_t major = 1;
-    constexpr uint32_t minor = 0;
-    constexpr uint32_t patch = 0;
+  std::string err;
+  std::string value;
+  static const std::string AIE_TAG = "aie_metadata";
+  constexpr uint32_t major = 1;
+  constexpr uint32_t minor = 0;
+  constexpr uint32_t patch = 0;
 
-    auto dev = get_edgedev(device);
+  auto dev = get_edgedev(device);
 
-    dev->sysfs_get(AIE_TAG, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
+  dev->sysfs_get(AIE_TAG, err, value);
+  if (!err.empty())
+    throw xrt_core::query::sysfs_error(err);
 
-    std::stringstream ss(value);
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json(ss, pt);
+  std::stringstream ss(value);
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_json(ss, pt);
 
-    if(pt.get<uint32_t>("schema_version.major") != major ||
-       pt.get<uint32_t>("schema_version.minor") != minor ||
-       pt.get<uint32_t>("schema_version.patch") != patch )
-      throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
-                                                             % pt.get<uint32_t>("schema_version.major")
-                                                             % pt.get<uint32_t>("schema_version.minor")
-                                                             % pt.get<uint32_t>("schema_version.patch")));
-    col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
-    row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
-  }
-};
+  if (pt.get<uint32_t>("schema_version.major") != major ||
+      pt.get<uint32_t>("schema_version.minor") != minor ||
+      pt.get<uint32_t>("schema_version.patch") != patch )
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
+        % pt.get<uint32_t>("schema_version.major")
+        % pt.get<uint32_t>("schema_version.minor")
+        % pt.get<uint32_t>("schema_version.patch")));
 
-struct aie_core_info : aie_metadata
+  col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
+  row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
+}
+
+struct aie_core_info_sysfs
 {
-  using result_type = query::aie_core_info::result_type;
+  using result_type = query::aie_core_info_sysfs::result_type;
   static result_type
-  get(const xrt_core::device* device,key_type key)
+  get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
     uint32_t max_col = 0, max_row = 0;
 
-    read_aie_metadata(device, max_row, max_col);
+    get_aie_row_col(device, max_row, max_col);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
     for(int i=0;i<max_col;i++)
@@ -231,16 +217,17 @@ struct aie_core_info : aie_metadata
   }
 };
 
-struct aie_shim_info : aie_metadata
+struct aie_shim_info_sysfs
 {
-  using result_type = query::aie_shim_info::result_type;
+  using result_type = query::aie_shim_info_sysfs::result_type;
+
   static result_type
-  get(const xrt_core::device* device,key_type key)
+  get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
     uint32_t max_col = 0, max_row = 0;
 
-    read_aie_metadata(device, max_row, max_col);
+    get_aie_row_col(device, max_row, max_col);
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for(int i=0;i<max_col;i++) {
@@ -372,7 +359,7 @@ struct xclbin_slots
       if (std::distance(tokens.begin(), tokens.end()) != 2)
         throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
 
-      slot_info data = { 0 };
+      slot_info data {};
       tokenizer::iterator tok_it = tokens.begin();
       data.slot = std::stoi(std::string(*tok_it++));
       data.uuid = std::string(*tok_it++);
@@ -870,10 +857,10 @@ initialize_query_table()
   emplace_func0_request<query::rom_time_since_epoch,    dev_info>();
 
   emplace_func0_request<query::clock_freqs_mhz,         dev_info>();
-  emplace_func0_request<query::aie_core_info,		aie_core_info>();
-  emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
+  emplace_func0_request<query::aie_core_info_sysfs,     aie_core_info_sysfs>();
+  emplace_func0_request<query::aie_shim_info_sysfs,     aie_shim_info_sysfs>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
-  emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
+  emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
@@ -886,9 +873,10 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("errors");
   emplace_sysfs_get<query::xclbin_full>               ("xclbin_full");
+  emplace_sysfs_get<query::host_mem_addr>             ("host_mem_addr");
+  emplace_sysfs_get<query::host_mem_size>             ("host_mem_size");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
-  emplace_func0_request<query::is_ready,                is_ready>();
   emplace_func0_request<query::xclbin_uuid ,            xclbin_uuid>();
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();

@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef core_common_bo_cache_h_
 #define core_common_bo_cache_h_
@@ -39,7 +27,7 @@ public:
   // Helper typedef for std::pair. Note the elements are const so that the
   // pair is immutable. The clients should not change the contents of cmd_bo.
   template <typename CommandType>
-  using cmd_bo = std::pair<const xclBufferHandle, CommandType *const>;
+  using cmd_bo = std::pair<const xrt_buffer_handle, CommandType *const>;
 private:
 
   // We are really allocating a page size as that is what xocl/zocl do. Note on

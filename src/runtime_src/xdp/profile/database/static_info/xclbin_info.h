@@ -84,6 +84,9 @@ namespace xdp {
     std::vector<Monitor*> aims ;
     std::vector<Monitor*> asms ;
 
+    // HLS deadlock diagnosis registers
+    std::unique_ptr<ip_metadata> ip_metadata_section = nullptr;
+
     ~PLInfo() ;
     void addComputeUnitPorts(const std::string& kernelName,
                              const std::string& portName,
@@ -128,9 +131,11 @@ namespace xdp {
     std::map<uint32_t, uint32_t> aieCoreCountersMap ;
     std::map<uint32_t, uint32_t> aieMemoryCountersMap ;
     std::map<uint32_t, uint32_t> aieShimCountersMap ;
+    std::map<uint32_t, uint32_t> aieMemTileCountersMap ;
     std::map<uint32_t, uint32_t> aieCoreEventsMap ;
     std::map<uint32_t, uint32_t> aieMemoryEventsMap ;
     std::map<uint32_t, uint32_t> aieShimEventsMap ;
+    std::map<uint32_t, uint32_t> aieMemTileEventsMap ;
     std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList ;
 
     // A list of all the NoC nodes identified at compile time used by

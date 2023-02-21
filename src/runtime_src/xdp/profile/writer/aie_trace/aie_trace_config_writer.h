@@ -33,9 +33,8 @@ namespace xdp {
   {
   private:
     uint64_t deviceIndex;
-    std::string traceMetricString;
   public:
-    AieTraceConfigWriter(const char* filename, uint64_t index, std::string m);
+    AieTraceConfigWriter(const char* filename, uint64_t index);
     ~AieTraceConfigWriter();
 
   private:

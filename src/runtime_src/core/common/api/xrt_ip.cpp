@@ -183,12 +183,14 @@ class ip_impl
       m_size = m_ip.get_size();
 
       // context, driver allows shared context per xrt.ini
-      m_idx = m_device->open_cu_context(m_hwctx, m_ip.get_name());
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
+      m_idx = hwctx_hdl->open_cu_context(m_ip.get_name());
     }
 
     ~ip_context()
     {
-      m_device->close_cu_context(m_hwctx, m_idx);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
+      hwctx_hdl->close_cu_context(m_idx);
     }
 
     ip_context(const ip_context&) = delete;
