@@ -510,7 +510,7 @@ p2ptest_chunk_no_dma(xrt::device& device, xrt::bo bo_p2p, size_t bo_size, int ba
   auto boh_ptr = boh.map<char*>();
 
   // Populate host buffer with 'A'
-  memset(boh_ptr, 'A', bo_size);
+  p2ptest_set_or_cmp(boh_ptr, bo_size, {'A'}, true);
 
   // Use m2m IP to move data into p2p (required for no DMA test)
   bo_p2p.copy(boh);
@@ -524,7 +524,7 @@ p2ptest_chunk_no_dma(xrt::device& device, xrt::bo bo_p2p, size_t bo_size, int ba
 
   // testing p2p read flow device -> host
   // Populate p2p buffer with 'B'
-  memset(bo_p2p_ptr, 'B', bo_size);
+  p2ptest_set_or_cmp(bo_p2p_ptr, bo_size, {'B'}, true);
 
   // Use m2m IP to move data into host buffer (required for no DMA test)
   boh.copy(bo_p2p);
@@ -553,7 +553,7 @@ p2ptest_bank(xrt_core::device* device, boost::property_tree::ptree& _ptTest, con
   auto boptr = boh.map<char*>();
 
   if (no_dma != 0) {
-     if (!p2ptest_chunk_no_dma(xrt_device, boh, mem_size,  mem_idx)) {
+     if (!p2ptest_chunk_no_dma(xrt_device, boh, mem_size, mem_idx)) {
        _ptTest.put("status", test_token_failed);
       logger(_ptTest, "Error", boost::str(boost::format("P2P failed  on memory index %d")  % mem_idx));
       return false;
