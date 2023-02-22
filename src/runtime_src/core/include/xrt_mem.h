@@ -38,6 +38,11 @@
 # pragma warning( disable : 4201 )
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #ifdef __cplusplus
 # include <cstdint>
 extern "C" {
