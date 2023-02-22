@@ -937,6 +937,10 @@ get_size_with_timestamps_or_zero(struct ert_packet *pkt)
 }
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
+
 #ifdef _WIN32
 # pragma warning( pop )
 #endif

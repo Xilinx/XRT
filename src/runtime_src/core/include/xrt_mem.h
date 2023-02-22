@@ -114,6 +114,10 @@ enum xclDDRFlags {
 }
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
+
 #ifdef _WIN32
 # pragma warning( pop )
 #endif
