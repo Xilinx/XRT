@@ -339,7 +339,7 @@ static void ulite_shutdown(struct uart_port *port)
 }
 
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
-			      const struct ktermios *old)
+							  const struct ktermios *old)
 {
 	unsigned long flags;
 	unsigned int baud;
