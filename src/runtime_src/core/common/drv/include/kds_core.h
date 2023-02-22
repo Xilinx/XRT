@@ -26,6 +26,7 @@
 #include "xrt_cu.h"
 #include "kds_stat.h"
 #include "xclbin.h"
+#include "kds_hwctx.h"
 
 #define kds_info(client, fmt, args...)			\
 	dev_info(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
@@ -231,4 +232,6 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset);
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset);
+ssize_t kds_create_cu_string(struct xrt_cu *xcu, char (*buf)[MAX_CU_STAT_LINE_LENGTH],
+                int slot, int idx, u64 usage_count, enum kds_type type);
 #endif

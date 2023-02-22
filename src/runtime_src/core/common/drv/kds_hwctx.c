@@ -123,8 +123,7 @@ out:
 	return sz;
 }
 
-static void
-_kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
+void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_hw_ctx *hw_ctx)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
@@ -155,19 +154,6 @@ _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 
 out:	
 	mutex_unlock(&client->lock);
-}
-
-static int kds_free_default_hw_ctx(struct kds_client *client)
-{
-	struct kds_client_hw_ctx *curr = NULL;
-
-	mutex_lock(&client->lock);
-	curr = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
-	if (curr)
-		kds_free_hw_ctx(client, curr);
-	mutex_unlock(&client->lock);
-
-	return 0;
 }
 
 struct kds_client_cu_ctx *

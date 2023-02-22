@@ -718,8 +718,8 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 	return ret;
 }
 
-static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
-			      struct drm_file *filp, bool in_kernel)
+int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
+		struct drm_file *filp, bool in_kernel)
 {
 	struct drm_device *ddev = filp->minor->dev;
 	struct kds_client *client = filp->driver_priv;

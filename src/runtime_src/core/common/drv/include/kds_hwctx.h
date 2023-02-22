@@ -51,6 +51,8 @@ struct kds_client_hw_ctx {
 	struct client_stats __percpu	*stats;
 };
 
+struct kds_sched;
+
 struct kds_client_cu_ctx *
 kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 	                       struct kds_client_cu_info *cu_info);
@@ -78,4 +80,6 @@ ssize_t
 show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, size_t buf_size,
 			loff_t offset, uint32_t domain);
 
+void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
+                 struct kds_client_hw_ctx *hw_ctx);
 #endif

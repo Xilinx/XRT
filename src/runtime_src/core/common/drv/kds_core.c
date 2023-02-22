@@ -45,10 +45,10 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
-static ssize_t kds_create_cu_string(struct xrt_cu *xcu,
-				    char (*buf)[MAX_CU_STAT_LINE_LENGTH],
-				    int slot, int idx, u64 usage_count,
-				    enum kds_type type)
+ssize_t kds_create_cu_string(struct xrt_cu *xcu,
+		char (*buf)[MAX_CU_STAT_LINE_LENGTH],
+		int slot, int idx, u64 usage_count,
+		enum kds_type type)
 {
 	ssize_t cu_sz = 0;
 	switch (type) {
@@ -1158,13 +1158,17 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 			list_for_each_entry(c_curr, &client->ctx_list, link)
 				_kds_fini_client(kds, client, c_curr);
 
-		kds_free_default_hw_ctx(client);
+		mutex_lock(&client->lock);
+		curr = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+		if (curr)
+			kds_free_hw_ctx(client, curr);
+		mutex_unlock(&client->lock);
 	}
 
 	if(!list_empty(&client->hw_ctx_list)) {
 		list_for_each_entry(curr, &client->hw_ctx_list, link) {
 			/* release new hw client's resources */
-			_kds_fini_hw_ctx_client(kds, client, curr);
+			kds_fini_hw_ctx_client(kds, client, curr);
 		}
 	}
 

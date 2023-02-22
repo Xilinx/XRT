@@ -111,6 +111,7 @@ SET (XRT_DKMS_CORE_INCLUDES
 SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/cu_hls.c
   common/drv/fast_adapter.c
+  common/drv/kds_hwctx.c
   common/drv/kds_core.c
   common/drv/Makefile
   common/drv/xgq_execbuf.c
@@ -123,6 +124,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_client.h
   common/drv/include/kds_command.h
   common/drv/include/kds_core.h
+  common/drv/include/kds_hwctx.h
   common/drv/include/kds_ert_table.h
   common/drv/include/kds_stat.h
   common/drv/include/xgq_execbuf.h
