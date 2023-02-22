@@ -847,7 +847,9 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (std::find(metricSets.begin(), metricSets.end(), tileMetric.second) == metricSets.end()) {
+      auto metricSetItr = std::find(metricSets.begin(), metricSets.end(), tileMetric.second);
+      auto memTileMetricSetItr = std::find(memTileMetricSets.begin(), memTileMetricSets.end(), tileMetric.second);
+      if ((metricSetItr == metricSets.cend()) && (memTileMetricSetItr == memTileMetricSets.cend())) {
         std::string defaultSet = (type == module_type::mem_tile) ? "input_channels" : "functions";
         if (showWarning) {
           std::stringstream msg;
@@ -957,14 +959,14 @@ namespace xdp {
     return tiles;
   }
 
-   uint8_t AieTraceMetadata::getMetricSetIndex(std::string metricString){    
-
-    //Check if the metricSet is valid for either regular tiles or memtiles, and convert to an index to pass to PS kernel.
+  uint8_t AieTraceMetadata::getMetricSetIndex(std::string metricString) {
+    // Verify metric set is valid for either AIE or MEM tiles, 
+    // and convert to index to pass to PS kernel.
     auto metricSetItr = std::find(metricSets.begin(), metricSets.end(), metricString);
     auto memTileMetricSetItr = std::find(memTileMetricSets.begin(), memTileMetricSets.end(), metricString);
-    if (metricSetItr == metricSets.cend() && memTileMetricSetItr == memTileMetricSets.cend()){
+    if ((metricSetItr == metricSets.cend()) && (memTileMetricSetItr == memTileMetricSets.cend())) {
       return 0; //Default
-    } else if (metricSetItr != metricSets.cend()){
+    } else if (metricSetItr != metricSets.cend()) {
       return std::distance(metricSets.begin(), metricSetItr);
     } else {
       return std::distance(memTileMetricSets.begin(), memTileMetricSetItr);
