@@ -521,8 +521,8 @@ p2ptest_chunk_no_dma(xrt::device& device, xrt::bo bo_p2p, size_t bo_size, int ba
   auto bo_p2p_ptr = bo_p2p.map<char*>();
 
   std::cout << "Compare host buffer and p2p\n";
-  // Verify host and p2p buffer match
-  if(std::memcmp(boh_ptr, bo_p2p_ptr, bo_size) != 0)
+  // Verify p2p buffer has 'A' inside
+  if(!p2ptest_set_or_cmp(bo_p2p_ptr, bo_size, {'B'}, false))
     return false;
 
   std::cout << "Populate p2p buffer with A\n";
@@ -535,8 +535,8 @@ p2ptest_chunk_no_dma(xrt::device& device, xrt::bo bo_p2p, size_t bo_size, int ba
   boh.copy(bo_p2p);
 
   std::cout << "Compare p2p buffer and host\n";
-  // Verify host and p2p buffer match
-  if(std::memcmp(boh_ptr, bo_p2p_ptr, bo_size) != 0)
+  // Verify host buffer has 'B' inside
+  if(!p2ptest_set_or_cmp(boh_ptr, bo_size, {'B'}, false))
     return false;
 
   return true;
