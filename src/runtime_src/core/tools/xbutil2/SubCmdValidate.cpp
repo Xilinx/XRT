@@ -509,26 +509,32 @@ p2ptest_chunk_no_dma(xrt::device& device, xrt::bo bo_p2p, size_t bo_size, int ba
   auto boh = xrt::bo(device, bo_size, XCL_BO_FLAGS_HOST_ONLY, bank);
   auto boh_ptr = boh.map<char*>();
 
+  std::cout << "Populate host buffer with A\n";
   // Populate host buffer with 'A'
   p2ptest_set_or_cmp(boh_ptr, bo_size, {'A'}, true);
 
+  std::cout << "Copy host buffer into p2p\n";
   // Use m2m IP to move data into p2p (required for no DMA test)
   bo_p2p.copy(boh);
 
   // Create p2p bo mapping
   auto bo_p2p_ptr = bo_p2p.map<char*>();
 
+  std::cout << "Compare host buffer and p2p\n";
   // Verify host and p2p buffer match
   if(std::memcmp(boh_ptr, bo_p2p_ptr, bo_size) != 0)
     return false;
 
+  std::cout << "Populate p2p buffer with A\n";
   // testing p2p read flow device -> host
   // Populate p2p buffer with 'B'
   p2ptest_set_or_cmp(bo_p2p_ptr, bo_size, {'B'}, true);
 
+  std::cout << "Copy p2p buffer into host\n";
   // Use m2m IP to move data into host buffer (required for no DMA test)
   boh.copy(bo_p2p);
 
+  std::cout << "Compare p2p buffer and host\n";
   // Verify host and p2p buffer match
   if(std::memcmp(boh_ptr, bo_p2p_ptr, bo_size) != 0)
     return false;
