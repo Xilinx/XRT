@@ -847,9 +847,10 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      auto metricSetItr = std::find(metricSets.begin(), metricSets.end(), tileMetric.second);
-      auto memTileMetricSetItr = std::find(memTileMetricSets.begin(), memTileMetricSets.end(), tileMetric.second);
-      if ((metricSetItr == metricSets.cend()) && (memTileMetricSetItr == memTileMetricSets.cend())) {
+      if (((type != module_type::mem_tile) 
+          && (std::find(metricSets.begin(), metricSets.end(), tileMetric.second) == metricSets.end()))
+          || ((type == module_type::mem_tile) 
+          && (std::find(memTileMetricSets.begin(), memTileMetricSets.end(), tileMetric.second) == memTileMetricSets.end()))) {
         std::string defaultSet = (type == module_type::mem_tile) ? "input_channels" : "functions";
         if (showWarning) {
           std::stringstream msg;
