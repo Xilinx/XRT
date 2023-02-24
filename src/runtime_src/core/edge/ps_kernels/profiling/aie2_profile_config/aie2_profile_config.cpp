@@ -557,7 +557,7 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
 
   //Cleanup Iteration
   } else if (iteration == 2) {
-    for (auto& c : mPerfCounters){
+    for (auto& c : constructs->mPerfCounters){
       c->stop();
       c->release();
     }
