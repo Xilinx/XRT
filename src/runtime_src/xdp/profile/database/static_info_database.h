@@ -132,6 +132,7 @@ namespace xdp {
                        const struct debug_ip_data* debugIpData) ;
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
+    void initializeFIFO(DeviceInfo* devInfo) ;
     void initializeXrtIP(XclbinInfo* xclbin);
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);

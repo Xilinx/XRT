@@ -1940,6 +1940,15 @@ namespace xdp {
       xclbin->pl.usesTs2mm = true ;
   }
 
+  void VPStaticDatabase::initializeFIFO(DeviceInfo* devInfo)
+  {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->pl.usesFifo = true ;
+  }
+
   void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
   {
     auto& ip_metadata = xclbin->pl.ip_metadata_section;
@@ -2223,6 +2232,9 @@ namespace xdp {
         break ;
       case TRACE_S2MM:
         initializeTS2MM(devInfo, debugIpData) ;
+        break ;
+      case AXI_MONITOR_FIFO_LITE:
+        initializeFIFO(devInfo) ;
         break ;
       default:
         break ;
