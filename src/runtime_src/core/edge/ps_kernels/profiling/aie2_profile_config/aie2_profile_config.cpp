@@ -403,12 +403,8 @@ namespace {
 
           outputcfg->counters[counterId] = outputCounter;
           outputcfg->numCounters = counterId;
-      
-          
         }
-
       }
-
       runtimeCounters = true;
     } // modules
 
