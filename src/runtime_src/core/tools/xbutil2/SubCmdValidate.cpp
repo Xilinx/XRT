@@ -522,10 +522,10 @@ p2ptest_chunk_no_dma(xrt::device& device, xrt::bo bo_p2p, size_t bo_size, int ba
 
   std::cout << "Compare host buffer and p2p\n";
   // Verify p2p buffer has 'A' inside
-  if(!p2ptest_set_or_cmp(bo_p2p_ptr, bo_size, {'B'}, false))
+  if(!p2ptest_set_or_cmp(bo_p2p_ptr, bo_size, {'A'}, false))
     return false;
 
-  std::cout << "Populate p2p buffer with A\n";
+  std::cout << "Populate p2p buffer with B\n";
   // testing p2p read flow device -> host
   // Populate p2p buffer with 'B'
   p2ptest_set_or_cmp(bo_p2p_ptr, bo_size, {'B'}, true);
