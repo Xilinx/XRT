@@ -404,8 +404,6 @@ namespace {
   }
 } // end anonymous namespace
 
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
