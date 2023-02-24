@@ -25,6 +25,15 @@ class SubCmdValidate : public SubCmd {
 
  public:
   SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+
+ private:
+  std::string               m_device;
+  std::vector<std::string>  m_tests_to_run;
+  std::string               m_format;
+  std::string               m_output;
+  std::string               m_param;
+  std::string               m_xclbin_location;
+  bool                      m_help;
 };
 
 #endif

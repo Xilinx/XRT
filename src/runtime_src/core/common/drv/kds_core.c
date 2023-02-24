@@ -917,8 +917,10 @@ int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 	 * For legacy context case assume there is only one hw context present
 	 * of id 0.
 	 */
+	mutex_lock(&client->lock);
 	client->next_hw_ctx_id = 0;
 	hw_ctx = kds_alloc_hw_ctx(client, NULL /* xclbin id*/, 0 /*slot id */);
+	mutex_unlock(&client->lock);
 	if (!hw_ctx) {
 		return -EINVAL;
 	}

@@ -92,37 +92,19 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
 {
   XBU::verbose("SubCommand: reset");
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::string resetType = "hot";
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-  hiddenOptions.add_options()
-    ("type,t", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
-                                                                        "  kernel       - Kernel communication links\n" 
-                                                                        "  ert          - Reset management processor\n"
-                                                                        "  ecc          - Reset ecc memory\n"
-                                                                        "  soft-kernel  - Reset soft kernel");
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (help) {
-    printHelp(commonOptions, hiddenOptions);
+  if (m_help) {
+    printHelp();
     return;
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(boost::str(boost::format("  Reset: %s") % resetType));
+  XBU::verbose(boost::str(boost::format("  Reset: %s") % m_resetType));
 
   // -- process "device" option -----------------------------------------------
   // Find device of interest
@@ -130,14 +112,14 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
 
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
   
-  xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
+  xrt_core::query::reset_type type = XBU::str_to_reset_obj(m_resetType);
   pretty_print_action_list(device.get(), type);
 
   // Ask user for permission
