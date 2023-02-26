@@ -13,6 +13,7 @@
 #define _ZOCL_XCLBIN_H_
 
 #include <linux/uuid.h>
+#include "zocl_drv.h"
 
 struct zocl_xclbin {
 	int		zx_refcnt;
@@ -26,6 +27,7 @@ void zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
 int zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev,
 			 struct drm_zocl_slot *slot, void *uuid);
 void *zocl_xclbin_get_uuid(struct drm_zocl_slot *slot);
+void *zocl_xclbin_get_uuid_lock(struct drm_zocl_slot *slot);
 int zocl_xclbin_hold(struct drm_zocl_slot *slot, const uuid_t *id);
 int zocl_lock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id);
 int zocl_xclbin_release(struct drm_zocl_slot *slot, const uuid_t *id);
@@ -35,7 +37,7 @@ struct drm_zocl_slot *zocl_get_slot(struct drm_zocl_dev *zdev,
 
 int zocl_xclbin_refcount(struct drm_zocl_slot *slot);
 int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
-	struct drm_zocl_axlf *axlf_obj, struct sched_client_ctx *client);
+	struct drm_zocl_axlf *axlf_obj, struct kds_client *client);
 int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_slot *slot);
 int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_id);

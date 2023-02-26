@@ -13,7 +13,6 @@
 
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/of.h>
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_aie.h"
 #include "zocl_sk.h"
@@ -995,7 +994,7 @@ out:
 
 static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin, struct sched_client_ctx *client)
+			char __user *xclbin, struct kds_client *client)
 {
 	uint64_t size = 0;
 	char *pdi_buf = NULL;
@@ -1257,7 +1256,7 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
  */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
-	struct sched_client_ctx *client)
+	struct kds_client *client)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;
@@ -1324,7 +1323,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
-	
 
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
@@ -1532,6 +1530,30 @@ zocl_xclbin_get_uuid(struct drm_zocl_slot *slot)
 		return NULL;
 
 	return slot->slot_xclbin->zx_uuid;
+}
+
+/*
+ * Get the xclbin id for this slot. This is a lock version.
+ *
+ * @param       slot:	slot specific structure
+ *
+ * @return      uuid for valid slot, NULL on failure.
+ */
+void *
+zocl_xclbin_get_uuid_lock(struct drm_zocl_slot *slot)
+{
+	void *uuid = NULL;
+
+	if (!slot)
+		return NULL;
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	if (slot->slot_xclbin)
+		uuid = slot->slot_xclbin->zx_uuid;
+
+	mutex_unlock(&slot->slot_xclbin_lock);
+
+	return uuid;
 }
 
 /*

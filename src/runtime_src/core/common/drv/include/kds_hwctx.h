@@ -41,8 +41,11 @@ struct kds_client_hw_ctx {
 	/* To support multiple context for multislot case */
 	struct list_head		link;
 
-	/* To support multiple CU context */
+	/* To support multiple contexts under this hw context */
 	struct list_head		cu_ctx_list;
+	struct list_head                graph_ctx_list;
+	spinlock_t                      graph_list_lock;
+	struct list_head                aie_ctx_list;
 
 	/* Per context statistics. Use percpu variable for two reasons
 	 * 1. no lock is need while modifying these counters

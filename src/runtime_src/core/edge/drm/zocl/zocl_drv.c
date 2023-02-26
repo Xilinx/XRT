@@ -32,10 +32,10 @@
 #include "zocl_sk.h"
 #include "zocl_aie.h"
 #include "zocl_bo.h"
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 #include "zocl_ert_intc.h"
+#include "zocl_hwctx.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
@@ -960,6 +960,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_EXECBUF, zocl_execbuf_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_HW_CTX_EXECBUF, zocl_hw_ctx_execbuf_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_READ_AXLF, zocl_read_axlf_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_SK_GETCMD, zocl_sk_getcmd_ioctl,
@@ -971,6 +973,22 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_CTX, zocl_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_CREATE_HW_CTX, zocl_create_hw_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_DESTROY_HW_CTX, zocl_destroy_hw_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_OPEN_CU_CTX, zocl_open_cu_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_CLOSE_CU_CTX, zocl_close_cu_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_OPEN_AIE_CTX, zocl_open_aie_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_CLOSE_AIE_CTX, zocl_close_aie_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_OPEN_GRAPH_CTX, zocl_open_graph_ctx_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_CLOSE_GRAPH_CTX, zocl_close_graph_ctx_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_ERROR_INJECT, zocl_error_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),

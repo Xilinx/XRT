@@ -23,7 +23,7 @@ endif
 
 endif
 
-ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
+ccflags-y := -Werror -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
 
 #flags passed from xrt_git.bb file are added below
 ifneq ($(cflags_zocl),)
@@ -72,7 +72,8 @@ zocl-y := \
 	zocl_cu_xgq.o \
 	zocl_rpu_channel.o \
 	zocl_csr_intc.o \
-	zocl_xgq_intc.o
+	zocl_xgq_intc.o \
+	zocl_hwctx.o
 
 obj-m	+= zocl.o
 

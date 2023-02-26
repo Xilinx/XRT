@@ -13,7 +13,6 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 
@@ -25,7 +24,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
-	struct sched_client_ctx *client = filp->driver_priv;
+	struct kds_client *client = filp->driver_priv;
 
 	return zocl_xclbin_read_axlf(zdev, axlf_obj, client);
 }
@@ -131,7 +130,8 @@ zocl_aie_reset_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 }
 
 int
-zocl_aie_freqscale_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+zocl_aie_freqscale_ioctl(struct drm_device *dev, void *data,
+			 struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 
@@ -146,6 +146,7 @@ zocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 	struct drm_zocl_set_cu_range *info = data;
 	int ret = 0;
 
-	ret = zocl_kds_set_cu_read_range(zdev, info->cu_index, info->start, info->size);
+	ret = zocl_kds_set_cu_read_range(zdev, info->cu_index,
+					 info->start, info->size);
 	return ret;
 }
