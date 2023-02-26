@@ -190,6 +190,8 @@ namespace xdp {
     AIEData.threadCtrlBool = false;
 
     AIEData.thread.join();
+
+    AIEData.implementation->freeResources();
     handleToAIEData.erase(handle);
   }
 

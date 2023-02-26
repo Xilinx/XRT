@@ -60,7 +60,8 @@ namespace xdp {
     //  we use a memory resource, we must have a TS2MM.  We cannot mix FIFO
     //  and memory resources for trace offload.
     bool usesTs2mm = false ;
-
+    bool usesFifo = false ;
+    
     // Our AIMs and ASMs can be attached to any AXI-MM or AXI-S connection.
     //  If we cannot associate the AXI-MM or AXI-S connection to a specific
     //  compute unit, we consider them to be "floating" and we lump their
