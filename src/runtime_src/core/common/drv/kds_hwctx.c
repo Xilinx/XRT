@@ -5,7 +5,7 @@
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
  *
- * Authors: min.ma@xilinx.com
+ * Authors: saifuddi@amd.com
  *
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
@@ -22,11 +22,11 @@
 #include "kds_core.h"
 #include "kds_hwctx.h"
 
-ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, 
+ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 				size_t buf_size, loff_t offset, uint32_t domain)
 {
 	struct kds_cu_mgmt *cu_mgmt = (domain == DOMAIN_PL) ?
-	       	&kds->cu_mgmt : &kds->scu_mgmt;
+		&kds->cu_mgmt : &kds->scu_mgmt;
 	struct xrt_cu *xcu = NULL;
 	const struct list_head *ptr = NULL;
 	struct kds_client *client = NULL;
@@ -43,13 +43,13 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 	/* For legacy context */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		if (!client->ctx || list_empty(&client->ctx->cu_ctx_list)) 
+		if (!client->ctx || list_empty(&client->ctx->cu_ctx_list))
 			continue;
 
 		/* Find out if same CU context is already exists  */
 		list_for_each_entry(cu_ctx, &client->ctx->cu_ctx_list, link) {
 			xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
-			if ((xcu == NULL) || (cu_ctx->cu_domain != domain)) 
+			if ((xcu == NULL) || (cu_ctx->cu_domain != domain))
 				continue;
 
 			j = cu_ctx->ctx->slot_idx;
@@ -70,8 +70,9 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
                         if (all_cu_sz > offset) {
                                 if (sz + cu_sz > buf_size)
 					goto out;
-                                
-				sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
+
+				sz += scnprintf(buf+sz, buf_size - sz, "%s",
+									cu_buf);
                         }
 		}
 	}
@@ -79,7 +80,7 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 	/* For hw context */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		if (!client->ctx || list_empty(&client->hw_ctx_list)) 
+		if (!client->ctx || list_empty(&client->hw_ctx_list))
 			continue;
 
 		list_for_each_entry(curr, &client->hw_ctx_list, link) {
@@ -89,7 +90,8 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 			/* Find out if same CU context is already exists  */
 			list_for_each_entry(cu_ctx, &curr->cu_ctx_list, link) {
 				xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
-				if ((xcu == NULL) || (cu_ctx->cu_domain != domain))
+				if ((xcu == NULL) ||
+						(cu_ctx->cu_domain != domain))
 					continue;
 
 				j = cu_ctx->hw_ctx->hw_ctx_idx;
@@ -97,7 +99,7 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 				/* Generate the CU string to write into the buffer */
 				memset(cu_buf, 0, sizeof(cu_buf));
 				cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
-						cu_stat_read(cu_mgmt, usage[i]), type);
+					cu_stat_read(cu_mgmt, usage[i]), type);
 
 				/* Store the CU string length with previous lengths */
 				all_cu_sz += cu_sz;
@@ -110,7 +112,7 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 				if (all_cu_sz > offset) {
 					if (sz + cu_sz > buf_size)
 						goto out;
-			
+
 					sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
 				}
 			}
@@ -139,8 +141,8 @@ void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 	mutex_lock(&client->lock);
 	/* Traverse through all the context and free them up */
 	list_for_each_entry_safe(cu_ctx, next, &hw_ctx->cu_ctx_list, link) {
-		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
-				cu_ctx->cu_idx);
+		kds_info(client, "Removing CU Domain[%d] CU Index [%d]",
+			 cu_ctx->cu_domain, cu_ctx->cu_idx);
 		if (kds_del_context(kds, client, cu_ctx)) {
 			kds_err(client, "Deleting KDS Context failed");
 			goto out;
@@ -152,7 +154,7 @@ void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 		}
 	}
 
-out:	
+out:
 	mutex_unlock(&client->lock);
 }
 
@@ -164,7 +166,7 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
         uint32_t cu_idx = cu_info->cu_idx;
         struct kds_client_cu_ctx *cu_ctx = NULL;
 	bool found = false;
-	
+
 	BUG_ON(!mutex_is_locked(&client->lock));
 
         if (!ctx) {
@@ -183,8 +185,8 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 
         /* CU context exists. Return the context */
 	if (found)
-        	return cu_ctx;
-                
+		return cu_ctx;
+
 	return NULL;
 }
 
@@ -247,7 +249,7 @@ kds_get_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
         uint32_t cu_idx = cu_info->cu_idx;
         struct kds_client_cu_ctx *cu_ctx = NULL;
 	bool found = false;
-	
+
 	BUG_ON(!mutex_is_locked(&client->lock));
 
         if (!hw_ctx) {
@@ -266,8 +268,8 @@ kds_get_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
 
         /* CU context exists. Return the context */
 	if (found)
-        	return cu_ctx;
-                
+		return cu_ctx;
+
 	return NULL;
 }
 
@@ -312,11 +314,11 @@ kds_alloc_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
 		return NULL;
 	}
 
-        /* Add this Cu context to Client Context list */
-	list_add_tail(&cu_ctx->link, &hw_ctx->cu_ctx_list);
-
 	/* Initialize this cu context with required iniformation */
 	kds_initialize_cu_hw_ctx(client, cu_ctx, cu_info);
+
+	/* Add this Cu context to Client Context list */
+	list_add_tail(&cu_ctx->link, &hw_ctx->cu_ctx_list);
 
 	return cu_ctx;
 }
@@ -327,15 +329,175 @@ int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
 
 	if (!cu_ctx)
 	       return -EINVAL;
-	
+
 	if (cu_ctx->ref_cnt) {
 		/* Reference count must be reset before free the context */
 		kds_err(client, "Invalid CU Context requested to free");
 		return -EINVAL;
 	}
-	
+
 	list_del(&cu_ctx->link);
-	vfree(cu_ctx); 
+	vfree(cu_ctx);
+
+	return 0;
+}
+
+struct kds_client_graph_ctx *
+kds_alloc_graph_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+	struct kds_client_hw_ctx *hw_ctx, struct kds_client_graph_info *g_info)
+{
+	struct kds_client_graph_ctx *graph_ctx = NULL;
+	unsigned long graph_flags = 0;
+	bool found = false;
+
+	mutex_lock(&kds->lock);
+
+	spin_lock_irqsave(&hw_ctx->graph_list_lock, graph_flags);
+	/* Find out if same CU context is already exists  */
+        list_for_each_entry(graph_ctx, &hw_ctx->graph_ctx_list, link) {
+                if (graph_ctx->graph_idx == g_info->graph_idx) {
+                        found = true;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&hw_ctx->graph_list_lock, graph_flags);
+
+        /* Graph context exists. Return the context */
+	if (found)
+		return graph_ctx;
+
+	/* graph context doesn't exists. Create a new context */
+	graph_ctx = kzalloc(sizeof(struct kds_client_graph_ctx), GFP_KERNEL);
+	if (!graph_ctx) {
+		kds_err(client, "Memory is not available for new Graph context");
+		mutex_unlock(&kds->lock);
+		return NULL;
+	}
+
+	/* Initialize this graph context with required iniformation */
+        graph_ctx->hw_ctx = g_info->ctx;
+	graph_ctx->graph_idx = g_info->graph_idx;
+	graph_ctx->flags = g_info->flags;
+
+	/* Add this graph context to Client HW Context list */
+	list_add_tail(&graph_ctx->link, &hw_ctx->graph_ctx_list);
+
+	mutex_unlock(&kds->lock);
+
+	return graph_ctx;
+}
+
+int kds_free_graph_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+	struct kds_client_hw_ctx *hw_ctx, struct kds_client_graph_info *g_info)
+{
+        struct kds_client_graph_ctx *graph_ctx = NULL;
+        uint32_t graph_idx = g_info->graph_idx;
+	unsigned long graph_flags = 0;
+	bool found = false;
+	int ret = 0;
+
+        if (!hw_ctx) {
+		kds_err(client, "No such Client HW Context available");
+                return -EINVAL;
+        }
+
+	mutex_lock(&kds->lock);
+
+	spin_lock_irqsave(&hw_ctx->graph_list_lock, graph_flags);
+	/* Find out if same Graph context is already exists  */
+        list_for_each_entry(graph_ctx, &hw_ctx->graph_ctx_list, link) {
+                if (graph_ctx->graph_idx == graph_idx) {
+                        found = true;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&hw_ctx->graph_list_lock, graph_flags);
+
+        /* Graph context doesn't exists. Return failure from here */
+	if (!found) {
+		kds_err(client, "Fail to close graph context: Graph %d does not exist",
+						graph_idx);
+		ret = -EINVAL;
+		goto out;
+	}
+
+        list_del(&graph_ctx->link);
+        vfree(graph_ctx);
+
+out:
+	mutex_unlock(&kds->lock);
+	return ret;
+}
+
+struct kds_client_aie_ctx *
+kds_alloc_aie_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+	struct kds_client_hw_ctx *hw_ctx, struct kds_client_aie_info *a_info)
+{
+	struct kds_client_aie_ctx *aie_ctx = NULL;
+
+	mutex_lock(&kds->lock);
+
+        /* AIE context exists. Return the context */
+	if (hw_ctx->aie_ctx)
+		return hw_ctx->aie_ctx;
+
+	/* AIE context doesn't exists. Create a new context */
+	aie_ctx = kzalloc(sizeof(struct kds_client_aie_ctx), GFP_KERNEL);
+	if (!aie_ctx) {
+		kds_err(client, "Memory is not available for new AIE context");
+		mutex_unlock(&kds->lock);
+		return NULL;
+	}
+
+	/* Initialize this aie context with required iniformation */
+        aie_ctx->hw_ctx = a_info->ctx;
+	aie_ctx->flags = a_info->flags;
+
+	mutex_unlock(&kds->lock);
+
+	return aie_ctx;
+}
+
+int kds_free_aie_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+	struct kds_client_hw_ctx *hw_ctx)
+{
+        struct kds_client_aie_ctx *aie_ctx = NULL;
+	int ret = 0;
+
+        if (!hw_ctx) {
+		kds_err(client, "No such Client HW Context available");
+                return -EINVAL;
+        }
+
+	mutex_lock(&kds->lock);
+
+	aie_ctx = hw_ctx->aie_ctx;
+        /* Graph context doesn't exists. Return failure from here */
+	if (!aie_ctx) {
+		kds_err(client, "No AIE context has been allocated");
+		ret = -EINVAL;
+		goto out;
+	}
+        vfree(aie_ctx);
+
+out:
+	mutex_unlock(&kds->lock);
+	return ret;
+}
+
+int kds_free_graph_ctx(struct kds_client *client,
+		       struct kds_client_graph_ctx *graph_ctx)
+{
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	if (!graph_ctx) {
+		kds_err(client, "Fail to close graph context: Graph %d does not exist",
+			graph_ctx->graph_idx);
+		return -EINVAL;
+	}
+
+	list_del(&graph_ctx->link);
+	vfree(graph_ctx);
 
 	return 0;
 }
@@ -355,8 +517,8 @@ kds_get_hw_ctx_by_id(struct kds_client *client, uint32_t hw_ctx_id)
          */
         list_for_each_entry(curr_ctx, &client->hw_ctx_list, link) {
                 if (curr_ctx->hw_ctx_idx == hw_ctx_id) {
-                 	found = true;
-		 	break;
+			found = true;
+			break;
 		}
 	}
 
@@ -408,16 +570,16 @@ int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx)
 		kds_err(client, "Invalid HW Context requested to free");
 		return -EINVAL;
 	}
-	
+
 	if(!list_empty(&hw_ctx->cu_ctx_list)) {
 		/* CU ctx list must me empty to remove a HW context */
 		kds_err(client, "CU contexts are still open under this HW Context");
 		return -EINVAL;
 	}
-	
-	free_percpu(hw_ctx->stats);	
+
+	free_percpu(hw_ctx->stats);
 	list_del(&hw_ctx->link);
-	vfree(hw_ctx); 
+	vfree(hw_ctx);
 
 	return 0;
 }

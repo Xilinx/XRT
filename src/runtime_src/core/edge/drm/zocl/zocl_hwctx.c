@@ -17,7 +17,6 @@
 #include "zocl_xclbin.h"
 #include "zynq_hwctx.h"
 
-
 /*
  * Create a new context if no active context present for this xclbin and add
  * it to the kds.
@@ -394,12 +393,10 @@ static int
 zocl_open_aie_context(struct drm_zocl_dev *zdev, struct drm_file *filp,
                 struct drm_zocl_open_aie_ctx *aiectx_args)
 {
-	return 0;
-#if 0
         struct kds_client *client = filp->driver_priv;
         struct kds_client_hw_ctx *hw_ctx = NULL;
-        struct zocl_aie_ctx_node *aie_ctx = NULL;
-        struct kds_client_cu_info cu_info = {};
+        struct kds_client_aie_ctx *aie_ctx = NULL;
+        struct kds_client_aie_info aie_info = {};
         int ret = 0;
 
         mutex_lock(&client->lock);
@@ -414,34 +411,57 @@ zocl_open_aie_context(struct drm_zocl_dev *zdev, struct drm_file *filp,
         /* Bitstream is locked. No one could load a new one
          * until this HW context is closed.
          */
-        ret = zocl_open_cu_ctx_to_info(zdev, cuctx_args, hw_ctx, &cu_info);
-        if (ret) {
-                DRM_ERROR("No valid CU info available for this request");
-                goto out;
-        }
 
-        /* Allocate a free CU context for the given CU index */
-        cu_ctx = kds_alloc_cu_hw_ctx(client, hw_ctx, &cu_info);
-        if (!cu_ctx) {
-                DRM_ERROR("Allocation of CU context failed");
-                ret = -EINVAL;
-                goto out;
-        }
+	aie_info.flags = aiectx_args->flags;
+	aie_info.ctx = (void *)hw_ctx;
 
-        ret = kds_add_context(&zdev->kds, client, cu_ctx);
-        if (ret) {
-                kds_free_cu_ctx(client, cu_ctx);
-                goto out;
-        }
+        /* Allocate a free AIE context */
+        aie_ctx = kds_alloc_aie_hw_ctx(&zdev->kds, client, hw_ctx,
+					   &aie_info);
+        if (!aie_ctx) {
+                DRM_ERROR("Allocation of AIE context failed");
+		ret = -EINVAL;
+		goto out;
+	}
 
-        // Return the encoded cu index along with cu domain
-        cuctx_args->cu_index = set_domain(cu_ctx->cu_domain,
-                                           cu_ctx->cu_idx);
+	if (aie_ctx->flags != ZOCL_CTX_NOOPS) {
+		DRM_ERROR("Changing AIE context is not supported.\n");
+		ret = -EBUSY;
+		goto out;
+	}
+
+	/* Validate the request */
+	if (aie_ctx->flags == ZOCL_CTX_EXCLUSIVE ||
+	    aie_info.flags == ZOCL_CTX_EXCLUSIVE) {
+		/*
+		 * This AIE array has been allocated exclusive
+		 * context or;
+		 * We request exclusive context but this AIE array
+		 * has been allocated with non-exclusive context
+		 */
+		kds_err(client, "Only one exclusive AIE context can be allocated");
+		kds_free_aie_hw_ctx(&zdev->kds, client, hw_ctx);
+		ret = EBUSY;
+		goto out;
+	}
+
+	if (aie_ctx->flags == ZOCL_CTX_PRIMARY &&
+	    aie_info.flags != ZOCL_CTX_SHARED) {
+		/*
+		 * This aie has been opened with primary context but the
+		 * request is not shared context
+		 */
+		kds_err(client, "Primary AIE context has been allocated");
+		kds_free_aie_hw_ctx(&zdev->kds, client, hw_ctx);
+		ret = EBUSY;
+		goto out;
+	}
+
 out:
         mutex_unlock(&client->lock);
         return ret;
-#endif
 }
+
 
 /*
  * This function will open a AIE context under a hw context.
@@ -470,7 +490,33 @@ static int
 zocl_close_aie_context(struct drm_zocl_dev *zdev, struct drm_file *filp,
                 struct drm_zocl_close_aie_ctx *aiectx_args)
 {
-	return 0;
+        struct kds_client *client = filp->driver_priv;
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+	struct kds_client_aie_ctx *aie_ctx = NULL;
+        int ret = 0;
+
+        mutex_lock(&client->lock);
+
+        hw_ctx = kds_get_hw_ctx_by_id(client, aiectx_args->hw_context);
+        if (!hw_ctx) {
+                DRM_ERROR("No valid HW context is open");
+                ret = -EINVAL;
+                goto out;
+        }
+
+	aie_ctx = hw_ctx->aie_ctx;
+	if (aie_ctx && aie_ctx->flags == ZOCL_CTX_NOOPS) {
+		DRM_ERROR("AIE context is already free");
+		ret = -EINVAL;
+		goto out;
+	}
+
+        /* Free the corresponding AIE Context */
+        ret = kds_free_aie_hw_ctx(&zdev->kds, client, hw_ctx);
+
+out:
+        mutex_unlock(&client->lock);
+        return ret;
 }
 
 /*
@@ -498,9 +544,71 @@ zocl_close_aie_ctx_ioctl(struct drm_device *ddev, void *data,
 
 static int
 zocl_open_graph_context(struct drm_zocl_dev *zdev, struct drm_file *filp,
-                struct drm_zocl_open_graph_ctx *aiectx_args)
+                struct drm_zocl_open_graph_ctx *graphctx_args)
 {
-	return 0;
+        struct kds_client *client = filp->driver_priv;
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+        struct kds_client_graph_ctx *graph_ctx = NULL;
+        struct kds_client_graph_info graph_info = {};
+        int ret = 0;
+
+        mutex_lock(&client->lock);
+
+        hw_ctx = kds_get_hw_ctx_by_id(client, graphctx_args->hw_context);
+        if (!hw_ctx) {
+                DRM_ERROR("No valid HW context is open");
+                ret = -EINVAL;
+                goto out;
+        }
+
+        /* Bitstream is locked. No one could load a new one
+         * until this HW context is closed.
+         */
+
+	graph_info.graph_idx = graphctx_args->graph_id;
+	graph_info.flags = graphctx_args->flags;
+	graph_info.ctx = (void *)hw_ctx;
+
+        /* Allocate a free Graph context for the given Graph index */
+        graph_ctx = kds_alloc_graph_hw_ctx(&zdev->kds, client, hw_ctx,
+					   &graph_info);
+        if (!graph_ctx) {
+                DRM_ERROR("Allocation of Graph context failed");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Validate the request */
+	if (graph_ctx->flags == ZOCL_CTX_EXCLUSIVE ||
+	    graph_info.flags == ZOCL_CTX_EXCLUSIVE) {
+		/*
+		 * This graph has been opened with exclusive context or;
+		 * We request exclusive context but this graph has been opened
+		 * with non-exclusive context.
+		 */
+		kds_err(client, "Graph %d only one exclusive context can be opened",
+			graph_ctx->graph_idx);
+		kds_free_graph_hw_ctx(&zdev->kds, client, hw_ctx, &graph_info);
+		ret = EBUSY;
+		goto out;
+	}
+
+	if (graph_ctx->flags == ZOCL_CTX_PRIMARY &&
+	    graph_info.flags != ZOCL_CTX_SHARED) {
+		/*
+		 * This graph has been opened with primary context but the
+		 * request is not shared context
+		 */
+		kds_err(client, "Graph %d has been opened with primary context",
+			graph_ctx->graph_idx);
+		kds_free_graph_hw_ctx(&zdev->kds, client, hw_ctx, &graph_info);
+		ret = EBUSY;
+		goto out;
+	}
+
+out:
+        mutex_unlock(&client->lock);
+        return ret;
 }
 
 /*
@@ -528,9 +636,35 @@ zocl_open_graph_ctx_ioctl(struct drm_device *ddev, void *data,
 
 static int
 zocl_close_graph_context(struct drm_zocl_dev *zdev, struct drm_file *filp,
-                struct drm_zocl_close_graph_ctx *aiectx_args)
+                struct drm_zocl_close_graph_ctx *graphctx_args)
 {
-	return 0;
+        struct kds_client *client = filp->driver_priv;
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+        struct kds_client_graph_info graph_info = {};
+        int ret = 0;
+
+        mutex_lock(&client->lock);
+
+        hw_ctx = kds_get_hw_ctx_by_id(client, graphctx_args->hw_context);
+        if (!hw_ctx) {
+                DRM_ERROR("No valid HW context is open");
+                ret = -EINVAL;
+                goto out;
+        }
+
+	graph_info.graph_idx = graphctx_args->graph_id;
+
+        /* Get the corresponding CU Context */
+        ret = kds_free_graph_hw_ctx(&zdev->kds, client, hw_ctx,
+					  &graph_info);
+        if (ret) {
+                DRM_ERROR("No Graph context is open");
+                goto out;
+        }
+
+out:
+        mutex_unlock(&client->lock);
+        return ret;
 }
 
 /*

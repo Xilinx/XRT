@@ -88,71 +88,58 @@ struct drm_zocl_close_cu_ctx {
 };
 
 /**
- * struct drm_zocl_open_aie_ctx - Open a cu context under a hw context on device
+ * struct drm_zocl_open_aie_ctx - Open a AIE context under a hw context on device
  * used with DRM_ZOCL_OPEN_AIE_CTX ioctl
  *
  * @hw_context:    Open AIE under this hw Context handle
- * @cu_name:       Name of the compute unit in the device image for which
- *                 the open request is being made
  * @flags:         Shared or exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)
- * @cu_index:      Return the acquired CU index. This will require for close cu context
  */
 struct drm_zocl_open_aie_ctx {
         // Under this hw context id
         uint32_t        hw_context;
         uint32_t        flags;
-
-        // Return the acquired CU index.
-        uint32_t        cu_index;
 };
 
 /**
- * struct drm_zocl_close_aie_ctx - Open a cu context under a hw context on device
+ * struct drm_zocl_close_aie_ctx - Open a AIE context under a hw context on device
  * used with DRM_ZOCL_CLOSE_AIE_CTX ioctl
  *
  * @hw_context:    Open AIE under this hw Context handle
- * @cu_index:      Index of the compute unit in the device image for which
- *                 the close request is being made
  */
 struct drm_zocl_close_aie_ctx {
         // Under this hw context id
         uint32_t        hw_context;
-        uint32_t        cu_index;
 };
 
 
 /**
- * struct drm_zocl_open_graph_ctx - Open a cu context under a hw context on device
+ * struct drm_zocl_open_graph_ctx - Open a graph context under a hw context on device
  * used with DRM_ZOCL_OPEN_GRAPH_CTX ioctl
  *
  * @hw_context:    Open GRAPH under this hw Context handle
- * @cu_name:       Name of the compute unit in the device image for which
- *                 the open request is being made
+ * @graph_id:      Graph ID in the device image for which the open request
+ * 		   is being made
  * @flags:         Shared or exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)
- * @cu_index:      Return the acquired CU index. This will require for close cu context
  */
 struct drm_zocl_open_graph_ctx {
         // Under this hw context id
         uint32_t        hw_context;
-        char            cu_name[CU_NAME_MAX_LEN];
+        char            graph_id;
         uint32_t        flags;
-
-        // Return the acquired CU index.
-        uint32_t        cu_index;
 };
 
 /**
- * struct drm_zocl_close_graph_ctx - Open a cu context under a hw context on device
+ * struct drm_zocl_close_graph_ctx - Close a graph context under a hw context on device
  * used with DRM_ZOCL_CLOSE_GRAPH_CTX ioctl
  *
  * @hw_context:    Open CU under this hw Context handle
- * @cu_index:      Index of the compute unit in the device image for which
+ * @graph_idx:     Index of the graph in the device image for which
  *                 the close request is being made
  */
 struct drm_zocl_close_graph_ctx {
         // Under this hw context id
         uint32_t        hw_context;
-        uint32_t        cu_index;
+        uint32_t        graph_id;
 };
 
 /**

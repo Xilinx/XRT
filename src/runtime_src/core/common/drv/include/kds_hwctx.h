@@ -30,6 +30,22 @@ struct kds_client_cu_ctx {
 	struct list_head		link;
 };
 
+/* Multiple Graph context can be active under a HW Context.
+ */
+struct kds_client_graph_ctx {
+	u32				graph_idx;
+	u32				flags;
+	struct kds_client_hw_ctx	*hw_ctx;
+	struct list_head		link;
+};
+
+/* Only one AIE context can be active under a HW Context.
+ */
+struct kds_client_aie_ctx {
+	u32				flags;
+	struct kds_client_hw_ctx	*hw_ctx;
+};
+
 /* Multiple xclbin context can be active under a single client.
  * Client should maintain all the active XCLBIN.
  */
@@ -45,7 +61,9 @@ struct kds_client_hw_ctx {
 	struct list_head		cu_ctx_list;
 	struct list_head                graph_ctx_list;
 	spinlock_t                      graph_list_lock;
-	struct list_head                aie_ctx_list;
+
+	/* Only Single AIE context will be active under a hw context */
+	struct kds_client_aie_ctx	*aie_ctx;
 
 	/* Per context statistics. Use percpu variable for two reasons
 	 * 1. no lock is need while modifying these counters
@@ -71,6 +89,21 @@ kds_get_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
 struct kds_client_cu_ctx *
 kds_alloc_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
 		                    struct kds_client_cu_info *cu_info);
+
+struct kds_client_graph_ctx *
+kds_alloc_graph_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+        struct kds_client_hw_ctx *hw_ctx, struct kds_client_graph_info *g_info);
+
+int kds_free_graph_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+          struct kds_client_hw_ctx *hw_ctx, struct kds_client_graph_info *g_info);
+
+struct kds_client_aie_ctx *
+kds_alloc_aie_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+        struct kds_client_hw_ctx *hw_ctx, struct kds_client_aie_info *a_info);
+
+int kds_free_aie_hw_ctx(struct kds_sched *kds, struct kds_client *client,
+          struct kds_client_hw_ctx *hw_ctx);
+
 struct kds_client_hw_ctx *
 kds_get_hw_ctx_by_id(struct kds_client *client, uint32_t hw_ctx_id);
 

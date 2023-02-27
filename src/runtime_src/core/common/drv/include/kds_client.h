@@ -33,6 +33,19 @@ struct kds_client_cu_info {
 	void 				*ctx;
 };
 
+/* KDS Graph information. */
+struct kds_client_graph_info {
+        u32                             graph_idx;
+        u32                             flags;
+        void                            *ctx;
+};
+
+/* KDS AIE information. */
+struct kds_client_aie_info {
+        u32                             flags;
+        void                            *ctx;
+};
+
 /* Multiple xclbin context can be active under a single client.
  * Client should maintain all the active XCLBIN.
  */
@@ -47,9 +60,9 @@ struct kds_client_ctx {
 };
 
 struct kds_client_cu_refcnt {
-	struct mutex	          lock;
-	u32                       cu_refs[MAX_CUS];
-	u32                       scu_refs[MAX_CUS];
+	struct mutex			lock;
+	u32				cu_refs[MAX_CUS];
+	u32				scu_refs[MAX_CUS];
 };
 
 /**
@@ -62,46 +75,40 @@ struct kds_client_cu_refcnt {
  * @dev:  Device
  * @pid:  Client process ID
  * @lock: Mutex to protext context related members
- * @xclbin_id: UUID of xclbin cache
- * @num_ctx: Number of context that opened
- * @num_scu_ctx: Number of soft kernel context that opened
- * @virt_cu_ref: Reference count of virtual CU
- * @cu_bitmap: bitmap of opening CU
- * @scu_bitmap: bitmap of opening SCU
  * @waitq: Wait queue for poll client
  * @event: Events to notify user client
  */
 struct kds_client {
-	struct list_head	  link;
-	struct device	         *dev;
-	struct pid	         *pid;
-	struct mutex		  lock;
+	struct list_head		link;
+	struct device			*dev;
+	struct pid			*pid;
+	struct mutex			lock;
 
-	/* TODO: xocl not suppot multiple xclbin context yet. */
-	struct kds_client_ctx    	*ctx;
+	/* Backward compartability to suppot legacy context */
+	struct kds_client_ctx		*ctx;
 
 	/* To suppot ZOCL  multiple PL support */
-	struct list_head          	ctx_list;
+	struct list_head		ctx_list;
 
 	/* To suppot multiple hw context */
-	struct list_head          	hw_ctx_list;
-	uint32_t 		 	next_hw_ctx_id;
+	struct list_head		hw_ctx_list;
+	uint32_t			next_hw_ctx_id;
 
-	struct list_head          graph_list;
-	spinlock_t                graph_list_lock;
-	u32                       aie_ctx;
-	struct kds_client_cu_refcnt  *refcnt;
+	struct list_head		graph_list;
+	spinlock_t			graph_list_lock;
+	u32				aie_ctx;
+	struct kds_client_cu_refcnt	*refcnt;
 
-	struct list_head	  ev_entry;
-	int			  ev_type;
+	struct list_head		ev_entry;
+	int				ev_type;
 
 	/*
 	 * Below are modified when the other thread is completing commands.
 	 * In order to prevent false sharing, they need to be in different
 	 * cache lines.
 	 */
-	wait_queue_head_t	  waitq ____cacheline_aligned_in_smp;
-	atomic_t		  event;
+	wait_queue_head_t		waitq ____cacheline_aligned_in_smp;
+	atomic_t			event;
 };
 
 /* Macros to operates client statistics */
