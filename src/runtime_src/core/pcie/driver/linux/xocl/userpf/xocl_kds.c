@@ -2304,6 +2304,52 @@ xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_in
 	return ret;
 }
 
+static int xocl_kds_xgq_cleanup_cus(struct xocl_dev *xdev)
+{
+	struct xgq_com_queue_entry resp = {};
+	struct xgq_cmd_uncfg_cu *uncfg_cu = NULL;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_uncfg_cu));
+	if (!xcmd)
+		return -ENOMEM;
+
+	uncfg_cu = xcmd->info;
+
+	uncfg_cu->hdr.opcode = XGQ_CMD_OP_CLEANUP_ALL_CU;
+	uncfg_cu->hdr.count = sizeof(*uncfg_cu) - sizeof(uncfg_cu->hdr);
+	uncfg_cu->hdr.state = 1;
+	uncfg_cu->cu_idx = 0;
+	uncfg_cu->cu_domain = 0;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Unconfigure CU(%d) failed cstate(%d) rcode(%d)",
+			   cu_idx, resp.hdr.cstate, resp.rcode);
+                return -EINVAL;
+        }
+
+        userpf_info(xdev, "Unconfig CU(%d) of DOMAIN(%d) completed\n",
+                    uncfg_cu->cu_idx, uncfg_cu->cu_domain);
+        return 0;
+}
+
+
 static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain)
 {
 	struct xgq_com_queue_entry resp = {};
@@ -2650,9 +2696,20 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return ret;
 
-    ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
+	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
 	if (ret)
 		goto out;
+
+	if (xdev->reset_zocl_cus) {
+		/* This is done only for the first time after xocl driver load.
+		 * Before configuring/unconfiguring CUs/SCUs XOCL driver will 
+		 * make sure ZOCL is clean and no CUs/SCUs are already exists.
+		 */
+		xdev->reset_zocl_cus = false;
+		ret = xocl_kds_xgq_cleanup_cus(xdev);
+		if (ret)
+	                goto out;
+	}
 
 	/*
 	 * The XGQ Identify command is used to identify the version of firmware which

@@ -171,6 +171,34 @@ int xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
 	return xocl_kds_unregister_cus(xdev, slot_hdl);
 }
 
+static int xocl_unregister_cus_all(struct xocl_dev *xdev)
+{
+	xuid_t *xclbin_id = NULL;
+	int err = 0;
+	int i = 0;
+
+	mutex_lock(&xdev->dev_lock);
+        for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+                err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, i);
+                if (err) {
+			mutex_unlock(&xdev->dev_lock);
+                        return err;
+		}
+
+                if (!xclbin_id)
+                        continue;
+
+		xocl_kds_unregister_cus(xdev, i);
+
+                XOCL_PUT_XCLBIN_ID(xdev, i);
+                xclbin_id = NULL;
+        }
+
+	mutex_unlock(&xdev->dev_lock);
+
+	return 0;
+}
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	int ret;
@@ -1204,6 +1232,9 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	/* Unregister all the cus subdevices for all the avilable slots */
+	xocl_unregister_cus_all(xdev);
+
 	/* If fast adapter is present in the xclbin, new kds would
 	 * hold a bo for reserve plram bank.
 	 */
@@ -1784,6 +1815,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "mailbox subdev is not created");
 		goto failed;
 	}
+
+	/* When XOCL loading/reloading we should make sure ZOCL
+	 * cleanup all the prior CUs/SCUs if exists. This is because ZOCL doesn't
+	 * get any notification when XOCL reloaded.
+	 */
+	xdev->reset_zocl_cus = true;
 
 	xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 	/* Waiting for all subdev to be initialized before returning. */
