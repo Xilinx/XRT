@@ -291,6 +291,8 @@ namespace xdp {
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
     }
+
+    mStreamPorts.push_back(switchPortRsc);
   }
 
   void 
@@ -605,6 +607,11 @@ namespace xdp {
   void AieProfile_EdgeImpl::freeResources() 
   {
     for (auto& c : mPerfCounters){
+      c->stop();
+      c->release();
+    }
+
+    for (auto& c : mStreamPorts){
       c->stop();
       c->release();
     }
