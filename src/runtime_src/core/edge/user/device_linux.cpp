@@ -213,7 +213,7 @@ struct aie_core_info_sysfs
   {
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
-    std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
     for (int i = 0; i < aie_meta.num_cols; ++i)
@@ -240,7 +240,7 @@ struct aie_shim_info_sysfs
   {
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
-    std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for (int i=0; i < aie_meta.num_cols; ++i) {
@@ -265,7 +265,7 @@ struct aie_mem_info_sysfs
   {
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
-    std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 						
     /* Loop all mem tiles and collect all dma, events, errors, locks status */
     for (int i = 0; i < aie_meta.num_cols; ++i)
