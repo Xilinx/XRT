@@ -204,4 +204,25 @@ namespace xdp {
       return;
     }
   }
+
+  void AieProfile_x86Impl::freeResources()
+  {
+    try {
+      auto inbo = xrt::bo(device, INPUT_SIZE, 2);
+      auto inbo_map = inbo.map<uint8_t*>();
+      memset(inbo_map, 0, INPUT_SIZE); 
+   
+      //output bo
+      auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
+      auto outbo_map = outbo.map<uint8_t*>();
+      memset(outbo_map, 0, OUTPUT_SIZE);
+
+      auto run = aie_profile_kernel(inbo, outbo, 2 /*cleanup iteration*/);
+      run.wait();
+    } catch (...) {
+      std::string msg = "The aie_profile cleanup failed.";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      return;
+    }
+  }
 }

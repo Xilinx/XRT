@@ -191,9 +191,9 @@ namespace xdp {
       return false;
     }
 
-    // compile-time trace
+    // Check compile-time trace
     if (!metadata->getRuntimeMetrics()) {
-      return true;
+      return false;
     }
     
     return true;

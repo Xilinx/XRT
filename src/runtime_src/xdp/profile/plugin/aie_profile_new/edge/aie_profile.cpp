@@ -291,6 +291,8 @@ namespace xdp {
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
     }
+
+    mStreamPorts.push_back(switchPortRsc);
   }
 
   void 
@@ -540,65 +542,79 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::poll(uint32_t index, void* handle){
-      // Wait until xclbin has been loaded and device has been updated in database
-      if (!(db->getStaticInfo().isDeviceReady(index)))
-        return;
-      XAie_DevInst* aieDevInst =
-        static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-      if (!aieDevInst)
-        return;
+  void AieProfile_EdgeImpl::poll(uint32_t index, void* handle)
+  {
+    // Wait until xclbin has been loaded and device has been updated in database
+    if (!(db->getStaticInfo().isDeviceReady(index)))
+      return;
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    if (!aieDevInst)
+      return;
 
-      uint32_t prevColumn = 0;
-      uint32_t prevRow = 0;
-      uint64_t timerValue = 0;
+    uint32_t prevColumn = 0;
+    uint32_t prevRow = 0;
+    uint64_t timerValue = 0;
 
-      // Iterate over all AIE Counters & Timers
-      auto numCounters = db->getStaticInfo().getNumAIECounter(index);
-      for (uint64_t c=0; c < numCounters; c++) {
-        auto aie = db->getStaticInfo().getAIECounter(index, c);
-        if (!aie)
-          continue;
+    // Iterate over all AIE Counters & Timers
+    auto numCounters = db->getStaticInfo().getNumAIECounter(index);
+    for (uint64_t c=0; c < numCounters; c++) {
+      auto aie = db->getStaticInfo().getAIECounter(index, c);
+      if (!aie)
+        continue;
 
-        std::vector<uint64_t> values;
-        values.push_back(aie->column);
-        values.push_back(aie->row);
-        values.push_back(aie->startEvent);
-        values.push_back(aie->endEvent);
-        values.push_back(aie->resetEvent);
+      std::vector<uint64_t> values;
+      values.push_back(aie->column);
+      values.push_back(aie->row);
+      values.push_back(aie->startEvent);
+      values.push_back(aie->endEvent);
+      values.push_back(aie->resetEvent);
 
-        // Read counter value from device
-        uint32_t counterValue;
-        if (mPerfCounters.empty()) {
-          // Compiler-defined counters
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
-          XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
-        }
-        else {
-          // Runtime-defined counters
-          auto perfCounter = mPerfCounters.at(c);
-          perfCounter->readResult(counterValue);
-        }
-        values.push_back(counterValue);
-
-        // Read tile timer (once per tile to minimize overhead)
-        if ((aie->column != prevColumn) || (aie->row != prevRow)) {
-          prevColumn = aie->column;
-          prevRow = aie->row;
-          auto moduleType = getModuleType(aie->row, XAIE_CORE_MOD);
-          auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
-                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
-                             : XAIE_MEM_MOD);
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
-          XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
-        }
-        values.push_back(timerValue);
-        values.push_back(aie->payload);
-
-        // Get timestamp in milliseconds
-        double timestamp = xrt_core::time_ns() / 1.0e6;
-        db->getDynamicInfo().addAIESample(index, timestamp, values);
+      // Read counter value from device
+      uint32_t counterValue;
+      if (mPerfCounters.empty()) {
+        // Compiler-defined counters
+        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+        XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
       }
+      else {
+        // Runtime-defined counters
+        auto perfCounter = mPerfCounters.at(c);
+        perfCounter->readResult(counterValue);
+      }
+      values.push_back(counterValue);
+
+      // Read tile timer (once per tile to minimize overhead)
+      if ((aie->column != prevColumn) || (aie->row != prevRow)) {
+        prevColumn = aie->column;
+        prevRow = aie->row;
+        auto moduleType = getModuleType(aie->row, XAIE_CORE_MOD);
+        auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
+                            : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
+                            : XAIE_MEM_MOD);
+        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
+        XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
+      }
+      values.push_back(timerValue);
+      values.push_back(aie->payload);
+
+      // Get timestamp in milliseconds
+      double timestamp = xrt_core::time_ns() / 1.0e6;
+      db->getDynamicInfo().addAIESample(index, timestamp, values);
+    }
+  }
+
+  void AieProfile_EdgeImpl::freeResources() 
+  {
+    for (auto& c : mPerfCounters){
+      c->stop();
+      c->release();
+    }
+
+    for (auto& c : mStreamPorts){
+      c->stop();
+      c->release();
+    }
   }
 
 }

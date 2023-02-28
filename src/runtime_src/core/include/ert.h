@@ -59,6 +59,11 @@
 # pragma warning( disable : 4201 )
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #define to_cfg_pkg(pkg) \
     ((struct ert_configure_cmd *)(pkg))
 #define to_start_krnl_pkg(pkg) \
@@ -930,6 +935,10 @@ get_size_with_timestamps_or_zero(struct ert_packet *pkt)
 
   return size;
 }
+#endif
+
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
 #endif
 
 #ifdef _WIN32

@@ -1940,6 +1940,15 @@ namespace xdp {
       xclbin->pl.usesTs2mm = true ;
   }
 
+  void VPStaticDatabase::initializeFIFO(DeviceInfo* devInfo)
+  {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->pl.usesFifo = true ;
+  }
+
   void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
   {
     auto& ip_metadata = xclbin->pl.ip_metadata_section;
@@ -2105,9 +2114,9 @@ namespace xdp {
       std::stringstream ss;
       ss.write(embeddedMetadata.first, embeddedMetadata.second);
 
-      // Create a property tree based off of the JSON
+      // Create a property tree based off of the XML
       boost::property_tree::ptree pt;
-      boost::property_tree::read_json(ss, pt);
+      boost::property_tree::read_xml(ss, pt);
 
       // Dig in and find all of the kernel clocks
       for (auto& clock : pt.get_child("project.platform.device.core.kernelClocks")) {
@@ -2223,6 +2232,9 @@ namespace xdp {
         break ;
       case TRACE_S2MM:
         initializeTS2MM(devInfo, debugIpData) ;
+        break ;
+      case AXI_MONITOR_FIFO_LITE:
+        initializeFIFO(devInfo) ;
         break ;
       default:
         break ;

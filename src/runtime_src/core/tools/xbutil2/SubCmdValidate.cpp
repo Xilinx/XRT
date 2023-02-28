@@ -652,7 +652,7 @@ m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::proper
 
   memset(boptr, pattern, bo_size);
   try {
-    handle->sync_bo(boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+    handle->sync_bo(boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0);
   }
   catch (const std::exception&) {
     _ptTest.put("status", test_token_failed);

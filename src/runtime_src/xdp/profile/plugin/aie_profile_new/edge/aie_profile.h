@@ -41,6 +41,7 @@ namespace xdp {
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
+      void freeResources();
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
@@ -90,6 +91,8 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+
   };
 
 }   

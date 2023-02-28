@@ -111,7 +111,7 @@ clCreateSubDevices(cl_device_id                        in_device,
   size_t count = 0;
   for (auto cuin : xocl(in_device)->get_cu_range()) {
     std::vector<decltype(cuin)> cus;
-    cus.push_back(cuin);
+    cus.emplace_back(std::move(cuin));
     ++count;
     if (out_devices) {
       auto sd  = std::make_unique<device>(xocl(in_device),cus);
