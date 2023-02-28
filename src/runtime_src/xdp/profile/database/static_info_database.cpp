@@ -690,6 +690,16 @@ namespace xdp {
 
   // *********************************************************
   // ***** Functions related to AIE specific information *****
+  uint8_t VPStaticDatabase::getAIEGeneration(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 1 ;
+
+    return deviceInfo[deviceId]->getAIEGeneration() ;
+  }
+
   bool VPStaticDatabase::isAIECounterRead(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -2008,7 +2018,9 @@ namespace xdp {
     currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
  
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
+    setAIEGeneration(deviceId, xrtXclbin);
     setAIEClockRateMHz(deviceId, xrtXclbin);
+
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */
@@ -2059,6 +2071,30 @@ namespace xdp {
     }
   }
   
+  void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    if (!data.first || !data.second)
+      return;
+
+    boost::property_tree::ptree aie_meta;
+
+    std::stringstream aie_stream;
+    aie_stream.write(data.first, data.second);
+    boost::property_tree::read_json(aie_stream, aie_meta);
+    
+    try {
+      auto hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
+      deviceInfo[deviceId]->setAIEGeneration(hwGen);
+    } catch(...) {
+      return;
+    }
+  }
+
   void VPStaticDatabase::setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -2079,10 +2115,12 @@ namespace xdp {
     aie_stream.write(data.first, data.second);
     boost::property_tree::read_json(aie_stream,aie_meta);
 
-    //read_aie_metadata(data.first, data.second, aie_meta);
-    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    
-    xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
+    try {
+      auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+      xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
+    } catch(...) {
+      return;
+    }
   }
 
   double VPStaticDatabase::findClockRate(xrt::xclbin xrtXclbin)
