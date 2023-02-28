@@ -38,6 +38,7 @@ class xrtHandles : public pscontext
     xaiefal::XAieDev* aieDev = nullptr;
     xclDeviceHandle handle = nullptr;
     std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
     std::vector<xdp::built_in::PSCounterInfo> counterData;
     uint8_t offset;
 
@@ -263,14 +264,18 @@ namespace {
     return false;
   }
 
-  bool 
-  setMetricsSettings(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
-                 EventConfiguration& config,
-                 const xdp::built_in::ProfileInputConfiguration* params,
-                 std::vector<xdp::built_in::PSCounterInfo>& counterData,     
-                 std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>>& mPerfCounters,
-                 xdp::built_in::ProfileOutputConfiguration* outputcfg)
+  bool setMetricsSettings(xrtHandles* constructs, 
+                          EventConfiguration& config,
+                          const xdp::built_in::ProfileInputConfiguration* params,
+                          xdp::built_in::ProfileOutputConfiguration* outputcfg)
+  
+  
   {
+    XAie_DevInst* aieDevInst = constructs->aieDevInst;
+    xaiefal::XAieDev* aieDevice = constructs->aieDev;
+    std::vector<xdp::built_in::PSCounterInfo>& counterData = constructs->counterData;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>>& mPerfCounters = constructs->mPerfCounters;
+    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>>& mStreamPorts = constructs->mStreamPorts;
 
     int counterId = 0;
     bool runtimeCounters = false;
@@ -411,11 +416,12 @@ namespace {
     return runtimeCounters;
   }
 
-  void pollAIECounters(XAie_DevInst* aieDevInst,
-                        xdp::built_in::ProfileOutputConfiguration* countercfg,
-                        std::vector<xdp::built_in::PSCounterInfo>& counterData,     
-                        std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>>& mPerfCounters, uint8_t offset)
-    {
+  void pollAIECounters(xrtHandles* constructs, xdp::built_in::ProfileOutputConfiguration* countercfg)
+  {
+    XAie_DevInst* aieDevInst = constructs->aieDevInst;
+    std::vector<xdp::built_in::PSCounterInfo>& counterData = constructs->counterData;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>>& mPerfCounters = constructs->mPerfCounters;
+    uint8_t offset = constructs->offset;
 
     if (!aieDevInst)
       return;
@@ -527,9 +533,7 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
     xdp::built_in::ProfileOutputConfiguration* outputcfg =
       (xdp::built_in::ProfileOutputConfiguration*)malloc(total_size);
     
-
-    int success = setMetricsSettings(constructs->aieDevInst, constructs->aieDev,
-                            config, params, constructs->counterData, constructs->mPerfCounters, outputcfg);
+    bool success =  setMetricsSettings(constructs, config, params, outputcfg);
     constructs->offset = params->offset;
 
     uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
@@ -546,7 +550,8 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
     xdp::built_in::ProfileOutputConfiguration* outputcfg =
       (xdp::built_in::ProfileOutputConfiguration*)malloc(total_size);
 
-    pollAIECounters(constructs->aieDevInst, outputcfg, constructs->counterData, constructs->mPerfCounters, constructs->offset);
+    pollAIECounters(constructs, outputcfg);
+
     uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
     std::memcpy(output, out, total_size);   
     free (outputcfg);
@@ -554,6 +559,11 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
   //Cleanup Iteration
   } else if (iteration == 2) {
     for (auto& c : constructs->mPerfCounters){
+      c->stop();
+      c->release();
+    }
+
+    for (auto& c : constructs->mStreamPorts){
       c->stop();
       c->release();
     }
