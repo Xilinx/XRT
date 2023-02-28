@@ -735,6 +735,18 @@ public:
   get_uuid() const;
 
   /**
+  * get_interface_uuid() - Get the interface uuid of the xclbin
+  *
+  * @return
+  *  Interface uuid of the xclbin
+  *
+  * An exception is thrown if the data is missing.
+  */
+  XCL_DRIVER_DLLESPEC
+  uuid
+  get_interface_uuid() const;
+
+  /**
    * get_target_type() - Get the type of this xclbin
    *
    * @return

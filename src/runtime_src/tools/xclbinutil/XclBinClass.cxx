@@ -882,11 +882,6 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     // Feature ROM Time Stamp
     m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
 
-    // Feature ROM UUID
-    auto sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
-    sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
-    XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
-
     // Feature ROM VBNV
     auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
@@ -1234,6 +1229,27 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     pSection->purgeBuffers();
     pSection->readJSONSectionImage(ptPayload);
 
+    if (eKind == PARTITION_METADATA) {
+        // Look for the "partition_metadata" node
+        boost::property_tree::ptree ptPartitionMetadata = ptPayload.get_child("partition_metadata");
+        if (ptPartitionMetadata.empty()) {
+            continue;
+        }
+
+        // Look for the "interfaces" node
+        boost::property_tree::ptree ptInterfaces = ptPartitionMetadata.get_child("interfaces");
+        if (ptInterfaces.empty()) {
+            continue;
+        }
+        
+        // Updated header rom_uuid with interface_uuid from partition_metadata
+        for (const auto& kv : ptInterfaces) {
+            boost::property_tree::ptree ptInterface = kv.second;
+            auto sFeatureRomUUID = ptInterface.get<std::string>("interface_uuid", "00000000000000000000000000000000");
+            sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
+            XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+        }
+    }
 
     XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
     XUtil::QUIET("");
