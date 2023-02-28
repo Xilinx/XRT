@@ -2695,27 +2695,31 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return ret;
 
-	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
-	if (ret)
-		goto out;
-
-	if (xdev->reset_zocl_cus) {
-		/* This is done only for the first time after xocl driver load.
-		 * Before configuring/unconfiguring CUs/SCUs XOCL driver will 
-		 * make sure ZOCL is clean and no CUs/SCUs are already exists.
-		 */
-		xdev->reset_zocl_cus = false;
-		ret = xocl_kds_xgq_cleanup_cus(xdev);
-		if (ret)
-	                goto out;
-	}
-
 	/*
 	 * The XGQ Identify command is used to identify the version of firmware which
 	 * can help host to know the different behaviors of the firmware.
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
+
+	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
+	if (ret)
+		goto out;
+
+	/* ERT XGQ version 2.0 onward supports Cleanup of all CUs/SCUs */
+	if (major == 2 && minor == 0) {
+		if (xdev->reset_zocl_cus) {
+			/* This is done only for the first time after xocl driver load.
+			 * Before configuring/unconfiguring CUs/SCUs XOCL driver will 
+			 * make sure ZOCL is clean and no CUs/SCUs are already exists.
+			 */
+			ret = xocl_kds_xgq_cleanup_cus(xdev);
+			if (ret)
+				goto out;
+			
+			xdev->reset_zocl_cus = false;
+		}
+	}
 
 	/* Unconfigure the SCUs first. There is a case, where there is a
 	 * PS kernel which is opening a PL kernel. In that case, we need to
