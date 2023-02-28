@@ -635,7 +635,11 @@ public:
 
   ~ip_context()
   {
-    xrt_core::context_mgr::close_context(m_hwctx, m_idx);
+    try {
+      xrt_core::context_mgr::close_context(m_hwctx, m_idx);
+    }
+    catch (...) {
+    }
   }
 
   ip_context(const ip_context&) = delete;
@@ -2479,16 +2483,24 @@ public:
   }
 
   //Aquring mailbox read and write if not acquired already.
-  ~mailbox_impl() {
+  ~mailbox_impl()
+  {
+    try {
       if (!m_aquire_write) {
-          uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
-          kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
+        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+        kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
       }
       if (!m_aquire_read) {
-          uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
-          kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
+        uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+        kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
       }
+    }
+    catch (...) {
+      // Coverity correctly complains that above may throw
+      // resulting in terminate.
+    }
   }
+
   // write mailbox to hw
   void
   write()

@@ -112,8 +112,8 @@ clGetProgramInfo(cl_program         program,
     case CL_PROGRAM_KERNEL_NAMES:
       {
         std::string str;
-        for (auto nm : xocl(program)->get_kernel_names())
-          str.append(str.empty()?0:1,';').append(nm);
+        for (auto& nm : xocl(program)->get_kernel_names())
+          str.append(str.empty() ? 0 : 1, ';').append(nm);
         buffer.as<char>() = str;
       }
       break;
