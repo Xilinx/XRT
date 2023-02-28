@@ -131,6 +131,7 @@ bool AIETraceOffload::setupPSKernel() {
   std::string msg = "The aie_trace_gmio PS kernel was successfully scheduled.";
   xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
 
+  free(input_params); 
   bufferInitialized = true;
   return bufferInitialized;
 }
