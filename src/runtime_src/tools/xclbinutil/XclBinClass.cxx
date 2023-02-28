@@ -1245,9 +1245,9 @@ XclBin::appendSections(ParameterSectionData& _PSD)
         // Updated header rom_uuid with interface_uuid from partition_metadata
         for (const auto& kv : ptInterfaces) {
             boost::property_tree::ptree ptInterface = kv.second;
-            auto sFeatureRomUUID = ptInterface.get<std::string>("interface_uuid", "00000000000000000000000000000000");
-            sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
-            XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+            auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000000000000000000000000000");
+            sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
+            XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
         }
     }
 
