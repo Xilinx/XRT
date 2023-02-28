@@ -153,7 +153,7 @@ namespace xdp {
     fout << "Build version hash: "
          << (xrtInfo.get<std::string>("hash", "N/A")) << "\n" ;
     fout << "Build version date: "
-         << (xrtInfo.get<std::string>("date", "N/A")) << "\n" ;
+         << (xrtInfo.get<std::string>("build_date", "N/A")) << "\n" ;
 
     fout << "Target devices: " ;
     if (getFlowMode() == SW_EMU) {

@@ -78,7 +78,7 @@ Enabling/Disabling DDR memory retention on a device
 xbmgmt dump
 ~~~~~~~~~~~
 
-The ``xbmgmt dump`` command dump out content of the specified option 
+The ``xbmgmt dump`` command dumps out content of the specified option
 
 **The supported options**
 
@@ -86,14 +86,14 @@ Dumping the output of system configuration.
 
 .. code-block:: shell
 
-    xbmgmt dump [--device| -d] <management bdf> [--config| -c] [--output| -o] <filename>
+    xbmgmt dump [--device| -d] <management bdf> [--config| -c] [--output| -o] <filename with .ini extension>
     
 
 Dumping the output of programmed system image
 
 .. code-block:: shell
 
-    xbmgmt dump [--device| -d] <management bdf> [--flash| -f] [--output| -o] <filename with .ini extension>
+    xbmgmt dump [--device| -d] <management bdf> [--flash| -f] [--output| -o] <filename with .bin extension>
 
 
 **The details of the supported options**
@@ -103,9 +103,9 @@ Dumping the output of programmed system image
     - <management bdf> : The Bus:Device.Function of the device of interest
 
 
-- The ``--flash`` (or ``-f``) option dumps the output of programmed system image.
-- The ``--config`` (or ``-c``) option dumps the output of system configuration.
-- The ``--output`` (or ``-o``) specifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
+- The ``--flash`` (or ``-f``) option dumps the output of programmed system image. Requires a .bin output file by ``-o`` option.
+- The ``--config`` (or ``-c``) option dumps the output of system configuration. Requires a .ini output file by ``-o`` option.
+- The ``--output`` (or ``-o``) specifies the output file to direct the dumped output.
     
 
 **Example commands** 
@@ -115,7 +115,7 @@ Dumping the output of programmed system image
 
       
     #Dump programmed system image data
-    xbmgmt dump --device 0000:b3:00.0 --flash -o /tmp/flash_dump.txt
+    xbmgmt dump --device 0000:b3:00.0 --flash -o /tmp/flash_dump.bin
     
     #Dump system configaration 
     xbmgmt dump --device 0000:b3:00.0 --config -o /tmp/config_dump.ini

@@ -31,6 +31,7 @@ namespace xdp {
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
+      void freeResources();
       bool setMetricsSettings(uint64_t deviceId, void* handle);
 
     private:

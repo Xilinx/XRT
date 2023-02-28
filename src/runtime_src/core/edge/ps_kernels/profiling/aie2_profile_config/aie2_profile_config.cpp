@@ -403,12 +403,8 @@ namespace {
 
           outputcfg->counters[counterId] = outputCounter;
           outputcfg->numCounters = counterId;
-      
-          
         }
-
       }
-
       runtimeCounters = true;
     } // modules
 
@@ -474,8 +470,6 @@ namespace {
     }
   }
 } // end anonymous namespace
-
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -556,6 +550,13 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
     uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
     std::memcpy(output, out, total_size);   
     free (outputcfg);
+
+  //Cleanup Iteration
+  } else if (iteration == 2) {
+    for (auto& c : constructs->mPerfCounters){
+      c->stop();
+      c->release();
+    }
   } 
 
   return 0;

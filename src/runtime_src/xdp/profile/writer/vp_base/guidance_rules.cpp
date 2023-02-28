@@ -406,19 +406,19 @@ namespace {
 
   static void traceMemory(xdp::VPDatabase* db, std::ofstream& fout)
   {
-    std::string memType = "FIFO" ;
+    std::string memType = "N/A" ;
 
-    if (xdp::getFlowMode() == xdp::SW_EMU ||
-        xdp::getFlowMode() == xdp::HW_EMU) {
-      memType = "NA" ;
-    }
-    else {
+    if ((xdp::getFlowMode() != xdp::SW_EMU) &&
+        (xdp::getFlowMode() != xdp::HW_EMU)) {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
 
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           if (xclbin->pl.usesTs2mm) {
             memType = "TS2MM" ;
+            break ;
+          } else if (xclbin->pl.usesFifo) {
+            memType = "FIFO" ;
             break ;
           }
         }

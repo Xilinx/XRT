@@ -73,6 +73,7 @@ class AieProfileMetadata{
     void* getHandle() {return handle;}
     uint32_t getPollingIntervalVal(){return pollingInterval;}
 
+    void checkSettings();
     int getHardwareGen();
     uint16_t getAIETileRowOffset();
     std::vector<std::string> getSettingsVector(std::string settingsString);
