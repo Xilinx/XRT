@@ -2339,13 +2339,12 @@ static int xocl_kds_xgq_cleanup_cus(struct xocl_dev *xdev)
 		return ret;
 
 	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		userpf_err(xdev, "Unconfigure CU(%d) failed cstate(%d) rcode(%d)",
-			   cu_idx, resp.hdr.cstate, resp.rcode);
+		userpf_err(xdev, "Cleanup all CUs/SCUs failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
                 return -EINVAL;
         }
 
-        userpf_info(xdev, "Unconfig CU(%d) of DOMAIN(%d) completed\n",
-                    uncfg_cu->cu_idx, uncfg_cu->cu_domain);
+        userpf_info(xdev, "Cleanup all CUs/SCUs from Peer completed\n");
         return 0;
 }
 
