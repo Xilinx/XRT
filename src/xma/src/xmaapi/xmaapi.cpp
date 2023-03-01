@@ -270,7 +270,6 @@ void xma_thread2(uint32_t hw_dev_index) {
             xclExecWait(dev_handle, 100);
         }
 
-        std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
                 break;
