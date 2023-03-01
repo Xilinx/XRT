@@ -91,6 +91,8 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+
   };
 
 }   
