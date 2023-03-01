@@ -1148,7 +1148,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 				fw_result->count);
 			ret = -ENOSPC;
 		} else if (fw_result->count == 0) {
-			XGQ_ERR(xgq, "fw size cannot be zero");
+			XGQ_WARN(xgq, "fw size is zero");
 			ret = -EINVAL;
 		} else {
 			*fw_size = fw_result->count;
@@ -3114,7 +3114,7 @@ static ssize_t vmr_apu_log_read(struct file *filp, struct kobject *kobj,
 	/* return count should be less or equal to count */
 	ret = xgq_vmr_apu_log(xgq, &log_buf, &log_size, off, count);
 	if (ret)
-		return ret;
+		return (ret == -EINVAL) ? 0 : ret;;
 
 	/* adjust log_size to be within requested count range */
 	log_size = log_size > count ? count : log_size;
