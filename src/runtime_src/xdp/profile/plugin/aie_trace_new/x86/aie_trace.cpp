@@ -255,7 +255,7 @@ namespace xdp {
           (db->getStaticInfo()).addAIECoreEventResources(deviceId, event, cfg->numTileCoreTraceEvents[event]);
         if (cfg->numTileMemoryTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIEMemoryEventResources(deviceId, event, cfg->numTileMemoryTraceEvents[event]);
-        if (cfg->numTileMemoryTraceEvents[event] != 0)
+        if (cfg->numTileMemTileTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIEMemTileEventResources(deviceId, event, cfg->numTileMemTileTraceEvents[event]);
       } 
 
