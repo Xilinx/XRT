@@ -171,18 +171,17 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	}
 
 	total_bits = xvc_obj.length;
+	if (total_bits == 0) {
+		pr_info("%s: received invalid obj len %d bits for op 0x%x.\n",
+			total_bits, opcode);
+		return -EINVAL;
+	}
 
 	/* Fixing integer overflow scenario */
 	if (total_bits >= UINT_MAX - 7)
 		total_bits = UINT_MAX - 7;
 
 	total_bytes = (total_bits + 7) >> 3;
-
-	if (total_bytes == 0) {
-		pr_info("Err: int overflow, op 0x%x, len %u bits, %u bytes.\n",
-			opcode, total_bits, total_bytes);
-		return -EINVAL;
-	}
 
 	buffer = kmalloc(total_bytes * 3, GFP_KERNEL);
 	if (!buffer) {
