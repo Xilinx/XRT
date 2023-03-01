@@ -173,13 +173,10 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	total_bits = xvc_obj.length;
 
 	/* Fixing integer overflow scenario */
-	if (total_bits + 7 >= UINT_MAX)
-		total_bits = UINT_MAX;
+	if (total_bits >= UINT_MAX - 7)
+		total_bits = UINT_MAX - 7;
 
-	if (total_bits % 8 == 0)
-		total_bytes = total_bits >> 3;
-	else
-		total_bytes = (total_bits + 7) >> 3;
+	total_bytes = (total_bits + 7) >> 3;
 
 	if (total_bytes == 0) {
 		pr_info("Err: int overflow, op 0x%x, len %u bits, %u bytes.\n",
