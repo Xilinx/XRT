@@ -30,10 +30,6 @@
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
-static int
-xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
-	       uint32_t qos, uint32_t *slot_id);
-
 int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_info *obj = data;
@@ -106,55 +102,55 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	return ret;
 }
 
-/*
- * Create a hw context on a Slot. First Load the given xclbin to a slot and take
- * a lock on xclbin if it has not been acquired before. Also return the hw_context
- * once loaded succfully. Shared the same context for all context requests
- * for that process if loded into same slot.
- */
-int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
-        struct drm_file *filp)
-{
-	struct drm_xocl_create_hw_ctx *drm_hw_ctx =
-	       	(struct drm_xocl_create_hw_ctx *)data;
-        struct xocl_drm *drm_p = dev->dev_private;
-        struct xocl_dev *xdev = drm_p->xdev;
-        struct drm_xocl_axlf axlf_obj_ptr = {};
-	uint32_t slot_id = 0;
-        int ret = 0;
-
-	if (copy_from_user(&axlf_obj_ptr, drm_hw_ctx->axlf_ptr, sizeof(struct drm_xocl_axlf)))
-		return -EFAULT;
-
-	/* Download the XCLBIN to the device first */
-        mutex_lock(&xdev->dev_lock);
-        ret = xocl_read_axlf_helper(drm_p, &axlf_obj_ptr, drm_hw_ctx->qos, &slot_id);
-	mutex_unlock(&xdev->dev_lock);
-	if (ret)
-		return ret;
-	
-	xdev->is_legacy_ctx = false;
-	
-	/* Create the HW Context and lock the bitstream */
-	/* Slot id is 0 for now */
-	return xocl_create_hw_context(xdev, filp, drm_hw_ctx, slot_id);
-}
-
-/*
- * Destroy the given hw context. unlock the slot.
- */
-int xocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
-        struct drm_file *filp)
-{
-	struct drm_xocl_destroy_hw_ctx *drm_hw_ctx =
-		(struct drm_xocl_destroy_hw_ctx *)data;
-	struct xocl_drm *drm_p = dev->dev_private;
-	struct xocl_dev *xdev = drm_p->xdev;
-
-	if (!drm_hw_ctx)
-		return -EINVAL;
-
-	return xocl_destroy_hw_context(xdev, filp, drm_hw_ctx);
+/* 
+ * Create a hw context on a Slot. First Load the given xclbin to a slot and take 
+ * a lock on xclbin if it has not been acquired before. Also return the hw_context 
+ * once loaded succfully. Shared the same context for all context requests 
+ * for that process if loded into same slot. 
+ */ 
+int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, 
+        struct drm_file *filp) 
+{ 
+        struct drm_xocl_create_hw_ctx *drm_hw_ctx = 
+                (struct drm_xocl_create_hw_ctx *)data; 
+        struct xocl_drm *drm_p = dev->dev_private; 
+        struct xocl_dev *xdev = drm_p->xdev; 
+        struct drm_xocl_axlf axlf_obj_ptr = {}; 
+        uint32_t slot_id = 0; 
+        int ret = 0; 
+ 
+        if (copy_from_user(&axlf_obj_ptr, drm_hw_ctx->axlf_ptr, sizeof(struct drm_xocl_axlf))) 
+                return -EFAULT; 
+ 
+        /* Download the XCLBIN to the device first */ 
+        mutex_lock(&xdev->dev_lock); 
+        ret = xocl_read_axlf_helper(drm_p, &axlf_obj_ptr, drm_hw_ctx->qos, &slot_id); 
+        mutex_unlock(&xdev->dev_lock); 
+        if (ret) 
+                return ret; 
+ 
+        xdev->is_legacy_ctx = false; 
+ 
+        /* Create the HW Context and lock the bitstream */ 
+        /* Slot id is 0 for now */ 
+        return xocl_create_hw_context(xdev, filp, drm_hw_ctx, slot_id); 
+} 
+ 
+/* 
+ * Destroy the given hw context. unlock the slot. 
+ */ 
+int xocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, 
+        struct drm_file *filp) 
+{ 
+        struct drm_xocl_destroy_hw_ctx *drm_hw_ctx = 
+                (struct drm_xocl_destroy_hw_ctx *)data; 
+        struct xocl_drm *drm_p = dev->dev_private; 
+        struct xocl_dev *xdev = drm_p->xdev; 
+ 
+        if (!drm_hw_ctx) 
+                return -EINVAL; 
+ 
+        return xocl_destroy_hw_context(xdev, filp, drm_hw_ctx); 
 }
 
 /*
@@ -164,15 +160,15 @@ int xocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
 int xocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
         struct drm_file *filp)
 {
-	struct drm_xocl_open_cu_ctx *drm_cu_ctx =
-		(struct drm_xocl_open_cu_ctx *)data;
-	struct xocl_drm *drm_p = dev->dev_private;
-	struct xocl_dev *xdev = drm_p->xdev;
+        struct drm_xocl_open_cu_ctx *drm_cu_ctx =
+                (struct drm_xocl_open_cu_ctx *)data;
+        struct xocl_drm *drm_p = dev->dev_private;
+        struct xocl_dev *xdev = drm_p->xdev;
 
-	if (!drm_cu_ctx)
-		return -EINVAL;
+        if (!drm_cu_ctx)
+                return -EINVAL;
 
-	return xocl_open_cu_context(xdev, filp, drm_cu_ctx);
+        return xocl_open_cu_context(xdev, filp, drm_cu_ctx);
 }
 
 /*
@@ -181,15 +177,15 @@ int xocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
 int xocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data,
         struct drm_file *filp)
 {
-	struct drm_xocl_close_cu_ctx *drm_cu_ctx =
-		(struct drm_xocl_close_cu_ctx *)data;
-	struct xocl_drm *drm_p = dev->dev_private;
-	struct xocl_dev *xdev = drm_p->xdev;
+        struct drm_xocl_close_cu_ctx *drm_cu_ctx =
+                (struct drm_xocl_close_cu_ctx *)data;
+        struct xocl_drm *drm_p = dev->dev_private;
+        struct xocl_dev *xdev = drm_p->xdev;
 
-	if (!drm_cu_ctx)
-		return -EINVAL;
+        if (!drm_cu_ctx)
+                return -EINVAL;
 
-	return xocl_close_cu_context(xdev, filp, drm_cu_ctx);
+        return xocl_close_cu_context(xdev, filp, drm_cu_ctx);
 }
 
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
@@ -534,7 +530,7 @@ done:
 	return ret;
 }
 
-static int
+int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	       uint32_t qos, uint32_t *slot)
 {

@@ -41,7 +41,8 @@ endif
 
 endif
 
-drv_common-y   := $(common_dir)/kds_core.o \
+drv_common-y   := $(common_dir)/kds_hwctx.o \
+		  $(common_dir)/kds_core.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
 		  $(common_dir)/fast_adapter.o \
@@ -105,6 +106,7 @@ xocl-y := \
 	xocl_drm.o	\
 	xocl_ioctl.o	\
 	xocl_kds.o 	\
+	xocl_hwctx.o 	\
 	xocl_sysfs.o
 
 xocl-y += $(libfdt-y)

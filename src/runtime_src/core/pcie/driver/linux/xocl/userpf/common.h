@@ -148,8 +148,6 @@ int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
-int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
-	struct drm_file *filp);
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
@@ -174,6 +172,8 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
+	struct drm_file *filp, bool in_kernel);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct xocl_dev *xdev);
@@ -218,6 +218,9 @@ static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 {
 	return 1ULL << (size + 20);
 }
+
+int xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
+	                     uint32_t qos, uint32_t *slot_id);
 
 /* KDS functions */
 int xocl_init_sched(struct xocl_dev *xdev);

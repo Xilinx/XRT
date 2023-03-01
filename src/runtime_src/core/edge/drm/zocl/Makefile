@@ -38,7 +38,8 @@ ifneq ($(XRT_VERSION_PATCH),)
 	XRT_DRIVER_VERSION:=$(XRT_DRIVER_VERSION:.0=.$(XRT_VERSION_PATCH))
 endif
 
-drv_common-y   := $(common_dir)/kds_core.o \
+drv_common-y   := $(common_dir)/kds_hwctx.o \
+                  $(common_dir)/kds_core.o \
                   $(common_dir)/cu_hls.o \
                   $(common_dir)/fast_adapter.o \
                   $(common_dir)/xrt_cu.o \
