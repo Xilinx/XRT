@@ -324,6 +324,17 @@ public:
     wait2(std::chrono::milliseconds{0});
   }
 
+  /// @cond
+  /// Experimental in 2023.1
+  XCL_DRIVER_DLLESPEC
+  void
+  enqueue();
+
+  XCL_DRIVER_DLLESPEC
+  void
+  enqueue(const std::vector<run>& waits);
+  /// @endcond
+
   /**
    * state() - Check the current state of a run object
    *
