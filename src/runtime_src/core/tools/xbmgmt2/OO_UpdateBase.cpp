@@ -544,10 +544,10 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
       if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get()) || xrt_core::device_query<xrt_core::query::is_recovery>(device.get()))
         report_stream << boost::format("  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
       // Versal devices cannot flash the SC in the same cycle as the shell
-      else if (is_versal && !same_shell)
+      else if (is_versal && !same_shell && !same_sc)
         report_stream << boost::format("  [%s] : Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
       else {
-        if (update_sc(p.first, p.second) == true)  {
+        if (update_sc(p.first, p.second) == true) {
           report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);\
           // Versal devices require a cold reboot to initialize the SC firmware
           reboot = is_versal ? reboot_type::COLD_REBOOT : reboot_type::WARM_REBOOT;
