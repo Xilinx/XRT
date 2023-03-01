@@ -2304,52 +2304,7 @@ xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_in
 	return ret;
 }
 
-static int xocl_kds_xgq_cleanup_cus(struct xocl_dev *xdev)
-{
-	struct xgq_com_queue_entry resp = {};
-	struct xgq_cmd_uncfg_cu *uncfg_cu = NULL;
-	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct kds_client *client = NULL;
-	struct kds_command *xcmd = NULL;
-	int ret = 0;
-
-	client = kds->anon_client;
-	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_uncfg_cu));
-	if (!xcmd)
-		return -ENOMEM;
-
-	uncfg_cu = xcmd->info;
-
-	uncfg_cu->hdr.opcode = XGQ_CMD_OP_CLEANUP_ALL_CU;
-	uncfg_cu->hdr.count = sizeof(*uncfg_cu) - sizeof(uncfg_cu->hdr);
-	uncfg_cu->hdr.state = 1;
-	uncfg_cu->cu_idx = 0;
-	uncfg_cu->cu_domain = 0;
-
-	xcmd->cb.notify_host = xocl_kds_xgq_notify;
-	xcmd->cb.free = kds_free_command;
-	xcmd->priv = kds;
-	xcmd->type = KDS_ERT;
-	xcmd->opcode = OP_CONFIG;
-	xcmd->response = &resp;
-	xcmd->response_size = sizeof(resp);
-
-	ret = kds_submit_cmd_and_wait(kds, xcmd);
-	if (ret)
-		return ret;
-
-	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		userpf_err(xdev, "Cleanup all CUs/SCUs failed cstate(%d) rcode(%d)",
-			   resp.hdr.cstate, resp.rcode);
-                return -EINVAL;
-        }
-
-        userpf_info(xdev, "Cleanup all CUs/SCUs from Peer completed\n");
-        return 0;
-}
-
-
-static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain)
+static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain, bool full_reset)
 {
 	struct xgq_com_queue_entry resp = {};
 	struct xgq_cmd_uncfg_cu *uncfg_cu = NULL;
@@ -2370,6 +2325,8 @@ static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 	uncfg_cu->hdr.state = 1;
 	uncfg_cu->cu_idx = cu_idx;
 	uncfg_cu->cu_domain = cu_domain;
+	/* Specify if All CUs/SCUs are need to reset */
+	uncfg_cu->cu_reset = full_reset ? 1 : 0;
 
 	xcmd->cb.notify_host = xocl_kds_xgq_notify;
 	xcmd->cb.free = kds_free_command;
@@ -2708,16 +2665,17 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 	/* ERT XGQ version 2.0 onward supports Cleanup of all CUs/SCUs */
 	if (major == 2 && minor == 0) {
-		if (xdev->reset_zocl_cus) {
+		if (xdev->reset_ert_cus) {
 			/* This is done only for the first time after xocl driver load.
-			 * Before configuring/unconfiguring CUs/SCUs XOCL driver will 
-			 * make sure ZOCL is clean and no CUs/SCUs are already exists.
+			 * Before configuring/unconfiguring CUs/SCUs XOCL driver will make 
+			 * sure ERT is in good know status before configure it for the first
+			 * time.
 			 */
-			ret = xocl_kds_xgq_cleanup_cus(xdev);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, true);
 			if (ret)
 				goto out;
 			
-			xdev->reset_zocl_cus = false;
+			xdev->reset_ert_cus = false;
 		}
 	}
 
@@ -2737,7 +2695,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS, false);
 			if (ret)
 				goto out;
 		}
@@ -2755,7 +2713,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, false);
 			if (ret)
 				goto out;
 		}

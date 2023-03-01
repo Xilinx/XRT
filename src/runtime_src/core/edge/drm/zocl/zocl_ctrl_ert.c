@@ -852,18 +852,6 @@ static void zert_cmd_cfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *c
 	init_resp(resp, cmd->cid, rc);
 }
 
-static void zert_cmd_cleanup_cus(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
-			    struct xgq_com_queue_entry *resp)
-{
-	/* This is to cleanup all the CUs and SCUs from the zocl. 
-	 * this is the cleanup we need before start the XOCL and ZOCL handshake
-	 * for the first time.
-	 */
-	zert_destroy_cus(zert);
-
-	init_resp(resp, cmd->cid, 0);
-}
-
 static void zert_cmd_uncfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
 			    struct xgq_com_queue_entry *resp)
 {
@@ -871,6 +859,15 @@ static void zert_cmd_uncfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	int idx = 0;
 	struct xgq_cmd_uncfg_cu *c = (struct xgq_cmd_uncfg_cu *)cmd;
 	struct zocl_ctrl_ert_cu *cu = NULL;
+
+	if (c->cu_reset) {
+		/* This is the cleanup request all the CUs and SCUs from the zocl. 
+		 * this is the cleanup we need before start the Host and ZOCL handshake
+		 * for the first time.
+		 */
+		zert_destroy_cus(zert);
+		goto done;
+	}
 
 	cu = (c->cu_domain == DOMAIN_PL) ? &zert->zce_cus[c->cu_idx] :
 		&zert->zce_scus[c->cu_idx];
@@ -969,7 +966,6 @@ struct zert_ops {
 	{ XGQ_CMD_OP_CFG_END, "XGQ_CMD_OP_CFG_END", zert_cmd_cfg_end },
 	{ XGQ_CMD_OP_CFG_CU, "XGQ_CMD_OP_CFG_CU", zert_cmd_cfg_cu },
 	{ XGQ_CMD_OP_UNCFG_CU, "XGQ_CMD_OP_UNCFG_CU", zert_cmd_uncfg_cu },
-	{ XGQ_CMD_OP_CLEANUP_ALL_CU, "XGQ_CMD_OP_CLEANUP_ALL_CU", zert_cmd_cleanup_cus },
 	{ XGQ_CMD_OP_QUERY_CU, "XGQ_CMD_OP_QUERY_CU", zert_cmd_query_cu },
 	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zert_cmd_identify },
 	{ XGQ_CMD_OP_TIMESET, "XGQ_CMD_OP_TIMESET", zert_cmd_timeset }
