@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -65,7 +65,7 @@ namespace {
                xdp::TimeStatistics> cuStats =
         db->getStats().getComputeUnitExecutionStats();
 
-      for (auto iter : cuStats) {
+      for (const auto& iter : cuStats) {
         fout << "CU_CALLS,"
              << db->getStaticInfo().getSoftwareEmulationDeviceName()
              << "|" << std::get<0>(iter.first) << ","
@@ -76,12 +76,12 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos();
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto cu : xclbin->pl.cus) {
+          for (const auto& cu : xclbin->pl.cus) {
             std::string cuName = cu.second->getName();
             std::vector<std::pair<std::string, xdp::TimeStatistics>> cuCalls =
               db->getStats().getComputeUnitExecutionStats(cuName);
             uint64_t execCount = 0;
-            for (auto cuCall : cuCalls) {
+            for (const auto& cuCall : cuCalls) {
               execCount += cuCall.second.numExecutions;
             }
             if (execCount != 0) {
@@ -166,7 +166,7 @@ namespace {
     if (xdp::getFlowMode() == xdp::SW_EMU) {
       std::map<std::string, bool> memUsage =
         db->getStaticInfo().getSoftwareEmulationMemUsage();
-      for (auto iter : memUsage) {
+      for (const auto& iter : memUsage) {
         fout << "MEMORY_USAGE," << iter.first << "," << iter.second << ",\n";
       }
     }
@@ -175,7 +175,7 @@ namespace {
 
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto memory : xclbin->pl.memoryInfo) {
+          for (const auto& memory : xclbin->pl.memoryInfo) {
             std::string memName = memory.second->spTag ;
 
             fout << "MEMORY_USAGE," << device->getUniqueDeviceName() << "|"
@@ -197,7 +197,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos();
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto memory : xclbin->pl.memoryInfo) {
+          for (const auto& memory : xclbin->pl.memoryInfo) {
             if (memory.second->spTag.find("PLRAM") != std::string::npos) {
               hasPLRAM = true ;
               break ;
@@ -230,7 +230,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto memory : xclbin->pl.memoryInfo) {
+          for (const auto& memory : xclbin->pl.memoryInfo) {
             if (memory.second->spTag.find("HBM") != std::string::npos) {
               hasHBM = true ;
               break ;
@@ -319,7 +319,7 @@ namespace {
     if (xdp::getFlowMode() == xdp::SW_EMU) {
       std::vector<std::string> portBitWidths =
         db->getStaticInfo().getSoftwareEmulationPortBitWidths();
-      for (auto width : portBitWidths)
+      for (const auto& width : portBitWidths)
         fout << "PORT_BIT_WIDTH," << width << ",\n";
       return;
     }
@@ -329,7 +329,7 @@ namespace {
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
-        for (auto cu : xclbin->pl.cus) {
+        for (const auto& cu : xclbin->pl.cus) {
           std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
           std::vector<uint32_t>* asmIds = cu.second->getASMs() ;
 
@@ -368,7 +368,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto cu : xclbin->pl.cus) {
+          for (const auto& cu : xclbin->pl.cus) {
             std::string kernelName = cu.second->getKernelName() ;
             if (kernelCounts.find(kernelName) == kernelCounts.end()) {
               kernelCounts[kernelName] = 1 ;
@@ -381,7 +381,7 @@ namespace {
       }
     }
 
-    for (auto kernel : kernelCounts) {
+    for (const auto& kernel : kernelCounts) {
       fout << "KERNEL_COUNT," << kernel.first << "," << kernel.second << ",\n" ;
     }
   }
@@ -434,7 +434,7 @@ namespace {
 
     auto maxExecs = db->getStats().getAllMaxExecutions();
 
-    for (auto mExec : maxExecs) {
+    for (const auto& mExec : maxExecs) {
       fout << "MAX_PARALLEL_KERNEL_ENQUEUES," << mExec.first << ","
            << mExec.second << ",\n" ;
     }
@@ -446,7 +446,7 @@ namespace {
 
     auto commandQueueInfo = db->getStats().getCommandQueuesAreOOO() ;
 
-    for (auto cq : commandQueueInfo) {
+    for (const auto& cq : commandQueueInfo) {
       fout << "COMMAND_QUEUE_OOO," << cq.first << "," << cq.second << ",\n" ;
     }
   }
@@ -458,7 +458,7 @@ namespace {
 
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
-        for (auto memory : xclbin->pl.memoryInfo) {
+        for (const auto& memory : xclbin->pl.memoryInfo) {
           if (memory.second->spTag.find("PLRAM") != std::string::npos) {
             fout << "PLRAM_SIZE_BYTES,"
                  << device->getUniqueDeviceName()

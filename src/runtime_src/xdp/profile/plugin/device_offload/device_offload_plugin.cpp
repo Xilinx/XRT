@@ -360,7 +360,7 @@ namespace xdp {
 
   void DeviceOffloadPlugin::readCounters()
   {
-    for (auto o : offloaders)
+    for (const auto& o : offloaders)
     {
       uint64_t deviceId = o.first ;
       xdp::CounterResults results ;
@@ -411,7 +411,7 @@ namespace xdp {
     //  the plugin object.  At this time, the information in the database
     //  still exists and is viable, so we should flush our devices
     //  and write our writers.
-    for (auto o : offloaders) {
+    for (const auto& o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
       flushTraceOffloader(offloader);
       checkTraceBufferFullness(offloader, o.first);
@@ -473,7 +473,7 @@ namespace xdp {
 
   void DeviceOffloadPlugin::clearOffloaders()
   {
-    for(auto entry : offloaders) {
+    for(const auto& entry : offloaders) {
       auto offloader = std::get<0>(entry.second);
       auto logger    = std::get<1>(entry.second);
 

@@ -83,7 +83,7 @@ namespace xdp {
     if (aieDevice != nullptr && deallocateAieDevice != nullptr)
       deallocateAieDevice(aieDevice) ;
 
-    for (auto iter : deviceInfo) {
+    for (const auto& iter : deviceInfo) {
       delete iter.second ;
     }
   }
@@ -261,7 +261,7 @@ namespace xdp {
     std::vector<std::string> uniqueNames ;
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    for (auto device : deviceInfo) {
+    for (const auto& device : deviceInfo) {
       uniqueNames.push_back(device.second->getUniqueDeviceName()) ;
     }
     return uniqueNames ;
@@ -272,7 +272,7 @@ namespace xdp {
     std::vector<DeviceInfo*> infos ;
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    for (auto device : deviceInfo) {
+    for (const auto& device : deviceInfo) {
       infos.push_back(device.second) ;
     }
     return infos ;
@@ -282,9 +282,9 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    for (auto device : deviceInfo) {
+    for (const auto& device : deviceInfo) {
       for (auto xclbin : device.second->getLoadedXclbins()) {
-        for (auto cu : xclbin->pl.cus) {
+        for (const auto& cu : xclbin->pl.cus) {
           if (cu.second->getStallEnabled())
             return true ;
         }
@@ -1653,7 +1653,7 @@ namespace xdp {
     xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
     boost::property_tree::read_xml(xmlStream, xmlProject);
 
-    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+    for(const auto& coreItem : xmlProject.get_child("project.platform.device.core")) {
       std::string coreItemName = coreItem.first;
       if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
         continue;
@@ -1680,7 +1680,7 @@ namespace xdp {
       }
 
       // Find the ComputeUnitInstance
-      for(auto cuItr : currentXclbin->pl.cus) {
+      for(const auto& cuItr : currentXclbin->pl.cus) {
         if(0 != cuItr.second->getKernelName().compare(kernelName)) {
           continue;
         }
@@ -1704,7 +1704,7 @@ namespace xdp {
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
 
     // Find the compute unit that this AM is attached to.
-    for (auto cu : xclbin->pl.cus) {
+    for (const auto& cu : xclbin->pl.cus) {
       ComputeUnitInstance* cuObj = cu.second ;
       int32_t cuId = cu.second->getIndex() ;
 
@@ -1775,14 +1775,14 @@ namespace xdp {
 
     // Find both the compute unit this AIM is attached to (if applicable)
     //  and the memory this AIM is attached to (if applicable).
-    for(auto cu : xclbin->pl.cus) {
+    for(const auto& cu : xclbin->pl.cus) {
       if(0 == monCuName.compare(cu.second->getName())) {
         cuId = cu.second->getIndex();
         cuObj = cu.second;
         break;
       }
     }
-    for(auto mem : xclbin->pl.memoryInfo) {
+    for(const auto& mem : xclbin->pl.memoryInfo) {
       if (0 == memName.compare(mem.second->spTag)) {
         memId = mem.second->index;
         break;
@@ -1845,7 +1845,7 @@ namespace xdp {
     ComputeUnitInstance* cuObj = nullptr ;
     int32_t cuId = -1 ;
 
-    for(auto cu : xclbin->pl.cus) {
+    for(const auto& cu : xclbin->pl.cus) {
       if(0 == monCuName.compare(cu.second->getName())) {
         cuId = cu.second->getIndex();
         cuObj = cu.second;
@@ -1871,7 +1871,7 @@ namespace xdp {
 
         monCuName = monCuName.substr(0, pos);
 
-        for(auto cu : xclbin->pl.cus) {
+        for(const auto& cu : xclbin->pl.cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
