@@ -157,9 +157,18 @@ struct dev_info
   }
 };
 
+struct aie_metadata_info{
+  uint32_t num_cols;
+  uint32_t num_rows;
+  uint32_t shim_row;
+  uint32_t core_row;
+  uint32_t mem_row;
+  uint32_t num_mem_row;
+};
+
 // Function to get aie max rows and cols by parsing aie_metadata sysfs node
-static void
-get_aie_row_col(const xrt_core::device* device, uint32_t &row, uint32_t &col)
+static aie_metadata_info 
+get_aie_metadata_info(const xrt_core::device* device)
 {
   std::string err;
   std::string value;
@@ -167,6 +176,7 @@ get_aie_row_col(const xrt_core::device* device, uint32_t &row, uint32_t &col)
   constexpr uint32_t major = 1;
   constexpr uint32_t minor = 0;
   constexpr uint32_t patch = 0;
+  aie_metadata_info aie_meta;
 
   auto dev = get_edgedev(device);
 
@@ -186,8 +196,13 @@ get_aie_row_col(const xrt_core::device* device, uint32_t &row, uint32_t &col)
         % pt.get<uint32_t>("schema_version.minor")
         % pt.get<uint32_t>("schema_version.patch")));
 
-  col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
-  row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
+  aie_meta.num_cols = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
+  aie_meta.num_rows = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
+  aie_meta.shim_row = pt.get<uint32_t>("aie_metadata.driver_config.shim_row");
+  aie_meta.core_row = pt.get<uint32_t>("aie_metadata.driver_config.aie_tile_row_start");
+  aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_row_start");
+  aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_num_rows");
+  return aie_meta;
 }
 
 struct aie_core_info_sysfs
@@ -197,15 +212,14 @@ struct aie_core_info_sysfs
   get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
-    uint32_t max_col = 0, max_row = 0;
-
-    get_aie_row_col(device, max_row, max_col);
+    aie_metadata_info aie_meta = get_aie_metadata_info(device);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
-    for(int i=0;i<max_col;i++)
-      for(int j=0; j<(max_row-1);j++)
-        ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
-                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1))));
+    for (int i = 0; i < aie_meta.num_cols; ++i)
+      for (int j = 0; j < (aie_meta.num_rows-1); ++j)
+        ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+                          aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.core_row))));
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
@@ -225,19 +239,44 @@ struct aie_shim_info_sysfs
   get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
-    uint32_t max_col = 0, max_row = 0;
-
-    get_aie_row_col(device, max_row, max_col);
+    aie_metadata_info aie_meta = get_aie_metadata_info(device);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
-    for(int i=0;i<max_col;i++) {
-      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0)));
+    for (int i=0; i < aie_meta.num_cols; ++i) {
+      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser(aiepart)->aie_sys_read(i, aie_meta.shim_row)));
     }
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_shim",ptarray);
     std::ostringstream oss;
     boost::property_tree::write_json(oss, pt);
+    std::string inifile_text = oss.str();
+    return inifile_text;
+  }
+};
+
+struct aie_mem_info_sysfs
+{
+  using result_type = query::aie_mem_info_sysfs::result_type;
+	  
+  static result_type
+  get(const xrt_core::device* device, key_type key) 
+  {
+    boost::property_tree::ptree ptarray;
+    aie_metadata_info aie_meta = get_aie_metadata_info(device);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+						
+    /* Loop all mem tiles and collect all dma, events, errors, locks status */
+    for (int i = 0; i < aie_meta.num_cols; ++i)
+      for (int j = 0; j < (aie_meta.num_mem_row-1); ++j)
+	ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+			  aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.mem_row))));
+	 
+    boost::property_tree::ptree pt;
+    pt.add_child("aie_mem",ptarray);
+    std::ostringstream oss; 
+    boost::property_tree::write_json(oss, pt); 
     std::string inifile_text = oss.str();
     return inifile_text;
   }
@@ -859,6 +898,7 @@ initialize_query_table()
   emplace_func0_request<query::clock_freqs_mhz,         dev_info>();
   emplace_func0_request<query::aie_core_info_sysfs,     aie_core_info_sysfs>();
   emplace_func0_request<query::aie_shim_info_sysfs,     aie_shim_info_sysfs>();
+  emplace_func0_request<query::aie_mem_info_sysfs,      aie_mem_info_sysfs>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
   emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
