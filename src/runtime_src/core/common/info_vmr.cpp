@@ -72,8 +72,21 @@ vmr_info(const xrt_core::device* device)
 }
 
 bool
-is_default_boot(const xrt_core::device* device)
+get_vmr_status(const xrt_core::device* device, vmr_status_type status)
 {
+  std::string status_string;
+  switch (status) {
+    case vmr_status_type::boot_on_default:
+      status_string = "Boot on default";
+      break;
+    case vmr_status_type::has_fpt:
+      status_string = "Has fpt";
+      break;
+    default:
+      throw xrt_core::error(boost::str(boost::format("Unexpected key for VMR Status type %u") % static_cast<uint32_t>(status)));
+  }
+
+
   const auto pt = vmr_info(device);
   boost::property_tree::ptree pt_empty;
   const boost::property_tree::ptree& ptree = pt.get_child("vmr", pt_empty);
@@ -81,11 +94,11 @@ is_default_boot(const xrt_core::device* device)
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto val = vmr_stat.get<std::string>("label");
     const auto nval = vmr_stat.get<std::string>("value");
-    if (boost::iequals(val, "Boot on default"))
+    if (boost::iequals(val, status_string))
       return boost::iequals(vmr_stat.get<std::string>("value"), "1");
   }
 
-  throw std::runtime_error("Missing 'Boot on default' data in VMR status");
+  throw xrt_core::error(boost::str(boost::format("Did not find %s label within VMR status") % status_string));
 }
 
 } // vmr, xrt

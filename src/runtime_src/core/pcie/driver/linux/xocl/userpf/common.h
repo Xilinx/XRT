@@ -88,6 +88,8 @@ enum {
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
+	bool			is_legacy_ctx;
+    int                 ps_slot_id;
 	struct list_head	ctx_list;
 
 	/*
@@ -103,16 +105,14 @@ struct xocl_dev	{
 	struct xocl_subdev	*dyn_subdev_store;
 	int			dyn_subdev_num;
 
-	void			*ulp_blob;
-
 	unsigned int		mbx_offset;
 
 	uint64_t		mig_cache_expire_secs;
 	ktime_t			mig_cache_expires;
 
 	u32			flags;
-	struct xocl_cma_bank  *cma_bank;
-	struct xocl_pci_info pci_stat;
+	struct xocl_cma_bank	*cma_bank;
+	struct xocl_pci_info	pci_stat;
 	atomic_t		dev_hotplug_done;
 };
 
@@ -146,7 +146,19 @@ int xocl_info_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
@@ -214,6 +226,21 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv);
 void xocl_destroy_client(struct xocl_dev *xdev, void **priv);
 int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 		      struct drm_file *filp);
+/* New hw context support functions */
+int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
+		struct drm_file *filp, uint32_t hw_ctx_id);
+int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id);
+int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_destroy_hw_ctx *hw_ctx_args);
+int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_open_cu_ctx *drm_cu_args);
+int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_close_cu_ctx *drm_cu_args);
+int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
+		      struct drm_file *filp);
+/* End of new hw context support functions */
+
 int xocl_poll_client(struct file *filp, poll_table *wait, void *priv);
 int xocl_kds_stop(struct xocl_dev *xdev);
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id);

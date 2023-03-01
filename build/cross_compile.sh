@@ -150,8 +150,8 @@ else
         OS_TARGET=${OS_TARGET^}
         VERSION=$VERSION_ID
     else
-        OS_TARGET=`cat ${SYSROOT}/etc/redhat-release | awk '{print $1}' | tr -d '"'`
-        VERSION=`cat ${SYSROOT}/etc/redhat-release | awk '{print $4}' | tr -d '"'`
+        OS_TARGET=`awk -F= '$1=="ID" {print $2}' ${SYSROOT}/etc/os-release | tr -d '"' | awk '{print tolower($1)}'`
+        VERSION=`awk -F= '$1=="VERSION_ID" {print $2}' ${SYSROOT}/etc/os-release | tr -d '"'`
     fi  
     echo "INFO: Cross Compiling XRT for $AARCH and Target System $OS_TARGET, Version:$VERSION"
 fi

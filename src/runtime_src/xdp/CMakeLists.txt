@@ -29,6 +29,17 @@ else()
 
 endif()
 
-add_subdirectory(appdebug)
-add_subdirectory(debug)
-add_subdirectory(profile)
+if (XDP_MINIMAL_BUILD STREQUAL "yes")
+
+ add_compile_options("-DSKIP_IOCTL")
+ add_compile_options("-DSKIP_AIE_INI")
+
+ add_subdirectory(profile)
+
+else()
+
+  add_subdirectory(appdebug)
+  add_subdirectory(debug)
+  add_subdirectory(profile)
+
+endif()

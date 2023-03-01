@@ -69,7 +69,6 @@ if (XRT_STATIC_BUILD)
   # The -static link option will pick the static libraries.
   target_link_libraries(${XBUTIL2_NAME}_static
     PRIVATE
-    xrt_core_static
     xrt_coreutil_static
     boost_system
     boost_filesystem
@@ -84,7 +83,6 @@ endif()
 
 target_link_libraries(${XBUTIL2_NAME}
   PRIVATE
-  xrt_core
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}

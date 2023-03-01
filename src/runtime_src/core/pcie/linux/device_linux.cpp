@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -26,10 +26,12 @@
 #include <poll.h>
 #include <string>
 #include <sys/syscall.h>
+#include <type_traits>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 
 namespace {
@@ -142,6 +144,7 @@ struct sdm_sensor_info
     result_type output;
     std::vector<std::string> stats;
     std::string errmsg;
+    constexpr const char* sd_present_check = "1";
 
     // The voltage_sensors_raw is printing in formatted string of each line
     // Format: "%s,%u,%u,%u,%u"
@@ -155,7 +158,7 @@ struct sdm_sensor_info
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 6)
-        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("Sensor sysfs node corrupted");
 
       data_type data { };
       tokenizer::iterator tok_it = tokens.begin();
@@ -164,9 +167,10 @@ struct sdm_sensor_info
       data.input     = std::stoi(std::string(*tok_it++));
       data.average   = std::stoi(std::string(*tok_it++));
       data.max       = std::stoi(std::string(*tok_it++));
-      data.status    = std::stoi(std::string(*tok_it++));
+      data.status    = std::string(*tok_it++);
       data.unitm     = std::stoi(std::string(*tok_it++));
-      output.push_back(data);
+      if (data.status == sd_present_check)
+	 output.push_back(data);
     }
 
     return output;
@@ -344,6 +348,54 @@ struct sdm_sensor_info
 
     return get_sdm_sensors(device, req_type, path);
   } //get()
+};
+
+struct xclbin_slots
+{
+  using result_type = query::xclbin_slots::result_type;
+  using slot_info = query::xclbin_slots::slot_info;
+  using slot_id = query::xclbin_slots::slot_id;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto pdev = get_pcidev(device);
+    pdev->sysfs_get("", "xclbinuuid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    result_type xclbin_data;
+    // xclbin_uuid e.g.
+    // 0 <uuid_slot_0>
+    // 1 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+      slot_info data = { };
+
+      if (std::distance(tokens.begin(), tokens.end()) == 1) {
+        tokenizer::iterator tok_it = tokens.begin();
+        data.slot = 0;
+        data.uuid = std::string(*tok_it++);
+        xclbin_data.push_back(std::move(data));
+	break;
+      }
+      else if (std::distance(tokens.begin(), tokens.end()) == 2) {
+        tokenizer::iterator tok_it = tokens.begin();
+        data.slot = std::stoi(std::string(*tok_it++));
+        data.uuid = std::string(*tok_it++);
+
+        xclbin_data.push_back(std::move(data));
+      }
+      else
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+    }
+
+    return xclbin_data;
+  }
 };
 
 struct kds_cu_info
@@ -545,8 +597,8 @@ struct clk_scaling_info
       data.temp_scaling_limit = get_value(stats[5]);
       data.pwr_scaling_ovrd_limit = get_value(stats[6]);
       data.temp_scaling_ovrd_limit = get_value(stats[7]);
-      data.pwr_scaling_ovrd_enable = get_value(stats[8]);
-      data.temp_scaling_ovrd_enable = get_value(stats[9]);
+      data.pwr_scaling_ovrd_enable = get_value(stats[8]) ? true : false;
+      data.temp_scaling_ovrd_enable = get_value(stats[9]) ? true : false;
     } catch (const std::exception& e) {
       xrt_core::send_exception_message(e.what(), "Failed to receive clk_scaling_stat_raw data in specified format");
     }
@@ -835,6 +887,60 @@ struct accel_deadlock_status
     result_type ret_val = val_buf[0];
 
     return ret_val;
+  }
+};
+
+// structure to get Aie tiles status version info
+// This version is used for handshake b/w userspace and driver
+struct aie_status_version
+{
+  using result_type = query::aie_status_version::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    result_type version{0};
+
+    // TODO : Add code to get the data
+
+    return version;
+  }
+};
+
+// Structure to get device specific Aie tiles information like
+// Total rows, cols and num of core, mem, shim rows and thier start row num
+// num of dma channels, locks, events etc
+struct aie_tiles_stats
+{
+  using result_type = query::aie_tiles_stats::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    uint32_t size = sizeof(result_type);
+    std::vector<char> buf(size, 0);
+
+    // TODO : Add code to get the data
+
+    return *(reinterpret_cast<result_type*>(buf.data()));
+  }
+};
+
+// structure to get aie tiles status raw buffer
+struct aie_tiles_status_info
+{
+  using result_type = boost::any;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& param)
+  {
+    auto data = boost::any_cast<xrt_core::query::aie_tiles_status_info::parameters>(param);
+
+    std::vector<char> buf(data.col_size * data.num_cols, 0);
+
+    // TODO : Add code to get the data
+
+    return buf;
   }
 };
 
@@ -1230,6 +1336,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_numcdmas>                       ("", "kds_numcdmas");
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
+  emplace_func0_request<query::xclbin_slots, 		       xclbin_slots>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
@@ -1259,6 +1366,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_oem_id>                   ("hwmon_sdm", "oem_id");
   emplace_sysfs_get<query::hwmon_sdm_board_name>               ("hwmon_sdm", "bd_name");
   emplace_sysfs_get<query::hwmon_sdm_active_msp_ver>           ("hwmon_sdm", "active_msp_ver");
+  emplace_sysfs_get<query::hwmon_sdm_target_msp_ver>           ("hwmon_sdm", "target_msp_ver");
   emplace_sysfs_get<query::hwmon_sdm_mac_addr0>                ("hwmon_sdm", "mac_addr0");
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
@@ -1267,6 +1375,10 @@ initialize_query_table()
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
+
+  emplace_func0_request<query::aie_status_version,             aie_status_version>();
+  emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
+  emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

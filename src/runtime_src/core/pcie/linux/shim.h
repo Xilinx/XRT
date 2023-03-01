@@ -10,11 +10,12 @@
 #include "core/common/device.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/hwqueue_handle.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 
 #include "core/include/xdp/app_debug.h"
-
 #include "core/include/xstream.h" /* for stream_opt_type */
 
 #include <linux/aio_abi.h>
@@ -52,7 +53,7 @@ public:
   int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
   int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
-  unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
+  unsigned int xclAllocBO(size_t size, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   void xclFreeBO(unsigned int boHandle);
   int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
@@ -125,6 +126,7 @@ public:
 
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);
+  int xclExecBuf(unsigned int cmdBO, xrt_core::hwctx_handle* ctxhdl);
   int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
   int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
   int xclExecWait(int timeoutMilliSec);
@@ -139,21 +141,17 @@ public:
   int xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags);
   int xclCloseIPInterruptNotify(int fd);
 
-  ////////////////////////////////////////////////////////////////
-  // Internal SHIM APIs
-  ////////////////////////////////////////////////////////////////
-  // aka xclOpenContextByName
   xrt_core::cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
+  open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname);
 
   void
-  close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+  close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx);
 
-  uint32_t // ctx handle aka slot idx
-  create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
+  std::unique_ptr<xrt_core::hwctx_handle>
+  create_hw_context(const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
 
   void
-  destroy_hw_context(uint32_t ctxhdl);
+  destroy_hw_context(xrt_core::hwctx_handle::slot_id slotidx);
 
   // Registers an xclbin, but does not load it.
   void
@@ -161,7 +159,7 @@ public:
 
   // Exec Buf with hw ctx handle.
   void
-  exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl);
+  exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* ctxhdl);
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
   std::shared_ptr<xrt_core::pci::dev> mDev;
@@ -169,6 +167,7 @@ private:
   int mUserHandle;
   int mStreamHandle;
   int mBoardNumber;
+  bool hw_context_enable;
   uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
   xclDeviceInfo2 mDeviceInfo;
   uint32_t mMemoryProfilingNumberSlots;
@@ -200,6 +199,9 @@ private:
   void dev_fini();
 
   int xclLoadAxlf(const axlf *buffer);
+  int xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx);
+  int xclPrepareAxlf(const axlf *buffer, struct drm_xocl_axlf *axlf_obj);
+  int getAxlfObjSize(const axlf *buffer);
   void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
   void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
   void xclSysfsGetErrorStatus(xclErrorStatus& stat);

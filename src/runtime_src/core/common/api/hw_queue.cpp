@@ -14,7 +14,7 @@
 #include "core/common/thread.h"
 #include "experimental/xrt_hw_context.h"
 #include "core/include/ert.h"
-#include "core/include/xcl_hwqueue.h"
+#include "core/include/xrt_hwqueue.h"
 
 #include <algorithm>
 #include <atomic>
@@ -380,22 +380,17 @@ public:
 class qds_device : public hw_queue_impl
 {
   xrt_core::device* m_device;
-  xcl_hwqueue_handle m_qhdl;
+  std::unique_ptr<hwqueue_handle> m_qhdl;
 
 public:
-  qds_device(xrt_core::device* device, xcl_hwqueue_handle qhdl)
-    : m_device(device), m_qhdl(qhdl)
+  qds_device(xrt_core::device* device, std::unique_ptr<hwqueue_handle>&& qhdl)
+    : m_device(device), m_qhdl(std::move(qhdl))
   {}
-
-  ~qds_device()
-  {
-    m_device->destroy_hw_queue(m_qhdl);
-  }
 
   std::cv_status
   wait(size_t timeout_ms) override
   {
-    return m_device->wait_command(m_qhdl, XRT_INVALID_BUFFER_HANDLE, static_cast<int>(timeout_ms))
+    return m_qhdl->wait_command(XRT_INVALID_BUFFER_HANDLE, static_cast<int>(timeout_ms))
       ? std::cv_status::no_timeout
       : std::cv_status::timeout;
   }
@@ -406,7 +401,7 @@ public:
     auto pkt = cmd->get_ert_packet();
     while (pkt->state < ERT_CMD_STATE_COMPLETED) {
       // return immediately on timeout
-      if (m_device->wait_command(m_qhdl, cmd->get_exec_bo(), static_cast<int>(timeout_ms)) == 0)
+      if (m_qhdl->wait_command(cmd->get_exec_bo(), static_cast<int>(timeout_ms)) == 0)
         return std::cv_status::timeout;
     }
 
@@ -421,7 +416,7 @@ public:
   void
   submit(xrt_core::command* cmd) override
   {
-    m_device->submit_command(m_qhdl, cmd->get_exec_bo());
+    m_qhdl->submit_command(cmd->get_exec_bo());
   }
 };
 
@@ -577,7 +572,14 @@ public:
   void
   submit(xrt_core::command* cmd) override
   {
-    m_device->exec_buf(cmd->get_exec_bo(), cmd->get_hwctx_handle());
+    if (auto hwctx = cmd->get_hwctx_handle()) {
+      hwctx->exec_buf(cmd->get_exec_bo());
+      return;
+    }
+
+    // device specific execution, e.g. copy command not tied
+    // to a context
+    m_device->exec_buf(cmd->get_exec_bo());
   }
 };
 
@@ -588,7 +590,7 @@ namespace {
 // Manage hw_queue implementations.
 // For time being there is only one hw_queue per hw_context
 // Use static map with weak pointers to implementation.
-using hwc2hwq_type = std::map<xcl_hwctx_handle, std::weak_ptr<xrt_core::hw_queue_impl>>;
+using hwc2hwq_type = std::map<const xrt_core::hwctx_handle*, std::weak_ptr<xrt_core::hw_queue_impl>>;
 using queue_ptr = std::shared_ptr<xrt_core::hw_queue_impl>;
 static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
 static std::mutex mutex;
@@ -601,9 +603,9 @@ static std::condition_variable device_erased;
 static std::shared_ptr<xrt_core::hw_queue_impl>
 get_kds_device_nolock(hwc2hwq_type& queues, const xrt_core::device* device)
 {
-  auto hwqimpl = queues[XRT_NULL_HWCTX].lock();
+  auto hwqimpl = queues[nullptr].lock();
   if (!hwqimpl)
-    queues[XRT_NULL_HWCTX] = hwqimpl =
+    queues[nullptr] = hwqimpl =
       queue_ptr{new xrt_core::kds_device(const_cast<xrt_core::device*>(device))};
 
   return hwqimpl;
@@ -629,15 +631,15 @@ static std::shared_ptr<xrt_core::hw_queue_impl>
 get_hw_queue_impl(const xrt::hw_context& hwctx)
 {
   auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-  auto hwctx_hdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(hwctx);
   std::lock_guard lk(mutex);
   auto& queues = dev2hwc[device];
   auto hwqimpl = queues[hwctx_hdl].lock();
   if (!hwqimpl) {
-    auto hwqueue_hdl = device->create_hw_queue(static_cast<xcl_hwctx_handle>(hwctx));
-    queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == XRT_NULL_HWQUEUE)
+    auto hwqueue_hdl = hwctx_hdl->create_hw_queue();
+    queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == nullptr)
       ? get_kds_device_nolock(queues, device)
-      : queue_ptr{new xrt_core::qds_device(device, hwqueue_hdl)};
+      : queue_ptr{new xrt_core::qds_device(device, std::move(hwqueue_hdl))};
   }
   return hwqimpl;
 }

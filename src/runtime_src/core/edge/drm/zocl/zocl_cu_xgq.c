@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2023 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -25,8 +25,13 @@
 #define zcu_xgq_info(zcu_xgq, fmt, args...)	zocl_info(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 #define zcu_xgq_dbg(zcu_xgq, fmt, args...)	zocl_dbg(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 
-#define ZCU_XGQ_MAX_SLOT_SIZE	1024
-#define ZCU_XGQ_FAST_PATH(zcu_xgq)		(((zcu_xgq)->zxc_num_cu == 1) && ((zcu_xgq)->zxc_cu_domain == 0))
+#define ZCU_XGQ_MAX_SLOT_SIZE	4096
+
+/* We can't support FAST PATH with multislot. As we are initializing the CU XGQs
+ * at the probe time and there could be a chance that in future multiple
+ * CUs/SCUs are assigned to a single CU XGQs.
+ */
+#define ZCU_XGQ_FAST_PATH(zcu_xgq)		false
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd);
 
@@ -153,8 +158,9 @@ debug_show(struct device *dev, struct device_attribute *attr, char *buf)
 	sz = sprintf(buf, "zcu_xgq %p\n", zcu_xgq);
 
 	client = zcu_xgq->zxc_client_hdl;
-	sz += sprintf(buf+sz, "s_cnt %ld\n", client_stat_read(client, s_cnt[0]));
-	sz += sprintf(buf+sz, "c_cnt %ld\n", client_stat_read(client, c_cnt[0]));
+	/* Default hw context set as 0 to extract the stats */
+	sz += sprintf(buf+sz, "s_cnt %ld\n", client_stat_read(client, 0, s_cnt[0]));
+	sz += sprintf(buf+sz, "c_cnt %ld\n", client_stat_read(client, 0, c_cnt[0]));
 
 	return sz;
 }
@@ -329,6 +335,9 @@ static int zcu_xgq_probe(struct platform_device *pdev)
 	ret = sysfs_create_group(&pdev->dev.kobj, &zcu_xgq_attrgroup);
 	if (ret)
 		zcu_xgq_err(zcu_xgq, "create ZCU_XGQ attrs failed: %d", ret);
+
+	zcu_xgq_init_xgq(zcu_xgq);
+
 	return 0;
 }
 
@@ -370,6 +379,9 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 	int rc = 0;
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
 
+	if (!zcu_xgq)
+		return -EINVAL;
+
 	mutex_lock(&zcu_xgq->zxc_lock);
 	zcu_xgq->zxc_num_cu++;
 	/* For optimization when there is only 1 CU. */
@@ -377,11 +389,6 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 	zcu_xgq->zxc_cu_idx = cu_idx;
 	rc = zocl_add_context_kernel(zcu_xgq->zxc_zdev, zcu_xgq->zxc_client_hdl,
 				     cu_idx, CU_CTX_SHARED, cu_domain);
-	if (!rc) {
-		/* Re-init xgq since we may have > 1 CU assigned so can't use fast path anymore. */
-		zcu_xgq_fini_xgq(zcu_xgq);
-		zcu_xgq_init_xgq(zcu_xgq);
-	}
 	mutex_unlock(&zcu_xgq->zxc_lock);
 
 	zcu_xgq_info(zcu_xgq, "CU Domain[%d] CU[%d] assigned", cu_domain, cu_idx);
@@ -432,9 +439,9 @@ static void zcu_xgq_cmd_notify(struct kds_command *xcmd, enum kds_status status)
 
 	if (xcmd->cu_idx >= 0) {
 		if (cmd->cu_domain != 0)
-			client_stat_inc(xcmd->client, scu_c_cnt[xcmd->cu_idx]);
+			client_stat_inc(xcmd->client, xcmd->hw_ctx_id, scu_c_cnt[xcmd->cu_idx]);
 		else
-			client_stat_inc(xcmd->client, c_cnt[xcmd->cu_idx]);
+			client_stat_inc(xcmd->client, xcmd->hw_ctx_id, c_cnt[xcmd->cu_idx]);
 	}
 }
 
@@ -457,6 +464,8 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 
 	xcmd->info = cmd;
 	xcmd->payload_type = XGQ_CMD;
+	/* Default hw context id. This is for backward compartability */
+	xcmd->hw_ctx_id = 0;
 
 	xcmd->cb.notify_host = zcu_xgq_cmd_notify;
 	xcmd->cb.free = kds_free_command;

@@ -131,6 +131,12 @@ public:
     , m_device(xrt_core::hw_context_int::get_core_device(m_hwctx))
   {}
 
+  bool
+  is_valid_hwctx() const
+  {
+    return static_cast<xrt_core::hwctx_handle*>(m_hwctx) != nullptr;
+  }
+
   const xrt_core::device*
   get_core_device() const
   {
@@ -143,12 +149,12 @@ public:
     return m_device;
   }
 
-  xcl_hwctx_handle
+  xrt_core::hwctx_handle*
   get_hwctx_handle() const
   {
     return (m_hwctx)
-      ? static_cast<xcl_hwctx_handle>(m_hwctx)
-      : XRT_NULL_HWCTX;
+      ? static_cast<xrt_core::hwctx_handle*>(m_hwctx)
+      : nullptr;
   }
 
   xrt_core::device*
@@ -182,7 +188,8 @@ public:
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
   static constexpr uint32_t no_group = std::numeric_limits<uint32_t>::max();
   static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
-  static constexpr xrt_buffer_handle null_bo = XRT_INVALID_BUFFER_HANDLE;
+  // ptr cannot be const expor
+  //static constexpr xrt_buffer_handle null_bo = XRT_INVALID_BUFFER_HANDLE;
   static constexpr xclBufferExportHandle null_export = XRT_NULL_BO_EXPORT;
 
 private:
@@ -194,20 +201,13 @@ private:
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
     flags = static_cast<bo::flags>(prop.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
-
-#if defined(_WIN32) && !defined(MCDM)
-    // All shims minus windows return proper flags
-    // Remove when driver returns the flags that were used to ctor the bo
-    auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
-    grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);
-#endif
   }
 
 protected:
   // deliberately made protected, this is a file-scoped controlled API
   device_type device;                           // NOLINT device where bo is allocated
   std::vector<std::shared_ptr<bo_impl>> clones; // NOLINT local m2m clones if any
-  xrt_buffer_handle handle = null_bo;           // NOLINT driver bo handle
+  xrt_buffer_handle handle = XRT_INVALID_BUFFER_HANDLE; // NOLINT driver bo handle
   size_t size = 0;                              // NOLINT size of buffer
   mutable uint64_t addr = no_addr;              // NOLINT bo device address
   mutable uint32_t grpid = no_group;            // NOLINT memory group index
@@ -990,15 +990,21 @@ static xrt_buffer_handle
 alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
-  return device->alloc_bo(device.get_hwctx_handle(), userptr, sz, flags);
+  auto hwctx  = device.get_hwctx_handle();
+  return hwctx
+    ? hwctx->alloc_bo(userptr, sz, flags)
+    : device->alloc_bo(userptr, sz, flags);
 }
 
 static xrt_buffer_handle
 alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto xflags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
+  flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
   try {
-    return device->alloc_bo(device.get_hwctx_handle(), sz, xflags);
+    auto hwctx  = device.get_hwctx_handle();
+    return hwctx
+      ? hwctx->alloc_bo(sz, flags)
+      : device->alloc_bo(sz, flags);
   }
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {
@@ -1280,9 +1286,34 @@ wait()
 }
 
 bo::
+bo(const xrt::device& device, void* userptr, size_t sz, bo::flags flags, memory_group grp)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc_userptr, device_type{device.get_handle()}, userptr, sz
+    , adjust_buffer_flags(device_type{device.get_handle()}, flags, grp), grp))
+{}
+
+bo::
+bo(const xrt::device& device, void* userptr, size_t sz, memory_group grp)
+  : bo(device, userptr, sz, bo::flags::normal, grp)
+{}
+
+bo::
+bo(const xrt::device& device, size_t sz, bo::flags flags, memory_group grp)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc, device_type{device.get_handle()}, sz
+    , adjust_buffer_flags(device_type{device.get_handle()}, flags, grp), grp))
+{}
+
+bo::
+bo(const xrt::device& device, size_t sz, memory_group grp)
+  : bo(device, sz, bo::flags::normal, grp)
+{}
+
+bo::
 bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc_userptr, device_type{hwctx}, userptr, sz, adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
+      alloc_userptr, device_type{hwctx}, userptr, sz
+    , adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
 {}
 
 bo::
@@ -1293,7 +1324,8 @@ bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, memory_group grp)
 bo::
 bo(const xrt::hw_context& hwctx, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc, device_type{hwctx}, sz, adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
+      alloc, device_type{hwctx}, sz
+    , adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
 {}
 
 bo::
@@ -1301,16 +1333,20 @@ bo(const xrt::hw_context& hwctx, size_t sz, memory_group grp)
   : bo(hwctx, sz, bo::flags::normal, grp)
 {}
 
+// Deprecated
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc_userptr, xcl_to_core_device(dhdl), userptr, sz, adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
+      alloc_userptr, xcl_to_core_device(dhdl), userptr, sz
+    , adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
+// Deprecated
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc, xcl_to_core_device(dhdl), size, adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
+      alloc, xcl_to_core_device(dhdl), size
+    , adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
 bo::
@@ -1476,7 +1512,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, userptr, size, flags, grp]{
-      auto boh = alloc_userptr(xcl_to_core_device(dhdl), userptr, size, flags, grp);
+      auto boh = alloc_userptr(xrt_to_core_device(dhdl), userptr, size, flags, grp);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1499,7 +1535,7 @@ xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, size, flags, grp]{
-      auto boh = alloc(xcl_to_core_device(dhdl), size, flags, grp);
+      auto boh = alloc(xrt_to_core_device(dhdl), size, flags, grp);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1543,7 +1579,7 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, ehdl]{
-      auto boh = alloc_import(xcl_to_core_device(dhdl), ehdl);
+      auto boh = alloc_import(xrt_to_core_device(dhdl), ehdl);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;

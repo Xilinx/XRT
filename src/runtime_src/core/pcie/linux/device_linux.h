@@ -6,6 +6,7 @@
 #define PCIE_DEVICE_LINUX_H
 
 #include "core/common/ishim.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/pcie/common/device_pcie.h"
 
 namespace xrt_core {
@@ -59,31 +60,18 @@ public:
   xrt_buffer_handle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
-  uint32_t // ctx handle aka slotidx
+  std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid,
-                    const xrt::hw_context::qos_type& qos,
+                    const xrt::hw_context::cfg_param_type& cfg_param,
                     xrt::hw_context::access_mode mode) const override
   {
-    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
-  }
-
-  void
-  destroy_hw_context(uint32_t ctxhdl) const override
-  {
-    xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, cfg_param, mode);
   }
 
   void
   register_xclbin(const xrt::xclbin& xclbin) const override
   {
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
-  }
-
-  // Exec Buf with hw ctx handle.
-  void
-  exec_buf(xrt_buffer_handle boh, xcl_hwctx_handle ctxhdl) override
-  {
-      xrt::shim_int::exec_buf(get_device_handle(), boh, ctxhdl);
   }
   ////////////////////////////////////////////////////////////////
 

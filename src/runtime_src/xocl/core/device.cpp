@@ -873,7 +873,7 @@ const compute_unit*
 device::
 get_compute_unit(unsigned int cuidx) const
 {
-  for (auto cu : m_computeunits)
+  for (auto& cu : m_computeunits)
     if (cu->get_index() == cuidx)
       return cu.get();
   return nullptr;

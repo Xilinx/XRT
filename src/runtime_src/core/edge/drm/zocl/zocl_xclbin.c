@@ -891,7 +891,7 @@ out:
  * @return      0 on success, Error code on failure.
  */
 int
-zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
+zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_id)
 {
         struct axlf *axlf = (struct axlf *)data;
         struct axlf *axlf_head = axlf;
@@ -911,18 +911,18 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
         }
 
 	BUG_ON(!zdev);
-	// Currently only 1 slot - TODO: Support multi-slot in the future
-	slot = zdev->pr_slot[0];
+	/* Get the corresponding slot DS */
+	slot = zdev->pr_slot[slot_id];
 
         mutex_lock(&slot->slot_xclbin_lock);
-	/* Check unique ID */
-	if (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid)) {
+	/* Check unique ID. Avoid duplicate PL xclbin */
+	if ((slot->slot_type == DOMAIN_PL) &&
+	    (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid))) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
 		mutex_unlock(&slot->slot_xclbin_lock);
 		return ret;
 	}
-
 
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
@@ -1187,8 +1187,6 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	struct connectivity     *connectivity = NULL;
 	struct aie_metadata      aie_data = { 0 };
 	uint64_t		 size = 0;
-	int			 ret = 0;
-	int slot_id = slot->slot_idx;
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
@@ -1747,6 +1745,7 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
 		struct drm_zocl_slot *slot, char *dtbo_path, uint32_t len)
 {
         char *path = slot->slot_xclbin->zx_dtbo_path;
+	int ret = 0;
 
         if (path) {
                 vfree(path);
@@ -1757,7 +1756,11 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
 		path = vmalloc(len + 1);
 		if (!path)
 			return -ENOMEM;
-		copy_from_user(path, dtbo_path, len);
+
+		ret = copy_from_user(path, dtbo_path, len);
+		if (ret)
+			return ret;
+
 		path[len] = '\0';
 	}
 

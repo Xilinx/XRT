@@ -110,6 +110,12 @@ namespace xdp {
     inline std::vector<counters::Sample> getAIESamples()
     { return std::move(aie_db.getAIESamples());  }
 
+    inline void setPLDeadlockInfo(const std::string& info)
+    { pl_db.setDeadlockInfo(info); }
+
+    inline std::string& getPLDeadlockInfo()
+    { return pl_db.getDeadlockInfo(); }
+
   };
 
 } // end namespace xdp

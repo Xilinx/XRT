@@ -131,10 +131,16 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 			struct kds_client *client, struct kds_client_ctx *cctx)
 {
 	struct drm_zocl_slot *slot = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	uuid_t *id = (uuid_t *)cctx->xclbin_id;
 
 	if (!list_empty(&cctx->cu_ctx_list))
 		return;
+
+	/* For legacy context case there are only one hw context possible i.e. 0
+	*/
+	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+	kds_free_hw_ctx(client, hw_ctx);
 
 	/* Get the corresponding slot for this xclbin */
 	slot = zocl_get_slot(zdev, id);
@@ -168,6 +174,7 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 {
 	struct drm_zocl_slot *slot = NULL;
 	struct kds_client_ctx *cctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	int ret = 0;
 
 	/* Get the corresponding slot for this xclbin */
@@ -194,6 +201,20 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 		return NULL;
 	}
 	uuid_copy(cctx->xclbin_id, id);
+
+	/* This is required to maintain the command stats per hw context.
+	 * for this case zocl hw context is not required. This is only for
+	 * backward compartability.
+	 */
+	client->next_hw_ctx_id = 0;
+	hw_ctx = kds_alloc_hw_ctx(client, cctx->xclbin_id, 0 /*slot id */);
+	if (!hw_ctx) {
+		vfree(cctx->xclbin_id);
+		vfree(cctx);
+		(void) zocl_unlock_bitstream(slot, id);
+		return NULL;
+	}
+
 	/* Multiple CU context can be active. Initializing CU context list */
 	INIT_LIST_HEAD(&cctx->cu_ctx_list);
 	list_add_tail(&cctx->link, &client->ctx_list);
@@ -214,15 +235,22 @@ static struct kds_client_ctx *
 zocl_check_exists_context(struct kds_client *client, const uuid_t *id)
 {
 	struct kds_client_ctx *curr = NULL;
+	bool found = false;
 
 	/* Find whether the xclbin is already loaded and the context is exists
 	 */
-	list_for_each_entry(curr, &client->ctx_list, link)
-		if (uuid_equal(curr->xclbin_id, id))
+	if (list_empty(&client->ctx_list))
+		return NULL;
+
+	list_for_each_entry(curr, &client->ctx_list, link) {
+		if (uuid_equal(curr->xclbin_id, id)) {
+			found = true;
 			break;
+		}
+	}
 
 	/* Not found any matching context */
-	if (&curr->link == &client->ctx_list)
+	if (!found)
 		return NULL;
 
 	return curr;
@@ -247,6 +275,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	struct kds_client_ctx *cctx = NULL;
 	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	uuid_t *id = NULL;
 	int ret = 0;
 
@@ -282,9 +311,20 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		goto out;
 	}
 
+        /* For legacy context case there are only one hw context possible i.e. 0
+         */
+        hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+        if (!hw_ctx) {
+                DRM_ERROR("No valid HW context is open");
+		zocl_remove_client_context(zdev, client, cctx);
+                return -EINVAL;
+        }
+
+        cu_ctx->hw_ctx = hw_ctx;
+
 	ret = kds_add_context(&zdev->kds, client, cu_ctx);
 	if (ret) {
-        	kds_free_cu_ctx(client, cu_ctx);
+		kds_free_cu_ctx(client, cu_ctx);
 		zocl_remove_client_context(zdev, client, cctx);
 		goto out;
 	}
@@ -295,33 +335,56 @@ out:
 	return ret;
 }
 
-int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags, u32 cu_domain)
+int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl,
+			    u32 cu_idx, u32 flags, u32 cu_domain)
 {
 	int ret = 0;
 	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_client_ctx *cctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 
-	cctx = vzalloc(sizeof(struct kds_client_ctx));
-	if (!cctx)
-		return -ENOMEM;
+	mutex_lock(&client->lock);
+	cctx = zocl_check_exists_context(client, &uuid_null);
+	if (cctx == NULL) {
+		cctx = vzalloc(sizeof(struct kds_client_ctx));
+		if (!cctx) {
+			mutex_unlock(&client->lock);
+			return -ENOMEM;
+		}
 
-	cctx->xclbin_id = vzalloc(sizeof(uuid_t));
-	if (!cctx->xclbin_id) {
-		vfree(cctx);
-		return -ENOMEM;
+		cctx->xclbin_id = vzalloc(sizeof(uuid_t));
+		if (!cctx->xclbin_id) {
+			vfree(cctx);
+			mutex_unlock(&client->lock);
+			return -ENOMEM;
+		}
+		uuid_copy(cctx->xclbin_id, &uuid_null);
+
+		/* Multiple CU context can be active. Initializing CU context list */
+		INIT_LIST_HEAD(&cctx->cu_ctx_list);
+
+		/* This is required to maintain the command stats per hw context.
+		 * for this case zocl hw context is not required. This is only for
+		 * backward compartability.
+		 */
+		client->next_hw_ctx_id = 0;
+		hw_ctx = kds_alloc_hw_ctx(client, cctx->xclbin_id, 0 /*slot id */);
+		if (!hw_ctx) {
+			vfree(cctx->xclbin_id);
+			vfree(cctx);
+			mutex_unlock(&client->lock);
+			return -EINVAL;
+		}
+
+		list_add_tail(&(cctx->link), &client->ctx_list);
 	}
-	uuid_copy(cctx->xclbin_id, &uuid_null);
 
-	/* Multiple CU context can be active. Initializing CU context list */
-	INIT_LIST_HEAD(&cctx->cu_ctx_list);
-	
 	cu_info.cu_domain = cu_domain;
 	cu_info.cu_idx = cu_idx;
 	cu_info.flags = flags;
 
-	mutex_lock(&client->lock);
 	cu_ctx = kds_alloc_cu_ctx(client, cctx, &cu_info);
 	if (!cu_ctx) {
 		vfree(cctx->xclbin_id);
@@ -329,20 +392,32 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 		mutex_unlock(&client->lock);
 		return -EINVAL;
 	}
-	
-	list_add_tail(&(cctx->link), &client->ctx_list);
+
+	/* For legacy context case there are only one hw context possible i.e. 0
+	 */
+	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+	if (!hw_ctx) {
+		DRM_ERROR("No valid HW context is open");
+		mutex_unlock(&client->lock);
+		return -EINVAL;
+	}
+
+	cu_ctx->hw_ctx = hw_ctx;
+
 	ret = kds_add_context(&zdev->kds, client, cu_ctx);
 	mutex_unlock(&client->lock);
 	return ret;
 }
 
-int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 cu_domain)
+int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl,
+			    u32 cu_idx, u32 cu_domain)
 {
 	int ret = 0;
 	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_client_ctx *cctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 
 	mutex_lock(&client->lock);
 	cctx = zocl_check_exists_context(client, &uuid_null);
@@ -353,7 +428,7 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 
         cu_info.cu_domain = cu_domain;
         cu_info.cu_idx = cu_idx;
-	
+
 	cu_ctx = kds_get_cu_ctx(client, cctx, &cu_info);
         if (!cu_ctx) {
 		mutex_unlock(&client->lock);
@@ -372,13 +447,21 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
                 return -EINVAL;
 	}
 
-	list_del(&cctx->link);
-	mutex_unlock(&client->lock);
+	if (list_empty(&cctx->cu_ctx_list)) {
+		/* For legacy context case there are only one hw context possible i.e. 0
+		*/
+		hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+		kds_free_hw_ctx(client, hw_ctx);
 
-	if (cctx->xclbin_id)
-		vfree(cctx->xclbin_id);
-	if (cctx)
-		vfree(cctx);
+		list_del(&cctx->link);
+
+		if (cctx->xclbin_id)
+			vfree(cctx->xclbin_id);
+		if (cctx)
+			vfree(cctx);
+	}
+
+	mutex_unlock(&client->lock);
 	return ret;
 }
 
@@ -601,7 +684,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->cu_idx >= 0)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, xcmd->hw_ctx_id, c_cnt[xcmd->cu_idx]);
 
 	atomic_inc(&client->event);
 	wake_up_interruptible(&client->waitq);
@@ -762,6 +845,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	xcmd->execbuf = (u32 *)ecmd;
 	xcmd->gem_obj = gem_obj;
 	xcmd->exec_bo_handle = args->exec_bo_handle;
+	/* Default hw context. For backward compartability */
+	xcmd->hw_ctx_id = 0;
 
 	//print_ecmd_info(ecmd);
 
@@ -868,6 +953,9 @@ int zocl_create_client(struct device *dev, void **client_hdl)
 
 	/* Multiple context can be active. Initializing context list */
 	INIT_LIST_HEAD(&client->ctx_list);
+
+	/* Initializing hw context list */
+	INIT_LIST_HEAD(&client->hw_ctx_list);
 
 	INIT_LIST_HEAD(&client->graph_list);
 	spin_lock_init(&client->graph_list_lock);
@@ -990,10 +1078,14 @@ static void zocl_detect_fa_cmdmem(struct drm_zocl_dev *zdev,
 	if (IS_ERR(bo))
 		return;
 
-	
-	bar_paddr = (uint64_t)bo->cma_base.paddr;	
-	base_addr = (uint64_t)bo->cma_base.paddr;	
-	vaddr = bo->cma_base.vaddr;	
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	bar_paddr = (uint64_t)bo->cma_base.dma_addr;
+	base_addr = (uint64_t)bo->cma_base.dma_addr;
+#else
+	bar_paddr = (uint64_t)bo->cma_base.paddr;
+	base_addr = (uint64_t)bo->cma_base.paddr;
+#endif
+	vaddr = bo->cma_base.vaddr;
 
 	zdev->kds.cmdmem.bo = bo;
 	zdev->kds.cmdmem.bar_paddr = bar_paddr;
@@ -1031,7 +1123,7 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 		if (!xcu)
 			continue;
 
-		apt_idx = get_apt_index_by_addr(zdev, xcu->info.addr); 
+		apt_idx = get_apt_index_by_addr(zdev, xcu->info.addr);
 		if (apt_idx < 0) {
 			DRM_ERROR("CU address %llx is not found in XCLBIN\n",
 			    xcu->info.addr);

@@ -170,6 +170,26 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 
 		zocl_slot->partial_overlay_id = -1;
 		zocl_slot->slot_idx = i;
+		zocl_slot->slot_type = DOMAIN_PL;
+
+		zdev->pr_slot[i] = zocl_slot;
+	}
+
+	for (i = zdev->num_pr_slot; i < MAX_PR_SLOT_NUM; i++) {
+		zocl_slot = (struct drm_zocl_slot *)
+			kzalloc(sizeof(struct drm_zocl_slot), GFP_KERNEL);
+		if (!zocl_slot)
+			return -ENOMEM;
+
+		/* Initial xclbin */
+		ret = zocl_xclbin_init(zocl_slot);
+		if (ret)
+			return ret;
+
+		mutex_init(&zocl_slot->slot_xclbin_lock);
+
+		zocl_slot->slot_idx = i;
+		zocl_slot->slot_type = DOMAIN_PS;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -190,7 +210,7 @@ static void zocl_pr_slot_fini(struct drm_zocl_dev *zdev)
 	struct drm_zocl_slot *zocl_slot = NULL;
 	int i = 0;
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (zocl_slot) {
 			zocl_free_sections(zdev, zocl_slot);
@@ -572,7 +592,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			zocl_update_mem_stat(zdev, obj->size, -1,
 			    zocl_obj->mem_index);
 			/* free resources associated with a CMA GEM object */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+			drm_gem_dma_object_free(obj);
+#else
 			drm_gem_cma_free_object(obj);
+#endif
 
 		} else {
 			if (zocl_obj->mm_node) {
@@ -637,7 +661,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 static int
 zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object *dma_obj = NULL;
+#else
 	struct drm_gem_cma_object *cma_obj = NULL;
+#endif
 	struct drm_gem_object *gem_obj;
 	struct drm_zocl_bo *bo;
 	dma_addr_t paddr;
@@ -678,8 +706,13 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		vma->vm_page_prot = prot;
 
 	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		dma_obj = to_drm_gem_dma_obj(gem_obj);
+		paddr = dma_obj->dma_addr;
+#else
 		cma_obj = to_drm_gem_cma_obj(gem_obj);
 		paddr = cma_obj->paddr;
+#endif
 	} else
 		paddr = bo->mm_node->start;
 
@@ -692,8 +725,13 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		    vma->vm_page_prot);
 	} else {
 		/* Map non-cacheable CMA */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		rc = dma_mmap_wc(dma_obj->base.dev->dev, vma, dma_obj->vaddr,
+		    paddr, vma->vm_end - vma->vm_start);
+#else
 		rc = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
 		    paddr, vma->vm_end - vma->vm_start);
+#endif
 	}
 
 	if (rc)
@@ -986,7 +1024,11 @@ static struct drm_driver zocl_driver = {
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
 	.gem_prime_import          = zocl_gem_import,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	.gem_prime_import_sg_table = drm_gem_dma_prime_import_sg_table,
+#else
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
+#endif
 	.gem_prime_mmap            = drm_gem_prime_mmap,
 	.ioctls                    = zocl_ioctls,
 	.num_ioctls                = ARRAY_SIZE(zocl_ioctls),
@@ -1000,14 +1042,23 @@ static struct drm_driver zocl_driver = {
 const struct drm_gem_object_funcs zocl_gem_object_funcs = {
 	.free = zocl_free_bo,
 	.vm_ops = &zocl_bo_vm_ops,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	.get_sg_table = drm_gem_dma_object_get_sg_table,
+	.vmap = drm_gem_dma_object_vmap,
+#else
 	.get_sg_table = drm_gem_cma_get_sg_table,
 	.vmap = drm_gem_cma_vmap,
+#endif
 	.export = drm_gem_prime_export,
 };
 
 const struct drm_gem_object_funcs zocl_cma_default_funcs = {
 	.free = zocl_free_bo,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	.get_sg_table = drm_gem_dma_object_get_sg_table,
+#else
 	.get_sg_table = drm_gem_cma_get_sg_table,
+#endif
 	.vm_ops = &zocl_bo_vm_ops,
 };
 #endif

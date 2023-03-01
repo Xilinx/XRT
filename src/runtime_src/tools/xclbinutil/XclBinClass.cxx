@@ -1881,7 +1881,7 @@ XclBin::addKernels(const std::string& jsonFile)
   XUtil::TRACE("Adding fixed kernel");
 
   // -- Read in the Fixed Kernel Metadata
-  XUtil::TRACE("Reading given JSON file: " + jsonFile);
+  XUtil::TRACE("Reading given Fixed Kernel JSON file: " + jsonFile);
   std::fstream ifFixedKernels;
   ifFixedKernels.open(jsonFile, std::ifstream::in | std::ifstream::binary);
   if (!ifFixedKernels.is_open()) {

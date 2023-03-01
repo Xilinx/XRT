@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2018-2022, Xilinx Inc
+ *  Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -106,6 +107,7 @@ struct xocl_subdev_info {
 	const char		*override_name;
 	int			override_idx;
 	int 			dev_idx;
+	uint32_t 		slot_idx;
 };
 
 struct xocl_board_private {
@@ -2648,6 +2650,12 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_XMC_USER,					\
 	 })
 
+#define RES_USER_V70_VSEC						\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_ICAP_USER,					\
+	 })
+
 #define RES_MGMT_U2_VSEC						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
@@ -2930,8 +2938,8 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
 			XOCL_DSAFLAG_VERSAL_ES3 |			\
 			XOCL_DSAFLAG_VERSAL,				\
-		.subdev_info = RES_USER_VERSAL_VSEC,			\
-		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
+		.subdev_info = RES_USER_V70_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_V70_VSEC),		\
 		.board_name = "v70",				\
 		.vbnv       = "xilinx_v70"				\
 	}

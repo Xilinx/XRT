@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2023 Xilinx, Inc. All rights reserved.
 #
 # Signing xclbin images are currently only support on Linux
 
@@ -21,7 +21,7 @@ endif()
 # Windows support coming soon
 if(NOT WIN32)
   # On Ubuntu 16.04 CMake support is limited
-  if ((${LINUX_FLAVOR} STREQUAL "Ubuntu") AND ("x${LINUX_VERSION}x" STREQUAL "x16.04x"))
+  if ((${LINUX_FLAVOR} STREQUAL "ubuntu") AND ("x${LINUX_VERSION}x" STREQUAL "x16.04x"))
     set(RapidJSON_VERSION_MAJOR 0)
   else()
     find_package(RapidJSON REQUIRED)
@@ -147,6 +147,9 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/MCS")
   xrt_add_test("mcs" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/MCS/MCSSection.py ${TEST_OPTIONS}")
 
+  # -- IP_MEDATADA Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/IPMetadata")
+  xrt_add_test("ip-metadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/IPMetadata/IPMetadata.py ${TEST_OPTIONS}")
 endif()
 
 

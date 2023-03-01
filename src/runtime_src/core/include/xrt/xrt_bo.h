@@ -64,6 +64,7 @@ using memory_group = xrtMemoryGroup;
  */
 struct pid_type { pid_t pid; };
 
+class device;
 class hw_context;
 class bo_impl;
 class bo
@@ -129,6 +130,84 @@ public:
    */
   bo()
   {}
+
+  /**
+   * bo() - Constructor with user host buffer and flags
+   *
+   * @param device
+   *  The device on which to allocate this buffer
+   * @param userptr
+   *  Pointer to aligned user memory
+   * @param sz
+   *  Size of buffer
+   * @param flags
+   *  Specify type of buffer
+   * @param grp
+   *  Device memory group to allocate buffer in
+   *
+   * The device memory group depends on connectivity.  If the buffer
+   * as a kernel argument, then the memory group can be obtained from
+   * the xrt::kernel object.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(const xrt::device& device, void* userptr, size_t sz, bo::flags flags, memory_group grp);
+
+  /**
+   * bo() - Constructor with user host buffer and default flags
+   *
+   * @param device
+   *  The device on which to allocate this buffer
+   * @param userptr
+   *  Pointer to aligned user memory
+   * @param sz
+   *  Size of buffer
+   * @param grp
+   *  Device memory group to allocate buffer in
+   *
+   * The device memory group depends on connectivity.  If the buffer
+   * as a kernel argument, then the memory group can be obtained from
+   * the xrt::kernel object.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(const xrt::device& device, void* userptr, size_t sz, memory_group grp);
+
+  /**
+   * bo() - Constructor where XRT manages host buffer if needed
+   *
+   * @param device
+   *  The device on which to allocate this buffer
+   * @param sz
+   *  Size of buffer
+   * @param flags
+   *  Specify type of buffer
+   * @param grp
+   *  Device memory group to allocate buffer in
+   *
+   * The device memory group depends on connectivity.  If the buffer
+   * as a kernel argument, then the memory group can be obtained from
+   * the xrt::kernel object.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(const xrt::device& device, size_t sz, bo::flags flags, memory_group grp);
+
+  /**
+   * bo() - Constructor, default flags, where XRT manages host buffer if any
+   *
+   * @param device
+   *  The device on which to allocate this buffer
+   * @param sz
+   *  Size of buffer
+   * @param flags
+   *  Specify type of buffer
+   * @param grp
+   *  Device memory group to allocate buffer in
+   *
+   * The device memory group depends on connectivity.  If the buffer
+   * as a kernel argument, then the memory group can be obtained from
+   * the xrt::kernel object.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(const xrt::device& device, size_t sz, memory_group grp);
 
   /**
    * bo() - Constructor with user host buffer and flags

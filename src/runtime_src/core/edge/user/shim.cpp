@@ -22,7 +22,6 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
-#include "core/common/api/hw_context_int.h"
 
 #include <cassert>
 #include <cerrno>
@@ -293,7 +292,7 @@ xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 
 unsigned int
 shim::
-xclAllocBO(size_t size, int unused, unsigned flags)
+xclAllocBO(size_t size, unsigned flags)
 {
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
@@ -1119,26 +1118,36 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 // open_context() - aka xclOpenContextByName
 xrt_core::cuidx_type
 shim::
-open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname)
 {
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+  auto cuidx = mCoreDevice->get_cuidx(hwctx->get_slotidx(), cuname);
+  xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
 }
 
 void
 shim::
-close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
   // To-be-implemented
-  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
     throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
+std::unique_ptr<xrt_core::hwctx_handle>
+shim::
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::cfg_param_type&,
+                  xrt::hw_context::access_mode mode)
+{
+  return std::make_unique<hwcontext>(this, 0, xclbin_uuid, mode);
 }
 
 int
@@ -1835,18 +1844,14 @@ setAIEAccessMode(xrt::aie::access_mode am)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-xrt_core::cuidx_type
-open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+std::unique_ptr<xrt_core::hwctx_handle>
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::cfg_param_type& cfg_param,
+                  xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->open_cu_context(hwctx, cuname);
-}
-
-void
-close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
-{
-  auto shim = get_shim_object(handle);
-  return shim->close_cu_context(hwctx, cuidx);
+  return shim->create_hw_context(xclbin_uuid, cfg_param, mode);
 }
 
 } // xrt::shim_int
@@ -1946,9 +1951,9 @@ xclClose(xclDeviceHandle handle)
 }
 
 unsigned int
-xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
+xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
 {
-  return xdp::hal::profiling_wrapper("xclAllocBO", [handle, size, unused, flags] {
+  return xdp::hal::profiling_wrapper("xclAllocBO", [handle, size, flags] {
 
   //std::cout << "xclAllocBO called " << std::endl;
   //std::cout << "xclAllocBO size:  "  << size << std::endl;
@@ -1957,7 +1962,7 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
   if (!drv)
     return static_cast<unsigned int>(-EINVAL);
   //std::cout << "xclAllocBO handle check passed" << std::endl;
-  return drv->xclAllocBO(size, unused, flags);
+  return drv->xclAllocBO(size, flags);
   }) ;
 }
 

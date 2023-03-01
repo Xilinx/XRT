@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -150,6 +150,16 @@ namespace xdp {
     return host->matchingXRTUIDStart(uid);
   }
 
+  void VPDynamicDatabase::markEventPairStart(uint64_t functionId, const EventPair& events)
+  {
+    host->registerEventPairStart(functionId, events);
+  }
+
+  EventPair VPDynamicDatabase::matchingEventPairStart(uint64_t functionId)
+  {
+    return host->matchingEventPairStart(functionId);
+  }
+
   void VPDynamicDatabase::markRange(uint64_t functionID,
                                     std::pair<const char*, const char*> desc,
                                     uint64_t startTimestamp)
@@ -296,5 +306,22 @@ namespace xdp {
   {
     auto device_db = getDeviceDB(deviceId);
     return device_db->isPLTraceBufferFull();
+  }
+
+  void VPDynamicDatabase::
+  setPLDeadlockInfo(uint64_t deviceId, const std::string& info)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    device_db->setPLDeadlockInfo(info);
+  }
+
+  std::string VPDynamicDatabase::
+  getPLDeadlockInfo()
+  {
+    std::lock_guard<std::mutex> lock(deviceDBLock);
+    std::string info;
+    for (const auto& d : devices)
+      info += d.second->getPLDeadlockInfo();
+    return info;
   }
 }

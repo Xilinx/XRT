@@ -6,6 +6,7 @@
 #include "core/common/bo_cache.h"
 #include "core/common/api/command.h"
 #include "core/common/api/hw_queue.h"
+#include "core/common/shim/hwctx_handle.h"
 
 #include <functional>
 
@@ -189,10 +190,10 @@ struct command::impl : xrt_core::command
     return m_execbuf.first;
   }
 
-  virtual xcl_hwctx_handle
+  virtual xrt_core::hwctx_handle*
   get_hwctx_handle() const
   {
-      return XRT_NULL_HWCTX;
+    return nullptr;
   }
 
   virtual void

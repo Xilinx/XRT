@@ -9,6 +9,8 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_kernel.h"
 
+#include "core/common/shim/hwctx_handle.h"
+
 #include "core/include/experimental/xrt_hw_context.h"
 #include "core/include/experimental/xrt_mailbox.h"
 #include "core/include/experimental/xrt_xclbin.h"
@@ -526,7 +528,7 @@ class ip_context
 
 public:
   using access_mode = xrt::kernel::cu_access_mode;
-  using slot_id = xrt_core::device::slot_id;
+  using slot_id = xrt_core::hwctx_handle::slot_id;
 
   // open() - open a context in a specific IP/CU
   //
@@ -557,14 +559,14 @@ public:
     // hwctx handle, implying that even for same handle index, the CU
     // should be opened again if the device is different
     using ctx_ips = std::map<std::string, std::weak_ptr<ip_context>>;
-    using ctx_to_ips = std::map<xcl_hwctx_handle, ctx_ips>;
+    using ctx_to_ips = std::map<const xrt_core::hwctx_handle*, ctx_ips>;
     static std::mutex mutex;
     static std::map<xrt_core::device*, ctx_to_ips> dev2ips;
     auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(hwctx);
     std::lock_guard<std::mutex> lk(mutex);
     auto& ctx2ips = dev2ips[device]; // hwctx handle -> [ip_context]*
-    auto& ips = ctx2ips[ctxhdl];     // ipname -> ip_context
+    auto& ips = ctx2ips[hwctx_hdl];     // ipname -> ip_context
     auto ipctx = ips[ip.get_name()].lock();
     if (!ipctx)
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
@@ -611,7 +613,8 @@ public:
   slot_id
   get_slot() const
   {
-    return static_cast<xcl_hwctx_handle>(m_hwctx);
+    auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
+    return hwctx_hdl->get_slotidx();
   }
 
   // Check if arg is connected to specified memory bank
@@ -632,7 +635,11 @@ public:
 
   ~ip_context()
   {
-    xrt_core::context_mgr::close_context(m_hwctx, m_idx);
+    try {
+      xrt_core::context_mgr::close_context(m_hwctx, m_idx);
+    }
+    catch (...) {
+    }
   }
 
   ip_context(const ip_context&) = delete;
@@ -902,12 +909,12 @@ public:
     return m_execbuf.first;
   }
 
-  xcl_hwctx_handle
+  xrt_core::hwctx_handle*
   get_hwctx_handle() const override
   {
     return (m_hwctx)
-       ? static_cast<xcl_hwctx_handle>(m_hwctx)
-       : XRT_NULL_HWCTX;
+      ? static_cast<xrt_core::hwctx_handle*>(m_hwctx)
+      : nullptr;
   }
 
   void
@@ -1265,7 +1272,6 @@ public:
   using mailbox_type = property_type::mailbox_type;
   using ipctx = std::shared_ptr<ip_context>;
   using ctxmgr_type = xrt_core::context_mgr::device_context_mgr;
-  using slot_id = xrt_core::device::slot_id;
 
 private:
   std::string name;                    // kernel name
@@ -2477,16 +2483,24 @@ public:
   }
 
   //Aquring mailbox read and write if not acquired already.
-  ~mailbox_impl() {
+  ~mailbox_impl()
+  {
+    try {
       if (!m_aquire_write) {
-          uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
-          kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
+        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+        kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
       }
       if (!m_aquire_read) {
-          uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
-          kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
+        uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+        kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
       }
+    }
+    catch (...) {
+      // Coverity correctly complains that above may throw
+      // resulting in terminate.
+    }
   }
+
   // write mailbox to hw
   void
   write()

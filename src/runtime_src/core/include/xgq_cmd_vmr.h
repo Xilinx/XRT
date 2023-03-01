@@ -125,6 +125,7 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_MEM_STATS	= 0x6,
 	XGQ_CMD_LOG_SYSTEM_DTB	= 0x7,
 	XGQ_CMD_LOG_PLM_LOG	= 0x8,
+	XGQ_CMD_LOG_APU_LOG	= 0x9,
 
 };
 
@@ -244,9 +245,12 @@ struct xgq_cmd_vmr_control_payload {
  * @aid: Clock scaling API ID which decides API in VMC.
  *          0x1 - READ_CLOCK_THROTTLING_CONFIGURATION
  *          0x2 - SET_CLOCK_THROTTLING_CONFIGURATION
- * @scaling_enable: enable or disable flag
- * @pwr_ovrd: power override value
- * @temp_ovrd: temperature override value
+ * @scaling_en: enable or disable flag
+ * @pwr_scaling_ovrd_limit: set power override value
+ * @temp_scaling_ovrd_limit: set temperature override value
+ * @reset: reset the clock scaling configs to defaults
+ * @pwr_scaling_ovrd_en: power override enable/disable flag
+ * @temp_scaling_ovrd_en: temperature override enable/disable flag
  *
  * This payload is used for clock scaling configuration report.
  */
@@ -255,7 +259,10 @@ struct xgq_cmd_clk_scaling_payload {
 	uint32_t scaling_en:1;
 	uint32_t pwr_scaling_ovrd_limit:16;
 	uint32_t temp_scaling_ovrd_limit:8;
-	uint32_t rsvd1:4;
+	uint32_t reset:1;
+	uint32_t pwr_scaling_ovrd_en:1;
+	uint32_t temp_scaling_ovrd_en:1;
+	uint32_t rsvd1:1;
 };
 
 /**
@@ -337,13 +344,23 @@ struct xgq_cmd_cq_data_payload {
 /**
  * struct xgq_cmd_cq_clk_scaling_payload: clock scaling status payload
  *
- * clock scaling status
+ * @has_clk scaling: shows if the platform support clock scaling feature
+ * @clk_scaling_mode: which clock scaling mode enabled currently
+ * @clk_scaling_en: shows if clock scaling is enabled (1) or disabled (0)
+ * @pwr_scaling_ovrd_en: power scaling override is enabled or not
+ * @temp_scaling_ovrd_en: temperature scaling override is enabled or not
+ * @temp_shutdown_limit: temperature shutdown limit
+ * @temp_scaling_limit: temperature scaling override value set
+ * @pwr_shutdown_limit: power shutdown limit
+ * @pwr_scaling_limit: power scaling override value set
  */
 struct xgq_cmd_cq_clk_scaling_payload {
 	uint8_t has_clk_scaling:1;
 	uint8_t clk_scaling_mode:2;
 	uint8_t clk_scaling_en:1;
-	uint8_t rsvd:4;
+	uint8_t pwr_scaling_ovrd_en:1;
+	uint8_t temp_scaling_ovrd_en:1;
+	uint8_t rsvd:2;
 	uint8_t temp_shutdown_limit;
 	uint8_t temp_scaling_limit;
 	uint16_t pwr_shutdown_limit;

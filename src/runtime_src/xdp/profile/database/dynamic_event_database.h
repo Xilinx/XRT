@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -123,6 +123,9 @@ namespace xdp {
     XDP_EXPORT void markXRTUIDStart(uint64_t uid, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingXRTUIDStart(uint64_t uid);
 
+    XDP_EXPORT void markEventPairStart(uint64_t functionId, const EventPair& events);
+    XDP_EXPORT EventPair matchingEventPairStart(uint64_t functionId);
+
     // A lookup into the string table.  If the string isn't already in
     // the string table it will be added
     inline uint64_t addString(const std::string& value)
@@ -176,6 +179,10 @@ namespace xdp {
     // Device Trace Buffer Fullness Status - PL
     XDP_EXPORT void setPLTraceBufferFull(uint64_t deviceId, bool val);
     XDP_EXPORT bool isPLTraceBufferFull(uint64_t deviceId);
+
+    // Deadlock Diagnosis metadata
+    XDP_EXPORT void setPLDeadlockInfo(uint64_t deviceId, const std::string& str);
+    XDP_EXPORT std::string getPLDeadlockInfo();
   } ;
   
 }

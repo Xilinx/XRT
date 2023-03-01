@@ -131,7 +131,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
     }
 
     }
-    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
+    pt_dev.put("is_ready", xrt_core::device_query_default<xrt_core::query::is_ready>(device, true));
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;
@@ -321,13 +321,69 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   static void 
   check_versal_boot(const std::shared_ptr<xrt_core::device> &device)
   {
-    if (xrt_core::vmr::is_default_boot(device.get()))
+    std::vector<std::string> warnings;
+
+    try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::has_fpt);
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT migrated");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::boot_on_default);
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT in default boot");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    try {
+      const std::string unavail = "N/A";
+      const std::string zeroes = "0.0.0";
+      auto cur_ver = xrt_core::device_query_default<xrt_core::query::hwmon_sdm_active_msp_ver>(device, unavail);
+      auto exp_ver = xrt_core::device_query_default<xrt_core::query::hwmon_sdm_target_msp_ver>(device, unavail);
+      cur_ver = (boost::equals(cur_ver, zeroes)) ? unavail : cur_ver;
+      exp_ver = (boost::equals(exp_ver, zeroes)) ? unavail : exp_ver;
+      if (boost::equals(cur_ver, unavail) || boost::equals(exp_ver, unavail))
+        warnings.push_back(boost::str(boost::format("SC version data missing. Expected: %s Current: %s") % exp_ver % cur_ver));
+      else if (!boost::equals(cur_ver, exp_ver))
+        warnings.push_back(boost::str(boost::format("Invalid SC version. Expected: %s Current: %s") % exp_ver % cur_ver));
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    if (warnings.empty())
       return;
 
-    std::cout << "***********************************************************\n";
+    const std::string star_line = "***********************************************************";
+
+    std::cout << star_line << "\n";
     std::cout << "*        WARNING          WARNING          WARNING        *\n";
-    std::cout << "*             Versal Platform in backup boot              *\n";
-    std::cout << "***********************************************************\n";
+
+    // Print all warnings
+    for (const auto& warning : warnings) {
+      // Subtract the:
+      // 1. Side stars
+      // 2. Single space next to the side star
+      const size_t available_space = star_line.size() - 2 - 2;
+      // Account for strings who are larger than the star line
+      size_t warning_index = 0;
+      while (warning_index < warning.size()) {
+        // Extract the largest possible string from the warning
+        const auto warning_msg = warning.substr(warning_index, available_space);
+        // Update the index so the next substring is valid
+        warning_index += warning_msg.size();
+        const auto side_spaces = available_space - warning_msg.size();
+        // The left side should be larger than the right if there is an imbalance
+        const size_t left_spaces = (side_spaces % 2 == 0) ? side_spaces / 2 : (side_spaces / 2) + 1;
+        const size_t right_spaces = side_spaces / 2;
+        std::cout << "* " << std::string(left_spaces, ' ') << warning_msg << std::string(right_spaces, ' ') << " *\n";
+      }
+    }
+
+    std::cout << star_line << "\n";
   }
 
   std::shared_ptr<xrt_core::device>
@@ -345,7 +401,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     else
       device = xrt_core::get_mgmtpf_device(index);
 
-    if (xrt_core::device_query<xq::is_versal>(device))
+    if (xrt_core::device_query_default<xq::is_versal>(device, false))
       check_versal_boot(device);
 
     return device;
@@ -357,30 +413,6 @@ XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& er
   std::cout << info << "\n";
   if (!XBUtilities::can_proceed(getForce()))
     throw xrt_core::system_error(ECANCELED, error);
-}
-
-void
-XBUtilities::sudo_or_throw(const std::string& msg)
-{
-#ifndef _WIN32
-  if ((getuid() == 0) || (geteuid() == 0))
-    return;
-
-  std::cerr << "ERROR: " << msg << std::endl;
-  throw xrt_core::error(std::errc::operation_canceled);
-#endif
-}
-
-void
-XBUtilities::throw_cancel(const std::string& msg)
-{
-  throw_cancel(boost::format("%s") % msg);
-}
-
-void
-XBUtilities::throw_cancel(const boost::format& format)
-{
-  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
 }
 
 void

@@ -84,7 +84,7 @@ namespace xclemulation{
     mTimeOutScale = TIMEOUT_SCALE::NA;
     mIsPlatformDataAvailable = false;
     mIsDisabledHostBuffer = false;
-    mIsFasterNocDDRAccessEnabled = false;
+    mIsFasterNocDDRAccessEnabled = true;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -105,10 +105,7 @@ namespace xclemulation{
   void config::populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap)
   {
     setenv("HW_EM_DISABLE_LATENCY", "true", true);
-    for (auto i : mEnvironmentNameValueMap)
-    {
-      std::string name  = i.first;
-      std::string value = i.second;
+    for (auto& [name, value] : mEnvironmentNameValueMap) {
       if(value.empty() || name.empty())
         continue;
 
@@ -240,7 +237,7 @@ namespace xclemulation{
       }
       else if(name == "fast_nocddr_access")
       {
-        mIsFasterNocDDRAccessEnabled = getBoolValue(value, false);
+        mIsFasterNocDDRAccessEnabled = getBoolValue(value, true);
       }
       else if(name == "packet_size")
       {
@@ -657,6 +654,7 @@ namespace xclemulation{
       info.mVendorId = 0x10ee;
       info.mSubsystemVendorId = 0x0000;
       info.mDeviceVersion = 0x0000;
+      info.mDeviceId = 0x0000;
       info.mDDRSize = MEMSIZE_4G;
       info.mDataAlignment = DDR_BUFFER_ALIGNMENT;
       info.mDDRBankCount = 1;

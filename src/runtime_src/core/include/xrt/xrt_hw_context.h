@@ -9,11 +9,14 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "xcl_hwctx.h"
-
 #ifdef __cplusplus
 
 #include <map>
+
+// Opaque handle for internal use
+namespace xrt_core {
+class hwctx_handle;
+}
 
 namespace xrt {
 
@@ -31,7 +34,7 @@ class hw_context : public detail::pimpl<hw_context_impl>
 public:
 
   /**
-   * Experimental specification of QoS requirements
+   * Experimental specification of Configuration Parameters which contains QoS and Communication Channel requirements
    *
    * Free formed key-value entry.
    *
@@ -42,10 +45,13 @@ public:
    *  - latency                // ??
    *  - frame_execution_time   // ??
    *  - priority               // ??
+   *  - enable_isp_channel     // toggle isp communication
+   *  - enable_acp_channel     // toggle acp communication
    *
    * Currently ignored for legacy platforms
    */
-  using qos_type = std::map<std::string, uint32_t>;
+  using cfg_param_type = std::map<std::string, uint32_t>;
+  using qos_type = cfg_param_type; //alias to old type
 
   /**
    * @enum access_mode - legacy access mode
@@ -77,14 +83,14 @@ public:
    *  Device where context is created
    * @param xclbin_id
    *  UUID of xclbin that should be assigned to HW resources
-   * @qos
-   *  Quality of service request that should be fulfilled by the context
+   * @cfg_param
+   *  Configuration Parameters (incl. Quality of Service)
    *
    * The QoS definition is subject to change, so this API is not guaranteed
    * to be ABI compatible in future releases.
    */
   XRT_API_EXPORT
-  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const qos_type& qos);
+  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const cfg_param_type& cfg_param);
 
   /**
    * hw_context() - Construct with specific access control
@@ -140,7 +146,7 @@ public:
   // Undocumented internal access to low level context handle
   // Subject to change without warning
   XRT_API_EXPORT
-  explicit operator xcl_hwctx_handle () const;
+  explicit operator xrt_core::hwctx_handle* () const;
   /// @endcond
 };
 

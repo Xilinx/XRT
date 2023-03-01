@@ -45,7 +45,7 @@ void
 validOrError(const cl_context_properties* properties)
 {
   xocl::property_list<cl_context_properties> context_properties(properties);
-  for (auto prop : context_properties) {
+  for (auto& prop : context_properties) {
     auto key = prop.get_key();
     if (key==CL_CONTEXT_PLATFORM)
       ;
