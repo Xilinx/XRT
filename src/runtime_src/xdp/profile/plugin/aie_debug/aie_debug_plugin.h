@@ -18,6 +18,7 @@
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
 
 #include <atomic>
+#include <boost/property_tree/ptree.hpp>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -57,6 +58,9 @@ namespace xdp {
     void getTilesForDebug(void* handle);
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
+    uint16_t getAIETileRowOffset(void* handle);
+    static void read_aie_metadata(const char* data, size_t size, 
+                                  boost::property_tree::ptree& aie_project);
 
     // Threads used by this plugin
     void pollDeadlock(uint64_t index, void* handle);
