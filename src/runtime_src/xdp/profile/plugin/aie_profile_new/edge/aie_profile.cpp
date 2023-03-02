@@ -411,6 +411,16 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
+  uint16_t AieProfile_EdgeImpl::getRelativeRow(uint16_t absRow)
+  {
+    auto rowOffset = metadata->getAIETileRowOffset();
+    if (absRow == 0)
+      return 0;
+    if (absRow < rowOffset)
+      return (absRow - 1);
+    return (absRow - rowOffset);
+  }
+
   module_type 
   AieProfile_EdgeImpl::getModuleType(uint16_t absRow, XAie_ModuleType mod)
   {
@@ -578,7 +588,7 @@ namespace xdp {
 
       std::vector<uint64_t> values;
       values.push_back(aie->column);
-      values.push_back(aie->row);
+      values.push_back(getRelativeRow(aie->row));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
       values.push_back(aie->resetEvent);
