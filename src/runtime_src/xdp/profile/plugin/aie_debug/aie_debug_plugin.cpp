@@ -17,6 +17,10 @@
 
 #define XDP_SOURCE
 
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <set>
+
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 
 #include "xdp/profile/database/database.h"
@@ -31,8 +35,6 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
-
-#include <set>
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -187,6 +189,7 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
+    auto offset = getAIETileRowOffset(handle);
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -256,7 +259,7 @@ namespace xdp {
           // Read core status and PC value
           bool coreUnstalled = false;
           uint32_t coreStatus = 0;
-          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + 1, tile.col);
+          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + offset, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
 
           auto& coreStallCounter = coreStuckCountMap[tile];
@@ -298,7 +301,7 @@ namespace xdp {
             uint8_t coreErrors0 = 0;
             uint8_t coreErrors1 = 0;
             uint8_t memErrors = 0;
-            auto loc = XAie_TileLoc(tile.col, tile.row + 1);
+            auto loc = XAie_TileLoc(tile.col, tile.row + offset);
             XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
               XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
             XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
@@ -331,7 +334,7 @@ namespace xdp {
             // We have a stuck core within this graph
             warningMessage
             << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
-            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
+            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + offset << ") "
             << "Status 0x" << std::hex << stuckCoreStatus << std::dec
             << " : " << getCoreStatusString(stuckCoreStatus);
 
@@ -346,7 +349,7 @@ namespace xdp {
           for (const auto& tile : graphTilesVec) {
             if (coreStuckCountMap[tile]) {
               msg
-                << "T(" << tile.col <<"," << tile.row + 1 << "):" << "<" << coreStuckCountMap[tile]
+                << "T(" << tile.col <<"," << tile.row + offset << "):" << "<" << coreStuckCountMap[tile]
                 << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
             }
           }
@@ -479,6 +482,32 @@ namespace xdp {
     mThreadCtrlMap.clear();
     mDeadlockThreadMap.clear();
     mDebugThreadMap.clear();
+  }
+
+  uint16_t AIEDebugPlugin::getAIETileRowOffset(void* handle)
+  {
+    static uint16_t rowOffset = 1;
+    static bool gotValue = false;
+    if (!gotValue) {
+      auto device = xrt_core::get_userpf_device(handle);
+      auto data = device->get_axlf_section(AIE_METADATA);
+      if (!data.first || !data.second) {
+        rowOffset = 1;
+      } else {
+        boost::property_tree::ptree aie_meta;
+        read_aie_metadata(data.first, data.second, aie_meta);
+        rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
+      }
+      gotValue = true;
+    }
+    return rowOffset;
+  }
+
+  void AIEDebugPlugin::read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project)
+  {
+    std::stringstream aie_stream;
+    aie_stream.write(data,size);
+    boost::property_tree::read_json(aie_stream,aie_project);
   }
 
 } // end namespace xdp

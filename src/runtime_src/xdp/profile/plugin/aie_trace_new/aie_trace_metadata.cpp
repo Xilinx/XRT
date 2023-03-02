@@ -914,7 +914,7 @@ namespace xdp {
     read_aie_metadata(data.first, data.second, aie_meta);
 
     aiecompiler_options aiecompiler_options;
-    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
+    aiecompiler_options.broadcast_enable_core = aie_meta.get("aie_metadata.aiecompiler_options.broadcast_enable_core", false);
     aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
     return aiecompiler_options;
   }
