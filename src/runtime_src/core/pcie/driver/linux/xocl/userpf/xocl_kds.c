@@ -2048,7 +2048,7 @@ xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_in
 	return ret;
 }
 
-static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain)
+static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain, bool full_reset)
 {
 	struct xgq_com_queue_entry resp = {};
 	struct xgq_cmd_uncfg_cu *uncfg_cu = NULL;
@@ -2069,6 +2069,8 @@ static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 	uncfg_cu->hdr.state = 1;
 	uncfg_cu->cu_idx = cu_idx;
 	uncfg_cu->cu_domain = cu_domain;
+	/* Specify if All CUs/SCUs are need to reset */
+	uncfg_cu->cu_reset = full_reset ? 1 : 0;
 
 	xcmd->cb.notify_host = xocl_kds_xgq_notify;
 	xcmd->cb.free = kds_free_command;
@@ -2394,16 +2396,32 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return ret;
 
-    ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
-	if (ret)
-		goto out;
-
 	/*
 	 * The XGQ Identify command is used to identify the version of firmware which
 	 * can help host to know the different behaviors of the firmware.
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
+
+	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
+	if (ret)
+		goto out;
+
+	/* ERT XGQ version 2.0 onward supports Cleanup of all CUs/SCUs */
+	if (major == 2 && minor == 0) {
+		if (xdev->reset_ert_cus) {
+			/* This is done only for the first time after xocl driver load.
+			 * Before configuring/unconfiguring CUs/SCUs XOCL driver will make 
+			 * sure ERT is in good know status before configure it for the first
+			 * time.
+			 */
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, true);
+			if (ret)
+				goto out;
+			
+			xdev->reset_ert_cus = false;
+		}
+	}
 
 	/* Unconfigure the SCUs first. There is a case, where there is a
 	 * PS kernel which is opening a PL kernel. In that case, we need to
@@ -2421,7 +2439,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS, false);
 			if (ret)
 				goto out;
 		}
@@ -2439,7 +2457,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, false);
 			if (ret)
 				goto out;
 		}

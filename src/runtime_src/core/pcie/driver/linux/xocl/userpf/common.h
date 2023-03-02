@@ -89,7 +89,8 @@ struct xocl_dev	{
 	struct xocl_dev_core	core;
 
 	bool			is_legacy_ctx;
-    int                 ps_slot_id;
+	bool			reset_ert_cus;
+	int                 	ps_slot_id;
 	struct list_head	ctx_list;
 
 	/*

@@ -860,6 +860,15 @@ static void zert_cmd_uncfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	struct xgq_cmd_uncfg_cu *c = (struct xgq_cmd_uncfg_cu *)cmd;
 	struct zocl_ctrl_ert_cu *cu = NULL;
 
+	if (c->cu_reset) {
+		/* This is the cleanup request all the CUs and SCUs from the zocl. 
+		 * this is the cleanup we need before start the Host and ZOCL handshake
+		 * for the first time.
+		 */
+		zert_destroy_cus(zert);
+		goto done;
+	}
+
 	cu = (c->cu_domain == DOMAIN_PL) ? &zert->zce_cus[c->cu_idx] :
 		&zert->zce_scus[c->cu_idx];
 
