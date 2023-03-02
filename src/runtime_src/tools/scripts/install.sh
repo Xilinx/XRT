@@ -211,7 +211,7 @@ if [[ $INSTALL_PKG == 1 && ( $INSTALL_KERNEL_DRV == "yes" || $FORCE_INSTALL_KERR
     FLAVOR=`echo $FLAVOR | tr -d '"'`
     if [[ $FLAVOR == "ubuntu" ]]; then
         xrt="XRT-$XRT_VER-Linux.deb"
-        dpkg -s xrt 2&>1 /dev/null
+        dpkg -s xrt 2>&1 /dev/null
         if [ $? == 0 ] ; then
             apt install ./runtime/packages/$xrt
         else
