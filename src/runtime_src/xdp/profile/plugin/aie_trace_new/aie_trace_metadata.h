@@ -58,6 +58,11 @@ class AieTraceMetadata{
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
 
+    std::map<module_type, std::string> defaultSets {
+      { module_type::core,     "functions"},
+      { module_type::mem_tile, "input_channels"}
+    };
+
     void* handle;
 
   public:
