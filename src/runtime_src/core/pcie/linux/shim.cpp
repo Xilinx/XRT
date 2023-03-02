@@ -151,7 +151,6 @@ public:
       xrt_core::send_exception_message(ex.what());
     }
     catch (...) {
-      xrt_core::send_exception_message("Unexpected error destructing hwcontext");
     }
   }
 
