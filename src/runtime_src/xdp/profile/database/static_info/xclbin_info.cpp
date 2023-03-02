@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -47,7 +47,7 @@ namespace xdp {
                                    const std::string& portName,
                                    int32_t portWidth)
   {
-    for (auto iter : cus) {
+    for (const auto& iter : cus) {
       auto cu = iter.second;
       if (cu->getKernelName() == kernelName)
         cu->addPort(portName, portWidth);
@@ -58,7 +58,7 @@ namespace xdp {
                             const std::string& argName,
                             const std::string& portName)
   {
-    for (auto iter : cus) {
+    for (const auto& iter : cus) {
       auto cu = iter.second;
       if (cu->getKernelName() == kernelName)
         cu->addArgToPort(argName, portName);
@@ -74,7 +74,7 @@ namespace xdp {
       return;
 
     Memory* mem = memoryInfo[memId];
-    for (auto iter : cus) {
+    for (const auto& iter : cus) {
       auto cu = iter.second;
       if (cu->getKernelName() == kernelName)
         cu->connectArgToMemory(portName, argName, mem);

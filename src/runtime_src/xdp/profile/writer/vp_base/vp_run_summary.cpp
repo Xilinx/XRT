@@ -148,7 +148,7 @@ namespace xdp {
     }
 
     boost::property_tree::ptree ptFiles;
-    for (auto f : files) {
+    for (const auto& f : files) {
       boost::property_tree::ptree ptFile;
       ptFile.put("name", f.first.c_str());
       ptFile.put("type", f.second.c_str());
