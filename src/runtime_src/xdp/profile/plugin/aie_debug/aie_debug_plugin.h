@@ -61,7 +61,6 @@ namespace xdp {
     uint16_t getAIETileRowOffset(void* handle);
     static void read_aie_metadata(const char* data, size_t size, 
                                   boost::property_tree::ptree& aie_project);
-
     // Threads used by this plugin
     void pollDeadlock(uint64_t index, void* handle);
     void writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter);
