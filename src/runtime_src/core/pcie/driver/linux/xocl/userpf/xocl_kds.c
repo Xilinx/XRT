@@ -2415,7 +2415,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 			 * sure ERT is in good know status before configure it for the first
 			 * time.
 			 */
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, true);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, 0, DOMAIN_PL, true);
 			if (ret)
 				goto out;
 			
