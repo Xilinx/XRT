@@ -528,6 +528,7 @@ namespace xdp {
                                              std::vector<std::string>& graphMetricsSettings,
                                              module_type type)
   {
+    // Make sure settings are available and appropriate
     if (metricsSettings.empty() && graphMetricsSettings.empty())
       return;
     if ((getHardwareGen() == 1) && (type == module_type::mem_tile)) {
@@ -554,7 +555,7 @@ namespace xdp {
      * MEM Tiles (AIE2 and beyond)
      * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
-    
+
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
 
     // Graph Pass 1 : process only "all" metric setting
@@ -667,7 +668,7 @@ namespace xdp {
      * Range of tiles
      * tile_based_mem_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
-    
+
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting 
@@ -831,7 +832,7 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
-    } // Pass 3
+    } // Pass 3 
 
     // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[type];

@@ -431,7 +431,7 @@ namespace xdp {
                                                const std::vector<std::string>& graphMetricsSettings,
                                                const module_type mod)
   {
-    if (metricsSettings.empty() && graphMetricsSettings.empty())
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
     if ((getHardwareGen() == 1) && (mod == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
@@ -619,7 +619,7 @@ namespace xdp {
         maxRow = std::stoi(maxTile[1]) + rowOffset;
       } catch (...) {
         xrt_core::message::send(severity_level::warning, "XRT", 
-          "Tile range specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
+            "Tile range specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
         continue;
       }
 
@@ -769,7 +769,7 @@ namespace xdp {
                                                         const std::vector<std::string>& metricsSettings,
                                                         const std::vector<std::string> graphMetricsSettings)
   {
-    if (metricsSettings.empty() && graphMetricsSettings.empty())
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
@@ -784,7 +784,7 @@ namespace xdp {
      * Range of tiles
      * tile_based_interface_tile_metrics = [<mincolumn>:<maxcolumn>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]]
      */
-    
+
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting 
@@ -793,7 +793,7 @@ namespace xdp {
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
       if (metrics[i][0].compare("all") != 0)
-      continue;
+        continue;
 
       int16_t channelId = (metrics[i].size() < 3) ? -1 : std::stoi(metrics[i][2]);
       auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId);
@@ -807,7 +807,7 @@ namespace xdp {
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
         continue;
-    
+
       uint32_t maxCol = 0;
       try {
         maxCol = std::stoi(metrics[i][1]);
@@ -821,7 +821,7 @@ namespace xdp {
       } catch (std::invalid_argument const &e) {
         // 2nd style but expected min column is not an integer, give warning and skip 
         xrt_core::message::send(severity_level::warning, "XRT", 
-          "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+            "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
         continue;
       }
 
@@ -832,13 +832,13 @@ namespace xdp {
         } catch (std::invalid_argument const &e) {
           // Expected channel Id is not an integer, give warning and ignore channelId
           xrt_core::message::send(severity_level::warning, "XRT", 
-            "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+              "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
           channelId = -1;
         }
       }
       
       auto tiles = get_interface_tiles(device.get(), metrics[i][2], channelId,
-                                      true, minCol, maxCol);
+                                       true, minCol, maxCol);
 
       for (auto &t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
