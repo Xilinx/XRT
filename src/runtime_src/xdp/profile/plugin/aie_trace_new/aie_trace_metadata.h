@@ -46,8 +46,8 @@ class AieTraceMetadata{
     uint32_t iterationCount = 0;
     uint64_t delayCycles = 0;
     uint64_t deviceID;
-    uint64_t numAIETraceOutput;
-    uint64_t offloadIntervalUs;
+    uint64_t numAIETraceOutput = 0;
+    uint64_t offloadIntervalUs = 0;
     unsigned int aie_trace_file_dump_int_s;
 
     std::string counterScheme;
