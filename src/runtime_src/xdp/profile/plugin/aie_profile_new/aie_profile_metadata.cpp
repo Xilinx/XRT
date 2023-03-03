@@ -821,7 +821,7 @@ namespace xdp {
       } catch (std::invalid_argument const &e) {
         // 2nd style but expected min column is not an integer, give warning and skip 
         xrt_core::message::send(severity_level::warning, "XRT", 
-            "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+           "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
         continue;
       }
 
@@ -832,7 +832,7 @@ namespace xdp {
         } catch (std::invalid_argument const &e) {
           // Expected channel Id is not an integer, give warning and ignore channelId
           xrt_core::message::send(severity_level::warning, "XRT", 
-              "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+             "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
           channelId = -1;
         }
       }
@@ -862,7 +862,7 @@ namespace xdp {
         } catch (std::invalid_argument const &e) {
           // Expected column specification is not a number. Give warning and skip
           xrt_core::message::send(severity_level::warning, "XRT", 
-            "Column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+             "Column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
           continue;
         }
 
@@ -873,7 +873,7 @@ namespace xdp {
           } catch (std::invalid_argument const &e) {
             // Expected channel Id is not an integer, give warning and ignore channelId
             xrt_core::message::send(severity_level::warning, "XRT", 
-              "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+               "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
             channelId = -1;
           }
         }
@@ -885,7 +885,7 @@ namespace xdp {
           configMetrics[moduleIdx][t] = metrics[i][1];
         }
       }
-    } // Pass 3
+    } // Pass 3 
 
     // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[moduleIdx];
