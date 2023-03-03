@@ -431,7 +431,7 @@ namespace xdp {
                                                const std::vector<std::string>& graphMetricsSettings,
                                                const module_type mod)
   {
-    if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty())) 
       return;
     if ((getHardwareGen() == 1) && (mod == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
@@ -619,7 +619,7 @@ namespace xdp {
         maxRow = std::stoi(maxTile[1]) + rowOffset;
       } catch (...) {
         xrt_core::message::send(severity_level::warning, "XRT", 
-            "Tile range specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
+           "Tile range specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
         continue;
       }
 
