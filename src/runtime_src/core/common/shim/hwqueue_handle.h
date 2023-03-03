@@ -6,6 +6,8 @@
 #include "buffer_handle.h"
 #include "fence_handle.h"
 
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 

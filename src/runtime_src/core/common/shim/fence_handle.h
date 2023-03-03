@@ -3,6 +3,8 @@
 #ifndef XRT_CORE_FENCE_HANDLE_H
 #define XRT_CORE_FENCE_HANDLE_H
 
+#include <cstdint>
+
 namespace xrt_core {
 
 // class fence_handle - shim base class for fence
