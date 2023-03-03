@@ -150,8 +150,6 @@ public:
     catch (const std::exception& ex) {
       xrt_core::send_exception_message(ex.what());
     }
-    catch (...) {
-    }
   }
 
   slot_id
@@ -742,6 +740,7 @@ init(unsigned int index)
  */
 shim::~shim()
 {
+  try {
     xrt_logmsg(XRT_INFO, "%s", __func__);
 
     // Flush all of the profiling information from the device to the profiling
@@ -758,6 +757,12 @@ shim::~shim()
         if (p.addr)
             (void) munmap(p.addr, p.size);
     }
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+  }
 }
 
 /*
