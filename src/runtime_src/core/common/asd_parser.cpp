@@ -352,16 +352,29 @@ size()
 
 uint64_t
 aie_core_tile_status::
-size(aie_tiles_info& info)
+size(const aie_tiles_info& info)
 {
   return sizeof(aie_dma_status) * info.core_dma_channels + sizeof(uint32_t) * info.core_events * 2 /*core, mem mode*/ +
       sizeof(uint8_t) * info.core_locks + sizeof(uint32_t) * 4 /*(cs,pc,sp,lr)*/;
 }
 
+// Convert Raw buffer data received from driver to core tile status
+// Sanity checks on buffer size is done in previous calls, so there will be no overflow
+// Buffer format: 
+//        Multiple columns with core, mem, shim tiles information
+// +-----------------------------------+
+// | core rows | mem rows | shim rows  |  col 0
+// |-----------------------------------|
+// | core rows | mem rows | shim rows  |  col 1
+// |-----------------------------------|
+// |          .........                |  col N
+// +-----------------------------------+
 void
 aie_core_tile_status::
-parse_buf(const char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
+  auto buf = raw_buf.data();
+
   for (auto &aie_col_status : aie_status) {
     for (auto &core : aie_col_status.core_tiles) {
       // DMA status
@@ -412,7 +425,7 @@ parse_buf(const char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& 
 }
 
 static bpt::ptree
-get_core_tile_info(aie_core_tile_status& core)
+get_core_tile_info(const aie_core_tile_status& core)
 {
   bpt::ptree pt;
   bpt::ptree core_pt;
@@ -462,7 +475,7 @@ get_core_tile_info(aie_core_tile_status& core)
 
 bpt::ptree
 aie_core_tile_status::
-format_status(std::vector<aie_tiles_status>& aie_status, uint32_t cols, aie_tiles_info& tiles_info,
+format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
               uint32_t cols_filled)
 {
   bpt::ptree pt_array;
@@ -500,16 +513,20 @@ size()
 
 uint64_t
 aie_mem_tile_status::
-size(aie_tiles_info& info)
+size(const aie_tiles_info& info)
 {
   return sizeof(aie_dma_status) * info.mem_dma_channels + sizeof(uint32_t) * info.mem_events +
       sizeof(uint8_t) * info.mem_locks;
 }
 
+// Convert Raw buffer data received from driver to mem tile status
+// Sanity checks on buffer size is done in previous calls, so there will be no overflow
 void
 aie_mem_tile_status::
-parse_buf(const char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
+  auto buf = raw_buf.data();
+
   for (auto &aie_col_status : aie_status) {
     // add core tiles offset
     buf += aie_core_tile_status::size(info) * info.core_rows;
@@ -537,7 +554,7 @@ parse_buf(const char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& 
 }
 
 static bpt::ptree
-get_mem_tile_info(aie_mem_tile_status& mem)
+get_mem_tile_info(const aie_mem_tile_status& mem)
 {
   bpt::ptree pt;
 
@@ -554,7 +571,7 @@ get_mem_tile_info(aie_mem_tile_status& mem)
 
 bpt::ptree
 aie_mem_tile_status::
-format_status(std::vector<aie_tiles_status>& aie_status, uint32_t cols, aie_tiles_info& tiles_info,
+format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
               uint32_t cols_filled)
 {
   bpt::ptree pt_array;
@@ -592,16 +609,20 @@ size()
 
 uint64_t
 aie_shim_tile_status::
-size(aie_tiles_info& info)
+size(const aie_tiles_info& info)
 {
   return sizeof(aie_dma_status) * info.shim_dma_channels + sizeof(uint32_t) * info.shim_events +
       sizeof(uint8_t) * info.shim_locks;
 }
 
+// Convert Raw buffer data received from driver to shim tile status
+// Sanity checks on buffer size is done in previous calls, so there will be no overflow
 void
 aie_shim_tile_status::
-parse_buf(const char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
+  auto buf = raw_buf.data();
+
   for (auto &aie_col_status : aie_status) {
     // add core tiles and mem tiles offsets
     buf = buf + aie_core_tile_status::size(info) * info.core_rows +
@@ -626,7 +647,7 @@ parse_buf(const char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& 
 }
 
 static bpt::ptree
-get_shim_tile_info(aie_shim_tile_status& shim)
+get_shim_tile_info(const aie_shim_tile_status& shim)
 {
   bpt::ptree pt;
 
@@ -643,7 +664,7 @@ get_shim_tile_info(aie_shim_tile_status& shim)
 
 bpt::ptree
 aie_shim_tile_status::
-format_status(std::vector<aie_tiles_status>& aie_status, uint32_t cols, aie_tiles_info& tiles_info,
+format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
               uint32_t cols_filled)
 {
   bpt::ptree pt_array;
@@ -672,14 +693,14 @@ format_status(std::vector<aie_tiles_status>& aie_status, uint32_t cols, aie_tile
 
 /* Common functions*/
 static void
-aie_status_version_check(uint16_t& major_ver, uint16_t& minor_ver)
+aie_status_version_check(uint16_t major_ver, uint16_t minor_ver)
 {
   if (!((major_ver == asd_parser::aie_status_version_major) && (minor_ver == asd_parser::aie_status_version_minor)))
     throw std::runtime_error("Aie status version mismatch");
 }
 
 static void
-aie_info_sanity_check(aie_tiles_info& info)
+aie_info_sanity_check(const aie_tiles_info& info)
 {
   if (info.col_size == 0)
     throw std::runtime_error("Getting Aie column size info from driver failed\n");
@@ -735,7 +756,7 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
   // convert buffer into respective structure and format
   switch (tile_type) {
     case aie_tile_type::core :
-      aie_status = parse_data_from_buf<aie_core_tile_status>(tiles_status.buf.data(), info, cols_filled);
+      aie_status = parse_data_from_buf<aie_core_tile_status>(tiles_status.buf, info, cols_filled);
       pt = format_aie_info<aie_core_tile_status>(aie_status, info.cols, info, cols_filled);
 
       // fill version info for core tile which is used in top layer
@@ -743,11 +764,11 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
       pt.put("schema_version.minor", version.minor);
       break;
     case aie_tile_type::shim :
-      aie_status = parse_data_from_buf<aie_shim_tile_status>(tiles_status.buf.data(), info, cols_filled);
+      aie_status = parse_data_from_buf<aie_shim_tile_status>(tiles_status.buf, info, cols_filled);
       pt = format_aie_info<aie_shim_tile_status>(aie_status, info.cols, info, cols_filled);
       break;
     case aie_tile_type::mem :
-      aie_status = parse_data_from_buf<aie_mem_tile_status>(tiles_status.buf.data(), info, cols_filled);
+      aie_status = parse_data_from_buf<aie_mem_tile_status>(tiles_status.buf, info, cols_filled);
       pt = format_aie_info<aie_mem_tile_status>(aie_status, info.cols, info, cols_filled);
       break;
     default :
