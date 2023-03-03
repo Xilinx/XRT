@@ -30,7 +30,7 @@ pretty_print_action_list(xrt_core::device* dev, xrt_core::query::reset_type rese
 }
 
 static void
-reset_device(xrt_core::device* dev, xrt_core::query::reset_type reset)
+reset_device(xrt_core::device* dev, const xrt_core::query::reset_type& reset)
 {
   if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
     // u30 reset relies on working SC and SN info. SN is read and saved
