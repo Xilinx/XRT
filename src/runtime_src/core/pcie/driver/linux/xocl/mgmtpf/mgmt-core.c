@@ -1081,7 +1081,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = xocl_clock_freq_scaling_by_request(lro,
 				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 		if (ret == -ENODEV)
-			ret = xocl_xgq_freq_scaling(lro,
+			ret = xocl_xgq_clk_scaling(lro,
 				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
