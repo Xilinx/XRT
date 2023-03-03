@@ -725,7 +725,7 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
-    } // Pass 3
+    } // Pass 3 
 
     // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[moduleIdx];
@@ -769,7 +769,7 @@ namespace xdp {
                                                         const std::vector<std::string>& metricsSettings,
                                                         const std::vector<std::string> graphMetricsSettings)
   {
-    if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty())) 
       return;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
