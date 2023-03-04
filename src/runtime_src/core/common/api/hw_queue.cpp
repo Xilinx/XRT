@@ -7,6 +7,7 @@
 #include "hw_queue.h"
 
 #include "command.h"
+#include "fence.h"
 #include "hw_context_int.h"
 
 #include "core/common/debug.h"
@@ -359,6 +360,14 @@ public:
   virtual std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) = 0;
 
+  // Enqueue a command returning a fence that can be waited on
+  virtual fence
+  enqueue(xrt_core::command* cmd) = 0;
+
+  // Enqueue a command with dependencies
+  virtual fence
+  enqueue(xrt_core::command* cmd, const std::vector<fence>& waits) = 0;
+
   // Managed start uses command manager for monitoring command
   // completion
   void
@@ -374,6 +383,7 @@ public:
   {
     submit(cmd);
   }
+
 };
 
 // class qds_device - queue implementation for shim queue support
@@ -417,6 +427,18 @@ public:
   submit(xrt_core::command* cmd) override
   {
     m_qhdl->submit_command(cmd->get_exec_bo());
+  }
+
+  fence
+  enqueue(xrt_core::command* cmd) override
+  {
+    return m_qhdl->enqueue_command(cmd->get_exec_bo());
+  }
+
+  fence
+  enqueue(xrt_core::command* cmd, const std::vector<fence>& waits) override
+  {
+    return m_qhdl->enqueue_command(cmd->get_exec_bo(), {waits.begin(), waits.end()});
   }
 };
 
@@ -581,6 +603,18 @@ public:
     // to a context
     m_device->exec_buf(cmd->get_exec_bo());
   }
+
+  fence
+  enqueue(xrt_core::command*) override
+  {
+    throw std::runtime_error("kds_device::enqueue not implemented");
+  }
+
+  fence
+  enqueue(xrt_core::command*, const std::vector<fence>&) override
+  {
+    throw std::runtime_error("kds_device::enqueue not implemented");
+  }
 };
 
 }  // xrt_core
@@ -713,6 +747,20 @@ hw_queue::
 wait(const xrt_core::command* cmd) const
 {
   get_handle()->wait(cmd, 0);
+}
+
+fence
+hw_queue::
+enqueue(xrt_core::command* cmd)
+{
+  return get_handle()->enqueue(cmd);
+}
+
+fence
+hw_queue::
+enqueue(xrt_core::command* cmd, const std::vector<fence>& waits)
+{
+  return get_handle()->enqueue(cmd, waits);
 }
 
 // Wait for command completion for unmanaged command execution with timeout
