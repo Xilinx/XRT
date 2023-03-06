@@ -62,7 +62,10 @@ def runKernel(opt):
     xbin = pyxrt.xclbin(opt.bitstreamFile)
     uuid = d.load_xclbin(xbin)
 
-    khandle3 = pyxrt.kernel(d, uuid, "bandwidth3", pyxrt.kernel.shared)
+    try:
+        khandle3 = pyxrt.kernel(d, uuid, "bandwidth3", pyxrt.kernel.shared)
+    except Exception as e:
+        return errno.EOPNOTSUPP
 
     output_bo3, output_buf3 = getInputOutputBuffer(opt.handle, khandle3, 0, False)
     input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
