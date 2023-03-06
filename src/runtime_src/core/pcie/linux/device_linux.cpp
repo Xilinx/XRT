@@ -942,7 +942,7 @@ struct aie_tiles_status_info
 
     // TODO : Add code to get the data and cols filled info
 
-    return {buf, cols_filled};
+    return { .buf = buf, .cols_filled = cols_filled };
   }
 };
 

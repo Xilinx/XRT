@@ -479,7 +479,7 @@ format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, co
               uint32_t cols_filled)
 {
   bpt::ptree pt_array;
-  uint16_t col_count = 0;
+  uint32_t col_count = 0;
 
   for (uint32_t col = 0; col < cols; col++) {
     // check if this col is filled else skip
@@ -575,7 +575,7 @@ format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, co
               uint32_t cols_filled)
 {
   bpt::ptree pt_array;
-  uint16_t col_count = 0;
+  uint32_t col_count = 0;
    
   for (uint32_t col = 0; col < cols; col++) {
     // check if this col is filled else skip
@@ -668,7 +668,7 @@ format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, co
               uint32_t cols_filled)
 {
   bpt::ptree pt_array;
-  uint16_t col_count = 0;
+  uint32_t col_count = 0;
   
   for (uint32_t col = 0; col < cols; col++) {
     // check if this col is filled else skip
