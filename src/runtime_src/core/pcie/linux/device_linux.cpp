@@ -918,7 +918,7 @@ struct aie_tiles_stats
   get(const xrt_core::device* device, key_type key)
   {
     uint32_t size = sizeof(result_type);
-    std::vector<char> buf(size, 0);
+    std::vector<char> buf(size);
 
     // TODO : Add code to get the data
 
@@ -938,11 +938,14 @@ struct aie_tiles_status_info
     uint32_t cols_filled = 0;
     uint32_t buf_size = data.col_size * data.num_cols;
 
-    std::vector<char> buf(buf_size, 0);
+    std::vector<char> buf(buf_size);
 
     // TODO : Add code to get the data and cols filled info
+    result_type output;
+    output.buf = buf;
+    output.cols_filled = cols_filled;
 
-    return { .buf = buf, .cols_filled = cols_filled };
+    return output;
   }
 };
 
