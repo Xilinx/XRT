@@ -12,5 +12,3 @@ echo "verbosity=5" >> /usr/bin/xrt.ini
 echo "runtime_log=syslog" >> /usr/bin/xrt.ini
 echo "enable_aied=false" >> /usr/bin/xrt.ini
 
-# Stop sytemd-journald service to have kernel log sent to /var/log/messages
-systemctl stop systemd-journald
