@@ -165,71 +165,57 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
   ptree_type controller;
 
   try {
-    ptree_type sc;
-    std::string sc_ver = xrt_core::device_query<xq::xmc_sc_version>(device);
-    if (sc_ver.empty()) {
+    std::string sc_ver;
+    std::string exp_sc_ver;
+    std::string version;
+    std::string sn;
+    std::string oid;
+    bool is_versal = xrt_core::device_query<xq::is_versal>(device);
+    if (is_versal) {
       try {
         sc_ver = xrt_core::device_query<xq::hwmon_sdm_active_msp_ver>(device);
-      }
-      catch (const xq::exception&) {
-        // Ignoring if not available
-      }
-    }
-
-    std::string exp_sc_ver = xrt_core::device_query<xq::expected_sc_version>(device);
-    if (exp_sc_ver.empty()) {
-      try {
         exp_sc_ver = xrt_core::device_query<xq::hwmon_sdm_target_msp_ver>(device);
-      }
-      catch (const xq::exception&) {
-        // Ignoring if not available
-      }
-    }
-
-    sc.add("version", sc_ver);
-    sc.add("expected_version", exp_sc_ver);
-
-    ptree_type cmc;
-
-    /*
-     * The card managment controller (CMC) version number is formatted where the bottom three bytes contain
-     * the Major, Minor, and Version values respectively.
-     * Ex:
-     * CMC version = 010203
-     * This implies
-     * 01 -> Major Number
-     * 02 -> Minor Number
-     * 03 -> Version Number
-     * Output = 1.2.3
-     */
-    uint64_t versionValue = std::stoull(xrt_core::device_query<xq::xmc_version>(device), nullptr, 10);
-    std::string version = boost::str(boost::format("%u.%u.%u")
-                          % ((versionValue >> (2 * 8)) & 0xFF) // Major
-                          % ((versionValue >> (1 * 8)) & 0xFF) // Minor
-                          % ((versionValue >> (0 * 8)) & 0xFF)); // Version
-    cmc.add("version", version);
-    std::string sn = xrt_core::device_query<xq::xmc_serial_num>(device);
-    if (sn.empty()) {
-      try {
         sn = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
-      }
-      catch (const xq::exception&) {
-        // Ignoring if not available
-      }
-    }
-    cmc.add("serial_number", sn);
-
-    std::string oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
-    if (boost::iequals(oid, "N/A"))
-      oid.clear();
-    if (oid.empty()) {
-      try {
         oid = xq::oem_id::parse(xrt_core::device_query<xq::hwmon_sdm_oem_id>(device));
       }
       catch (const xq::exception&) {
         // Ignoring if not available
       }
+    } else {
+      try {
+        sc_ver = xrt_core::device_query<xq::xmc_sc_version>(device);
+        exp_sc_ver = xrt_core::device_query<xq::expected_sc_version>(device);
+        /*
+         * The card managment controller (CMC) version number is formatted where the bottom three bytes contain
+         * the Major, Minor, and Version values respectively.
+         * Ex:
+         * CMC version = 010203
+         * This implies
+         * 01 -> Major Number
+         * 02 -> Minor Number
+         * 03 -> Version Number
+         * Output = 1.2.3
+         */
+        uint64_t versionValue;
+        versionValue = std::stoull(xrt_core::device_query<xq::xmc_version>(device), nullptr, 10);
+        version = boost::str(boost::format("%u.%u.%u")
+                  % ((versionValue >> (2 * 8)) & 0xFF) // Major
+                  % ((versionValue >> (1 * 8)) & 0xFF) // Minor
+                  % ((versionValue >> (0 * 8)) & 0xFF)); // Version
+        sn = xrt_core::device_query<xq::xmc_serial_num>(device);
+        oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
+      }
+      catch (const xq::exception&) {
+        // Ignoring if not available
+      }
     }
+
+    ptree_type sc;
+    sc.add("version", sc_ver);
+    sc.add("expected_version", exp_sc_ver);
+    ptree_type cmc;
+    cmc.add("version", version);
+    cmc.add("serial_number", sn);
     cmc.add("oem_id", oid);
 
     controller.put_child("satellite_controller", sc);
