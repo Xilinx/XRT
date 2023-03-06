@@ -50,6 +50,13 @@ namespace xdp {
     // current directory and do not yet support the user specified
     // directory
     fout.open(filename);
+
+    if (useDir) {
+      std::string msg =
+        "The user specified profiling directory is not supported on Windows.";
+      xrt_core::message::send(xrt_core::message::severity_level::info,
+                              "XRT", msg);
+    }
 #else
     directory = xrt_core::config::get_profiling_directory() ;
 
