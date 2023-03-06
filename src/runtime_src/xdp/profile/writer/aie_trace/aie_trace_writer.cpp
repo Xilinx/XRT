@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,10 +15,10 @@
  * under the License.
  */
 
-#include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
+#include "core/common/error.h"
 #include "core/common/message.h"
 
-#include <iostream>
+#include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
 namespace xdp {
 
@@ -54,7 +54,7 @@ namespace xdp {
       }
     } catch (...){
       std::string msg = "Trace File: " + getcurrentFileName() + " not found.";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      xrt_core::send_exception_message(msg);
     }
   }
 

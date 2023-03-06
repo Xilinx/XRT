@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -24,7 +24,7 @@
 #include "core/include/experimental/xrt_profile.h"
 
 #include "core/common/dlfcn.h"
-#include "core/common/message.h"
+#include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 
@@ -148,7 +148,7 @@ xrtURStart(unsigned int id, const char* label, const char* tooltip)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -162,7 +162,7 @@ xrtUREnd(unsigned int id)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -176,7 +176,7 @@ xrtUEMark(const char* label)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -190,7 +190,7 @@ xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
