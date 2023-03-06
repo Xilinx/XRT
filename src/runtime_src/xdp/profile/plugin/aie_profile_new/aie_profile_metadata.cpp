@@ -727,10 +727,11 @@ namespace xdp {
       }
     } // Pass 3 
 
-    // Check validity, set default and remove "off" tiles
+    // Set default, check validity, and remove "off" tiles
+    auto defaultSet = defaultSets[moduleIdx];
     for (auto &e : allValidTiles) {
       if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end())
-        configMetrics[moduleIdx][e] = defaultSets[moduleIdx];
+        configMetrics[moduleIdx][e] = defaultSet;
     }
 
     bool showWarning = true;
@@ -748,11 +749,11 @@ namespace xdp {
         if (showWarning) {
           std::stringstream msg;
           msg << "Unable to find " << moduleNames[moduleIdx] << " metric set " << tileMetric.second
-              << ". Using default of " << defaultSets[moduleIdx] << ".";
+              << ". Using default of " << defaultSet << ".";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
           showWarning = false;
         }
-        tileMetric.second = defaultSets[moduleIdx];
+        tileMetric.second = defaultSet;
       } 
     }
 
@@ -792,7 +793,7 @@ namespace xdp {
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
       if (metrics[i][0].compare("all") != 0)
-       continue;
+        continue;
 
       int16_t channelId = (metrics[i].size() < 3) ? -1 : std::stoi(metrics[i][2]);
       auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId);
@@ -806,7 +807,7 @@ namespace xdp {
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
         continue;
-     
+
       uint32_t maxCol = 0;
       try {
         maxCol = std::stoi(metrics[i][1]);
@@ -878,7 +879,7 @@ namespace xdp {
         }
 
         auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId,
-                                         true, col, col);
+                                        true, col, col);
 
         for (auto &t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
@@ -886,10 +887,7 @@ namespace xdp {
       }
     } // Pass 3 
 
-    // check validity, set default and remove "off" tiles
-    std::vector<tile_type> offTiles;
-    
-    // Default any unspecified to the default metric sets
+    // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[moduleIdx];
     auto totalTiles = get_interface_tiles(device.get(), defaultSet, -1);
     for (auto &e : totalTiles) {
@@ -897,6 +895,9 @@ namespace xdp {
         configMetrics[moduleIdx][e] = defaultSet;
       }
     }
+
+    bool showWarning = true;
+    std::vector<tile_type> offTiles;
 
     for (auto &tileMetric : configMetrics[moduleIdx]) {
       // Save list of "off" tiles
@@ -908,9 +909,12 @@ namespace xdp {
       // Ensure requested metric set is supported (if not, use default)
       auto metricVec = metricStrings[module_type::shim];
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
-        std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
-                          + ". Using default of " + defaultSet + ". ";
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        if (showWarning) {
+          std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
+                            + ". Using default of " + defaultSet + ". ";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          showWarning = false;
+        }
         tileMetric.second = defaultSet;
       }
     }
