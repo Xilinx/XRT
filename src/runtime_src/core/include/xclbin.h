@@ -231,7 +231,7 @@ extern "C" {
 		uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
 		uint64_t m_featureId;       /* 64 bit feature id */
 	    } rom;
-	    unsigned char rom_uuid[16];     /* feature ROM UUID for which this xclbin was generated */
+	    unsigned char m_interface_uuid[16];     /* Interface uuid of this xclbin */
 	};
         unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
 	union {

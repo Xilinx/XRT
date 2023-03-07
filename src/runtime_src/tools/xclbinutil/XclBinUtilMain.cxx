@@ -544,6 +544,9 @@ int main_(int argc, const char** argv) {
     }
   }
 
+  // -- Update Interface uuid in xclbin --
+  xclBin.updateInterfaceuuid();
+
   // -- Write out new xclbin image --
   if (!sOutputFile.empty()) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);

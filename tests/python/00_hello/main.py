@@ -48,7 +48,8 @@ def runTest(opt):
 
 def main(args):
     opt = Options()
-    Options.getOptions(opt, args)
+    b_file= "kernel.xclbin"
+    Options.getOptions(opt, args, b_file)
     opt.first_mem = 0
 
     try:

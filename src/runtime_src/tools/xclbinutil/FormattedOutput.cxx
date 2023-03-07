@@ -125,7 +125,7 @@ std::string
 FormattedOutput::getFeatureRomUuidAsString(const axlf& _xclBinHeader)
 {
   std::string sTemp("");
-  XUtil::binaryBufferToHexString(_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid), sTemp);
+  XUtil::binaryBufferToHexString(_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid), sTemp);
   return sTemp;
 }
 
@@ -580,7 +580,7 @@ reportHardwarePlatform(std::ostream& _ostream,
 
   // Static UUID
   {
-    std::string sStaticUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.rom_uuid);
+    std::string sStaticUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.m_interface_uuid);
     _ostream << boost::format("   %-23s %s\n") % "Static UUID:" % sStaticUUID;
   }
 

@@ -59,6 +59,7 @@ class XclBin {
   void addSection(Section* _pSection);
   void addPsKernel(const std::string &encodedString);
   void addKernels(const std::string &jsonFile);
+  void updateInterfaceuuid();
 
   public:
     // Helper method to take given encoded keyValue and break it down to its individual values (e.g., domain, key, and value)

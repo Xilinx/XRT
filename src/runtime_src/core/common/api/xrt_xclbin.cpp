@@ -795,7 +795,7 @@ class xclbin_full : public xclbin_impl
     m_top = tmp;
 
     m_uuid = uuid(m_top->m_header.uuid);
-    m_intf_uuid = uuid(m_top->m_header.rom_uuid);
+    m_intf_uuid = uuid(m_top->m_header.m_interface_uuid);
 
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);

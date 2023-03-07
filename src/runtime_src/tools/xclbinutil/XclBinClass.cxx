@@ -540,7 +540,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
   auto sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
-  XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+  XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
   auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV,
 
@@ -1229,28 +1229,6 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     pSection->purgeBuffers();
     pSection->readJSONSectionImage(ptPayload);
 
-    if (eKind == PARTITION_METADATA) {
-        // Look for the "partition_metadata" node
-        boost::property_tree::ptree ptPartitionMetadata = ptPayload.get_child("partition_metadata");
-        if (ptPartitionMetadata.empty()) {
-            continue;
-        }
-
-        // Look for the "interfaces" node
-        boost::property_tree::ptree ptInterfaces = ptPartitionMetadata.get_child("interfaces");
-        if (ptInterfaces.empty()) {
-            continue;
-        }
-        
-        // Updated header rom_uuid with interface_uuid from partition_metadata
-        for (const auto& kv : ptInterfaces) {
-            boost::property_tree::ptree ptInterface = kv.second;
-            auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000000000000000000000000000");
-            sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
-            XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
-        }
-    }
-
     XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
     XUtil::QUIET("");
     XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'")
@@ -1542,18 +1520,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
         }
       }
       return; // Key processed
-    }
-
-    if (sKey == "FeatureRomTimestamp") {
-      m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
-      return; // Key processed
-    }
-
-    if (sKey == "FeatureRomUUID") {
-      sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
-      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
-      return; // Key processed
-    }
+    }   
 
     if (sKey == "PlatformVBNV") {
       XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sValue, sizeof(axlf_header::m_platformVBNV));
@@ -1923,8 +1890,48 @@ XclBin::addKernels(const std::string& jsonFile)
   updateKernelSections(kernels, true /*isFixedPS*/, this);
 }
 
+void
+XclBin::updateInterfaceuuid()
+{
+  XUtil::TRACE("Updating Interface uuid in xclbin");
+  // Get the PARTITION_METADATA property tree (if there is one)
+  for (auto pSection : m_sections) {
+    if (pSection->getSectionKind() != PARTITION_METADATA) {
+      continue;
+    }
 
+    // Get the complete JSON metadata tree
+    boost::property_tree::ptree ptRoot;
+    pSection->getPayload(ptRoot);
+    if (ptRoot.empty()) {
+      continue;
+    }
 
+    // Look for the "partition_metadata" node
+    boost::property_tree::ptree ptPartitionMetadata = ptRoot.get_child("partition_metadata");
+    if (ptPartitionMetadata.empty()) {
+      continue;
+    }
 
+    // Look for the "interfaces" node
+    boost::property_tree::ptree ptInterfaces = ptPartitionMetadata.get_child("interfaces");
+    if (ptInterfaces.empty()) {
+      continue;
+    }
 
+    // DRC check for "interfaces"
+    if (m_xclBinHeader.m_header.m_mode == XCLBIN_PR) { // check only for xclbin's, not for xsabin's
+      std::size_t intfCnt = ptPartitionMetadata.count("interfaces");
+      if (intfCnt > 1)
+        throw std::runtime_error("Invalid interfaces found in partition_metadata");
+    }
 
+    // Updating axlf header interface_uuid with interface_uuid from partition_metadata
+    for (const auto& kv : ptInterfaces) {
+      boost::property_tree::ptree ptInterface = kv.second;
+      auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
+      sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
+      XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+    }
+  }
+}

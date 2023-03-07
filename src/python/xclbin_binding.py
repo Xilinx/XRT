@@ -111,7 +111,7 @@ class s1 (ctypes.Structure):
 class u1 (ctypes.Union):
     _fields_ = [
         ("rom", s1),
-        ("rom_uuid", ctypes.c_ubyte*16)
+        ("m_interface_uuid", ctypes.c_ubyte*16)
     ]
 
 class u2 (ctypes.Union):
