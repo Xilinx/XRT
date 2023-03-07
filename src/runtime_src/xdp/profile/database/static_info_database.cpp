@@ -1753,13 +1753,19 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < min_trace_id_aim) {
-      std::stringstream msg;
-      msg << "AIM with incorrect index: " << index ;
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-                              msg.str());
-      index = min_trace_id_aim ;
-    }
+
+    // The current minimum trace ID assigned to AIMs is 0, so this code
+    // currently has no effect and is being marked as incorrect in Coverity.
+    // It should be uncommented if the minimum trace ID assigned in the
+    // hardware ever chagnes.
+
+    //if (index < min_trace_id_aim) {
+    //  std::stringstream msg;
+    //  msg << "AIM with incorrect index: " << index ;
+    //  xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+    //                          msg.str());
+    //  index = min_trace_id_aim ;
+    //}
 
     // Parse name to find CU Name and Memory.  We expect the name in
     //  debug_ip_layout to be in the form of "cu_name/memory_name-port_name"

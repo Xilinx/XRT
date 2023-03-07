@@ -418,11 +418,18 @@ XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& er
 void
 XBUtilities::print_exception(const std::system_error& e)
 {
-  // Remove the type of error from the message.
-  const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
+  try {
+    // Remove the type of error from the message.
+    const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
 
-  if (!msg.empty())
-    std::cerr << boost::format("ERROR: %s\n") % msg;
+    if (!msg.empty())
+      std::cerr << boost::format("ERROR: %s\n") % msg;
+  }
+  catch (const std::exception&)
+  {
+    // exception can occur while formatting message, print normal message
+    std::cerr << e.what() << std::endl;
+  }
 }
 
 std::vector<char>

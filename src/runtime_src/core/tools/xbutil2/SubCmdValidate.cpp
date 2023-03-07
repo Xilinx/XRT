@@ -854,7 +854,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 
   //check if device has aux power connector
   bool auxDevice = false;
-  for (auto bd : auxPwrRequiredDevice) {
+  for (const auto& bd : auxPwrRequiredDevice) {
     if (name.find(bd) != std::string::npos) {
       auxDevice = true;
       break;

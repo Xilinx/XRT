@@ -529,9 +529,8 @@ namespace xdp {
                                              module_type type)
   {
     // Make sure settings are available and appropriate
-    if (metricsSettings.empty() && graphMetricsSettings.empty()) {
+    if (metricsSettings.empty() && graphMetricsSettings.empty())
       return;
-    }
     if ((getHardwareGen() == 1) && (type == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
         "MEM tiles are not available in AIE1. Trace settings will be ignored.");
@@ -835,10 +834,16 @@ namespace xdp {
       }
     } // Pass 3 
 
-    // Check validity and remove "off" tiles
-    std::vector<tile_type> offTiles;
+    // Set default, check validity, and remove "off" tiles
+    auto defaultSet = defaultSets[type];
+    for (auto &e : allValidTiles) {
+      if (configMetrics.find(e) == configMetrics.end())
+        configMetrics[e] = defaultSet;
+    }
 
     bool showWarning = true;
+    std::vector<tile_type> offTiles;
+
     for (auto &tileMetric : configMetrics) {
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
@@ -851,7 +856,6 @@ namespace xdp {
           && (std::find(metricSets.begin(), metricSets.end(), tileMetric.second) == metricSets.end()))
           || ((type == module_type::mem_tile) 
           && (std::find(memTileMetricSets.begin(), memTileMetricSets.end(), tileMetric.second) == memTileMetricSets.end()))) {
-        std::string defaultSet = (type == module_type::mem_tile) ? "input_channels" : "functions";
         if (showWarning) {
           std::stringstream msg;
           msg << "Unable to find AIE trace metric set " << tileMetric.second 
