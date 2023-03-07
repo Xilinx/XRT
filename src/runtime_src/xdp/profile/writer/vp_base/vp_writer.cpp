@@ -51,11 +51,17 @@ namespace xdp {
     // directory
     fout.open(filename);
 
-    if (useDir) {
-      std::string msg =
-        "The user specified profiling directory is not supported on Windows.";
-      xrt_core::message::send(xrt_core::message::severity_level::info,
-                              "XRT", msg);
+    try {
+      if (useDir) {
+        std::string msg =
+          "The user specified profiling directory is not supported on Windows.";
+        xrt_core::message::send(xrt_core::message::severity_level::info,
+                                "XRT", msg);
+      }
+    }
+    catch (...) {
+      // The message sending could throw a boost::property_tree exception.
+      // If we catch it, just ignore it and move on.
     }
 #else
     directory = xrt_core::config::get_profiling_directory() ;
@@ -72,14 +78,20 @@ namespace xdp {
     constexpr mode_t rwx_all = 0777;
     int result = mkdir(directory.c_str(), rwx_all);
 
-    if (result != 0) {
-      // We could not create the directory, but that doesn't necessarily
-      // mean it doesn't exist and we don't have access to it.  Just send
-      // an informational message.
-      std::string msg =
-        "The user specified profiling directory could not be created.";
-      xrt_core::message::send(xrt_core::message::severity_level::info,
-                              "XRT", msg);
+    try {
+      if (result != 0) {
+        // We could not create the directory, but that doesn't necessarily
+        // mean it doesn't exist and we don't have access to it.  Just send
+        // an informational message.
+        std::string msg =
+          "The user specified profiling directory could not be created.";
+        xrt_core::message::send(xrt_core::message::severity_level::info,
+                                "XRT", msg);
+      }
+    }
+    catch (...) {
+      // Sending the message could throw a boost::property_tree exception.
+      // If we catch it, just ignore it and move on
     }
 
     // Try to open the file in the directory + filename
