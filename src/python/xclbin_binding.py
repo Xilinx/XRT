@@ -101,19 +101,7 @@ class axlf_section_header (ctypes.Structure):
         ("m_sectionOffset", ctypes.c_uint64),
         ("m_sectionSize", ctypes.c_uint64)
     ]
-
-class s1 (ctypes.Structure):
-    _fields_ = [
-        ("m_platformId", ctypes.c_uint64),
-        ("m_featureId", ctypes.c_uint64)
-    ]
-
-class u1 (ctypes.Union):
-    _fields_ = [
-        ("rom", s1),
-        ("m_interface_uuid", ctypes.c_ubyte*16)
-    ]
-
+    
 class u2 (ctypes.Union):
     _fields_ = [
         ("m_next_axlf", ctypes.c_char*16),
@@ -121,16 +109,15 @@ class u2 (ctypes.Union):
     ]
 
 class axlf_header (ctypes.Structure):
-    _anonymous_ = ("u1","u2")
     _fields_ = [
         ("m_length", ctypes.c_uint64),
         ("m_timeStamp", ctypes.c_uint64),
-        ("m_featureRomTimeStamp", ctypes.c_uint64),
+        ("m_reserved1", ctypes.c_uint64),
         ("m_versionPatch", ctypes.c_uint16),
         ("m_versionMajor", ctypes.c_uint8),
         ("m_versionMinor", ctypes.c_uint8),
         ("m_mode", ctypes.c_uint32),
-        ("u1", u1),
+        ("m_interface_uuid", ctypes.c_ubyte*16),
         ("m_platformVBNV", ctypes.c_ubyte*64),
         ("u2", u2),
         ("m_debug_bin", ctypes.c_char*16),

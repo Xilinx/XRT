@@ -220,19 +220,13 @@ extern "C" {
     struct axlf_header {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
-        uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
+        uint64_t m_reserved1;               /* Reserved*/
         uint16_t m_versionPatch;            /* Patch Version */
         uint8_t m_versionMajor;             /* Major Version - Version: 2.1.0*/
         uint8_t m_versionMinor;             /* Minor Version */
         uint16_t m_mode;                    /* XCLBIN_MODE */
         uint16_t m_actionMask;              /* Bit Mask */
-	union {
-	    struct {
-		uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
-		uint64_t m_featureId;       /* 64 bit feature id */
-	    } rom;
-	    unsigned char m_interface_uuid[16];     /* Interface uuid of this xclbin */
-	};
+        unsigned char m_interface_uuid[16];     /* Interface uuid of this xclbin */
         unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
 	union {
 	    char m_next_axlf[16];           /* Name of next xclbin file in the daisy chain */

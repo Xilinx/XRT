@@ -38,9 +38,9 @@ FormattedOutput::getTimeStampAsString(const axlf& _xclBinHeader)
 }
 
 std::string
-FormattedOutput::getFeatureRomTimeStampAsString(const axlf& _xclBinHeader)
+FormattedOutput::getReserved1AsString(const axlf& _xclBinHeader)
 {
-  return boost::str(boost::format("%d") % _xclBinHeader.m_header.m_featureRomTimeStamp);
+  return boost::str(boost::format("%d") % _xclBinHeader.m_header.m_reserved1);
 }
 
 std::string
@@ -122,7 +122,7 @@ getModeAsPrettyString(const axlf& _xclBinHeader)
 }
 
 std::string
-FormattedOutput::getFeatureRomUuidAsString(const axlf& _xclBinHeader)
+FormattedOutput::getInterfaceUuidAsString(const axlf& _xclBinHeader)
 {
   std::string sTemp("");
   XUtil::binaryBufferToHexString(_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid), sTemp);
@@ -586,7 +586,7 @@ reportHardwarePlatform(std::ostream& _ostream,
 
   // TimeStamp
   {
-    _ostream << boost::format("   %-23s %ld\n") % "Feature ROM TimeStamp:" % _xclBinHeader.m_header.m_featureRomTimeStamp;
+    _ostream << boost::format("   %-23s %ld\n") % "Feature ROM TimeStamp:" % _xclBinHeader.m_header.m_reserved1;
   }
 
 

@@ -38,14 +38,14 @@ void getKernelDDRMemory(const std::string& _sKernelInstanceName, const std::vect
 void reportVersion(bool _bShort = false);
 
 std::string getTimeStampAsString(const axlf& _xclBinHeader);
-std::string getFeatureRomTimeStampAsString(const axlf& _xclBinHeader);
+std::string getReserved1AsString(const axlf& _xclBinHeader);
 std::string getVersionAsString(const axlf& _xclBinHeader);
 std::string getMagicAsString(const axlf& _xclBinHeader);
 std::string getSignatureLengthAsString(const axlf& _xclBinHeader);
 std::string getKeyBlockAsString(const axlf& _xclBinHeader);
 std::string getUniqueIdAsString(const axlf& _xclBinHeader);
 std::string getModeAsString(const axlf& _xclBinHeader);
-std::string getFeatureRomUuidAsString(const axlf& _xclBinHeader);
+std::string getInterfaceUuidAsString(const axlf& _xclBinHeader);
 std::string getPlatformVbnvAsString(const axlf& _xclBinHeader);
 std::string getXclBinUuidAsString(const axlf& _xclBinHeader);
 std::string getDebugBinAsString(const axlf& _xclBinHeader);

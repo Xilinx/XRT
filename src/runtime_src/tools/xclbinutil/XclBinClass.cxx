@@ -214,10 +214,10 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header)
   // Axlf_header structure
   {
     _pt_header.put("TimeStamp", FormattedOutput::getTimeStampAsString(m_xclBinHeader).c_str());
-    _pt_header.put("FeatureRomTimeStamp", FormattedOutput::getFeatureRomTimeStampAsString(m_xclBinHeader).c_str());
+    _pt_header.put("Reserved1", FormattedOutput::getReserved1AsString(m_xclBinHeader).c_str());
     _pt_header.put("Version", FormattedOutput::getVersionAsString(m_xclBinHeader).c_str());
     _pt_header.put("Mode", FormattedOutput::getModeAsString(m_xclBinHeader).c_str());
-    _pt_header.put("FeatureRomUUID", FormattedOutput::getFeatureRomUuidAsString(m_xclBinHeader).c_str());
+    _pt_header.put("InterfaceUUID", FormattedOutput::getInterfaceUuidAsString(m_xclBinHeader).c_str());
     _pt_header.put("PlatformVBNV", FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader).c_str());
     _pt_header.put("XclBinUUID", FormattedOutput::getXclBinUuidAsString(m_xclBinHeader).c_str());
     _pt_header.put("DebugBin", FormattedOutput::getDebugBinAsString(m_xclBinHeader).c_str());
@@ -530,7 +530,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"), true /*forceHex*/);
 
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
-  _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
+  _axlfHeader.m_header.m_reserved1 = XUtil::stringToUInt64(_ptHeader.get<std::string>("Reserved1"));
   auto sVersion = _ptHeader.get<std::string>("Version");
   getVersionMajorMinorPath(sVersion.c_str(),
                            _axlfHeader.m_header.m_versionMajor,
@@ -539,8 +539,8 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
 
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
-  auto sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
-  XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+  auto sInterfaceUUID = _ptHeader.get<std::string>("InterfaceUUID");
+  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
   auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV,
 
@@ -880,7 +880,7 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     }
 
     // Feature ROM Time Stamp
-    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
+    m_xclBinHeader.m_header.m_reserved1 = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
 
     // Feature ROM VBNV
     auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
@@ -889,8 +889,8 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     // Examine OLD names -- // This code can be removed AFTER v++ has been updated to use the new format
     {
       // Feature ROM Time Stamp
-      if (m_xclBinHeader.m_header.m_featureRomTimeStamp == 0) {
-        m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
+      if (m_xclBinHeader.m_header.m_reserved1 == 0) {
+        m_xclBinHeader.m_header.m_reserved1 = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
       }
 
       // Feature ROM VBNV
@@ -1521,6 +1521,12 @@ XclBin::setKeyValue(const std::string& _keyValue)
       }
       return; // Key processed
     }   
+       
+    if (sKey == "InterfaceUUID") {
+      sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
+      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+      return; // Key processed
+    }
 
     if (sKey == "PlatformVBNV") {
       XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sValue, sizeof(axlf_header::m_platformVBNV));
@@ -1913,18 +1919,18 @@ XclBin::updateInterfaceuuid()
       continue;
     }
 
+    // DRC check for "interfaces"
+    if (m_xclBinHeader.m_header.m_mode == XCLBIN_PR) { // check only for xclbin's, not for xsabin's
+       std::size_t intfCnt = ptPartitionMetadata.count("interfaces");
+       if (intfCnt > 1)
+         throw std::runtime_error("Invalid interfaces found in partition_metadata");
+    }
+
     // Look for the "interfaces" node
     boost::property_tree::ptree ptInterfaces = ptPartitionMetadata.get_child("interfaces");
     if (ptInterfaces.empty()) {
       continue;
-    }
-
-    // DRC check for "interfaces"
-    if (m_xclBinHeader.m_header.m_mode == XCLBIN_PR) { // check only for xclbin's, not for xsabin's
-      std::size_t intfCnt = ptPartitionMetadata.count("interfaces");
-      if (intfCnt > 1)
-        throw std::runtime_error("Invalid interfaces found in partition_metadata");
-    }
+    }  
 
     // Updating axlf header interface_uuid with interface_uuid from partition_metadata
     for (const auto& kv : ptInterfaces) {
