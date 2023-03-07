@@ -112,11 +112,12 @@ class axlf_header (ctypes.Structure):
     _fields_ = [
         ("m_length", ctypes.c_uint64),
         ("m_timeStamp", ctypes.c_uint64),
-        ("m_reserved1", ctypes.c_uint64),
+        ("m_featureRomTimeStamp", ctypes.c_uint64),
         ("m_versionPatch", ctypes.c_uint16),
         ("m_versionMajor", ctypes.c_uint8),
         ("m_versionMinor", ctypes.c_uint8),
         ("m_mode", ctypes.c_uint32),
+        ("m_actionMask", ctypes.c_uint16),
         ("m_interface_uuid", ctypes.c_ubyte*16),
         ("m_platformVBNV", ctypes.c_ubyte*64),
         ("u2", u2),

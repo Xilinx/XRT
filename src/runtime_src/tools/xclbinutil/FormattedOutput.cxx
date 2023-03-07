@@ -38,9 +38,9 @@ FormattedOutput::getTimeStampAsString(const axlf& _xclBinHeader)
 }
 
 std::string
-FormattedOutput::getReserved1AsString(const axlf& _xclBinHeader)
+FormattedOutput::getFeatureRomTimeStampAsString(const axlf& _xclBinHeader)
 {
-  return boost::str(boost::format("%d") % _xclBinHeader.m_header.m_reserved1);
+  return boost::str(boost::format("%d") % _xclBinHeader.m_header.m_featureRomTimeStamp);
 }
 
 std::string
@@ -586,7 +586,7 @@ reportHardwarePlatform(std::ostream& _ostream,
 
   // TimeStamp
   {
-    _ostream << boost::format("   %-23s %ld\n") % "Feature ROM TimeStamp:" % _xclBinHeader.m_header.m_reserved1;
+    _ostream << boost::format("   %-23s %ld\n") % "Feature ROM TimeStamp:" % _xclBinHeader.m_header.m_featureRomTimeStamp;
   }
 
 

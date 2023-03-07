@@ -214,7 +214,7 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header)
   // Axlf_header structure
   {
     _pt_header.put("TimeStamp", FormattedOutput::getTimeStampAsString(m_xclBinHeader).c_str());
-    _pt_header.put("Reserved1", FormattedOutput::getReserved1AsString(m_xclBinHeader).c_str());
+    _pt_header.put("FeatureRomTimeStamp", FormattedOutput::getFeatureRomTimeStampAsString(m_xclBinHeader).c_str());
     _pt_header.put("Version", FormattedOutput::getVersionAsString(m_xclBinHeader).c_str());
     _pt_header.put("Mode", FormattedOutput::getModeAsString(m_xclBinHeader).c_str());
     _pt_header.put("InterfaceUUID", FormattedOutput::getInterfaceUuidAsString(m_xclBinHeader).c_str());
@@ -530,7 +530,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"), true /*forceHex*/);
 
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
-  _axlfHeader.m_header.m_reserved1 = XUtil::stringToUInt64(_ptHeader.get<std::string>("Reserved1"));
+  _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
   auto sVersion = _ptHeader.get<std::string>("Version");
   getVersionMajorMinorPath(sVersion.c_str(),
                            _axlfHeader.m_header.m_versionMajor,
@@ -880,7 +880,7 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     }
 
     // Feature ROM Time Stamp
-    m_xclBinHeader.m_header.m_reserved1 = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
+    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
 
     // Feature ROM VBNV
     auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
@@ -889,8 +889,8 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     // Examine OLD names -- // This code can be removed AFTER v++ has been updated to use the new format
     {
       // Feature ROM Time Stamp
-      if (m_xclBinHeader.m_header.m_reserved1 == 0) {
-        m_xclBinHeader.m_header.m_reserved1 = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
+      if (m_xclBinHeader.m_header.m_featureRomTimeStamp == 0) {
+        m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
       }
 
       // Feature ROM VBNV
@@ -1229,6 +1229,7 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     pSection->purgeBuffers();
     pSection->readJSONSectionImage(ptPayload);
 
+
     XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
     XUtil::QUIET("");
     XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'")
@@ -1521,7 +1522,12 @@ XclBin::setKeyValue(const std::string& _keyValue)
       }
       return; // Key processed
     }   
-       
+
+    if (sKey == "FeatureRomTimestamp") {
+      m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
+      return; // Key processed
+    }
+
     if (sKey == "InterfaceUUID") {
       sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
       XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));

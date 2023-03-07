@@ -38,7 +38,7 @@ void getKernelDDRMemory(const std::string& _sKernelInstanceName, const std::vect
 void reportVersion(bool _bShort = false);
 
 std::string getTimeStampAsString(const axlf& _xclBinHeader);
-std::string getReserved1AsString(const axlf& _xclBinHeader);
+std::string getFeatureRomTimeStampAsString(const axlf& _xclBinHeader);
 std::string getVersionAsString(const axlf& _xclBinHeader);
 std::string getMagicAsString(const axlf& _xclBinHeader);
 std::string getSignatureLengthAsString(const axlf& _xclBinHeader);

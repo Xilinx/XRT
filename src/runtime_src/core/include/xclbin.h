@@ -220,7 +220,7 @@ extern "C" {
     struct axlf_header {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
-        uint64_t m_reserved1;               /* Reserved*/
+        uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
         uint16_t m_versionPatch;            /* Patch Version */
         uint8_t m_versionMajor;             /* Major Version - Version: 2.1.0*/
         uint8_t m_versionMinor;             /* Minor Version */
