@@ -1482,7 +1482,7 @@ namespace xclhwemhal2 {
 
     if (xclemulation::config::getInstance()->isFastNocDDRAccessEnabled())
     {
-      std::cout << "Checking Write Fastmem " << dest << std::endl;
+      // std::cout << "Checking Write Fastmem " << dest << std::endl;
       if (mNocFastAccess.isAddressMapped(dest, size))
       {
         std::cout << "Writing Fastmem " << dest << std::endl;
@@ -1562,7 +1562,7 @@ namespace xclhwemhal2 {
     //Need to be removed when NOC allows transaport_dbg access
     if (xclemulation::config::getInstance()->isFastNocDDRAccessEnabled())
     {
-      std::cout << "Checking Read Fastmem " << src << std::endl;
+      // std::cout << "Checking Read Fastmem " << src << std::endl;
       if (mNocFastAccess.isAddressMapped(src, size))
       {
         mNocFastAccess.read(src, (unsigned char *)dest, size);
