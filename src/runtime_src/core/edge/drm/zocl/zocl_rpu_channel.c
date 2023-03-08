@@ -207,6 +207,7 @@ static int zchan_cmd_log_apu_log(struct zocl_rpu_channel *chan, u32 add_off, u32
 		if (!ret) {
 			pr_err("Can't read from /var/log/messages\n");
 			*total_countp = 0;
+			filp_close(fp, NULL);
 			return -EINVAL;
 		}
 		count = size;
@@ -216,6 +217,7 @@ static int zchan_cmd_log_apu_log(struct zocl_rpu_channel *chan, u32 add_off, u32
 			if (!ret) {
 				pr_err("Can't read from /var/log/messages\n");
 				*total_countp = 0;
+				filp_close(fp, NULL);
 				return -EINVAL;
 			}
 		}
@@ -241,8 +243,8 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	u32 total_count = 0;
 	int ret = 0;
 
-	//	zchan_info(chan, "addr_off 0x%x, size %d, offset %d, pid %d",
-	//		add_off, size, offset, pid);
+	zchan_dbg(chan, "addr_off 0x%x, size %d, offset %d, pid %d",
+		   add_off, size, offset, pid);
 
 	switch (pid) {
 	case XGQ_CMD_LOG_INFO:
@@ -414,7 +416,7 @@ static void zchan_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hd
 	cmd_handler func = opcode2handler(op);
 	struct xgq_com_queue_entry r = {};
 
-	//	zchan_info(chan, "%s received", opcode2name(op));
+	zchan_dbg(chan, "%s received", opcode2name(op));
 	if (func)
 		func(chan, cmd, &r);
 	else
