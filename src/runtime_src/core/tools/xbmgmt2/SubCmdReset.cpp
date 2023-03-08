@@ -67,6 +67,9 @@ reset_device(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::rese
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("reset", 
              "Resets the given device")
+    , m_device("")
+    , m_resetType("hot")
+    , m_help(false)
 {
   const std::string longDescription = "Resets the given device.";
   setLongDescription(longDescription);
@@ -74,6 +77,10 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ;
 }
 
 void
