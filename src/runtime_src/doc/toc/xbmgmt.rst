@@ -60,6 +60,10 @@ Enabling/Disabling DDR memory retention on a device
 
 - The ``--input`` specifies an INI file with the memory configuration.
 - The ``--retention`` option enables / disables DDR memory retention.
+- The ``--clk_throttle`` option enables / disables clock throttling.
+- The ``--ct_threshold_power_override`` option updates the clock throttling power threshold in watts.
+- The ``--ct_threshold_temp_override`` option updates the clock throttling temperature threshold in celsius.
+- The ``--ct_reset`` option resets all clock throttling options.
 
 
 **Example commands** 
@@ -148,6 +152,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
     - ``mailbox``: Mailbox metrics of the device
     - ``mechanical``: Mechanical sensors on and surrounding the device
     - ``platform``: Platform information
+    - ``cmc``: Reports cmc status of the device
 
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
