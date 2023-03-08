@@ -22,8 +22,6 @@
 #include "flasher.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
-#include "core/tools/common/BusyBar.h"
-#include "tools/common/XBUtilitiesCore.h"
 #include <limits>
 #include <cstddef>
 #include <cassert>
@@ -199,12 +197,8 @@ int Flasher::upgradeFirmware(E_FlasherType flash_type,
             std::cout << "ERROR: OSPI XGQ mode does not support reverting to MFG." << std::endl;
         else if(secondary != nullptr)
             std::cout << "ERROR: OSPI XGQ mode does not support two mcs files." << std::endl;
-        else {
-            XBUtilities::BusyBar busy_bar("Working...", std::cout);
-            busy_bar.start(XBUtilities::is_escape_codes_disabled());
+        else
             retVal = xgq_flasher.xclUpgradeFirmware(*primary);
-            busy_bar.finish();
-        }
         break;
     }
     default:
