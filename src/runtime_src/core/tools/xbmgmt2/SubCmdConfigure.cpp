@@ -113,6 +113,10 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
   // Options previously under the config command
   configOptions.add_options()
     ("retention", boost::program_options::value<decltype(m_retention)>(&m_retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
+    ("clk_throttle", boost::program_options::value<decltype(m_clk_throttle)>(&m_clk_throttle), "Enable/disable the device clock throttling")
+    ("ct_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "Update the power threshold in watts")
+    ("ct_threshold_temp_override", boost::program_options::value<decltype(m_temp_override)>(&m_temp_override), "Update the temperature threshold in celsius")
+    ("ct_reset", boost::program_options::value<decltype(m_ct_reset)>(&m_ct_reset), "Reset all throttling options")
   ;
 
   m_commonOptions.add_options()
@@ -128,10 +132,6 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
     ("purge", boost::program_options::bool_switch(&m_purge), "Remove the daemon configuration file")
     ("host", boost::program_options::value<decltype(m_host)>(&m_host), "IP or hostname for device peer")
     ("security", boost::program_options::value<decltype(m_security)>(&m_security), "Update the security level for the device")
-    ("clk_throttle", boost::program_options::value<decltype(m_clk_throttle)>(&m_clk_throttle), "Enable/disable the device clock throttling")
-    ("ct_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "Update the power threshold in watts")
-    ("ct_threshold_temp_override", boost::program_options::value<decltype(m_temp_override)>(&m_temp_override), "Update the temperature threshold in celsius")
-    ("ct_reset", boost::program_options::value<decltype(m_ct_reset)>(&m_ct_reset), "Reset all throttling options")
     ("showx", boost::program_options::bool_switch(&m_showx), "Display the device configuration settings")
   ;
 
