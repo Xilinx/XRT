@@ -23,7 +23,7 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 static void
-pretty_print_action_list(xrt_core::device* device, xrt_core::query::reset_type& reset)
+pretty_print_action_list(const std::shared_ptr<xrt_core::device>& device, const xrt_core::query::reset_type& reset)
 {
   std::cout << "Performing '" << reset.get_name() << "' on " << std::endl;
   std::cout << boost::format("  -[%s]\n") % 
@@ -33,40 +33,42 @@ pretty_print_action_list(xrt_core::device* device, xrt_core::query::reset_type& 
     std::cout << "WARNING: " << reset.get_warning() << std::endl;
 }
 
-static void 
-reset_ecc(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::reset_type& reset)
+static std::string
+get_used_subdev(const std::shared_ptr<xrt_core::device>& dev)
 {
   auto raw_mem = xrt_core::device_query<xrt_core::query::mem_topology_raw>(dev);
   const mem_topology *map = (mem_topology *)raw_mem.data();
-    if(raw_mem.empty() || map->m_count == 0) {
-      std::cout << "WARNING: 'mem_topology' not found, "
-        << "unable to query ECC info. Has the xclbin been loaded? "
-        << "See 'xbmgmt status'." << std::endl;
-      return;
-    }
+  if (raw_mem.empty() || map->m_count == 0)
+    XBU::throw_cancel("'mem_topology' not found, unable to query ECC info. Has the xclbin been loaded? See 'xbmgmt status'.");
 
-    for(int32_t i = 0; i < map->m_count; i++) {
-      if(!map->m_mem_data[i].m_used)
-        continue;
-      reset.set_subdev(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
-      dev->reset(reset);
-    }
+  for(size_t i = 0; i < static_cast<size_t>(map->m_count); i++) {
+    if(!map->m_mem_data[i].m_used)
+      continue;
+
+    return std::string(reinterpret_cast<const char*>(map->m_mem_data[i].m_tag));
+  }
+
+  XBU::throw_cancel("No memory banks are in use. Has the xclbin been loaded?");
+  return std::string();
 }
 
-static void
-reset_device(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::reset_type& reset)
-{  
-  if(reset.get_key() == xrt_core::query::reset_key::ecc)
-    reset_ecc(dev, reset);
-  else
-    dev->reset(reset);
-  std::cout << boost::format("Successfully reset Device[%s]\n")
-    % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+static xrt_core::query::reset_type
+get_reset_type(const std::shared_ptr<xrt_core::device>& dev, const std::string& reset_type)
+{
+  xrt_core::query::reset_type type = XBU::str_to_reset_obj(reset_type);
+
+  if(type.get_key() == xrt_core::query::reset_key::ecc)
+    type.set_subdev(get_used_subdev(dev));
+
+  return type;
 }
 
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("reset", 
              "Resets the given device")
+    , m_device("")
+    , m_resetType("")
+    , m_help(false)
 {
   const std::string longDescription = "Resets the given device.";
   setLongDescription(longDescription);
@@ -119,8 +121,8 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
   
-  xrt_core::query::reset_type type = XBU::str_to_reset_obj(m_resetType);
-  pretty_print_action_list(device.get(), type);
+  const xrt_core::query::reset_type& type = get_reset_type(device, m_resetType);
+  pretty_print_action_list(device, type);
 
   // Ask user for permission
   XBUtilities::sudo_or_throw("Root privileges are required to perform management resets");
@@ -128,5 +130,8 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
 
   //perform reset action
-  reset_device(device, type);
+  device->reset(type);
+
+  std::cout << boost::format("Successfully reset Device[%s]\n")
+    % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
 }

@@ -981,7 +981,7 @@ write(uint64_t offset, const void* buf, uint64_t len) const
 
 void
 device_linux::
-reset(query::reset_type key) const
+reset(const query::reset_type& key) const
 {
   switch(key.get_key()) {
   case query::reset_key::hot:

@@ -20,7 +20,7 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 static void
-pretty_print_action_list(xrt_core::device* dev, xrt_core::query::reset_type reset)
+pretty_print_action_list(xrt_core::device* dev, const xrt_core::query::reset_type& reset)
 {
   std::cout << boost::format("Performing '%s' on '%s'\n") % reset.get_name()
                   % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));

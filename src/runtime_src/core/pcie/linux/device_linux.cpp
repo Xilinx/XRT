@@ -1447,7 +1447,7 @@ write(uint64_t offset, const void* buf, uint64_t len) const
 
 void
 device_linux::
-reset(query::reset_type& key) const
+reset(const query::reset_type& key) const
 {
   std::string err;
   xrt_core::pci::get_dev(get_device_id(), false)->sysfs_put(

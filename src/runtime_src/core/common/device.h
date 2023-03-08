@@ -420,7 +420,7 @@ public:
    */
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
-  virtual void reset(query::reset_type&) const {}
+  virtual void reset(const query::reset_type&) const {}
 
   /**
    * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf

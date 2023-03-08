@@ -56,6 +56,7 @@ OptionOptions::OptionOptions(const std::string& longName,
   , m_isHidden(isHidden)
   , m_description(optionDescription)
   , m_extendedHelp("")
+  , m_defaultOptionValue(false)
 {
   m_selfOption.add_options()(optionNameString().c_str(), optionValue, valueDescription.c_str());
   m_optionsDescription.add(m_selfOption);

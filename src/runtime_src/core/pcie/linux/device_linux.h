@@ -25,7 +25,7 @@ public:
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const override;
   virtual int  open(const std::string& subdev, int flag) const override;
   virtual void close(int dev_handle) const override;
-  virtual void reset(query::reset_type&) const override;
+  virtual void reset(const query::reset_type&) const override;
   virtual void xclmgmt_load_xclbin(const char* buffer) const override;
   virtual void device_shutdown() const override;
   virtual void device_online() const override;
