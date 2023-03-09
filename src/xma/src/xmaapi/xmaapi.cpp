@@ -271,6 +271,7 @@ void xma_thread2(uint32_t hw_dev_index) {
             xclExecWait(dev_handle, 100);
         }
 
+	std::shared_lock<std::shared_timed_mutex> lock(g_xma_singleton->m_mutex);
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
                 break;
@@ -426,7 +427,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     else
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA for KDS 2.0. Default mode.");
     g_xma_singleton->cpu_mode = xrt_core::config::get_xma_cpu_mode();
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode.load());
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     g_xma_singleton->all_thread2.reserve(MAX_XILINX_DEVICES);
