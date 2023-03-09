@@ -358,7 +358,7 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
-    std::lock_guard<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
+    std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (session == NULL) {

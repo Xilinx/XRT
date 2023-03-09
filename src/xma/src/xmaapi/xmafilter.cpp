@@ -259,7 +259,7 @@ xma_filter_session_destroy(XmaFilterSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
-    std::lock_guard<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
+    std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (session == NULL) {
