@@ -454,6 +454,22 @@ struct kds_cu_info
   }
 };
 
+struct hw_context_info
+{
+  using result_type = query::hw_context_info::result_type;
+  using data_type = query::hw_context_info::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    data_type output;
+    output.xclbin_uuid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(device);
+    output.pl_compute_units = xrt_core::device_query<xrt_core::query::kds_cu_info>(device);
+    output.ps_compute_units = xrt_core::device_query<xrt_core::query::kds_scu_info>(device);
+    return {output};
+  }
+};
+
 struct instance
 {
   using result_type = query::instance::result_type;
@@ -1336,6 +1352,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_numcdmas>                       ("", "kds_numcdmas");
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
+  emplace_func0_request<query::hw_context_info,                hw_context_info>();
   emplace_func0_request<query::xclbin_slots, 		       xclbin_slots>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");

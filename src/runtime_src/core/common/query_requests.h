@@ -79,6 +79,7 @@ enum class key_type
   sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
+  hw_context_info,
   xocl_errors,
   xclbin_full,
   ic_enable,
@@ -914,6 +915,23 @@ struct kds_scu_info : request
   using result_type = std::vector<struct data>;
   using data_type = struct data;
   static const key_type key = key_type::kds_scu_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+
+struct hw_context_info : request
+{
+  struct data {
+    std::string xclbin_uuid;
+    kds_cu_info::result_type pl_compute_units;
+    kds_scu_info::result_type ps_compute_units;
+  };
+
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::hw_context_info;
 
   virtual boost::any
   get(const device*) const = 0;

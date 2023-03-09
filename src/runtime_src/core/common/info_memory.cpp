@@ -506,34 +506,14 @@ get_ps_kernels(const xrt_core::device *device)
 }
 
 ptree_type
-populate_cus(const xrt_core::device *device)
+populate_cus(const xrt_core::device *device, std::vector<xq::kds_cu_info::data_type> cu_stats, std::vector<xq::kds_scu_info::data_type> scu_stats)
 {
   scheduler_update_stat(device);
 
+  // Tree that holds all ps and pl objects
   ptree_type pt;
-  using cu_data_type = xq::kds_cu_info::data_type;
-  using scu_data_type = xq::kds_scu_info::data_type;
-  std::vector<cu_data_type> cu_stats;
-  std::vector<scu_data_type> scu_stats;
-  ptree_type ptree;
-  try {
-    std::string uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
-    boost::algorithm::to_upper(uuid);
-    ptree.put("xclbin_uuid", uuid);
-  } catch (xq::exception&) {  }
 
-  try {
-    cu_stats  = xrt_core::device_query<xq::kds_cu_info>(device);
-    scu_stats = xrt_core::device_query<xq::kds_scu_info>(device);
-  }
-  catch (const xq::no_such_key&) {
-    // Ignoring if not available: Edge Case
-  }
-  catch (const std::exception& ex) {
-    ptree.put("error_msg", ex.what());
-    return ptree;
-  }
-
+  // Add all CU objects into tree
   for (auto& stat : cu_stats) {
     ptree_type pt_cu;
     pt_cu.put( "name", stat.name);
@@ -544,14 +524,16 @@ populate_cus(const xrt_core::device *device)
     pt.push_back(std::make_pair("", pt_cu));
   }
 
+  // Collect ps kernel information and correlate it to scu stats
   std::vector<ps_kernel_data> ps_kernels;
   try {
     ps_kernels = get_ps_kernels(device);
   } catch(const xrt_core::error& ex) {
     std::cout << ex.what() <<std::endl;
-    return ptree;
+    return pt;
   }
 
+  // Add all SCU objects into tree
   uint32_t psk_inst = 0;
   uint32_t num_scu = 0;
   ptree_type pscu_list;
@@ -587,9 +569,34 @@ populate_cus(const xrt_core::device *device)
     }
   }
 
-  auto pt_dynamic_regions = xclbin_info(device);
-  pt_dynamic_regions.add_child("compute_units", pt);
-  return pt_dynamic_regions;
+  return pt;
+}
+
+static void
+populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
+{
+  scheduler_update_stat(device);
+
+  std::vector<xq::hw_context_info::data_type> hw_context_stats;
+  ptree_type ptree;
+
+  try {
+    hw_context_stats = xrt_core::device_query<xq::hw_context_info>(device);
+  }
+  catch (const xq::no_such_key&) {
+    // Ignoring if not available: Edge Case
+  }
+  catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return;
+  }
+
+  for (const auto& hw : hw_context_stats) {
+    ptree_type pt_hw;
+    pt_hw.put( "xclbin_uuid", hw.xclbin_uuid);
+    pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
+    pt.push_back(std::make_pair("", pt_hw));
+  }
 }
 
 ptree_type
@@ -597,7 +604,7 @@ dynamic_regions(const xrt_core::device * device)
 {
   ptree_type pt;
   ptree_type pt_dynamic_region;
-  pt_dynamic_region.push_back(std::make_pair("", populate_cus(device)));
+  populate_hardware_context(device, pt_dynamic_region);
   pt.add_child("dynamic_regions", pt_dynamic_region);
   return pt;
 }
