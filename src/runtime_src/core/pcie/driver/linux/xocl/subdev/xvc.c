@@ -172,8 +172,8 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 
 	total_bits = xvc_obj.length;
 	if (total_bits == 0) {
-		pr_info("%s: received invalid obj len %d bits for op 0x%x.\n",
-			total_bits, opcode);
+		pr_err("%s: received invalid obj len %u bits for op 0x%x.\n",
+		       __func__, total_bits, opcode);
 		return -EINVAL;
 	}
 
