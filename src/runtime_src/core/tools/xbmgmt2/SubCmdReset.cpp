@@ -64,6 +64,16 @@ reset_device(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::rese
     % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
 }
 
+void
+supported(std::string resetType) {
+  std::vector<std::string> vec { "hot", "kernel", "ert", "ecc", "soft-kernel", "aie" };
+  std::vector<std::string>::iterator it; 
+  it = std::find (vec.begin(), vec.end(), resetType);
+  if (it == vec.end()) {
+    throw xrt_core::error(-ENODEV, "reset not supported");
+  }
+}
+
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("reset", 
              "Resets the given device")
@@ -81,16 +91,13 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
     ;
-}
-
-void
-supported(std::string resetType) {
-  std::vector<std::string> vec { "hot", "kernel", "ert", "ecc", "soft-kernel", "aie" };
-  std::vector<std::string>::iterator it;
-  it = std::find (vec.begin(), vec.end(), resetType);
-  if (it == vec.end()) {
-    throw xrt_core::error(-ENODEV, "reset not supported");
-  }
+  m_hiddenOptions.add_options()
+    ("type,t", boost::program_options::value<decltype(m_resetType)>(&m_resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
+                                                            "  kernel       - Kernel communication links\n" 
+                                                            "  ert          - Reset management processor\n"
+							    "  ecc          - Reset ecc memory\n"
+							    "  soft-kernel  - Reset soft kernel")
+    ;
 }
 
 void
