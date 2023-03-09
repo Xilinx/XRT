@@ -454,22 +454,6 @@ struct kds_cu_info
   }
 };
 
-struct hw_context_info
-{
-  using result_type = query::hw_context_info::result_type;
-  using data_type = query::hw_context_info::data_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    data_type output;
-    output.xclbin_uuid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(device);
-    output.pl_compute_units = xrt_core::device_query<xrt_core::query::kds_cu_info>(device);
-    output.ps_compute_units = xrt_core::device_query<xrt_core::query::kds_scu_info>(device);
-    return {output};
-  }
-};
-
 struct instance
 {
   using result_type = query::instance::result_type;
