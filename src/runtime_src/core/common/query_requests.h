@@ -920,9 +920,24 @@ struct kds_scu_info : request
   get(const device*) const = 0;
 };
 
-
+/**
+ * Return all hardware contexts within a device
+ */
 struct hw_context_info : request
 {
+  /**
+   * A structure to represent a single hardware context on any device type. This
+   * structure must contain all data that makes up a hardware context across
+   * all device types.
+   * 
+   * The only field that must be populated is the xclbin uuid.
+   * All other fields can be populated as required by the appropriate device.
+   * As new compute types are created they must be accounted for here
+   * 
+   * For example:
+   *  Alveo -> populate only the PL compute units
+   *  Versal -> populate PL and PS compute units
+   */
   struct data {
     std::string xclbin_uuid;
     kds_cu_info::result_type pl_compute_units;
