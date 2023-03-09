@@ -50,6 +50,29 @@ Enabling/Disabling DDR memory retention on a device
 
     xbmgmt configure [--device| -d] <management bdf> --retention [ENABLE|DISABLE]
 
+Enabling/Disabling clock throttling on a device
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --clk_throttle [true|false]
+
+Updating the clock throttling power threshold
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --ct_threshold_power_override <threshold in Watts>
+
+Updating the clock throttling temperature threshold
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --ct_threshold_temp_override <threshold in Celsius>
+
+Resetting all clock throttling options
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --ct_reset [true|false]
 
 **The details of the supported options**
 
@@ -77,6 +100,9 @@ Enabling/Disabling DDR memory retention on a device
     
     #Enable a device's DDR memory retention 
     xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
+
+    #Enable clock throttling on a supported device
+    xbmgmt configure --device 0000:b3:00.0 --clk_throttle true
 
 
 xbmgmt dump
