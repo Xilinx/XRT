@@ -918,7 +918,7 @@ struct aie_tiles_stats
   get(const xrt_core::device* device, key_type key)
   {
     uint32_t size = sizeof(result_type);
-    std::vector<char> buf(size, 0);
+    std::vector<char> buf(size);
 
     // TODO : Add code to get the data
 
@@ -929,18 +929,23 @@ struct aie_tiles_stats
 // structure to get aie tiles status raw buffer
 struct aie_tiles_status_info
 {
-  using result_type = boost::any;
+  using result_type = xrt_core::query::aie_tiles_status_info::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& param)
   {
     auto data = boost::any_cast<xrt_core::query::aie_tiles_status_info::parameters>(param);
+    uint32_t cols_filled = 0;
+    uint32_t buf_size = data.col_size * data.num_cols;
 
-    std::vector<char> buf(data.col_size * data.num_cols, 0);
+    std::vector<char> buf(buf_size);
 
-    // TODO : Add code to get the data
+    // TODO : Add code to get the data and cols filled info
+    result_type output;
+    output.buf = buf;
+    output.cols_filled = cols_filled;
 
-    return buf;
+    return output;
   }
 };
 
