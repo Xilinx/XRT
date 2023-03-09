@@ -1485,7 +1485,6 @@ namespace xclhwemhal2 {
       // std::cout << "Checking Write Fastmem " << dest << std::endl;
       if (mNocFastAccess.isAddressMapped(dest, size))
       {
-        std::cout << "Writing Fastmem " << dest << std::endl;
         mNocFastAccess.write(dest, (unsigned char *)src, size);
         dMsg = "INFO: [HW-EMU 02-1] Copying buffer from host to device ended";
         logMessage(dMsg, 1);
@@ -1566,7 +1565,6 @@ namespace xclhwemhal2 {
       if (mNocFastAccess.isAddressMapped(src, size))
       {
         mNocFastAccess.read(src, (unsigned char *)dest, size);
-        std::cout << "Reading Fastmem " << src << std::endl;
         dMsg = "INFO: [HW-EMU 05-1] Copying buffer from device to host ended";
         logMessage(dMsg, 1);
         PRINTENDFUNC;
