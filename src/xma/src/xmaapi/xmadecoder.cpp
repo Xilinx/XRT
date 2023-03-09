@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023, Advanced Micro Devices, Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -204,7 +205,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     }
 
     //Obtain lock only for a) singleton changes & b) kernel_info changes
-    std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
+    std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (!kernel_info->soft_kernel && !kernel_info->in_use && !kernel_info->context_opened) {
@@ -258,7 +259,7 @@ xma_dec_session_destroy(XmaDecoderSession *session)
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
 
-    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
+    std::lock_guard<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (session == NULL) {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023, Advanced Micro Devices, Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -53,7 +54,7 @@ int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_
         expected = false;
     }
 */
-    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
+    std::shared_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (cu_index < 0) {
@@ -108,7 +109,7 @@ void xma_thread1() {
             //bool desired = true;
             XmaHwSessionPrivate *slowest_session = nullptr;
             uint32_t session_cmd_busiest_val = 0;
-            std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
+            std::shared_lock<std::shared_timed_mutex> lock(g_xma_singleton->m_mutex);
 
             for (auto& itr1: g_xma_singleton->all_sessions_vec) {
                 if (g_xma_singleton->xma_exit) {
@@ -211,7 +212,7 @@ void xma_thread1() {
         }
     }
     //Print all stats here
-    std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
+    std::shared_lock<std::shared_timed_mutex> lock(g_xma_singleton->m_mutex);
 
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "=== Session CU Command Relative Stats: ===");
     for (auto& itr1: g_xma_singleton->all_sessions_vec) {
@@ -331,7 +332,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
+    std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (g_xma_singleton->xma_initialized) {

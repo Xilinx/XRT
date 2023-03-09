@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023, Advanced Micro Devices, Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -25,6 +26,7 @@
 #include <unordered_map>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
 #include <future>
 #include <chrono>
 
@@ -44,7 +46,7 @@ typedef struct XmaSingleton
     bool              xma_initialized;
     bool              kds_old;
     std::atomic<uint32_t> cpu_mode;
-    std::mutex            m_mutex;
+    std::shared_timed_mutex m_mutex;
     std::atomic<uint32_t> num_decoders;
     std::atomic<uint32_t> num_encoders;
     std::atomic<uint32_t> num_scalers;

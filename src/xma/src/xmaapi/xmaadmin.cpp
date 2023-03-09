@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023, Advanced Micro Devices, Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -178,7 +179,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     }
 
     //Obtain lock only for a) singleton changes & b) kernel_info changes
-    std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
+    std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     session->base.session_id = g_xma_singleton->num_of_sessions + 1;
@@ -214,7 +215,7 @@ xma_admin_session_destroy(XmaAdminSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ADMIN_MOD, "%s()\n", __func__);
-    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
+    std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (session == NULL) {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023, Advanced Micro Devices, Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -736,7 +737,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     
         if (!kernel_tmp1->soft_kernel && !kernel_tmp1->in_use && !kernel_tmp1->context_opened) {
 	    //Obtain lock only for a) singleton changes & b) kernel_info changes
-            std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
+            std::unique_lock<std::shared_timed_mutex> guard1(g_xma_singleton->m_mutex);
             //Singleton lock acquired
 
             if (xclOpenContext(dev_tmp1->handle, dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true) != 0) {
