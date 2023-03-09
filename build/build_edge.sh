@@ -250,7 +250,7 @@ XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
 apu_package=0
 archiver=0
-gen_sysroot=1
+gen_sysroot=0
 SSTATE_CACHE=""
 SETTINGS_FILE="${THIS_SCRIPT_DIR}/petalinux.build"
 while [ $# -gt 0 ]; do
