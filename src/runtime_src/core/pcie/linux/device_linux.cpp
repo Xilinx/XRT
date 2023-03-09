@@ -1336,7 +1336,6 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_numcdmas>                       ("", "kds_numcdmas");
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
-  emplace_func0_request<query::hw_context_info,                hw_context_info>();
   emplace_func0_request<query::xclbin_slots, 		       xclbin_slots>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
