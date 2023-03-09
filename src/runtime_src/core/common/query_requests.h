@@ -1372,7 +1372,13 @@ struct aie_tiles_status_info : request
     uint16_t num_cols;
   };
 
-  using result_type = std::vector<char>;
+  struct result
+  {
+    std::vector<char> buf;
+    uint32_t cols_filled;
+  };
+
+  using result_type = result;
   static const key_type key = key_type::aie_tiles_status_info;
 
   virtual boost::any

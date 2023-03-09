@@ -572,7 +572,8 @@ extern "C" {
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) == 96, "cdo_group structure no longer is 96 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) % sizeof(uint64_t) == 0, "cdo_group structure needs to be 64-bit word aligned");
 
-
+    // 32KB per tile, 64 rows * 64 columns
+    #define PDI_IMAGE_MAX_SIZE 32*1024*64*64
     struct aie_pdi {
         xuid_t uuid;                        // PDI container UUID (16 bytes)
         struct array_offset pdi_image;      // PDI Image (uint8_t)
