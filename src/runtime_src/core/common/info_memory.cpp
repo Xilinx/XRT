@@ -572,9 +572,10 @@ populate_cus(const xrt_core::device *device, std::vector<xq::kds_cu_info::data_t
   return pt;
 }
 
-static void
-populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
+static ptree_type
+populate_hardware_context(const xrt_core::device *device)
 {
+  ptree_type pt;
   scheduler_update_stat(device);
 
   std::vector<xq::hw_context_info::data_type> hw_context_stats;
@@ -589,7 +590,7 @@ populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
-    return;
+    return pt;
   }
 
   // If hw context info gave nothing try legacy path
@@ -613,7 +614,7 @@ populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
     }
     catch (const std::exception& ex) {
       pt.put("error_msg", ex.what());
-      return;
+      return pt;
     }
 
     hw_context_stats.push_back(hw_context);
@@ -625,15 +626,14 @@ populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }
+  return pt;
 }
 
 ptree_type
 dynamic_regions(const xrt_core::device * device)
 {
   ptree_type pt;
-  ptree_type pt_dynamic_region;
-  populate_hardware_context(device, pt_dynamic_region);
-  pt.add_child("dynamic_regions", pt_dynamic_region);
+  pt.add_child("dynamic_regions", populate_hardware_context(device));
   return pt;
 }
 
