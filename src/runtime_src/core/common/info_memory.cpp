@@ -580,6 +580,7 @@ populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
   std::vector<xq::hw_context_info::data_type> hw_context_stats;
   ptree_type ptree;
 
+  // Get HW context info
   try {
     hw_context_stats = xrt_core::device_query<xq::hw_context_info>(device);
   }
@@ -591,9 +592,36 @@ populate_hardware_context(const xrt_core::device *device, ptree_type& pt)
     return;
   }
 
+  // If hw context info gave nothing try legacy path
+  // Legacy path will only give one hw context
+  if (hw_context_stats.empty()) {
+    xq::hw_context_info::data_type hw_context;
+
+    try {
+      hw_context.xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
+    }
+    catch (const xq::exception&) {
+      // Support noop devices
+    }
+
+    try {
+      hw_context.pl_compute_units = xrt_core::device_query<xq::kds_cu_info>(device);
+      hw_context.ps_compute_units = xrt_core::device_query<xq::kds_scu_info>(device);
+    }
+    catch (const xq::no_such_key&) {
+      // Ignoring if not available
+    }
+    catch (const std::exception& ex) {
+      pt.put("error_msg", ex.what());
+      return;
+    }
+
+    hw_context_stats.push_back(hw_context);
+  }
+
   for (const auto& hw : hw_context_stats) {
     ptree_type pt_hw;
-    pt_hw.put( "xclbin_uuid", hw.xclbin_uuid);
+    pt_hw.put( "xclbin_uuid", boost::algorithm::to_upper_copy(hw.xclbin_uuid));
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }
