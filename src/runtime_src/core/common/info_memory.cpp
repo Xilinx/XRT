@@ -399,7 +399,7 @@ memory_topology(const xrt_core::device* device)
 }
 
 ptree_type
-xclbin_info(const xrt_core::device * device)
+xclbin_info(const xrt_core::device* device)
 {
   ptree_type pt;
 
@@ -461,7 +461,7 @@ get_cu_status(uint32_t cu_status)
 }
 
 static void
-scheduler_update_stat(const xrt_core::device *device)
+scheduler_update_stat(const xrt_core::device* device)
 {
   // device query and open_context requires a non-cont raw device ptr
   auto dev = const_cast<xrt_core::device *>(device);
@@ -484,7 +484,7 @@ scheduler_update_stat(const xrt_core::device *device)
 }
 
 std::vector<ps_kernel_data> 
-get_ps_kernels(const xrt_core::device *device)
+get_ps_kernels(const xrt_core::device* device)
 {
   std::vector<ps_kernel_data> ps_kernels;
   try {
@@ -506,7 +506,7 @@ get_ps_kernels(const xrt_core::device *device)
 }
 
 ptree_type
-populate_cus(const xrt_core::device *device, std::vector<xq::kds_cu_info::data_type> cu_stats, std::vector<xq::kds_scu_info::data_type> scu_stats)
+populate_cus(const xrt_core::device* device, const std::vector<xq::kds_cu_info::data_type>& cu_stats, const std::vector<xq::kds_scu_info::data_type>& scu_stats)
 {
   scheduler_update_stat(device);
 
@@ -573,7 +573,7 @@ populate_cus(const xrt_core::device *device, std::vector<xq::kds_cu_info::data_t
 }
 
 static ptree_type
-populate_hardware_context(const xrt_core::device *device)
+populate_hardware_context(const xrt_core::device* device)
 {
   ptree_type pt;
   scheduler_update_stat(device);
@@ -630,7 +630,7 @@ populate_hardware_context(const xrt_core::device *device)
 }
 
 ptree_type
-dynamic_regions(const xrt_core::device * device)
+dynamic_regions(const xrt_core::device* device)
 {
   ptree_type pt;
   pt.add_child("dynamic_regions", populate_hardware_context(device));
