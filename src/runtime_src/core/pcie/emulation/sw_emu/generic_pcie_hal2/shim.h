@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _SW_EMU_SHIM_H_
 #define _SW_EMU_SHIM_H_
 
@@ -25,6 +25,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/query_requests.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
@@ -95,7 +96,7 @@ namespace xclswemuhal2
         return nullptr;
       }
 
-      xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+      xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
       alloc_bo(void* userptr, size_t size, unsigned int flags) override
       {
         // The hwctx is embedded in the flags, use regular shim path
@@ -106,7 +107,7 @@ namespace xclswemuhal2
         return to_xrt_buffer_handle(bo);
       }
 
-      xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+      xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
       alloc_bo(size_t size, unsigned int flags) override
       {
         // The hwctx is embedded in the flags, use regular shim path
@@ -130,7 +131,7 @@ namespace xclswemuhal2
       }
 
       void
-      exec_buf(xrt_buffer_handle cmd) override
+      exec_buf(xrt_core::buffer_handle* cmd) override
       {
         m_shim->xclExecBuf(to_xclBufferHandle(cmd));
       }

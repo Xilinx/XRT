@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2019 Samsung Semiconductor, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
@@ -19,6 +19,7 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/AlignedAllocator.h"
 #include "core/common/api/hw_context_int.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
@@ -94,7 +95,7 @@ struct shim
       return nullptr;
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
     alloc_bo(void* userptr, size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
@@ -105,7 +106,7 @@ struct shim
       return to_xrt_buffer_handle(bo);
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
     alloc_bo(size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
@@ -129,7 +130,7 @@ struct shim
     }
 
     void
-    exec_buf(xrt_buffer_handle cmd) override
+    exec_buf(xrt_core::buffer_handle* cmd) override
     {
       m_shim->exec_buf(to_xclBufferHandle(cmd));
     }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements a dummy (no-op) shim level driver that is
 // used exclusively for debugging user space XRT with HW xclbins
@@ -19,6 +19,7 @@
 #include "core/common/system.h"
 #include "core/common/task.h"
 #include "core/common/thread.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/common/api/hw_context_int.h"
@@ -415,7 +416,7 @@ public:
       return nullptr;
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
     alloc_bo(void* userptr, size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
@@ -426,7 +427,7 @@ public:
       return to_xrt_buffer_handle(bo);
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
     alloc_bo(size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
@@ -450,7 +451,7 @@ public:
     }
 
     void
-    exec_buf(xrt_buffer_handle cmd) override
+    exec_buf(xrt_core::buffer_handle* cmd) override
     {
       m_shim->exec_buf(to_xclBufferHandle(cmd));
     }

@@ -6,6 +6,7 @@
 
 #include "core/common/device.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/buffer_handle.h"
 #include "xrt.h"
 #include "ert.h"
 
@@ -56,7 +57,7 @@ public:
   /**
    * get_exec_bo() - get BO handle of command buffer
    */
-  virtual xrt_buffer_handle
+  virtual buffer_handle*
   get_exec_bo() const = 0;
 
   /**

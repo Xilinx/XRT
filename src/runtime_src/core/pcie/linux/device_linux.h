@@ -6,6 +6,7 @@
 #define PCIE_DEVICE_LINUX_H
 
 #include "core/common/ishim.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/pcie/common/device_pcie.h"
 
@@ -57,7 +58,7 @@ public:
   std::cv_status
   wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
-  xrt_buffer_handle
+  buffer_handle*
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
   std::unique_ptr<hwctx_handle>

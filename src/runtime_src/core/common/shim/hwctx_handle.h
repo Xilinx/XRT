@@ -48,11 +48,11 @@ public:
   create_hw_queue() = 0;
 
   // Context specific buffer allocation
-  virtual xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+  virtual buffer_handle* // tobe: std::unique_ptr<buffer_handle>
   alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
 
   // Context specific buffer allocation
-  virtual xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+  virtual buffer_handle* // tobe: std::unique_ptr<buffer_handle>
   alloc_bo(size_t size, unsigned int flags) = 0;
 
   // Legacy XRT may require special handling when opening a context on
@@ -72,7 +72,7 @@ public:
   // Execution of command objects when the shim does not support
   // hardware queues
   virtual void
-  exec_buf(xrt_buffer_handle cmd) = 0;
+  exec_buf(buffer_handle* cmd) = 0;
 };
 
 } // xrt_core

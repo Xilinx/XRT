@@ -8,6 +8,7 @@
 
 #include "core/common/utils.h"
 #include "core/common/query_requests.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/include/ert.h"
 #include "core/tools/common/BusyBar.h"
 #include "core/pcie/common/dmatest.h"
@@ -396,7 +397,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
  * helper function for M2M and P2P test
  */
 static void
-free_unmap_bo(const std::shared_ptr<xrt_core::device>& handle, xrt_buffer_handle boh, void * boptr, size_t bo_size)
+free_unmap_bo(const std::shared_ptr<xrt_core::device>& handle, xrt_core::buffer_handle* boh, void * boptr, size_t bo_size)
 {
 #ifdef __linux__
   if (boptr != nullptr)
@@ -575,7 +576,7 @@ p2ptest_bank(xrt_core::device* device, boost::property_tree::ptree& _ptTest, con
  * helper function for M2M test
  */
 static int
-m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, xrt_buffer_handle &boh,
+m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, xrt_core::buffer_handle* &boh,
                    char * &boptr, size_t bo_size, int bank, char pattern)
 {
   boh = handle->alloc_bo(bo_size, bank);
@@ -612,8 +613,8 @@ m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::proper
 static double
 m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
-  xrt_buffer_handle bo_src = XRT_INVALID_BUFFER_HANDLE;
-  xrt_buffer_handle bo_tgt = XRT_INVALID_BUFFER_HANDLE;
+  xrt_core::buffer_handle* bo_src = XRT_INVALID_BUFFER_HANDLE;
+  xrt_core::buffer_handle* bo_tgt = XRT_INVALID_BUFFER_HANDLE;
   char *bo_src_ptr = nullptr;
   char *bo_tgt_ptr = nullptr;
   double bandwidth = 0;

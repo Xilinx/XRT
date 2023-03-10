@@ -26,6 +26,8 @@
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
+#include "core/common/shim/buffer_handle.h"
+
 #include <cstdlib>
 #include <map>
 #include <set>
@@ -187,7 +189,7 @@ public:
   static constexpr uint32_t no_group = std::numeric_limits<uint32_t>::max();
   static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
   // ptr cannot be const expor
-  //static constexpr xrt_buffer_handle null_bo = XRT_INVALID_BUFFER_HANDLE;
+  //static constexpr buffer_handle* null_bo = XRT_INVALID_BUFFER_HANDLE;
   static constexpr xclBufferExportHandle null_export = XRT_NULL_BO_EXPORT;
 
 private:
@@ -205,7 +207,7 @@ protected:
   // deliberately made protected, this is a file-scoped controlled API
   device_type device;                           // NOLINT device where bo is allocated
   std::vector<std::shared_ptr<bo_impl>> clones; // NOLINT local m2m clones if any
-  xrt_buffer_handle handle = XRT_INVALID_BUFFER_HANDLE; // NOLINT driver bo handle
+  xrt_core::buffer_handle* handle = XRT_INVALID_BUFFER_HANDLE; // NOLINT driver bo handle
   size_t size = 0;                              // NOLINT size of buffer
   mutable uint64_t addr = no_addr;              // NOLINT bo device address
   mutable uint32_t grpid = no_group;            // NOLINT memory group index
@@ -220,7 +222,7 @@ public:
     , free_bo(false)
   {}
 
-  bo_impl(device_type dev, xrt_buffer_handle bhdl, size_t sz)
+  bo_impl(device_type dev, xrt_core::buffer_handle* bhdl, size_t sz)
     : device(std::move(dev))
     , handle(bhdl)
     , size(sz)
@@ -294,7 +296,7 @@ public:
     clones.push_back(std::move(clone));
   }
 
-  xrt_buffer_handle
+  xrt_core::buffer_handle*
   get_xcl_handle() const
   {
     return handle;
@@ -622,7 +624,7 @@ class buffer_ubuf : public bo_impl
   void* ubuf;
 
 public:
-  buffer_ubuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz, void* buf)
+  buffer_ubuf(const device_type& dev, xrt_core::buffer_handle* bhdl, size_t sz, void* buf)
     : bo_impl(dev, bhdl, sz)
     , ubuf(buf)
   {}
@@ -644,7 +646,7 @@ class buffer_hbuf : public bo_impl
   xrt_core::aligned_ptr_type hbuf;
 
 public:
-  buffer_hbuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz, xrt_core::aligned_ptr_type&& b)
+  buffer_hbuf(const device_type& dev, xrt_core::buffer_handle* bhdl, size_t sz, xrt_core::aligned_ptr_type&& b)
     : bo_impl(dev, bhdl, sz)
     , hbuf(std::move(b))
   {}
@@ -665,7 +667,7 @@ class buffer_kbuf : public bo_impl
   void* hbuf;
 
 public:
-  buffer_kbuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz)
+  buffer_kbuf(const device_type& dev, xrt_core::buffer_handle* bhdl, size_t sz)
     : bo_impl(dev, bhdl, sz), hbuf(device->map_bo(handle, true))
   {}
 
@@ -773,7 +775,7 @@ public:
 class buffer_dbuf : public bo_impl
 {
 public:
-  buffer_dbuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz)
+  buffer_dbuf(const device_type& dev, xrt_core::buffer_handle* bhdl, size_t sz)
     : bo_impl(dev, bhdl, sz)
   {}
 
@@ -815,7 +817,7 @@ class buffer_nodma : public bo_impl
   }
 
 public:
-  buffer_nodma(const device_type& dev, xrt_buffer_handle hbuf, xrt_buffer_handle dbuf, size_t sz)
+  buffer_nodma(const device_type& dev, xrt_core::buffer_handle* hbuf, xrt_core::buffer_handle* dbuf, size_t sz)
     : bo_impl(sz)
     , m_host_only(dev, hbuf, sz)
     , m_device_only(dev, dbuf, sz)
@@ -959,7 +961,7 @@ public:
 class buffer_clone : public bo_impl
 {
 public:
-  buffer_clone(const device_type& dev, const std::shared_ptr<bo_impl>& src, xrt_buffer_handle clone, size_t sz)
+  buffer_clone(const device_type& dev, const std::shared_ptr<bo_impl>& src, xrt_core::buffer_handle* clone, size_t sz)
     : bo_impl(dev, clone, sz)
   {
     // copy src to clone
@@ -984,7 +986,7 @@ get_boh(xrtBufferHandle bhdl)
   return bo_cache.get_or_error(bhdl);
 }
 
-static xrt_buffer_handle
+static xrt_core::buffer_handle*
 alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
@@ -994,7 +996,7 @@ alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags fla
     : device->alloc_bo(userptr, sz, flags);
 }
 
-static xrt_buffer_handle
+static xrt_core::buffer_handle*
 alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;

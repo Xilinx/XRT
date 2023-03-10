@@ -16,6 +16,7 @@
 #include "core/common/error.h"
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/common/shim/buffer_handle.h"
 
 #include <boost/format.hpp>
 
@@ -41,7 +42,7 @@ namespace xcldev {
         // DMARunner now uses xclAllocUserPtrBO() to allocate buffers. This reduces memory pressure on
         // Linux kernel which other wise tries very hard inside xocl to allocate and pin pages when
         // xlcAllocBO() is used may oops.
-        using buffer_and_deleter = std::pair<xrt_buffer_handle, xrt_core::aligned_ptr_type>;
+        using buffer_and_deleter = std::pair<xrt_core::buffer_handle*, xrt_core::aligned_ptr_type>;
         std::vector<buffer_and_deleter> mBOList;
         std::shared_ptr<xrt_core::device> mHandle;
         size_t mSize;

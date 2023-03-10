@@ -1610,7 +1610,7 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
   throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
-xrt_buffer_handle
+buffer_handle*
 device_linux::
 import_bo(pid_t pid, xclBufferExportHandle ehdl)
 {

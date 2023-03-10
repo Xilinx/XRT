@@ -3,8 +3,6 @@
 #ifndef XRT_CORE_BUFFER_HANDLE_H
 #define XRT_CORE_BUFFER_HANDLE_H
 
-#include "xrt.h"  // for xrt_buffer_handle
-
 namespace xrt_core {
 
 // To be converted into a class

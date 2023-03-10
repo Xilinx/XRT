@@ -56,19 +56,19 @@ struct ishim
   virtual void
   close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) = 0;
 
-  virtual xrt_buffer_handle
+  virtual buffer_handle*
   alloc_bo(size_t size, unsigned int flags) = 0;
 
-  virtual xrt_buffer_handle
+  virtual buffer_handle*
   alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
 
   virtual void
-  free_bo(xrt_buffer_handle boh) = 0;
+  free_bo(buffer_handle* boh) = 0;
 
   virtual xclBufferExportHandle
-  export_bo(xrt_buffer_handle boh) const = 0;
+  export_bo(buffer_handle* boh) const = 0;
 
-  virtual xrt_buffer_handle
+  virtual buffer_handle*
   import_bo(xclBufferExportHandle ehdl) = 0;
 
   virtual void
@@ -76,24 +76,24 @@ struct ishim
 
   // Import an exported BO from another process identified by argument pid.
   // This function is only supported on systems with pidfd kernel support
-  virtual xrt_buffer_handle
+  virtual buffer_handle*
   import_bo(pid_t, xclBufferExportHandle)
   { throw not_supported_error{__func__}; }
 
   virtual void
-  copy_bo(xrt_buffer_handle dst, xrt_buffer_handle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
+  copy_bo(buffer_handle* dst, buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) = 0;
 
   virtual void
-  sync_bo(xrt_buffer_handle bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+  sync_bo(buffer_handle* bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
 
   virtual void*
-  map_bo(xrt_buffer_handle boh, bool write) = 0;
+  map_bo(buffer_handle* boh, bool write) = 0;
 
   virtual void
-  unmap_bo(xrt_buffer_handle boh, void* addr) = 0;
+  unmap_bo(buffer_handle* boh, void* addr) = 0;
 
   virtual void
-  get_bo_properties(xrt_buffer_handle boh, struct xclBOProperties *properties) const = 0;
+  get_bo_properties(buffer_handle* boh, struct xclBOProperties *properties) const = 0;
 
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
@@ -114,7 +114,7 @@ struct ishim
   unmgd_pwrite(const void* buffer, size_t size, uint64_t offset) = 0;
 
   virtual void
-  exec_buf(xrt_buffer_handle boh) = 0;
+  exec_buf(buffer_handle* boh) = 0;
 
   virtual int
   exec_wait(int timeout_ms) const = 0;
@@ -294,7 +294,7 @@ struct shim : public DeviceType
       throw system_error(ret, "failed to close ip context");
   }
 
-  xrt_buffer_handle
+  buffer_handle*
   alloc_bo(size_t size, unsigned int flags) override
   {
     auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags);
@@ -304,7 +304,7 @@ struct shim : public DeviceType
     return to_xrt_buffer_handle(bo);
   }
 
-  xrt_buffer_handle
+  buffer_handle*
   alloc_bo(void* userptr, size_t size, unsigned int flags) override
   {
     auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags);
@@ -315,13 +315,13 @@ struct shim : public DeviceType
   }
 
   void
-  free_bo(xrt_buffer_handle bo) override
+  free_bo(buffer_handle* bo) override
   {
     xclFreeBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo));
   }
 
   xclBufferExportHandle
-  export_bo(xrt_buffer_handle bo) const override
+  export_bo(buffer_handle* bo) const override
   {
     auto ehdl = xclExportBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo));
     if (ehdl == XRT_NULL_BO_EXPORT)
@@ -331,7 +331,7 @@ struct shim : public DeviceType
     return ehdl;
   }
 
-  xrt_buffer_handle
+  buffer_handle*
   import_bo(xclBufferExportHandle ehdl) override
   {
     auto ihdl = xclImportBO(DeviceType::get_device_handle(), ehdl, 0);
@@ -350,7 +350,7 @@ struct shim : public DeviceType
   }
 
   void
-  copy_bo(xrt_buffer_handle dst, xrt_buffer_handle src, size_t size, size_t dst_offset, size_t src_offset) override
+  copy_bo(buffer_handle* dst, buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
   {
     auto err = xclCopyBO(DeviceType::get_device_handle(),
       to_xclBufferHandle(dst), to_xclBufferHandle(src), size, dst_offset, src_offset);
@@ -359,7 +359,7 @@ struct shim : public DeviceType
   }
 
   void
-  sync_bo(xrt_buffer_handle bo, xclBOSyncDirection dir, size_t size, size_t offset) override
+  sync_bo(buffer_handle* bo, xclBOSyncDirection dir, size_t size, size_t offset) override
   {
     auto err = xclSyncBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), dir, size, offset);
     if (err)
@@ -367,7 +367,7 @@ struct shim : public DeviceType
   }
 
   void*
-  map_bo(xrt_buffer_handle bo, bool write) override
+  map_bo(buffer_handle* bo, bool write) override
   {
     if (auto mapped = xclMapBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), write))
       return mapped;
@@ -375,14 +375,14 @@ struct shim : public DeviceType
   }
 
   void
-  unmap_bo(xrt_buffer_handle bo, void* addr) override
+  unmap_bo(buffer_handle* bo, void* addr) override
   {
     if (auto ret = xclUnmapBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), addr))
       throw system_error(ret, "failed to unmap BO");
   }
 
   void
-  get_bo_properties(xrt_buffer_handle bo, struct xclBOProperties *properties) const override
+  get_bo_properties(buffer_handle* bo, struct xclBOProperties *properties) const override
   {
     if (auto ret = xclGetBOProperties(DeviceType::get_device_handle(), to_xclBufferHandle(bo), properties))
       throw system_error(ret, "failed to get BO properties");
@@ -438,7 +438,7 @@ struct shim : public DeviceType
   }
 
   void
-  exec_buf(xrt_buffer_handle bo) override
+  exec_buf(buffer_handle* bo) override
   {
     if (auto ret = xclExecBuf(DeviceType::get_device_handle(), to_xclBufferHandle(bo)))
       throw system_error(ret, "failed to launch execution buffer");

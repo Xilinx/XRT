@@ -27,7 +27,7 @@ public:
   // Helper typedef for std::pair. Note the elements are const so that the
   // pair is immutable. The clients should not change the contents of cmd_bo.
   template <typename CommandType>
-  using cmd_bo = std::pair<const xrt_buffer_handle, CommandType *const>;
+  using cmd_bo = std::pair<buffer_handle*, CommandType *const>;
 private:
 
   // We are really allocating a page size as that is what xocl/zocl do. Note on

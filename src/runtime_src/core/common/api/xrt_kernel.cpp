@@ -9,6 +9,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_kernel.h"
 
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/include/experimental/xrt_hw_context.h"
@@ -922,7 +923,7 @@ public:
     return m_device->get_core_device();
   }
 
-  xrt_buffer_handle
+  xrt_core::buffer_handle*
   get_exec_bo() const override
   {
     return m_execbuf.first;
@@ -2955,8 +2956,8 @@ namespace xrt_core { namespace kernel_int {
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   size_t sz,
-                  xrt_buffer_handle dst_bo, size_t dst_offset,
-                  xrt_buffer_handle src_bo, size_t src_offset)
+                  buffer_handle* dst_bo, size_t dst_offset,
+                  buffer_handle* src_bo, size_t src_offset)
 {
 #ifndef _WIN32
   if (is_sw_emulation())

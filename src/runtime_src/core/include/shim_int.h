@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef SHIM_INT_H_
 #define SHIM_INT_H_
 
@@ -8,6 +8,7 @@
 #include "core/include/xrt_hwqueue.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/common/cuidx_type.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
 
@@ -71,15 +72,15 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
 
 // submit_command() -
 void
-submit_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_buffer_handle cmdbo);
+submit_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_core::buffer_handle* cmdbo);
 
 // wait_command() -
 int
-wait_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_buffer_handle cmdbo, int timeout_ms);
+wait_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_core::buffer_handle* cmdbo, int timeout_ms);
 
 // exec_buf() - Exec Buf with hw ctx handle.
 void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_core::hwctx_handle* ctxhdl);
+exec_buf(xclDeviceHandle handle, xrt_core::buffer_handle* bohdl, xrt_core::hwctx_handle* ctxhdl);
 }} // shim_int, xrt
 
 #endif
