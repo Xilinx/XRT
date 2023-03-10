@@ -509,7 +509,9 @@ namespace xdp {
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
         
-          auto channel = (i == 0) ? channel0 : channel1;
+          // Channel number is based on monitoring port 0 or 1
+          auto channel = (startEvent <= XAIE_EVENT_PORT_TLAST_0_MEM_TILE) ? channel0 : channel1;
+
           configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
           configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
                                   startEvent, i, metricSet, channel);
