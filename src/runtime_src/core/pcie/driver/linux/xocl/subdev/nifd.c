@@ -327,14 +327,14 @@ static long readback_variable(struct xocl_nifd* nifd, void __user *arg)
     total_data_payload_size =
       ((num_bits * 2) + result_space_size) * sizeof(unsigned int);
 
-    kernel_memory = (unsigned int *)(vmalloc(total_data_size));
+    kernel_memory = (unsigned int *)(vmalloc(total_data_payload_size));
 
     if (!kernel_memory)
         return -ENOMEM;
 
-    // We've already seen the num_bits, and used it to determine the amount
-    // of kernel memory to allocate, so don't read it again.  Instead, only
-    // read the data payload portion
+    // We've already seen the num_bits at the beginning of the user data,
+    // and used it to determine the amount of kernel memory to allocate,
+    // so don't read it again.  Instead, only read the data payload portion
     data_payload = (void*)((unsigned int*)(arg) + 1);
 
     if (copy_from_user(kernel_memory, data_payload, total_data_payload_size)) {
