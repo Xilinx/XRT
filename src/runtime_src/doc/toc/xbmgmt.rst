@@ -58,7 +58,7 @@ Enabling/Disabling DDR memory retention on a device
     - <management bdf> : The Bus:Device.Function of the device of interest
 
 
-- The ``--input`` specifies an INI file with configuration details (e.g. clock throttling).
+- The ``--input`` specifies an INI file with configuration details (e.g. memory, clock throttling).
 - The ``--retention`` option enables / disables DDR memory retention.
 
 
