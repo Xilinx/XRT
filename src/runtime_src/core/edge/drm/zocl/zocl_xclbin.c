@@ -998,8 +998,8 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			char __user *xclbin, struct sched_client_ctx *client)
 {
 	uint64_t size = 0;
-	int ret = 0;
 	char *pdi_buf = NULL;
+	int ret = 0;
 
 	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
 		DRM_ERROR("%s Shared context can not load xclbin", __func__);
@@ -1011,6 +1011,7 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		return 0;
 
 	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
+	vfree(pdi_buf);
 
 	/* Mark AIE out of reset state after load PDI */
 	if (zdev->aie) {
