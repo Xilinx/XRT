@@ -149,24 +149,15 @@ populate_fan(const xrt_core::device * device,
  */
 static ptree_type
 read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& current,
-                            const std::vector<xq::sdm_sensor_info::data_type>& voltage)
+                            const std::vector<xq::sdm_sensor_info::data_type>& voltage,
+                            const std::vector<xq::sdm_sensor_info::data_type>& power)
 {
   ptree_type sensor_array;
   ptree_type pt;
-  double v_12v_pex = 0, v_12v_aux_0 = 0, v_3v3_pex = 0, c_12v_pex = 0, c_12v_aux_0 = 0, c_3v3_pex = 0;
-  double v_12v_aux_1 = 0, c_12v_aux_1 = 0;
-  double bd_power = 0;
-  std::string str_12v_pex = "12v_pex";
-  std::string str_3v3_pex = "3v3_pex";
-  std::string str_12v_aux_0 = "12v_aux_0";
-  std::string str_12v_aux_1 = "12v_aux_1";
 
   // iterate over current data, store to ptree by converting to Amps from milli Amps
   for (const auto& tmp : voltage) {
     auto desc = tmp.label;
-    auto volts = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
-    auto max = xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3);
-    auto avg = xrt_core::utils::format_base10_shiftdown(tmp.average, tmp.unitm, 3);
     pt.put("id", desc);
     pt.put("description", desc);
     /*
@@ -175,27 +166,13 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
      * Example: Sensor Value 12000, Units “Volts” & Unit Modifier -3 received.
      * So, actual sensor value => 12000 * 10 ^ (-3) = 12 Volts.
      */
-    pt.put("voltage.volts", volts);
-    pt.put("voltage.max", max);
-    pt.put("voltage.average", avg);
+    pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3));
+    pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3));
+    pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown(tmp.average, tmp.unitm, 3));
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
     sensor_array.push_back({"", pt});
-
-    std::stringstream ss;
-    double volts_double;
-    ss.str(volts);
-    ss >> volts_double;
-
-    if (desc.find(str_12v_pex) != std::string::npos)
-      v_12v_pex = volts_double;
-    if (desc.find(str_3v3_pex) != std::string::npos)
-      v_3v3_pex = volts_double;
-    if (desc.find(str_12v_aux_0) != std::string::npos)
-      v_12v_aux_0 = volts_double;
-    if (desc.find(str_12v_aux_1) != std::string::npos)
-      v_12v_aux_1 = volts_double;
   }
 
   // iterate over voltage data, store to ptree by converting to Volts from milli Volts
@@ -205,20 +182,6 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     auto amps = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
     auto max = xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3);
     auto avg = xrt_core::utils::format_base10_shiftdown(tmp.average, tmp.unitm, 3);
-
-    std::stringstream ss;
-    double amps_double;
-    ss.str(amps);
-    ss >> amps_double;
-
-    if (desc.find(str_12v_pex) != std::string::npos)
-      c_12v_pex = amps_double;
-    if (desc.find(str_3v3_pex) != std::string::npos)
-      c_3v3_pex = amps_double;
-    if (desc.find(str_12v_aux_0) != std::string::npos)
-      c_12v_aux_0 = amps_double;
-    if (desc.find(str_12v_aux_1) != std::string::npos)
-      c_12v_aux_1 = amps_double;
 
     for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
@@ -247,15 +210,17 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     sensor_array.push_back({"", pt});
   }
 
-  bd_power = v_12v_pex * c_12v_pex + v_12v_aux_0 * c_12v_aux_0 + v_3v3_pex * c_3v3_pex + v_12v_aux_1 * c_12v_aux_1;
-  std::stringstream str_bd_power;
-  str_bd_power << std::fixed << std::setprecision(3) << bd_power;
-
+  uint64_t bd_power;
+  // iterate over power data, store to ptree by converting to watts.
+  for (const auto& tmp : power) {
+    if (boost::iequals(tmp.label, "Total Power"))
+      bd_power = tmp.input;
+  }
   ptree_type root;
 
   root.add_child("power_rails", sensor_array);
 
-  root.put("power_consumption_watts", str_bd_power.str());
+  root.put("power_consumption_watts", bd_power);
   root.put("power_consumption_max_watts", "NA");
   root.put("power_consumption_warning", "NA");
 
@@ -474,9 +439,10 @@ read_electrical(const xrt_core::device * device)
   try {
     auto current  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::current);
     auto voltage  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::voltage);
+    auto power  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::power);
     //Check for any of these data is available
-    if (!current.empty() || !voltage.empty())
-      return read_data_driven_electrical(current, voltage);
+    if (!current.empty() || !voltage.empty() || !power.empty())
+      return read_data_driven_electrical(current, voltage, power);
     else
       return sensor_array;
   }
