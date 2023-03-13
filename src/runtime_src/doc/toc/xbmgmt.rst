@@ -37,7 +37,7 @@ The ``xbmgmt configure`` command provides advanced options for configuring a dev
 
 **The supported options**
 
-Configuring a device's memory settings with a premade image
+Configuring a device's memory or clock throttling settings using an .ini file
 
 .. code-block:: shell
 
