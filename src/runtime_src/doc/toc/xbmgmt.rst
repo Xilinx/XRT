@@ -50,29 +50,6 @@ Enabling/Disabling DDR memory retention on a device
 
     xbmgmt configure [--device| -d] <management bdf> --retention [ENABLE|DISABLE]
 
-Enabling/Disabling clock throttling on a device
-
-.. code-block:: shell
-
-    xbmgmt configure [--device| -d] <management bdf> --clk_throttle [true|false]
-
-Updating the clock throttling power threshold
-
-.. code-block:: shell
-
-    xbmgmt configure [--device| -d] <management bdf> --ct_threshold_power_override <threshold in Watts>
-
-Updating the clock throttling temperature threshold
-
-.. code-block:: shell
-
-    xbmgmt configure [--device| -d] <management bdf> --ct_threshold_temp_override <threshold in Celsius>
-
-Resetting all clock throttling options
-
-.. code-block:: shell
-
-    xbmgmt configure [--device| -d] <management bdf> --ct_reset [true|false]
 
 **The details of the supported options**
 
@@ -81,12 +58,8 @@ Resetting all clock throttling options
     - <management bdf> : The Bus:Device.Function of the device of interest
 
 
-- The ``--input`` specifies an INI file with configuration details.
+- The ``--input`` specifies an INI file with configuration details (e.g. clock throttling).
 - The ``--retention`` option enables / disables DDR memory retention.
-- The ``--clk_throttle`` option enables / disables clock throttling.
-- The ``--ct_threshold_power_override`` option updates the clock throttling power threshold in watts.
-- The ``--ct_threshold_temp_override`` option updates the clock throttling temperature threshold in celsius.
-- The ``--ct_reset`` option resets all clock throttling options.
 
 
 **Example commands** 
@@ -97,15 +70,12 @@ Resetting all clock throttling options
 
     #Configure a device's memory settings using an image
     xbmgmt configure --device 0000:b3:00.0 --input /tmp/memory_config.ini
-    
-    #Enable a device's DDR memory retention 
-    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
-
-    #Enable clock throttling on a supported device
-    xbmgmt configure --device 0000:b3:00.0 --clk_throttle true
 
     #Configure a device using edited output .ini from xbmgmt dump --config (see xbmgmt dump)
     xbmgmt configure --device 0000:b3:00.0 --input /tmp/config.ini
+
+    #Enable a device's DDR memory retention
+    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
 
 xbmgmt dump
 ~~~~~~~~~~~
@@ -157,9 +127,9 @@ Dumping the output of programmed system image
     mailbox_channel_switch=0x0
     xclbin_change=0
     cache_xclbin=0
-    throttling_enabled=true
-    throttling_power_override=200
-    throttling_temp_override=90
+    throttling_enabled=true #true or false to enable/disable clock throttling
+    throttling_power_override=200 #override threshold in Watts
+    throttling_temp_override=90 #override threshold in Celsius
 
 
 xbmgmt examine
