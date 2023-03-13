@@ -508,8 +508,6 @@ get_ps_kernels(const xrt_core::device* device)
 ptree_type
 populate_cus(const xrt_core::device* device, const std::vector<xq::kds_cu_info::data_type>& cu_stats, const std::vector<xq::kds_scu_info::data_type>& scu_stats)
 {
-  scheduler_update_stat(device);
-
   // Tree that holds all ps and pl objects
   ptree_type pt;
 
