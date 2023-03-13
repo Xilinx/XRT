@@ -713,7 +713,7 @@ public:
   {
     XRT_DEBUGF("kernel_command::~kernel_command(%d)\n", m_uid);
     // This is problematic, bo_cache should return managed BOs
-    m_device->exec_buffer_cache.release(m_execbuf);
+    m_device->exec_buffer_cache.release(std::move(m_execbuf));
   }
 
   kernel_command(const kernel_command&) = delete;
@@ -926,7 +926,7 @@ public:
   xrt_core::buffer_handle*
   get_exec_bo() const override
   {
-    return m_execbuf.first;
+    return m_execbuf.first.get();
   }
 
   xrt_core::hwctx_handle*

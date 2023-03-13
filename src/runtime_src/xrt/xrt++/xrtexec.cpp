@@ -92,9 +92,9 @@ create_exec_buf(xrt_xocl::device* device)
 }
 
 static void
-release_exec_buf(const xrt_xocl::device* device, execbuf_type& ebo)
+release_exec_buf(const xrt_xocl::device* device, execbuf_type&& ebo)
 {
-  s_ebocache[device]->release(ebo);
+  s_ebocache[device]->release(std::move(ebo));
 }
 
 struct command::impl : xrt_core::command
@@ -111,7 +111,7 @@ struct command::impl : xrt_core::command
 
   ~impl()
   {
-    release_exec_buf(m_device, m_execbuf);
+    release_exec_buf(m_device, std::move(m_execbuf));
   }
 
   xrt_xocl::device* m_device;
@@ -188,7 +188,7 @@ struct command::impl : xrt_core::command
   virtual xrt_core::buffer_handle*
   get_exec_bo() const
   {
-    return m_execbuf.first;
+    return m_execbuf.first.get();
   }
 
   virtual xrt_core::hwctx_handle*

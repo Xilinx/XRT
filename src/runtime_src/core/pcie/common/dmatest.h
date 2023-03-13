@@ -42,7 +42,7 @@ namespace xcldev {
         // DMARunner now uses xclAllocUserPtrBO() to allocate buffers. This reduces memory pressure on
         // Linux kernel which other wise tries very hard inside xocl to allocate and pin pages when
         // xlcAllocBO() is used may oops.
-        using buffer_and_deleter = std::pair<xrt_core::buffer_handle*, xrt_core::aligned_ptr_type>;
+        using buffer_and_deleter = std::pair<std::unique_ptr<xrt_core::buffer_handle>, xrt_core::aligned_ptr_type>;
         std::vector<buffer_and_deleter> mBOList;
         std::shared_ptr<xrt_core::device> mHandle;
         size_t mSize;
@@ -56,7 +56,7 @@ namespace xcldev {
             int result = 0;
             while (b < e) {
                 try {
-                    mHandle->sync_bo(b->first, dir, mSize, 0);
+                  b->first->sync(static_cast<xrt_core::buffer_handle::direction>(dir), mSize, 0);
                 }
                 catch (const std::exception&) {
                     throw xrt_core::error(result, "DMA failed");
@@ -134,18 +134,17 @@ namespace xcldev {
                 // This can throw and callers of DMARunner are supposed to catch this.
                 xrt_core::aligned_ptr_type buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), mSize);
                 auto bo = mHandle->alloc_bo(buf.get(), mSize, mFlags);
-                if (bo == XRT_INVALID_BUFFER_HANDLE)
+                if (!bo)
                     break;
                 std::memset(buf.get(), mPattern, mSize);
-                mBOList.emplace_back(bo, std::move(buf));
+                mBOList.emplace_back(std::move(bo), std::move(buf));
             }
             if (mBOList.size() == 0)
                 throw xrt_core::error(-ENOMEM, "No DMA buffers could be allocated.");
         }
 
-        ~DMARunner() {
-            std::for_each(mBOList.begin(), mBOList.end(), [&](auto &bo) {mHandle->free_bo(bo.first); });
-        }
+        ~DMARunner()
+        {}
 
         int run(std::ostream& ostr = std::cout) const {
             auto dma_threads = xrt_core::device_query<xrt_core::query::dma_threads_raw>(mHandle);

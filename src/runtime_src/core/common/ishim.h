@@ -56,45 +56,6 @@ struct ishim
   virtual void
   close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) = 0;
 
-  virtual buffer_handle*
-  alloc_bo(size_t size, unsigned int flags) = 0;
-
-  virtual buffer_handle*
-  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
-
-  virtual void
-  free_bo(buffer_handle* boh) = 0;
-
-  virtual xclBufferExportHandle
-  export_bo(buffer_handle* boh) const = 0;
-
-  virtual buffer_handle*
-  import_bo(xclBufferExportHandle ehdl) = 0;
-
-  virtual void
-  close_export_handle(xclBufferExportHandle) = 0;
-
-  // Import an exported BO from another process identified by argument pid.
-  // This function is only supported on systems with pidfd kernel support
-  virtual buffer_handle*
-  import_bo(pid_t, xclBufferExportHandle)
-  { throw not_supported_error{__func__}; }
-
-  virtual void
-  copy_bo(buffer_handle* dst, buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) = 0;
-
-  virtual void
-  sync_bo(buffer_handle* bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
-
-  virtual void*
-  map_bo(buffer_handle* boh, bool write) = 0;
-
-  virtual void
-  unmap_bo(buffer_handle* boh, void* addr) = 0;
-
-  virtual void
-  get_bo_properties(buffer_handle* boh, struct xclBOProperties *properties) const = 0;
-
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
 
@@ -140,6 +101,22 @@ struct ishim
   virtual void
   user_reset(xclResetKind kind) = 0;
 
+  ////////////////////////////////////////////////////////////////
+  // Interfaces for buffer handling
+  // Implemented explicitly by concrete shim device class
+  ////////////////////////////////////////////////////////////////
+  virtual std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, unsigned int flags) = 0;
+
+  virtual std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
+
+  // Import an exported BO from another process identified by argument pid.
+  // This function is only supported on systems with pidfd kernel support
+  // Redo when supporting windows
+  virtual std::unique_ptr<buffer_handle>
+  import_bo(pid_t, shared_handle::export_handle)
+  { throw not_supported_error{__func__}; }
   ////////////////////////////////////////////////////////////////
   // Interfaces for hw context handling
   // Implemented explicitly by concrete shim device class
@@ -292,100 +269,6 @@ struct shim : public DeviceType
   {
     if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index))
       throw system_error(ret, "failed to close ip context");
-  }
-
-  buffer_handle*
-  alloc_bo(size_t size, unsigned int flags) override
-  {
-    auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags);
-    if (bo == XRT_NULL_BO)
-      throw std::bad_alloc();
-
-    return to_xrt_buffer_handle(bo);
-  }
-
-  buffer_handle*
-  alloc_bo(void* userptr, size_t size, unsigned int flags) override
-  {
-    auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags);
-    if (bo == XRT_NULL_BO)
-      throw std::bad_alloc();
-
-    return to_xrt_buffer_handle(bo);
-  }
-
-  void
-  free_bo(buffer_handle* bo) override
-  {
-    xclFreeBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo));
-  }
-
-  xclBufferExportHandle
-  export_bo(buffer_handle* bo) const override
-  {
-    auto ehdl = xclExportBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo));
-    if (ehdl == XRT_NULL_BO_EXPORT)
-      throw system_error(EINVAL, "Unable to export BO: bad export BO handle");
-    if (ehdl < 0) // system error code
-      throw system_error(ENODEV, "Unable to export BO");
-    return ehdl;
-  }
-
-  buffer_handle*
-  import_bo(xclBufferExportHandle ehdl) override
-  {
-    auto ihdl = xclImportBO(DeviceType::get_device_handle(), ehdl, 0);
-    if (ihdl == XRT_NULL_BO)
-      throw system_error(EINVAL, "unable to import BO: bad BO handle");
-    if (ihdl < 0) // system error code
-      throw system_error(ENODEV, "unable to import BO");
-    return to_xrt_buffer_handle(ihdl);
-  }
-
-  void
-  close_export_handle(xclBufferExportHandle ehdl) override
-  {
-    if (auto err = xclCloseExportHandle(ehdl))
-      throw system_error(err, "failed to close export handle");
-  }
-
-  void
-  copy_bo(buffer_handle* dst, buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
-  {
-    auto err = xclCopyBO(DeviceType::get_device_handle(),
-      to_xclBufferHandle(dst), to_xclBufferHandle(src), size, dst_offset, src_offset);
-    if (err)
-      throw system_error(err, "unable to copy BO");
-  }
-
-  void
-  sync_bo(buffer_handle* bo, xclBOSyncDirection dir, size_t size, size_t offset) override
-  {
-    auto err = xclSyncBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), dir, size, offset);
-    if (err)
-      throw system_error(err, "unable to sync BO");
-  }
-
-  void*
-  map_bo(buffer_handle* bo, bool write) override
-  {
-    if (auto mapped = xclMapBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), write))
-      return mapped;
-    throw system_error(EINVAL, "could not map BO");
-  }
-
-  void
-  unmap_bo(buffer_handle* bo, void* addr) override
-  {
-    if (auto ret = xclUnmapBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), addr))
-      throw system_error(ret, "failed to unmap BO");
-  }
-
-  void
-  get_bo_properties(buffer_handle* bo, struct xclBOProperties *properties) const override
-  {
-    if (auto ret = xclGetBOProperties(DeviceType::get_device_handle(), to_xclBufferHandle(bo), properties))
-      throw system_error(ret, "failed to get BO properties");
   }
 
   void

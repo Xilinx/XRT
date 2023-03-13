@@ -30,7 +30,7 @@ endif(XRT_ENABLE_WERROR)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()
-xrt_add_subdirectory(xdp)
+#xrt_add_subdirectory(xdp)
 
 xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)

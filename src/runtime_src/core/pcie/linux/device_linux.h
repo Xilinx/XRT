@@ -58,8 +58,8 @@ public:
   std::cv_status
   wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
-  buffer_handle*
-  import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
+  std::unique_ptr<buffer_handle>
+  import_bo(pid_t pid, shared_handle::export_handle ehdl) override;
 
   std::unique_ptr<hwctx_handle>
   create_hw_context(const xrt::uuid& xclbin_uuid,

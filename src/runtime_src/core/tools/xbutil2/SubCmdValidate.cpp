@@ -394,28 +394,6 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 }
 
 /*
- * helper function for M2M and P2P test
- */
-static void
-free_unmap_bo(const std::shared_ptr<xrt_core::device>& handle, xrt_core::buffer_handle* boh, void * boptr, size_t bo_size)
-{
-#ifdef __linux__
-  if (boptr != nullptr)
-    munmap(boptr, bo_size);
-#endif
-/* windows doesn't have munmap
- * FreeUserPhysicalPages might be the windows equivalent
- */
-#ifdef _WIN32
-  boptr = boptr;
-  bo_size = bo_size;
-#endif
-
-  if (boh)
-    handle->free_bo(boh);
-}
-
-/*
  * helper function for P2P test
  */
 static bool
@@ -575,63 +553,73 @@ p2ptest_bank(xrt_core::device* device, boost::property_tree::ptree& _ptTest, con
 /*
  * helper function for M2M test
  */
-static int
-m2m_alloc_init_bo(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, xrt_core::buffer_handle* &boh,
-                   char * &boptr, size_t bo_size, int bank, char pattern)
+static xrt::bo
+m2m_alloc_init_bo(const xrt::device& device, boost::property_tree::ptree& _ptTest,
+                  char*& boptr, size_t bo_size, uint32_t bank, char pattern)
 {
-  boh = handle->alloc_bo(bo_size, bank);
-  if (boh == XRT_INVALID_BUFFER_HANDLE) {
+  xrt::bo bo;
+  try {
+    bo = xrt::bo{device, bo_size, bank};
+  }
+  catch (const std::exception&) {
+  }
+
+  if (!bo) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
-    return 1;
+    return {};
   }
 
-  boptr = (char *)handle->map_bo(boh, true);
-  if (boptr == nullptr) {
+  try {
+    boptr = bo.map<char *>();
+  }
+  catch (const std::exception&)
+  {}
+
+  if (!boptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
-    free_unmap_bo(handle, boh, boptr, bo_size);
-    return 1;
+    return {};
   }
-
   memset(boptr, pattern, bo_size);
+
   try {
-    handle->sync_bo(boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0);
+    bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    return bo;
   }
   catch (const std::exception&) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't sync BO");
-    free_unmap_bo(handle, boh, boptr, bo_size);
-    return 1;
+    return {};
   }
-  return 0;
 }
 
 /*
  * helper function for M2M test
  */
 static double
-m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
+m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle,
+             boost::property_tree::ptree& _ptTest,
+             uint32_t bank_a, uint32_t bank_b, size_t bo_size)
 {
-  xrt_core::buffer_handle* bo_src = XRT_INVALID_BUFFER_HANDLE;
-  xrt_core::buffer_handle* bo_tgt = XRT_INVALID_BUFFER_HANDLE;
-  char *bo_src_ptr = nullptr;
-  char *bo_tgt_ptr = nullptr;
   double bandwidth = 0;
+  xrt::device device {handle};
 
-  //Allocate and init bo_src
-  if (m2m_alloc_init_bo(handle, _ptTest, bo_src, bo_src_ptr, bo_size, bank_a, 'A'))
+  // Allocate and init bo_src
+  char* bo_src_ptr = nullptr;
+  xrt::bo bo_src = m2m_alloc_init_bo(device, _ptTest, bo_src_ptr, bo_size, bank_a, 'A');
+  if (!bo_src)
     return bandwidth;
 
-  //Allocate and init bo_tgt
-  if (m2m_alloc_init_bo(handle, _ptTest, bo_tgt, bo_tgt_ptr, bo_size, bank_b, 'B')) {
-    free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+  // Allocate and init bo_tgt
+  char* bo_tgt_ptr = nullptr;
+  xrt::bo bo_tgt = m2m_alloc_init_bo(device, _ptTest, bo_tgt_ptr, bo_size, bank_b, 'B');
+  if (!bo_tgt)
     return bandwidth;
-  }
 
   XBU::Timer timer;
   try {
-    handle->copy_bo(bo_tgt, bo_src, bo_size, 0, 0);
+    bo_tgt.copy(bo_src, bo_size);
   }
   catch (const std::exception&) {
     return bandwidth;
@@ -639,21 +627,15 @@ m2mtest_bank(const std::shared_ptr<xrt_core::device>& handle, boost::property_tr
   double timer_duration_sec = timer.get_elapsed_time().count();
 
   try {
-    handle->sync_bo(bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0);
+    bo_tgt.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
   }
   catch (const std::exception&) {
-    free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
-    free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Unable to sync target BO");
     return bandwidth;
   }
 
   bool match = (memcmp(bo_src_ptr, bo_tgt_ptr, bo_size) == 0);
-
-  // Clean up
-  free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
-  free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
 
   if (!match) {
     _ptTest.put("status", test_token_failed);
@@ -725,19 +707,25 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
 }
 
 static bool
-bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& handle, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
+bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& device, enum ert_cmd_opcode opcode, boost::property_tree::ptree& _ptTest)
 {
   int ret;
   const uint32_t bo_size = 0x1000;
 
-  auto boh = handle->alloc_bo(bo_size, XCL_BO_FLAGS_EXECBUF);
-  if (boh == XRT_INVALID_BUFFER_HANDLE) {
+  std::unique_ptr<xrt_core::buffer_handle> boh;
+  try {
+    boh = device->alloc_bo(bo_size, XCL_BO_FLAGS_EXECBUF);
+  }
+  catch (const std::exception&) {
+  }
+
+  if (!boh) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
 
-  auto boptr = (char *)handle->map_bo(boh, true);
+  auto boptr = static_cast<char*>(boh->map(xrt_core::buffer_handle::map_type::write));
   if (boptr == nullptr) {
     _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -752,7 +740,7 @@ bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& handle, enu
   ecmd->count = 5;
 
   try {
-    handle->exec_buf(boh);
+    device->exec_buf(boh.get());
   }
   catch (const std::exception&) {
     logger(_ptTest, "Error", "Couldn't map BO");
@@ -760,7 +748,7 @@ bist_alloc_execbuf_and_wait(const std::shared_ptr<xrt_core::device>& handle, enu
   }
 
   do {
-    ret = handle->exec_wait(1);
+    ret = device->exec_wait(1);
     if (ret == -1)
         break;
   }

@@ -48,11 +48,11 @@ public:
   create_hw_queue() = 0;
 
   // Context specific buffer allocation
-  virtual buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+  virtual std::unique_ptr<buffer_handle>
   alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
 
   // Context specific buffer allocation
-  virtual buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+  virtual std::unique_ptr<buffer_handle>
   alloc_bo(size_t size, unsigned int flags) = 0;
 
   // Legacy XRT may require special handling when opening a context on
