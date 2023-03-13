@@ -702,7 +702,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 	uint64_t start_addr = 0;
 	uint64_t end_addr = 0;
 	int ret = 0;
-    bool phy_bank_exists = false;
+	bool phy_bank_exists = false;
 	int i = 0;
 
 	BUG_ON(!xocl_mm && !xocl_mm->mm);
@@ -713,7 +713,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 				XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
 			continue;
 
-        phy_bank_exists = true;
+		phy_bank_exists = true;
 		start_addr = mem_data->m_base_address;
 		end_addr = start_addr + mem_data->m_size;
 
