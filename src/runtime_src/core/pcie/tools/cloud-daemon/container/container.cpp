@@ -1,18 +1,6 @@
-/*
- * Copyright (C) 2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include <errno.h>
 
@@ -56,7 +44,7 @@ void fini(void *mpc_cookie);
 int init(mpd_plugin_callbacks *cbs)
 {
     int ret = 1;
-    auto total = pcidev::get_dev_total();
+    auto total = xrt_core::pci::get_dev_total();
     if (total == 0) {
         syslog(LOG_INFO, "Container: no device found");
         return ret;
@@ -161,7 +149,7 @@ Container::~Container()
 
 Container::Container(size_t index)
 {
-    mgmtDev = pcidev::get_dev(index, false);
+    mgmtDev = xrt_core::pci::get_dev(index, false);
 }
 
 //private methods, vendor dependant

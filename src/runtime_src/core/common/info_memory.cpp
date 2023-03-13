@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021, 2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -491,7 +492,7 @@ get_ps_kernels(const xrt_core::device *device)
     if (buf.empty())
       return ps_kernels;
     const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
-    if(map->pkn_count < 0)
+    if(map->pkn_count == 0)
       throw xrt_core::error("'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.");
 
     for (unsigned int i = 0; i < map->pkn_count; i++)

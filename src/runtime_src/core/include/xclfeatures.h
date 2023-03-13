@@ -1,37 +1,7 @@
 /**
- *  Copyright (C) 2015-2018, Xilinx Inc
- *
- *  This file is dual licensed.	 It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
- *
- *  Apache License Verbiage
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- *  GPL license Verbiage:
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License as
- *  published by the Free Software Foundation; either version 2 of the
- *  License, or (at your option) any later version.  This program is
- *  distributed in the hope that it will be useful, but WITHOUT ANY
- *  WARRANTY; without even the implied warranty of MERCHANTABILITY or
- *  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
- *  License for more details.  You should have received a copy of the
- *  GNU General Public License along with this program; if not, write
- *  to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
- *  Boston, MA 02111-1307 USA
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2015-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  */
 
@@ -141,6 +111,18 @@ struct FeatureRomHeader {
 	uint8_t HBMCount;		    // Number of HBMs
 	uint8_t HBMSize;		    // Size of (each) HBM in GB
 	uint32_t CDMABaseAddress[4];	    // CDMA base addresses
+};
+
+// A boiled down version of the vmr status for userpf use
+// To get a complete version of the vmr status investigate the
+// vmr status sysfs node within the mgmtpf
+// This struct contains the status of the VMR subdevice found
+// on certain cards like u50s and versal platforms.
+struct VmrStatus {
+	uint16_t has_fpt; // 1 if device metadata is available. If it is not available something is wrong with the card
+	uint16_t boot_on_default; // 1 If the VMR device is currently running on its "A" or default image
+	uint16_t boot_on_backup; // 1 If the VMR device is currently running on its "B" or backup image
+	uint16_t boot_on_recovery; // 1 If the VMR device is currently running on its recovery image
 };
 
 #endif // xclfeatures_h_

@@ -530,6 +530,31 @@ public:
     get_arg(int32_t index) const;
   };
 
+  /// @cond
+  /** undocumented access to aie metadata, subject to change **/
+  class aie_partition_impl;
+  class aie_partition : detail::pimpl<aie_partition_impl>
+  {
+  public:
+    explicit
+    aie_partition(std::shared_ptr<aie_partition_impl> handle)
+      : detail::pimpl<aie_partition_impl>(std::move(handle))
+    {}
+
+    XCL_DRIVER_DLLESPEC
+    uint64_t
+    get_inference_fingerprint() const;
+
+    XCL_DRIVER_DLLESPEC
+    uint64_t
+    get_pre_post_fingerprint() const;
+
+    XCL_DRIVER_DLLESPEC
+    uint32_t
+    get_operations_per_cycle() const;
+  };
+  /// @endcond
+
 public:
   /**
    * xclbin() - Construct empty xclbin object
@@ -668,6 +693,12 @@ public:
   XCL_DRIVER_DLLESPEC
   std::vector<mem>
   get_mems() const;
+
+  /// @cond
+  XCL_DRIVER_DLLESPEC
+  std::vector<aie_partition>
+  get_aie_partitions() const;
+  /// @endcond
 
   /**
    * get_xsa_name() - Get Xilinx Support Archive (XSA) name of xclbin

@@ -13,6 +13,7 @@
 #include "scope_guard.h"
 #include "uuid.h"
 
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
@@ -45,7 +46,7 @@ class device : public ishim
   class xclbin_map
   {
   public:
-    using slot_id = uint32_t;
+    using slot_id = hwctx_handle::slot_id;
 
   private:
     std::map<slot_id, xrt::uuid> m_slot2uuid;
@@ -84,7 +85,7 @@ class device : public ishim
     {
       auto itr = m_slot2uuid.find(slot);
       if (itr == m_slot2uuid.end())
-        throw error("No xclbin in slot '" + std::to_string(slot) + "'");
+        throw error("No xclbin in slot");
 
       return get((*itr).second);
     }
@@ -471,6 +472,7 @@ public:
   std::vector<uint64_t> m_cus;                // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
+  mutable std::mutex m_mutex;
 };
 
 /**
@@ -509,6 +511,36 @@ device_query(const std::shared_ptr<device>& device, Args&&... args)
 {
   auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
   return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
+template <typename QueryRequestType>
+inline typename QueryRequestType::result_type
+device_query_default(const device* device, const typename QueryRequestType::result_type& default_value)
+{
+  try {
+    return device_query<QueryRequestType>(device);
+  }
+  catch (const query::no_such_key&) {
+    return default_value;
+  }
+  catch (const query::sysfs_error&) {
+    return default_value;
+  }
+}
+
+template <typename QueryRequestType>
+inline typename QueryRequestType::result_type
+device_query_default(const std::shared_ptr<device>& device, const typename QueryRequestType::result_type& default_value)
+{
+  try {
+    return device_query<QueryRequestType>(device);
+  }
+  catch (const query::no_such_key&) {
+    return default_value;
+  }
+  catch (const query::sysfs_error&) {
+    return default_value;
+  }
 }
 
 template <typename QueryRequestType, typename ...Args>

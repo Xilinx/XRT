@@ -20,12 +20,12 @@
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
 	#include <linux/iosys-map.h>
-	#define MAP_TYPE iosys_map
-	#define MAP_IS_NULL iosys_map_is_null
+	#define ZOCL_MAP_TYPE iosys_map
+	#define ZOCL_MAP_IS_NULL iosys_map_is_null
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 	#include <linux/dma-buf-map.h>
-	#define MAP_TYPE dma_buf_map
-	#define MAP_IS_NULL dma_buf_map_is_null
+	#define ZOCL_MAP_TYPE dma_buf_map
+	#define ZOCL_MAP_IS_NULL dma_buf_map_is_null
 #endif
 #include <asm/io.h>
 #include "xrt_drv.h"
@@ -41,7 +41,11 @@ static inline void __user *to_user_ptr(u64 address)
 void zocl_describe(const struct drm_zocl_bo *obj)
 {
 	size_t size_in_kb = obj->cma_base.base.size / 1024;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	size_t physical_addr = obj->cma_base.dma_addr;
+#else
 	size_t physical_addr = obj->cma_base.paddr;
+#endif
 
 	DRM_DEBUG("%px: H[0x%zxKB] D[0x%zx]\n",
 			obj,
@@ -54,7 +58,11 @@ zocl_bo_describe(const struct drm_zocl_bo *bo, uint64_t *size, uint64_t *paddr)
 {
 	if (bo->flags & (ZOCL_BO_FLAGS_CMA | ZOCL_BO_FLAGS_USERPTR)) {
 		*size = (uint64_t)bo->cma_base.base.size;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		*paddr = (uint64_t)bo->cma_base.dma_addr;
+#else
 		*paddr = (uint64_t)bo->cma_base.paddr;
+#endif
 	} else {
 		*size = (uint64_t)bo->gem_base.size;
 		*paddr = (uint64_t)bo->mm_node->start;
@@ -104,7 +112,11 @@ static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
 		uint64_t unaligned_size)
 {
 	size_t size = PAGE_ALIGN(unaligned_size);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object *cma_obj;
+#else
 	struct drm_gem_cma_object *cma_obj;
+#endif
 	int err = 0;
 
 	if (!size)
@@ -127,7 +139,11 @@ static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
 
 	cma_obj->sgt   = NULL;
 	cma_obj->vaddr = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj->dma_addr = 0x0;
+#else
 	cma_obj->paddr = 0x0;
+#endif
 
 	return to_zocl_bo(&cma_obj->base);
 out1:
@@ -152,11 +168,19 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 static struct drm_zocl_bo *
 zocl_create_cma_mem(struct drm_device *dev, size_t size)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object *cma_obj;
+#else
 	struct drm_gem_cma_object *cma_obj;
+#endif
 	struct drm_zocl_bo *bo;
 
 	/* Allocate from CMA buffer */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj = drm_gem_dma_create(dev, size);
+#else
 	cma_obj = drm_gem_cma_create(dev, size);
+#endif
 	if (IS_ERR(cma_obj))
 		return ERR_PTR(-ENOMEM);
 
@@ -506,7 +530,11 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		ret = drm_gem_handle_create(filp, &bo->cma_base.base,
 		    &args->handle);
 		if (ret) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+			drm_gem_dma_object_free(&bo->cma_base.base);
+#else
 			drm_gem_cma_free_object(&bo->cma_base.base);
+#endif
 			DRM_DEBUG("handle creation failed\n");
 			return ret;
 		}
@@ -597,7 +625,11 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	bo->cma_base.dma_addr = sg_dma_address((bo->cma_base.sgt)->sgl);
+#else
 	bo->cma_base.paddr = sg_dma_address((bo->cma_base.sgt)->sgl);
+#endif
 
 	/* Physical address must be continuous */
 	if (sg_count != 1) {
@@ -674,7 +706,11 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 {
 	const struct drm_zocl_sync_bo	*args = data;
 	struct drm_gem_object		*gem_obj;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object	*cma_obj;
+#else
 	struct drm_gem_cma_object	*cma_obj;
+#endif
 	struct drm_zocl_bo		*bo;
 	dma_addr_t			bus_addr;
 	int				rc = 0;
@@ -698,8 +734,13 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj = to_drm_gem_dma_obj(gem_obj);
+	bus_addr = cma_obj->dma_addr;
+#else
 	cma_obj = to_drm_gem_cma_obj(gem_obj);
 	bus_addr = cma_obj->paddr;
+#endif
 
 	/* only invalidate the range of addresses requested by the user */
 	bus_addr += args->offset;
@@ -883,7 +924,7 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	struct drm_zocl_bo *bo;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-	struct MAP_TYPE map;
+	struct ZOCL_MAP_TYPE map;
 #endif
 	int ret = 0;
 	char *kaddr;
@@ -911,8 +952,12 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	bo = to_zocl_bo(gem_obj);
 	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		ret = drm_gem_dma_object_vmap(gem_obj, &map);
+#else
 		ret = drm_gem_cma_vmap(gem_obj, &map);
-		if(ret || MAP_IS_NULL(&map))
+#endif
+		if(ret || ZOCL_MAP_IS_NULL(&map))
 			kaddr = NULL;
 		else
 			kaddr = map.is_iomem ? map.vaddr_iomem : map.vaddr;
@@ -954,10 +999,18 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	return (zocl_bo_rdwr_ioctl(dev, data, filp, true));
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static struct drm_gem_dma_object *
+#else
 static struct drm_gem_cma_object *
+#endif
 zocl_cma_create(struct drm_device *dev, size_t size)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object *cma_obj;
+#else
 	struct drm_gem_cma_object *cma_obj;
+#endif
 	struct drm_gem_object *gem_obj;
 	int ret;
 
@@ -966,7 +1019,11 @@ zocl_cma_create(struct drm_device *dev, size_t size)
 		DRM_ERROR("cma_create: alloc failed\n");
 		return ERR_PTR(-ENOMEM);
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj = container_of(gem_obj, struct drm_gem_dma_object, base);
+#else
 	cma_obj = container_of(gem_obj, struct drm_gem_cma_object, base);
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 	gem_obj->funcs = &zocl_cma_default_funcs;
@@ -997,7 +1054,11 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_zocl_bo *bo;
 	struct drm_zocl_host_bo *args = data;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	struct drm_gem_dma_object *cma_obj;
+#else
 	struct drm_gem_cma_object *cma_obj;
+#endif
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	u64 host_mem_start = zdev->host_mem;
 	u64 host_mem_end = zdev->host_mem + zdev->host_mem_len;
@@ -1023,7 +1084,11 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	if (IS_ERR(cma_obj))
 		return -ENOMEM;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	cma_obj->dma_addr = args->paddr;
+#else
 	cma_obj->paddr = args->paddr;
+#endif
 	cma_obj->vaddr = memremap(args->paddr, args->size, MEMREMAP_WB);
 	if (!cma_obj->vaddr) {
 		DRM_ERROR("get_hbo: failed to allocate buffer with size %zu\n",
@@ -1039,7 +1104,11 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		drm_gem_dma_object_free(&bo->cma_base.base);
+#else
 		drm_gem_cma_free_object(&bo->cma_base.base);
+#endif
 		DRM_ERROR("get_hbo: gem handle creation failed\n");
 		return ret;
 	}

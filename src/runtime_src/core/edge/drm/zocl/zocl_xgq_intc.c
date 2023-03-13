@@ -152,9 +152,28 @@ static void zocl_irq_intc_remove(struct platform_device *pdev, u32 id)
 	spin_unlock_irqrestore(&zintc->zei_lock, irqflags);
 }
 
+static void zocl_irq_intc_config(struct platform_device *pdev, u32 id, bool enabled)
+{
+	unsigned long irqflags;
+	struct zocl_irq_intc *zintc = platform_get_drvdata(pdev);
+	struct zocl_ert_intc_handler *h;
+
+	BUG_ON(id >= zintc->zei_num_irqs);
+	h = &zintc->zei_handler[id];
+	spin_lock_irqsave(&zintc->zei_lock, irqflags);
+
+	if (enabled)
+		enable_irq(h->zeih_irq);
+	else
+		disable_irq(h->zeih_irq);
+
+	spin_unlock_irqrestore(&zintc->zei_lock, irqflags);
+}
+
 static struct zocl_ert_intc_drv_data zocl_irq_intc_drvdata = {
 	.add = zocl_irq_intc_add,
 	.remove = zocl_irq_intc_remove,
+	.config = zocl_irq_intc_config
 };
 
 static const struct platform_device_id zocl_irq_intc_id_match[] = {

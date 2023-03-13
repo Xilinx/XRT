@@ -26,6 +26,7 @@
 #include "xrt_cu.h"
 #include "kds_stat.h"
 #include "xclbin.h"
+#include "kds_hwctx.h"
 
 #define kds_info(client, fmt, args...)			\
 	dev_info(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
@@ -73,6 +74,8 @@ enum kds_cu_domain {
  * Is slot index in the range of 0 to 31 ??
  */
 #define MAX_SLOT 32
+#define MAX_CU_STAT_LINE_LENGTH  128
+#define DEFAULT_HW_CTX_ID	0
 
 enum kds_type {
 	KDS_CU		= 0,
@@ -168,7 +171,11 @@ struct kds_sched {
 	/* Settings */
 	bool			ini_disable;
 	bool			ert_disable;
+	bool                    force_polling;
 	u32			cu_intr;
+
+	/* APU Timestamp Set Flag */
+	bool			timestamp_set;
 
 	/* KDS polling thread */
 	struct task_struct     *polling_thread;
@@ -199,18 +206,13 @@ int kds_get_cu_total(struct kds_sched *kds);
 u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_get_max_regmap_size(struct kds_sched *kds);
-struct kds_client_cu_ctx *
-kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
-		struct kds_client_cu_info *cu_info);
-struct kds_client_cu_ctx *
-kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
-		struct kds_client_cu_info *cu_info);
-int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx);
+
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx);
 int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx);
+
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
@@ -228,6 +230,8 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
-ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
-ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf);
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset);
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset);
+ssize_t kds_create_cu_string(struct xrt_cu *xcu, char (*buf)[MAX_CU_STAT_LINE_LENGTH],
+                int slot, int idx, u64 usage_count, enum kds_type type);
 #endif

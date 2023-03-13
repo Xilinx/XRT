@@ -174,16 +174,19 @@ static const struct attribute_group scu_attrgroup = {
 static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
-	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = NULL;
 	struct soft_krnl_cmd *scmd = NULL;
 	struct config_sk_image_uuid *cp = NULL;
+
+	BUG_ON(!zdev);
 
 	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
 	cp->num_cus = 1;
-	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
-	memcpy(cp->sk_uuid,uuid,sizeof(cp->sk_uuid));
+	strncpy((char *)cp->sk_name,kname, PS_KERNEL_NAME_LENGTH);
+	memcpy(cp->sk_uuid, uuid, sizeof(cp->sk_uuid));
 
+	sk = zdev->soft_kernel;
 	// Locking soft kernel data structure
 	mutex_lock(&sk->sk_lock);
 
@@ -230,6 +233,7 @@ static int scu_probe(struct platform_device *pdev)
 	memcpy(&zcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	zdev = zocl_get_zdev();
+	BUG_ON(!zdev);
 	zcu->sc_bo = zocl_drm_create_bo(zdev->ddev, SOFT_KERNEL_REG_SIZE, ZOCL_BO_FLAGS_CMA);
 	if (IS_ERR(zcu->sc_bo)) {
 		return -ENOMEM;
@@ -249,7 +253,7 @@ static int scu_probe(struct platform_device *pdev)
 	if (err)
 		zocl_err(&pdev->dev, "create SCU attrs failed: %d", err);
 
-	err = configure_soft_kernel(info->cu_idx,info->kname,info->uuid);
+	err = configure_soft_kernel(info->cu_idx, info->kname,info->uuid);
 	if (err)
 		zocl_err(&pdev->dev, "configuring SCU failed: %d", err);
 
@@ -326,9 +330,9 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 	u32 *vaddr = zcu->sc_bo->cma_base.vaddr;
 
 	/* If the CU is running, mark it as done */
-	if (*vaddr & 1)
-		/* Clear Bit 0 and set Bit 1 */
-		*vaddr = 2 | (*vaddr & ~3);
+	if (*vaddr == CU_AP_START)
+		/* Set CU to AP_DONE */
+		*vaddr = CU_AP_DONE;
 
 	if (down_interruptible(&zcu->sc_sem)) {
 		ret = -EINTR;
@@ -339,8 +343,8 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* Clear Bit 1 and set Bit 0 */
-	*vaddr = 1 | (*vaddr & ~3);
+	/* set CU AP_START */
+	*vaddr = CU_AP_START;
 
 	return 0;
 }
@@ -352,7 +356,7 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	int ret = 0;
 
 	// Wait for PS kernel initizliation complete
-	if(down_timeout(&zcu->sc_sem,msecs_to_jiffies(1000))) {
+	if(down_timeout(&zcu->sc_sem, msecs_to_jiffies(1000))) {
 		zocl_err(&pdev->dev, "PS kernel initialization timed out!");
 		return -ETIME;
 	}
@@ -364,20 +368,22 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	return 0;
 }
 
+// Signal SKD Ready
 void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 
+	BUG_ON(!zcu);
 	up(&zcu->sc_sem);
 }
 
+// Signal PS kernel crashed
 void zocl_scu_sk_crash(struct platform_device *pdev)
 {
-	//struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
 
-	// TO-DO
-	// Add taks to indicate PS kernel crash
-	return; /* Place holder */
+	xrt_cu_scu_crashed(xcu);
 }
 
 void zocl_scu_sk_shutdown(struct platform_device *pdev)
@@ -414,15 +420,6 @@ void zocl_scu_sk_shutdown(struct platform_device *pdev)
 	}
 	put_pid(p);
 
-	if (down_timeout(&zcu->sc_sem,msecs_to_jiffies(1000)))
-		DRM_WARN("Wait for PS kernel timeout\n");
  skip_kill:
 	return;
-}
-
-void zocl_scu_sk_fini(struct platform_device *pdev)
-{
-	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-
-	up(&zcu->sc_sem);
 }

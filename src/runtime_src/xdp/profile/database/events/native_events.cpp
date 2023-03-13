@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,6 +17,7 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/native_events.h"
 
 namespace xdp {
@@ -23,45 +25,36 @@ namespace xdp {
   NativeAPICall::NativeAPICall(uint64_t s_id, double ts, uint64_t name) :
     APICall(s_id, ts, name, NATIVE_API_CALL)
   {
-    
-  }
-
-  NativeAPICall::~NativeAPICall()
-  {
   }
 
   void NativeAPICall::dump(std::ofstream& fout, uint32_t bucket)
   {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << "\n" ;
+    VTFEvent::dump(fout, bucket);
+    fout << "," << functionName << "\n";
   }
 
-  void NativeAPICall::dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/)
+  NativeSyncRead::NativeSyncRead(uint64_t s_id, double ts, uint64_t name) :
+    NativeAPICall(s_id, ts, name)
   {
-  }
-
-  NativeSyncRead::NativeSyncRead(uint64_t s_id, double ts, uint64_t name,
-                                 uint64_t r) :
-    NativeAPICall(s_id, ts, name), readStr(r)
-  {
+    readStr = VPDatabase::Instance()->getDynamicInfo().addString("READ");
   }
 
   void NativeSyncRead::dumpSync(std::ofstream& fout, uint32_t bucket)
   {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << readStr << "\n" ;
+    VTFEvent::dump(fout, bucket);
+    fout << "," << readStr << "\n";
   }
 
-  NativeSyncWrite::NativeSyncWrite(uint64_t s_id, double ts, uint64_t name,
-                                   uint64_t w) :
-    NativeAPICall(s_id, ts, name), writeStr(w)
+  NativeSyncWrite::NativeSyncWrite(uint64_t s_id, double ts, uint64_t name) :
+    NativeAPICall(s_id, ts, name)
   {
+    writeStr = VPDatabase::Instance()->getDynamicInfo().addString("WRITE");
   }
 
   void NativeSyncWrite::dumpSync(std::ofstream& fout, uint32_t bucket)
   {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << writeStr << "\n" ;
+    VTFEvent::dump(fout, bucket);
+    fout << "," << writeStr << "\n";
   }
 
 } // end namespace xdp

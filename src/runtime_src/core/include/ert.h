@@ -59,6 +59,11 @@
 # pragma warning( disable : 4201 )
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #define to_cfg_pkg(pkg) \
     ((struct ert_configure_cmd *)(pkg))
 #define to_start_krnl_pkg(pkg) \
@@ -468,7 +473,7 @@ struct ert_access_valid_cmd {
  * @ERT_CMD_STATE_QUEUED:      Internal scheduler state
  * @ERT_CMD_STATE_SUBMITTED:   Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:     Internal scheduler state
- * @ERT_CMD_STATE_COMPLETE:    Set by scheduler when command completes
+ * @ERT_CMD_STATE_COMPLETED:   Set by scheduler when command completes 
  * @ERT_CMD_STATE_ERROR:       Set by scheduler if command failed
  * @ERT_CMD_STATE_ABORT:       Set by scheduler if command abort
  * @ERT_CMD_STATE_TIMEOUT:     Set by scheduler if command timeout and reset
@@ -930,6 +935,10 @@ get_size_with_timestamps_or_zero(struct ert_packet *pkt)
 
   return size;
 }
+#endif
+
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
 #endif
 
 #ifdef _WIN32

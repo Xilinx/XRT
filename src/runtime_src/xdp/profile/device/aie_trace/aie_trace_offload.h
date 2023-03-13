@@ -35,7 +35,7 @@
  * 2. For GMIO offload, ps kernel needs to be used to initialize and read data
  */
 
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 #include "core/edge/user/aie/aie.h"
 #endif
 
@@ -71,7 +71,7 @@ struct AIETraceBufferInfo
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 struct AIETraceGmioDMAInst
 {
   // C_RTS Shim DMA to where this GMIO object is mapped
@@ -105,8 +105,6 @@ public:
     XDP_EXPORT
     bool initReadTrace();
     XDP_EXPORT
-    void readTrace(bool final);
-    XDP_EXPORT
     void endReadTrace();
     XDP_EXPORT
     bool isTraceBufferFull();
@@ -125,7 +123,7 @@ public:
       return offloadStatus;
     };
 
-    // no circular buffer for now
+    void readTrace(bool final) {mReadTrace(final);};
 
 private:
 
@@ -134,23 +132,21 @@ private:
     DeviceIntf*     deviceIntf;
     AIETraceLogger* traceLogger;
 
-    bool     isPLIO;
+    bool isPLIO;
     uint64_t totalSz;
     uint64_t numStream;
-
-    // Set this to true for more verbose trace offload
-    // Internal use only
-    bool m_debug = false;
-
     uint64_t bufAllocSz;
-
     std::vector<AIETraceBufferInfo>  buffers;
+
+    //Internal use only
+    // Set this for verbose trace offload
+    bool m_debug = false;
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
     std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
 #endif
 
@@ -167,12 +163,16 @@ private:
     bool mCircularBufOverwrite;
 
 private:
+    void readTracePLIO(bool final);
+    void readTraceGMIO(bool final);
     bool setupPSKernel();
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
     void checkCircularBufferSupport();
-    bool syncAndLog(uint64_t index);
+    uint64_t syncAndLog(uint64_t index);
+    std::function<void(bool)> mReadTrace;
+    uint64_t searchWrittenBytes(void * buf, uint64_t bytes);
 };
 
 }

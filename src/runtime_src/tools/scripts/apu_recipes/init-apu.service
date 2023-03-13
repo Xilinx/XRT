@@ -1,0 +1,11 @@
+[Unit]
+Description=APU init Daemon
+Before=skd.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/init-apu
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target

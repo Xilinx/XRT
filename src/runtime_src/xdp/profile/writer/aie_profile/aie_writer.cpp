@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,15 +37,18 @@ namespace xdp {
 
   bool AIEProfilingWriter::write(bool openNewFile)
   {
+    // Report HW generation to inform analysis how to interpret event IDs
+    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+    
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
-
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
 
     // Write header
-    fout << "Target device: " << mDeviceName << std::endl;
-    fout << "Clock frequency (MHz): " << aieClockFreqMhz << std::endl;
+    fout << "Target device: " << mDeviceName << "\n";
+    fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
+    fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "timestamp"    << ","
          << "column"       << ","
          << "row"          << ","
@@ -53,20 +57,21 @@ namespace xdp {
          << "reset"        << ","
          << "value"        << ","
          << "timer"        << ","
-         << "payload"      << ","
-         << std::endl;
+         << "payload"      << ",\n";
 
     // Write all data elements
-    std::vector<VPDynamicDatabase::CounterSample> samples = 
-      (db->getDynamicInfo()).getAIESamples(mDeviceIndex);
+    std::vector<counters::Sample> samples =
+      db->getDynamicInfo().getAIESamples(mDeviceIndex);
 
-    for (auto sample : samples) {
-      fout << sample.first << ","; // Timestamp
-      for (auto value : sample.second) {
+    for (auto& sample : samples) {
+      fout << sample.timestamp << ",";
+      for (auto value : sample.values) {
         fout << value << ",";
       }
-      fout << std::endl;
+      fout << "\n";
     }
+
+    fout.flush();
     return true;
   }
 

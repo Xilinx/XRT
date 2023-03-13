@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 add_subdirectory(plugin/xdp)
 
 add_library(core_pcielinux_objects OBJECT
   debug.cpp
   device_linux.cpp
-  scan.cpp
+  pcidev.cpp
+  pcidrv.cpp
   shim.cpp
   system_linux.cpp
   )

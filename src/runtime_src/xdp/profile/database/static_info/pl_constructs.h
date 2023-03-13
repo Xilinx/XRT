@@ -21,7 +21,11 @@
 // This file collects all of the data structures used in the static info
 //  database for constructs that exist in the PL portion of the design.
 
+#include <array>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <cstdint>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -174,6 +178,9 @@ namespace xdp {
     // The index of the Compute Unit in the IP_LAYOUT section of the xclbin
     int32_t index ;
 
+    // fullname of the CU in the IP_LAYOUT
+    std::string fullname ;
+
     // The name of the compute unit, parsed out of the portion of the
     //  name in the IP_LAYOUT section after the ':'
     std::string name ;
@@ -224,6 +231,7 @@ namespace xdp {
 
     // Inlined Getters
     inline const std::string& getName()       { return name ; }
+    inline const std::string& getFullname()       { return fullname ; }
     inline const std::string& getKernelName() { return kernelName ; }
     inline const int32_t getIndex() const     { return index ; }
     inline auto getConnections()              { return &connections ; }
@@ -325,6 +333,36 @@ namespace xdp {
   private:
     void convertBankToDDR();
   } ;
+
+
+  constexpr uint32_t num_bits_deadlock_diagnosis = 32;
+  // Deadlock Diagnosis registers
+  // Each entry in map looks like:
+  // Register Offset -> {message[0], message[1]...message[31]}
+  using kernel_reginfo = std::map<uint32_t, std::array<std::string, num_bits_deadlock_diagnosis>>;
+  /* Class to handle parsing of IP_METADATA section in xclbin*/
+  class ip_metadata {
+  private:
+    uint32_t s_major;
+    uint32_t s_minor;
+
+  public:
+    std::vector<std::pair<std::string, kernel_reginfo>> kernel_infos;
+
+  public:
+    ip_metadata() = delete;
+    ip_metadata(const boost::property_tree::ptree& pt);
+    void print();
+    inline uint32_t get_offset_from_string(const std::string& str)
+    {
+      uint32_t offset = 0;
+      std::stringstream ss;
+      // Remove the 0x
+      ss << std::hex << str.substr(2);
+      ss >> offset;
+      return offset;
+    }
+  };
   
 } // end namespace xdp
 

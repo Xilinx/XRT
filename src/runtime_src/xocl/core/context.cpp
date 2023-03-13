@@ -49,7 +49,7 @@ context::
 {
   XOCL_DEBUG(std::cout,"xocl::context::~context(",m_uid,")\n");
   try {
-    for (auto device : m_devices)
+    for (auto& device : m_devices)
       device->unlock();
   }
   catch (const std::exception& ex) {

@@ -18,6 +18,7 @@
 #include "KernelUtilities.h"
 
 #include "XclBinUtilities.h"
+#include "SectionIPLayout.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -126,8 +127,20 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
 
   // -- Extended-data
   // Blindly add it.  In the future add a JSON schema to validate it
-  const boost::property_tree::ptree& ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
+  boost::property_tree::ptree ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
   if (!ptExtendedData.empty()) {
+    // the extended-data in dpu json has "subtype" and "functional" attributes
+    // these two attributes can either have string or numeric value
+    // but xml only taks numeric value
+    // we need to conver string to correponding nemeric
+    auto sFunctional = ptExtendedData.get<std::string>("functional", "");
+    sFunctional = SectionIPLayout::getFunctionalEnumStr(sFunctional); 
+    ptExtendedData.put("functional", sFunctional);
+
+    auto sSubType = ptExtendedData.get<std::string>("subtype", "");
+    sSubType = SectionIPLayout::getSubTypeEnumStr(sSubType); 
+    ptExtendedData.put("subtype", sSubType);
+ 
     boost::property_tree::ptree ptEntry;
     ptEntry.add_child("<xmlattr>", ptExtendedData);
     ptKernelXML.add_child("extended-data", ptEntry);
@@ -357,7 +370,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 
   // Transform the sections into something more manageable
   const boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout", ptEmpty);
-  auto ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
+  auto ipData = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
   const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology", ptEmpty);
   auto memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
@@ -377,7 +390,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     const std::string ipLayoutName = kernelName + ":" + instanceName;
 
     // Validate that this PS kernel with this name doesn't already exist
-    for (const auto& ipEntry : ipLayout) {
+    for (const auto& ipEntry : ipData) {
       if ((ipEntry.get<std::string>("m_type", "") == "PS_KERNEL") &&
           (ipEntry.get<std::string>("m_name", "") == ipLayoutName))
         throw std::runtime_error("PS Kernel instance name already exists: '" + ipLayoutName + "'");
@@ -386,17 +399,40 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     // Create the new PS kernel instance and add it to the vector
     boost::property_tree::ptree ptIPEntry;
     ptIPEntry.put("m_type", "IP_PS_KERNEL");
+    // IP_PS_KERNEL specific data
+    // Note: extended-data is optional, only appliable to fixed ps kernel (-add-kernel)
+    //       not appicable to non-fixed ps kernel (-add-pskernel)
+    // "extended-data" {
+    //   "fundtional": "0"
+    //   "subtype": "1"
+    //   "dpu_kernel_id": "0x101"
+    // }   
+    boost::optional< const boost::property_tree::ptree& > boExtendedData = ptKernel.get_child_optional("extended-data");
+    if (boExtendedData) {
+      const boost::property_tree::ptree& ptExtendedData = boExtendedData.get();
+      if (!ptExtendedData.empty()) {
+        static const std::string NOT_DEFINED = "";
+        auto subType = ptExtendedData.get<std::string>("subtype", NOT_DEFINED);
+        auto functional = ptExtendedData.get<std::string>("functional", NOT_DEFINED);
+        auto dpuKernelId = ptExtendedData.get<std::string>("dpu_kernel_id", NOT_DEFINED);
+        // subType and functinoal can either be string or numeric value
+        ptIPEntry.put("m_subtype", subType);
+        ptIPEntry.put("m_functional", functional);
+        ptIPEntry.put("m_kernel_id", dpuKernelId);
+      }
+    }
     ptIPEntry.put("m_base_address", "not_used");
     ptIPEntry.put("m_name", ipLayoutName);
-    ipLayout.push_back(ptIPEntry);
-    const unsigned int ipLayoutIndex = static_cast<unsigned int>(ipLayout.size()) - 1;
+
+    ipData.push_back(ptIPEntry); // There is at least 1 element in the ipLayout vector
+    const unsigned int ipLayoutIndex = static_cast<unsigned int>(ipData.size()) - 1;
 
     // -- For each PS Kernel Instance, connect any argument to its memory
     addArgsToMemoryConnections(ipLayoutIndex, ptKernel.get_child("arguments", ptEmpty), memTopology,  connectivity);
   }
 
   // Replace the original property tree
-  transformVectorToPtree(ipLayout, "ip_layout", "m_ip_data", ptIPLayoutRoot);
+  transformVectorToPtree(ipData, "ip_layout", "m_ip_data", ptIPLayoutRoot);
   transformVectorToPtree(connectivity, "connectivity", "m_connection", ptConnectivityRoot);
   transformVectorToPtree(memTopology, "mem_topology", "m_mem_data", ptMemTopologyRoot);
 }
@@ -604,7 +640,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
   boost::property_tree::ptree ptKernels;
   ptKernels.add_child("kernels", ptKernelArray);
 
-  // Build the ps-kernel node
+  // Build the ps-kernels node
   ptPSKernels.add_child("ps-kernels", ptKernels);
 
   XUtil::TRACE_PrintTree("PS Kernel Entries", ptPSKernels);

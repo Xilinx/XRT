@@ -15,6 +15,8 @@ This tool supported for all Alveo platforms, U2 and U30 platforms.
 
 This tool doesn't come with XRT package, it comes as separate xbflash package.
 
+This tool is verified and supported only on XDMA PCIe DMA designs.
+
 **Global options**: These are the global options can be used with any command. 
 
  - ``--help`` : Get help message to use this application.

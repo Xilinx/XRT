@@ -109,6 +109,7 @@ EOF
 }
 
 SYSTEM_DTB_ADDR="0x40000"
+BT_SCR_ADDR="0x20000000"
 KERNEL_ADDR="0x20100000"
 ROOTFS_ADDR="0x21000000"
 
@@ -163,6 +164,7 @@ BUILD_DIR="$OUTPUT_DIR/apu_build"
 PACKAGE_DIR="$BUILD_DIR"
 FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
 INSTALL_ROOT="$BUILD_DIR/lib"
+SDK="$BUILD_DIR/lib/firmware/xilinx/sysroot/sdk.sh"
 
 if [[ $clean == 1 ]]; then
 	echo $PWD
@@ -175,8 +177,7 @@ if [[ ! -d $IMAGES_DIR ]]; then
 	error "Please specify the valid path of APU images by -images"
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
-#hack to fix pipeline. Need to file a CR on xclnbinutil
-source /proj/xbuilds/2022.2_0823_1/installs/lin64/Vitis/2022.2/settings64.sh
+source /proj/xbuilds/2022.2_released/installs/lin64/Vitis/2022.2/settings64.sh
 
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
@@ -224,7 +225,7 @@ all:
         { core=a72-0, exception_level=el-2, file=$IMAGES_DIR/u-boot.elf }
         { load=$ROOTFS_ADDR, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
         { load=$KERNEL_ADDR, file=$IMAGE_UB }
-        { load=0x20000000, file=$BUILD_DIR/boot.scr }
+        { load=$BT_SCR_ADDR, file=$BUILD_DIR/boot.scr }
         { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
     }
 }
@@ -238,7 +239,7 @@ MKIMAGE=mkimage
 UBOOT_SCRIPT="$BUILD_DIR/boot.scr"
 UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
-setenv bootargs "console=ttyUL0 clk_ignore_unused modprobe.blacklist=allegro,al5d"
+setenv bootargs "console=ttyUL0 clk_ignore_unused modprobe.blacklist=allegro,al5d systemd.unified_cgroup_hierarchy=1"
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
 $MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
@@ -291,6 +292,12 @@ if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"
 fi
 
+#copy the sysroot sdk.sh
+mkdir -p `dirname $SDK`
+if [ -e $IMAGES_DIR/sdk.sh ]; then
+        echo "sdk.sh exists copy it to apu package"
+        cp $IMAGES_DIR/sdk.sh $SDK
+fi
 # Generate PS Kernel xclbin
 # Hardcoding the ps kernel xclbin name to ps_kernels.xclbin
 # We can create one xclbin per PS Kernel also based on future requirements

@@ -25,6 +25,14 @@ class SubCmdExamine : public SubCmd {
 
  public:
   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+
+ private:
+  std::string               m_device;
+  std::vector<std::string>  m_reportNames; // Default set of report names are determined if there is a device or not
+  std::vector<std::string>  m_elementsFilter;
+  std::string               m_format; // Don't define default output format.  Will be defined later.
+  std::string               m_output;
+  bool                      m_help;
 };
 
 #endif

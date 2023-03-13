@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <vector>
 
 namespace xrt {
 class hw_context;
@@ -17,6 +18,7 @@ namespace xrt_core {
 
 class command;
 class device;
+class fence;
 
 // class hw_queue - internal representation of hw queue for scheduling
 //
@@ -59,11 +61,25 @@ public:
   std::cv_status
   wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const;
 
+  // Enqueue a command returning a fence that can be waited on
+  xrt_core::fence
+  enqueue(xrt_core::command* cmd);
+
+  // Enqueue a command with dependencies
+  xrt_core::fence
+  enqueue(xrt_core::command* cmd, const std::vector<xrt_core::fence>& waits);
+
   // Wait for one call to exec_wait to return either from
   // some command completing or from a timeout.
   XRT_CORE_COMMON_EXPORT
   static std::cv_status
   exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms);
+
+  // Cleanup after device object is no longer valid
+  // Static data is cached per xrt_core::device object, this function
+  // removes the static data when it is no longer needed.
+  static void
+  finish(const xrt_core::device*);
 
   // Internal API to synchronize static global destruction.
   // Used by OpenCL implementation.

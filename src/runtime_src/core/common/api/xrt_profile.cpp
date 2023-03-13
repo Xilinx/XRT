@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -23,7 +24,7 @@
 #include "core/include/experimental/xrt_profile.h"
 
 #include "core/common/dlfcn.h"
-#include "core/common/message.h"
+#include "core/common/error.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 
@@ -110,25 +111,19 @@ std::function<void (unsigned long long int, const char*)> user_event_time_ns_cb;
 static void
 register_user_functions(void* handle)
 {
-  using dtype = void(*)(unsigned int, const char*, const char*);
-  user_range_start_cb = (dtype)(xrt_core::dlsym(handle, "user_event_start_cb"));
-  if (xrt_core::dlerror() != NULL)
-    user_range_start_cb = nullptr;
+  using startType = void(*)(unsigned int, const char*, const char*);
+  using endType   = void(*)(unsigned int);
+  using pipeType  = void(*)(const char*);
+  using nsType    = void(*)(unsigned long long int, const char*);
 
-  using ftype = void(*)(unsigned int);
-  user_range_end_cb = (ftype)(xrt_core::dlsym(handle, "user_event_end_cb"));
-  if (xrt_core::dlerror() != NULL)
-    user_range_end_cb = nullptr;
-
-  using btype = void(*)(const char*);
-  user_event_cb = (btype)(xrt_core::dlsym(handle, "user_event_happened_cb"));
-  if (xrt_core::dlerror() != NULL)
-    user_event_cb = nullptr;
-
-  using ctype = void(*)(unsigned long long int, const char*);
-  user_event_time_ns_cb = (ctype)(xrt_core::dlsym(handle, "user_event_time_ns_cb"));
-  if (xrt_core::dlerror() != NULL)
-    user_event_time_ns_cb = nullptr;
+  user_range_start_cb =
+    reinterpret_cast<startType>(xrt_core::dlsym(handle, "user_event_start_cb"));
+  user_range_end_cb =
+    reinterpret_cast<endType>(xrt_core::dlsym(handle, "user_event_end_cb"));
+  user_event_cb =
+    reinterpret_cast<pipeType>(xrt_core::dlsym(handle, "user_event_happened_cb"));
+  user_event_time_ns_cb =
+    reinterpret_cast<nsType>(xrt_core::dlsym(handle, "user_event_time_ns_cb"));
 }
 
 static void
@@ -153,7 +148,7 @@ xrtURStart(unsigned int id, const char* label, const char* tooltip)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -167,7 +162,7 @@ xrtUREnd(unsigned int id)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -181,7 +176,7 @@ xrtUEMark(const char* label)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -195,7 +190,7 @@ xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label)
   }
   catch (const std::exception& ex)
   {
-    xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 

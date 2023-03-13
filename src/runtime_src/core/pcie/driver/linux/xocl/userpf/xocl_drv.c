@@ -1,32 +1,26 @@
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
-#include <linux/pci.h>
-#include <linux/kernel.h>
 #include <linux/aer.h>
-#include <linux/version.h>
-#include <linux/module.h>
-#include <linux/pci.h>
 #include <linux/crc32c.h>
-#include <linux/random.h>
 #include <linux/iommu.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/pagemap.h>
-#include "../xocl_drv.h"
-#include "xocl_errors.h"
+#include <linux/pci.h>
+#include <linux/random.h>
+#include <linux/version.h>
+
 #include "common.h"
-#include "version.h"
+#include "version.h" /* Generated file. The XRT version the driver works with */
+#include "xocl_errors.h"
+#include "../xocl_drv.h"
+
 
 #ifndef PCI_EXT_CAP_ID_REBAR
 #define PCI_EXT_CAP_ID_REBAR 0x15
@@ -213,6 +207,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
+	uint32_t slot_id = DEFAULT_PL_SLOT;
 	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
@@ -245,7 +240,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
-		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, slot_id);
 		if (ret) {
 			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
 			return;
@@ -266,7 +261,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		}
 
 		xocl_kds_reset(xdev, xclbin_id);
-		XOCL_PUT_XCLBIN_ID(xdev);
+		XOCL_PUT_XCLBIN_ID(xdev, slot_id);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
 			if (!xdev->core.drm) {
@@ -579,6 +574,7 @@ static void xocl_work_cb(struct work_struct *work)
 		xocl_reset_notify(xdev->core.pdev, false);
 		xocl_drvinst_set_offline(xdev->core.drm, false);
 		XDEV(xdev)->shutdown = false;
+		(void) xocl_refresh_subdevs(xdev);
 		break;
 	case XOCL_WORK_PROGRAM_SHELL:
 		/* program shell */
@@ -832,9 +828,10 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
-	char *blob = NULL, *tmp;
-	u32 blob_len;
-	uint64_t checksum;
+	char *blob = NULL;
+	char *tmp = NULL;
+	u32 blob_len = 0;
+	uint64_t checksum = 0;
 	size_t offset = 0;
 	bool offline = false;
 	int ret = 0;
@@ -1170,6 +1167,32 @@ static int identify_bar(struct xocl_dev *xdev)
 		identify_bar_legacy(xdev);
 }
 
+static void xocl_cleanup_axlf_obj(struct xocl_dev *xdev)
+{
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	uint32_t slot_id = 0;
+
+	mutex_lock(&xdev->dev_lock);
+	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
+		axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
+		if (axlf_obj != NULL) {
+			if (axlf_obj->ulp_blob)
+				vfree(axlf_obj->ulp_blob);
+
+			if (axlf_obj->kernels)
+				vfree(axlf_obj->kernels);
+
+			axlf_obj->kernels = NULL;
+			axlf_obj->ksize = 0;
+
+			vfree(axlf_obj);
+			XDEV(xdev)->axlf_obj[slot_id] = NULL;
+		}
+	}
+
+	mutex_unlock(&xdev->dev_lock);
+}
+
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
@@ -1215,8 +1238,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	unmap_bar(xdev);
 
 	xocl_subdev_fini(xdev);
-	if (xdev->ulp_blob)
-		vfree(xdev->ulp_blob);
+	xocl_cleanup_axlf_obj(xdev);
 	mutex_destroy(&xdev->dev_lock);
 
 	if (xdev->core.bars)
@@ -1617,8 +1639,9 @@ void xocl_cma_bank_free(struct xocl_dev	*xdev)
 {
 	__xocl_cma_bank_free(xdev);
 	if (xdev->core.drm)
-		xocl_cleanup_mem(xdev->core.drm);
-	xocl_icap_clean_bitstream(xdev);
+		xocl_cleanup_mem_all(xdev->core.drm);
+
+	xocl_icap_clean_bitstream_all(xdev);
 }
 
 int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *cma_info)
@@ -1626,8 +1649,8 @@ int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *c
 	int err = 0;
 	int num = MAX_SB_APERTURES;
 
-	xocl_cleanup_mem(xdev->core.drm);
-	xocl_icap_clean_bitstream(xdev);
+	xocl_cleanup_mem_all(xdev->core.drm);
+	xocl_icap_clean_bitstream_all(xdev);
 
 	if (xdev->cma_bank) {
 		uint64_t allocated_size = xdev->cma_bank->entry_num * xdev->cma_bank->entry_sz;
@@ -1761,6 +1784,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "mailbox subdev is not created");
 		goto failed;
 	}
+
+	/* When XOCL loading/reloading we should make sure ERT
+	 * cleanup all the prior CUs/SCUs if exists. This is because ERT doesn't
+	 * get any notification when XOCL reloaded.
+	 */
+	xdev->reset_ert_cus = true;
 
 	xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 	/* Waiting for all subdev to be initialized before returning. */
@@ -2016,6 +2045,6 @@ MODULE_VERSION(XRT_DRIVER_VERSION);
 MODULE_DESCRIPTION(XOCL_DRIVER_DESC);
 MODULE_AUTHOR("Lizhi Hou <lizhi.hou@xilinx.com>");
 MODULE_LICENSE("GPL v2");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)  || defined(RHEL_9_0_GE)
 MODULE_IMPORT_NS(DMA_BUF);
 #endif
