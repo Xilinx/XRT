@@ -416,6 +416,24 @@ static ssize_t host_mem_size_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(host_mem_size);
 
+static ssize_t
+pl_only_reset_store(struct device *dev, struct device_attribute *da,
+		const char *buf, size_t count)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+        u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) < 0 || val != 1)
+		return -EINVAL;
+
+	write_lock(&zdev->attr_rwlock);
+	count = zocl_pl_only_reset(zdev, buf, count);
+	write_unlock(&zdev->attr_rwlock);
+
+	return count;
+}
+static DEVICE_ATTR_WO(pl_only_reset);
+
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
@@ -431,6 +449,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_dtbo_path.attr,
 	&dev_attr_host_mem_addr.attr,
 	&dev_attr_host_mem_size.attr,
+	&dev_attr_pl_only_reset.attr,
 	NULL,
 };
 

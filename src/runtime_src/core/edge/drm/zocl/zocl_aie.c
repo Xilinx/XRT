@@ -225,6 +225,29 @@ done:
 }
 
 int
+zocl_cleanup_aie(struct drm_zocl_dev *zdev)
+{
+	int ret = 0;
+
+	if (zdev->aie) {
+		/*
+		 * Dont reset if aie is already in reset
+		 * state
+		 */
+		if( !zdev->aie->aie_reset) {
+			ret = zocl_aie_reset(zdev);
+			if (ret)
+				return ret;
+
+		}
+
+		zocl_destroy_aie(zdev);
+	}
+
+	return 0;
+}
+
+int
 zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uint8_t hw_gen)
 {
 	uint64_t offset;
@@ -311,6 +334,7 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 
 	zocl_init_aie(zdev);
 
+	DRM_INFO("AIE create successfully finished.");
 	return 0;
 
 done:
@@ -437,6 +461,7 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 
 	mutex_unlock(&zdev->aie_lock);
 
+	DRM_INFO("AIE Reset successfully finished.");
 	return 0;
 }
 

@@ -72,6 +72,25 @@ enum zocl_mem_type {
 	ZOCL_MEM_TYPE_STREAMING		= 2,
 };
 
+#define PL_RESET_ADDRESS		0x00F1260330
+#define PL_HOLD_VAL			0xF
+#define PL_RELEASE_VAL			0x0
+#define PL_RESET_ALLIGN_SIZE		_4KB
+
+/* Possible slots Types for ZOCL */
+enum zocl_slot_type {
+	ZOCL_FULL_XCLBIN			= 0,
+	ZOCL_PL_ONLY_XCLBIN			= 1,
+	ZOCL_AIE_ONLY_XCLBIN			= 2,
+	ZOCL_PS_ONLY_XCLBIN			= 3
+};
+
+/* Hard coded XCLBIN slots for ZOCL */
+enum zocl_xclbin_slot {
+	ZOCL_DEFAULT_XCLBIN_SLOT		= 0,
+	ZOCL_AIE_ONLY_XCLBIN_SLOT		= 1,
+};
+
 /*
  * Memory structure in zocl driver. There will be an array of this
  * structure where each element is representing each section in
