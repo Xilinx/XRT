@@ -231,14 +231,12 @@ zocl_cleanup_aie(struct drm_zocl_dev *zdev)
 
 	if (zdev->aie) {
 		/*
-		 * Dont reset if aie is already in reset
-		 * state
+		 * Dont reset if aie is already in reset state
 		 */
 		if( !zdev->aie->aie_reset) {
 			ret = zocl_aie_reset(zdev);
 			if (ret)
 				return ret;
-
 		}
 
 		zocl_destroy_aie(zdev);
