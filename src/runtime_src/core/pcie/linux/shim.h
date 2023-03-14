@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
@@ -53,8 +53,12 @@ public:
   int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
   int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
-  unsigned int xclAllocBO(size_t size, unsigned flags);
-  unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+  std::unique_ptr<xrt_core::buffer_handle>
+  xclAllocBO(size_t size, unsigned flags);
+
+  std::unique_ptr<xrt_core::buffer_handle>
+  xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+
   void xclFreeBO(unsigned int boHandle);
   int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
@@ -66,8 +70,12 @@ public:
 
   int xclUpdateSchedulerStat();
 
-  int xclExportBO(unsigned int boHandle);
-  unsigned int xclImportBO(int fd, unsigned flags);
+  std::unique_ptr<xrt_core::shared_handle>
+  xclExportBO(unsigned int boHandle);
+
+  std::unique_ptr<xrt_core::buffer_handle>
+  xclImportBO(int fd, unsigned flags);
+
   int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
 
   // Bitstream/bin download

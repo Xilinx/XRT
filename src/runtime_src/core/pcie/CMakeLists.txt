@@ -6,14 +6,14 @@ include_directories(
   )
 
 xrt_add_subdirectory(common)
-#xrt_add_subdirectory(tools)
+xrt_add_subdirectory(tools)
 
 if(NOT WIN32)
-#  xrt_add_subdirectory(linux)
+  xrt_add_subdirectory(linux)
   xrt_add_subdirectory(driver)
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     # Emulation flow only works on x86_64
-#    xrt_add_subdirectory(emulation)
+    xrt_add_subdirectory(emulation)
     xrt_add_subdirectory(noop)
   endif()
 else()

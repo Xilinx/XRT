@@ -66,7 +66,7 @@ alloc_bo(xclDeviceHandle, void* userptr, size_t size, unsigned int flags);
 
 // import_bo
 std::unique_ptr<xrt_core::buffer_handle>
-import_bo(xclDeviceHandle, pid_t, xrt_core::shared_handle::export_handle);
+import_bo(xclDeviceHandle, xrt_core::shared_handle::export_handle);
 
 // create_hw_context() -
 std::unique_ptr<xrt_core::hwctx_handle>

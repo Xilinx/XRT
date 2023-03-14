@@ -15,7 +15,7 @@ namespace xrt_core {
 class buffer_handle
 {
 public:
-  enum class map_type { write, read };
+  enum class map_type { read, write };
 
   enum class direction
   {

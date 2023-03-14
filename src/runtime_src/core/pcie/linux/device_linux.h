@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef PCIE_DEVICE_LINUX_H
 #define PCIE_DEVICE_LINUX_H
@@ -73,6 +73,18 @@ public:
   register_xclbin(const xrt::xclbin& xclbin) const override
   {
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, flags);
   }
   ////////////////////////////////////////////////////////////////
 

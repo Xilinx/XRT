@@ -13,6 +13,7 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
+#include "core/common/shim/shared_handle.h"
 #include "core/include/shim_int.h"
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
@@ -121,6 +122,92 @@ get_shim_object(xclDeviceHandle handle)
 
 namespace xrt_shim {
 
+class shared_object : public xrt_core::shared_handle
+{
+  xocl::shim* m_shim;
+  xclBufferExportHandle m_ehdl;
+public:
+  shared_object(xocl::shim* shim, xclBufferExportHandle ehdl)
+    : m_shim(shim)
+    , m_ehdl(ehdl)
+  {}
+
+  ~shared_object()
+  {
+    close(m_ehdl);
+  }
+
+  export_handle
+  get_export_handle() const
+  {
+    return static_cast<export_handle>(m_ehdl);
+  }
+};
+
+class buffer_object : public xrt_core::buffer_handle
+{
+  xocl::shim* m_shim;
+  xclBufferHandle m_hdl;
+public:
+  buffer_object(xocl::shim* shim, int fd)
+    : m_shim(shim)
+    , m_hdl(fd)
+  {}
+
+  ~buffer_object()
+  {
+    m_shim->xclFreeBO(m_hdl);
+  }
+
+  xclBufferHandle
+  get_handle() const
+  {
+    return m_hdl;
+  }
+
+  // Export buffer for use with another process or device
+  // An exported buffer can be imported by another device
+  // or hardware context.
+  std::unique_ptr<xrt_core::shared_handle>
+  share() const override
+  {
+    return m_shim->xclExportBO(m_hdl);
+  }
+
+  void*
+  map(map_type mt) override
+  {
+    return m_shim->xclMapBO(m_hdl, (mt == xrt_core::buffer_handle::map_type::write));
+  }
+
+  void
+  unmap(void* addr) override
+  {
+    m_shim->xclUnmapBO(m_hdl, addr);
+  }
+
+  void
+  sync(direction dir, size_t size, size_t offset) override
+  {
+    m_shim->xclSyncBO(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+  }
+
+  void
+  copy(const buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
+  {
+    auto bo_src = static_cast<const buffer_object*>(src);
+    m_shim->xclCopyBO(m_hdl, bo_src->get_handle(), size, dst_offset, src_offset);
+  }
+
+  properties
+  get_properties() const override
+  {
+    xclBOProperties xprop;
+    m_shim->xclGetBOProperties(m_hdl, &xprop);
+    return {xprop.flags, xprop.size, xprop.paddr};
+  }
+}; // buffer_object
+
 class hwcontext : public xrt_core::hwctx_handle
 {
   xocl::shim* m_shim;
@@ -177,26 +264,18 @@ public:
     return nullptr;
   }
 
-  xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+  std::unique_ptr<xrt_core::buffer_handle>
   alloc_bo(void* userptr, size_t size, unsigned int flags) override
   {
     // The hwctx is embedded in the flags, use regular shim path
-    auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
-    if (bo == XRT_NULL_BO)
-      throw std::bad_alloc();
-
-    return to_xrt_buffer_handle(bo);
+    return m_shim->xclAllocUserPtrBO(userptr, size, flags);
   }
 
-  xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+  std::unique_ptr<xrt_core::buffer_handle>
   alloc_bo(size_t size, unsigned int flags) override
   {
     // The hwctx is embedded in the flags, use regular shim path
-    auto bo = m_shim->xclAllocBO(size, flags);
-    if (bo == XRT_NULL_BO)
-      throw std::bad_alloc();
-
-    return to_xrt_buffer_handle(bo);
+    return m_shim->xclAllocBO(size, flags);
   }
 
   xrt_core::cuidx_type
@@ -853,32 +932,32 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
  *
  * Assume that the memory is always created for the device ddr for now. Ignoring the flags as well.
  */
-unsigned int shim::xclAllocBO(size_t size, unsigned flags)
+std::unique_ptr<xrt_core::buffer_handle>
+shim::
+xclAllocBO(size_t size, unsigned flags)
 {
-    drm_xocl_create_bo info = {size, mNullBO, flags};
-    unsigned int bo = mNullBO;
-    int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
-    if (result)
-        errno = result;
-    else
-        bo = info.handle;
-    return bo;
+  drm_xocl_create_bo info = {size, mNullBO, flags};
+  int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
+  if (result)
+    throw xrt_core::system_error(result, "failed to allocate bo");
+
+  return std::make_unique<xrt_shim::buffer_object>(this, info.handle);
 }
 
 /*
  * xclAllocUserPtrBO()
  */
-unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+std::unique_ptr<xrt_core::buffer_handle>
+shim::
+xclAllocUserPtrBO(void* userptr, size_t size, unsigned flags)
 {
-    drm_xocl_userptr_bo user =
-        {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
-    unsigned int bo = mNullBO;
-    int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
-    if (result)
-        errno = result;
-    else
-        bo = user.handle;
-    return bo;
+  drm_xocl_userptr_bo user =
+    {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
+  int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
+  if (result)
+    throw xrt_core::system_error(result, "failed to allocate userptr bo");
+
+  return std::make_unique<xrt_shim::buffer_object>(this, user.handle);
 }
 
 /*
@@ -964,33 +1043,36 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
     return ret ? -errno : ret;
 }
 
-int shim::execbufCopyBO(unsigned int dst_bo_handle,
-    unsigned int src_bo_handle, size_t size, size_t dst_offset,
-    size_t src_offset)
+int
+shim::
+execbufCopyBO(unsigned int dst_bo_handle,
+              unsigned int src_bo_handle, size_t size, size_t dst_offset,
+              size_t src_offset)
 {
-    auto bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
-    ert_fill_copybo_cmd(bo.second, src_bo_handle, dst_bo_handle,
-                        src_offset, dst_offset, size);
+  auto bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+  ert_fill_copybo_cmd(bo.second, src_bo_handle, dst_bo_handle,
+                      src_offset, dst_offset, size);
 
-    int ret = xclExecBuf(to_xclBufferHandle(bo.first));
-    if (ret) {
-        mCmdBOCache->release<ert_start_copybo_cmd>(bo);
-        return ret;
-    }
-
-    do {
-        ret = xclExecWait(1000);
-        if (ret == -1)
-            break;
-    }
-    while (bo.second->state < ERT_CMD_STATE_COMPLETED);
-
-    ret = (ret == -1) ? -errno : 0;
-    if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
-        ret = -EINVAL;
-
-    mCmdBOCache->release<ert_start_copybo_cmd>(bo);
+  auto boh = static_cast<xrt_shim::buffer_object*>(bo.first.get());
+  int ret = xclExecBuf(boh->get_handle());
+  if (ret) {
+    mCmdBOCache->release<ert_start_copybo_cmd>(std::move(bo));
     return ret;
+  }
+
+  do {
+    ret = xclExecWait(1000);
+    if (ret == -1)
+      break;
+  }
+  while (bo.second->state < ERT_CMD_STATE_COMPLETED);
+
+  ret = (ret == -1) ? -errno : 0;
+  if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
+    ret = -EINVAL;
+
+  mCmdBOCache->release<ert_start_copybo_cmd>(std::move(bo));
+  return ret;
 }
 
 int shim::m2mCopyBO(unsigned int dst_bo_handle,
@@ -1020,29 +1102,33 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
         execbufCopyBO(dst_bo_handle, src_bo_handle, size, dst_offset, src_offset);
 }
 
-int shim::xclUpdateSchedulerStat()
+int
+shim::
+xclUpdateSchedulerStat()
 {
-    auto bo = mCmdBOCache->alloc<ert_packet>();
-    bo.second->opcode = ERT_CU_STAT;
-    bo.second->type = ERT_CTRL;
+  auto bo = mCmdBOCache->alloc<ert_packet>();
+  bo.second->opcode = ERT_CU_STAT;
+  bo.second->type = ERT_CTRL;
 
-    int ret = xclExecBuf(to_xclBufferHandle(bo.first));
-    if (ret) {
-        mCmdBOCache->release(bo);
-        return ret;
-    }
-
-    do {
-        ret = xclExecWait(1000);
-        if (ret == -1)
-            break;
-    } while (bo.second->state < ERT_CMD_STATE_COMPLETED);
-
-    ret = (ret == -1) ? -errno : 0;
-    if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
-        ret = -EINVAL;
-    mCmdBOCache->release<ert_packet>(bo);
+  auto boh = static_cast<xrt_shim::buffer_object*>(bo.first.get());
+  int ret = xclExecBuf(boh->get_handle());
+  if (ret) {
+    mCmdBOCache->release(std::move(bo));
     return ret;
+  }
+
+  do {
+    ret = xclExecWait(1000);
+    if (ret == -1)
+      break;
+  } while (bo.second->state < ERT_CMD_STATE_COMPLETED);
+
+  ret = (ret == -1) ? -errno : 0;
+  if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
+    ret = -EINVAL;
+
+  mCmdBOCache->release(move(bo));
+  return ret;
 }
 
 /*
@@ -1745,31 +1831,37 @@ int shim::xclLoadAxlf(const axlf *buffer)
 /*
  * xclExportBO()
  */
-int shim::xclExportBO(unsigned int boHandle)
+std::unique_ptr<xrt_core::shared_handle>
+shim::
+xclExportBO(unsigned int boHandle)
 {
-    drm_prime_handle info = {boHandle, DRM_RDWR, -1};
-    int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
-    if (result) {
-        xrt_logmsg(XRT_WARNING, "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
-        info.flags = 0;
-        result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
-    }
+  drm_prime_handle info = {boHandle, DRM_RDWR, -1};
+  int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
+  if (result) {
+    xrt_logmsg(XRT_WARNING, "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
+    info.flags = 0;
+    result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
+  }
 
-    xrt_logmsg(XRT_DEBUG, "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
-    return !result ? info.fd : result;
+  if (result)
+    throw xrt_core::system_error(result, "failed to export bo");
+
+  return std::make_unique<xrt_shim::shared_object>(this, info.fd);
 }
 
 /*
  * xclImportBO()
  */
-unsigned int shim::xclImportBO(int fd, unsigned flags)
+std::unique_ptr<xrt_core::buffer_handle>
+shim::
+xclImportBO(int fd, unsigned int flags)
 {
-    drm_prime_handle info = {mNullBO, flags, fd};
-    int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
-    if (result) {
-        xrt_logmsg(XRT_ERROR, "%s: FD to handle IOCTL failed", __func__);
-    }
-    return !result ? info.handle : mNullBO;
+  drm_prime_handle info = {mNullBO, flags, fd};
+  int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
+  if (result)
+    throw xrt_core::system_error(result, "failed to import bo");
+
+  return std::make_unique<xrt_shim::buffer_object>(this, info.handle);
 }
 
 /*
@@ -2574,6 +2666,28 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
   shim->register_xclbin(xclbin);
 }
 
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocBO(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocUserPtrBO(userptr, size, flags);
+}
+
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclImportBO(ehdl, 0);
+}
+
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
 
@@ -2722,24 +2836,46 @@ unsigned int xclVersion ()
     return 2;
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
+unsigned int
+xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
 {
   return xdp::hal::profiling_wrapper("xclAllocBO",
     [handle, size, flags] {
-      xocl::shim *drv = xocl::shim::handleCheck(handle);
-      return drv ? drv->xclAllocBO(size, flags) : -ENODEV;
-    } ) ;
+      try {
+        auto shim = xocl::shim::handleCheck(handle);
+        if (!shim)
+          return static_cast<unsigned int>(-ENODEV);
 
-
+        auto bo = shim->xclAllocBO(size, flags);
+        auto ptr = static_cast<const xrt_shim::buffer_object*>(bo.release());
+        return ptr->get_handle();
+      }
+      catch (const xrt_core::error& ex) {
+        xrt_core::send_exception_message(ex.what());
+        return static_cast<unsigned int>(ex.get_code());
+      }
+    });
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
+unsigned int
+xclAllocUserPtrBO(xclDeviceHandle handle, void* userptr, size_t size, unsigned flags)
 {
   return xdp::hal::profiling_wrapper("xclAllocUserPtrBO",
     [handle, userptr, size, flags] {
-      xocl::shim *drv = xocl::shim::handleCheck(handle);
-      return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
-    } ) ;
+      try {
+        auto shim = xocl::shim::handleCheck(handle);
+        if (!shim)
+          return static_cast<unsigned int>(-ENODEV); // argh ...
+
+        auto bo = shim->xclAllocUserPtrBO(userptr, size, flags);
+        auto ptr = static_cast<const xrt_shim::buffer_object*>(bo.release());
+        return ptr->get_handle();
+      }
+      catch (const xrt_core::error& ex) {
+        xrt_core::send_exception_message(ex.what());
+        return static_cast<unsigned int>(ex.get_code());
+      }
+    });
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
@@ -2877,25 +3013,40 @@ int xclBootFPGA(xclDeviceHandle handle)
     return -EOPNOTSUPP;
 }
 
-int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
-{
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclExportBO(boHandle) : -ENODEV;
-}
-
-unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
-{
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    if (!drv) {
-        std::cout << __func__ << ", " << std::this_thread::get_id() << ", handle & XOCL Device are bad" << std::endl;
-    }
-    return drv ? drv->xclImportBO(fd, flags) : -ENODEV;
-}
-
 int
-xclCloseExportHandle(int fd)
+xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  return close(fd) ? -errno : 0;
+  try {
+    auto shim = xocl::shim::handleCheck(handle);
+    if (!shim)
+      return -ENODEV;
+
+    auto shared = shim->xclExportBO(boHandle);
+    auto ptr = shared.release();
+    return ptr->get_export_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+}
+
+unsigned int
+xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+{
+  try {
+    auto shim = xocl::shim::handleCheck(handle);
+    if (!shim)
+      return static_cast<unsigned int>(-ENODEV); // argh ...
+
+    auto boh = shim->xclImportBO(fd, flags);
+    auto ptr = static_cast<const xrt_shim::buffer_object*>(boh.release());
+    return ptr->get_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<unsigned int>(ex.get_code());
+  }
 }
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef core_common_ishim_h
 #define core_common_ishim_h
 
@@ -26,7 +26,6 @@
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
 int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
-int xclCloseExportHandle(xclBufferExportHandle);
 
 namespace xrt_core {
 
