@@ -378,6 +378,69 @@ struct shim
   // be created for that xclbin.
   std::map<xrt::uuid, std::unique_ptr<xrt_core::hwctx_handle>> m_load_xclbin_slots;
 
+  class buffer_object : public xrt_core::buffer_handle
+  {
+    shim* m_shim;
+    int m_fd;   // fd
+  public:
+    buffer_object(shim* shim, int fd)
+      : m_shim(shim)
+      , m_fd(fd)
+    {}
+
+    ~buffer_object()
+    {
+      m_shim->free_bo(m_fd);
+    }
+
+    int
+    get_fd() const
+    {
+      return m_fd;
+    }
+
+    // Export buffer for use with another process or device
+    // An exported buffer can be imported by another device
+    // or hardware context.
+    virtual std::unique_ptr<xrt_core::shared_handle>
+    share() const override
+    {
+      throw xrt_core::error(std::errc::not_supported, __func__);
+    }
+
+    void*
+    map(map_type) override
+    {
+      return m_shim->map_bo(m_fd, true);
+    }
+
+    void
+    unmap(void* addr) override
+    {
+      m_shim->unmap_bo(m_fd, addr);
+    }
+
+    void
+    sync(direction dir, size_t size, size_t offset) override
+    {
+      m_shim->sync_bo(m_fd, static_cast<xclBOSyncDirection>(dir), size, offset);
+    }
+
+    void
+    copy(const buffer_handle*, size_t, size_t, size_t) override
+    {
+      throw xrt_core::error(std::errc::not_supported, __func__);
+    }
+
+    properties
+    get_properties() const override
+    {
+      xclBOProperties xprop;
+      m_shim->get_bo_properties(m_fd, &xprop);
+      return {xprop.flags, xprop.size, xprop.paddr};
+    }
+  }; // buffer
+
   class hwcontext : public xrt_core::hwctx_handle
   {
     shim* m_shim;
@@ -416,26 +479,18 @@ public:
       return nullptr;
     }
 
-    xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(void* userptr, size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->alloc_user_ptr_bo(userptr, size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->alloc_userptr_bo(userptr, size, flags);
     }
 
-    xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->alloc_bo(size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->alloc_bo(size, flags);
     }
 
     xrt_core::cuidx_type
@@ -479,16 +534,16 @@ public:
   ~shim()
   {}
 
-  buffer_handle_type
+  std::unique_ptr<xrt_core::buffer_handle>
   alloc_bo(size_t size, unsigned int flags)
   {
-    return buffer::alloc(size, flags);
+    return std::make_unique<buffer_object>(this, buffer::alloc(size, flags));
   }
 
-  buffer_handle_type
-  alloc_user_ptr_bo(void* userptr, size_t size, unsigned int flags)
+  std::unique_ptr<xrt_core::buffer_handle>
+  alloc_userptr_bo(void* userptr, size_t size, unsigned int flags)
   {
-    return buffer::alloc(userptr, size, flags);
+    return std::make_unique<buffer_object>(this, buffer::alloc(userptr, size, flags));
   }
 
   void*
@@ -684,6 +739,21 @@ xclbin_slots(const xrt_core::device* device)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->alloc_bo(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->alloc_userptr_bo(userptr, size, flags);
+}
+
 std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
@@ -750,7 +820,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
   auto shim = get_shim_object(handle);
-  return shim->alloc_bo(size, flags);
+  auto boh = shim->alloc_bo(size, flags);
+  auto ptr = static_cast<shim::buffer_object*>(boh.release());
+  return ptr->get_fd();
 }
 
 xclBufferHandle
@@ -759,7 +831,9 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned i
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
   auto shim = get_shim_object(handle);
-  return shim->alloc_user_ptr_bo(userptr, size, flags);
+  auto boh = shim->alloc_userptr_bo(userptr, size, flags);
+  auto ptr = static_cast<shim::buffer_object*>(boh.release());
+  return ptr->get_fd();
 }
 
 void*

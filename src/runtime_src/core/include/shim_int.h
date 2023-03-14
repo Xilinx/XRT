@@ -11,6 +11,7 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
+#include "core/common/shim/shared_handle.h"
 
 #include <string>
 
@@ -54,6 +55,18 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
 // Throws on error, e.g. the CU context was not opened previously
 void
 close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+
+// alloc_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle, size_t size, unsigned int flags);
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle, void* userptr, size_t size, unsigned int flags);
+
+// import_bo
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle, pid_t, xrt_core::shared_handle::export_handle);
 
 // create_hw_context() -
 std::unique_ptr<xrt_core::hwctx_handle>
