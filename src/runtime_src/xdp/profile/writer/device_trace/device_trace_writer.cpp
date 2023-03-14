@@ -345,7 +345,7 @@ namespace xdp {
           std::make_pair(xclbin, cuId);
         kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL);
         // Also output the tool tips
-        for (auto iter : xclbin->pl.cus) {
+        for (const auto& iter : xclbin->pl.cus) {
           ComputeUnitInstance* cu = iter.second;
           if (cu->getAccelMon() == cuId) {
             fout << "," << db->getDynamicInfo().addString(cu->getKernelName());

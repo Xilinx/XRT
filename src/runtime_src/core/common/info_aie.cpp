@@ -279,9 +279,8 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
   }
 
   try {
-    asd_parser::aie_tiles_info tiles_info{0};
     // On Pcie platforms use driver calls to get AIE Shim info
-    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim, tiles_info);
+    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Not Pcie device
@@ -364,9 +363,8 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
   }
 
   try {
-    asd_parser::aie_tiles_info tiles_info{0};
     // On Pcie platforms use driver calls to get AIE mem info
-    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem, tiles_info);
+    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Not Pcie device
@@ -868,10 +866,16 @@ populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree&
   try {
     boost::property_tree::ptree tile_array;
     asd_parser::aie_tiles_info tiles_info{0};
+    uint32_t cols_filled = 0;
 
-    core_info = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::core, tiles_info);
+    core_info = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::core, tiles_info,
+                                                    cols_filled);
 
     for (uint16_t col = 0; col < tiles_info.cols; col++) {
+      // skip this col if not filled
+      if (!(cols_filled & (1 << col)))
+        continue;
+
       for (uint16_t row = tiles_info.core_row_start; row < tiles_info.core_row_start + tiles_info.core_rows; row++) {
         boost::property_tree::ptree tile;
         tile.put("column", col);

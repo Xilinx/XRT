@@ -9,7 +9,7 @@
 
 class ReportAieMem : public Report {
  public:
-  ReportAieMem() : Report("aie_mem", "AIE memory tile information", true /*deviceRequired*/) { /*empty*/ };
+  ReportAieMem() : Report("aiemem", "AIE memory tile information", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

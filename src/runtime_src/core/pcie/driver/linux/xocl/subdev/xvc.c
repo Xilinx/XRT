@@ -1,7 +1,8 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -170,6 +171,16 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	}
 
 	total_bits = xvc_obj.length;
+	if (total_bits == 0) {
+		pr_err("%s: received invalid obj len %u bits for op 0x%x.\n",
+		       __func__, total_bits, opcode);
+		return -EINVAL;
+	}
+
+	/* Fixing integer overflow scenario */
+	if (total_bits >= UINT_MAX - 7)
+		total_bits = UINT_MAX - 7;
+
 	total_bytes = (total_bits + 7) >> 3;
 
 	buffer = kmalloc(total_bytes * 3, GFP_KERNEL);

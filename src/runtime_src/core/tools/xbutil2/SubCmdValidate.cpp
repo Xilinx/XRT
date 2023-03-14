@@ -854,7 +854,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 
   //check if device has aux power connector
   bool auxDevice = false;
-  for (auto bd : auxPwrRequiredDevice) {
+  for (const auto& bd : auxPwrRequiredDevice) {
     if (name.find(bd) != std::string::npos) {
       auxDevice = true;
       break;
@@ -988,8 +988,11 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
     // check if the bank has enough memory to allocate
     // m_size is in KB so convert block_size (bytes) to KB for comparison
-    if (mem.m_size < (block_size/1024))
+    if (mem.m_size < (block_size/1024)) {
+      logger(_ptTest, "Details", boost::str(boost::format(
+	"The bank does not have enough memory to allocate. Use lower '%s' value. \n") % "block-size"));
       continue;
+    }
 
     size_t totalSize = 0;
     if (xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev) == ARISTA_ID)
