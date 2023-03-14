@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-
-// Xilinx Runtime (XRT) Experimental APIs
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT BO APIs as declared in
 // core/include/experimental/xrt_bo.h
@@ -1235,20 +1233,6 @@ xrt::bo
 clone(const xrt::bo& src, xrt::memory_group target_grp)
 {
   return alloc_clone(src.get_handle(), target_grp);
-}
-
-void
-fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
-              size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
-{
-#ifndef _WIN32
-  const auto& dst_boh = dst.get_handle();
-  const auto& src_boh = src.get_handle();
-  ert_fill_copybo_cmd(pkt, to_xclBufferHandle(src_boh->get_xcl_handle()),
-    to_xclBufferHandle(dst_boh->get_xcl_handle()), src_offset, dst_offset, sz);
-#else
-  throw std::runtime_error("ert_fill_copybo_cmd not implemented on windows");
-#endif
 }
 
 bool

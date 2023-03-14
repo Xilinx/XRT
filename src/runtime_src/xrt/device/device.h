@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2020 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrt_device_device_h_
 #define xrt_device_device_h_
 
@@ -297,11 +283,6 @@ public:
   event // ssize_t
   copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz, size_t dst_offset, size_t src_offset)
   { return m_hal->copy(dst_bo,src_bo,sz,dst_offset,src_offset); }
-
-  void
-  fill_copy_pkt(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo
-                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt)
-  { return m_hal->fill_copy_pkt(dst_bo,src_bo,sz,dst_offset,src_offset,pkt); }
 
   /**
    * Read a device register
