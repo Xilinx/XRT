@@ -1,7 +1,7 @@
 /*
  * Processor System manager for Alveo board.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: Min.Ma@xilinx.com
  *
@@ -202,7 +202,10 @@ static void ps_check_healthy(struct platform_device *pdev)
 
 	mutex_lock(&ps->ps_lock);
 	reg0 = READ_REG32(ps, RESET_REG_C);
-	msleep_interruptible(ZOCL_WATCHDOG_FREQ);
+	/* Times 2 to make sure counter is changed. Otherwise, something must
+	 * be wrong on device.
+	 */
+	msleep_interruptible(ZOCL_WATCHDOG_FREQ * 2);
 	reg = READ_REG32(ps, RESET_REG_C);
 	mutex_unlock(&ps->ps_lock);
 
@@ -228,6 +231,9 @@ static void ps_check_healthy(struct platform_device *pdev)
 
 	if (!(reg & (1 << SCHED_THD_BIT_SHIFT)))
 		xocl_warn(&pdev->dev, "ps: sched thread is not running");
+
+	if ((reg0 & COUNTER_MASK) == (reg & COUNTER_MASK))
+		xocl_warn(&pdev->dev, "ps: counter is not changing. PS system panic?");
 }
 
 static struct xocl_ps_funcs ps_ops = {
