@@ -250,7 +250,7 @@ public:
   to_string()
   {
     if (!m_errcode)
-      return std::string("No async error was detected");
+      return "No async error was detected";
 
     auto fmt = boost::format
       ("%s\n"
