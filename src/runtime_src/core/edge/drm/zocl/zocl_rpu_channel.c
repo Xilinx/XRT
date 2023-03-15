@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Lizhi Hou <lizhih@xilinx.com>
@@ -37,7 +37,9 @@
 #define ZRPU_CHANNEL_XGQ_SLOT_SIZE	1024
 
 #define MAX_LOG_LEN 80
+#define MAX_PAGE_SIZE 4096
 static char info_buf[MAX_LOG_LEN] = { 0 };
+static char log_buf[MAX_PAGE_SIZE] = { 0 };
 
 struct zocl_rpu_data_entry {
 	struct list_head	entry_list;
@@ -183,22 +185,47 @@ static int zchan_cmd_log_apu_log(struct zocl_rpu_channel *chan, u32 add_off, u32
 	u32 offset, u32 *total_countp)
 {
 	u32 count = 0;
+	struct file *fp;
+	loff_t fp_size = 0;
+	loff_t fp_offset = 0;
+	int ret = 0;
+	u32 remain_size = 0;
 
-	memset(info_buf, 0, sizeof(info_buf));
-	/*
-	 * Example code of collecting data based on request size and offset
-	 */
-	if (offset == 0) {
-		count = snprintf(info_buf, sizeof(info_buf), "first 4096");
-		memcpy_toio(chan->mem_base + add_off, info_buf, count);
-		count = 4096;
-	} else if (offset == 4096) {
-		count = snprintf(info_buf, sizeof(info_buf), "second 4096");
-		memcpy_toio(chan->mem_base + add_off, info_buf, count);
-		count = 4096;
-	} else {
-		count = 0;
+	fp = filp_open("/var/log/messages", O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		*total_countp = 0;
+		pr_err("Can't open /var/log/messages\n");
+		return -EINVAL;
 	}
+
+	fp_size = i_size_read(file_inode(fp));
+	fp_offset = offset;
+	remain_size = fp_size - offset;
+	// Send chunks of log
+	if (remain_size >= size) {
+		ret = kernel_read(fp, &log_buf, size, &fp_offset);
+		if (!ret) {
+			pr_err("Can't read from /var/log/messages\n");
+			*total_countp = 0;
+			filp_close(fp, NULL);
+			return -EINVAL;
+		}
+		count = size;
+	} else {
+		if(remain_size > 0) {
+			ret = kernel_read(fp, &log_buf, remain_size, &fp_offset);
+			if (!ret) {
+				pr_err("Can't read from /var/log/messages\n");
+				*total_countp = 0;
+				filp_close(fp, NULL);
+				return -EINVAL;
+			}
+		}
+		count = remain_size;
+	}
+	if (count > 0)
+		memcpy_toio(chan->mem_base + add_off, log_buf, count);
+	filp_close(fp, NULL);
 
 	*total_countp = count;
 	return 0;
@@ -216,8 +243,8 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	u32 total_count = 0;
 	int ret = 0;
 
-	zchan_info(chan, "addr_off 0x%x, size %d, offset %d, pid %d",
-		add_off, size, offset, pid);
+	zchan_dbg(chan, "addr_off 0x%x, size %d, offset %d, pid %d",
+		   add_off, size, offset, pid);
 
 	switch (pid) {
 	case XGQ_CMD_LOG_INFO:
@@ -389,7 +416,7 @@ static void zchan_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hd
 	cmd_handler func = opcode2handler(op);
 	struct xgq_com_queue_entry r = {};
 
-	zchan_info(chan, "%s received", opcode2name(op));
+	zchan_dbg(chan, "%s received", opcode2name(op));
 	if (func)
 		func(chan, cmd, &r);
 	else
