@@ -344,19 +344,19 @@ read_legacy_electrical(const xrt_core::device * device)
     populate_sensor<xq::v3v3_aux_millivolts, xq::v3v3_aux_milliamps>(device, "3v3_aux", "3.3 Volts Auxillary")});
 
   /* Board power measurement uses cached values of above sensors.*/
-  std::string max_power_watts;
   std::string power_watts;
   std::string power_warn;
+  std::string max_power_watts;
   try {
-    auto power_level = xrt_core::device_query<xq::max_power_level>(device);
-    max_power_watts = lvl_to_power_watts(power_level);
     power_watts = xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xq::power_microwatts>(device));
     power_warn = xq::power_warning::to_string(xrt_core::device_query<xq::power_warning>(device));
+    auto power_level = xrt_core::device_query<xq::max_power_level>(device);
+    max_power_watts = lvl_to_power_watts(power_level);
   }
   catch (const xq::exception&) {
-    max_power_watts = "N/A";
     power_watts = "N/A";
     power_warn = "N/A";
+    max_power_watts = "N/A";
   }
 
   sensor_array.push_back({"",
