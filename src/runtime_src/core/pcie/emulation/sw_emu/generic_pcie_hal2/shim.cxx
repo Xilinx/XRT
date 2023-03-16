@@ -1611,7 +1611,7 @@ namespace xclswemuhal2
     xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
 
     if (!bo)
-      return nullptr;
+      throw xrt_core::error("Cannot export unknown buffer handle");
 
     bool zeroCopy = xclemulation::is_zero_copy(bo);
     if (!zeroCopy) {
@@ -1624,8 +1624,7 @@ namespace xclswemuhal2
     DEBUG_MSGS("%s, %d(sFileName: %s bo->base: %lx size: %lx)\n", __func__, __LINE__, sFileName.c_str(), bo->base, size);
 
     int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
-    if (fd == -1)
-    {
+    if (fd == -1) {
       PRINTENDFUNC;
       throw xrt_core::error("Error opening exported BO file");
     }

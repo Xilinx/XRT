@@ -3,4 +3,4 @@
 #
 add_subdirectory(common_em)
 add_subdirectory(sw_emu)
-#add_subdirectory(hw_emu)
+add_subdirectory(hw_emu)

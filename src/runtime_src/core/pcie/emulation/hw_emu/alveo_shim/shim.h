@@ -43,6 +43,7 @@
 #include <sys/wait.h>
 
 #include <cstdarg>
+#include <memory>
 #include <thread>
 #include <tuple>
 
@@ -100,6 +101,102 @@ using addr_type = uint64_t;
 
   class HwEmShim
   {
+  public:
+    // Shim handle for shared objects
+    class shared_object : public xrt_core::shared_handle
+    {
+      HwEmShim* m_shim;
+      xclBufferExportHandle m_ehdl;
+    public:
+      shared_object(HwEmShim* shim, xclBufferExportHandle ehdl)
+        : m_shim(shim)
+        , m_ehdl(ehdl)
+      {}
+
+      ~shared_object()
+      {
+        // Implement per hw_em requirements
+      }
+
+      export_handle
+      get_export_handle() const
+      {
+        return static_cast<export_handle>(m_ehdl);
+      }
+    }; // shared_object
+
+    // Shim handle for buffer object
+    class buffer_object : public xrt_core::buffer_handle
+    {
+      HwEmShim* m_shim;
+      xclBufferHandle m_hdl;
+
+    public:
+      buffer_object(HwEmShim* shim, xclBufferHandle hdl)
+        : m_shim(shim)
+        , m_hdl(hdl)
+      {}
+
+      ~buffer_object()
+      {
+        m_shim->xclFreeBO(m_hdl);
+      }
+
+      xclBufferHandle
+      get_handle() const
+      {
+        return m_hdl;
+      }
+
+      static xclBufferHandle
+      get_handle(const xrt_core::buffer_handle* bhdl)
+      {
+        return static_cast<const buffer_object*>(bhdl)->get_handle();
+      }
+
+      // Export buffer for use with another process or device
+      // An exported buffer can be imported by another device
+      // or hardware context.
+      std::unique_ptr<xrt_core::shared_handle>
+      share() const override
+      {
+        return m_shim->xclExportBO(m_hdl);
+      }
+
+      void*
+      map(map_type mt) override
+      {
+        return m_shim->xclMapBO(m_hdl, (mt == xrt_core::buffer_handle::map_type::write));
+      }
+
+      void
+      unmap(void* addr) override
+      {
+        m_shim->xclUnmapBO(m_hdl, addr);
+      }
+
+      void
+      sync(direction dir, size_t size, size_t offset) override
+      {
+        m_shim->xclSyncBO(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+      }
+
+      void
+      copy(const buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
+      {
+        auto bo_src = static_cast<const buffer_object*>(src);
+        m_shim->xclCopyBO(m_hdl, bo_src->get_handle(), size, dst_offset, src_offset);
+      }
+
+      properties
+      get_properties() const override
+      {
+        xclBOProperties xprop;
+        m_shim->xclGetBOProperties(m_hdl, &xprop);
+        return {xprop.flags, xprop.size, xprop.paddr};
+      }
+    }; // buffer_object
+
     // Shim handle for hardware context Even as hw_emu does not
     // support hardware context, it still must implement a shim
     // hardware context handle representing the default slot
@@ -142,26 +239,18 @@ using addr_type = uint64_t;
         return nullptr;
       }
 
-      xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+      std::unique_ptr<xrt_core::buffer_handle>
       alloc_bo(void* userptr, size_t size, unsigned int flags) override
       {
         // The hwctx is embedded in the flags, use regular shim path
-        auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
-        if (bo == XRT_NULL_BO)
-          throw std::bad_alloc();
-
-        return to_xrt_buffer_handle(bo);
+        return m_shim->xclAllocUserPtrBO(userptr, size, flags);
       }
 
-      xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+      std::unique_ptr<xrt_core::buffer_handle>
       alloc_bo(size_t size, unsigned int flags) override
       {
         // The hwctx is embedded in the flags, use regular shim path
-        auto bo = m_shim->xclAllocBO(size, flags);
-        if (bo == XRT_NULL_BO)
-          throw std::bad_alloc();
-
-        return to_xrt_buffer_handle(bo);
+        return m_shim->xclAllocBO(size, flags);
       }
 
       xrt_core::cuidx_type
@@ -183,14 +272,24 @@ using addr_type = uint64_t;
       }
     }; // class hwcontext
 
-    public:
+  public:
       // HAL2 RELATED member functions start
-      unsigned int xclAllocBO(size_t size, unsigned flags);
+      std::unique_ptr<xrt_core::buffer_handle>
+      xclAllocBO(size_t size, unsigned flags);
+
+      std::unique_ptr<xrt_core::buffer_handle>
+      xclAllocUserPtrBO(void* userptr, size_t size, unsigned flags);
+
+      std::unique_ptr<xrt_core::shared_handle>
+      xclExportBO(unsigned int boHandle);
+
+      std::unique_ptr<xrt_core::buffer_handle>
+      xclImportBO(int boGlobalHandle, unsigned flags);
+
       uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclUnmapBO(unsigned int boHandle, void* addr);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
-      unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
       int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
@@ -201,9 +300,6 @@ using addr_type = uint64_t;
       static int xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...);
       static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
-      // P2P Support
-      int xclExportBO(unsigned int boHandle);
-      unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
       // MB scheduler related API's
