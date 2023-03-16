@@ -205,9 +205,43 @@ writeReport(const xrt_core::device* /*_pDevice*/,
           }
           _output << std::endl;
         }
-      }
 
-      const boost::property_tree::ptree& pl_kernel = graph.get_child("pl_kernel");
+	if (tile.second.find("buffer-descriptors") != tile.second.not_found()) {
+	  _output << boost::format("    %s:\n") % "Buffer Descriptor ";
+	  boost::property_tree::ptree bd = tile.second.get_child("buffer-descriptors");
+	  if (bd.find("NumBd") != bd.not_found())
+	    _output << fmt8("%s") % "Number of BDs" % tile.second.get<std::string>("buffer-descriptors.NumBd");
+	  boost::property_tree::ptree empty_pt;
+	  for (const auto& node : bd.get_child("bds", empty_pt)) {
+	    _output << fmt12("%s") % "BD number" % node.second.get<std::string>("name");
+	    _output << fmt12("0x%x") % "Address A" % node.second.get<uint64_t>("AddressA");
+	    _output << fmt12("0x%x") % "Address B" % node.second.get<uint64_t>("AddressB");
+	    _output << fmt12("%s") % "Length" % node.second.get<std::string>("Length");
+	    _output << fmt12("%s") % "Lock Acquire Id A" % node.second.get<std::string>("LockAcqIdA");
+	    _output << fmt12("%s") % "Lock Acquire Value A" % node.second.get<std::string>("LockAcqValA");
+	    _output << fmt12("%s") % "Lock Release Value A" % node.second.get<std::string>("LockRelValA");
+	    _output << fmt12("%s") % "Lock Acquire Id B" % node.second.get<std::string>("LockAcqIdB");
+	    _output << fmt12("%s") % "Lock Acquire Value B" % node.second.get<std::string>("LockAcqValB");
+	    _output << fmt12("%s") % "Lock Release Value B" % node.second.get<std::string>("LockRelValB");
+	    _output << fmt12("%s") % "X Increment" % node.second.get<std::string>("XIncrement");
+	    _output << fmt12("%s") % "X Wrap" % node.second.get<std::string>("XWrap");
+	    _output << fmt12("0x%x") % "X Offset" % node.second.get<uint16_t>("XOffset");
+	    _output << fmt12("%s") % "Y Increment" % node.second.get<std::string>("YIncrement");
+	    _output << fmt12("%s") % "Y Wrap" % node.second.get<std::string>("YWrap");
+	    _output << fmt12("0x%x") % "Y Offset" % node.second.get<uint16_t>("YOffset");
+	    _output << fmt12("%s") % "D0 Stepsize" % node.second.get<std::string>("D0Stepsize");
+	    _output << fmt12("%s") % "D0 Wrap" % node.second.get<std::string>("D0Wrap");
+	    _output << fmt12("%s") % "D1 Stepsize" % node.second.get<std::string>("D1Stepsize");
+	    _output << fmt12("%s") % "D1 Wrap" % node.second.get<std::string>("D1Wrap");
+	    _output << fmt12("%s") % "D2 Stepsize" % node.second.get<std::string>("D2Stepsize");
+	    _output << fmt12("%s") % "D2 Wrap" % node.second.get<std::string>("D2Wrap");
+	    _output << fmt12("%s") % "D3 Stepsize" % node.second.get<std::string>("D3Stepsize");
+	    _output << std::endl;
+	    }
+        }
+    }
+
+    const boost::property_tree::ptree& pl_kernel = graph.get_child("pl_kernel");
       if (!pl_kernel.empty()) {
         _output << boost::format("    %s\n") % "Pl Kernel Instances in Graph:";
         for (auto& node : graph.get_child("pl_kernel"))

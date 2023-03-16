@@ -15,7 +15,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "aie.h"
 #include "core/common/error.h"
 #include "common_layer/fal_util.h"
@@ -32,11 +31,10 @@
 
 namespace zynqaie {
 
-Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
+void Aie::initialize(const std::shared_ptr<xrt_core::device>& device, adf::driver_config& driver_config)
 {
     DevInst = {0};
     devInst = nullptr;
-    adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
 
     XAie_SetupConfig(ConfigPtr,
         driver_config.hw_gen,
@@ -77,7 +75,7 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, aiecompiler_options.broadcast_enable_core);
 
     fal_util::initialize(devInst); //resource manager initialization
-    
+   
     /* Initialize PLIO metadata */
     plio_configs = xrt_core::edge::aie::get_plios(device.get());
 
@@ -89,6 +87,65 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         p_gmio_api->configure();
         gmio_apis[config_itr->first] = p_gmio_api;
     }
+}
+
+Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
+{
+    adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+    this->initialize(device, driver_config);
+}
+
+Aie::Aie(const std::shared_ptr<xrt_core::device>& device, adf::driver_config& driver_config)
+{
+    this->initialize(device, driver_config);
+}
+
+boost::property_tree::ptree
+Aie::
+get_bd_info(uint8_t& row, uint8_t& col) {
+    XAie_DevInst* devInst = getDevInst();
+    if (!devInst)
+      throw xrt_core::error(-EINVAL, "AIE is not initialized");
+    XAie_LocType tile = XAie_TileLoc(col, row);
+    boost::property_tree::ptree bd_ptree; 
+    u8 numBds;
+    auto ret = XAie_DmaGetNumBds(devInst, tile, &numBds);
+    if(ret != AieRC::XAIE_OK)
+	return bd_ptree;
+    
+    boost::property_tree::ptree bd; 
+    boost::property_tree::ptree tile_bd;
+    XAie_DmaDesc bd_info;
+    for (int i = 0; i < numBds; i++) {
+      XAie_DmaReadBd(devInst, &bd_info, tile, i);
+      bd.put("name", "bd" + std::to_string(i));
+      bd.put("AddressA", bd_info.AddrDesc.Address);
+      bd.put("AddressB", bd_info.AddrDesc_2.Address);
+      bd.put("Length", bd_info.AddrDesc.Length);
+      bd.put("LockAcqIdA", bd_info.LockDesc.LockAcqId);
+      bd.put("LockAcqValA", bd_info.LockDesc.LockAcqVal);
+      bd.put("LockRelValA", bd_info.LockDesc.LockRelVal);
+      bd.put("LockAcqIdB", bd_info.LockDesc_2.LockAcqId);
+      bd.put("LockAcqValB", bd_info.LockDesc_2.LockAcqVal);
+      bd.put("LockRelValB", bd_info.LockDesc_2.LockRelVal);
+      bd.put("XIncrement", bd_info.MultiDimDesc.AieMultiDimDesc.X_Incr);
+      bd.put("XWrap", bd_info.MultiDimDesc.AieMultiDimDesc.X_Wrap);
+      bd.put("XOffset",	bd_info.MultiDimDesc.AieMultiDimDesc.X_Offset);
+      bd.put("YIncrement", bd_info.MultiDimDesc.AieMultiDimDesc.Y_Incr);
+      bd.put("YWrap", bd_info.MultiDimDesc.AieMultiDimDesc.Y_Wrap);
+      bd.put("YOffset", bd_info.MultiDimDesc.AieMultiDimDesc.Y_Offset);
+      bd.put("D0Stepsize", bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[0U].StepSize);
+      bd.put("D0Wrap", bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[0U].Wrap);
+      bd.put("D1Stepsize", bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[1U].StepSize);
+      bd.put("D1Wrap",	bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[1U].Wrap);
+      bd.put("D2Stepsize", bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[2U].StepSize);
+      bd.put("D2Wrap", bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[2U].Wrap);
+      bd.put("D3Stepsize", bd_info.MultiDimDesc.AieMlMultiDimDesc.DimDesc[3U].StepSize);
+      tile_bd.push_back({"", bd});
+    }
+    bd_ptree.put("NumBd", numBds);
+    bd_ptree.add_child("bds", tile_bd);
+    return bd_ptree;
 }
 
 Aie::~Aie()

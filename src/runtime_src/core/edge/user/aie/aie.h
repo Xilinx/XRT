@@ -81,7 +81,8 @@ class Aie {
 public:
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
-
+    Aie(const std::shared_ptr<xrt_core::device>& device, adf::driver_config& config);
+    void initialize(const std::shared_ptr<xrt_core::device>& device, adf::driver_config& config);
     std::vector<ShimDMA> shim_dma;   // shim DMA // not used anymore, should be cleanedup
 
     /* This is the collections of gmios that are used. */
@@ -124,6 +125,8 @@ public:
 
     void
     clear_bd(BD& bd);
+
+    boost::property_tree::ptree get_bd_info(uint8_t& row, uint8_t& col);
 
 private:
     int numCols;

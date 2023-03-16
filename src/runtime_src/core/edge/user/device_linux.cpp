@@ -19,6 +19,8 @@
 #include "xrt.h"
 #include "zynq_dev.h"
 #include "aie_sys_parser.h"
+#include "aie/aie.h"
+#include "shim.h"
 
 #include "core/common/debug_ip.h"
 #include "core/common/query_requests.h"
@@ -613,6 +615,85 @@ struct aie_set_freq
   }
 };
 
+struct aie_bd_info
+{
+    using result_type = query::aie_bd_info::result_type;
+    static result_type
+    get(const xrt_core::device* device, key_type key, const boost::any& param)
+    {
+      auto dev = get_edgedev(device);
+      uint32_t val = 0;
+
+      auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+      if (!drv)
+        throw xrt_core::error(-EINVAL, "cannot get device handle");
+
+#ifdef XRT_ENABLE_AIE
+#ifndef __AIESIM__
+      const static std::string aie_tag = "aie_metadata";
+      const std::string zocl_device = "/dev/dri/" + get_render_devname();
+      const uint32_t major = 1;
+      const uint32_t minor = 0;
+      const uint32_t patch = 0;
+
+      std::string err;
+      std::string value;
+
+      // Reading the aie_metadata sysfs.
+      dev->sysfs_get(aie_tag, err, value);
+      if (!err.empty())
+        throw xrt_core::query::sysfs_error
+          (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+          + "Intelligent Engines (AIE). No action will be performed.");
+
+      std::stringstream ss(value);
+      boost::property_tree::ptree aie_meta;
+      boost::property_tree::read_json(ss, aie_meta);
+
+      if(aie_meta.get<uint32_t>("schema_version.major") != major ||
+        aie_meta.get<uint32_t>("schema_version.minor") != minor ||
+        aie_meta.get<uint32_t>("schema_version.patch") != patch )
+        throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
+                                                                % aie_meta.get<uint32_t>("schema_version.major")
+                                                                % aie_meta.get<uint32_t>("schema_version.minor")
+                                                                % aie_meta.get<uint32_t>("schema_version.patch")));
+
+      adf::driver_config driver_config;
+      driver_config.hw_gen = aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
+      driver_config.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
+      driver_config.column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
+      driver_config.row_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.row_shift");
+      driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
+      driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
+      driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
+      driver_config.reserved_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+      driver_config.reserved_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+      driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
+      driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
+
+      drv->registerAieArray(driver_config);
+      auto aieArray = drv->getAieArray();
+
+      if (!aieArray)
+         throw xrt_core::error(-EINVAL, "No AIE Object presented");      
+      
+      auto tile = boost::any_cast<xrt_core::query::aie_bd_info::parameters>(param);
+      uint8_t row;
+      if (tile.type == xrt_core::query::aie_bd_info::tile_type::core)
+         row = tile.row + driver_config.aie_tile_row_start;
+      else if (tile.type == xrt_core::query::aie_bd_info::tile_type::mem)
+         row = tile.row + driver_config.reserved_row_start;
+      boost::property_tree::ptree bdtree = aieArray->get_bd_info(row, tile.col);
+
+#endif
+#endif
+      std::ostringstream oss;
+      boost::property_tree::write_json(oss, bdtree);
+      std::string inifile_text = oss.str();
+      return inifile_text;
+    }
+};
+
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -902,6 +983,7 @@ initialize_query_table()
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
   emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
+  emplace_func4_request<query::aie_bd_info,             aie_bd_info>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::group_topology>            ("mem_topology");
