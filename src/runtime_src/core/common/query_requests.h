@@ -728,7 +728,7 @@ struct mem_topology_raw : request
 
 struct mem_topology : request
 {
-  struct mem_data {
+  struct memory_data {
     std::string xclbin_uuid;
     uint32_t hw_context_slot;
     uint8_t m_type;          // enum corresponding to mem_type.
@@ -744,7 +744,7 @@ struct mem_topology : request
     unsigned char m_tag[16]; // DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
   };
 
-  using data_type = struct mem_data;
+  using data_type = struct memory_data;
   using result_type = std::vector<data_type>;
   static const key_type key = key_type::mem_topology;
 

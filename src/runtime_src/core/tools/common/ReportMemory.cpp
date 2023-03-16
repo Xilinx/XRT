@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportMemory.h"
+#include "Table2D.h"
 #include "core/common/utils.h"
 
 // 3rd Party Library - Include Files
@@ -119,14 +120,28 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
     int index = 0;
     _output << std::endl;
     _output << "  Memory Topology" << std::endl;
-    _output << boost::format("    %-25s%-17s%-9s%-10s%-16s\n") % "     Tag" % "Type"
-        % "Temp(C)" % "Size" % "Base Address";
+
+    const Table2D::HeaderData h_slot = {"HW Context Slot", Table2D::Justification::left};
+    const Table2D::HeaderData h_uuid = {"Xclbin UUID", Table2D::Justification::left};
+    const Table2D::HeaderData h_index = {"Index", Table2D::Justification::left};
+    const Table2D::HeaderData h_tag = {"Tag", Table2D::Justification::left};
+    const Table2D::HeaderData h_type = {"Type", Table2D::Justification::left};
+    const Table2D::HeaderData h_temp = {"Temp(C)", Table2D::Justification::left};
+    const Table2D::HeaderData h_size = {"Size", Table2D::Justification::left};
+    const Table2D::HeaderData h_address = {"Base Address", Table2D::Justification::left};
+    const std::vector<Table2D::HeaderData> table_headers = {h_slot, h_uuid, h_index, h_tag, h_type, h_temp, h_size, h_address};
+    Table2D device_table(table_headers);
+
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
-        std::string tag, size, type, temp, base_addr;
+        std::string slot, uuid, tag, size, type, temp, base_addr;
         for (auto& subv : v.second) {
           if (subv.first == "type") {
             type = subv.second.get_value<std::string>();
+          } else if (subv.first == "hw_context_slot") {
+            slot = subv.second.get_value<std::string>();
+          } else if (subv.first == "xclbin_uuid") {
+            uuid = subv.second.get_value<std::string>();
           } else if (subv.first == "tag") {
             tag = subv.second.get_value<std::string>();
           } else if (subv.first == "extended_info") {
@@ -138,10 +153,11 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
             base_addr = subv.second.get_value<std::string>();
           }
         }
-        _output << boost::format("    [%2d] %-20s%-17s%-9s%-10s%-16s\n") % index
-            % tag % type % temp % size % base_addr;
+        const std::vector<std::string> entry_data = {slot, uuid, std::to_string(index), tag, type, temp, size, base_addr};
+        device_table.addEntry(entry_data);
         index++;
       }
+      _output << device_table.toString("    ");
     }
     catch( std::exception const&) {
         // eat the exception, probably bad path
