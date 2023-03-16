@@ -529,8 +529,8 @@ static int cu_remove(struct platform_device *pdev)
 	if (!xcu)
 		return -EINVAL;
 
-	write_lock(&xcu->attr_rwlock);
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
+	write_lock(&xcu->attr_rwlock);
 	info = &xcu->base.info;
 	write_unlock(&xcu->attr_rwlock);
 
