@@ -83,20 +83,20 @@ namespace xdp {
     addParameter("AIE_profile_settings.graph_based_aie_metrics",
                  xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics(),
                  "Metric set for profiling AI Engine processor modules per graph");
-    addParameter("AIE_profile_settings.graph_based_aie_memory_metrics",
-                 xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics(),
+    addParameter("AIE_profile_settings.graph_based_memory_module_metrics",
+                 xrt_core::config::get_aie_profile_settings_graph_based_memory_module_metrics(),
                  "Metric set for profiling AI Engine memory modules per graph");
-    addParameter("AIE_profile_settings.graph_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics(),
+    addParameter("AIE_profile_settings.graph_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_profile_settings_graph_based_memory_tile_metrics(),
                  "Metric set for profiling MEM tiles per graph");
     addParameter("AIE_profile_settings.tile_based_aie_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics(),
                  "Metric set for profiling AI Engine processor modules per tile");
-    addParameter("AIE_profile_settings.tile_based_aie_memory_metrics",
-                 xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics(),
+    addParameter("AIE_profile_settings.tile_based_memory_module_metrics",
+                 xrt_core::config::get_aie_profile_settings_tile_based_memory_module_metrics(),
                  "Metric set for profiling AI Engine memory modules per tile");
-    addParameter("AIE_profile_settings.tile_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics(),
+    addParameter("AIE_profile_settings.tile_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_profile_settings_tile_based_memory_tile_metrics(),
                  "Metric set for profiling MEM tiles per tile");
     addParameter("AIE_profile_settings.tile_based_interface_tile_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics(),
@@ -115,14 +115,14 @@ namespace xdp {
     addParameter("AIE_trace_settings.graph_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per graph");
-    addParameter("AIE_trace_settings.graph_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_trace_settings_graph_based_mem_tile_metrics(),
+    addParameter("AIE_trace_settings.graph_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_graph_based_memory_tile_metrics(),
                  "Configuration level used for MEM tile trace per graph");
     addParameter("AIE_trace_settings.tile_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per tile");
-    addParameter("AIE_trace_settings.tile_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_trace_settings_tile_based_mem_tile_metrics(),
+    addParameter("AIE_trace_settings.tile_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_tile_based_memory_tile_metrics(),
                  "Configuration level used for MEM tile trace per tile");
     addParameter("AIE_trace_settings.buffer_size",
                  xrt_core::config::get_aie_trace_settings_buffer_size(),
