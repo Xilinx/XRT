@@ -4,7 +4,10 @@
 #define XRT_CORE_HWCTX_HANDLE_H
 
 #include "core/common/cuidx_type.h"
+#include "core/common/error.h"
 #include "core/common/shim/hwqueue_handle.h"
+
+#include "xrt/xrt_hw_context.h"
 
 #include <memory>
 
@@ -16,12 +19,22 @@ namespace xrt_core {
 // hardware context.
 class hwctx_handle
 {
+  using qos_type = xrt::hw_context::cfg_param_type;
+
 public:
   using slot_id = uint32_t;
 
   // Destruction must destroy the underlying hardware context
   virtual ~hwctx_handle()
   {}
+
+  // Update QoS of an existing hwardware context.  This is in response
+  // to experimental user facing xrt::hw_context::update_qos()
+  virtual void
+  update_qos(const qos_type&)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 
   // The slotidx is used to encode buffer objects flags for legacy
   // shims and host applications that do not use context specific

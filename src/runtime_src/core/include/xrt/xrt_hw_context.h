@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_HW_CONTEXT_H_
 #define XRT_HW_CONTEXT_H_
 
@@ -112,6 +112,14 @@ public:
     : hw_context{device, xclbin_id, access_mode::shared}
   {}
   /// @endcond
+
+  ///@cond
+  // Undocument experimental API to change the QoS of a hardware context
+  // Subject to change or removal
+  XRT_API_EXPORT
+  void
+  update_qos(const qos_type& qos);
+  ///@endcond
 
   /**
    * get_device() - Device from which context was created
