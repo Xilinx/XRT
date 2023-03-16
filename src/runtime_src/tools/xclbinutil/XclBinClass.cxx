@@ -1907,43 +1907,37 @@ XclBin::updateInterfaceuuid()
 {
   XUtil::TRACE("Updating Interface uuid in xclbin");
   // Get the PARTITION_METADATA property tree (if there is one)
-  for (auto pSection : m_sections) {
-    if (pSection->getSectionKind() != PARTITION_METADATA) {
-      continue;
-    }
+  const boost::property_tree::ptree ptEmpty;
+  Section* pSection = findSection(PARTITION_METADATA);
+  if (pSection == nullptr) {
+    return;
+  }
 
-    // Get the complete JSON metadata tree
-    boost::property_tree::ptree ptRoot;
-    pSection->getPayload(ptRoot);
-    if (ptRoot.empty()) {
-      continue;
-    }
+  // Get the complete JSON metadata tree
+  boost::property_tree::ptree ptRoot;
+  pSection->getPayload(ptRoot);
+  if (ptRoot.empty()) {
+    throw std::runtime_error("ERROR: Unable to get the complete JSON metadata tree.");
+  }
 
-    // Look for the "partition_metadata" node
-    boost::property_tree::ptree ptPartitionMetadata = ptRoot.get_child("partition_metadata");
-    if (ptPartitionMetadata.empty()) {
-      continue;
-    }
+  // Look for the "partition_metadata" node
+  boost::property_tree::ptree ptPartitionMetadata = ptRoot.get_child("partition_metadata", ptEmpty);
+  if (ptPartitionMetadata.empty()) {
+    throw std::runtime_error("ERROR: Partition metadata node not found.");
+  }
 
-    // DRC check for "interfaces"
-    if (m_xclBinHeader.m_header.m_mode == XCLBIN_PR) { // check only for xclbin's, not for xsabin's
-       std::size_t intfCnt = ptPartitionMetadata.count("interfaces");
-       if (intfCnt > 1)
-         throw std::runtime_error("Invalid interfaces found in partition_metadata");
-    }
-
-    // Look for the "interfaces" node
-    boost::property_tree::ptree ptInterfaces = ptPartitionMetadata.get_child("interfaces");
-    if (ptInterfaces.empty()) {
-      continue;
-    }  
-
-    // Updating axlf header interface_uuid with interface_uuid from partition_metadata
-    for (const auto& kv : ptInterfaces) {
-      boost::property_tree::ptree ptInterface = kv.second;
-      auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
-      sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
-      XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+  // Look for the "interfaces" node
+  auto ptInterfaces = XUtil::as_vector<boost::property_tree::ptree>(ptPartitionMetadata, "interfaces");
+  // DRC check for "interfaces"
+  if (m_xclBinHeader.m_header.m_mode == XCLBIN_PR) { // check only for xclbin's, not for xsabin's
+    if (ptInterfaces.size() > 1) {
+      throw std::runtime_error("ERROR: Invalid interfaces found in partition_metadata");
     }
   }
+
+  // Updating axlf header interface_uuid with interface_uuid from partition_metadata  
+  boost::property_tree::ptree ptInterface = ptInterfaces[0];
+  auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
+  sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
+  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
 }

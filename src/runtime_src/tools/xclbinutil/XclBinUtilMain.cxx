@@ -533,6 +533,9 @@ int main_(int argc, const char** argv) {
   for (const auto &keyValue : keyValuePairs) 
     xclBin.setKeyValue(keyValue);
 
+  // -- Update Interface uuid in xclbin --
+  xclBin.updateInterfaceuuid();
+
   // -- Dump Sections --
   for (const auto &section : sectionsToDump) {
     ParameterSectionData psd(section);
@@ -543,9 +546,6 @@ int main_(int argc, const char** argv) {
       xclBin.dumpSection(psd);
     }
   }
-
-  // -- Update Interface uuid in xclbin --
-  xclBin.updateInterfaceuuid();
 
   // -- Write out new xclbin image --
   if (!sOutputFile.empty()) {
