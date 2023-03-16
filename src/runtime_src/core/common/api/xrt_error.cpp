@@ -249,6 +249,9 @@ public:
   std::string
   to_string()
   {
+    if (!m_errcode)
+      return "No async error was detected";
+
     auto fmt = boost::format
       ("%s\n"
        "Timestamp: %s")
