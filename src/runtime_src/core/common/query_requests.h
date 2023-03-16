@@ -70,6 +70,7 @@ enum class key_type
   memstat,
   memstat_raw,
   temp_by_mem_topology,
+  mem_topology,
   mem_topology_raw,
   ip_layout_raw,
   debug_ip_layout_raw,
@@ -720,6 +721,32 @@ struct mem_topology_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::mem_topology_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct mem_topology : request
+{
+  struct mem_data {
+    std::string xclbin_uuid;
+    uint32_t hw_context_slot;
+    uint8_t m_type;          // enum corresponding to mem_type.
+    uint8_t m_used;          // if 0 this bank is not present
+    union {
+        uint64_t m_size;     // if mem_type DDR, then size in KB;
+        uint64_t route_id;   // if streaming then "route_id"
+    };
+    union {
+        uint64_t m_base_address; // if DDR then the base address;
+        uint64_t flow_id;        // if streaming then "flow id"
+    };
+    unsigned char m_tag[16]; // DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
+  };
+
+  using data_type = struct mem_data;
+  using result_type = std::vector<data_type>;
+  static const key_type key = key_type::mem_topology;
 
   virtual boost::any
   get(const device*) const = 0;

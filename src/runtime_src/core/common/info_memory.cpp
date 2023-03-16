@@ -75,25 +75,13 @@ struct memory_info_collector
 {
   const xrt_core::device* device;          // device to query for info
 
-  const std::vector<char> mem_topo_raw;    // xclbin raw mem topology
   const std::vector<char> grp_topo_raw;    // xclbin raw grp topology
   std::vector<char> mem_temp_raw;    // xclbin temperator raw data
 
-  const mem_topology* mem_topo = nullptr;  // xclbin mem topology from device
+  const std::vector<xrt_core::query::mem_topology::data_type> mem_topo;  // xclbin mem topology from device
   const mem_topology* grp_topo = nullptr;  // xclbin group topology from device
   const std::vector<std::string> mem_stat; // raw memory stat from device
   const uint32_t* mem_temp = nullptr;      // temperature stat from device
-
-  // Get topology index of a mem_data element
-  static decltype(mem_topology::m_count)
-  get_mem_data_index(const mem_topology* mt, const mem_data* mem)
-  {
-    auto idx = std::distance(mt->m_mem_data, mem);
-    if (idx >= 0 && idx < mt->m_count)
-      return static_cast<decltype(mem_topology::m_count)>(idx);
-
-    throw xrt_core::internal_error("add_temp_mem_info: invalid mem_data entry");
-  }
 
   // Add bytes transferred by each PCIe channel to tree
   void
@@ -137,20 +125,20 @@ struct memory_info_collector
   // Append info from a mem topology streaming entry
   // Pre-cond: mem is a streaming entry
   void
-  add_stream_info(const mem_data* mem, ptree_type& pt_stream_array)
+  add_stream_info(const xrt_core::query::mem_topology::data_type& mem, ptree_type& pt_stream_array)
   {
     ptree_type pt_stream;
 
     try {
-      pt_stream.put("tag", mem->m_tag);
+      pt_stream.put("tag", mem.m_tag);
 
       // dma_stream sysfs entry name depends on write or read stream
       // which is indicated by trailing 'w' or 'r' in tag name
-      std::string lname {reinterpret_cast<const char*>(mem->m_tag)};
+      std::string lname {reinterpret_cast<const char*>(mem.m_tag)};
       if (lname.back() == 'w')
-        lname = "route" + std::to_string(mem->route_id) + "/stat";
+        lname = "route" + std::to_string(mem.route_id) + "/stat";
       else if (lname.back() == 'r')
-        lname = "flow" + std::to_string(mem->flow_id) + "/stat";
+        lname = "flow" + std::to_string(mem.flow_id) + "/stat";
 
       // list of "???" strings presenting what?
       auto stream_stat = xrt_core::device_query<xq::dma_stream>(device, xq::request::modifier::entry, lname);
@@ -185,10 +173,9 @@ struct memory_info_collector
   {
     ptree_type pt_stream_array;
 
-    for (int i = 0; i < mem_topo->m_count; ++i) {
-      const auto& mem = mem_topo->m_mem_data[i];
+    for (const auto& mem : mem_topo) {
       if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
-        add_stream_info(&mem, pt_stream_array);
+        add_stream_info(mem, pt_stream_array);
     }
 
     pt.add_child("board.memory.data_streams", pt_stream_array);
@@ -196,13 +183,13 @@ struct memory_info_collector
 
   // Add ecc info for specified mem entry
   void
-  add_mem_ecc_info(const mem_data* mem, ptree_type& pt_mem)
+  add_mem_ecc_info(const xrt_core::query::mem_topology::data_type& mem, ptree_type& pt_mem)
   {
-    if (!mem->m_used)
+    if (!mem.m_used)
       return;
 
     try {
-      std::string tag(reinterpret_cast<const char*>(mem->m_tag));
+      std::string tag(reinterpret_cast<const char*>(mem.m_tag));
       auto ecc_st = xrt_core::device_query<xq::mig_ecc_status>(device, xq::request::modifier::subdev, tag);
       auto ce_cnt = xrt_core::device_query<xq::mig_ecc_ce_cnt>(device, xq::request::modifier::subdev, tag);
       auto ue_cnt = xrt_core::device_query<xq::mig_ecc_ue_cnt>(device, xq::request::modifier::subdev, tag);
@@ -225,22 +212,23 @@ struct memory_info_collector
 
   // Add general mem info for specified mem entry
   static void
-  add_mem_general_info(const mem_data* mem, ptree_type& pt_mem)
+  add_mem_general_info(const xrt_core::query::mem_topology::data_type& mem, ptree_type& pt_mem)
   {
-    pt_mem.put("type", memtype2str(mem->m_type));
-    pt_mem.put("tag", mem->m_tag);
-    pt_mem.put("enabled", mem->m_used ? true : false);
-    pt_mem.put("base_address", boost::format("0x%x") % mem->m_base_address);
-    pt_mem.put("range_bytes", boost::format("0x%x") % (mem->m_size * 1024)); // convert KB to bytes
+    pt_mem.put("xclbin_uuid", mem.xclbin_uuid);
+    pt_mem.put("hw_context_slot", boost::format("%u") % mem.hw_context_slot);
+    pt_mem.put("type", memtype2str(mem.m_type));
+    pt_mem.put("tag", mem.m_tag);
+    pt_mem.put("enabled", mem.m_used ? true : false);
+    pt_mem.put("base_address", boost::format("0x%x") % mem.m_base_address);
+    pt_mem.put("range_bytes", boost::format("0x%x") % (mem.m_size * 1024)); // convert KB to bytes
   }
 
   // Add mem usage info for specified mem entry.
   // This function is shared with group topology, hence need to
   // know where the mem entry is comining from
   void
-  add_mem_usage_info(const mem_topology* mtopo, const mem_data* mem, ptree_type& pt_mem)
+  add_mem_usage_info(const size_t idx, ptree_type& pt_mem)
   {
-    auto idx = get_mem_data_index(mtopo, mem);
     uint64_t memory_usage = 0, bo_count = 0;
     std::stringstream {mem_stat[idx]} >> memory_usage >> bo_count; // idx has been validated
     pt_mem.put("extended_info.usage.allocated_bytes", memory_usage);
@@ -249,10 +237,8 @@ struct memory_info_collector
 
   // Add mem temperature info for specified mem entry
   void
-  add_mem_temp_info(const mem_data* mem, ptree_type& pt_mem)
+  add_mem_temp_info(const size_t idx, ptree_type& pt_mem)
   {
-    auto idx = get_mem_data_index(mem_topo, mem);
-
     // temperature is guaranteed to match up with mem_topo entries
     // indexing is safe because idx is validated
     constexpr int invalid_sensor_value = 0;
@@ -262,14 +248,14 @@ struct memory_info_collector
 
   // Add mem info for specified mem data entry
   void
-  add_mem_info(const mem_data* mem, ptree_type& pt_mem_array)
+  add_mem_info(const size_t idx, const xrt_core::query::mem_topology::data_type& mem, ptree_type& pt_mem_array)
   {
     ptree_type pt_mem;
     add_mem_ecc_info(mem, pt_mem);
     add_mem_general_info(mem, pt_mem);
-    add_mem_usage_info(mem_topo, mem, pt_mem);
-    add_mem_temp_info(mem, pt_mem);
-    pt_mem_array.push_back(std::make_pair("",pt_mem));
+    add_mem_usage_info(idx, pt_mem);
+    add_mem_temp_info(idx, pt_mem);
+    pt_mem_array.push_back(std::make_pair("", pt_mem));
   }
 
   // Add mem info for all mem entries in mem_topology section
@@ -278,12 +264,12 @@ struct memory_info_collector
   {
     ptree_type pt_mem_array;
 
-    for (int i = 0; i < mem_topo->m_count; ++i) {
-      const auto& mem = mem_topo->m_mem_data[i];
+    for (size_t i = 0; i < mem_topo.size(); ++i) {
+      const auto& mem = mem_topo[i];
       if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
         continue;
 
-      add_mem_info(&mem, pt_mem_array);
+      add_mem_info(i, mem, pt_mem_array);
     }
 
     pt.add_child("board.memory.memories", pt_mem_array );
@@ -294,8 +280,8 @@ struct memory_info_collector
   add_grp_info(const mem_data* mem, ptree_type& pt_grp_array)
   {
     ptree_type pt_grp;
-    add_mem_general_info(mem, pt_grp);
-    add_mem_usage_info(grp_topo, mem, pt_grp);
+    // add_mem_general_info(mem, pt_grp);
+    // add_mem_usage_info(grp_topo, mem, pt_grp);
     pt_grp_array.push_back(std::make_pair("",pt_grp));
   }
 
@@ -310,7 +296,7 @@ struct memory_info_collector
 
     // group_topology prepends all mem_topology entries so groups
     // are following at index mem_topo->m_count
-    for (int i = mem_topo->m_count; i < grp_topo->m_count; i++) {
+    for (int i = mem_topo.size(); i < grp_topo->m_count; i++) {
       const auto& mem = grp_topo->m_mem_data[i];
       add_grp_info(&mem, pt_grp_array);
     }
@@ -323,9 +309,8 @@ public:
   explicit
   memory_info_collector(const xrt_core::device* dev)
     : device(dev)
-    , mem_topo_raw(xrt_core::device_query<xq::mem_topology_raw>(device))
     , grp_topo_raw(xrt_core::device_query<xq::group_topology>(device))
-    , mem_topo(mem_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mem_topo_raw.data()))
+    , mem_topo(xrt_core::device_query<xq::mem_topology>(device))
     , grp_topo(grp_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(grp_topo_raw.data()))
     , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))
     , mem_temp(0)
@@ -338,11 +323,11 @@ public:
       //ignore if xmc is not present 
     }
     // info gathering functions indexes mem_stat by mem_toplogy entry index
-    if (mem_topo && mem_stat.size() < static_cast<size_t>(mem_topo->m_count))
+    if (!mem_topo.empty() && mem_stat.size() < mem_topo.size())
       throw xrt_core::internal_error("incorrect memstat_raw entries");
 
     // info gathering functions indexes mem_temp by mem_topology entry index
-    if (mem_topo && mem_temp && mem_temp_raw.size() < static_cast<size_t>(mem_topo->m_count))
+    if (!mem_topo.empty() && mem_temp && mem_temp_raw.size() < mem_topo.size())
       throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
 
     // info gathering functions indexes mem_stat by group_toplogy entry index
@@ -353,7 +338,7 @@ public:
   void
   collect(ptree_type& pt)
   {
-    if (!mem_topo)
+    if (mem_topo.empty())
       return;
 
     add_channel_info(pt);
