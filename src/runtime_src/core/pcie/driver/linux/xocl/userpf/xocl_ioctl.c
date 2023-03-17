@@ -564,23 +564,19 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		return -EINVAL;
 	}
 
-	if (is_bad_state(&XDEV(xdev)->kds)) {
-		err = -EDEADLK;
-		goto done;
-	}
+	if (is_bad_state(&XDEV(xdev)->kds))
+		return -EDEADLK;
 
 	/* Really need to download, sanity check xclbin, first. */
 	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
 		userpf_err(xdev, "Xclbin isn't supported by current XRT\n");
-		err = -EINVAL;
-		goto done;
+		return -EINVAL;
 	}
 
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
-		err = -EOPNOTSUPP;
-		goto done;
+		return -EOPNOTSUPP;
 	}
 
 	/* Copy bitstream from user space and proceed. */
@@ -588,23 +584,23 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	if (!axlf) {
 		userpf_err(xdev, "Unable to alloc mem for xclbin, size=%llu\n",
 			bin_obj.m_header.m_length);
-		err = -ENOMEM;
-		goto done;
+		return -ENOMEM;
 	}
 	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
 		err = -EFAULT;
-		goto done;
+		goto out_done;
 	}
 
 	/* TODO : qos need to define */
 	qos |= axlf_ptr->flags;
- 	rc = xocl_resolver(xdev, axlf, &bin_obj.m_header.uuid, qos, &slot_id);
+	rc = xocl_resolver(xdev, axlf, &bin_obj.m_header.uuid, qos, &slot_id);
 	if (rc) {
 		if (rc == -EEXIST)
-			goto done; 
+			goto out_done;
 
 		userpf_err(xdev, "Download xclbin failed\n");
-		return -EINVAL;
+		err = -EINVAL;
+		goto out_done;
 	}
 
 	/*
@@ -615,9 +611,28 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	 */
 	if (xocl_icap_bitstream_is_locked(xdev, slot_id)) {
 		err = -EBUSY;
-		goto done;
+		goto out_done;
 	}
-	
+
+	/* Populating MEM_TOPOLOGY sections. */
+	size = xocl_read_sect(MEM_TOPOLOGY, (void **)&new_topology, axlf);
+	if (size <= 0) {
+		if (size != 0)
+			goto out_done;
+	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
+		err = -EINVAL;
+		goto out_done;
+	}
+
+	preserve_mem = xocl_preserve_mem(drm_p, new_topology, size);
+
+	/* Switching the xclbin, make sure none of the buffers are used. */
+	if (!preserve_mem) {
+		err = xocl_cleanup_mem(drm_p, slot_id);
+		if (err)
+			goto out_done;
+	}
+
 	/* All contexts are closed. No outstanding commands */
 	axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
 	if (axlf_obj != NULL) {
@@ -676,25 +691,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 				goto done;
 			}
 		}
-	}
-
-	/* Populating MEM_TOPOLOGY sections. */
-	size = xocl_read_sect(MEM_TOPOLOGY, (void **)&new_topology, axlf);
-	if (size <= 0) {
-		if (size != 0)
-			goto done;
-	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	preserve_mem = xocl_preserve_mem(drm_p, new_topology, size);
-
-	/* Switching the xclbin, make sure none of the buffers are used. */
-	if (!preserve_mem) {
-		err = xocl_cleanup_mem(drm_p, slot_id);
-		if (err)
-			goto done;
 	}
 
 	/* There is a corner case.
@@ -767,6 +763,7 @@ done:
 	else
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
 
+out_done:
 	vfree(axlf);
 	return err;
 }
