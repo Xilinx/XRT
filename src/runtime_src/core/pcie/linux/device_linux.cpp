@@ -1614,7 +1614,7 @@ std::unique_ptr<buffer_handle>
 device_linux::
 import_bo(pid_t pid, xrt_core::shared_handle::export_handle ehdl)
 {
-  if (getpid() == pid)
+  if (pid == 0 || getpid() == pid)
     return xrt::shim_int::import_bo(get_device_handle(), ehdl);
 
 #if defined(SYS_pidfd_open) && defined(SYS_pidfd_getfd)

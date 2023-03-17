@@ -54,6 +54,14 @@ public:
 
   virtual properties
   get_properties() const = 0;
+
+  // while keep xcl APIs alive
+  virtual xclBufferHandle
+  get_xcl_handle() const
+  {
+    return XRT_NULL_BO;
+  }
+
 };
 
 } // xrt_core

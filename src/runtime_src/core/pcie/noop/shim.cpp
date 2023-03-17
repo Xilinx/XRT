@@ -439,6 +439,12 @@ struct shim
       m_shim->get_bo_properties(m_fd, &xprop);
       return {xprop.flags, xprop.size, xprop.paddr};
     }
+
+    xclBufferHandle
+    get_xcl_handle() const override
+    {
+      return static_cast<xclBufferHandle>(m_fd);
+    }
   }; // buffer
 
   class hwcontext : public xrt_core::hwctx_handle
@@ -508,7 +514,7 @@ public:
     void
     exec_buf(xrt_core::buffer_handle* cmd) override
     {
-      m_shim->exec_buf(to_xclBufferHandle(cmd));
+      m_shim->exec_buf(cmd->get_xcl_handle());
     }
 
     bool

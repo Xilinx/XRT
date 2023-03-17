@@ -102,10 +102,10 @@ std::unique_ptr<buffer_handle>
 device::
 import_bo(pid_t pid, shared_handle::export_handle ehdl)
 {
-  if (getpid() != pid)
-    throw xrt_core::error(std::errc::not_supported, __func__);
+  if (pid == 0 || getpid() == pid)
+    return xrt::shim_int::import_bo(get_device_handle(), ehdl);
 
-  return xrt::shim_int::import_bo(get_device_handle(), ehdl);
+  throw xrt_core::error(std::errc::not_supported, __func__);
 }
 
 }} // swemu,xrt_core

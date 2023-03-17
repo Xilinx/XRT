@@ -195,6 +195,12 @@ using addr_type = uint64_t;
         m_shim->xclGetBOProperties(m_hdl, &xprop);
         return {xprop.flags, xprop.size, xprop.paddr};
       }
+
+      xclBufferHandle
+      get_xcl_handle() const override
+      {
+        return m_hdl;
+      }
     }; // buffer_object
 
     // Shim handle for hardware context Even as hw_emu does not
@@ -268,7 +274,7 @@ using addr_type = uint64_t;
       void
       exec_buf(xrt_core::buffer_handle* cmd) override
       {
-        m_shim->xclExecBuf(to_xclBufferHandle(cmd));
+        m_shim->xclExecBuf(cmd->get_xcl_handle());
       }
     }; // class hwcontext
 

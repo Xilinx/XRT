@@ -322,7 +322,7 @@ struct shim : public DeviceType
   void
   exec_buf(buffer_handle* bo) override
   {
-    if (auto ret = xclExecBuf(DeviceType::get_device_handle(), to_xclBufferHandle(bo)))
+    if (auto ret = xclExecBuf(DeviceType::get_device_handle(), bo->get_xcl_handle()))
       throw system_error(ret, "failed to launch execution buffer");
   }
 
