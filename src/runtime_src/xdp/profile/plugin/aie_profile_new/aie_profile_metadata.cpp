@@ -126,7 +126,7 @@ namespace xdp {
       auto iter = deprecatedSettings.find(pos.first);
       if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting Debug." << pos.first << " is deprecated. "
+        msg << "The setting AIE_profile_settings." << pos.first << " is deprecated. "
             << "Please instead use " << iter->second << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       } else if (validSettings.find(pos.first) == validSettings.end()) {
