@@ -49,9 +49,9 @@ namespace xdp {
 
     // Use older metric if non empty
     // Deprecation warning is sent when doing sanity checks at ptree level
-    std::string memory_module_metrics = xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics();
+    std::string memory_module_metrics = xrt_core::config::get_aie_profile_settings_tile_based_memory_module_metrics();
     if (memory_module_metrics.empty()) {
-      memory_module_metrics = xrt_core::config::get_aie_profile_settings_tile_based_memory_module_metrics();
+      memory_module_metrics = xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics();
     }
 
     // Tile-based metrics settings
@@ -63,9 +63,9 @@ namespace xdp {
 
     // Use older metric if non empty
     // Deprecation warning is sent when doing sanity checks at ptree level
-    memory_module_metrics = xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics();
+    memory_module_metrics = xrt_core::config::get_aie_profile_settings_graph_based_memory_module_metrics();
     if (memory_module_metrics.empty()) {
-      memory_module_metrics = xrt_core::config::get_aie_profile_settings_graph_based_memory_module_metrics();
+      memory_module_metrics = xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics();
     }
 
     // Graph-based metrics settings
@@ -113,18 +113,25 @@ namespace xdp {
        "AIE_profile_settings.tile_based_interface_tile_metrics"}, 
       {"aie_profile_interval_us",
        "AIE_profile_settings.interval_us"},
-      {"AIE_profile_settings.graph_based_aie_memory_metrics",
+      {"graph_based_aie_memory_metrics",
        "AIE_profile_settings.graph_based_memory_module_metrics"},
-      {"AIE_profile_settings.tile_based_aie_memory_metrics",
+      {"tile_based_aie_memory_metrics",
        "AIE_profile_settings.tile_based_memory_module_metrics"}
     };
     
     // Verify settings in AIE_profile_settings section
-    auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_profile_settings");
-    for (ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
-      if (validSettings.find(pos->first) == validSettings.end()) {
+    auto tree = xrt_core::config::detail::get_ptree_value("AIE_profile_settings");
+    for (const auto& pos : tree) {
+      // First check if deprecated. If not, check validity
+      auto iter = deprecatedSettings.find(pos.first);
+      if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting AIE_profile_settings." << pos->first << " is not recognized. "
+        msg << "The setting Debug." << pos.first << " is deprecated. "
+            << "Please instead use " << iter->second << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      } else if (validSettings.find(pos.first) == validSettings.end()) {
+        std::stringstream msg;
+        msg << "The setting AIE_profile_settings." << pos.first << " is not recognized. "
             << "Please check the spelling and compare to supported list:";
         for (auto it = validSettings.cbegin(); it != validSettings.cend(); it++)
           msg << ((it == validSettings.cbegin()) ? " " : ", ") << *it;
@@ -133,12 +140,12 @@ namespace xdp {
     }
 
     // Check for usage of deprecated settings
-    auto tree2 = xrt_core::config::detail::get_ptree_value("Debug");
-    for (ptree::iterator pos = tree2.begin(); pos != tree2.end(); pos++) {
-      auto iter = deprecatedSettings.find(pos->first);
+    tree = xrt_core::config::detail::get_ptree_value("Debug");
+    for (const auto& pos : tree) {
+      auto iter = deprecatedSettings.find(pos.first);
       if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting Debug." << pos->first << " is deprecated. "
+        msg << "The setting Debug." << pos.first << " is deprecated. "
             << "Please instead use " << iter->second << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }
