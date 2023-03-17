@@ -245,63 +245,92 @@ on the device</td>
 <td>drm_xocl_ctx</td>
 </tr>
 <tr class="row-even"><td>9</td>
+<td>Create a hw context on a slot for a
+xclbin on the device</td>
+<td>DRM_IOCTL_XOCL_CREATE_HW_CTX</td>
+<td>drm_xocl_create_hw_ctx</td>
+</tr>
+<tr class="row-odd"><td>10</td>
+<td>Destroy a hw context on a slot for a
+xclbin on the device</td>
+<td>DRM_IOCTL_XOCL_DESTROY_HW_CTX</td>
+<td>drm_xocl_destroy_hw_ctx</td>
+</tr>
+<tr class="row-even"><td>11</td>
+<td>Open a context on a compute unit
+on the device</td>
+<td>DRM_IOCTL_XOCL_OPEN_CU_CTX</td>
+<td>drm_xocl_open_cu_ctx</td>
+</tr>
+<tr class="row-odd"><td>12</td>
+<td>Close a context on a compute unit
+on the device</td>
+<td>DRM_IOCTL_XOCL_CLOSE_CU_CTX</td>
+<td>drm_xocl_close_cu_ctx</td>
+</tr>
+<tr class="row-even"><td>13</td>
 <td>Unprotected write to device memory</td>
 <td>DRM_IOCTL_XOCL_PWRITE_UNMGD</td>
 <td>drm_xocl_pwrite_unmgd</td>
 </tr>
-<tr class="row-odd"><td>10</td>
+<tr class="row-odd"><td>14</td>
 <td>Unprotected read from device memory</td>
 <td>DRM_IOCTL_XOCL_PREAD_UNMGD</td>
 <td>drm_xocl_pread_unmgd</td>
 </tr>
-<tr class="row-even"><td>11</td>
+<tr class="row-even"><td>15</td>
 <td>Send an execute job to a compute unit</td>
 <td>DRM_IOCTL_XOCL_EXECBUF</td>
 <td>drm_xocl_execbuf</td>
 </tr>
-<tr class="row-odd"><td>12</td>
+<tr class="row-odd"><td>16</td>
+<td>Send an execute job to a compute unit</td>
+<td>DRM_IOCTL_XOCL_HW_CTX_EXECBUF</td>
+<td>drm_xocl_hw_ctx_execbuf</td>
+</tr>
+<tr class="row-even"><td>17</td>
 <td>Register eventfd handle for MSIX
 interrupt</td>
 <td>DRM_IOCTL_XOCL_USER_INTR</td>
 <td>drm_xocl_user_intr</td>
 </tr>
-<tr class="row-even"><td>13</td>
+<tr class="row-odd"><td>18</td>
 <td>Update device view with a specific
 xclbin image</td>
 <td>DRM_IOCTL_XOCL_READ_AXLF</td>
 <td>drm_xocl_axlf</td>
 </tr>
-<tr class="row-odd"><td>14</td>
+<tr class="row-even"><td>19</td>
 <td>Obtain info of bo</td>
 <td>DRM_IOCTL_XOCL_INFO</td>
 <td>drm_xocl_info_bo</td>
 </tr>
-<tr class="row-even"><td>15</td>
+<tr class="row-odd"><td>20</td>
 <td>Obtain bo related statistics</td>
 <td>DRM_IOCTL_XOCL_OCL_USAGE_STAT</td>
 <td>drm_xocl_usage_stat</td>
 </tr>
-<tr class="row-odd"><td>16</td>
+<tr class="row-even"><td>21</td>
 <td>Perform hot reset</td>
 <td>DRM_IOCTL_XOCL_HOT_RESET</td>
 <td>N/A</td>
 </tr>
-<tr class="row-even"><td>17</td>
+<tr class="row-odd"><td>22</td>
 <td>Perform clock scaling</td>
 <td>DRM_IOCTL_XOCL_RECLOCK</td>
 <td>drm_xocl_reclock_info</td>
 </tr>
-<tr class="row-odd"><td>18</td>
+<tr class="row-even"><td>23</td>
 <td>Allocate buffer on host memory</td>
 <td>DRM_IOCTL_XOCL_ALLOC_CMA</td>
 <td>drm_xocl_alloc_cma_info</td>
 </tr>
-<tr class="row-even"><td>19</td>
+<tr class="row-odd"><td>24</td>
 <td>Free host memory buffer</td>
 <td>DRM_IOCTL_XOCL_FREE_CMA</td>
 <td>N/A</td>
 </tr>
-<tr class="row-odd"><td>20</td>
+<tr class="row-even"><td>25</td>
 <td>Copy bo buffers</td>
 <td>DRM_IOCTL_XOCL_COPY_BO</td>
 <td>drm_xocl_copy_bo</td>
@@ -796,6 +825,94 @@ the request is being made</dd>
 <dd>Unused</dd>
 </dl>
 <dl class="type">
+<dt id="c.drm_xocl_create_hw_ctx">
+struct <code class="descname">drm_xocl_create_hw_ctx</code><a class="headerlink" href="#c.drm_xocl_create_hw_ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a hw context on a slot on device used with DRM_XOCL_CREATE_HW_CTX ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_create_hw_ctx {
+  struct drm_xocl_axlf * axlf_ptr;
+  uint32_t qos;
+  uint32_t hw_context;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">axlf_ptr</span></code></dt>
+<dd>axlf pointer which need to download</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">qos</span></code></dt>
+<dd>QOS information</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt>
+<dd>Returns Context handle</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_destroy_hw_ctx">
+struct <code class="descname">drm_xocl_destroy_hw_ctx</code><a class="headerlink" href="#c.drm_xocl_destroy_hw_ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close/Destroy a hw context on a slot on device used with DRM_XOCL_DESTROY_HW_CTX ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_destroy_hw_ctx {
+  uint32_t hw_context;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt>
+<dd>Context handle which need to close</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_open_cu_ctx">
+struct <code class="descname">drm_xocl_open_cu_ctx</code><a class="headerlink" href="#c.drm_xocl_open_cu_ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a cu context under a hw context on device used with DRM_XOCL_OPEN_CU_CTX ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_open_cu_ctx {
+  uint32_t hw_context;
+  char cu_name;
+  uint32_t flags;
+  uint32_t cu_index;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt>
+<dd>Open CU under this hw Context handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_name</span></code></dt>
+<dd>Name of the compute unit in the device image for which
+the open request is being made</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt>
+<dd>Return the acquired CU index. This will require for close cu context</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_close_cu_ctx">
+struct <code class="descname">drm_xocl_close_cu_ctx</code><a class="headerlink" href="#c.drm_xocl_close_cu_ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a cu context under a hw context on device used with DRM_XOCL_CLOSE_CU_CTX ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_close_cu_ctx {
+  uint32_t hw_context;
+  uint32_t cu_index;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_context</span></code></dt>
+<dd>Open CU under this hw Context handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt>
+<dd>Index of the compute unit in the device image for which
+the close request is being made</dd>
+</dl>
+<dl class="type">
 <dt id="c.drm_xocl_pwrite_unmgd">
 struct <code class="descname">drm_xocl_pwrite_unmgd</code><a class="headerlink" href="#c.drm_xocl_pwrite_unmgd" title="Permalink to this definition">¶</a></dt>
 <dd><p>unprotected write to device memory used with DRM_IOCTL_XOCL_PWRITE_UNMGD ioctl</p>
@@ -903,7 +1020,31 @@ struct <code class="descname">drm_xocl_execbuf</code><a class="headerlink" href=
 <dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt>
 <dd>BO handle of command buffer formatted as ERT command</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">deps</span></code></dt>
-<dd>Upto 8 dependency command BO handles this command is dependent on
+<dd>Upto MAX_DEPENT_CMD_BO dependency command BO handles this command is dependent on
+for automatic event dependency handling by ERT</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_hw_ctx_execbuf">
+struct <code class="descname">drm_xocl_hw_ctx_execbuf</code><a class="headerlink" href="#c.drm_xocl_hw_ctx_execbuf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submit a command buffer for execution on a compute unit used with DRM_IOCTL_XOCL_HW_CTX_EXECBUF ioctl with new hw context parameters</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_hw_ctx_execbuf {
+  uint32_t hw_ctx_id;
+  uint32_t exec_bo_handle;
+  uint32_t deps;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">hw_ctx_id</span></code></dt>
+<dd>Pass the HW Context id</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt>
+<dd>BO handle of command buffer formatted as ERT command</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">deps</span></code></dt>
+<dd>Upto MAX_DEPENT_CMD_BO dependency command BO handles this command is dependent on
 for automatic event dependency handling by ERT</dd>
 </dl>
 <dl class="type">

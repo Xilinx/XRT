@@ -37,7 +37,7 @@ The ``xbmgmt configure`` command provides advanced options for configuring a dev
 
 **The supported options**
 
-Configuring a device's memory settings with a premade image
+Configuring a device's memory or clock throttling settings using an .ini file
 
 .. code-block:: shell
 
@@ -58,7 +58,7 @@ Enabling/Disabling DDR memory retention on a device
     - <management bdf> : The Bus:Device.Function of the device of interest
 
 
-- The ``--input`` specifies an INI file with the memory configuration.
+- The ``--input`` specifies an INI file with configuration details (e.g. memory, clock throttling).
 - The ``--retention`` option enables / disables DDR memory retention.
 
 
@@ -70,15 +70,17 @@ Enabling/Disabling DDR memory retention on a device
 
     #Configure a device's memory settings using an image
     xbmgmt configure --device 0000:b3:00.0 --input /tmp/memory_config.ini
-    
-    #Enable a device's DDR memory retention 
-    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
 
+    #Configure a device using edited output .ini from xbmgmt dump --config (see xbmgmt dump)
+    xbmgmt configure --device 0000:b3:00.0 --input /tmp/config.ini
+
+    #Enable a device's DDR memory retention
+    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
 
 xbmgmt dump
 ~~~~~~~~~~~
 
-The ``xbmgmt dump`` command dump out content of the specified option 
+The ``xbmgmt dump`` command dumps out content of the specified option
 
 **The supported options**
 
@@ -86,14 +88,14 @@ Dumping the output of system configuration.
 
 .. code-block:: shell
 
-    xbmgmt dump [--device| -d] <management bdf> [--config| -c] [--output| -o] <filename>
+    xbmgmt dump [--device| -d] <management bdf> [--config| -c] [--output| -o] <filename with .ini extension>
     
 
 Dumping the output of programmed system image
 
 .. code-block:: shell
 
-    xbmgmt dump [--device| -d] <management bdf> [--flash| -f] [--output| -o] <filename with .ini extension>
+    xbmgmt dump [--device| -d] <management bdf> [--flash| -f] [--output| -o] <filename with .bin extension>
 
 
 **The details of the supported options**
@@ -103,9 +105,9 @@ Dumping the output of programmed system image
     - <management bdf> : The Bus:Device.Function of the device of interest
 
 
-- The ``--flash`` (or ``-f``) option dumps the output of programmed system image.
-- The ``--config`` (or ``-c``) option dumps the output of system configuration.
-- The ``--output`` (or ``-o``) specifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
+- The ``--flash`` (or ``-f``) option dumps the output of programmed system image. Requires a .bin output file by ``-o`` option.
+- The ``--config`` (or ``-c``) option dumps the output of system configuration. Requires a .ini output file by ``-o`` option.
+- The ``--output`` (or ``-o``) specifies the output file to direct the dumped output.
     
 
 **Example commands** 
@@ -115,10 +117,19 @@ Dumping the output of programmed system image
 
       
     #Dump programmed system image data
-    xbmgmt dump --device 0000:b3:00.0 --flash -o /tmp/flash_dump.txt
+    xbmgmt dump --device 0000:b3:00.0 --flash -o /tmp/flash_dump.bin
     
-    #Dump system configaration 
+    #Dump system configuration. This .ini file can be edited and used as input for xbmgmt configure.
     xbmgmt dump --device 0000:b3:00.0 --config -o /tmp/config_dump.ini
+
+    #Example .ini file contents from xbmgmt dump --config
+    mailbox_channel_disable=0x0
+    mailbox_channel_switch=0x0
+    xclbin_change=0
+    cache_xclbin=0
+    throttling_enabled=true #true or false to enable/disable clock throttling
+    throttling_power_override=200 #override threshold in Watts
+    throttling_temp_override=90 #override threshold in Celsius
 
 
 xbmgmt examine
@@ -148,6 +159,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
     - ``mailbox``: Mailbox metrics of the device
     - ``mechanical``: Mechanical sensors on and surrounding the device
     - ``platform``: Platform information
+    - ``cmc``: Reports cmc status of the device, such as clock throttling information
 
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     

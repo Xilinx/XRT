@@ -201,7 +201,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <h2>xbmgmt configure<a class="headerlink" href="#xbmgmt-configure" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code> command provides advanced options for configuring a device</p>
 <p><strong>The supported options</strong></p>
-<p>Configuring a device’s memory settings with a premade image</p>
+<p>Configuring a device’s memory or clock throttling settings using an .ini file</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--input<span class="o">]</span> &lt;filename with .ini extension&gt;
 </pre></div>
 </div>
@@ -218,7 +218,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </ul>
 </div></blockquote>
 </li>
-<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--input</span></code> specifies an INI file with the memory configuration.</p>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--input</span></code> specifies an INI file with configuration details (e.g. memory, clock throttling).</p>
 </li>
 <li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--retention</span></code> option enables / disables DDR memory retention.</p>
 </li>
@@ -227,6 +227,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure a device&#39;s memory settings using an image</span>
 xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/memory_config.ini
 
+<span class="c1">#Configure a device using edited output .ini from xbmgmt dump --config (see xbmgmt dump)</span>
+xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/config.ini
+
 <span class="c1">#Enable a device&#39;s DDR memory retention</span>
 xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
 </pre></div>
@@ -234,14 +237,14 @@ xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
 </div>
 <div class="section" id="xbmgmt-dump">
 <h2>xbmgmt dump<a class="headerlink" href="#xbmgmt-dump" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> command dump out content of the specified option</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> command dumps out content of the specified option</p>
 <p><strong>The supported options</strong></p>
 <p>Dumping the output of system configuration.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--config<span class="p">|</span> -c<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--config<span class="p">|</span> -c<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .ini extension&gt;
 </pre></div>
 </div>
 <p>Dumping the output of programmed system image</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--flash<span class="p">|</span> -f<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .ini extension&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--flash<span class="p">|</span> -f<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .bin extension&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
@@ -253,19 +256,28 @@ xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
 </ul>
 </div></blockquote>
 </li>
-<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--flash</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) option dumps the output of programmed system image.</p>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--flash</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) option dumps the output of programmed system image. Requires a .bin output file by <code class="docutils literal notranslate"><span class="pre">-o</span></code> option.</p>
 </li>
-<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--config</span></code> (or <code class="docutils literal notranslate"><span class="pre">-c</span></code>) option dumps the output of system configuration.</p>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--config</span></code> (or <code class="docutils literal notranslate"><span class="pre">-c</span></code>) option dumps the output of system configuration. Requires a .ini output file by <code class="docutils literal notranslate"><span class="pre">-o</span></code> option.</p>
 </li>
-<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the dumped output. For <code class="docutils literal notranslate"><span class="pre">--config</span></code> the output file must have extension .ini</p>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the dumped output.</p>
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dump programmed system image data</span>
-xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --flash -o /tmp/flash_dump.txt
+xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --flash -o /tmp/flash_dump.bin
 
-<span class="c1">#Dump system configaration</span>
+<span class="c1">#Dump system configuration. This .ini file can be edited and used as input for xbmgmt configure.</span>
 xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config_dump.ini
+
+<span class="c1">#Example .ini file contents from xbmgmt dump --config</span>
+<span class="nv">mailbox_channel_disable</span><span class="o">=</span>0x0
+<span class="nv">mailbox_channel_switch</span><span class="o">=</span>0x0
+<span class="nv">xclbin_change</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">cache_xclbin</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">throttling_enabled</span><span class="o">=</span><span class="nb">true</span> <span class="c1">#true or false to enable/disable clock throttling</span>
+<span class="nv">throttling_power_override</span><span class="o">=</span><span class="m">200</span> <span class="c1">#override threshold in Watts</span>
+<span class="nv">throttling_temp_override</span><span class="o">=</span><span class="m">90</span> <span class="c1">#override threshold in Celsius</span>
 </pre></div>
 </div>
 </div>
@@ -294,6 +306,7 @@ xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config
 <li><code class="docutils literal notranslate"><span class="pre">mailbox</span></code>: Mailbox metrics of the device</li>
 <li><code class="docutils literal notranslate"><span class="pre">mechanical</span></code>: Mechanical sensors on and surrounding the device</li>
 <li><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platform information</li>
+<li><code class="docutils literal notranslate"><span class="pre">cmc</span></code>: Reports cmc status of the device, such as clock throttling information</li>
 </ul>
 </div></blockquote>
 </li>

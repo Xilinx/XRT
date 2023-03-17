@@ -190,15 +190,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_axlf">drm_xocl_axlf (C type)</a>
 </li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_close_cu_ctx">drm_xocl_close_cu_ctx (C type)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_copy_bo">drm_xocl_copy_bo (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_create_bo">drm_xocl_create_bo (C type)</a>
 </li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_create_hw_ctx">drm_xocl_create_hw_ctx (C type)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_ctx">drm_xocl_ctx (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_destroy_hw_ctx">drm_xocl_destroy_hw_ctx (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_execbuf">drm_xocl_execbuf (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_execbuf_cb">drm_xocl_execbuf_cb (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_hw_ctx_execbuf">drm_xocl_hw_ctx_execbuf (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_info_bo">drm_xocl_info_bo (C type)</a>
 </li>
@@ -210,6 +218,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_map_kern_mem">drm_xocl_map_kern_mem (C type)</a>
 </li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_open_cu_ctx">drm_xocl_open_cu_ctx (C type)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_bo">drm_xocl_pread_bo (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_unmgd">drm_xocl_pread_unmgd (C type)</a>
@@ -220,14 +230,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_reclock_info">drm_xocl_reclock_info (C type)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_set_cu_range">drm_xocl_set_cu_range (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo">drm_xocl_sync_bo (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo_cb">drm_xocl_sync_bo_cb (C type)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_usage_stat">drm_xocl_usage_stat (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_user_intr">drm_xocl_user_intr (C type)</a>
@@ -492,7 +502,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo12async_handleE">xrt::bo::async_handle (C++ class)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle">xrt::bo::bo (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle8pid_type21xclBufferExportHandle">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group">[5]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo">[6]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo6size_t6size_t">[7]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERR2bo">[8]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boEv">[9]</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle">xrt::bo::bo (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle8pid_type21xclBufferExportHandle">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo6size_t6size_t">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_t12memory_group">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_tN2bo5flagsE12memory_group">[5]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_t12memory_group">[6]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group">[7]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_t12memory_group">[8]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_tN2bo5flagsE12memory_group">[9]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_t12memory_group">[10]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_tN2bo5flagsE12memory_group">[11]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERR2bo">[12]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boEv">[13]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo9cacheableE">xrt::bo::cacheable (C++ enumerator)</a>
 </li>
@@ -551,6 +561,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4infoE">xrt::info (C++ type)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info3aieE">xrt::info::aie (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info7aie_memE">xrt::info::aie_mem (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info8aie_shimE">xrt::info::aie_shim (C++ enumerator)</a>
 </li>
