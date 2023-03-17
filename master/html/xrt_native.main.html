@@ -250,17 +250,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group">
-<span id="_CPPv3N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xclDeviceHandle.voidP.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1a5c215f30d8bc3091206b9f1ad86a6119"></span><code class="descname">bo</code><span class="sig-paren">(</span>xclDeviceHandle <em>dhdl</em>, void *<em>userptr</em>, size_t <em>sz</em>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boEv" title="xrt::bo::bo">bo</a>::flags <em>flags</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_tN2bo5flagsE12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt6deviceEPv6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt6deviceEPv6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xrt::deviceCR.voidP.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1ae29ec81b0c2b5bd761cbcb2110874fc8"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device">device</a> &amp;<em>device</em>, void *<em>userptr</em>, size_t <em>sz</em>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boEv" title="xrt::bo::bo">bo</a>::flags <em>flags</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and flags</p>
-<p><dl class="docutils">
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">dhdl</span></code>: Device handle </li>
+<li><code class="docutils literal notranslate"><span class="pre">device</span></code>: The device on which to allocate this buffer </li>
 <li><code class="docutils literal notranslate"><span class="pre">userptr</span></code>: Pointer to aligned user memory </li>
 <li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
-<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify special flags per <code class="docutils literal notranslate"><span class="pre">xrt_mem.h</span></code> </li>
-<li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in </li>
+<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify type of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
 </ul>
 </dd>
 </dl>
@@ -268,14 +269,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group">
-<span id="_CPPv3N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group"></span><span id="_CPPv2N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group"></span><span id="xrt::bo::bo__xclDeviceHandle.voidP.s.memory_group"></span><span class="target" id="classxrt_1_1bo_1a46d212a1fa354866a5f19c5ce493dc38"></span><code class="descname">bo</code><span class="sig-paren">(</span>xclDeviceHandle <em>dhdl</em>, void *<em>userptr</em>, size_t <em>sz</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer</p>
-<p><p>The buffer type is default buffer object with host buffer and device buffer, where the host buffer is managed by user. </p>
-<dl class="docutils">
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_t12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt6deviceEPv6size_t12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt6deviceEPv6size_t12memory_group"></span><span id="xrt::bo::bo__xrt::deviceCR.voidP.s.memory_group"></span><span class="target" id="classxrt_1_1bo_1a04b39f1abd00dcfc1449a9dac8fd196c"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device">device</a> &amp;<em>device</em>, void *<em>userptr</em>, size_t <em>sz</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_t12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and default flags</p>
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">dhdl</span></code>: Device handle </li>
+<li><code class="docutils literal notranslate"><span class="pre">device</span></code>: The device on which to allocate this buffer </li>
 <li><code class="docutils literal notranslate"><span class="pre">userptr</span></code>: Pointer to aligned user memory </li>
 <li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
 <li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
@@ -286,16 +287,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group">
-<span id="_CPPv3N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xclDeviceHandle.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1a31dbaa3c7c783ad0b64f5638698487da"></span><code class="descname">bo</code><span class="sig-paren">(</span>xclDeviceHandle <em>dhdl</em>, size_t <em>size</em>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boEv" title="xrt::bo::bo">bo</a>::flags <em>flags</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor where XRT manages host buffer if any</p>
-<p><p>If the flags require a host buffer, then the host buffer is allocated by XRT and can be accessed by using </p>
-<a class="reference internal" href="#classxrt_1_1bo_1a7778be10aa42a273b879657c35b81f95"><span class="std std-ref">map()</span></a> <dl class="docutils">
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_tN2bo5flagsE12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt6deviceE6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt6deviceE6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xrt::deviceCR.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1a201f1d13f44d1540a345866f112d4ffc"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device">device</a> &amp;<em>device</em>, size_t <em>sz</em>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boEv" title="xrt::bo::bo">bo</a>::flags <em>flags</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor where XRT manages host buffer if needed</p>
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">dhdl</span></code>: Device handle </li>
-<li><code class="docutils literal notranslate"><span class="pre">size</span></code>: Size of buffer </li>
-<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify special flags per <code class="docutils literal notranslate"><span class="pre">xrt_mem.h</span></code> </li>
+<li><code class="docutils literal notranslate"><span class="pre">device</span></code>: The device on which to allocate this buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify type of buffer </li>
 <li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
 </ul>
 </dd>
@@ -304,15 +305,89 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group">
-<span id="_CPPv3N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group"></span><span id="_CPPv2N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group"></span><span id="xrt::bo::bo__xclDeviceHandle.s.memory_group"></span><span class="target" id="classxrt_1_1bo_1a5f3f8995d4b1d4115a32181538d123c6"></span><code class="descname">bo</code><span class="sig-paren">(</span>xclDeviceHandle <em>dhdl</em>, size_t <em>size</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_t12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt6deviceE6size_t12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt6deviceE6size_t12memory_group"></span><span id="xrt::bo::bo__xrt::deviceCR.s.memory_group"></span><span class="target" id="classxrt_1_1bo_1a0df3e1d63c3e2dc68fbe7b073206db36"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::<a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device">device</a> &amp;<em>device</em>, size_t <em>sz</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_t12memory_group" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor, default flags, where XRT manages host buffer if any</p>
-<p><p>The buffer type is default buffer object with host buffer and device buffer. The host buffer is allocated and managed by XRT. </p>
-<dl class="docutils">
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">dhdl</span></code>: Device handle </li>
-<li><code class="docutils literal notranslate"><span class="pre">size</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">device</span></code>: The device on which to allocate this buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify type of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xrt::hw_contextCR.voidP.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1a6aecea28fe7c9c47b1f9a69b5c477217"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::hw_context &amp;<em>hwctx</em>, void *<em>userptr</em>, size_t <em>sz</em>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boEv" title="xrt::bo::bo">bo</a>::flags <em>flags</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and flags</p>
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal notranslate"><span class="pre">hwctx</span></code>: The hardware context in which to allocate this buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">userptr</span></code>: Pointer to aligned user memory </li>
+<li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify type of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_t12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt10hw_contextEPv6size_t12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt10hw_contextEPv6size_t12memory_group"></span><span id="xrt::bo::bo__xrt::hw_contextCR.voidP.s.memory_group"></span><span class="target" id="classxrt_1_1bo_1aa547fa01401a9b2acd4efd758368cc9a"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::hw_context &amp;<em>hwctx</em>, void *<em>userptr</em>, size_t <em>sz</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_t12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and default flags</p>
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal notranslate"><span class="pre">hwctx</span></code>: The hardware context in which to allocate this buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">userptr</span></code>: Pointer to aligned user memory </li>
+<li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_tN2bo5flagsE12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt10hw_contextE6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt10hw_contextE6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xrt::hw_contextCR.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1a3de4ce2b2c32d9f611b445f3332042b4"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::hw_context &amp;<em>hwctx</em>, size_t <em>sz</em>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boEv" title="xrt::bo::bo">bo</a>::flags <em>flags</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor where XRT manages host buffer if needed</p>
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal notranslate"><span class="pre">hwctx</span></code>: The hardware context in which to allocate this buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify type of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_t12memory_group">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt10hw_contextE6size_t12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt10hw_contextE6size_t12memory_group"></span><span id="xrt::bo::bo__xrt::hw_contextCR.s.memory_group"></span><span class="target" id="classxrt_1_1bo_1a133e60f48597dd5dc21096d02ed9ecce"></span><code class="descname">bo</code><span class="sig-paren">(</span><em class="property">const</em> xrt::hw_context &amp;<em>hwctx</em>, size_t <em>sz</em>, memory_group <em>grp</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_t12memory_group" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor, default flags, where XRT manages host buffer if any</p>
+<p><p>The device memory group depends on connectivity. If the buffer as a kernel argument, then the memory group can be obtained from the </p>
+<a class="reference internal" href="#classxrt_1_1kernel"><span class="std std-ref">xrt::kernel</span></a> object. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal notranslate"><span class="pre">hwctx</span></code>: The hardware context in which to allocate this buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">sz</span></code>: Size of buffer </li>
+<li><code class="docutils literal notranslate"><span class="pre">flags</span></code>: Specify type of buffer </li>
 <li><code class="docutils literal notranslate"><span class="pre">grp</span></code>: Device memory group to allocate buffer in</li>
 </ul>
 </dd>
@@ -1165,6 +1240,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <dt id="_CPPv4N3xrt4info3vmrE">
 <span id="_CPPv3N3xrt4info3vmrE"></span><span id="_CPPv2N3xrt4info3vmrE"></span><span class="target" id="namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59"></span><code class="descname">vmr</code><a class="headerlink" href="#_CPPv4N3xrt4info3vmrE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Information about vmr on the device (std::string) </p>
+</dd></dl>
+
+<dl class="enumerator">
+<dt id="_CPPv4N3xrt4info7aie_memE">
+<span id="_CPPv3N3xrt4info7aie_memE"></span><span id="_CPPv2N3xrt4info7aie_memE"></span><span class="target" id="namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829aaaa35fcd8711c5cb0eb6d5c51f1c8b221"></span><code class="descname">aie_mem</code><a class="headerlink" href="#_CPPv4N3xrt4info7aie_memE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>AIE memory information of the device (std::string) </p>
 </dd></dl>
 
 </dd></dl>
