@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_queue.h
@@ -48,7 +48,13 @@ public:
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
   {}
 
-void
+  void
+  update_qos(const qos_type& qos)
+  {
+    m_hdl->update_qos(qos);
+  }
+
+  void
   set_exclusive()
   {
     m_mode = xrt::hw_context::access_mode::exclusive;
@@ -127,6 +133,13 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {}
+
+void
+hw_context::
+update_qos(const qos_type& qos)
+{
+  get_handle()->update_qos(qos);
+}
 
 xrt::device
 hw_context::
