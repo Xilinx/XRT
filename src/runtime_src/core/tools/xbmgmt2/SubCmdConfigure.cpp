@@ -107,7 +107,7 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
 
   // Options previously under the load config command
   loadConfigOptions.add_options()
-    ("input", boost::program_options::value<decltype(m_path)>(&m_path),"INI file with the memory configuration")
+    ("input", boost::program_options::value<decltype(m_path)>(&m_path),"INI file with configuration details (e.g. memory, clock throttling)")
   ;
 
   // Options previously under the config command
