@@ -68,8 +68,8 @@ static ssize_t xclbinid_show(struct device *dev,
 	read_lock(&zdev->attr_rwlock);
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && (!zocl_slot->slot_xclbin ||
-		    !zocl_slot->slot_xclbin->zx_dtbo_path))
+		if (!zocl_slot || !zocl_slot->slot_xclbin ||
+		    !zocl_slot->slot_xclbin->zx_dtbo_path)
 			continue;
 
 		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
@@ -95,8 +95,8 @@ static ssize_t dtbo_path_show(struct device *dev,
 	read_lock(&zdev->attr_rwlock);
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && (!zocl_slot->slot_xclbin ||
-		    !zocl_slot->slot_xclbin->zx_dtbo_path))
+		if (!zocl_slot || !zocl_slot->slot_xclbin ||
+		    !zocl_slot->slot_xclbin->zx_dtbo_path)
 			continue;
 
 		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
@@ -471,7 +471,7 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && !zocl_slot->debug_ip)
+		if (!zocl_slot || !zocl_slot->debug_ip)
 			continue;
 
 		size = sizeof_section(zocl_slot->debug_ip, m_debug_ip_data);
@@ -512,7 +512,7 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && !zocl_slot->ip)
+		if (!zocl_slot || !zocl_slot->ip)
 			continue;
 
 		size = sizeof_section(zocl_slot->ip, m_ip_data);
@@ -553,7 +553,7 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && !zocl_slot->connectivity)
+		if (!zocl_slot || !zocl_slot->connectivity)
 			continue;
 
 		size = sizeof_section(zocl_slot->connectivity, m_connection);
@@ -594,7 +594,7 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && !zocl_slot->topology)
+		if (!zocl_slot || !zocl_slot->topology)
 			continue;
 
 		size = sizeof_section(zocl_slot->topology, m_mem_data);
@@ -637,7 +637,7 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot && !zocl_slot->axlf)
+		if (!zocl_slot || !zocl_slot->axlf)
 			continue;
 
 		size = zocl_slot->axlf_size;

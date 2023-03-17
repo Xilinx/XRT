@@ -916,7 +916,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 
         mutex_lock(&slot->slot_xclbin_lock);
 	/* Check unique ID. Avoid duplicate PL xclbin */
-	if ((slot->slot_type == ZOCL_SLOT_TYPE_VIRT) &&
+	if ((slot->slot_type == ZOCL_SLOT_TYPE_PHY) &&
 	    (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid))) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
@@ -1165,7 +1165,7 @@ is_aie_only(struct axlf *axlf)
 {
 	if ((axlf->m_header.m_actionMask & AM_LOAD_AIE) ||
 		(!xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
-		xrt_xclbin_get_section_num(axlf, AIE_METADATA))
+		xrt_xclbin_get_section_num(axlf, AIE_METADATA)))
 		return true;
 
 	return false;
