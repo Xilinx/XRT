@@ -20,6 +20,7 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/shared_handle.h"
 #include "core/include/experimental/xrt_xclbin.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
@@ -47,6 +48,110 @@ namespace xclswemuhal2 {
       static const unsigned CONTROL_AP_DONE;
       static const unsigned CONTROL_AP_IDLE;
       static const unsigned CONTROL_AP_CONTINUE;
+
+
+  public:
+    // Shim handle for shared objects, such as buffer objects, sync
+    // objects, etc.
+    class shared_object : public xrt_core::shared_handle
+    {
+      SwEmuShim* m_shim;
+      xclBufferExportHandle m_ehdl;
+    public:
+      shared_object(SwEmuShim* shim, xclBufferExportHandle ehdl)
+        : m_shim(shim)
+        , m_ehdl(ehdl)
+      {}
+
+      ~shared_object()
+      {
+        // Implement per sw_emu requirements
+      }
+
+      export_handle
+      get_export_handle() const
+      {
+        return static_cast<export_handle>(m_ehdl);
+      }
+    }; // shared_object
+
+    // Shim handle for buffer object
+    class buffer_object : public xrt_core::buffer_handle
+    {
+      SwEmuShim* m_shim;
+      xclBufferHandle m_hdl;
+
+    public:
+      buffer_object(SwEmuShim* shim, xclBufferHandle hdl)
+        : m_shim(shim)
+        , m_hdl(hdl)
+      {}
+
+      ~buffer_object()
+      {
+        m_shim->xclFreeBO(m_hdl);
+      }
+
+      xclBufferHandle
+      get_handle() const
+      {
+        return m_hdl;
+      }
+
+      static xclBufferHandle
+      get_handle(const xrt_core::buffer_handle* bhdl)
+      {
+        return static_cast<const buffer_object*>(bhdl)->get_handle();
+      }
+
+      // Export buffer for use with another process or device
+      // An exported buffer can be imported by another device
+      // or hardware context.
+      std::unique_ptr<xrt_core::shared_handle>
+      share() const override
+      {
+        return m_shim->xclExportBO(m_hdl);
+      }
+
+      void*
+      map(map_type mt) override
+      {
+        return m_shim->xclMapBO(m_hdl, (mt == xrt_core::buffer_handle::map_type::write));
+      }
+
+      void
+      unmap(void* addr) override
+      {
+        m_shim->xclUnmapBO(m_hdl, addr);
+      }
+
+      void
+      sync(direction dir, size_t size, size_t offset) override
+      {
+        m_shim->xclSyncBO(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+      }
+
+      void
+      copy(const buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
+      {
+        auto bo_src = static_cast<const buffer_object*>(src);
+        m_shim->xclCopyBO(m_hdl, bo_src->get_handle(), size, dst_offset, src_offset);
+      }
+
+      properties
+      get_properties() const override
+      {
+        xclBOProperties xprop;
+        m_shim->xclGetBOProperties(m_hdl, &xprop);
+        return {xprop.flags, xprop.size, xprop.paddr};
+      }
+
+      xclBufferHandle
+      get_xcl_handle() const override
+      {
+        return m_hdl;
+      }
+    }; // buffer_object
 
     // Shim handle for hardware context. Even as sw_emu does not
     // support hardware context, it still must implement a shim
@@ -90,26 +195,18 @@ namespace xclswemuhal2 {
         return nullptr;
       }
 
-      xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+      std::unique_ptr<xrt_core::buffer_handle>
       alloc_bo(void* userptr, size_t size, unsigned int flags) override
       {
         // The hwctx is embedded in the flags, use regular shim path
-        auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
-        if (bo == XRT_NULL_BO)
-          throw std::bad_alloc();
-
-        return to_xrt_buffer_handle(bo);
+        return m_shim->xclAllocUserPtrBO(userptr, size, flags);
       }
 
-      xrt_core::buffer_handle* // tobe: std::unique_ptr<buffer_handle>
+      std::unique_ptr<xrt_core::buffer_handle>
       alloc_bo(size_t size, unsigned int flags) override
       {
         // The hwctx is embedded in the flags, use regular shim path
-        auto bo = m_shim->xclAllocBO(size, flags);
-        if (bo == XRT_NULL_BO)
-          throw std::bad_alloc();
-
-        return to_xrt_buffer_handle(bo);
+        return m_shim->xclAllocBO(size, flags);
       }
 
       xrt_core::cuidx_type
@@ -127,7 +224,7 @@ namespace xclswemuhal2 {
       void
       exec_buf(xrt_core::buffer_handle* cmd) override
       {
-        m_shim->xclExecBuf(to_xclBufferHandle(cmd));
+        m_shim->xclExecBuf(cmd->get_xcl_handle());
       }
     }; // class hwcontext
   private:
@@ -144,19 +241,26 @@ namespace xclswemuhal2 {
       void getCuRangeIdx();
   public:
       // HAL2 RELATED member functions start
-      unsigned int xclAllocBO(size_t size, unsigned flags);
+      std::unique_ptr<xrt_core::buffer_handle>
+      xclAllocBO(size_t size, unsigned flags);
+
+      std::unique_ptr<xrt_core::buffer_handle>
+      xclAllocUserPtrBO(void* userptr, size_t size, unsigned flags);
+
+      std::unique_ptr<xrt_core::shared_handle>
+      xclExportBO(unsigned int boHandle);
+
+      std::unique_ptr<xrt_core::buffer_handle>
+      xclImportBO(int boGlobalHandle, unsigned flags);
+
       uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclUnmapBO(unsigned int boHandle, void* addr);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
-      unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
       int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
       void xclFreeBO(unsigned int boHandle);
-      //P2P buffer support
-      int xclExportBO(unsigned int boHandle);
-      unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
       static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
