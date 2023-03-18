@@ -3,16 +3,20 @@
 #ifndef XRT_CORE_SHARED_HANDLE_H
 #define XRT_CORE_SHARED_HANDLE_H
 
-#include <memory>
-
 namespace xrt_core {
 
-// Representation of a shared buffer_handle. The shared buffer can
-// be imported by another device or process.  The exporting process
-// can hold on to the shared buffer so as to reuse for multiple
-// share requests.  The shared_buffer itself could be released when
-// the exporting buffer is destructed, e.g., implementing what used
-// to be ishim::close_export_handle
+// shared_handle - Representation of a shared object.
+
+// A shared object is something underlying shim object that
+// can be shared between a device or processes, for example
+// buffer objects and fence objects can be shared.
+//
+// The shared object can be imported by another device or process.
+// The exporting process can hold on to the shared object so as to
+// reuse for multiple share requests.  The shared object itself could
+// be released when the exporting object is destructed, e.g.,
+// implementing what used to be specific close APIs like
+// ishim::close_export_handle
 class shared_handle
 {
 public:
@@ -24,7 +28,7 @@ public:
 
   virtual ~shared_handle() {}
 
-  // The export handle is for marshaling to another process
+  // Get an export handle for marshaling to another process
   virtual export_handle
   get_export_handle() const = 0;
 };
