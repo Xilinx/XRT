@@ -27,6 +27,7 @@
 #include "core/common/xclbin_parser.h"
 
 #include "core/common/shim/buffer_handle.h"
+#include "core/common/shim/shared_handle.h"
 
 #include <cstdlib>
 #include <map>
@@ -185,12 +186,11 @@ namespace xrt {
 class bo_impl
 {
 public:
+  using export_handle = xrt_core::shared_handle::export_handle;
+
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
   static constexpr uint32_t no_group = std::numeric_limits<uint32_t>::max();
   static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
-  // ptr cannot be const expor
-  //static constexpr buffer_handle* null_bo = XRT_INVALID_BUFFER_HANDLE;
-  static constexpr xclBufferExportHandle null_export = XRT_NULL_BO_EXPORT;
 
 private:
   void
@@ -343,7 +343,7 @@ public:
     return device.get_device();
   }
 
-  xrt_core::shared_handle::export_handle
+  export_handle
   export_buffer() const
   {
     if (!shared_handle)
@@ -739,7 +739,7 @@ public:
   //
   // @device:  device to import to
   // @ehdl:    export handle obtained by calling export_buffer
-  buffer_import(const device_type& dev, xrt_core::shared_handle::export_handle ehdl)
+  buffer_import(const device_type& dev, export_handle ehdl)
     : bo_impl(dev, ehdl)
   {
     try {
@@ -758,7 +758,7 @@ public:
   //
   // This consrructor works on linux only and require pidfd support in
   // linux kernel.
-  buffer_import(const device_type& dev, pid_type pid, xrt_core::shared_handle::export_handle ehdl)
+  buffer_import(const device_type& dev, pid_type pid, export_handle ehdl)
     : bo_impl(dev, pid, ehdl)
   {
     try {
@@ -1151,13 +1151,13 @@ alloc_userptr(const device_type& device, void* userptr, size_t sz, xrtBufferFlag
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_import(const device_type& device, xclBufferExportHandle ehdl)
+alloc_import(const device_type& device, xrt::bo_impl::export_handle ehdl)
 {
   return std::make_shared<xrt::buffer_import>(device, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xclBufferExportHandle ehdl)
+alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xrt::bo_impl::export_handle ehdl)
 {
   return std::make_shared<xrt::buffer_import>(device, pid, ehdl);
 }
@@ -1367,13 +1367,13 @@ bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
 {}
 
 bo::
-bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
+bo(xclDeviceHandle dhdl, xrt::bo_impl::export_handle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
       alloc_import, xcl_to_core_device(dhdl), ehdl))
 {}
 
 bo::
-bo(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
+bo(xclDeviceHandle dhdl, pid_type pid, xrt::bo_impl::export_handle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
       alloc_import_from_pid, xcl_to_core_device(dhdl), pid , ehdl))
 {}
