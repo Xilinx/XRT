@@ -202,58 +202,11 @@ private:
     flags = static_cast<bo::flags>(prop.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
   }
 
-  // CHANGE bo_impl to store shared ptr instead, but then how do we ensure
-  // raw pointers, do we need them?
-  struct handle_type
-  {
-    std::unique_ptr<xrt_core::buffer_handle> owner;
-    xrt_core::buffer_handle* handle = nullptr;
-
-    handle_type()
-    {}
-
-    handle_type(std::unique_ptr<xrt_core::buffer_handle>&& hdl)
-      : owner(std::move(hdl))
-      , handle(owner.get())
-    {}
-
-    handle_type(xrt_core::buffer_handle* hdl)
-      : handle(hdl)
-    {}
-
-    handle_type&
-    operator= (xrt_core::buffer_handle* hdl)
-    {
-      if (owner || handle)
-        throw xrt_core::error(-EINVAL,"attempting to modify existing handle");
-      handle = hdl;
-      return *this;
-    }
-
-    xrt_core::buffer_handle*
-    get() const
-    {
-      return handle;
-    }
-
-    xrt_core::buffer_handle*
-    operator -> ()
-    {
-      return handle;
-    }
-
-    const xrt_core::buffer_handle*
-    operator -> () const
-    {
-      return handle;
-    }
-  };
-
 protected:
   // deliberately made protected, this is a file-scoped controlled API
   device_type device;                              // NOLINT device where bo is allocated
   std::vector<std::shared_ptr<bo_impl>> clones;    // NOLINT local m2m clones if any
-  handle_type handle;                              // NOLINT shim handle
+  std::shared_ptr<xrt_core::buffer_handle> handle; // NOLINT shim handle
   size_t size = 0;                                 // NOLINT size of buffer
   mutable uint64_t addr = no_addr;                 // NOLINT bo device address
   mutable uint32_t grpid = no_group;               // NOLINT memory group index
@@ -266,10 +219,10 @@ public:
     : size(sz)
   {}
 
-  // Unmanaged handle
-  bo_impl(device_type dev, xrt_core::buffer_handle* bhdl, size_t sz)
+  // Managed handle shared with another bo_impl
+  bo_impl(device_type dev, std::shared_ptr<xrt_core::buffer_handle> bhdl, size_t sz)
     : device(std::move(dev))
-    , handle(bhdl)
+    , handle(std::move(bhdl))
     , size(sz)
   {}
 
@@ -300,10 +253,10 @@ public:
     throw xrt_core::error(std::errc::not_supported, "xcl type objects are no longer supported");
   }
 
-  // Unmanaged handle
+  // Share handle with parent
   bo_impl(const bo_impl* parent, size_t sz)
     : device(parent->device)
-    , handle(parent->handle.get())
+    , handle(parent->handle)
     , size(sz)
   {}
 
@@ -809,6 +762,10 @@ public:
     : bo_impl(dev, std::move(bhdl), sz)
   {}
 
+  buffer_dbuf(const device_type& dev, std::shared_ptr<xrt_core::buffer_handle> bhdl, size_t sz)
+    : bo_impl(dev, std::move(bhdl), sz)
+  {}
+
   void*
   get_hbuf() const override
   {
@@ -848,9 +805,9 @@ class buffer_nodma : public bo_impl
 
 public:
   buffer_nodma(const device_type& dev, std::unique_ptr<xrt_core::buffer_handle> hbuf, std::unique_ptr<xrt_core::buffer_handle> dbuf, size_t sz)
-    : bo_impl(dev, dbuf.get(), sz)
+    : bo_impl(dev, std::move(dbuf), sz)
     , m_host_only(dev, std::move(hbuf), sz)
-    , m_device_only(dev, std::move(dbuf), sz)
+    , m_device_only(dev, handle, sz) // share handle of this bo_impl
   {}
 
   void*
