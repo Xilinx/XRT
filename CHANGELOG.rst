@@ -1,7 +1,21 @@
 XRT ChangeLog
 -------------
 
-2.14.0 (202210.2.14.x)
+2.15.0 (202310.2.15.x)
+~~~~~~~~~~~~~~~~~~~~~~
+Added
+.....
+* 
+
+Removed
+.......
+* 
+
+Changed
+.......
+* This the last release with XCL APIs support.  The APIs were deprecated in 2.14.x and 2.15.x will be last release with support.  
+
+2.14.0 (202220.2.14.x)
 ~~~~~~~~~~~~~~~~~~~~~~
 Added
 .....
