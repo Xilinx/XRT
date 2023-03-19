@@ -1986,8 +1986,8 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
         return static_cast<unsigned int>(-EINVAL);
 
         auto bo = shim->xclAllocBO(size, flags);
-        auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.release());
-        return ptr->get_handle();
+        auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+        return ptr->detach_handle();
       }
       catch (const xrt_core::error& ex) {
         xrt_core::send_exception_message(ex.what());
@@ -2007,8 +2007,8 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned f
         return static_cast<unsigned int>(-EINVAL);
 
       auto bo = shim->xclAllocUserPtrBO(userptr, size, flags);
-      auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.release());
-      return ptr->get_handle();
+      auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+      return ptr->detach_handle();
     }
     catch (const xrt_core::error& ex) {
       xrt_core::send_exception_message(ex.what());
@@ -2129,8 +2129,8 @@ xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
       return -EINVAL;
 
     auto shared = shim->xclExportBO(boHandle);
-    auto ptr = shared.release();
-    return ptr->get_export_handle();
+    auto ptr = static_cast<const ZYNQ::shim::shared_object*>(shared.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -2146,9 +2146,9 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
     if (!shim)
       return static_cast<unsigned int>(-EINVAL); // argh ...
 
-    auto boh = shim->xclImportBO(fd, flags);
-    auto ptr = static_cast<const ZYNQ::shim::buffer_object*>(boh.release());
-    return ptr->get_handle();
+    auto bo = shim->xclImportBO(fd, flags);
+    auto ptr = static_cast<const ZYNQ::shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

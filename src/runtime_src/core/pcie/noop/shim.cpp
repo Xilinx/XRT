@@ -399,6 +399,13 @@ struct shim
       return m_fd;
     }
 
+    // Detach and return export handle for legacy xclAPI use
+    int
+    detach_handle()
+    {
+      return std::exchange(m_fd, XRT_NULL_BO);
+    }
+
     // Export buffer for use with another process or device
     // An exported buffer can be imported by another device
     // or hardware context.
@@ -826,9 +833,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
   auto shim = get_shim_object(handle);
-  auto boh = shim->alloc_bo(size, flags);
-  auto ptr = static_cast<shim::buffer_object*>(boh.release());
-  return ptr->get_fd();
+  auto bo = shim->alloc_bo(size, flags);
+  auto ptr = static_cast<shim::buffer_object*>(bo.get());
+  return ptr->detach_handle();
 }
 
 xclBufferHandle
@@ -837,9 +844,9 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned i
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
   auto shim = get_shim_object(handle);
-  auto boh = shim->alloc_userptr_bo(userptr, size, flags);
-  auto ptr = static_cast<shim::buffer_object*>(boh.release());
-  return ptr->get_fd();
+  auto bo = shim->alloc_userptr_bo(userptr, size, flags);
+  auto ptr = static_cast<shim::buffer_object*>(bo.get());
+  return ptr->detach_handle();
 }
 
 void*

@@ -435,8 +435,8 @@ xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
       return -1;
 
     auto shared = shim->xclExportBO(boHandle);
-    auto ptr = shared.release();
-    return ptr->get_export_handle();
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::shared_object*>(shared.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -452,9 +452,9 @@ xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned flags)
     if (!shim)
       return -1;
 
-    auto boh = shim->xclImportBO(boGlobalHandle, flags);
-    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(boh.release());
-    return ptr->get_handle();
+    auto bo = shim->xclImportBO(boGlobalHandle, flags);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -485,9 +485,9 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned f
     if (!shim)
       return mNullBO;
 
-    auto boh = shim->xclAllocUserPtrBO(userptr, size, flags);
-    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(boh.release());
-    return ptr->get_handle();
+    auto bo = shim->xclAllocUserPtrBO(userptr, size, flags);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -503,9 +503,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
     if (!shim)
       return mNullBO;
 
-    auto boh = shim->xclAllocBO(size, flags);
-    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(boh.release());
-    return ptr->get_handle();
+    auto bo = shim->xclAllocBO(size, flags);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

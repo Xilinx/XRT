@@ -68,6 +68,13 @@ namespace xclswemuhal2 {
         // Implement per sw_emu requirements
       }
 
+      // Detach and return export handle for legacy xclAPI use
+      xclBufferExportHandle
+      detach_handle()
+      {
+        return std::exchange(m_ehdl, XRT_NULL_BO_EXPORT);
+      }
+
       export_handle
       get_export_handle() const
       {
@@ -102,6 +109,13 @@ namespace xclswemuhal2 {
       get_handle(const xrt_core::buffer_handle* bhdl)
       {
         return static_cast<const buffer_object*>(bhdl)->get_handle();
+      }
+
+      // Detach and return export handle for legacy xclAPI use
+      xclBufferHandle
+      detach_handle()
+      {
+        return std::exchange(m_hdl, XRT_NULL_BO);
       }
 
       // Export buffer for use with another process or device

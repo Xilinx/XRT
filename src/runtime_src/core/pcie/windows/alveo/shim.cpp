@@ -68,8 +68,15 @@ public:
     ~shared_object()
     {}
 
+    // Detach and return export handle for legacy xclAPI use
+    xclBufferExportHandle
+    detach_handle()
+    {
+      return std::exchange(m_ehdl, XRT_NULL_BO_EXPORT);
+    }
+
     export_handle
-    get_export_handle() const
+    get_export_handle() const override
     {
       return static_cast<export_handle>(m_ehdl);
     }
@@ -94,6 +101,13 @@ public:
     get_handle() const
     {
       return m_hdl;
+    }
+
+    // Detach and return export handle for legacy xclAPI use
+    xclBufferHandle
+    detach_handle()
+    {
+      return std::exchange(m_hdl, XRT_NULL_BO);
     }
 
     // Export buffer for use with another process or device
@@ -1800,9 +1814,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
     xrt_core::message::
       send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
     auto shim = get_shim_object(handle);
-    auto boh = shim->alloc_bo(size, flags);
-    auto ptr = static_cast<shim::buffer_object*>(boh.release());
-    return ptr->get_handle();
+    auto bo = shim->alloc_bo(size, flags);
+    auto ptr = static_cast<shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -1821,9 +1835,9 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned i
     xrt_core::message::
       send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
     auto shim = get_shim_object(handle);
-    auto boh = shim->alloc_user_ptr_bo(userptr, size, flags);
-    auto ptr = static_cast<shim::buffer_object*>(boh.release());
-    return ptr->get_handle();
+    auto bo = shim->alloc_user_ptr_bo(userptr, size, flags);
+    auto ptr = static_cast<shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
