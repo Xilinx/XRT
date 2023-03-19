@@ -474,7 +474,7 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   auto boh = static_cast<buffer_object*>(bo.first.get());
   ret = xclExecBuf(boh->get_handle());
   if (ret) {
-    mCmdBOCache->release(bo);
+    mCmdBOCache->release(std::move(bo));
     return ret;
   }
 
@@ -488,7 +488,8 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ret = (ret == -1) ? -errno : 0;
   if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
     ret = -EINVAL;
-  mCmdBOCache->release<ert_start_copybo_cmd>(bo);
+
+  mCmdBOCache->release(std::move(bo));
 #endif
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
   return ret;
@@ -2129,7 +2130,7 @@ xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
       return -EINVAL;
 
     auto shared = shim->xclExportBO(boHandle);
-    auto ptr = static_cast<const ZYNQ::shim::shared_object*>(shared.get());
+    auto ptr = static_cast<ZYNQ::shim::shared_object*>(shared.get());
     return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
@@ -2147,7 +2148,7 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
       return static_cast<unsigned int>(-EINVAL); // argh ...
 
     auto bo = shim->xclImportBO(fd, flags);
-    auto ptr = static_cast<const ZYNQ::shim::buffer_object*>(bo.get());
+    auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
     return ptr->detach_handle();
   }
   catch (const xrt_core::error& ex) {
