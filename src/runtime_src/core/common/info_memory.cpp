@@ -190,11 +190,11 @@ struct memory_info_collector
 
     try {
       std::string tag(reinterpret_cast<const char*>(mem.m_tag));
-      auto ecc_st = xrt_core::device_query<xq::mig_ecc_status>(device, xq::request::modifier::subdev, mem.m_tag);
-      auto ce_cnt = xrt_core::device_query<xq::mig_ecc_ce_cnt>(device, xq::request::modifier::subdev, mem.m_tag);
-      auto ue_cnt = xrt_core::device_query<xq::mig_ecc_ue_cnt>(device, xq::request::modifier::subdev, mem.m_tag);
-      auto ce_ffa = xrt_core::device_query<xq::mig_ecc_ce_ffa>(device, xq::request::modifier::subdev, mem.m_tag);
-      auto ue_ffa = xrt_core::device_query<xq::mig_ecc_ue_ffa>(device, xq::request::modifier::subdev, mem.m_tag);
+      auto ecc_st = xrt_core::device_query<xq::mig_ecc_status>(device, xq::request::modifier::subdev, tag);
+      auto ce_cnt = xrt_core::device_query<xq::mig_ecc_ce_cnt>(device, xq::request::modifier::subdev, tag);
+      auto ue_cnt = xrt_core::device_query<xq::mig_ecc_ue_cnt>(device, xq::request::modifier::subdev, tag);
+      auto ce_ffa = xrt_core::device_query<xq::mig_ecc_ce_ffa>(device, xq::request::modifier::subdev, tag);
+      auto ue_ffa = xrt_core::device_query<xq::mig_ecc_ue_ffa>(device, xq::request::modifier::subdev, tag);
 
       pt_mem.put("extended_info.ecc.status", ecc_status2str(ecc_st));
       pt_mem.put("extended_info.ecc.error.correctable.count", ce_cnt);
