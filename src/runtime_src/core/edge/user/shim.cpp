@@ -1738,7 +1738,6 @@ void
 shim::
 registerAieArray(adf::driver_config& config)
 {
-  delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice, config);
   aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
 }

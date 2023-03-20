@@ -685,12 +685,16 @@ struct aie_bd_info
          row = tile.row + driver_config.reserved_row_start;
       boost::property_tree::ptree bdtree = aieArray->get_bd_info(row, tile.col);
 
-#endif
-#endif
       std::ostringstream oss;
       boost::property_tree::write_json(oss, bdtree);
       std::string inifile_text = oss.str();
       return inifile_text;
+#else 
+      throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+#else
+      throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
     }
 };
 
