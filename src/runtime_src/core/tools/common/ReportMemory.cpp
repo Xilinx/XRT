@@ -20,6 +20,8 @@
 #include "Table2D.h"
 #include "core/common/utils.h"
 
+#include <map>
+
 // 3rd Party Library - Include Files
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -117,22 +119,21 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
 
   bool mem_is_present = _pt.get_child("mem_topology.board.memory.memories",empty_ptree).size() > 0 ? true:false;
   if (mem_is_present) {
-    int index = 0;
     _output << std::endl;
     _output << "  Memory Topology" << std::endl;
 
-    const Table2D::HeaderData h_slot = {"HW Context Slot", Table2D::Justification::left};
-    const Table2D::HeaderData h_uuid = {"Xclbin UUID", Table2D::Justification::left};
     const Table2D::HeaderData h_index = {"Index", Table2D::Justification::left};
     const Table2D::HeaderData h_tag = {"Tag", Table2D::Justification::left};
     const Table2D::HeaderData h_type = {"Type", Table2D::Justification::left};
     const Table2D::HeaderData h_temp = {"Temp(C)", Table2D::Justification::left};
     const Table2D::HeaderData h_size = {"Size", Table2D::Justification::left};
     const Table2D::HeaderData h_address = {"Base Address", Table2D::Justification::left};
-    const std::vector<Table2D::HeaderData> table_headers = {h_slot, h_uuid, h_index, h_tag, h_type, h_temp, h_size, h_address};
+    const std::vector<Table2D::HeaderData> table_headers = {h_index, h_tag, h_type, h_temp, h_size, h_address};
     Table2D device_table(table_headers);
 
     try {
+      // Generate map of hw_context/xclbin uuid to the contained memories
+      std::map<std::tuple<std::string, std::string>, std::vector<std::vector<std::string>>> memory_map;
       for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
         std::string slot, uuid, tag, size, type, temp, base_addr;
         for (auto& subv : v.second) {
@@ -153,11 +154,27 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
             base_addr = subv.second.get_value<std::string>();
           }
         }
-        const std::vector<std::string> entry_data = {slot, uuid, std::to_string(index), tag, type, temp, size, base_addr};
-        device_table.addEntry(entry_data);
-        index++;
+        const std::vector<std::string> entry_data = {tag, type, temp, size, base_addr};
+
+        const auto key = std::make_tuple(slot, uuid);
+        const auto& iter = memory_map.emplace(key, std::vector<std::vector<std::string>>());;
+        iter.first->second.push_back(entry_data);
       }
-      _output << device_table.toString("    ");
+
+      // Format the output of the memory map generated above into a table
+      for (auto& hw_context : memory_map) {
+        _output << boost::format("    HW Context Slot: %s\n") % std::get<0>(hw_context.first);
+        _output << boost::format("      Xclbin UUID: %s\n") % std::get<1>(hw_context.first);
+
+        auto& entry_list = hw_context.second;
+        for (size_t hw_index = 0; hw_index < entry_list.size(); hw_index++) {
+          auto& entry_list_item = entry_list[hw_index];
+          entry_list_item.insert(entry_list_item.begin(), std::to_string(hw_index));
+          device_table.addEntry(entry_list_item);
+        }
+      }
+
+      _output << device_table.toString("      ");
     }
     catch( std::exception const&) {
         // eat the exception, probably bad path
