@@ -19,7 +19,6 @@
 #include "xrt.h"
 #include "zynq_dev.h"
 #include "aie_sys_parser.h"
-#include "aie/aie.h"
 #include "shim.h"
 
 #include "core/common/debug_ip.h"
