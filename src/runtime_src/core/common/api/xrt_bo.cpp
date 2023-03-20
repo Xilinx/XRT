@@ -249,9 +249,7 @@ public:
 
   // Not supported
   bo_impl(device_type dev, xcl_buffer_handle xhdl)
-  {
-    throw xrt_core::error(std::errc::not_supported, "xcl type objects are no longer supported");
-  }
+  {} // throw xrt_core::error(std::errc::not_supported, "xcl type objects are no longer supported");
 
   // Share handle with parent
   bo_impl(const bo_impl* parent, size_t sz)
@@ -907,7 +905,9 @@ class buffer_xbuf : public bo_impl
 public:
   buffer_xbuf(const device_type& dev, xcl_buffer_handle xhdl)
     : bo_impl(dev, xhdl)
-  {}
+  {
+    throw xrt_core::error(std::errc::not_supported, "xcl type objects are no longer supported");
+  }
 
   void*
   get_hbuf() const override
