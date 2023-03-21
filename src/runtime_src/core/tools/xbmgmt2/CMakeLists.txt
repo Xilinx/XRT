@@ -9,6 +9,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBUtilitiesCore.cpp"
   "../common/XBUtilities.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdExamineInternal.cpp"
   "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
