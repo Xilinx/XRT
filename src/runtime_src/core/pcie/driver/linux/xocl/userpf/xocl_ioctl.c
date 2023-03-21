@@ -2,7 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
  *
@@ -482,7 +482,7 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 	uint32_t s_id = DEFAULT_PL_SLOT;
 	int ret = 0;
 
-	if (!xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
+	if (xocl_axlf_section_header(xdev, axlf, BITSTREAM) || xocl_axlf_section_header(xdev, axlf, BITSTREAM_PARTIAL_PDI)) {
 		s_id = DEFAULT_PL_SLOT;
 		if (xclbin_downloaded(xdev, xclbin_id, s_id)) {
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
