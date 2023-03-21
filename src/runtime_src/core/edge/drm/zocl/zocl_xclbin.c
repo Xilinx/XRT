@@ -1015,8 +1015,80 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 int
 zocl_pl_only_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
 {
-	/* TODO */
-	DRM_ERROR("%s PL Reset support doesn't added yet", __func__);
+	const struct list_head *ptr = NULL;
+	struct drm_zocl_slot *slot = zdev->pr_slot[ZOCL_DEFAULT_XCLBIN_SLOT];
+	struct kds_sched *kds = NULL;
+	struct kds_client *client = NULL;
+	struct kds_client_ctx *curr = NULL;
+	struct kds_client_ctx *tmp = NULL;
+	void __iomem *map = NULL;
+	int ret = 0;
+
+	if (!slot)
+	       return count;
+
+	if (slot->xclbin_type == ZOCL_XCLBIN_TYPE_FULL)
+		return count;
+
+	if (strcmp(zdev->zdev_data_info->fpga_driver_name, "versal_fpga"))
+		return count;
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	kds = &zdev->kds;
+
+	/* Find out number of active client and free all the context
+	 * associated with it
+	 */
+	list_for_each(ptr, &kds->clients) {
+		client = list_entry(ptr, struct kds_client, link);
+		kds_fini_pl_only_client(kds, client);
+
+		/* Delete all the existing context associated to this device for this
+		 * client.
+		 */
+		list_for_each_entry_safe(curr, tmp, &client->ctx_list, link) {
+			if (!zocl_xclbin_same_uuid(slot, curr->xclbin_id))
+				continue;
+
+			/* Unlock this slot specific xclbin */
+			zocl_xclbin_release(slot, curr->xclbin_id);
+			vfree(curr->xclbin_id);
+			list_del(&curr->link);
+			vfree(curr);
+		}
+	}
+
+	/* Free sections before load the new xclbin */
+	zocl_free_sections(zdev, slot);
+
+	/* Cleanup the slot and delete CU devices if exist for this slot */
+	zocl_xclbin_fini(zdev, slot);
+
+	zocl_xclbin_init(slot);
+
+	mutex_unlock(&slot->slot_xclbin_lock);
+
+#define PL_RESET_ADDRESS		0x00F1260330
+#define PL_HOLD_VAL			0xF
+#define PL_RELEASE_VAL			0x0
+#define PL_RESET_ALLIGN_SIZE		_4KB
+	map = ioremap(PL_RESET_ADDRESS, PL_RESET_ALLIGN_SIZE);
+	if (IS_ERR_OR_NULL(map)) {
+		DRM_ERROR("ioremap PL Reset address 0x%lx failed",
+			  PL_RESET_ADDRESS);
+		return -EFAULT;
+	}
+
+
+	/* Hold PL in reset status */
+	iowrite32(PL_HOLD_VAL, map);
+	/* Release PL reset status */
+	iowrite32(PL_RELEASE_VAL, map);
+
+	iounmap(map);
+
+	DRM_INFO("PL reset successfully finished.");
+
 	return count;
 }
 

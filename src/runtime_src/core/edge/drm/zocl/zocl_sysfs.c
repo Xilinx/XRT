@@ -426,11 +426,7 @@ pl_only_reset_store(struct device *dev, struct device_attribute *da,
 	if (kstrtou32(buf, 10, &val) < 0 || val != 1)
 		return -EINVAL;
 
-	write_lock(&zdev->attr_rwlock);
-	count = zocl_pl_only_reset(zdev, buf, count);
-	write_unlock(&zdev->attr_rwlock);
-
-	return count;
+	return zocl_pl_only_reset(zdev, buf, count);
 }
 static DEVICE_ATTR_WO(pl_only_reset);
 

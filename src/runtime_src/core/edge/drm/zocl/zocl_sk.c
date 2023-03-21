@@ -27,6 +27,9 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct soft_krnl_cmd *scmd;
 	struct drm_zocl_sk_getcmd *kdata = data;
 
+	if (!sk)
+		return 0;
+
 	/* If no command, the process who calls this ioctl will block here */
 	mutex_lock(&sk->sk_lock);
 	while (list_empty(&sk->sk_cmd_list)) {

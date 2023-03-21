@@ -308,6 +308,9 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 {
 	u32 *refs = NULL;
 
+	if (!client->refcnt)
+		return refs;
+
 	switch (domain) {
 	case DOMAIN_PL:
 		refs = client->refcnt->cu_refs;
@@ -389,10 +392,10 @@ kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
 	int ret = 0;
 
 	dst = kds_client_domain_refcnt(client, domain);
-
 	if (!dst) {
 		return -EINVAL;
 	}
+
 	mutex_lock(&client->refcnt->lock);
 	memset(dst, 0, len);
 	mutex_unlock(&client->refcnt->lock);
@@ -1147,6 +1150,41 @@ out:
 	mutex_unlock(&client->lock);
 }
 
+void kds_fini_pl_only_client(struct kds_sched *kds, struct kds_client *client)
+{
+	struct kds_client_hw_ctx *curr = NULL;
+	struct kds_client_ctx *c_curr = NULL;
+
+	if (!client)
+		return;
+
+	/* Release legacy client's resources */
+	if ((client->ctx) || !list_empty(&client->ctx_list)) {
+		_kds_fini_client(kds, client, client->ctx);
+
+		if(!list_empty(&client->ctx_list))
+			list_for_each_entry(c_curr, &client->ctx_list, link)
+				_kds_fini_client(kds, client, c_curr);
+
+		mutex_lock(&client->lock);
+		curr = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+		if (curr)
+			kds_free_hw_ctx(client, curr);
+		mutex_unlock(&client->lock);
+	}
+
+	if(!list_empty(&client->hw_ctx_list)) {
+		list_for_each_entry(curr, &client->hw_ctx_list, link) {
+			/* release new hw client's resources */
+			kds_fini_hw_ctx_client(kds, client, curr);
+		}
+	}
+
+	mutex_lock(&client->lock);
+	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
+	mutex_unlock(&client->lock);
+}
+
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
 	struct kds_client_hw_ctx *curr = NULL;
@@ -1177,13 +1215,13 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	mutex_lock(&client->lock);
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
 	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
+	mutex_destroy(&client->refcnt->lock);
+	kfree(client->refcnt);
+	client->refcnt = NULL;
 	mutex_unlock(&client->lock);
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
-	mutex_destroy(&client->refcnt->lock);
-	kfree(client->refcnt);
-	client->refcnt = NULL;
 
 	mutex_lock(&kds->lock);
 	list_del(&client->link);
