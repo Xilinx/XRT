@@ -687,7 +687,7 @@ namespace xdp {
       // Grab channel numbers (if specified; MEM tiles only)
       if (metrics[i].size() == 4) {
         try {
-          for (auto &e : allValidTiles) {
+          for (auto &e : tiles) {
             configChannel0[e] = std::stoi(metrics[i][2]);
             configChannel1[e] = std::stoi(metrics[i][3]);
           }
@@ -845,6 +845,9 @@ namespace xdp {
     std::vector<tile_type> offTiles;
 
     for (auto &tileMetric : configMetrics) {
+      // Ignore other types of tiles
+      if (allValidTiles.find(tileMetric.first) == allValidTiles.end())
+        continue;
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
         offTiles.push_back(tileMetric.first);
