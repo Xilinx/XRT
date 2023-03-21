@@ -37,7 +37,7 @@ class AieProfileMetadata{
     static constexpr int NUM_MODULES = 4;
 
     const std::vector<std::string> moduleNames = 
-        {"aie", "memory_module", "interface_tile", "memory_tile"};
+        {"aie", "aie_memory", "interface_tile", "memory_tile"};
     const std::string defaultSets[NUM_MODULES] = 
         {"write_throughputs", "write_throughputs", "input_throughputs", "input_channels"};
     const int numCountersMod[NUM_MODULES] =

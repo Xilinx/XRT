@@ -763,13 +763,6 @@ get_aie_profile_settings_graph_based_aie_memory_metrics()
 }
 
 inline std::string
-get_aie_profile_settings_graph_based_memory_module_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_memory_module_metrics", "");
-  return value;
-}
-
-inline std::string
 get_aie_profile_settings_graph_based_memory_tile_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_memory_tile_metrics", "");
@@ -787,13 +780,6 @@ inline std::string
 get_aie_profile_settings_tile_based_aie_memory_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_memory_metrics", "");
-  return value;
-}
-
-inline std::string
-get_aie_profile_settings_tile_based_memory_module_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_memory_module_metrics", "");
   return value;
 }
 
