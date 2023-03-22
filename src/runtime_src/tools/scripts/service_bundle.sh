@@ -156,6 +156,21 @@ host_info()
 {
 	cat /proc/iomem > $1/proc_iomem.txt
 	cat /proc/interrupts > $1/proc_interrupts.txt
+	cat /etc/default/grub > $1/etc_grub_cfg.txt
+	dmesg | grep iommu > $1/iommu_dump.txt
+
+	#########################IOMMU Groups########################################
+	rm -r $1/iommu_groups.txt 2> /dev/null
+	export devs=$(find /sys/kernel/iommu_groups/* -maxdepth 0 -type d | sort -V)
+	for g in $devs; do
+		echo "IOMMU Group ${g##*/}:" >> $1/iommu_groups.txt
+		for d in $g/devices/*; do
+			VALUE="$(/sbin/lspci -nns ${d##*/})"
+			echo -e "\t$VALUE"
+			printf "	%s\n" "$VALUE" >> $1/iommu_groups.txt
+		done;
+	done;
+	##############################################################################
 
 	uname -a > $1/uname_a.txt
 	lsb_release -d > $1/lsb_release_d.txt
