@@ -34,6 +34,8 @@ namespace xdp {
       
       XDP_EXPORT
       virtual void updateDevice();
+      XDP_EXPORT
+      virtual void flushAieTileTraceModule();
 
     private: 
       typedef XAie_Events            EventType;
@@ -85,6 +87,7 @@ namespace xdp {
       EventType   mCoreTraceEndEvent;
       EventType   mMemTileTraceStartEvent;
       EventType   mMemTileTraceEndEvent;
+      EventType   mWindowedTraceEndEvent;
 
       EventVector mCoreCounterStartEvents;
       EventVector mCoreCounterEndEvents;
@@ -93,6 +96,9 @@ namespace xdp {
       EventVector mMemoryCounterStartEvents;
       EventVector mMemoryCounterEndEvents;
       ValueVector mMemoryCounterEventValues;
+
+      // Tile locations using windowed trace
+      std::vector<XAie_LocType> mWindowedTraceLocs;
 
   };
 
