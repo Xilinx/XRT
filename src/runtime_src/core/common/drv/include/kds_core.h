@@ -192,7 +192,6 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client);
 void kds_fini_sched(struct kds_sched *kds);
 int kds_fini_ert(struct kds_sched *kds);
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client);
-void kds_fini_pl_only_client(struct kds_sched *kds, struct kds_client *client);
 void kds_reset(struct kds_sched *kds);
 int kds_cfg_update(struct kds_sched *kds);
 void kds_cus_irq_enable(struct kds_sched *kds, bool enable);

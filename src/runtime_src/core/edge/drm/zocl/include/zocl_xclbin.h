@@ -42,6 +42,6 @@ int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t sl
 bool zocl_xclbin_accel_adapter(int kds_mask);
 int zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
 		      struct drm_zocl_slot *slot, char *dtbo_path, uint32_t len);
-int zocl_pl_only_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count);
+int zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count);
 
 #endif /* _ZOCL_XCLBIN_H_ */

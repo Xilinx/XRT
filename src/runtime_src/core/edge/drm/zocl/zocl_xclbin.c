@@ -1013,60 +1013,50 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 }
 
 int
-zocl_pl_only_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
+zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
 {
-	const struct list_head *ptr = NULL;
-	struct drm_zocl_slot *slot = zdev->pr_slot[ZOCL_DEFAULT_XCLBIN_SLOT];
-	struct kds_sched *kds = NULL;
+	struct drm_zocl_slot *z_slot = NULL;
+	struct kds_sched *kds = &zdev->kds;
 	struct kds_client *client = NULL;
-	struct kds_client_ctx *curr = NULL;
-	struct kds_client_ctx *tmp = NULL;
+	struct kds_client *tmp_client = NULL;
 	void __iomem *map = NULL;
 	int ret = 0;
-
-	if (!slot)
-	       return count;
-
-	if (slot->xclbin_type == ZOCL_XCLBIN_TYPE_FULL)
-		return count;
+	int i = 0;
 
 	if (strcmp(zdev->zdev_data_info->fpga_driver_name, "versal_fpga"))
 		return count;
 
-	mutex_lock(&slot->slot_xclbin_lock);
-	kds = &zdev->kds;
-
-	/* Find out number of active client and free all the context
-	 * associated with it
-	 */
-	list_for_each(ptr, &kds->clients) {
-		client = list_entry(ptr, struct kds_client, link);
-		kds_fini_pl_only_client(kds, client);
-
-		/* Delete all the existing context associated to this device for this
-		 * client.
-		 */
-		list_for_each_entry_safe(curr, tmp, &client->ctx_list, link) {
-			if (!zocl_xclbin_same_uuid(slot, curr->xclbin_id))
-				continue;
-
-			/* Unlock this slot specific xclbin */
-			zocl_xclbin_release(slot, curr->xclbin_id);
-			vfree(curr->xclbin_id);
-			list_del(&curr->link);
-			vfree(curr);
+	/* Find out number of active client and send a signal to it. */
+	list_for_each_entry_safe(client, tmp_client, &kds->clients, link) {
+		ret = kill_pid(client->pid, SIGTERM, 1);
+		if (ret) {
+			DRM_WARN("Failed to terminate Client pid %d."
+			       " Performing SIGKILL.\n", pid_nr(client->pid));
+			kill_pid(client->pid, SIGKILL, 1);
 		}
 	}
 
-	/* Free sections before load the new xclbin */
-	zocl_free_sections(zdev, slot);
+	/* Cleanup all the slots avilable */
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+		z_slot = zdev->pr_slot[i];
+		if (!z_slot)
+			continue;
 
-	/* Cleanup the slot and delete CU devices if exist for this slot */
-	zocl_xclbin_fini(zdev, slot);
+		mutex_lock(&z_slot->slot_xclbin_lock);
 
-	zocl_xclbin_init(slot);
+		/* Free sections before load the new xclbin */
+		zocl_free_sections(zdev, z_slot);
 
-	mutex_unlock(&slot->slot_xclbin_lock);
+		/* Cleanup the slot */
+		vfree(z_slot->slot_xclbin->zx_uuid);
+		z_slot->slot_xclbin->zx_uuid = NULL;
+		vfree(z_slot->slot_xclbin);
+		z_slot->slot_xclbin = NULL;
+
+		/* Re-Initialize the slot */
+		zocl_xclbin_init(z_slot);
+		mutex_unlock(&z_slot->slot_xclbin_lock);
+	}
 
 #define PL_RESET_ADDRESS		0x00F1260330
 #define PL_HOLD_VAL			0xF
