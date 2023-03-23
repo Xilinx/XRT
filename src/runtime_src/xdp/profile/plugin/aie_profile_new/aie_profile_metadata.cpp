@@ -52,7 +52,7 @@ namespace xdp {
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_memory_tile_metrics());
 
     // Graph-based metrics settings
     std::vector<std::string> graphMetricsConfig;
@@ -61,7 +61,7 @@ namespace xdp {
     // Uncomment to support graph-based metrics for Interface Tiles
     //graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
     graphMetricsConfig.push_back("");
-    graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
+    graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_memory_tile_metrics());
 
     // Process all module types
     for (int module = 0; module < NUM_MODULES; ++module) {
@@ -86,18 +86,18 @@ namespace xdp {
     using boost::property_tree::ptree;
     const std::set<std::string> validSettings {
       "graph_based_aie_metrics", "graph_based_aie_memory_metrics",
-      "graph_based_mem_tile_metrics", "tile_based_aie_metrics", 
-      "tile_based_aie_memory_metrics", "tile_based_mem_tile_metrics", 
+      "graph_based_memory_tile_metrics", "tile_based_aie_metrics", 
+      "tile_based_aie_memory_metrics", "tile_based_memory_tile_metrics",
       "tile_based_interface_tile_metrics", "interval_us"
     };
     const std::map<std::string, std::string> deprecatedSettings {
-      {"aie_profile_core_metrics", 
+      {"aie_profile_core_metrics",
        "AIE_profile_settings.graph_based_aie_metrics or tile_based_aie_metrics"}, 
-      {"aie_profile_memory_metrics", 
+      {"aie_profile_memory_metrics",
        "AIE_profile_settings.graph_based_aie_memory_metrics or tile_based_aie_memory_metrics"},
-      {"aie_profile_interface_metrics", 
+      {"aie_profile_interface_metrics",
        "AIE_profile_settings.tile_based_interface_tile_metrics"}, 
-      {"aie_profile_interval_us", 
+      {"aie_profile_interval_us",
        "AIE_profile_settings.interval_us"}
     };
     
@@ -443,7 +443,7 @@ namespace xdp {
     uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
     auto modName = (mod == module_type::core) ? "aie" 
                  : ((mod == module_type::dma) ? "aie_memory"
-                 : "mem_tile");
+                 : "memory_tile");
 
     auto allValidKernels = get_kernels(device.get());
     auto allValidGraphs = get_graphs(device.get());
@@ -459,7 +459,7 @@ namespace xdp {
      * graph_based_aie_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
      * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>
      * MEM Tiles
-     * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
+     * graph_based_memory_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
@@ -558,9 +558,9 @@ namespace xdp {
      * 
      * MEM Tiles (AIE2 and beyond)
      * Single or all tiles
-     * tile_based_mem_tile_metrics = [[<{<column>,<row>}|all>:<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats>[:<channel>]]
+     * tile_based_memory_tile_metrics = [[<{<column>,<row>}|all>:<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats>[:<channel>]]
      * Range of tiles
-     * tile_based_mem_tile_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
+     * tile_based_memory_tile_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());

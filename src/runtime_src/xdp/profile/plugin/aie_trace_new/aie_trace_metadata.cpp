@@ -84,9 +84,9 @@ namespace xdp {
     auto aieGraphMetricsSettings = 
         getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics());
     auto memTileMetricsSettings = 
-        getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_mem_tile_metrics());
+        getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_memory_tile_metrics());
     auto memGraphMetricsSettings = 
-        getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_mem_tile_metrics());
+        getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_memory_tile_metrics());
 
     if (aieTileMetricsSettings.empty() && aieGraphMetricsSettings.empty()
         && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()) {
@@ -108,7 +108,7 @@ namespace xdp {
     using boost::property_tree::ptree;
     const std::set<std::string> validSettings {
       "graph_based_aie_tile_metrics", "tile_based_aie_tile_metrics",
-      "graph_based_mem_tile_metrics", "tile_based_mem_tile_metrics",
+      "graph_based_memory_tile_metrics", "tile_based_memory_tile_metrics",
       "start_type", "start_time", "start_iteration", 
       "periodic_offload", "reuse_buffer", "buffer_size", 
       "buffer_offload_interval_us", "file_dump_interval_s"
@@ -538,7 +538,7 @@ namespace xdp {
     }
       
     uint16_t rowOffset = (type == module_type::mem_tile) ? 1 : getAIETileRowOffset();
-    auto tileName = (type == module_type::mem_tile) ? "mem" : "aie";
+    auto tileName = (type == module_type::mem_tile) ? "memory" : "aie";
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     auto allValidKernels = get_kernels(device.get());
@@ -553,7 +553,7 @@ namespace xdp {
      * AI Engine Tiles
      * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
      * MEM Tiles (AIE2 and beyond)
-     * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * graph_based_memory_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
@@ -664,9 +664,9 @@ namespace xdp {
      *  
      * MEM Tiles (AIE2 and beyond)
      * Single or all tiles
-     * tile_based_mem_tile_metrics = <{<column>,<row>}|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_memory_tile_metrics = <{<column>,<row>}|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      * Range of tiles
-     * tile_based_mem_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_memory_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
