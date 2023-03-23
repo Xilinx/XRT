@@ -1077,7 +1077,7 @@ zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
 
 	iounmap(map);
 
-	DRM_INFO("PL reset successfully finished.");
+	DRM_INFO("Device reset successfully finished.");
 
 	return count;
 }
