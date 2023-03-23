@@ -5,7 +5,7 @@ XRT ChangeLog
 ~~~~~~~~~~~~~~~~~~~~~~
 Added
 .....
-* 
+* New xrt::run::wait2() API was added to throw an exception when command completes abnormally (state different from ERT_CMD_STATE_COMPLETED).
 
 Removed
 .......
@@ -14,6 +14,7 @@ Removed
 Changed
 .......
 * This the last release with XCL APIs support.  The APIs were deprecated in 2.14.x and 2.15.x will be last release with support.  
+* xrt::kernel::write_register() is deprecated.  Along with corresponding read_register, a compile warning is issued if used. It is recommended that xrt::ip is used for read and write register functionality.
 
 2.14.0 (202220.2.14.x)
 ~~~~~~~~~~~~~~~~~~~~~~
