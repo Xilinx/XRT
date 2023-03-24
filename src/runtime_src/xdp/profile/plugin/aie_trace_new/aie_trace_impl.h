@@ -46,6 +46,12 @@ namespace xdp {
 
     virtual void updateDevice() = 0;
     virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
+    /*
+     * If trace module is running, it might buffer partial trace.
+     * This leftover trace needs to be force flushed at the end using a custom end event.
+     * This applies to trace windowing on AIE1 and all scenarios on AIE2.
+     */
+    virtual void flushAieTileTraceModule() = 0;
   };
 
 } // namespace xdp

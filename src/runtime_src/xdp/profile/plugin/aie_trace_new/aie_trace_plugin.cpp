@@ -276,6 +276,8 @@ namespace xdp {
     if (!AIEData.valid)
       return;
 
+    // Flush AIE then datamovers
+    AIEData.implementation->flushAieTileTraceModule();
     flushOffloader(AIEData.offloader, false);
   }
 
@@ -292,6 +294,8 @@ namespace xdp {
     if (!AIEData.valid)
       return;
 
+    // Flush AIE then datamovers
+    AIEData.implementation->flushAieTileTraceModule();
     flushOffloader(AIEData.offloader, true);
     XDPPlugin::endWrite();
     (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
