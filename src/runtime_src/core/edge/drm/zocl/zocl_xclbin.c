@@ -1163,9 +1163,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin
 static bool
 is_aie_only(struct axlf *axlf)
 {
-	if ((axlf->m_header.m_actionMask & AM_LOAD_AIE) ||
-		(!xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
-		xrt_xclbin_get_section_num(axlf, AIE_METADATA)))
+	if ((axlf->m_header.m_actionMask & AM_LOAD_AIE))
 		return true;
 
 	return false;
