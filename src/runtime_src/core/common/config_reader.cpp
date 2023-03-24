@@ -48,7 +48,7 @@ static std::mutex mutex;
 // values are statically cached, they can be changed only until they
 // have been accessed the very first time.  This map tracks first key
 // access.
-static std::set<std::string>
+static std::set<std::string>&
 get_lock_map()
 {
   static std::set<std::string> lock_map;

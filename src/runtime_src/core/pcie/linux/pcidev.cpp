@@ -157,21 +157,16 @@ namespace xrt_core { namespace pci {
 
 namespace sysfs {
 
-static std::string
-get_dev_root()
-{
-  static const std::string dev_root = "/sys/bus/pci/devices/";
-  return dev_root;
-}
+static constexpr const char* dev_root = "/sys/bus/pci/devices/";
 
 static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
 {
   std::string subdir;
-  if (get_subdev_dir_name(get_dev_root() + name, subdev, subdir) != 0)
+  if (get_subdev_dir_name(dev_root + name, subdev, subdir) != 0)
     return "";
 
-  auto path = get_dev_root();
+  std::string path = dev_root;
   path += name;
   path += "/";
   path += subdir;
@@ -213,7 +208,7 @@ open(const std::string& name,
   if (path.empty()) {
     std::stringstream ss;
     ss << "Failed to find subdirectory for " << subdev
-       << " under " << get_dev_root() + name << std::endl;
+       << " under " << dev_root + name << std::endl;
     err = ss.str();
   } else {
     fs = open_path(path, err, write, binary);
@@ -475,10 +470,10 @@ dev(const drv& driver, const std::string& sysfs) : m_sysfs_name(sysfs)
   if (m_is_mgmt)
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
   else
-    m_instance = get_render_value(sysfs::get_dev_root() + sysfs + "/drm");
+    m_instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
 
   sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::get_dev_root() + sysfs, m_user_bar);
+  m_user_bar_size = bar_size(sysfs::dev_root + sysfs, m_user_bar);
   sysfs_get<bool>("", "ready", err, m_is_ready, false);
   m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }
