@@ -482,7 +482,9 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 	uint32_t s_id = DEFAULT_PL_SLOT;
 	int ret = 0;
 
-	if (xocl_axlf_section_header(xdev, axlf, BITSTREAM) || xocl_axlf_section_header(xdev, axlf, BITSTREAM_PARTIAL_PDI)) {
+	if (xocl_axlf_section_header(xdev, axlf, BITSTREAM) ||
+		xocl_axlf_section_header(xdev, axlf, BITSTREAM_PARTIAL_PDI) ||
+		!xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
 		s_id = DEFAULT_PL_SLOT;
 		if (xclbin_downloaded(xdev, xclbin_id, s_id)) {
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
