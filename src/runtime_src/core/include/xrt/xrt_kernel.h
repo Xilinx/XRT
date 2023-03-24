@@ -759,38 +759,15 @@ public:
   uint32_t
   offset(int argno) const;
 
-  /**
-   * write() - Write to the address range of a kernel
-   *
-   * @param offset
-   *  Offset in register space to write to
-   * @param data
-   *  Data to write
-   *
-   * Throws std::out_or_range if offset is outside the
-   * kernel address space
-   *
-   * The kernel must be associated with exactly one kernel instance
-   * (compute unit), which must be opened for exclusive access.
-   */
+  [[deprecated("Please use user-managed xrt::ip "
+               "for read and write register functionality")]]
   XCL_DRIVER_DLLESPEC
   void
   write_register(uint32_t offset, uint32_t data);
 
-  /**
-   * read() - Read data from kernel address range
-   *
-   * @param offset
-   *  Offset in register space to read from
-   * @return
-   *  Value read from offset
-   *
-   * Throws std::out_or_range if offset is outside the
-   * kernel address space
-   *
-   * The kernel must be associated with exactly one kernel instance
-   * (compute unit), which must be opened for exclusive access.
-   */
+  [[deprecated("It is not recommended to use read_register() with XRT "
+               "managed kernels.  Please use user-managed xrt::ip for read and "
+               "write register functionality")]]
   XCL_DRIVER_DLLESPEC
   uint32_t
   read_register(uint32_t offset) const;
