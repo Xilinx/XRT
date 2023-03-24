@@ -58,6 +58,7 @@ public:
   set_exclusive()
   {
     m_mode = xrt::hw_context::access_mode::exclusive;
+    m_hdl->update_access_mode(m_mode);
   }
 
   const std::shared_ptr<xrt_core::device>&
