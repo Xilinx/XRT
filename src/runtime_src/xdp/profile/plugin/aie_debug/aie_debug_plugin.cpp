@@ -334,7 +334,7 @@ namespace xdp {
             // We have a stuck core within this graph
             warningMessage
             << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
-            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + offset << ") "
+            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
             << "Status 0x" << std::hex << stuckCoreStatus << std::dec
             << " : " << getCoreStatusString(stuckCoreStatus);
 
@@ -349,7 +349,7 @@ namespace xdp {
           for (const auto& tile : graphTilesVec) {
             if (coreStuckCountMap[tile]) {
               msg
-                << "T(" << tile.col <<"," << tile.row + offset << "):" << "<" << coreStuckCountMap[tile]
+                << "T(" << tile.col <<"," << tile.row << "):" << "<" << coreStuckCountMap[tile]
                 << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
             }
           }
