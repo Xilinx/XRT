@@ -53,7 +53,7 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   catch(const xrt_core::query::sysfs_error&) {}
 
   try {
-    runtime_tree.put("Description", "Clock Throttling and Shutdown");
+    runtime_tree.put("Description", "Runtime Clock Throttling");
     auto clk_scaling_data = xrt_core::device_query<xrt_core::query::clk_scaling_info>(_pDevice);
     for (const auto& pt : clk_scaling_data) {
       runtime_tree.put("supported", pt.support);
