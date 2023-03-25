@@ -19,9 +19,9 @@ namespace xrt_core {
 // hardware context.
 class hwctx_handle
 {
-  using qos_type = xrt::hw_context::cfg_param_type;
-
 public:
+  using qos_type = xrt::hw_context::cfg_param_type;
+  using access_mode = xrt::hw_context::access_mode;
   using slot_id = uint32_t;
 
   // Destruction must destroy the underlying hardware context
@@ -32,6 +32,14 @@ public:
   // to experimental user facing xrt::hw_context::update_qos()
   virtual void
   update_qos(const qos_type&)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  // Update access mode for platforms that care.  This is used
+  // for Alveo mailbox where CUs are changed to be exclusive mode
+  virtual void
+  update_access_mode(access_mode)
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
