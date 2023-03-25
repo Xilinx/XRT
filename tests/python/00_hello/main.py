@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2019-2021 Xilinx, Inc
+# Copyright (C) 2019-2023 Xilinx, Inc
 #
 
 import os

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2020-2023 Xilinx, Inc
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef XRT_XCLBIN_H_
