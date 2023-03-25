@@ -69,7 +69,7 @@ static ssize_t xclbinid_show(struct device *dev,
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (!zocl_slot || !zocl_slot->slot_xclbin ||
-		    !zocl_slot->slot_xclbin->zx_dtbo_path)
+		    !zocl_slot->slot_xclbin->zx_uuid)
 			continue;
 
 		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
