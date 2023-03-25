@@ -1012,14 +1012,6 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	return ret;
 }
 
-int
-zocl_pl_only_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
-{
-	/* TODO */
-	DRM_ERROR("%s PL Reset support doesn't added yet", __func__);
-	return count;
-}
-
 /*
  * Free the xclbin specific sections for this slot.
  *

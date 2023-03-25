@@ -308,6 +308,9 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 {
 	u32 *refs = NULL;
 
+	if (!client->refcnt)
+		return refs;
+
 	switch (domain) {
 	case DOMAIN_PL:
 		refs = client->refcnt->cu_refs;
@@ -389,10 +392,10 @@ kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
 	int ret = 0;
 
 	dst = kds_client_domain_refcnt(client, domain);
-
 	if (!dst) {
 		return -EINVAL;
 	}
+
 	mutex_lock(&client->refcnt->lock);
 	memset(dst, 0, len);
 	mutex_unlock(&client->refcnt->lock);
@@ -1177,13 +1180,13 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	mutex_lock(&client->lock);
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
 	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
+	mutex_destroy(&client->refcnt->lock);
+	kfree(client->refcnt);
+	client->refcnt = NULL;
 	mutex_unlock(&client->lock);
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
-	mutex_destroy(&client->refcnt->lock);
-	kfree(client->refcnt);
-	client->refcnt = NULL;
 
 	mutex_lock(&kds->lock);
 	list_del(&client->link);
