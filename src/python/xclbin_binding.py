@@ -1,5 +1,6 @@
 """
- Copyright (C) 2018-2023 Xilinx, Inc
+ Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  Author(s): Ryan Radjabi
             Shivangi Agarwal
             Sonal Santan
