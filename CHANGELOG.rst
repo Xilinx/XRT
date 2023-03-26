@@ -5,7 +5,8 @@ XRT ChangeLog
 ~~~~~~~~~~~~~~~~~~~~~~
 Added
 .....
-* New xrt::run::wait2() API was added to throw an exception when command completes abnormally (state different from ERT_CMD_STATE_COMPLETED).
+* New ``xrt::run::wait2()`` API was added to throw an exception when command completes abnormally (state different from ERT_CMD_STATE_COMPLETED).
+* New ``xrt::xclbin::get_interface_uuid()`` API.  The interface uuid is available only for xclbins that are built with 2023.1 Vitis.
 
 Removed
 .......
