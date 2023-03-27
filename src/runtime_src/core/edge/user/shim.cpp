@@ -1697,16 +1697,15 @@ int
 shim::
 resetDevice(xclResetKind kind)
 {
-  int ret;
   std::string errmsg{""};
 
   if (kind == XCL_USER_RESET) {
     mDev->sysfs_put("zocl_reset", errmsg, "1\n");
     if (!errmsg.empty())
-      throw std::runtime_error("Failed to reset zocl, err : " + errmsg);
+      throw std::runtime_error("Failed to reset zocl, err : " + errmsg + "\n");
   }
   else
-    return -EINVAL; // other kinds of reset are not supported
+    throw std::runtime_error("Invalid reset type\n"); // other kinds of reset are not supported
 
   return 0;
 }
@@ -2746,6 +2745,8 @@ xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
+  // NOTE: until xclResetDevice is made completely internal,
+  // this wrapper is being used to limit the pragma use to this file
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   return drv ? drv->resetDevice(kind) : -ENODEV;
 }
