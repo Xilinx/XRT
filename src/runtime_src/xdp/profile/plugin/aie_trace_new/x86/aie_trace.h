@@ -26,17 +26,18 @@ namespace xdp {
   class AieTrace_x86Impl : public AieTraceImpl{
 
     public:
-      AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
-        : AieTraceImpl(database, metadata){}
+      AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
       ~AieTrace_x86Impl() = default;
       virtual void updateDevice();
+      virtual void flushAieTileTraceModule();
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
       void parseMessages(uint8_t* messages);
       module_type getTileType(uint16_t absRow);
-
-      public:
-      virtual void flushAieTileTraceModule() {}
+    private:
+      xrt::device device;
+      xrt::kernel aie_trace_kernel;
+    
   };
 
 }   
