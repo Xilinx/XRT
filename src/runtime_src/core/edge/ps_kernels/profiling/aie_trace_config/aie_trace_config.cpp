@@ -246,7 +246,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
                           EventConfiguration& config,
                           const xdp::built_in::TraceInputConfiguration* params,
                           xdp::built_in::TraceOutputConfiguration* tilecfg,
-                          xdp::built_in::MessageConfiguration* msgcfg)
+                          xdp::built_in::MessageConfiguration* msgcfg, std::vector<XAie_LocType>& windowedTraceLocs)
   {
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
 
@@ -409,7 +409,7 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
         if (params->useUserControl) {
           config.coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
           config.coreTraceEndEvent = config.windowedTraceEndEvent;
-        } else if (params->useGraphIterator()){
+        } else if (params->useGraphIterator){
           if (!configureStartIteration(core,config,params)) 
             break;
           
@@ -618,8 +618,8 @@ bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
      * Flush for trace windowing
      */
     for (const auto& loc : windowedTraceLocs)
-      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, config.indowedTraceEndEvent);
-      windowedTraceLocs.clear();
+      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, config.windowedTraceEndEvent);
+    windowedTraceLocs.clear();
   }
 
 }
@@ -681,7 +681,7 @@ int aie_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, in
 
     tilecfg->numTiles = params->numTiles;
     setMetricsSettings(constructs->aieDevInst, constructs->aieDev,
-                            config, params, tilecfg, messageStruct);
+                            config, params, tilecfg, messageStruct, constructs->windowedTraceLocs);
 
     uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
     std::memcpy(output, out, total_size);   

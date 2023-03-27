@@ -40,6 +40,7 @@
 constexpr uint32_t MAX_TILES = 400;
 constexpr uint64_t ALIGNMENT_SIZE = 4096;
 
+
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using TraceInputConfiguration = xdp::built_in::TraceInputConfiguration;
@@ -47,6 +48,11 @@ namespace xdp {
   using TraceTileType = xdp::built_in::TraceTileType;
   using MessageConfiguration = xdp::built_in::MessageConfiguration;
   using Messages = xdp::built_in::Messages;
+
+  constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
+  constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
+  constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 
+  ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
 
   AieTrace_x86Impl::AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       : AieTraceImpl(database, metadata) 
@@ -92,13 +98,7 @@ namespace xdp {
 
   bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle) {
       
-    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
-    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
-    constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 
-    ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
-
     //Gather data to send to PS Kernel
-
     if (!metadata->getIsValidMetrics()) {
       std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);

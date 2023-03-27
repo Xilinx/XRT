@@ -19,6 +19,7 @@
 
 #include <cstdint>
 
+#include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
 
 namespace xdp {
