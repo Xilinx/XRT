@@ -317,7 +317,7 @@ static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot)
+		if (!zocl_slot || !zocl_slot->aie_data.size)
 			continue;
 
 		size = zocl_slot->aie_data.size;
