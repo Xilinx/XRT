@@ -1165,6 +1165,9 @@ zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
 	mutex_lock(&kds->lock);
         /* Find out number of active client and send a signal to it. */
         list_for_each_entry_safe(client, tmp_client, &kds->clients, link) {
+                if (pid_nr(client->pid) == pid_nr(task_tgid(current)))
+                        continue;
+
                 ret = kill_pid(client->pid, SIGTERM, 1);
                 if (ret) {
                         DRM_WARN("Failed to terminate Client pid %d."

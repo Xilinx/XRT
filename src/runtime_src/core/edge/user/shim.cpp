@@ -1693,6 +1693,24 @@ xclErrorClear()
   return ret ? -errno : ret;
 }
 
+int
+shim::
+resetDevice(xclResetKind kind)
+{
+  int ret;
+  std::string errmsg{""};
+
+  if (kind == XCL_USER_RESET) {
+    mDev->sysfs_put("zocl_reset", errmsg, "1\n");
+    if (!errmsg.empty())
+      throw std::runtime_error("Failed to reset zocl, err : " + errmsg);
+  }
+  else
+    return -EINVAL; // other kinds of reset are not supported
+
+  return 0;
+}
+
 #ifdef XRT_ENABLE_AIE
 zynqaie::Aie*
 shim::
@@ -2722,13 +2740,14 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
 int
 xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-  return -ENOSYS;
+  return xclInternalResetDevice(handle, kind);
 }
 
 int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-  return -ENOSYS;
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->resetDevice(kind) : -ENODEV;
 }
 
 int

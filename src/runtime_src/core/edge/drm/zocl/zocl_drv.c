@@ -1103,6 +1103,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	int year, mon, day;
 
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
+	if (!id)
+		return -EINVAL;
 	DRM_INFO("Probing for %s\n", id->compatible);
 
 	/* Create zocl device and initial */

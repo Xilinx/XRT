@@ -148,6 +148,7 @@ public:
                                   xclBOProperties *properties);
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
+  int resetDevice(xclResetKind kind);
 
   ////////////////////////////////////////////////////////////////
   // Context handling
