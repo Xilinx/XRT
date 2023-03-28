@@ -1,23 +1,13 @@
-/**
- * Copyright (C) 2021, 2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include <boost/algorithm/string.hpp>
 #include "ReportDynamicRegion.h"
+#include "Table2D.h"
+
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
@@ -62,50 +52,44 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
 
   for(auto& k_dfx : pt_dfx) {
     const boost::property_tree::ptree& dfx = k_dfx.second;
-    _output << "\nXclbin UUID\n";
-    _output << "  " + dfx.get<std::string>("xclbin_uuid", "N/A") << std::endl;
-    _output << std::endl;
+    _output << "  Compute Units" << std::endl;
+    const Table2D::HeaderData index = {"Index", Table2D::Justification::left};
+    const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
+    const Table2D::HeaderData address = {"Base Address", Table2D::Justification::left};
+    const Table2D::HeaderData usage = {"Usage", Table2D::Justification::left};
+    const Table2D::HeaderData status = {"Status", Table2D::Justification::left};
+    const std::vector<Table2D::HeaderData> table_headers = {index, name, address, usage, status};
+    Table2D pl_table(table_headers);
+    Table2D ps_table(table_headers);
 
     const boost::property_tree::ptree& pt_cu = dfx.get_child("compute_units", empty_ptree);
-    _output << "Compute Units" << std::endl;
-    _output << "  PL Compute Units" << std::endl;
-    _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
+    // Sort compute units into PL and PS groups
     try {
       int index = 0;
       for(auto& kv : pt_cu) {
         const boost::property_tree::ptree& cu = kv.second;
-        if(cu.get<std::string>("type").compare("PL") != 0)
-          continue;
-        std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
-        uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-        _output << cuFmt % index++ %
-          cu.get<std::string>("name") % cu.get<std::string>("base_address") %
-          cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
+        const std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
+        const uint32_t status_val = std::stoul(cu_status, nullptr, 16);
+        const std::vector<std::string> entry_data = {std::to_string(index++), cu.get<std::string>("name"), cu.get<std::string>("base_address") , cu.get<std::string>("usage"), xrt_core::utils::parse_cu_status(status_val)};
+        
+        if(boost::iequals(cu.get<std::string>("type"), "PL"))
+          pl_table.addEntry(entry_data);
+        else if(boost::iequals(cu.get<std::string>("type"), "PS"))
+          ps_table.addEntry(entry_data);
       }
     }
     catch( std::exception const& e) {
       _output << "ERROR: " <<  e.what() << std::endl;
     }
-    _output << std::endl;
 
-    //PS kernel report
-    _output << "  PS Compute Units" << std::endl;
-    _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
-    try {
-      int index = 0;
-      for(auto& kv : pt_cu) {
-        const boost::property_tree::ptree& cu = kv.second;
-        if(cu.get<std::string>("type").compare("PS") != 0)
-          continue;
-        std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
-        uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-        _output << cuFmt % index++ %
-          cu.get<std::string>("name") % cu.get<std::string>("base_address") %
-          cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
-      }
+    if (!pl_table.empty()) {
+      _output << "    PL Compute Units\n";
+      _output << pl_table.toString("    ") << "\n";
     }
-    catch( std::exception const& e) {
-      _output << "ERROR: " <<  e.what() << std::endl;
+
+    if (!ps_table.empty()) {
+      _output << "    PS Compute Units\n";
+      _output << ps_table.toString("    ") << "\n";
     }
   }
 
