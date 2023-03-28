@@ -836,10 +836,10 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[type];
-    for (auto &e : allValidTiles) {
-      if (configMetrics.find(e) == configMetrics.end())
-        configMetrics[e] = defaultSet;
-    }
+    //for (auto &e : allValidTiles) {
+    //  if (configMetrics.find(e) == configMetrics.end())
+    //    configMetrics[e] = defaultSet;
+    //}
 
     bool showWarning = true;
     std::vector<tile_type> offTiles;
