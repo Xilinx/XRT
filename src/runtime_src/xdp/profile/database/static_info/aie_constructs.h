@@ -245,8 +245,8 @@ enum class module_type {
   public:
     bool port_trace_is_master[NUM_MEM_TILE_PORTS] = {};
     uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
-    uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
-    uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    int8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {-1, -1};
+    int8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {-1, -1};
     aie_cfg_mem_tile() : aie_cfg_base(4) {}
   };
 

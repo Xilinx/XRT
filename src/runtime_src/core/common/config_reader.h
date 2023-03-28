@@ -807,6 +807,13 @@ get_aie_trace_settings_start_type()
 }
 
 inline std::string
+get_aie_trace_settings_end_type()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.end_type", "disable_event");
+  return value;
+}
+
+inline std::string
 get_aie_trace_settings_start_time()
 {
   static std::string value = detail::get_string_value("AIE_trace_settings.start_time", "0");
