@@ -52,7 +52,8 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
 
   for(auto& k_dfx : pt_dfx) {
     const boost::property_tree::ptree& dfx = k_dfx.second;
-    _output << "  Compute Units" << std::endl;
+    _output << boost::format("  Hardware Context ID: %s\n") % dfx.get<std::string>("id", "N/A");
+    _output << boost::format("    Xclbin UUID: %s\n") % dfx.get<std::string>("xclbin_uuid", "N/A");
     const Table2D::HeaderData index = {"Index", Table2D::Justification::left};
     const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
     const Table2D::HeaderData address = {"Base Address", Table2D::Justification::left};
@@ -84,12 +85,12 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
 
     if (!pl_table.empty()) {
       _output << "    PL Compute Units\n";
-      _output << pl_table.toString("    ") << "\n";
+      _output << pl_table.toString("      ") << "\n";
     }
 
     if (!ps_table.empty()) {
       _output << "    PS Compute Units\n";
-      _output << ps_table.toString("    ") << "\n";
+      _output << ps_table.toString("      ") << "\n";
     }
   }
 
