@@ -126,7 +126,7 @@ public:
     void
     clear_bd(BD& bd);
 
-    boost::property_tree::ptree get_bd_info(uint8_t& row, uint8_t& col);
+    boost::property_tree::ptree get_bd_info(uint8_t row, uint8_t col);
 
 private:
     int numCols;

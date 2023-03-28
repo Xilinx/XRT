@@ -167,9 +167,8 @@ struct aie_metadata_info{
   uint32_t num_mem_row;
 };
 
-// Function to get aie max rows and cols by parsing aie_metadata sysfs node
-static aie_metadata_info 
-get_aie_metadata_info(const xrt_core::device* device)
+boost::property_tree::ptree
+populate_aie_meta(const xrt_core::device* device)
 {
   std::string err;
   std::string value;
@@ -177,10 +176,8 @@ get_aie_metadata_info(const xrt_core::device* device)
   constexpr uint32_t major = 1;
   constexpr uint32_t minor = 0;
   constexpr uint32_t patch = 0;
-  aie_metadata_info aie_meta;
 
   auto dev = get_edgedev(device);
-
   dev->sysfs_get(AIE_TAG, err, value);
   if (!err.empty())
     throw xrt_core::query::sysfs_error(err);
@@ -196,7 +193,15 @@ get_aie_metadata_info(const xrt_core::device* device)
         % pt.get<uint32_t>("schema_version.major")
         % pt.get<uint32_t>("schema_version.minor")
         % pt.get<uint32_t>("schema_version.patch")));
+  return pt;
+}
 
+// Function to get aie max rows and cols by parsing aie_metadata sysfs node
+static aie_metadata_info 
+get_aie_metadata_info(const xrt_core::device* device)
+{
+  boost::property_tree::ptree pt = populate_aie_meta(device);
+  aie_metadata_info aie_meta;
   aie_meta.num_cols = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
   aie_meta.num_rows = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
   aie_meta.shim_row = pt.get<uint32_t>("aie_metadata.driver_config.shim_row");
@@ -204,6 +209,100 @@ get_aie_metadata_info(const xrt_core::device* device)
   aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_row_start");
   aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_num_rows");
   return aie_meta;
+}
+
+static void 
+add_core_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta , boost::property_tree::ptree& ptarray, uint8_t& row_offset)
+{
+   boost::property_tree::ptree empty_pt;
+   std::vector<std::pair<int, int>> core_tiles;
+   for (auto& gr : aie_meta.get_child("aie_metadata.graphs", empty_pt)) {
+     boost::property_tree::ptree igraph;
+     auto row_it = gr.second.get_child("core_rows").begin();
+     for (const auto& node : gr.second.get_child("core_columns", empty_pt)) {
+       igraph.put("row", row_it->second.data());
+       igraph.put("column", node.second.data());
+       auto r = igraph.get<uint8_t>("row");
+       auto col = igraph.get<uint8_t>("column");
+       auto row = r + row_offset;
+       core_tiles.push_back(std::make_pair(r,col));
+       boost::property_tree::ptree bdtree = aie_array->get_bd_info(row, col);
+       std::string st = std::to_string(col) + "_" + std::to_string(r);
+       ptarray.add_child((st + ".buffer-descriptors"), bdtree);
+       row_it++;
+     }    
+  }
+  for (const auto& gr : aie_meta.get_child("aie_metadata.EventGraphs", empty_pt)) {
+     boost::property_tree::ptree igraph;
+     auto dma_row_it = gr.second.get_child("dma_rows", empty_pt).begin();
+     for (const auto& node : gr.second.get_child("dma_columns", empty_pt)) {
+       igraph.put("column", node.second.data());
+       igraph.put("row", dma_row_it->second.data());
+       // Checking whether this core is already added
+       for(const auto& itr : core_tiles)
+         if ((itr.first == igraph.get<uint8_t>("row")) && (itr.second == igraph.get<uint8_t>("column")))
+            continue;
+       auto r = igraph.get<uint8_t>("row");
+       auto col = igraph.get<uint8_t>("column");
+       auto row = r + row_offset;
+       boost::property_tree::ptree bdtree = aie_array->get_bd_info(row, col);
+       std::string st = std::to_string(col) + "_" + std::to_string(r);
+       ptarray.add_child((st + ".buffer-descriptors"), bdtree);
+       dma_row_it++;
+     }
+  }
+}
+
+static void 
+add_mem_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta , boost::property_tree::ptree& ptarray, uint8_t& row_offset)
+{
+   for (uint8_t i = 0; i < aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns"); ++i) {
+     for (uint8_t j = 0; j < aie_meta.get<uint8_t>("aie_metadat.driver_config.reserved_num_rows"); ++j) {
+       uint8_t row = j + row_offset;
+       boost::property_tree::ptree bdtree = aie_array->get_bd_info(row, i);
+       std::string st = std::to_string(i) + "_" + std::to_string(j);
+       ptarray.add_child((st + ".buffer-descriptors"), bdtree);
+     }
+   }
+}
+
+static void 
+add_used_tile_bdinfo(const xrt_core::device* device, boost::property_tree::ptree& ptarray, bool is_core_tile)
+{
+   boost::property_tree::ptree aie_meta = populate_aie_meta(device);
+   adf::driver_config driver_config;
+   driver_config.hw_gen = aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
+   driver_config.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
+   driver_config.column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
+   driver_config.row_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.row_shift");
+   driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
+   driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
+   driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
+   driver_config.reserved_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+   driver_config.reserved_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+   driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
+   driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
+  
+   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+   if (!drv)
+     throw xrt_core::error(-EINVAL, "cannot get device handle");
+
+   drv->registerAieArray(driver_config);
+   auto aie_array = drv->getAieArray();
+   if (!aie_array)
+     throw xrt_core::error(-EINVAL, "No AIE Object presented"); 
+
+   uint8_t row_offset;
+
+   if (is_core_tile){
+     row_offset = driver_config.aie_tile_row_start;
+     add_core_bd(aie_array, aie_meta, ptarray, row_offset);
+   }
+   else {
+     // getting bd info for mem tile
+     row_offset = driver_config.reserved_row_start;
+     add_mem_bd(aie_array, aie_meta, ptarray, row_offset);
+   }
 }
 
 struct aie_core_info_sysfs
@@ -222,6 +321,7 @@ struct aie_core_info_sysfs
         ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
                           aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.core_row))));
 
+    add_used_tile_bdinfo(device, ptarray, true);
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
     std::ostringstream oss;
@@ -274,6 +374,7 @@ struct aie_mem_info_sysfs
 	ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
 			  aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.mem_row))));
 	 
+    add_used_tile_bdinfo(device, ptarray, false);
     boost::property_tree::ptree pt;
     pt.add_child("aie_mem",ptarray);
     std::ostringstream oss; 
@@ -614,89 +715,6 @@ struct aie_set_freq
   }
 };
 
-struct aie_bd_info
-{
-    using result_type = query::aie_bd_info::result_type;
-    static result_type
-    get(const xrt_core::device* device, key_type key, const boost::any& param)
-    {
-      auto dev = get_edgedev(device);
-      uint32_t val = 0;
-
-      auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-      if (!drv)
-        throw xrt_core::error(-EINVAL, "cannot get device handle");
-
-#ifdef XRT_ENABLE_AIE
-#ifndef __AIESIM__
-      const static std::string aie_tag = "aie_metadata";
-      const std::string zocl_device = "/dev/dri/" + get_render_devname();
-      const uint32_t major = 1;
-      const uint32_t minor = 0;
-      const uint32_t patch = 0;
-
-      std::string err;
-      std::string value;
-
-      // Reading the aie_metadata sysfs.
-      dev->sysfs_get(aie_tag, err, value);
-      if (!err.empty())
-        throw xrt_core::query::sysfs_error
-          (err + ", The loading xclbin acceleration image doesn't use the Artificial "
-          + "Intelligent Engines (AIE). No action will be performed.");
-
-      std::stringstream ss(value);
-      boost::property_tree::ptree aie_meta;
-      boost::property_tree::read_json(ss, aie_meta);
-
-      if(aie_meta.get<uint32_t>("schema_version.major") != major ||
-        aie_meta.get<uint32_t>("schema_version.minor") != minor ||
-        aie_meta.get<uint32_t>("schema_version.patch") != patch )
-        throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
-                                                                % aie_meta.get<uint32_t>("schema_version.major")
-                                                                % aie_meta.get<uint32_t>("schema_version.minor")
-                                                                % aie_meta.get<uint32_t>("schema_version.patch")));
-
-      adf::driver_config driver_config;
-      driver_config.hw_gen = aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
-      driver_config.base_address = aie_meta.get<uint64_t>("aie_metadata.driver_config.base_address");
-      driver_config.column_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.column_shift");
-      driver_config.row_shift = aie_meta.get<uint8_t>("aie_metadata.driver_config.row_shift");
-      driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
-      driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
-      driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
-      driver_config.reserved_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
-      driver_config.reserved_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
-      driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
-      driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
-
-      drv->registerAieArray(driver_config);
-      auto aieArray = drv->getAieArray();
-
-      if (!aieArray)
-         throw xrt_core::error(-EINVAL, "No AIE Object presented");      
-      
-      auto tile = boost::any_cast<xrt_core::query::aie_bd_info::parameters>(param);
-      uint8_t row;
-      if (tile.type == xrt_core::query::aie_bd_info::tile_type::core)
-         row = tile.row + driver_config.aie_tile_row_start;
-      else if (tile.type == xrt_core::query::aie_bd_info::tile_type::mem)
-         row = tile.row + driver_config.reserved_row_start;
-      boost::property_tree::ptree bdtree = aieArray->get_bd_info(row, tile.col);
-
-      std::ostringstream oss;
-      boost::property_tree::write_json(oss, bdtree);
-      std::string inifile_text = oss.str();
-      return inifile_text;
-#else 
-      throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
-#endif
-#else
-      throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
-#endif
-    }
-};
-
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -986,7 +1004,6 @@ initialize_query_table()
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
   emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
-  emplace_func4_request<query::aie_bd_info,             aie_bd_info>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::group_topology>            ("mem_topology");

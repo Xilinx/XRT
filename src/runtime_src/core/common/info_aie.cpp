@@ -63,23 +63,14 @@ addnodelist(const std::string& search_str, const std::string& node_str,
   output_pt.add_child(node_str, pt_array);
 }
 
-//This function fills the bd info for core and mem tiles
-static boost::property_tree::ptree
-populate_bd_info(const xrt_core::device *device, qr::aie_bd_info::parameters param){
-  boost::property_tree::ptree bd;
-  try {
-    std::string bd_data = xrt_core::device_query<qr::aie_bd_info>(device, param);
-    std::stringstream ss(bd_data);
-    boost::property_tree::read_json(ss, bd);
+// This function fills the bd info for core and mem tiles
+static void
+populate_bd_info(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_bd) {
+  if (pt.find("buffer-descriptors") != pt.not_found()) {
+    boost::property_tree::ptree tree = pt.get_child("buffer-descriptors");
+    pt_bd.add_child("buffer-descriptors", tree);
   }
-  catch (const xrt_core::query::no_such_key&) {
-  // Not Edge device
-  }
-  catch (const std::exception& ex) {
-    bd.put("error_msg",ex.what());
-    return bd;
-  }
-  return bd;
+  return;
 }
 
 // This function extract DMA information for both AIE core and tiles
@@ -429,14 +420,9 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
       if (imem.find("event") != imem.not_found())
         addnodelist("event", "events", imem, omem);
       
-      qr::aie_bd_info::parameters param;
-      param.row = row;
-      param.col = col;
-      param.type = qr::aie_bd_info::tile_type::mem;
-      boost::property_tree::ptree outtree = populate_bd_info(device, param);
-      if (!outtree.empty())
-	omem.add_child ("buffer-descriptors", outtree);
-
+      if (imem.find("buffer-descriptors") != imem.not_found())
+	 populate_bd_info(imem, omem);
+     
       tile_array.push_back({"tile" + std::to_string(col), omem});
     }
 
@@ -554,7 +540,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
 
 // Populate a specific AIE core given as an input of [row:col]
 void
-populate_aie_core(const xrt_core::device* device, const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile)
+populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile)
 {
   try {
     boost::property_tree::ptree pt;
@@ -598,13 +584,9 @@ populate_aie_core(const xrt_core::device* device, const boost::property_tree::pt
     if (pt.find("event") != pt.not_found())
       addnodelist("event", "events", pt, tile);
 
-    qr::aie_bd_info::parameters param;
-    param.row = row;
-    param.col = col;
-    param.type = qr::aie_bd_info::tile_type::core;
-    boost::property_tree::ptree outtree = populate_bd_info(device, param);
-    if (!outtree.empty())
-        tile.add_child("buffer-descriptors", outtree);
+    if (pt.find("buffer-descriptors") != pt.not_found())
+      populate_bd_info(pt, tile);
+
   }
   catch (const std::exception& ex) {
     tile.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE core"));
@@ -689,7 +671,7 @@ is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property
 
 // Populate a specific AIE core which is unused but memory buffers exist [row:col]
 void
-populate_buffer_only_cores(const xrt_core::device* device, const boost::property_tree::ptree& pt,
+populate_buffer_only_cores(const boost::property_tree::ptree& pt,
 			   const boost::property_tree::ptree& core_info, int gr_id,
 			   boost::property_tree::ptree& tile_array)
 {
@@ -709,7 +691,7 @@ populate_buffer_only_cores(const xrt_core::device* device, const boost::property
       if (is_duplicate_core(tile_array, tile))
         continue;
 
-      populate_aie_core(device, core_info, tile);
+      populate_aie_core(core_info, tile);
       tile_array.push_back({"", tile});
       if (dma_row_it != g_node.second.end())
         dma_row_it++;
@@ -843,7 +825,7 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
       tile.put("memory_column", memcol_it->second.data());
       tile.put("memory_row", memrow_it->second.data());
       tile.put("memory_address", memaddr_it->second.data());
-      populate_aie_core(device, core_info, tile);
+      populate_aie_core(core_info, tile);
       row_it++;
       memcol_it++;
       memrow_it++;
@@ -851,7 +833,7 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
       tile_array.push_back({"", tile});
     }
 
-    populate_buffer_only_cores(device, pt_aie, core_info, gr_id, tile_array);
+    populate_buffer_only_cores(pt_aie, core_info, gr_id, tile_array);
 
     boost::property_tree::ptree plkernel_array;
     // Get the name of the kernls available for this graph
@@ -914,7 +896,7 @@ populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree&
         boost::property_tree::ptree tile;
         tile.put("column", col);
         tile.put("row", row);
-        populate_aie_core(device, core_info, tile);
+        populate_aie_core(core_info, tile);
 
         tile_array.push_back({"", tile});
       }

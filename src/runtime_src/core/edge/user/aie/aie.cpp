@@ -102,7 +102,8 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device, adf::driver_config& dr
 
 boost::property_tree::ptree
 Aie::
-get_bd_info(uint8_t& row, uint8_t& col) {
+get_bd_info(uint8_t row, uint8_t col)
+{
     XAie_DevInst* devInst = getDevInst();
     if (!devInst)
       throw xrt_core::error(-EINVAL, "AIE is not initialized");
@@ -110,7 +111,7 @@ get_bd_info(uint8_t& row, uint8_t& col) {
     boost::property_tree::ptree bd_ptree; 
     u8 numBds;
     auto ret = XAie_DmaGetNumBds(devInst, tile, &numBds);
-    if(ret != AieRC::XAIE_OK)
+    if (ret != AieRC::XAIE_OK)
 	return bd_ptree;
     
     boost::property_tree::ptree bd; 

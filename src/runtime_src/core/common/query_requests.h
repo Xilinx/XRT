@@ -124,7 +124,6 @@ enum class key_type
   aie_status_version,
   aie_tiles_stats,
   aie_tiles_status_info,
-  aie_bd_info,
 
   idcode,
   data_retention,
@@ -1417,22 +1416,6 @@ struct aie_tiles_status_info : request
 
   virtual boost::any
   get(const device* device, const boost::any& param) const = 0;
-};
-
-struct aie_bd_info : request
-{
-  enum class tile_type { core, mem, shim };
-   
-  struct parameters {
-    uint8_t row;
-    uint8_t col;
-    tile_type type;
-  };
-
-  using result_type = std::string;
-  static const key_type key = key_type::aie_bd_info;
-  virtual boost::any
-  get(const device* device, const boost::any& parameters) const = 0;
 };
 
 struct clock_freqs_mhz : request
