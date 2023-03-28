@@ -1199,6 +1199,9 @@ zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
                 mutex_unlock(&z_slot->slot_xclbin_lock);
         }
 
+	/* Cleanup the AIE here */
+	zocl_cleanup_aie(zdev);
+
 #define PL_RESET_ADDRESS                0x00F1260330
 #define PL_HOLD_VAL                     0xF
 #define PL_RELEASE_VAL                  0x0
