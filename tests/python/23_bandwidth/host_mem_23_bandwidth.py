@@ -67,8 +67,8 @@ def runKernel(opt):
     except Exception as e:
         return errno.EOPNOTSUPP
 
-    output_bo3, output_buf3 = getInputOutputBuffer(opt.handle, khandle3, 0, False)
-    input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
+    output_bo3, output_buf3 = getInputOutputBuffer(d, khandle3, 0, False)
+    input_bo3, input_buf3 = getInputOutputBuffer(d, khandle3, 1, True)
 
     TYPESIZE = 512
     beats = 16
