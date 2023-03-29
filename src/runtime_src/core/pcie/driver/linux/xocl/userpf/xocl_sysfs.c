@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -291,6 +291,15 @@ kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *bu
 	return ret;
 }
 static DEVICE_ATTR_RO(kds_scustat_raw);
+
+static ssize_t
+device_bad_state_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->kds.bad_state);
+}
+static DEVICE_ATTR_RO(device_bad_state);
 
 static ssize_t
 kds_interrupt_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -727,6 +736,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
 	&dev_attr_nodma.attr,
+	&dev_attr_device_bad_state.attr,
 	NULL,
 };
 
