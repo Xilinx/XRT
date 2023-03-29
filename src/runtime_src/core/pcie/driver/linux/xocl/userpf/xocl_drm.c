@@ -686,7 +686,7 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *mm_stat = &drm_p->mm_usage_stat[ddr];
 
 	if (!mm_stat->is_used) {
-        	xocl_err(drm_p->ddev->dev, "Invalid memory %d stats", ddr);
+        	xocl_dbg(drm_p->ddev->dev, "Invalid memory %d stats", ddr);
 		return;
 	}
 
@@ -702,6 +702,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 	uint64_t start_addr = 0;
 	uint64_t end_addr = 0;
 	int ret = 0;
+	bool phy_bank_exists = false;
 	int i = 0;
 
 	BUG_ON(!xocl_mm && !xocl_mm->mm);
@@ -712,6 +713,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 				XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
 			continue;
 
+		phy_bank_exists = true;
 		start_addr = mem_data->m_base_address;
 		end_addr = start_addr + mem_data->m_size;
 
@@ -729,7 +731,28 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 		}
 	}
 
-	return ret;
+    /* If no physical memory BANKs exists till now then
+     * allocate memory from the base address of the memory manager.
+     */
+    if (!phy_bank_exists) {
+        start_addr = xocl_mm->start_addr;
+        end_addr = xocl_mm->end_addr;
+
+#if defined(XOCL_DRM_FREE_MALLOC)
+        ret = drm_mm_insert_node_in_range(xocl_mm->mm, dnode, size, PAGE_SIZE, 0,
+                start_addr, end_addr, 0);
+#else
+        ret = drm_mm_insert_node_in_range(xocl_mm->mm, dnode, size, PAGE_SIZE,
+                start_addr, end_addr, 0);
+#endif
+        if (!ret) {
+            // Memory is allocated to this Bank
+            *mem_id = 0;
+            return 0;
+        }
+    }
+
+    return ret;
 }
 
 static int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,

@@ -1284,18 +1284,28 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	return 0;
 }
 
-static uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
+static uint64_t xmc_get_power(struct platform_device *pdev,
+                              enum sensor_val_kind kind, bool instantaneous)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
 	u64 val = 0;
 
-	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, kind);
-	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, kind);
-	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, kind);
-	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, kind);
-	xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, kind);
-	xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, kind);
+	if (instantaneous) {
+		xmc_sensor(pdev, VOL_12V_PEX, &v_pex, kind);
+		xmc_sensor(pdev, VOL_12V_AUX, &v_aux, kind);
+		xmc_sensor(pdev, CUR_12V_PEX, &c_pex, kind);
+		xmc_sensor(pdev, CUR_12V_AUX, &c_aux, kind);
+		xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, kind);
+		xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, kind);
+	} else {
+		v_pex = xmc->cache->vol_12v_pex;
+		v_aux = xmc->cache->vol_12v_aux;
+		c_pex = xmc->cache->cur_12v_pex;
+		c_aux = xmc->cache->cur_12v_aux;
+		v_3v3 = xmc->cache->vol_3v3_pex;
+		c_3v3 = xmc->cache->cur_3v3_pex;
+	}
 
 	xocl_dbg(&xmc->pdev->dev, "v_pex %d, c_pex %d, v_aux %d, "
 		"c_aux %d, v_3v3 %d, c_3v3 %d",
@@ -1504,11 +1514,21 @@ static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u64 val = xmc_get_power(xmc->pdev, SENSOR_INS);
+	u64 val = xmc_get_power(xmc->pdev, SENSOR_INS, false);
 
 	return sprintf(buf, "%lld\n", val);
 }
 static DEVICE_ATTR_RO(xmc_power);
+
+static ssize_t xmc_power_ins_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u64 val = xmc_get_power(xmc->pdev, SENSOR_INS, true);
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(xmc_power_ins);
 
 static ssize_t status_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1594,7 +1614,8 @@ static DEVICE_ATTR_RO(core_version);
 	&dev_attr_xmc_heartbeat_err_code.attr,				\
 	&dev_attr_xmc_heartbeat_err_time.attr,				\
 	&dev_attr_xmc_heartbeat_stall.attr,				\
-	&dev_attr_xmc_qspi_status.attr
+	&dev_attr_xmc_qspi_status.attr,					\
+	&dev_attr_xmc_power_ins.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1625,7 +1646,6 @@ REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
 	&dev_attr_host_msg_offset.attr,					\
 	&dev_attr_host_msg_error.attr,					\
 	&dev_attr_host_msg_header.attr
-
 
 static ssize_t pause_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2994,7 +3014,7 @@ static ssize_t hwmon_power_show(struct device *dev,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	u64 val = xmc_get_power(pdev, HWMON_INDEX2VAL_KIND(index));
+	u64 val = xmc_get_power(pdev, HWMON_INDEX2VAL_KIND(index), true);
 
 	return sprintf(buf, "%lld\n", val);
 }

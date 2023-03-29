@@ -43,25 +43,30 @@ namespace {
 
 namespace key {
 
+static std::mutex mutex;
 // Configuration values can be changed programmatically, but because
 // values are statically cached, they can be changed only until they
 // have been accessed the very first time.  This map tracks first key
 // access.
-static std::set<std::string> locked;
-static std::mutex mutex;
+static std::set<std::string>&
+get_lock_map()
+{
+  static std::set<std::string> lock_map;
+  return lock_map;
+}
 
 static void
 lock(const std::string& key)
 {
   std::lock_guard<std::mutex> lk(mutex);
-  locked.insert(key);
+  get_lock_map().insert(key);
 }
 
 static bool
 is_locked(const std::string& key)
 {
   std::lock_guard<std::mutex> lk(mutex);
-  return locked.find(key) != locked.end();
+  return get_lock_map().find(key) != get_lock_map().end();
 }
 
 } // key

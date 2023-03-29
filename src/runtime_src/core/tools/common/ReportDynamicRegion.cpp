@@ -62,7 +62,7 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
 
   for(auto& k_dfx : pt_dfx) {
     const boost::property_tree::ptree& dfx = k_dfx.second;
-    _output << "Xclbin UUID" << std::endl;
+    _output << "\nXclbin UUID\n";
     _output << "  " + dfx.get<std::string>("xclbin_uuid", "N/A") << std::endl;
     _output << std::endl;
 

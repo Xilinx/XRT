@@ -4,7 +4,10 @@
 #define XRT_CORE_HWCTX_HANDLE_H
 
 #include "core/common/cuidx_type.h"
+#include "core/common/error.h"
 #include "core/common/shim/hwqueue_handle.h"
+
+#include "xrt/xrt_hw_context.h"
 
 #include <memory>
 
@@ -17,11 +20,29 @@ namespace xrt_core {
 class hwctx_handle
 {
 public:
+  using qos_type = xrt::hw_context::cfg_param_type;
+  using access_mode = xrt::hw_context::access_mode;
   using slot_id = uint32_t;
 
   // Destruction must destroy the underlying hardware context
   virtual ~hwctx_handle()
   {}
+
+  // Update QoS of an existing hwardware context.  This is in response
+  // to experimental user facing xrt::hw_context::update_qos()
+  virtual void
+  update_qos(const qos_type&)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  // Update access mode for platforms that care.  This is used
+  // for Alveo mailbox where CUs are changed to be exclusive mode
+  virtual void
+  update_access_mode(access_mode)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 
   // The slotidx is used to encode buffer objects flags for legacy
   // shims and host applications that do not use context specific

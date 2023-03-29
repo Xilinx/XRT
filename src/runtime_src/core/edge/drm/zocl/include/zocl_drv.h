@@ -267,6 +267,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 void zocl_clear_mem_slot(struct drm_zocl_dev *zdev, u32 slot_idx);
+int zocl_cleanup_aie(struct drm_zocl_dev *zdev);
 int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		void *aie_res, uint8_t hw_gen);
 void zocl_destroy_aie(struct drm_zocl_dev *zdev);

@@ -80,7 +80,6 @@ namespace xdp {
   
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0; // should be changed
 
-
   AieTrace_EdgeImpl::AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       : AieTraceImpl(database, metadata) {
     // Pre-defined metric sets
@@ -100,7 +99,15 @@ namespace xdp {
     // These are also broadcast to memory module
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     mCoreTraceEndEvent   = XAIE_EVENT_DISABLED_CORE;
-    
+
+    /*
+     * This is needed because the cores are started/stopped during execution
+     * to get around some hw bugs. We cannot restart tracemodules when that happens.
+     * At the end, we need to use event generate register to create this event
+     * to gracefully shut down trace modules.
+     */
+    mWindowedTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+
     // **** Memory Module Trace ****
     // NOTE 1: Core events listed here are broadcast by the resource manager
     // NOTE 2: These are supplemented with counter events as those are dependent on counter #
@@ -191,9 +198,9 @@ namespace xdp {
       return false;
     }
 
-    // compile-time trace
+    // Check compile-time trace
     if (!metadata->getRuntimeMetrics()) {
-      return true;
+      return false;
     }
     
     return true;
@@ -386,7 +393,7 @@ namespace xdp {
     auto configChannel1 = metadata->getConfigChannel1();
 
     // Iterate over all used/specified tiles
-    // NOTE: rows are stored as absolute as requred by resource manager
+    // NOTE: rows are stored as absolute as required by resource manager
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
@@ -555,11 +562,15 @@ namespace xdp {
         // Delay cycles and user control are not compatible with each other
         if (metadata->getUseUserControl()) {
           mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-          mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-        } else if (metadata->getUseGraphIterator() && !configureStartIteration(core)) {
-          break;
-        } else if (metadata->getUseDelay() && !configureStartDelay(core)) {
-          break;
+          mCoreTraceEndEvent = mWindowedTraceEndEvent;
+        } else if (metadata->getUseGraphIterator()) {
+          if (!configureStartIteration(core))
+            break;
+          mWindowedTraceLocs.push_back(loc);
+        } else if (metadata->getUseDelay()) {
+          if (!configureStartDelay(core))
+            break;
+          mWindowedTraceLocs.push_back(loc);
         }
 
         // Set overall start/end for trace capture
@@ -941,9 +952,7 @@ namespace xdp {
     }
 
     mCoreTraceStartEvent = counterEvent;
-    // This is needed because the cores are started/stopped during execution
-    // to get around some hw bugs. We cannot restart tracemodules when that happens
-    mCoreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+    mCoreTraceEndEvent = mWindowedTraceEndEvent;
 
     return true;
   }
@@ -979,10 +988,21 @@ namespace xdp {
     }
 
     mCoreTraceStartEvent = counterEvent;
-    // This is needed because the cores are started/stopped during execution
-    // to get around some hw bugs. We cannot restart tracemodules when that happens
-    mCoreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+    mCoreTraceEndEvent = mWindowedTraceEndEvent;
 
     return true;
+  }
+
+  void AieTrace_EdgeImpl::flushAieTileTraceModule()
+  {
+    auto handle = metadata->getHandle();
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+
+    /*
+     * Flush for trace windowing
+     */
+    for (const auto& loc : mWindowedTraceLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mWindowedTraceEndEvent);
+    mWindowedTraceLocs.clear();
   }
 }

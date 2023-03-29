@@ -66,13 +66,11 @@ static ssize_t xclbinid_show(struct device *dev,
 	int i = 0;
 
 	read_lock(&zdev->attr_rwlock);
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (!zocl_slot || !zocl_slot->slot_xclbin ||
-		    !zocl_slot->slot_xclbin->zx_uuid) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
+		    !zocl_slot->slot_xclbin->zx_uuid)
+			continue;
 
 		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
 				zocl_slot->slot_xclbin->zx_uuid);
@@ -95,7 +93,7 @@ static ssize_t dtbo_path_show(struct device *dev,
 	int i = 0;
 
 	read_lock(&zdev->attr_rwlock);
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (!zocl_slot || !zocl_slot->slot_xclbin ||
 		    !zocl_slot->slot_xclbin->zx_dtbo_path)
@@ -317,8 +315,10 @@ static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
+		if (!zocl_slot || !zocl_slot->aie_data.size)
+			continue;
 
 		size = zocl_slot->aie_data.size;
 
@@ -416,6 +416,20 @@ static ssize_t host_mem_size_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(host_mem_size);
 
+static ssize_t
+zocl_reset_store(struct device *dev, struct device_attribute *da,
+		const char *buf, size_t count)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+        u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) < 0 || val != 1)
+		return -EINVAL;
+
+	return zocl_reset(zdev, buf, count);
+}
+static DEVICE_ATTR_WO(zocl_reset);
+
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
@@ -431,6 +445,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_dtbo_path.attr,
 	&dev_attr_host_mem_addr.attr,
 	&dev_attr_host_mem_size.attr,
+	&dev_attr_zocl_reset.attr,
 	NULL,
 };
 
@@ -450,16 +465,12 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-
-		if (!zocl_slot->debug_ip) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
+		if (!zocl_slot || !zocl_slot->debug_ip)
+			continue;
 
 		size = sizeof_section(zocl_slot->debug_ip, m_debug_ip_data);
-
 		if (off >= size) {
 			read_unlock(&zdev->attr_rwlock);
 			return 0;
@@ -495,16 +506,12 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-
-		if (!zocl_slot->ip) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
+		if (!zocl_slot || !zocl_slot->ip)
+			continue;
 
 		size = sizeof_section(zocl_slot->ip, m_ip_data);
-
 		if (off >= size) {
 			read_unlock(&zdev->attr_rwlock);
 			return 0;
@@ -540,16 +547,12 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-
-		if (!zocl_slot->connectivity) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
+		if (!zocl_slot || !zocl_slot->connectivity)
+			continue;
 
 		size = sizeof_section(zocl_slot->connectivity, m_connection);
-
 		if (off >= size) {
 			read_unlock(&zdev->attr_rwlock);
 			return 0;
@@ -585,13 +588,10 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-
-		if (!zocl_slot->topology) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
+		if (!zocl_slot || !zocl_slot->topology)
+			continue;
 
 		size = sizeof_section(zocl_slot->topology, m_mem_data);
 
@@ -631,16 +631,12 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
-
-		if (!zocl_slot->axlf) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
+		if (!zocl_slot || !zocl_slot->axlf)
+			continue;
 
 		size = zocl_slot->axlf_size;
-
 		if (off >= size) {
 			read_unlock(&zdev->attr_rwlock);
 			return 0;

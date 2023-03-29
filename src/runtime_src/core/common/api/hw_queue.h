@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <vector>
 
 namespace xrt {
 class hw_context;
@@ -17,6 +18,7 @@ namespace xrt_core {
 
 class command;
 class device;
+class fence;
 
 // class hw_queue - internal representation of hw queue for scheduling
 //
@@ -58,6 +60,14 @@ public:
   // and unmanaged commands.
   std::cv_status
   wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const;
+
+  // Enqueue a command returning a fence that can be waited on
+  xrt_core::fence
+  enqueue(xrt_core::command* cmd);
+
+  // Enqueue a command with dependencies
+  xrt_core::fence
+  enqueue(xrt_core::command* cmd, const std::vector<xrt_core::fence>& waits);
 
   // Wait for one call to exec_wait to return either from
   // some command completing or from a timeout.

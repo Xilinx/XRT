@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
@@ -21,6 +21,7 @@
 #include "command.h"
 #include "context_mgr.h"
 #include "device_int.h"
+#include "fence.h"
 #include "handle.h"
 #include "hw_context_int.h"
 #include "hw_queue.h"
@@ -635,7 +636,11 @@ public:
 
   ~ip_context()
   {
-    xrt_core::context_mgr::close_context(m_hwctx, m_idx);
+    try {
+      xrt_core::context_mgr::close_context(m_hwctx, m_idx);
+    }
+    catch (...) {
+    }
   }
 
   ip_context(const ip_context&) = delete;
@@ -882,6 +887,24 @@ public:
     }
 
     return {get_state_raw(), std::cv_status::no_timeout};
+  }
+
+  xrt_core::fence
+  enqueue(const std::vector<xrt_core::fence>& waits)
+  {
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_done)
+        throw std::runtime_error("bad command state, can't enqueue");
+      m_managed = m_done = false;
+    }
+    return m_hwqueue.enqueue(this, waits);
+  }
+
+  xrt_core::fence
+  enqueue()
+  {
+    return enqueue({});
   }
 
   ////////////////////////////////////////////////////////////////
@@ -1952,9 +1975,11 @@ class run_impl
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   std::vector<ipctx> ips;                 // ips controlled by this run object
+  std::vector<xrt_core::fence> m_waits;   // fence lifetime management
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
+  xrt_core::fence m_fence;                // fence for current invocation
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
@@ -2035,6 +2060,12 @@ public:
   get_kernel() const
   {
     return kernel.get();
+  }
+
+  xrt_core::fence
+  get_fence() const
+  {
+    return m_fence;
   }
 
   template <typename ERT_COMMAND_TYPE>
@@ -2180,9 +2211,8 @@ public:
     encode_cumasks = false;
   }
 
-  // start() - start the run object (execbuf)
-  virtual void
-  start()
+  void
+  prep_start()
   {
     encode_compute_units();
 
@@ -2190,7 +2220,13 @@ public:
     pkt->state = ERT_CMD_STATE_NEW;
 
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
+  }
 
+  // start() - start the run object (execbuf)
+  virtual void
+  start()
+  {
+    prep_start();
     cmd->run();
   }
 
@@ -2208,6 +2244,21 @@ public:
       value = std::numeric_limits<uint32_t>::max();
     set_offset_value(mailbox_auto_restart_cntr, &value, sizeof(value));
     start();
+  }
+
+  void
+  enqueue()
+  {
+    prep_start();
+    m_fence = cmd->enqueue();
+  }
+
+  void
+  enqueue(const std::vector<xrt_core::fence>& waits)
+  {
+    prep_start();
+    m_waits = waits;
+    m_fence = cmd->enqueue(m_waits);
   }
 
   void
@@ -2479,16 +2530,24 @@ public:
   }
 
   //Aquring mailbox read and write if not acquired already.
-  ~mailbox_impl() {
+  ~mailbox_impl()
+  {
+    try {
       if (!m_aquire_write) {
-          uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
-          kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
+        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+        kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
       }
       if (!m_aquire_read) {
-          uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
-          kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
+        uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+        kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
       }
+    }
+    catch (...) {
+      // Coverity correctly complains that above may throw
+      // resulting in terminate.
+    }
   }
+
   // write mailbox to hw
   void
   write()
@@ -3032,6 +3091,23 @@ run::
 start(const autostart& iterations)
 {
   handle->start(iterations);
+}
+
+void
+run::
+enqueue()
+{
+  handle->enqueue();
+}
+
+void
+run::
+enqueue(const std::vector<run>& waits)
+{
+  std::vector<xrt_core::fence> fence_waits;
+  std::transform(waits.begin(), waits.end(), std::back_inserter(fence_waits),
+                 [](auto& r) { return r.get_handle()->get_fence(); });
+  handle->enqueue(fence_waits);
 }
 
 void

@@ -137,7 +137,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 			return ret;
 
 		mutex_init(&zocl_slot->slot_xclbin_lock);
- 
+
 		if (ZOCL_PLATFORM_ARM64) {
 			zocl_slot->pr_isolation_freeze = 0x0;
 			zocl_slot->pr_isolation_unfreeze = 0x3;
@@ -170,7 +170,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 
 		zocl_slot->partial_overlay_id = -1;
 		zocl_slot->slot_idx = i;
-		zocl_slot->slot_type = DOMAIN_PL;
+		zocl_slot->slot_type = ZOCL_SLOT_TYPE_PHY;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -189,7 +189,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		mutex_init(&zocl_slot->slot_xclbin_lock);
 
 		zocl_slot->slot_idx = i;
-		zocl_slot->slot_type = DOMAIN_PS;
+		zocl_slot->slot_type = ZOCL_SLOT_TYPE_VIRT;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -1103,6 +1103,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	int year, mon, day;
 
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
+	if (!id)
+		return -EINVAL;
 	DRM_INFO("Probing for %s\n", id->compatible);
 
 	/* Create zocl device and initial */

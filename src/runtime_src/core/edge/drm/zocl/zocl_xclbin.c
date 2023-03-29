@@ -702,7 +702,7 @@ zocl_get_slot(struct drm_zocl_dev *zdev, uuid_t *id)
 	struct drm_zocl_slot *zocl_slot = NULL;
 	int i = 0;
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (zocl_slot) {
 			mutex_lock(&zocl_slot->slot_xclbin_lock);
@@ -916,7 +916,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 
         mutex_lock(&slot->slot_xclbin_lock);
 	/* Check unique ID. Avoid duplicate PL xclbin */
-	if ((slot->slot_type == DOMAIN_PL) &&
+	if ((slot->slot_type == ZOCL_SLOT_TYPE_PHY) &&
 	    (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid))) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
@@ -924,24 +924,13 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 		return ret;
 	}
 
+	slot->xclbin_type = ZOCL_XCLBIN_TYPE_PS;
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;
 	xclbin = (char *)axlf;
-	if (zocl_xclbin_get_uuid(slot) != NULL) {
-		if (zdev->aie) {
-			/*
-			 * Dont reset if aie is already in reset
-			 * state
-			 */
-			if( !zdev->aie->aie_reset) {
-				ret = zocl_aie_reset(zdev);
-				if (ret)
-					goto out;
-			}
-			zocl_destroy_aie(zdev);
-		}
-	}
+	if (zocl_xclbin_get_uuid(slot) != NULL)
+		zocl_cleanup_aie(zdev);
 
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
@@ -1166,7 +1155,20 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin
 static bool
 is_aie_only(struct axlf *axlf)
 {
-	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
+	if ((axlf->m_header.m_actionMask & AM_LOAD_AIE))
+		return true;
+
+	return false;
+}
+
+static bool
+is_pl_only(struct axlf *axlf)
+{
+	if (xrt_xclbin_get_section_num(axlf, IP_LAYOUT) &&
+		!xrt_xclbin_get_section_num(axlf, AIE_METADATA))
+		return true;
+
+	return false;
 }
 
 int
@@ -1243,6 +1245,81 @@ populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	return 0;
 }
 
+static bool
+zocl_bitstream_is_locked(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
+{
+	int ref_cnt = 0;
+
+	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
+	 * can be opened and/or closed
+	 * 2. A opened context would lock bitstream and hold it.
+	 * 3. If all contexts are closed, new kds would make sure all
+	 * relative exec BO are released
+	 */
+	ref_cnt = zocl_xclbin_refcount(slot);
+	BUG_ON(ref_cnt < 0);
+
+	return ref_cnt != 0;
+}
+
+static int
+zocl_resolver(struct drm_zocl_dev *zdev, struct axlf *axlf, xuid_t *xclbin_id,
+	      uint32_t qos, uint32_t *slot_id)
+{
+	struct drm_zocl_slot *slot = NULL;
+	uint32_t s_id = 0;
+	uint32_t zocl_xclbin_type = 0;
+
+	/* Slots need to be decided based on interface ID. But currently this
+	 * functionality is not yet ready. Hence we are hard coding the Slots
+	 * based on the type of XCLBIN. This logic need to be updated in future.
+	 */
+	/* Right now the hard coded logic as follows:
+	 * Slot - 0 : FULL XCLBIN (Both PL and AIE) / PL Only XCLBIN
+	 * Slot - 1 : AIE Only XCLBIN
+	 */
+	if (is_aie_only(axlf)) {
+		/* For AIE only XCLBIN always download */
+		s_id = ZOCL_AIE_ONLY_XCLBIN_SLOT;
+		zocl_xclbin_type = ZOCL_XCLBIN_TYPE_AIE_ONLY;
+		goto done;
+	}
+	else {
+		s_id = ZOCL_DEFAULT_XCLBIN_SLOT;
+		if (is_pl_only(axlf))
+			zocl_xclbin_type = ZOCL_XCLBIN_TYPE_PL_ONLY;
+		else
+			zocl_xclbin_type = ZOCL_XCLBIN_TYPE_FULL;
+	}
+
+	slot = zdev->pr_slot[s_id];
+	if (!slot) {
+		DRM_ERROR("Slot[%d] doesn't exists or Invaid slot", s_id);
+		return -EINVAL;
+	}
+
+	mutex_lock(&slot->slot_xclbin_lock);
+	slot->xclbin_type = zocl_xclbin_type;
+	if (zocl_xclbin_same_uuid(slot, xclbin_id)) {
+		if (qos & DRM_ZOCL_FORCE_PROGRAM) {
+			// We come here if user sets force_xclbin_program
+			// option "true" in xrt.ini under [Runtime] section
+			DRM_WARN("%s Force xclbin download", __func__);
+		} else {
+			DRM_INFO("Exists xclbin %pUb to slot %d",
+							xclbin_id, s_id);
+			mutex_unlock(&slot->slot_xclbin_lock);
+			return -EEXIST;
+		}
+	}
+
+	mutex_unlock(&slot->slot_xclbin_lock);
+done:
+	*slot_id = s_id;
+	DRM_INFO("Loading xclbin %pUb to slot %d", xclbin_id, *slot_id);
+	return 0;
+}
+
 /*
  * This function is the main entry point to load xclbin. It's takes an userspace
  * pointer of xclbin and copy the xclbin data to kernel space. Then load that
@@ -1269,32 +1346,19 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	void *aie_res = 0;
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
-	int slot_id = axlf_obj->za_slot_id;
+	int slot_id = 0;
+	uint32_t qos = 0;
 	uint8_t hw_gen = axlf_obj->hw_gen;
 
-	if ((slot_id < 0) || (slot_id > zdev->num_pr_slot)) {
-		DRM_ERROR("Invalid Slot[%d]", slot_id);
-		return -EINVAL;
-	}
-
-	slot = zdev->pr_slot[slot_id];
-	if (!slot) {
-		DRM_ERROR("Slot[%d] doesn't exists", slot_id);
-		return -EINVAL;
-	}
-
-	mutex_lock(&slot->slot_xclbin_lock);
-
+	/* Download the XCLBIN from user space to kernel space and validate */
 	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
 	    sizeof(struct axlf))) {
 		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
-		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
 
 	if (memcmp(axlf_head.m_magic, "xclbin2", 8)) {
 		DRM_WARN("xclbin magic is invalid %s", axlf_head.m_magic);
-		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EINVAL;
 	}
 
@@ -1305,14 +1369,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	axlf = vmalloc(axlf_size);
 	if (!axlf) {
 		DRM_WARN("read xclbin fails: no memory");
-		mutex_unlock(&slot->slot_xclbin_lock);
 		return -ENOMEM;
 	}
 
 	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
 		DRM_WARN("read xclbin: fail copy from user memory");
 		vfree(axlf);
-		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
 
@@ -1321,39 +1383,30 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (ret) {
 		DRM_WARN("read xclbin: fail the access check");
 		vfree(axlf);
-		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
-	
 
+	/* TODO : qos need to define */
+	qos |= axlf_obj->za_flags;
+	ret = zocl_resolver(zdev, axlf, &axlf_head.m_header.uuid, qos, &slot_id);
+	if (ret) {
+		if (ret == -EEXIST) {
+			vfree(axlf);
+			return 0;
+		}
+
+		DRM_ERROR("Download xclbin failed\n");
+		ret = -EINVAL;
+		goto out0;
+	}
+
+	slot = zdev->pr_slot[slot_id];
+	mutex_lock(&slot->slot_xclbin_lock);
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
 	 */
 	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
-
-	/* Check unique ID */
-	if (zocl_xclbin_same_uuid(slot, &axlf_head.m_header.uuid)) {
-		if (!(axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM)) {
-			if (is_aie_only(axlf)) {
-				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
-							     client);
-				if (ret)
-					DRM_WARN("read xclbin: fail to load AIE");
-				else {
-					zocl_create_aie(zdev, axlf, aie_res, hw_gen);
-					zocl_cache_xclbin(zdev, slot, axlf, xclbin);
-				}
-			} else {
-				DRM_INFO("%s The XCLBIN already loaded", __func__);
-			}
-			goto out0;
-		} else {
-			// We come here if user sets force_xclbin_program
-			// option "true" in xrt.ini under [Runtime] section
-			DRM_WARN("%s The XCLBIN already loaded. Force xclbin download", __func__);
-		}
-	}
 
 	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
 	 * can be opened and/or closed
@@ -1361,7 +1414,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * 3. If all contexts are closed, new kds would make sure all
 	 * relative exec BO are released
 	 */
-	if (zocl_xclbin_refcount(slot) > 0) {
+	if (zocl_bitstream_is_locked(zdev, slot)) {
 		DRM_ERROR("Current xclbin is in-use, can't change");
 		ret = -EBUSY;
 		goto out0;
@@ -1407,19 +1460,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  */
 			if (zocl_xclbin_get_uuid(slot) != NULL) {
 				zocl_destroy_cu_slot(zdev, slot->slot_idx);
-				if (zdev->aie) {
-					/*
-					 * Dont reset if aie is already in reset
-					 * state
-					 */
-					if( !zdev->aie->aie_reset) {
-						ret = zocl_aie_reset(zdev);
-						if (ret)
-							goto out0;
-					}
-					zocl_destroy_aie(zdev);
-				}
+				zocl_cleanup_aie(zdev);
 			}
+
 			/*
 			 * Make sure we load PL bitstream first,
 			 * if there is one, before loading AIE PDI.
@@ -1439,6 +1482,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 				goto out0;
 		}
 	} else if (is_aie_only(axlf)) {
+		zocl_cleanup_aie(zdev);
+
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
 		if (ret)
 			goto out0;

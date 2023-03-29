@@ -1785,6 +1785,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
+	/* When XOCL loading/reloading we should make sure ERT
+	 * cleanup all the prior CUs/SCUs if exists. This is because ERT doesn't
+	 * get any notification when XOCL reloaded.
+	 */
+	xdev->reset_ert_cus = true;
+
 	xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 	/* Waiting for all subdev to be initialized before returning. */
 	flush_delayed_work(&xdev->core.works[XOCL_WORK_REFRESH_SUBDEV].work);

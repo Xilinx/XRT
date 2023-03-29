@@ -55,13 +55,18 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  // list of sorted non-verbose labels
+  // list of non-verbose labels
   std::vector<std::string> non_verbose_labels = { 
       "build flags", 
       "git branch", 
       "git hash",  
       "git hash date",
-      "vitis version" 
+      "vitis version",
+      "boot on default",
+      "boot on backup",
+      "pl is ready",
+      "ps is ready",
+      "sc is ready"
     };
 
   output << "Vmr Status" << std::endl;

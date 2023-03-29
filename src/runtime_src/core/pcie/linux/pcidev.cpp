@@ -157,7 +157,7 @@ namespace xrt_core { namespace pci {
 
 namespace sysfs {
 
-static const std::string dev_root = "/sys/bus/pci/devices/";
+static constexpr const char* dev_root = "/sys/bus/pci/devices/";
 
 static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
@@ -166,7 +166,7 @@ get_path(const std::string& name, const std::string& subdev, const std::string& 
   if (get_subdev_dir_name(dev_root + name, subdev, subdir) != 0)
     return "";
 
-  auto path = dev_root;
+  std::string path = dev_root;
   path += name;
   path += "/";
   path += subdir;

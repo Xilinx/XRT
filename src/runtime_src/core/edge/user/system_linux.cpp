@@ -141,7 +141,6 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put_child("libraries", _ptLibInfo);
 
   // The file is a requirement as per latest Linux standards
-  // https://www.freedesktop.org/software/systemd/man/os-release.html
   std::ifstream ifs("/etc/os-release");
   if (ifs.good()) {
     boost::property_tree::ptree opt;

@@ -132,9 +132,11 @@ namespace xdp {
                        const struct debug_ip_data* debugIpData) ;
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
+    void initializeFIFO(DeviceInfo* devInfo) ;
     void initializeXrtIP(XclbinInfo* xclbin);
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
+    void setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
     void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
@@ -275,8 +277,9 @@ namespace xdp {
 
     // *********************************************************
     // ***** Functions related to AIE specific information *****
-    XDP_EXPORT bool isAIECounterRead(uint64_t deviceId) ;
+    XDP_EXPORT uint8_t getAIEGeneration(uint64_t deviceId) ;
     XDP_EXPORT void setIsAIECounterRead(uint64_t deviceId, bool val) ;
+    XDP_EXPORT bool isAIECounterRead(uint64_t deviceId) ;
     XDP_EXPORT void setIsGMIORead(uint64_t deviceId, bool val) ;
     XDP_EXPORT bool isGMIORead(uint64_t deviceId) ;
     XDP_EXPORT uint64_t getNumAIECounter(uint64_t deviceId) ;

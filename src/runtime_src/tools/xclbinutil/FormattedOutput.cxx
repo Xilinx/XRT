@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2018, 2022 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -122,10 +123,10 @@ getModeAsPrettyString(const axlf& _xclBinHeader)
 }
 
 std::string
-FormattedOutput::getFeatureRomUuidAsString(const axlf& _xclBinHeader)
+FormattedOutput::getInterfaceUuidAsString(const axlf& _xclBinHeader)
 {
   std::string sTemp("");
-  XUtil::binaryBufferToHexString(_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid), sTemp);
+  XUtil::binaryBufferToHexString(_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid), sTemp);
   return sTemp;
 }
 
@@ -580,7 +581,7 @@ reportHardwarePlatform(std::ostream& _ostream,
 
   // Static UUID
   {
-    std::string sStaticUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.rom_uuid);
+    std::string sStaticUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.m_interface_uuid);
     _ostream << boost::format("   %-23s %s\n") % "Static UUID:" % sStaticUUID;
   }
 

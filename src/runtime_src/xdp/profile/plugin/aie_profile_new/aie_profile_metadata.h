@@ -37,9 +37,9 @@ class AieProfileMetadata{
     static constexpr int NUM_MODULES = 4;
 
     const std::vector<std::string> moduleNames = 
-        {"aie", "aie_memory", "interface_tile", "mem_tile"};
+        {"aie", "aie_memory", "interface_tile", "memory_tile"};
     const std::string defaultSets[NUM_MODULES] = 
-        {"heat_map", "conflicts", "input_throughputs", "input_channels"};
+        {"write_throughputs", "write_throughputs", "input_throughputs", "input_channels"};
     const int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, NUM_MEM_TILE_COUNTERS};
     const module_type moduleTypes[NUM_MODULES] = 
@@ -73,6 +73,7 @@ class AieProfileMetadata{
     void* getHandle() {return handle;}
     uint32_t getPollingIntervalVal(){return pollingInterval;}
 
+    void checkSettings();
     int getHardwareGen();
     uint16_t getAIETileRowOffset();
     std::vector<std::string> getSettingsVector(std::string settingsString);

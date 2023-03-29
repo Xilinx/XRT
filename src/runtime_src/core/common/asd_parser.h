@@ -104,7 +104,7 @@ struct aie_core_tile_status
 
   // Get the size of this structure using aie tiles metadata
   static uint64_t
-  size(aie_tiles_info& info);
+  size(const aie_tiles_info& info);
 
   // Retrieve corresponding tile type enum value
   static inline aie_tile_type
@@ -117,14 +117,14 @@ struct aie_core_tile_status
   // size of buffer and offsets info for various data fields is obtained
   // from tiles metadata(aie_tiles_info)
   static void
-  parse_buf(char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status);
+  parse_buf(const std::vector<char>& buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status);
 
   // Format the parsed buffer into ptree to be used by tools for reporting
   static boost::property_tree::ptree
-  format_status(std::vector<aie_tiles_status>& aie_status,
-                uint32_t start_col,
+  format_status(const std::vector<aie_tiles_status>& aie_status,
                 uint32_t cols,
-                aie_tiles_info& tiles_info);
+                const aie_tiles_info& tiles_info,
+                uint32_t cols_filled);
 };
   
 // Data structure to capture the mem tile status
@@ -140,7 +140,7 @@ struct aie_mem_tile_status
 
   // Get the size of this structure using aie tiles metadata
   static uint64_t
-  size(aie_tiles_info& info);
+  size(const aie_tiles_info& info);
 
   // Retrieve corresponding tile type enum value
   static inline aie_tile_type
@@ -153,14 +153,14 @@ struct aie_mem_tile_status
   // size of buffer and offsets info for various data fields is obtained
   // from tiles metadata(aie_tiles_info)
   static void
-  parse_buf(char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status);
+  parse_buf(const std::vector<char>& buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status);
 
   // Format the parsed buffer into ptree to be used by tools for reporting
   static boost::property_tree::ptree
-  format_status(std::vector<aie_tiles_status>& aie_status,
-                uint32_t start_col,
+  format_status(const std::vector<aie_tiles_status>& aie_status,
                 uint32_t cols,
-                aie_tiles_info& tiles_info);
+                const aie_tiles_info& tiles_info,
+                uint32_t cols_filled);
 };
   
 // Data structure to capture the shim tile status
@@ -176,7 +176,7 @@ struct aie_shim_tile_status
 
   // Get the size of this structure using aie tiles metadata
   static uint64_t
-  size(aie_tiles_info& info);
+  size(const aie_tiles_info& info);
 
    // Retrieve corresponding tile type enum value
   static inline aie_tile_type
@@ -189,14 +189,14 @@ struct aie_shim_tile_status
   // size of buffer and offsets info for various data fields is obtained
   // from tiles metadata(aie_tiles_info)
   static void
-  parse_buf(char* buf, aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status);
+  parse_buf(const std::vector<char>& buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status);
 
   // Format the parsed buffer into ptree to be used by tools for reporting
   static boost::property_tree::ptree
-  format_status(std::vector<aie_tiles_status>& aie_status,
-                uint32_t start_col,
+  format_status(const std::vector<aie_tiles_status>& aie_status,
                 uint32_t cols,
-                aie_tiles_info& tiles_info);
+                const aie_tiles_info& tiles_info,
+                uint32_t cols_filled);
 };
 
 class aie_tiles_status
@@ -206,7 +206,7 @@ class aie_tiles_status
   std::vector<aie_mem_tile_status> mem_tiles;
   std::vector<aie_shim_tile_status> shim_tiles;
   
-  aie_tiles_status(aie_tiles_info& stats)
+  aie_tiles_status(const aie_tiles_info& stats)
   {
     core_tiles.resize(stats.core_rows);
     mem_tiles.resize(stats.mem_rows);
@@ -303,20 +303,23 @@ enum class dma_mm2s_status : uint32_t
   xaie_dma_status_mm2s_max
 };
 
-void
-aie_status_version_check(uint16_t& major_ver, uint16_t& minor_ver);
-
-void
-aie_info_sanity_check(uint32_t start_col, uint32_t num_cols, aie_tiles_info& info);
-
 template <typename tile_type>
 std::vector<aie_tiles_status>
-parse_data_from_buf(char* buf, aie_tiles_info& info)
+parse_data_from_buf(const std::vector<char>& buf, const aie_tiles_info& info, uint32_t cols_filled)
 {
   std::vector<aie_tiles_status> aie_status;
-  aie_status.reserve(info.cols);
+  uint16_t cols_count = 0;
 
-  for (uint32_t i = 0; i < info.cols; i++) {
+  while (cols_filled) {
+    if (cols_filled & 0x1)
+      ++cols_count;
+
+    cols_filled = cols_filled >> 1;
+  }
+
+  aie_status.reserve(cols_count);
+
+  for (uint32_t i = 0; i < cols_count; i++) {
     aie_status.emplace_back(info);
   }
 
@@ -326,16 +329,20 @@ parse_data_from_buf(char* buf, aie_tiles_info& info)
 
 template <typename tile_type>
 boost::property_tree::ptree
-format_aie_info(std::vector<aie_tiles_status>& aie_status,
-                uint32_t start_col,
+format_aie_info(const std::vector<aie_tiles_status>& aie_status,
                 uint32_t cols,
-                aie_tiles_info& tiles_info)
+                const aie_tiles_info& tiles_info,
+                uint32_t cols_filled)
 {
-  return tile_type::format_status(aie_status, start_col, cols, tiles_info);
+  return tile_type::format_status(aie_status, cols, tiles_info, cols_filled);
 }
 
 boost::property_tree::ptree
-get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info); 
+get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info,
+                        uint32_t& cols_filled);
+
+boost::property_tree::ptree
+get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type);
 } // asd_parser
 
 #endif

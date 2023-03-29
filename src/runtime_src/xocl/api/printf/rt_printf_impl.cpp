@@ -731,7 +731,7 @@ void BufferPrintf::print(std::ostream& os)
       format.getSpecifiers(conversionVec);
       std::vector<PrintfArg> argVec;
       int argOffset = getFormatByteCount();
-      for ( auto conversion : conversionVec ) {
+      for (auto& conversion : conversionVec ) {
         PrintfArg arg = buildArg(m_currentOffset + argOffset, conversion);
         argVec.push_back(arg);
         argOffset += getElementByteCount(conversion) * conversion.m_vectorSize;
@@ -760,7 +760,7 @@ void BufferPrintf::dbgDump(std::ostream& os) const
   IOS_FlagRestore ios_flagRestore(os);
   os << "------- BUFFER DEBUG DUMP --------\n";
   os << "String table:" << "\n";
-  for ( auto iter : m_stringTable ) {
+  for (auto& iter : m_stringTable ) {
     os << iter.first << "=" << escape(iter.second) << "\n";
   }
   os << "\nBuffer Contents:" << "\n";
@@ -891,7 +891,7 @@ void BufferPrintf::nextRecord()
   // skip format ID
   m_currentOffset += getFormatByteCount();
   // Skip all arguments
-  for (auto conversion : conversionVec) {
+  for (auto& conversion : conversionVec) {
     m_currentOffset += getElementByteCount(conversion) * conversion.m_vectorSize;
     // HACK: Special handling for vec3 packed strangely from compiler
     //    float3 += 32 bits

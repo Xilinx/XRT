@@ -229,14 +229,13 @@ static void add_readback_data(struct xocl_nifd* nifd, unsigned int frame, unsign
     write_nifd_register(nifd, offset, NIFD_CONFIG_DATA_M2);
 }
 
-static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
+static long readback_variable_core(struct xocl_nifd* nifd, unsigned int num_bits, unsigned int *arg)
 {
     // This function performs the readback operation.  The argument
     //  input data and the result storage is completely located
     //  in kernel space.
 
     unsigned int clock_status;
-    unsigned int num_bits;
     unsigned int i;
     unsigned int frame;
     unsigned int offset;
@@ -252,8 +251,7 @@ static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
     // put it into stepping mode for a little bit in order to get
     // this to work.  This is a bug in the hardware that needs to 
     // be fixed.
-    if (clock_status == 1)
-    {
+    if (clock_status == 1) {
         stop_controlled_clock(nifd);
         start_controlled_clock_stepping(nifd);
     }
@@ -263,11 +261,9 @@ static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
     clear_configuration_memory(nifd, 2);
     // Fill up Memory-2 with all the frames and offsets passed in.
     //  The data is passed in the format of:
-    //  [num_bits][frame][offset][frame][offset]...[space for result]
-    num_bits = *arg;
-    ++arg;
-    for (i = 0; i < num_bits; ++i)
-    {
+    //  [frame][offset][frame][offset]...[space for result]
+
+    for (i = 0; i < num_bits; ++i) {
         frame = *arg;
         ++arg;
         offset = *arg;
@@ -278,24 +274,21 @@ static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
     // I should be reading 32-bit words at a time
     readback_status = 0;
     timeout_limit = timeout_limit * num_bits;
-    while (readback_status == 0 && timeout_counter < timeout_limit)
-    {
+    while (readback_status == 0 && timeout_counter < timeout_limit) {
         msleep(100);
         readback_status = (read_nifd_status(nifd) & 0x8);
         ++timeout_counter;
     }
 
-    if (timeout_counter == timeout_limit) {
+    if (timeout_counter == timeout_limit)
         return -1;
-    }
 
     // The readback is ready, so we need to figure out how many 
     // words to read
-    readback_data_word_cnt = 
-    read_nifd_register(nifd, NIFD_READBACK_DATA_WORD_CNT);
+    readback_data_word_cnt =
+      read_nifd_register(nifd, NIFD_READBACK_DATA_WORD_CNT);
 
-    for (i = 0; i < readback_data_word_cnt; ++i)
-    {
+    for (i = 0; i < readback_data_word_cnt; ++i) {
         next_word = read_nifd_register(nifd, NIFD_READBACK_DATA);
         (*arg) = next_word;
         ++arg;
@@ -313,41 +306,52 @@ static long readback_variable(struct xocl_nifd* nifd, void __user *arg)
     // The information will be passed in this format:
     //  [numBits][frame][offset][frame][offset]...[space for result]
     unsigned int num_bits;
-    unsigned int num_words;
-    unsigned int total_data_size;
+    void __user *data_payload;
+    unsigned int result_space_size;
+    unsigned int total_data_payload_size;
     unsigned int *kernel_memory;
     unsigned int core_result;
 
+    // Copy the first unsigned int, which will determine the size of
+    // the rest of the data to copy.
     if (copy_from_user(&num_bits, arg, sizeof(unsigned int)))
         return -EFAULT;
 
-    num_words = num_bits % 32 ? num_bits / 32 + 1 : num_bits / 32;
+    // We pack the results into the space for the result.  Each
+    // frame + offset pair will read a single bit that gets packed.
+    result_space_size = num_bits % 32 ? num_bits / 32 + 1 : num_bits / 32;
 
-    total_data_size = (1 + (num_bits * 2) + num_words) 
-                        * sizeof(unsigned int);
+    // The total amount of the payload buffer that should have been passed
+    // in by the user will have two unsigned ints per bit and the space
+    // to store the result
+    total_data_payload_size =
+      ((num_bits * 2) + result_space_size) * sizeof(unsigned int);
 
-    //total_data_size = (num_bits * 3 + 1) * sizeof(unsigned int) ;
-    kernel_memory = (unsigned int *)(vmalloc(total_data_size));
+    kernel_memory = (unsigned int *)(vmalloc(total_data_payload_size));
 
     if (!kernel_memory)
         return -ENOMEM;
 
-    if (copy_from_user(kernel_memory, arg, total_data_size))
-    {
+    // We've already seen the num_bits at the beginning of the user data,
+    // and used it to determine the amount of kernel memory to allocate,
+    // so don't read it again.  Instead, only read the data payload portion
+    data_payload = (void*)((unsigned int*)(arg) + 1);
+
+    if (copy_from_user(kernel_memory, data_payload, total_data_payload_size)) {
         vfree(kernel_memory);
         return -EFAULT;
     }
 
-    core_result = readback_variable_core(nifd, kernel_memory);
+    core_result = readback_variable_core(nifd, num_bits, kernel_memory);
 
-    if (core_result)
-    {
+    if (core_result) {
         vfree(kernel_memory);
         return core_result;
     }
 
-    if (copy_to_user(arg, kernel_memory, total_data_size))
-    {
+    // We don't copy back the num_bits, only the payload portion which
+    // contains the read data
+    if (copy_to_user(data_payload, kernel_memory, total_data_payload_size)) {
         vfree(kernel_memory);
         return -EFAULT;
     }
@@ -356,7 +360,7 @@ static long readback_variable(struct xocl_nifd* nifd, void __user *arg)
     return 0; // Success
 }
 
-static long switch_clock_mode(struct xocl_nifd* nifd, void __user *arg)
+static long switch_clock_mode(struct xocl_nifd* nifd)
 {
     write_nifd_register(nifd, 0x04, NIFD_CLK_MODES);
     return 0;
@@ -395,15 +399,13 @@ static void add_breakpoint_data(struct xocl_nifd* nifd,
     write_nifd_register(nifd, offset, register_offset);
 }
 
-static long add_breakpoints_core(struct xocl_nifd* nifd, unsigned int *arg)
+static long add_breakpoints_core(struct xocl_nifd* nifd, unsigned int num_breakpoints, unsigned int *arg)
 {
     // Format of user data:
-    // [numBreakpoints]
     // [frameAddress]
     // [frameOffset]
     // [constraint]...[condition]
 
-    unsigned int num_breakpoints;
     unsigned int i;
     unsigned int frame_address;
     unsigned int frame_offset;
@@ -418,12 +420,7 @@ static long add_breakpoints_core(struct xocl_nifd* nifd, unsigned int *arg)
     // All breakpoints need to be set at the same time
     clear_configuration_memory(nifd, 1);
 
-    num_breakpoints = (*arg);
-
-    ++arg;
-
-    for (i = 0; i < num_breakpoints; ++i)
-    {
+    for (i = 0; i < num_breakpoints; ++i) {
         frame_address = (*arg);
         ++arg;
         frame_offset = (*arg);
@@ -447,26 +444,38 @@ static long add_breakpoints(struct xocl_nifd* nifd, void __user *arg)
     // [numBreakpoints][frameAddress]
     // [frameOffset][constraint]...[condition]
     unsigned int num_breakpoints;
-    unsigned int total_data_size;
+    void __user *data_payload;
+    unsigned int total_data_payload_size;
+    //    unsigned int total_data_size;
     unsigned int *kernel_memory;
     long result;
 
+    // First, copy the number of breakpoints from the user.  This will
+    // determine the amount of kernel memory we allocate.
     if (copy_from_user(&num_breakpoints, arg, sizeof(unsigned int)))
         return -EFAULT;
 
-    total_data_size = (num_breakpoints * 3 + 1 + 1) 
-                        * sizeof(unsigned int);
-    kernel_memory = (unsigned int *)(vmalloc(total_data_size));
+    // Every breakpoint will have an address, offset, and constraint.
+    // So the total size of the payload will be 3 times the number
+    // of breakpoints plus an additional unsigned int to store the overall
+    // condition
+    total_data_payload_size = ((num_breakpoints*3) + 1) * sizeof(unsigned int);
+
+    kernel_memory = (unsigned int *)(vmalloc(total_data_payload_size));
     if (!kernel_memory)
         return -ENOMEM;
 
-    if (copy_from_user(kernel_memory, arg, total_data_size))
-    {
+    // We've already copied the num_breakpoints and allocated memory based
+    // on that number, so don't reread it.  Instead only copy over the
+    // payload.
+    data_payload = (void*)((unsigned int*)(arg) + 1);
+
+    if (copy_from_user(kernel_memory, data_payload, total_data_payload_size)) {
         vfree(kernel_memory);
         return -EFAULT;
     }
 
-    result = add_breakpoints_core(nifd, kernel_memory);
+    result = add_breakpoints_core(nifd, num_breakpoints, kernel_memory);
     vfree(kernel_memory);
 
     return result;
@@ -519,7 +528,7 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd,
         status = readback_variable(nifd, data);
         break;
     case NIFD_SWITCH_CLOCK_MODE:
-        status = switch_clock_mode(nifd, data);
+        status = switch_clock_mode(nifd);
         break;
     case NIFD_ADD_BREAKPOINTS:
         status = add_breakpoints(nifd, data);

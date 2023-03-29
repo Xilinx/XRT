@@ -40,6 +40,7 @@
 constexpr uint32_t MAX_TILES = 400;
 constexpr uint64_t ALIGNMENT_SIZE = 4096;
 
+
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using TraceInputConfiguration = xdp::built_in::TraceInputConfiguration;
@@ -47,6 +48,25 @@ namespace xdp {
   using TraceTileType = xdp::built_in::TraceTileType;
   using MessageConfiguration = xdp::built_in::MessageConfiguration;
   using Messages = xdp::built_in::Messages;
+
+  constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
+  constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
+  constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 
+  ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
+
+  AieTrace_x86Impl::AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+      : AieTraceImpl(database, metadata) 
+  {
+    auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
+    device = xrt::device(spdevice);
+  
+    auto uuid = device.get_xclbin_uuid();
+
+    if (metadata->getHardwareGen() == 1)
+      aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config");
+    else 
+      aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie2_trace_config");
+  }
 
   void AieTrace_x86Impl::updateDevice() {
 
@@ -78,13 +98,7 @@ namespace xdp {
 
   bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle) {
       
-    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
-    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
-    constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 
-    ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
-
     //Gather data to send to PS Kernel
-
     if (!metadata->getIsValidMetrics()) {
       std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
@@ -142,42 +156,32 @@ namespace xdp {
 
     //Attempt to schedule the kernel and parse the tile configuration output
     try {
-      auto spdevice = xrt_core::get_userpf_device(handle);
-      auto device = xrt::device(spdevice);
-    
-      auto uuid = device.get_xclbin_uuid();
-      xrt::kernel aie_trace_kernel;
-      if (metadata->getHardwareGen() == 1)
-        aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config");
-      else 
-        aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie2_trace_config");
-
       //input bo  
-      auto bo0 = xrt::bo(device, INPUT_SIZE, 2);
-      auto bo0_map = bo0.map<uint8_t*>();
-      std::fill(bo0_map, bo0_map + INPUT_SIZE, 0);
+      auto inbo = xrt::bo(device, INPUT_SIZE, 2);
+      auto inbo_map = inbo.map<uint8_t*>();
+      std::fill(inbo_map, inbo_map + INPUT_SIZE, 0);
    
       //output bo
-      auto outTileConfigbo = xrt::bo(device, OUTPUT_SIZE, 2);
-      auto outTileConfigbomapped = outTileConfigbo.map<uint8_t*>();
-      memset(outTileConfigbomapped, 0, OUTPUT_SIZE);
+      auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
+      auto outbo_map = outbo.map<uint8_t*>();
+      memset(outbo_map, 0, OUTPUT_SIZE);
 
       //message_output_bo
       auto messagebo = xrt::bo(device, MSG_OUTPUT_SIZE, 2);
-      auto messagebomapped = messagebo.map<uint8_t*>();
-      memset(messagebomapped, 0, MSG_OUTPUT_SIZE);
+      auto messagebo_map = messagebo.map<uint8_t*>();
+      memset(messagebo_map, 0, MSG_OUTPUT_SIZE);
 
-      std::memcpy(bo0_map, input, total_size);
-      bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
+      std::memcpy(inbo_map, input, total_size);
+      inbo.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
 
-      auto run = aie_trace_kernel(bo0, outTileConfigbo, messagebo);
+      auto run = aie_trace_kernel(inbo, outbo, messagebo, 0 /*setup iteration*/);
       run.wait();
 
-      outTileConfigbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
-      TraceOutputConfiguration* cfg = reinterpret_cast<TraceOutputConfiguration*>(outTileConfigbomapped);
+      outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
+      TraceOutputConfiguration* cfg = reinterpret_cast<TraceOutputConfiguration*>(outbo_map);
 
       messagebo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, MSG_OUTPUT_SIZE, 0);
-      uint8_t* msgStruct = reinterpret_cast<uint8_t*>(messagebomapped);
+      uint8_t* msgStruct = reinterpret_cast<uint8_t*>(messagebo_map);
       parseMessages(msgStruct);
 
       // Update the config tiles
@@ -255,7 +259,7 @@ namespace xdp {
           (db->getStaticInfo()).addAIECoreEventResources(deviceId, event, cfg->numTileCoreTraceEvents[event]);
         if (cfg->numTileMemoryTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIEMemoryEventResources(deviceId, event, cfg->numTileMemoryTraceEvents[event]);
-        if (cfg->numTileMemoryTraceEvents[event] != 0)
+        if (cfg->numTileMemTileTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIEMemTileEventResources(deviceId, event, cfg->numTileMemTileTraceEvents[event]);
       } 
 
@@ -270,6 +274,37 @@ namespace xdp {
     
     free(input_params);
     return true; //placeholder
+  }
+
+  void AieTrace_x86Impl::flushAieTileTraceModule (){
+
+    try { 
+      //input bo
+      auto inbo = xrt::bo(device, INPUT_SIZE, 2);
+      auto inbo_map = inbo.map<uint8_t*>();
+      memset(inbo_map, 0, INPUT_SIZE); 
+    
+      //output bo
+      auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
+      auto outbo_map = outbo.map<uint8_t*>();
+      memset(outbo_map, 0, OUTPUT_SIZE);
+
+      //message_output_bo
+      auto messagebo = xrt::bo(device, MSG_OUTPUT_SIZE, 2);
+      auto messagebo_map = messagebo.map<uint8_t*>();
+      memset(messagebo_map, 0, MSG_OUTPUT_SIZE);
+
+      auto run = aie_trace_kernel(inbo, outbo, messagebo, 1 /*flush iteration*/);
+      run.wait();
+
+    } catch (...) {
+      std::string msg = "The aie_trace_config flush failed.";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);  
+      return;  
+    } 
+
+    std::string msg = "The aie_trace_config flush was successfully scheduled.";
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
   }
 
 

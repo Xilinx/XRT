@@ -31,6 +31,7 @@ class xrtHandles : public pscontext
     XAie_DevInst* aieDevInst = nullptr;
     xaiefal::XAieDev* aieDev = nullptr;
     xclDeviceHandle handle = nullptr;
+    std::vector<XAie_LocType> windowedTraceLocs;
 
     xrtHandles() = default;
     ~xrtHandles()
@@ -161,9 +162,7 @@ namespace {
         return false;
 
     config.coreTraceStartEvent = counterEvent;
-    // This is needed because the cores are started/stopped during execution
-    // to get around some hw bugs. We cannot restart tracemodules when that happens
-    config.coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+    config.coreTraceEndEvent =  config.windowedTraceEndEvent;
 
     return true;
   }
@@ -222,9 +221,7 @@ namespace {
     }
 
     config.coreTraceStartEvent = counterEvent;
-    // This is needed because the cores are started/stopped during execution
-    // to get around some hw bugs. We cannot restart tracemodules when that happens
-    config.coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+    config.coreTraceEndEvent =  config.windowedTraceEndEvent;
 
     return true;
   }
@@ -267,7 +264,7 @@ namespace {
                           EventConfiguration& config,
                           const xdp::built_in::TraceInputConfiguration* params,
                           xdp::built_in::TraceOutputConfiguration* tilecfg,
-                          xdp::built_in::MessageConfiguration* msgcfg)
+                          xdp::built_in::MessageConfiguration* msgcfg, std::vector<XAie_LocType>& windowedTraceLocs)
   {
    
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
@@ -457,11 +454,15 @@ namespace {
         // Delay cycles and user control are not compatible with each other
         if (params->useUserControl) {
           config.coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-          config.coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-        } else if (params->useGraphIterator && !configureStartIteration(core, config, params)) {
-          break;
-        } else if (params->useDelay && !configureStartDelay(core, config, params)) {
-          break;
+          config.coreTraceEndEvent = config.windowedTraceEndEvent;
+        } else if (params->useGraphIterator) {
+          if (!configureStartIteration(core, config, params))
+            break;
+          windowedTraceLocs.push_back(loc);
+        } else if (params->useDelay) {
+          if (!configureStartDelay(core, config, params))
+            break;
+          windowedTraceLocs.push_back(loc);
         }
 
         // Set overall start/end for trace capture
@@ -718,6 +719,17 @@ namespace {
     return 0;
   } // end setMetricsSettings
 
+  void flushAieTileTraceModule(XAie_DevInst* aieDevInst, EventConfiguration& config, std::vector<XAie_LocType>& windowedTraceLocs)
+  {
+    /*
+     * Flush for trace windowing
+     */
+    for (const auto& loc : windowedTraceLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, config.windowedTraceEndEvent);
+    windowedTraceLocs.clear();
+  }
+  
+
 }
 
 #ifdef __cplusplus
@@ -738,7 +750,7 @@ xrtHandles* aie2_trace_config_init (xclDeviceHandle handle, const xuid_t xclbin_
 
 // The main PS kernel functionality
 __attribute__((visibility("default")))
-int aie2_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xrtHandles* constructs)
+int aie2_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, int iteration, xrtHandles* constructs)
 {
   if (constructs == nullptr)
     return 0;
@@ -758,29 +770,36 @@ int aie2_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, x
   if (constructs->aieDev == nullptr)
     constructs->aieDev = new xaiefal::XAieDev(constructs->aieDevInst, false);
 
-  xdp::built_in::TraceInputConfiguration* params =
-    reinterpret_cast<xdp::built_in::TraceInputConfiguration*>(input);
-
   EventConfiguration config;
-  config.initialize(params);
 
-  xdp::built_in::MessageConfiguration* messageStruct = reinterpret_cast<xdp::built_in::MessageConfiguration*> (messageOutput);  
+  if (iteration == 0){
+    xdp::built_in::TraceInputConfiguration* params =
+      reinterpret_cast<xdp::built_in::TraceInputConfiguration*>(input);
+    config.initialize(params);
 
-  // Using malloc/free instead of new/delete because the struct treats the
-  // last element as a variable sized array
-  std::size_t total_size = sizeof(xdp::built_in::TraceOutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
-  xdp::built_in::TraceOutputConfiguration* tilecfg =
-    (xdp::built_in::TraceOutputConfiguration*)malloc(total_size);
+    xdp::built_in::MessageConfiguration* messageStruct = reinterpret_cast<xdp::built_in::MessageConfiguration*> (messageOutput);  
 
-  tilecfg->numTiles = params->numTiles;
+    // Using malloc/free instead of new/delete because the struct treats the
+    // last element as a variable sized array
+    std::size_t total_size = sizeof(xdp::built_in::TraceOutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
+    xdp::built_in::TraceOutputConfiguration* tilecfg =
+      (xdp::built_in::TraceOutputConfiguration*)malloc(total_size);
 
-  setMetricsSettings(constructs->aieDevInst, constructs->aieDev,
-                           config, params, tilecfg, messageStruct);
-  uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
-  std::memcpy(output, out, total_size);   
+    tilecfg->numTiles = params->numTiles;
 
-  //Clean up
-  free(tilecfg); 
+    setMetricsSettings(constructs->aieDevInst, constructs->aieDev,
+                            config, params, tilecfg, messageStruct, constructs->windowedTraceLocs);
+    uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
+    std::memcpy(output, out, total_size);   
+
+    //Clean up
+    free(tilecfg); 
+
+  // flush iteraiton
+  } else if (iteration == 1) {
+    flushAieTileTraceModule(constructs->aieDevInst, config, constructs->windowedTraceLocs);
+  }
+
   return 0;
 }
 

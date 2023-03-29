@@ -1,7 +1,23 @@
 XRT ChangeLog
 -------------
 
-2.14.0 (202210.2.14.x)
+2.15.0 (202310.2.15.x)
+~~~~~~~~~~~~~~~~~~~~~~
+Added
+.....
+* New ``xrt::run::wait2()`` API was added to throw an exception when command completes abnormally (state different from ERT_CMD_STATE_COMPLETED).
+* New ``xrt::xclbin::get_interface_uuid()`` API.  The interface uuid is available only for xclbins that are built with 2023.1 Vitis.
+
+Removed
+.......
+* 
+
+Changed
+.......
+* This the last release with XCL APIs support.  The APIs were deprecated in 2.14.x and 2.15.x will be last release with support.  
+* xrt::kernel::write_register() is deprecated.  Along with corresponding read_register, a compile warning is issued if used. It is recommended that xrt::ip is used for read and write register functionality.
+
+2.14.0 (202220.2.14.x)
 ~~~~~~~~~~~~~~~~~~~~~~
 Added
 .....

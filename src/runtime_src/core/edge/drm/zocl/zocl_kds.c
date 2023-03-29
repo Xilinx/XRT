@@ -1141,6 +1141,90 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 	return kds_cfg_update(&zdev->kds);
 }
 
+/*
+ * Reset ZOCL device. This is triggered from sysfs node.
+ * This function cleanups outstanding context and data structure.
+ * Also trigger the reset pin of the device.
+ *
+ * @param       zdev:   zocl device structure
+ */
+int
+zocl_reset(struct drm_zocl_dev *zdev, const char *buf, size_t count)
+{
+        struct drm_zocl_slot *z_slot = NULL;
+        struct kds_sched *kds = &zdev->kds;
+        struct kds_client *client = NULL;
+        struct kds_client *tmp_client = NULL;
+        void __iomem *map = NULL;
+        int ret = 0;
+        int i = 0;
+
+        if (strcmp(zdev->zdev_data_info->fpga_driver_name, "versal_fpga"))
+                return count;
+
+	mutex_lock(&kds->lock);
+        /* Find out number of active client and send a signal to it. */
+        list_for_each_entry_safe(client, tmp_client, &kds->clients, link) {
+                if (pid_nr(client->pid) == pid_nr(task_tgid(current)))
+                        continue;
+
+                ret = kill_pid(client->pid, SIGTERM, 1);
+                if (ret) {
+                        DRM_WARN("Failed to terminate Client pid %d."
+                               " Performing SIGKILL.\n", pid_nr(client->pid));
+                        kill_pid(client->pid, SIGKILL, 1);
+                }
+        }
+	mutex_unlock(&kds->lock);
+
+        /* Cleanup all the slots avilable */
+        for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+                z_slot = zdev->pr_slot[i];
+                if (!z_slot)
+                        continue;
+
+                mutex_lock(&z_slot->slot_xclbin_lock);
+
+                /* Free sections before load the new xclbin */
+                zocl_free_sections(zdev, z_slot);
+
+                /* Cleanup the slot */
+                vfree(z_slot->slot_xclbin->zx_uuid);
+                z_slot->slot_xclbin->zx_uuid = NULL;
+                vfree(z_slot->slot_xclbin);
+                z_slot->slot_xclbin = NULL;
+
+                /* Re-Initialize the slot */
+                zocl_xclbin_init(z_slot);
+                mutex_unlock(&z_slot->slot_xclbin_lock);
+        }
+
+	/* Cleanup the AIE here */
+	zocl_cleanup_aie(zdev);
+
+#define PL_RESET_ADDRESS                0x00F1260330
+#define PL_HOLD_VAL                     0xF
+#define PL_RELEASE_VAL                  0x0
+#define PL_RESET_ALLIGN_SIZE            _4KB
+        map = ioremap(PL_RESET_ADDRESS, PL_RESET_ALLIGN_SIZE);
+        if (IS_ERR_OR_NULL(map)) {
+                DRM_ERROR("ioremap PL Reset address 0x%lx failed",
+                          PL_RESET_ADDRESS);
+                return -EFAULT;
+        }
+
+        /* Hold PL in reset status */
+        iowrite32(PL_HOLD_VAL, map);
+        /* Release PL reset status */
+        iowrite32(PL_RELEASE_VAL, map);
+
+        iounmap(map);
+
+        DRM_INFO("Device reset successfully finished.");
+
+        return count;
+}
+
 int zocl_kds_reset(struct drm_zocl_dev *zdev)
 {
 	kds_reset(&zdev->kds);

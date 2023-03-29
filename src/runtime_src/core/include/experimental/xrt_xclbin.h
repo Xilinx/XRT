@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef XRT_XCLBIN_H_
@@ -733,6 +734,18 @@ public:
   XCL_DRIVER_DLLESPEC
   uuid
   get_uuid() const;
+
+  /**
+  * get_interface_uuid() - Get the interface uuid of the xclbin
+  *
+  * @return
+  *  Interface uuid of the xclbin
+  *
+  * An exception is thrown if the data is missing.
+  */
+  XCL_DRIVER_DLLESPEC
+  uuid
+  get_interface_uuid() const;
 
   /**
    * get_target_type() - Get the type of this xclbin

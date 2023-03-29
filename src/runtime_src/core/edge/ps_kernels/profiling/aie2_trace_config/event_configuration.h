@@ -34,6 +34,14 @@ struct EventConfiguration {
   XAie_Events coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
   XAie_Events coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE; 
 
+   /*
+    * This is needed because the cores are started/stopped during execution
+    * to get around some hw bugs. We cannot restart tracemodules when that happens.
+    * At the end, we need to use event generate register to create this event
+    * to gracefully shut down trace modules.
+    */
+  XAie_Events windowedTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+
   // MEM tile trace is always on
   XAie_Events memTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
   XAie_Events memTileTraceEndEvent   = XAIE_EVENT_NONE_MEM_TILE;

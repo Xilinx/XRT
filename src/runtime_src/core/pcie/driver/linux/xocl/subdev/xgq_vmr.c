@@ -1148,7 +1148,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 				fw_result->count);
 			ret = -ENOSPC;
 		} else if (fw_result->count == 0) {
-			XGQ_ERR(xgq, "fw size cannot be zero");
+			XGQ_WARN(xgq, "fw size is zero");
 			ret = -EINVAL;
 		} else {
 			*fw_size = fw_result->count;
@@ -1526,7 +1526,7 @@ static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_f
 }
 
 /* On versal, verify is enforced. */
-static int xgq_freq_scaling_impl(struct platform_device *pdev,
+static int xgq_clk_scaling_impl(struct platform_device *pdev,
 	unsigned short *freqs, int num_freqs)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -1603,12 +1603,12 @@ cid_alloc_failed:
 	return ret;
 }
 
-static int xgq_freq_scaling(struct platform_device *pdev,
+static int xgq_clk_scaling(struct platform_device *pdev,
 	unsigned short *freqs, int num_freqs, int verify)
 {
 	int ret = 0;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	ret = xgq_freq_scaling_impl(pdev, freqs, num_freqs);
+	ret = xgq_clk_scaling_impl(pdev, freqs, num_freqs);
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", ret);
 		return ret;
@@ -1619,7 +1619,7 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	return ret;
 }
 
-static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
+static int xgq_clk_scaling_by_topo(struct platform_device *pdev,
 	struct clock_freq_topology *topo, int verify)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -1689,7 +1689,7 @@ static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
 	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
 	    target_freqs[2], target_freqs[3]);
 
-	return xgq_freq_scaling(pdev, target_freqs, ARRAY_SIZE(target_freqs),
+	return xgq_clk_scaling(pdev, target_freqs, ARRAY_SIZE(target_freqs),
 		verify);
 }
 
@@ -2056,7 +2056,7 @@ cid_alloc_failed:
 	return ret;
 }
 
-static void clk_scaling_cq_result_copy(struct xocl_xgq_vmr *xgq,
+static void clk_throttling_cq_result_copy(struct xocl_xgq_vmr *xgq,
                                        struct xocl_xgq_vmr_cmd *cmd)
 {
 	struct xgq_cmd_cq_default_payload *payload =
@@ -2067,7 +2067,7 @@ static void clk_scaling_cq_result_copy(struct xocl_xgq_vmr *xgq,
 	mutex_unlock(&xgq->xgq_lock);
 }
 
-static int clk_scaling_configure_op(struct platform_device *pdev,
+static int clk_throttling_configure_op(struct platform_device *pdev,
                                     enum xgq_cmd_clk_scaling_app_id aid,
                                     bool enable, uint16_t pwr_ovrd_limit,
                                     uint8_t temp_ovrd_limit, bool reset)
@@ -2145,9 +2145,9 @@ static int clk_scaling_configure_op(struct platform_device *pdev,
 	ret = cmd->xgq_cmd_rcode;
 
 	if (ret) {
-		XGQ_ERR(xgq, "Clock scaling request failed with err: %d", ret);
+		XGQ_ERR(xgq, "Clock throttling request failed with err: %d", ret);
 	} else if (aid == XGQ_CMD_CLK_THROTTLING_AID_READ) {
-		clk_scaling_cq_result_copy(xgq, cmd);
+		clk_throttling_cq_result_copy(xgq, cmd);
 	}
 
 done:
@@ -2159,12 +2159,12 @@ cid_alloc_failed:
 	return ret;
 }
 
-static int clk_scaling_status_query(struct platform_device *pdev)
+static int clk_throttling_status_query(struct platform_device *pdev)
 {
-	return clk_scaling_configure_op(pdev, XGQ_CMD_CLK_THROTTLING_AID_READ, 0, 0, 0, 0);
+	return clk_throttling_configure_op(pdev, XGQ_CMD_CLK_THROTTLING_AID_READ, 0, 0, 0, 0);
 }
 
-static int clk_scaling_get_default_configs(struct platform_device *pdev)
+static int clk_throttling_get_default_configs(struct platform_device *pdev)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
@@ -2173,7 +2173,7 @@ static int clk_scaling_get_default_configs(struct platform_device *pdev)
 
 	mutex_lock(&xgq->clk_scaling_lock);
 
-	ret = clk_scaling_configure_op(xgq->xgq_pdev,
+	ret = clk_throttling_configure_op(xgq->xgq_pdev,
                                    XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
                                    0, 0, 0, true);
 	if (ret) {
@@ -2181,7 +2181,7 @@ static int clk_scaling_get_default_configs(struct platform_device *pdev)
 		goto out;
 	}
 
-	ret = clk_scaling_status_query(pdev);
+	ret = clk_throttling_status_query(pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
 		goto out;
@@ -2642,9 +2642,9 @@ static ssize_t clk_scaling_stat_raw_show(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+		XGQ_WARN(xgq, "Failed to receive clock throttling default settings, ret: %d", ret);
 		mutex_unlock(&xgq->clk_scaling_lock);
 		return ret;
 	}
@@ -2677,7 +2677,7 @@ static ssize_t clk_scaling_configure_show(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
 		mutex_unlock(&xgq->clk_scaling_lock);
@@ -2721,15 +2721,15 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+		XGQ_WARN(xgq, "Failed to receive clock throttling default settings, ret: %d", ret);
 		goto out;
 	}
 
 	if (!cs_payload->has_clk_scaling)
 	{
-		XGQ_ERR(xgq, "clock scaling feature is not supported");
+		XGQ_ERR(xgq, "clock throttling feature is not supported");
 		ret = -ENOTSUPP;
 		goto out;
 	}
@@ -2768,18 +2768,18 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 		args = end;
 	}
 
-	ret = clk_scaling_configure_op(xgq->xgq_pdev,
+	ret = clk_throttling_configure_op(xgq->xgq_pdev,
                                    XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE, enable,
 								   pwr, temp, 0);
 	if (ret) {
-		XGQ_ERR(xgq, "clk scaling config req [en:%d,pwr:%u,temp:%u] failed, err: %d", enable, pwr, temp, ret);
+		XGQ_ERR(xgq, "clk throttling config req [en:%d,pwr:%u,temp:%u] failed, err: %d", enable, pwr, temp, ret);
 		goto out;
 	}
 	cs_payload->clk_scaling_en = enable;
 	if (enable)
-		XGQ_INFO(xgq, "clock scaling feature is enabled");
+		XGQ_INFO(xgq, "clock throttling feature is enabled");
 	else
-		XGQ_INFO(xgq, "clock scaling feature is disabled");
+		XGQ_INFO(xgq, "clock throttling feature is disabled");
 	mutex_unlock(&xgq->clk_scaling_lock);
 
 	return count;
@@ -2813,15 +2813,15 @@ static ssize_t xgq_scaling_temp_override_store(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+		XGQ_WARN(xgq, "Failed to receive clock throttling default settings, ret: %d", ret);
 		goto out;
 	}
 
 	if (!cs_payload->has_clk_scaling)
 	{
-		XGQ_ERR(xgq, "clock scaling feature is not supported");
+		XGQ_ERR(xgq, "clock throttling feature is not supported");
 		ret = -ENOTSUPP;
 		goto out;
 	}
@@ -2833,7 +2833,7 @@ static ssize_t xgq_scaling_temp_override_store(struct device *dev,
 		goto out;
 	}
 
-	ret = clk_scaling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
+	ret = clk_throttling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
 								   cs_payload->clk_scaling_en, 0, temp, 0);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to configure temperature override data, ret: %d", ret);
@@ -2876,15 +2876,15 @@ static ssize_t xgq_scaling_power_override_store(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+		XGQ_WARN(xgq, "Failed to receive clock throttling default settings, ret: %d", ret);
 		goto out;
 	}
 
 	if (!cs_payload->has_clk_scaling)
 	{
-		XGQ_ERR(xgq, "clock scaling feature is not supported");
+		XGQ_ERR(xgq, "clock throttling feature is not supported");
 		ret = -ENOTSUPP;
 		goto out;
 	}
@@ -2896,7 +2896,7 @@ static ssize_t xgq_scaling_power_override_store(struct device *dev,
 		goto out;
 	}
 
-	ret = clk_scaling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
+	ret = clk_throttling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
 				   cs_payload->clk_scaling_en, pwr, 0, 0);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to configure power override settings, ret: %d", ret);
@@ -2925,9 +2925,9 @@ static ssize_t xgq_scaling_enable_show(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+		XGQ_WARN(xgq, "Failed to receive clock throttling default settings, ret: %d", ret);
 		mutex_unlock(&xgq->clk_scaling_lock);
 		return ret;
 	}
@@ -2950,9 +2950,9 @@ static ssize_t xgq_scaling_enable_store(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	ret = clk_throttling_status_query(xgq->xgq_pdev);
 	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+		XGQ_WARN(xgq, "Failed to receive clock throttling default settings, ret: %d", ret);
 		goto out;
 	}
 
@@ -2967,11 +2967,11 @@ static ssize_t xgq_scaling_enable_store(struct device *dev,
 		val = 1;
 
 	enable = val ? true : false;
-	ret = clk_scaling_configure_op(xgq->xgq_pdev,
+	ret = clk_throttling_configure_op(xgq->xgq_pdev,
                                    XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
                                    enable, 0, 0, 0);
 	if (ret) {
-		XGQ_ERR(xgq, "clock scaling en:%d req failed, err: %d", enable, ret);
+		XGQ_ERR(xgq, "clock throttling en:%d req failed, err: %d", enable, ret);
 		goto out;
 	}
 	cs_payload->clk_scaling_en = enable;
@@ -3114,7 +3114,7 @@ static ssize_t vmr_apu_log_read(struct file *filp, struct kobject *kobj,
 	/* return count should be less or equal to count */
 	ret = xgq_vmr_apu_log(xgq, &log_buf, &log_size, off, count);
 	if (ret)
-		return ret;
+		return (ret == -EINVAL) ? 0 : ret;;
 
 	/* adjust log_size to be within requested count range */
 	log_size = log_size > count ? count : log_size;
@@ -3373,8 +3373,8 @@ static int vmr_services_probe(struct platform_device *pdev)
 	if (ret)
 		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
 
-	//Retrieve clock scaling default configuration settings
-	ret = clk_scaling_get_default_configs(pdev);
+	//Retrieve clock throttling default configuration settings
+	ret = clk_throttling_get_default_configs(pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
 	} else {
@@ -3511,8 +3511,8 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_load_xclbin_slot = xgq_load_xclbin_slot,
 	.xgq_check_firewall = xgq_check_firewall,
 	.xgq_clear_firewall = xgq_clear_firewall,
-	.xgq_freq_scaling = xgq_freq_scaling,
-	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
+	.xgq_clk_scaling = xgq_clk_scaling,
+	.xgq_clk_scaling_by_topo = xgq_clk_scaling_by_topo,
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,

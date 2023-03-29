@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2020 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "hal2.h"
 
 #include "core/common/api/bo.h"
@@ -392,14 +380,6 @@ copy(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh, s
   auto& dst = const_cast<buffer_object_handle&>(dst_boh);
   dst.copy(src_boh, sz, src_offset, dst_offset);
   return event(typed_event<int>(0));
-}
-
-void
-device::
-fill_copy_pkt(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh
-              ,size_t sz, size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
-{
-  xrt_core::bo::fill_copy_pkt(dst_boh, src_boh, sz, dst_offset, src_offset, pkt);
 }
 
 size_t

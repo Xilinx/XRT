@@ -195,7 +195,7 @@ PYBIND11_MODULE(pyxrt, m) {
                              int i = 0;
                              xrt::run r(k);
 
-                             for (auto item : args) {
+                             for (const auto& item : args) {
                                  try {
                                      r.set_arg(i, item.cast<xrt::bo>());
                                  }

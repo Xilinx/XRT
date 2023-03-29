@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -642,6 +643,13 @@ public:
   }
 
   virtual
+  uuid
+  get_interface_uuid() const
+  {
+      throw std::runtime_error("not implemented");
+  }
+
+  virtual
   std::string
   get_xsa_name() const
   {
@@ -757,6 +765,7 @@ class xclbin_full : public xclbin_impl
   std::vector<char> m_axlf;    // complete copy of xclbin raw data
   const axlf* m_top = nullptr; // axlf pointer to the raw data
   uuid m_uuid;                 // uuid of xclbin
+  uuid m_intf_uuid;
 
   // sections within this xclbin
   std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
@@ -787,6 +796,7 @@ class xclbin_full : public xclbin_impl
     m_top = tmp;
 
     m_uuid = uuid(m_top->m_header.uuid);
+    m_intf_uuid = uuid(m_top->m_header.m_interface_uuid);
 
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
@@ -834,6 +844,12 @@ public:
   get_uuid() const override
   {
     return m_uuid;
+  }
+
+  uuid
+  get_interface_uuid() const override
+  {
+    return m_intf_uuid;
   }
 
   std::string
@@ -991,6 +1007,13 @@ xclbin::
 get_uuid() const
 {
   return handle ? handle->get_uuid() : uuid{};
+}
+
+uuid
+xclbin::
+get_interface_uuid() const
+{
+  return handle ? handle->get_interface_uuid() : uuid{};
 }
 
 xclbin::target_type

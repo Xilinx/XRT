@@ -255,7 +255,8 @@ struct xgq_cmd_uncfg_cu {
 	/* word 2 */
 	uint32_t cu_idx:12;
 	uint32_t cu_domain:4;
-	uint32_t rsvd2:16;
+	uint32_t cu_reset:1;
+	uint32_t rsvd2:15;
 };
 
 /**

@@ -226,13 +226,7 @@ extern "C" {
         uint8_t m_versionMinor;             /* Minor Version */
         uint16_t m_mode;                    /* XCLBIN_MODE */
         uint16_t m_actionMask;              /* Bit Mask */
-	union {
-	    struct {
-		uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
-		uint64_t m_featureId;       /* 64 bit feature id */
-	    } rom;
-	    unsigned char rom_uuid[16];     /* feature ROM UUID for which this xclbin was generated */
-	};
+        unsigned char m_interface_uuid[16];     /* Interface uuid of this xclbin */
         unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
 	union {
 	    char m_next_axlf[16];           /* Name of next xclbin file in the daisy chain */
@@ -572,7 +566,8 @@ extern "C" {
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) == 96, "cdo_group structure no longer is 96 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) % sizeof(uint64_t) == 0, "cdo_group structure needs to be 64-bit word aligned");
 
-
+    // 32KB per tile, 64 rows * 64 columns
+    #define PDI_IMAGE_MAX_SIZE 32*1024*64*64
     struct aie_pdi {
         xuid_t uuid;                        // PDI container UUID (16 bytes)
         struct array_offset pdi_image;      // PDI Image (uint8_t)

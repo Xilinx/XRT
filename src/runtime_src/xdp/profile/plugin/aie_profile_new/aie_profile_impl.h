@@ -43,6 +43,7 @@ namespace xdp {
 
     virtual void updateDevice() = 0;
     virtual void poll(uint32_t index, void* handle) = 0;
+    virtual void freeResources() = 0;
   };
 
 } // namespace xdp

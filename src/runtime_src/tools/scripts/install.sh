@@ -211,7 +211,7 @@ if [[ $INSTALL_PKG == 1 && ( $INSTALL_KERNEL_DRV == "yes" || $FORCE_INSTALL_KERR
     FLAVOR=`echo $FLAVOR | tr -d '"'`
     if [[ $FLAVOR == "ubuntu" ]]; then
         xrt="XRT-$XRT_VER-Linux.deb"
-        dpkg -s xrt 2&>1 /dev/null
+        dpkg -s xrt > /dev/null 2>&1
         if [ $? == 0 ] ; then
             apt install ./runtime/packages/$xrt
         else
@@ -221,7 +221,7 @@ if [[ $INSTALL_PKG == 1 && ( $INSTALL_KERNEL_DRV == "yes" || $FORCE_INSTALL_KERR
 
     if [[ $FLAVOR == "rhel" || $FLAVOR == "centos" ]]; then
         xrt=XRT-$XRT_VER-Linux.rpm
-        yum list installed xrt 2&1> /dev/null
+        yum list installed xrt > /dev/null 2>&1
         if [ $? == 0 ]; then
             yum install -y runtime/packages/$xrt
         else

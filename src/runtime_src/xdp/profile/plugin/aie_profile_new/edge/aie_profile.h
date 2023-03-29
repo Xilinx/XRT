@@ -41,9 +41,11 @@ namespace xdp {
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
+      void freeResources();
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
+      uint16_t getRelativeRow(uint16_t absRow);
       module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
       bool isValidType(module_type type, XAie_ModuleType mod);
       bool isStreamSwitchPortEvent(const XAie_Events event);
@@ -73,9 +75,12 @@ namespace xdp {
                                  const uint8_t channel1);
       uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
                                  const tile_type& tile,
+                                 const module_type type,
                                  uint16_t column, 
                                  uint16_t row, 
-                                 uint16_t startEvent);
+                                 uint16_t startEvent,
+                                 const std::string metricSet,
+                                 const uint8_t channel);
     private:
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
@@ -90,6 +95,8 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+
   };
 
 }   

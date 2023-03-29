@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -153,7 +153,7 @@ namespace xdp {
     fout << "Build version hash: "
          << (xrtInfo.get<std::string>("hash", "N/A")) << "\n" ;
     fout << "Build version date: "
-         << (xrtInfo.get<std::string>("date", "N/A")) << "\n" ;
+         << (xrtInfo.get<std::string>("build_date", "N/A")) << "\n" ;
 
     fout << "Target devices: " ;
     if (getFlowMode() == SW_EMU) {
@@ -196,7 +196,7 @@ namespace xdp {
              std::vector<std::pair<double, double>>> callCount =
       (db->getStats()).getCallCount() ;
     
-    for (auto call : callCount) {
+    for (const auto& call : callCount) {
       auto callAndThread = call.first ;
       auto APIName = callAndThread.first ;
 
@@ -224,7 +224,7 @@ namespace xdp {
         rows[APIName] = blank ;
       }
 
-      for (auto executionTime : timesOfCalls) {
+      for (const auto& executionTime : timesOfCalls) {
         auto timeTaken = executionTime.second - executionTime.first ;
 
         ++(std::get<0>(rows[APIName])) ;
@@ -236,7 +236,7 @@ namespace xdp {
       }
     }
 
-    for (auto row : rows) {
+    for (const auto& row : rows) {
       auto averageTime = 
         (double)(std::get<1>(row.second)) / (double)(std::get<0>(row.second)) ;
       if (type != OPENCL) fout << "ENTRY:" ;
@@ -313,7 +313,7 @@ namespace xdp {
          << "writeBuffer bytes transferred,\n" ;
 
     auto memStats = db->getStats().getMemoryStats() ;
-    for (auto iter : memStats) {
+    for (const auto& iter : memStats) {
       fout << iter.first                               << ","
            << iter.second.channels[0].transactionCount << ","
            << iter.second.channels[0].totalByteCount   << ","
@@ -351,7 +351,7 @@ namespace xdp {
     fout << "Kernel,Number Of Enqueues,Total Time (ms),Minimum Time (ms),"
          << "Average Time (ms),Maximum Time (ms),\n" ;
 
-    for (auto execution : kernelExecutions) {
+    for (const auto& execution : kernelExecutions) {
       fout << execution.first                         << ","
            << (execution.second).numExecutions        << ","
            << ((execution.second).totalTime / one_million)   << ","
@@ -481,7 +481,7 @@ namespace xdp {
          << "Dataflow Acceleration,Total Time (ms),Minimum Time (ms),"
          << "Average Time (ms),Maximum Time (ms),Clock Frequency (MHz),\n" ;
 
-    for (auto stat : cuStats) {
+    for (const auto& stat : cuStats) {
       std::string cuName          = (std::get<0>(stat.first)) ;
       std::string localWorkGroup  = (std::get<1>(stat.first)) ;
       std::string globalWorkGroup = (std::get<2>(stat.first)) ;
@@ -568,7 +568,7 @@ namespace xdp {
           (db->getDynamicInfo()).getCounterResults(deviceId, xclbin->uuid) ;
 
         // For every compute unit in the xclbin
-        for (auto cuInfo : xclbin->pl.cus)
+        for (const auto& cuInfo : xclbin->pl.cus)
         {
           uint64_t amSlotID = (uint64_t)((cuInfo.second)->getAccelMon()) ;
 
@@ -590,7 +590,7 @@ namespace xdp {
           std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
             (db->getStats()).getComputeUnitExecutionStats(cuName) ;
 
-          for (auto cuCall : cuCalls)
+          for (const auto& cuCall : cuCalls)
           {
             std::string globalWorkDimensions = cuCall.first ;
 
@@ -653,7 +653,7 @@ namespace xdp {
       {
         xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
         uint64_t j = 0 ;      
-        for (auto cu : (xclbin->pl.cus))
+        for (const auto& cu : (xclbin->pl.cus))
         {
           double deviceCyclesMsec = (double)(xclbin->pl.clockRatePLMHz * one_thousand);
 
@@ -696,7 +696,7 @@ namespace xdp {
     uint64_t i = 0;
 
     for (auto& map : { hostReads, hostWrites }) {
-      for (auto entry : map) {
+      for (const auto& entry : map) {
         auto contextID = entry.first.first;
         auto deviceID = entry.first.second;
         auto& stats = entry.second;
@@ -902,7 +902,7 @@ namespace xdp {
         xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId,
                                                  xclbin->uuid) ;
-        for (auto cu : xclbin->pl.cus) {
+        for (const auto& cu : xclbin->pl.cus) {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
           
           for (auto asmMonitorId : (*asmMonitors)) {
@@ -941,7 +941,7 @@ namespace xdp {
       for (auto xclbin : device->loadedXclbins)
       {
         xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
-        for (auto cu : xclbin->pl.cus)
+        for (const auto& cu : xclbin->pl.cus)
         {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
           
@@ -1657,7 +1657,7 @@ namespace xdp {
         xdp::CounterResults values =
           (db->getDynamicInfo()).getCounterResults(deviceId, xclbin->uuid) ;
 
-        for (auto cu : xclbin->pl.cus)
+        for (const auto& cu : xclbin->pl.cus)
         {
           // For each CU, we need to find the monitor that has 
           //  the most transactions
@@ -1787,7 +1787,7 @@ namespace xdp {
     fout << "Label,Count,\n" ;
 
     std::map<std::string, uint64_t>& counts = db->getStats().getEventCounts() ;
-    for (auto iter : counts) {
+    for (const auto& iter : counts) {
       fout << iter.first << "," << iter.second << ",\n" ;
     }
   }
@@ -1809,7 +1809,7 @@ namespace xdp {
     std::map<std::pair<const char*, const char*>, uint64_t>& totalDurations =
       (db->getStats()).getTotalRangeDurations() ;
 
-    for (auto iter : counts) {
+    for (const auto& iter : counts) {
       const char* label =
         (iter.first.first == nullptr) ? " " : iter.first.first;
       const char* tooltip =

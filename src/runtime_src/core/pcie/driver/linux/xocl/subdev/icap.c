@@ -229,7 +229,6 @@ static int icap_slot_init(struct icap *icap, uint32_t slot_id)
 	struct islot_info *islot = icap->slot_info[slot_id];
 	
 	mutex_lock(&icap->icap_lock);
-	if (islot)
 	if (islot) {
 		vfree(islot);
 		icap->slot_info[slot_id] = NULL;

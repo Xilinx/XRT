@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -76,7 +76,7 @@ namespace xdp {
 
   void HWEmuDeviceOffloadPlugin::readTrace()
   {
-    for (auto o : offloaders) {
+    for (const auto& o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
       flushTraceOffloader(offloader);
       checkTraceBufferFullness(offloader, o.first);

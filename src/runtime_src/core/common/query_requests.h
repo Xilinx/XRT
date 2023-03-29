@@ -79,6 +79,7 @@ enum class key_type
   sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
+  hw_context_info,
   xocl_errors,
   xclbin_full,
   ic_enable,
@@ -919,6 +920,38 @@ struct kds_scu_info : request
   get(const device*) const = 0;
 };
 
+/**
+ * Return all hardware contexts within a device
+ */
+struct hw_context_info : request
+{
+  /**
+   * A structure to represent a single hardware context on any device type. This
+   * structure must contain all data that makes up a hardware context across
+   * all device types.
+   * 
+   * The only field that must be populated is the xclbin uuid.
+   * All other fields can be populated as required by the appropriate device.
+   * As new compute types are created they must be accounted for here
+   * 
+   * For example:
+   *  Alveo -> populate only the PL compute units
+   *  Versal -> populate PL and PS compute units
+   */
+  struct data {
+    std::string xclbin_uuid;
+    kds_cu_info::result_type pl_compute_units;
+    kds_scu_info::result_type ps_compute_units;
+  };
+
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::hw_context_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct clock_freq_topology_raw : request
 {
   using result_type = std::vector<char>;
@@ -1372,7 +1405,13 @@ struct aie_tiles_status_info : request
     uint16_t num_cols;
   };
 
-  using result_type = std::vector<char>;
+  struct result
+  {
+    std::vector<char> buf;
+    uint32_t cols_filled;
+  };
+
+  using result_type = result;
   static const key_type key = key_type::aie_tiles_status_info;
 
   virtual boost::any

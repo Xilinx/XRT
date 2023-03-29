@@ -83,7 +83,7 @@ namespace xdp {
     if (aieDevice != nullptr && deallocateAieDevice != nullptr)
       deallocateAieDevice(aieDevice) ;
 
-    for (auto iter : deviceInfo) {
+    for (const auto& iter : deviceInfo) {
       delete iter.second ;
     }
   }
@@ -261,7 +261,7 @@ namespace xdp {
     std::vector<std::string> uniqueNames ;
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    for (auto device : deviceInfo) {
+    for (const auto& device : deviceInfo) {
       uniqueNames.push_back(device.second->getUniqueDeviceName()) ;
     }
     return uniqueNames ;
@@ -272,7 +272,7 @@ namespace xdp {
     std::vector<DeviceInfo*> infos ;
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    for (auto device : deviceInfo) {
+    for (const auto& device : deviceInfo) {
       infos.push_back(device.second) ;
     }
     return infos ;
@@ -282,9 +282,9 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    for (auto device : deviceInfo) {
+    for (const auto& device : deviceInfo) {
       for (auto xclbin : device.second->getLoadedXclbins()) {
-        for (auto cu : xclbin->pl.cus) {
+        for (const auto& cu : xclbin->pl.cus) {
           if (cu.second->getStallEnabled())
             return true ;
         }
@@ -690,6 +690,16 @@ namespace xdp {
 
   // *********************************************************
   // ***** Functions related to AIE specific information *****
+  uint8_t VPStaticDatabase::getAIEGeneration(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 1 ;
+
+    return deviceInfo[deviceId]->getAIEGeneration() ;
+  }
+
   bool VPStaticDatabase::isAIECounterRead(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -1653,7 +1663,7 @@ namespace xdp {
     xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
     boost::property_tree::read_xml(xmlStream, xmlProject);
 
-    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+    for(const auto& coreItem : xmlProject.get_child("project.platform.device.core")) {
       std::string coreItemName = coreItem.first;
       if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
         continue;
@@ -1680,7 +1690,7 @@ namespace xdp {
       }
 
       // Find the ComputeUnitInstance
-      for(auto cuItr : currentXclbin->pl.cus) {
+      for(const auto& cuItr : currentXclbin->pl.cus) {
         if(0 != cuItr.second->getKernelName().compare(kernelName)) {
           continue;
         }
@@ -1704,7 +1714,7 @@ namespace xdp {
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
 
     // Find the compute unit that this AM is attached to.
-    for (auto cu : xclbin->pl.cus) {
+    for (const auto& cu : xclbin->pl.cus) {
       ComputeUnitInstance* cuObj = cu.second ;
       int32_t cuId = cu.second->getIndex() ;
 
@@ -1743,13 +1753,19 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < min_trace_id_aim) {
-      std::stringstream msg;
-      msg << "AIM with incorrect index: " << index ;
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-                              msg.str());
-      index = min_trace_id_aim ;
-    }
+
+    // The current minimum trace ID assigned to AIMs is 0, so this code
+    // currently has no effect and is being marked as incorrect in Coverity.
+    // It should be uncommented if the minimum trace ID assigned in the
+    // hardware ever chagnes.
+
+    //if (index < min_trace_id_aim) {
+    //  std::stringstream msg;
+    //  msg << "AIM with incorrect index: " << index ;
+    //  xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+    //                          msg.str());
+    //  index = min_trace_id_aim ;
+    //}
 
     // Parse name to find CU Name and Memory.  We expect the name in
     //  debug_ip_layout to be in the form of "cu_name/memory_name-port_name"
@@ -1775,14 +1791,14 @@ namespace xdp {
 
     // Find both the compute unit this AIM is attached to (if applicable)
     //  and the memory this AIM is attached to (if applicable).
-    for(auto cu : xclbin->pl.cus) {
+    for(const auto& cu : xclbin->pl.cus) {
       if(0 == monCuName.compare(cu.second->getName())) {
         cuId = cu.second->getIndex();
         cuObj = cu.second;
         break;
       }
     }
-    for(auto mem : xclbin->pl.memoryInfo) {
+    for(const auto& mem : xclbin->pl.memoryInfo) {
       if (0 == memName.compare(mem.second->spTag)) {
         memId = mem.second->index;
         break;
@@ -1845,7 +1861,7 @@ namespace xdp {
     ComputeUnitInstance* cuObj = nullptr ;
     int32_t cuId = -1 ;
 
-    for(auto cu : xclbin->pl.cus) {
+    for(const auto& cu : xclbin->pl.cus) {
       if(0 == monCuName.compare(cu.second->getName())) {
         cuId = cu.second->getIndex();
         cuObj = cu.second;
@@ -1871,7 +1887,7 @@ namespace xdp {
 
         monCuName = monCuName.substr(0, pos);
 
-        for(auto cu : xclbin->pl.cus) {
+        for(const auto& cu : xclbin->pl.cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
@@ -1940,6 +1956,15 @@ namespace xdp {
       xclbin->pl.usesTs2mm = true ;
   }
 
+  void VPStaticDatabase::initializeFIFO(DeviceInfo* devInfo)
+  {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->pl.usesFifo = true ;
+  }
+
   void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
   {
     auto& ip_metadata = xclbin->pl.ip_metadata_section;
@@ -1999,7 +2024,9 @@ namespace xdp {
     currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
  
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
+    setAIEGeneration(deviceId, xrtXclbin);
     setAIEClockRateMHz(deviceId, xrtXclbin);
+
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */
@@ -2050,6 +2077,30 @@ namespace xdp {
     }
   }
   
+  void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    if (!data.first || !data.second)
+      return;
+
+    boost::property_tree::ptree aie_meta;
+
+    std::stringstream aie_stream;
+    aie_stream.write(data.first, data.second);
+    boost::property_tree::read_json(aie_stream, aie_meta);
+    
+    try {
+      auto hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
+      deviceInfo[deviceId]->setAIEGeneration(hwGen);
+    } catch(...) {
+      return;
+    }
+  }
+
   void VPStaticDatabase::setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -2070,10 +2121,12 @@ namespace xdp {
     aie_stream.write(data.first, data.second);
     boost::property_tree::read_json(aie_stream,aie_meta);
 
-    //read_aie_metadata(data.first, data.second, aie_meta);
-    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    
-    xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
+    try {
+      auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+      xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
+    } catch(...) {
+      return;
+    }
   }
 
   double VPStaticDatabase::findClockRate(xrt::xclbin xrtXclbin)
@@ -2223,6 +2276,9 @@ namespace xdp {
         break ;
       case TRACE_S2MM:
         initializeTS2MM(devInfo, debugIpData) ;
+        break ;
+      case AXI_MONITOR_FIFO_LITE:
+        initializeFIFO(devInfo) ;
         break ;
       default:
         break ;

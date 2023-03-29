@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -94,7 +94,7 @@ namespace xdp {
                                                      uint32_t& rowCount)
   {
     // Create structure for all CUs in the xclbin
-    for (auto iter : xclbin->pl.cus) {
+    for (const auto& iter : xclbin->pl.cus) {
       ComputeUnitInstance* cu = iter.second;
       fout << "Group_Start,Compute Unit " << cu->getName();
 
@@ -345,7 +345,7 @@ namespace xdp {
           std::make_pair(xclbin, cuId);
         kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL);
         // Also output the tool tips
-        for (auto iter : xclbin->pl.cus) {
+        for (const auto& iter : xclbin->pl.cus) {
           ComputeUnitInstance* cu = iter.second;
           if (cu->getAccelMon() == cuId) {
             fout << "," << db->getDynamicInfo().addString(cu->getKernelName());
@@ -429,7 +429,7 @@ namespace xdp {
       (db->getStaticInfo()).getLoadedXclbins(deviceId);
 
     for (auto xclbin : loadedXclbins) {
-      for (auto iter : xclbin->pl.cus) {
+      for (const auto& iter : xclbin->pl.cus) {
         ComputeUnitInstance* cu = iter.second;
         db->getDynamicInfo().addString(cu->getKernelName());
         db->getDynamicInfo().addString(cu->getName());
