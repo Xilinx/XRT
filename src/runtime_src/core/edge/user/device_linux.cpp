@@ -211,8 +211,9 @@ get_aie_metadata_info(const xrt_core::device* device)
   return aie_meta;
 }
 
+#ifdef XRT_ENABLE_AIE
 static void 
-add_core_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta , boost::property_tree::ptree& ptarray, uint8_t& row_offset)
+add_core_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta, boost::property_tree::ptree& ptarray, uint8_t& row_offset)
 {
    boost::property_tree::ptree empty_pt;
    std::vector<std::pair<int, int>> core_tiles;
@@ -254,7 +255,7 @@ add_core_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta
 }
 
 static void 
-add_mem_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta , boost::property_tree::ptree& ptarray, uint8_t& row_offset)
+add_mem_bd(zynqaie::Aie* aie_array, const boost::property_tree::ptree& aie_meta, boost::property_tree::ptree& ptarray, uint8_t& row_offset)
 {
    for (uint8_t i = 0; i < aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns"); ++i) {
      for (uint8_t j = 0; j < aie_meta.get<uint8_t>("aie_metadat.driver_config.reserved_num_rows"); ++j) {
@@ -383,6 +384,37 @@ struct aie_mem_info_sysfs
     return inifile_text;
   }
 };
+
+#else
+struct aie_core_info_sysfs
+{
+  using result_type = query::aie_core_info_sysfs::result_type;
+  static result_type
+  get(const xrt_core::device* device, key_type key) 
+  {
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+  }
+};
+struct aie_shim_info_sysfs
+{
+  using result_type = query::aie_shim_info_sysfs::result_type;
+  static result_type
+  get(const xrt_core::device* device, key_type key) 
+  {
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+  }
+};
+
+struct aie_mem_info_sysfs
+{
+  using result_type = query::aie_mem_info_sysfs::result_type;
+  static result_type
+  get(const xrt_core::device* device, key_type key) 
+  {
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+  }
+};
+#endif
 
 struct kds_cu_info
 {
