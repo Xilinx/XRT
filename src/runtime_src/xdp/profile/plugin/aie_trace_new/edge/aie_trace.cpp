@@ -403,7 +403,9 @@ namespace xdp {
       mCoreTraceEndEvent = mTraceFlushEndEvent;
       mMemTileTraceEndEvent = mMemTileTraceFlushEndEvent;
       useTraceFlush = true;
-      std::cout << "!!!! Using trace flush!" << std::endl;
+
+      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))
+        xrt_core::message::send(severity_level::info, "XRT", "Enabling trace flush");
     }
     
     // Iterate over all used/specified tiles
@@ -477,7 +479,7 @@ namespace xdp {
         for (int i=0; i < mCoreCounterStartEvents.size(); ++i) {
           auto perfCounter = core.perfCounter();
           if (perfCounter->initialize(mod, mCoreCounterStartEvents.at(i),
-                                      mod, mCoreCounterStartEvents.at(i)) != XAIE_OK)
+                                      mod, mCoreCounterEndEvents.at(i)) != XAIE_OK)
             break;
           if (perfCounter->reserve() != XAIE_OK) 
             break;
@@ -534,7 +536,7 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-          perfCounter->changeThreshold(mMemoryCounterEndEvents.at(i));
+          perfCounter->changeThreshold(mMemoryCounterEventValues.at(i));
 
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
