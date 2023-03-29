@@ -99,16 +99,8 @@ namespace xdp {
 
     auto deviceID = getDeviceIDFromHandle(handle);
     AIEData.deviceID = deviceID;
-    AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
     AIEData.valid = true; // initialize struct
     AIEData.devIntf = nullptr;
-
-#ifdef XRT_X86_BUILD
-    AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
-#else
-    AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
-#endif
-
 
     // Get Device info // Investigate further (isDeviceReady should be always called??)
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
@@ -120,7 +112,15 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
       }
     }
-    
+
+    // Metadata depends on static information from the database
+    AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
+#ifdef XRT_X86_BUILD
+    AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
+#else
+    AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
+#endif
+
     // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
     if (deviceIntf == nullptr) 
