@@ -1013,12 +1013,20 @@ namespace xdp {
     auto handle = metadata->getHandle();
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
-    /*
-     * Flush trace if requested or required
-     */
+    // Flush trace if requested or required
+    if (((mTraceFlushLocs.size() > 0) || (mMemTileTraceFlushLocs.size() > 0))
+        && (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))) {
+      std::stringstream msg;
+      msg << "Flushing AIE trace by forcing end event for "
+          << mTraceFlushLocs.size() << " AIE tiles";
+      if (metadata->getHardwareGen() > 1)
+        msg << " and " << mMemTileTraceFlushLocs.size() << " memory tiles";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+    }
+
     for (const auto& loc : mTraceFlushLocs)
       XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mTraceFlushEndEvent);
-    for (const auto& loc : mTraceFlushLocs)
+    for (const auto& loc : mMemTileTraceFlushLocs)
       XAie_EventGenerate(aieDevInst, loc, XAIE_MEM_MOD, mMemTileTraceFlushEndEvent);
 
     mTraceFlushLocs.clear();
