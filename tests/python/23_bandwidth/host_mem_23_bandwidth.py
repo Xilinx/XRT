@@ -48,7 +48,7 @@ def getThreshold(devHandle):
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
-    bo = pyxrt.bo(devhdl, DATASIZE, pyxrt.bo.normal, krnlhdl.group_id(argno))
+    bo = pyxrt.bo(devhdl, DATASIZE, pyxrt.bo.host_only, krnlhdl.group_id(argno))
     buf = bo.map()
 
     for i in range(DATASIZE):
