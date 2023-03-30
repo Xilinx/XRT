@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -269,6 +270,7 @@ static int scu_remove(struct platform_device *pdev)
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct xrt_cu_info *info = &zcu->base.info;
+	struct drm_zocl_bo *bo = NULL;
 
 	xrt_cu_scu_fini(&zcu->base);
 
@@ -278,7 +280,10 @@ static int scu_remove(struct platform_device *pdev)
 		vfree(zcu->base.res);
 
 	// Free Command Buffer BO
-	zocl_drm_free_bo(zcu->sc_bo);
+	bo = zcu->sc_bo;
+	if (bo)
+		zocl_drm_free_bo(bo);
+	zcu->sc_bo = NULL;
 	write_lock(&zcu->attr_rwlock);
 	sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
 	write_unlock(&zcu->attr_rwlock);
