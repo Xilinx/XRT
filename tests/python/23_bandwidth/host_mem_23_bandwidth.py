@@ -48,7 +48,7 @@ def getThreshold(devHandle):
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
-    bo = pyxrt.bo(devhdl, DATASIZE, pyxrt.bo.normal, krnlhdl.group_id(argno))
+    bo = pyxrt.bo(devhdl, DATASIZE, pyxrt.bo.host_only, krnlhdl.group_id(argno))
     buf = bo.map()
 
     for i in range(DATASIZE):
@@ -67,8 +67,8 @@ def runKernel(opt):
     except Exception as e:
         return errno.EOPNOTSUPP
 
-    output_bo3, output_buf3 = getInputOutputBuffer(opt.handle, khandle3, 0, False)
-    input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
+    output_bo3, output_buf3 = getInputOutputBuffer(d, khandle3, 0, False)
+    input_bo3, input_buf3 = getInputOutputBuffer(d, khandle3, 1, True)
 
     TYPESIZE = 512
     beats = 16
