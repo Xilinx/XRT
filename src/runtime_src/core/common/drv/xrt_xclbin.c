@@ -223,7 +223,7 @@ int
 xrt_xclbin_check_section_hdr(const struct axlf_section_header *header,
 	uint64_t xclbin_len)
 {
-	return (header->m_sectionOffset + header->m_sectionSize) > xclbin_len ?
+	return ((header->m_sectionOffset + header->m_sectionSize < header->m_sectionOffset) || (header->m_sectionOffset + header->m_sectionSize > xclbin_len)) ?
 		-EINVAL : 0;
 }
 
