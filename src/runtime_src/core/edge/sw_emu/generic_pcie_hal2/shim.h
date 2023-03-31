@@ -65,6 +65,12 @@ namespace xclswemuhal2 {
         , m_mode(mode)
       {}
 
+      void
+      update_access_mode(access_mode mode) override
+      {
+        m_mode = mode;
+      }
+
       slot_id
       get_slotidx() const override
       {
