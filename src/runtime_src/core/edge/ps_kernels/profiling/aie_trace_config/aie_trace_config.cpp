@@ -22,7 +22,7 @@
 #include "xaiefal/xaiefal.hpp"
 #include "xaiengine.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
+#include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
 
 // User private data structure container (context object) definition
 class xrtHandles : public pscontext

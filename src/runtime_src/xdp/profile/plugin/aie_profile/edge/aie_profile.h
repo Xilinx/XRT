@@ -20,7 +20,7 @@
 #include <cstdint>
 
 #include "core/edge/common/aie_parser.h"
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 #include "xaiefal/xaiefal.hpp"
 
 extern "C" {
