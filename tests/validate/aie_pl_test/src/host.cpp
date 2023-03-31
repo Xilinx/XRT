@@ -300,7 +300,7 @@ main(int argc, char* argv[])
     // For AIE1 need to use a different xclbin name
     std::string b_file = "pl_controller_aie.xclbin";
     if(hw_gen == 1)
-	b_file  = "vck5000_pcie_pl_controller.xclbin";
+	b_file  = "vck5000_pcie_pl_controller.xclbin.xclbin";
     
     auto binaryFile = boost::filesystem::path(test_path) / b_file;
     std::ifstream infile(binaryFile.string());
