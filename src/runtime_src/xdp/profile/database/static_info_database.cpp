@@ -2025,7 +2025,6 @@ namespace xdp {
  
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
     setAIEGeneration(deviceId, xrtXclbin);
-    setAIEClockRateMHz(deviceId, xrtXclbin);
 
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
@@ -2040,6 +2039,9 @@ namespace xdp {
     devInfo->addXclbin(currentXclbin);
     initializeProfileMonitors(devInfo, xrtXclbin);
     devInfo->isReady = true;
+
+    // Add aie clock to xclbin
+    setAIEClockRateMHz(deviceId, xrtXclbin);
 
     return devInfo;
 
