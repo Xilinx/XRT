@@ -101,12 +101,12 @@ namespace xdp {
     mCoreTraceEndEvent   = XAIE_EVENT_DISABLED_CORE;
 
     /*
-     * This is needed because the cores are started/stopped during execution
-     * to get around some hw bugs. We cannot restart tracemodules when that happens.
-     * At the end, we need to use event generate register to create this event
-     * to gracefully shut down trace modules.
+     * This is needed because the last trace packet needs to be "flushed".
+     * To output the last packet, we use event generate register to create 
+     * this event and gracefully shut down trace modules.
      */
-    mWindowedTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+    mTraceFlushEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+    mMemTileTraceFlushEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
 
     // **** Memory Module Trace ****
     // NOTE 1: Core events listed here are broadcast by the resource manager
@@ -392,6 +392,22 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
 
+    // Decide when to use user event for trace end to enable flushing
+    bool useTraceFlush = false;
+    if ((metadata->getUseUserControl())
+        || (metadata->getUseGraphIterator())
+        || (metadata->getUseDelay())
+        || (xrt_core::config::get_aie_trace_settings_end_type() == "event1")) {
+      if (metadata->getUseUserControl())
+        mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
+      mCoreTraceEndEvent = mTraceFlushEndEvent;
+      mMemTileTraceEndEvent = mMemTileTraceFlushEndEvent;
+      useTraceFlush = true;
+
+      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))
+        xrt_core::message::send(severity_level::info, "XRT", "Enabling trace flush");
+    }
+    
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
     for (auto& tileMetric : metadata->getConfigMetrics()) {
@@ -406,6 +422,14 @@ namespace xdp {
         core          = aieDevice->tile(col, row).core();
       auto& memory    = aieDevice->tile(col, row).mem();
       auto loc        = XAie_TileLoc(col, row);
+
+      // Store location to flush at end of run
+      if (useTraceFlush) {
+        if (type == module_type::core)
+          mTraceFlushLocs.push_back(loc);
+        else if (type == module_type::mem_tile)
+          mMemTileTraceFlushLocs.push_back(loc);
+      }
 
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row, type);
@@ -427,7 +451,7 @@ namespace xdp {
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
         std::stringstream infoMsg;
-        auto tileName = (type == module_type::mem_tile) ? "MEM" : "AIE";
+        auto tileName = (type == module_type::mem_tile) ? "memory" : "AIE";
         infoMsg << "Configuring " << tileName << " tile (" << col << "," << row
                 << ") for trace using metric set " << metricSet;
         xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
@@ -455,7 +479,7 @@ namespace xdp {
         for (int i=0; i < mCoreCounterStartEvents.size(); ++i) {
           auto perfCounter = core.perfCounter();
           if (perfCounter->initialize(mod, mCoreCounterStartEvents.at(i),
-                                      mod, mCoreCounterStartEvents.at(i)) != XAIE_OK)
+                                      mod, mCoreCounterEndEvents.at(i)) != XAIE_OK)
             break;
           if (perfCounter->reserve() != XAIE_OK) 
             break;
@@ -512,7 +536,7 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-          perfCounter->changeThreshold(mMemoryCounterEndEvents.at(i));
+          perfCounter->changeThreshold(mMemoryCounterEventValues.at(i));
 
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
@@ -560,17 +584,12 @@ namespace xdp {
         auto coreTrace = core.traceControl();
 
         // Delay cycles and user control are not compatible with each other
-        if (metadata->getUseUserControl()) {
-          mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-          mCoreTraceEndEvent = mWindowedTraceEndEvent;
-        } else if (metadata->getUseGraphIterator()) {
+        if (metadata->getUseGraphIterator()) {
           if (!configureStartIteration(core))
             break;
-          mWindowedTraceLocs.push_back(loc);
         } else if (metadata->getUseDelay()) {
           if (!configureStartDelay(core))
             break;
-          mWindowedTraceLocs.push_back(loc);
         }
 
         // Set overall start/end for trace capture
@@ -952,8 +971,6 @@ namespace xdp {
     }
 
     mCoreTraceStartEvent = counterEvent;
-    mCoreTraceEndEvent = mWindowedTraceEndEvent;
-
     return true;
   }
 
@@ -988,8 +1005,6 @@ namespace xdp {
     }
 
     mCoreTraceStartEvent = counterEvent;
-    mCoreTraceEndEvent = mWindowedTraceEndEvent;
-
     return true;
   }
 
@@ -998,11 +1013,23 @@ namespace xdp {
     auto handle = metadata->getHandle();
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
-    /*
-     * Flush for trace windowing
-     */
-    for (const auto& loc : mWindowedTraceLocs)
-      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mWindowedTraceEndEvent);
-    mWindowedTraceLocs.clear();
+    // Flush trace if requested or required
+    if (((mTraceFlushLocs.size() > 0) || (mMemTileTraceFlushLocs.size() > 0))
+        && (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))) {
+      std::stringstream msg;
+      msg << "Flushing AIE trace by forcing end event for "
+          << mTraceFlushLocs.size() << " AIE tiles";
+      if (metadata->getHardwareGen() > 1)
+        msg << " and " << mMemTileTraceFlushLocs.size() << " memory tiles";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+    }
+
+    for (const auto& loc : mTraceFlushLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mTraceFlushEndEvent);
+    for (const auto& loc : mMemTileTraceFlushLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_MEM_MOD, mMemTileTraceFlushEndEvent);
+
+    mTraceFlushLocs.clear();
+    mMemTileTraceFlushLocs.clear();
   }
 }

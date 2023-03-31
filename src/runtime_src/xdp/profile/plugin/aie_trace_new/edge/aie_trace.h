@@ -87,7 +87,8 @@ namespace xdp {
       EventType   mCoreTraceEndEvent;
       EventType   mMemTileTraceStartEvent;
       EventType   mMemTileTraceEndEvent;
-      EventType   mWindowedTraceEndEvent;
+      EventType   mTraceFlushEndEvent;
+      EventType   mMemTileTraceFlushEndEvent;
 
       EventVector mCoreCounterStartEvents;
       EventVector mCoreCounterEndEvents;
@@ -97,9 +98,9 @@ namespace xdp {
       EventVector mMemoryCounterEndEvents;
       ValueVector mMemoryCounterEventValues;
 
-      // Tile locations using windowed trace
-      std::vector<XAie_LocType> mWindowedTraceLocs;
-
+      // Tile locations to apply trace end and flush
+      std::vector<XAie_LocType> mTraceFlushLocs;
+      std::vector<XAie_LocType> mMemTileTraceFlushLocs;
   };
 
 }   

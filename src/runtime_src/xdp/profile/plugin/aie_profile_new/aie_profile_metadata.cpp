@@ -729,10 +729,10 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[moduleIdx];
-    for (auto &e : allValidTiles) {
-      if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end())
-        configMetrics[moduleIdx][e] = defaultSet;
-    }
+    //for (auto &e : allValidTiles) {
+    //  if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end())
+    //    configMetrics[moduleIdx][e] = defaultSet;
+    //}
 
     bool showWarning = true;
     std::vector<tile_type> offTiles;
@@ -889,12 +889,12 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     auto defaultSet = defaultSets[moduleIdx];
-    auto totalTiles = get_interface_tiles(device.get(), defaultSet, -1);
-    for (auto &e : totalTiles) {
-      if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
-        configMetrics[moduleIdx][e] = defaultSet;
-      }
-    }
+    //auto totalTiles = get_interface_tiles(device.get(), defaultSet, -1);
+    //for (auto &e : totalTiles) {
+    //  if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
+    //    configMetrics[moduleIdx][e] = defaultSet;
+    //  }
+    //}
 
     bool showWarning = true;
     std::vector<tile_type> offTiles;
