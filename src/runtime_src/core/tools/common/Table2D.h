@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __Table2D_h_
 #define __Table2D_h_
@@ -39,6 +39,19 @@ class Table2D {
     std::string toString(const std::string& prefix = "") const;
 
     size_t getTableCharacterLength() const;
+
+    bool empty() const
+    {
+        // Check if headers have been added
+        if (m_table.empty())
+            return true;
+
+        // Check if anything other than headers have been added
+        if (m_table[0].data.empty())
+            return true;
+
+        return false;
+    }
 
  private:
     typedef struct ColumnData {

@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2021, 2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_memory.h"
 #include "ps_kernel.h"
@@ -596,6 +583,8 @@ populate_hardware_context(const xrt_core::device* device)
   if (hw_context_stats.empty()) {
     xq::hw_context_info::data_type hw_context;
 
+    hw_context.id = "0";
+
     try {
       hw_context.xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
     }
@@ -620,7 +609,8 @@ populate_hardware_context(const xrt_core::device* device)
 
   for (const auto& hw : hw_context_stats) {
     ptree_type pt_hw;
-    pt_hw.put( "xclbin_uuid", boost::algorithm::to_upper_copy(hw.xclbin_uuid));
+    pt_hw.put("id", boost::algorithm::to_upper_copy(hw.id));
+    pt_hw.put("xclbin_uuid", boost::algorithm::to_upper_copy(hw.xclbin_uuid));
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }
