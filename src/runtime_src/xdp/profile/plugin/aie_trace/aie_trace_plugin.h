@@ -19,7 +19,7 @@
 
 #include <cstdint>
 
-#include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
