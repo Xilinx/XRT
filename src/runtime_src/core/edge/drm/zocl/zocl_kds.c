@@ -437,10 +437,6 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl,
 
 	ret = kds_del_context(&zdev->kds, client, cu_ctx);
         if (ret) {
-		/* Existing context present for this CU */
-		if (ret == -EBUSY)
-			ret = 0;
-
 		mutex_unlock(&client->lock);
                 return ret;
 	}
@@ -515,13 +511,8 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	}
 
 	ret = kds_del_context(&zdev->kds, client, cu_ctx);
-	if (ret) {
-		/* Existing context present for this CU */
-		if (ret == -EBUSY)
-			ret = 0;
-
+	if (ret)
 		goto out;
-	}
 
         ret = kds_free_cu_ctx(client, cu_ctx);
         if (ret)

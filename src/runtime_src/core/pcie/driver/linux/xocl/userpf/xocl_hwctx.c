@@ -242,11 +242,8 @@ int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
         }
 
         ret = kds_del_context(&XDEV(xdev)->kds, client, cu_ctx);
-        if (ret) {
-		if (ret == -EBUSY)
-			ret = 0;
+        if (ret)
                 goto out;
-	}
 
         ret = kds_free_cu_ctx(client, cu_ctx);
 

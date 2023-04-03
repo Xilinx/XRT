@@ -1136,13 +1136,8 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	list_for_each_entry_safe(cu_ctx, next, &cctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
-		while (cu_ctx->ref_cnt) {
-			ret = kds_del_context(kds, client, cu_ctx);
-			if (ret && (ret != -EBUSY)) {
-				kds_err(client, "Deleting KDS Context failed");
-				goto out;
-			}
-		}
+		while (cu_ctx->ref_cnt)
+			kds_del_context(kds, client, cu_ctx);
 
 		if (kds_free_cu_ctx(client, cu_ctx)) {
 			kds_err(client, "Freeing CU Context failed");
@@ -1262,7 +1257,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	 * present. If no active context exists then delete that cu context.
 	 */
 	if (--cu_ctx->ref_cnt)
-		return -EBUSY;
+		return 0;
 
 	switch (cu_domain) {
 	case DOMAIN_VIRT:
