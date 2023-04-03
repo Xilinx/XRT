@@ -1120,6 +1120,7 @@ static inline void
 _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
 {
+	int ret = 0;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_ctx *next = NULL;
 
@@ -1135,9 +1136,12 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	list_for_each_entry_safe(cu_ctx, next, &cctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
-		if (kds_del_context(kds, client, cu_ctx)) {
-			kds_err(client, "Deleting KDS Context failed");
-			goto out;
+		while (cu_ctx->ref_cnt) {
+			ret = kds_del_context(kds, client, cu_ctx);
+			if (ret && (ret != -EBUSY)) {
+				kds_err(client, "Deleting KDS Context failed");
+				goto out;
+			}
 		}
 
 		if (kds_free_cu_ctx(client, cu_ctx)) {
@@ -1146,7 +1150,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		}
 	}
 
-out:	
+out:
 	mutex_unlock(&client->lock);
 }
 
@@ -1249,13 +1253,19 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
+	if (!cu_ctx->ref_cnt) {
+		kds_err(client, "No opening CU Context");
+		return -EINVAL;
+	}
+
+	/* Decrement the ref count and check whether any existing context
+	 * present. If no active context exists then delete that cu context.
+	 */
+	if (--cu_ctx->ref_cnt)
+		return -EBUSY;
 
 	switch (cu_domain) {
 	case DOMAIN_VIRT:
-		if (!cu_ctx->ref_cnt) {
-			kds_err(client, "No opening virtual CU");
-			return -EINVAL;
-		}
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !cu_ctx->ref_cnt) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
@@ -1280,7 +1290,6 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	--cu_ctx->ref_cnt;
 	kds_info(client, "Client pid(%d) del context Domain(%d) CU(0x%x)",
 		 pid_nr(client->pid), cu_domain, cu_idx);
 	return 0;
