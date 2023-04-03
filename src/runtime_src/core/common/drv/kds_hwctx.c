@@ -125,7 +125,6 @@ out:
 void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_hw_ctx *hw_ctx)
 {
-	int ret = 0;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_ctx *next = NULL;
 
