@@ -21,6 +21,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "aie_profile_metadata.h"
+
 #include "core/common/config_reader.h"
 #include "core/common/device.h"
 #include "core/common/message.h"

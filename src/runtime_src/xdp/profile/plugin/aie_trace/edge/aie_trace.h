@@ -20,7 +20,7 @@
 
 #include <cstdint>
 
-#include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xaiefal/xaiefal.hpp"
 
 namespace xdp {

@@ -17,8 +17,8 @@
 #ifndef XDP_AIE_PLUGIN_DOT_H
 #define XDP_AIE_PLUGIN_DOT_H
 
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 

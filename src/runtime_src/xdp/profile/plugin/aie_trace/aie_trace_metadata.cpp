@@ -16,8 +16,6 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-
 #include <cstdint>
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -25,14 +23,16 @@
 #include <memory>
 #include <regex>
 
-#include "core/common/device.h"
-#include "core/common/xrt_profiling.h"
 #include "aie_trace_metadata.h"
+
+#include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
 #include "core/edge/common/aie_parser.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
   namespace pt = boost::property_tree;

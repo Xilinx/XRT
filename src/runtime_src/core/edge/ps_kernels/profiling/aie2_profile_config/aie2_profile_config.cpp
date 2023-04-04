@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+/* Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,16 +15,17 @@
 
 #include <cstring>
 
+#include "profile_event_configuration.h"
+#include "xaiengine.h"
+
+#include "core/common/time.h"
 #include "core/edge/include/sk_types.h"
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/shim.h"
-#include "profile_event_configuration.h"
 #include "xaiefal/xaiefal.hpp"
-#include "core/common/time.h"
-#include "xaiengine.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/plugin/aie_profile_new/x86/aie_profile_kernel_config.h"
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_profile/x86/aie_profile_kernel_config.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
 extern "C"{
 #include <xaiengine/xaiegbl_params.h>

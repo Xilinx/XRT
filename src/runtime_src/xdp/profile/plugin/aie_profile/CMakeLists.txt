@@ -8,14 +8,14 @@
 # ====================================================================
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile_new/x86")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/x86")
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile_new/edge")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/edge")
 endif()
 
 file(GLOB AIE_PROFILE_PLUGIN_FILES
-  "${PROFILE_DIR}/plugin/aie_profile_new/*.h"
-  "${PROFILE_DIR}/plugin/aie_profile_new/*.cpp"
+  "${PROFILE_DIR}/plugin/aie_profile/*.h"
+  "${PROFILE_DIR}/plugin/aie_profile/*.cpp"
   "${PROFILE_DIR}/writer/aie_profile/*.h"
   "${PROFILE_DIR}/writer/aie_profile/*.cpp"
   "${IMPL_DIR}/*.h"

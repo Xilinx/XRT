@@ -30,7 +30,7 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/plugin/aie_trace_new/aie_trace_metadata.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 #include "core/include/xrt/xrt_kernel.h"
 
