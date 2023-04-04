@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 
@@ -290,7 +290,7 @@ xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
   return size;
 }
 
-unsigned int
+std::unique_ptr<xrt_core::buffer_handle>
 shim::
 xclAllocBO(size_t size, unsigned flags)
 {
@@ -300,10 +300,10 @@ xclAllocBO(size_t size, unsigned flags)
   xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
-  return info.handle;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 
-unsigned int
+std::unique_ptr<xrt_core::buffer_handle>
 shim::
 xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
@@ -314,7 +314,7 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
-  return info.handle;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 
 unsigned int
@@ -471,9 +471,10 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                       src_offset, dst_offset, size);
 
-  ret = xclExecBuf(to_xclBufferHandle(bo.first));
+  auto boh = static_cast<buffer_object*>(bo.first.get());
+  ret = xclExecBuf(boh->get_handle());
   if (ret) {
-    mCmdBOCache->release(bo);
+    mCmdBOCache->release(std::move(bo));
     return ret;
   }
 
@@ -487,7 +488,8 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ret = (ret == -1) ? -errno : 0;
   if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
     ret = -EINVAL;
-  mCmdBOCache->release<ert_start_copybo_cmd>(bo);
+
+  mCmdBOCache->release(std::move(bo));
 #endif
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
   return ret;
@@ -820,7 +822,7 @@ secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *to
   return 1;
 }
 
-int
+std::unique_ptr<xrt_core::shared_handle>
 shim::
 xclExportBO(unsigned int boHandle)
 {
@@ -833,24 +835,26 @@ xclExportBO(unsigned int boHandle)
     result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
   }
 
+  if (result)
+    throw xrt_core::system_error(result, "failed to export bo");
+
   xclLog(XRT_INFO, "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
 
-  return !result ? info.fd : result;
+  return std::make_unique<shared_object>(this, info.fd);
 }
 
-unsigned int
+std::unique_ptr<xrt_core::buffer_handle>
 shim::
 xclImportBO(int fd, unsigned flags)
 {
   drm_prime_handle info = {0xffffffff, flags, fd};
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
-  if (result) {
-    xclLog(XRT_ERROR, "%s: FD to handle IOCTL failed", __func__);
-  }
+  if (result)
+    throw xrt_core::system_error(result, "ioctl failed to import bo");
 
   xclLog(XRT_INFO, "%s: fd %d, flags %x, ioctl return %d, bo handle %d", __func__, fd, flags, result, info.handle);
 
-  return !result ? info.handle : 0xffffffff;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 
 unsigned int
@@ -1871,6 +1875,29 @@ create_hw_context(xclDeviceHandle handle,
   return shim->create_hw_context(xclbin_uuid, cfg_param, mode);
 }
 
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocBO(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocUserPtrBO(userptr, size, flags);
+}
+
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclImportBO(ehdl, 0);
+}
+
+
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
 
@@ -1971,16 +1998,20 @@ unsigned int
 xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
 {
   return xdp::hal::profiling_wrapper("xclAllocBO", [handle, size, flags] {
+    try {
+      auto shim = ZYNQ::shim::handleCheck(handle);
+      if (!shim)
+        return static_cast<unsigned int>(-EINVAL);
 
-  //std::cout << "xclAllocBO called " << std::endl;
-  //std::cout << "xclAllocBO size:  "  << size << std::endl;
-  //std::cout << "xclAllocBO handle " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return static_cast<unsigned int>(-EINVAL);
-  //std::cout << "xclAllocBO handle check passed" << std::endl;
-  return drv->xclAllocBO(size, flags);
-  }) ;
+        auto bo = shim->xclAllocBO(size, flags);
+        auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+        return ptr->detach_handle();
+      }
+      catch (const xrt_core::error& ex) {
+        xrt_core::send_exception_message(ex.what());
+        return static_cast<unsigned int>(ex.get_code());
+      }
+    });
 }
 
 unsigned int
@@ -1988,14 +2019,20 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned f
 {
   return xdp::hal::profiling_wrapper("xclAllocUserPtrBO",
   [handle, userptr, size, flags] {
+    try {
+      auto shim = ZYNQ::shim::handleCheck(handle);
+      if (!shim)
+        return static_cast<unsigned int>(-EINVAL);
 
-  //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return static_cast<unsigned int>(-EINVAL);
-  return drv->xclAllocUserPtrBO(userptr, size, flags);
-  //return 0xffffffff;
-  }) ;
+      auto bo = shim->xclAllocUserPtrBO(userptr, size, flags);
+      auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+      return ptr->detach_handle();
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return static_cast<unsigned int>(ex.get_code());
+    }
+  });
 }
 
 unsigned int
@@ -2104,27 +2141,37 @@ xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
 int
 xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  //std::cout << "xclExportBO called.. " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return -EINVAL;
-  return drv->xclExportBO(boHandle);
+  try {
+    auto shim = ZYNQ::shim::handleCheck(handle);
+    if (!shim)
+      return -EINVAL;
+
+    auto shared = shim->xclExportBO(boHandle);
+    auto ptr = static_cast<ZYNQ::shim::shared_object*>(shared.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
 }
 
 unsigned int
 xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 {
-  //std::cout << "xclImportBO called.. " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return -EINVAL;
-  return drv->xclImportBO(fd, flags);
-}
+  try {
+    auto shim = ZYNQ::shim::handleCheck(handle);
+    if (!shim)
+      return static_cast<unsigned int>(-EINVAL); // argh ...
 
-int
-xclCloseExportHandle(int fd)
-{
-  return close(fd) ? -errno : 0;
+    auto bo = shim->xclImportBO(fd, flags);
+    auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<unsigned int>(ex.get_code());
+  }
 }
 
 static int

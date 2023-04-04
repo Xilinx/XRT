@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
 #include "core/include/xdp/app_debug.h"
@@ -47,29 +47,64 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
   shim->register_xclbin(xclbin);
 }
 
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocBO(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocUserPtrBO(userptr, size, flags);
+}
+
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclImportBO(ehdl, 0);
+}
+
 } // xrt::shim_int
 
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclExportBO(boHandle);
+  try {
+    auto shim = xclhwemhal2::HwEmShim::handleCheck(handle);
+    if (!shim)
+      return -1;
+
+    auto shared = shim->xclExportBO(boHandle);
+    auto ptr = static_cast<xclhwemhal2::HwEmShim::shared_object*>(shared.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
 }
 
-unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned flags)
+unsigned int
+xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned flags)
 {
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclImportBO(boGlobalHandle,flags);
-}
+  try {
+    auto shim = xclhwemhal2::HwEmShim::handleCheck(handle);
+    if (!shim)
+      return static_cast<unsigned int>(mNullBO);
 
-int xclCloseExportHandle(int ehdl)
-{
-  // Implement per hw_emu requirements
-  return 0;
+    auto bo = shim->xclImportBO(boGlobalHandle, flags);
+    auto ptr = static_cast<xclhwemhal2::HwEmShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<unsigned int>(ex.get_code());
+  }
 }
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
@@ -121,13 +156,23 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
   }) ;
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
+unsigned int
+xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned int flags)
 {
-  return xdp::hw_emu::trace::profiling_wrapper("xclAllocBO", [=]{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return static_cast<unsigned int>(-EINVAL);
-  return drv->xclAllocBO(size, flags);
+  return xdp::hw_emu::trace::profiling_wrapper("xclAllocBO", [=] {
+    try {
+      auto shim = xclhwemhal2::HwEmShim::handleCheck(handle);
+      if (!shim)
+        return static_cast<unsigned int>(mNullBO);
+
+      auto bo = shim->xclAllocBO(size, flags);
+      auto ptr = static_cast<xclhwemhal2::HwEmShim::buffer_object*>(bo.get());
+      return ptr->detach_handle();
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return static_cast<unsigned int>(mNullBO);
+    }
   }) ;
 }
 
@@ -292,14 +337,23 @@ unsigned xclProbe()
   //  }) ;
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
+unsigned int
+xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
-  //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
   return xdp::hw_emu::trace::profiling_wrapper("xclAllocUserPtrBO", [=] {
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return static_cast<unsigned int>(mNullBO);
-  return drv->xclAllocUserPtrBO(userptr,size,flags);
+    try {
+      auto shim = xclhwemhal2::HwEmShim::handleCheck(handle);
+      if (!shim)
+        return static_cast<unsigned int>(mNullBO);
+
+      auto bo = shim->xclAllocUserPtrBO(userptr,size,flags);
+      auto ptr = static_cast<xclhwemhal2::HwEmShim::buffer_object*>(bo.get());
+      return ptr->detach_handle();
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return static_cast<unsigned int>(mNullBO);
+    }
   }) ;
 }
 

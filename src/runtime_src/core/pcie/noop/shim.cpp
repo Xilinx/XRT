@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements a dummy (no-op) shim level driver that is
 // used exclusively for debugging user space XRT with HW xclbins
@@ -19,6 +19,7 @@
 #include "core/common/system.h"
 #include "core/common/task.h"
 #include "core/common/thread.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 
 #include "core/common/api/hw_context_int.h"
@@ -377,6 +378,82 @@ struct shim
   // be created for that xclbin.
   std::map<xrt::uuid, std::unique_ptr<xrt_core::hwctx_handle>> m_load_xclbin_slots;
 
+  class buffer_object : public xrt_core::buffer_handle
+  {
+    shim* m_shim;
+    int m_fd;   // fd
+  public:
+    buffer_object(shim* shim, int fd)
+      : m_shim(shim)
+      , m_fd(fd)
+    {}
+
+    ~buffer_object()
+    {
+      m_shim->free_bo(m_fd);
+    }
+
+    int
+    get_fd() const
+    {
+      return m_fd;
+    }
+
+    // Detach and return export handle for legacy xclAPI use
+    int
+    detach_handle()
+    {
+      return std::exchange(m_fd, XRT_NULL_BO);
+    }
+
+    // Export buffer for use with another process or device
+    // An exported buffer can be imported by another device
+    // or hardware context.
+    virtual std::unique_ptr<xrt_core::shared_handle>
+    share() const override
+    {
+      throw xrt_core::error(std::errc::not_supported, __func__);
+    }
+
+    void*
+    map(map_type) override
+    {
+      return m_shim->map_bo(m_fd, true);
+    }
+
+    void
+    unmap(void* addr) override
+    {
+      m_shim->unmap_bo(m_fd, addr);
+    }
+
+    void
+    sync(direction dir, size_t size, size_t offset) override
+    {
+      m_shim->sync_bo(m_fd, static_cast<xclBOSyncDirection>(dir), size, offset);
+    }
+
+    void
+    copy(const buffer_handle*, size_t, size_t, size_t) override
+    {
+      throw xrt_core::error(std::errc::not_supported, __func__);
+    }
+
+    properties
+    get_properties() const override
+    {
+      xclBOProperties xprop;
+      m_shim->get_bo_properties(m_fd, &xprop);
+      return {xprop.flags, xprop.size, xprop.paddr};
+    }
+
+    xclBufferHandle
+    get_xcl_handle() const override
+    {
+      return static_cast<xclBufferHandle>(m_fd);
+    }
+  }; // buffer
+
   class hwcontext : public xrt_core::hwctx_handle
   {
     shim* m_shim;
@@ -415,26 +492,18 @@ public:
       return nullptr;
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(void* userptr, size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->alloc_user_ptr_bo(userptr, size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->alloc_userptr_bo(userptr, size, flags);
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->alloc_bo(size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->alloc_bo(size, flags);
     }
 
     xrt_core::cuidx_type
@@ -450,9 +519,9 @@ public:
     }
 
     void
-    exec_buf(xrt_buffer_handle cmd) override
+    exec_buf(xrt_core::buffer_handle* cmd) override
     {
-      m_shim->exec_buf(to_xclBufferHandle(cmd));
+      m_shim->exec_buf(cmd->get_xcl_handle());
     }
 
     bool
@@ -478,16 +547,16 @@ public:
   ~shim()
   {}
 
-  buffer_handle_type
+  std::unique_ptr<xrt_core::buffer_handle>
   alloc_bo(size_t size, unsigned int flags)
   {
-    return buffer::alloc(size, flags);
+    return std::make_unique<buffer_object>(this, buffer::alloc(size, flags));
   }
 
-  buffer_handle_type
-  alloc_user_ptr_bo(void* userptr, size_t size, unsigned int flags)
+  std::unique_ptr<xrt_core::buffer_handle>
+  alloc_userptr_bo(void* userptr, size_t size, unsigned int flags)
   {
-    return buffer::alloc(userptr, size, flags);
+    return std::make_unique<buffer_object>(this, buffer::alloc(userptr, size, flags));
   }
 
   void*
@@ -683,6 +752,21 @@ xclbin_slots(const xrt_core::device* device)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->alloc_bo(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->alloc_userptr_bo(userptr, size, flags);
+}
+
 std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
@@ -749,7 +833,9 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
   auto shim = get_shim_object(handle);
-  return shim->alloc_bo(size, flags);
+  auto bo = shim->alloc_bo(size, flags);
+  auto ptr = static_cast<shim::buffer_object*>(bo.get());
+  return ptr->detach_handle();
 }
 
 xclBufferHandle
@@ -758,7 +844,9 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned i
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
   auto shim = get_shim_object(handle);
-  return shim->alloc_user_ptr_bo(userptr, size, flags);
+  auto bo = shim->alloc_userptr_bo(userptr, size, flags);
+  auto ptr = static_cast<shim::buffer_object*>(bo.get());
+  return ptr->detach_handle();
 }
 
 void*

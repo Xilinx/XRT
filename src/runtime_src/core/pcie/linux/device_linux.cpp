@@ -1610,12 +1610,12 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
   throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
-xrt_buffer_handle
+std::unique_ptr<buffer_handle>
 device_linux::
-import_bo(pid_t pid, xclBufferExportHandle ehdl)
+import_bo(pid_t pid, xrt_core::shared_handle::export_handle ehdl)
 {
-  if (getpid() == pid)
-    return shim::import_bo(ehdl);
+  if (pid == 0 || getpid() == pid)
+    return xrt::shim_int::import_bo(get_device_handle(), ehdl);
 
 #if defined(SYS_pidfd_open) && defined(SYS_pidfd_getfd)
   auto pidfd = syscall(SYS_pidfd_open, pid, 0);
@@ -1629,7 +1629,7 @@ import_bo(pid_t pid, xclBufferExportHandle ehdl)
        "allows PTRACE_MODE_ATTACH_REALCREDS.  For more details please "
        "check /etc/sysctl.d/10-ptrace.conf");
 
-  return shim::import_bo(bofd);
+  return xrt::shim_int::import_bo(get_device_handle(), bofd);
 #else
   throw xrt_core::system_error
     (std::errc::not_supported,

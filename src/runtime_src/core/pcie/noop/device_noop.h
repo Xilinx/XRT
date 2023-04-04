@@ -37,6 +37,18 @@ private:
   {
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
   }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, flags);
+  }
 };
 
 }} // noop, xrt_core

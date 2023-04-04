@@ -51,6 +51,18 @@ public:
     return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, cfg_param, mode);
   }
 
+  std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, flags);
+  }
+
 private:
   // Private look up function for concrete query::request
   virtual const query::request&

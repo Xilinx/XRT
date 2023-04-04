@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
 #include "core/common/system.h"
@@ -35,6 +35,28 @@ create_hw_context(xclDeviceHandle handle,
 {
     auto shim = get_shim_object(handle);
     return shim->create_hw_context(xclbin_uuid, cfg_param, mode);
+}
+
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocBO(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocUserPtrBO(userptr, size, flags);
+}
+
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclImportBO(ehdl, 0);
 }
 
 } // xrt::shim_int
@@ -445,26 +467,41 @@ unsigned int xclVersion ()
   return 2;
 }
 
-int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
+int
+xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclExportBO(boHandle);
+  try {
+    auto shim = xclswemuhal2::SwEmuShim::handleCheck(handle);
+    if (!shim)
+      return -1;
+
+    auto shared = shim->xclExportBO(boHandle);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::shared_object*>(shared.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
 }
 
-unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned flags)
+unsigned int
+xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned flags)
 {
-  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclImportBO(boGlobalHandle,flags);
-}
+  try {
+    auto shim = xclswemuhal2::SwEmuShim::handleCheck(handle);
+    if (!shim)
+      return -1;
 
-int xclCloseExportHandle(int ehdl)
-{
-  // Implement per sw_em requirements
-  return 0;
+    auto bo = shim->xclImportBO(boGlobalHandle,flags);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<unsigned int>(ex.get_code());
+  }
+
 }
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
@@ -482,20 +519,40 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
   return drv->xclReadBO(boHandle, dst, size, skip);
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
+unsigned int
+xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
-  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
-  if (!drv)
+  try {
+    auto shim = xclswemuhal2::SwEmuShim::handleCheck(handle);
+    if (!shim)
+      return static_cast<unsigned int>(mNullBO);
+
+    auto bo = shim->xclAllocUserPtrBO(userptr,size,flags);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
     return mNullBO;
-  return drv->xclAllocUserPtrBO(userptr,size,flags);
+  }
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
+unsigned int
+xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
-  if (!drv)
-    return -EINVAL;
-  return drv->xclAllocBO(size, flags);
+  try {
+    auto shim = xclswemuhal2::SwEmuShim::handleCheck(handle);
+    if (!shim)
+      return static_cast<unsigned int>(mNullBO);
+
+    auto bo = shim->xclAllocBO(size, flags);
+    auto ptr = static_cast<xclswemuhal2::SwEmuShim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<unsigned int>(mNullBO);
+  }
 }
 
 

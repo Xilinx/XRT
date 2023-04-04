@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
@@ -1556,7 +1556,9 @@ namespace xclswemuhal2
     return 0;
   }
 
-  unsigned int SwEmuShim::xclAllocBO(size_t size, unsigned flags)
+  std::unique_ptr<xrt_core::buffer_handle>
+  SwEmuShim::
+  xclAllocBO(size_t size, unsigned flags)
   {
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open())
@@ -1565,13 +1567,18 @@ namespace xclswemuhal2
     }
     xclemulation::xocl_create_bo info = {size, mNullBO, flags};
     uint64_t result = xoclCreateBo(&info);
+    if (result)
+      throw xrt_core::system_error(result, "failed to allocate bo");
+
     PRINTENDFUNC;
-    return result ? mNullBO : info.handle;
+    return std::make_unique<buffer_object>(this, info.handle);
   }
   /***************************************************************************************/
 
   /******************************** xclAllocUserPtrBO ************************************/
-  unsigned int SwEmuShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+  std::unique_ptr<xrt_core::buffer_handle>
+  SwEmuShim::
+  xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   {
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open())
@@ -1579,17 +1586,22 @@ namespace xclswemuhal2
 
     xclemulation::xocl_create_bo info = {size, mNullBO, flags};
     uint64_t result = xoclCreateBo(&info);
+    if (result)
+      throw xrt_core::system_error(result, "failed to allocate userptr bo");
+
     xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(info.handle);
     if (bo)
       bo->userptr = userptr;
 
     PRINTENDFUNC;
-    return result ? mNullBO : info.handle;
+    return std::make_unique<buffer_object>(this, info.handle);
   }
   /***************************************************************************************/
 
   /******************************** xclExportBO *******************************************/
-  int SwEmuShim::xclExportBO(unsigned int boHandle)
+  std::unique_ptr<xrt_core::shared_handle>
+  SwEmuShim::
+  xclExportBO(unsigned int boHandle)
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
@@ -1599,15 +1611,12 @@ namespace xclswemuhal2
     xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
 
     if (!bo)
-      return -1;
+      throw xrt_core::error("Cannot export unknown buffer handle");
 
     bool zeroCopy = xclemulation::is_zero_copy(bo);
-
-    if (!zeroCopy)
-    {
-      std::cerr << "Exported Buffer is not P2P " << std::endl;
+    if (!zeroCopy) {
       PRINTENDFUNC;
-      return -1;
+      throw xrt_core::error("Exported buffer is not P2P");
     }
 
     std::string sFileName = bo->filename;
@@ -1615,11 +1624,9 @@ namespace xclswemuhal2
     DEBUG_MSGS("%s, %d(sFileName: %s bo->base: %lx size: %lx)\n", __func__, __LINE__, sFileName.c_str(), bo->base, size);
 
     int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
-    if (fd == -1)
-    {
-      printf("Error opening exported BO file.\n");
+    if (fd == -1) {
       PRINTENDFUNC;
-      return -1;
+      throw xrt_core::error("Error opening exported BO file");
     }
 
     char *data = nullptr;
@@ -1629,8 +1636,9 @@ namespace xclswemuhal2
       data = (char *)mmap(0, bo->size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
       if (!data)
       {
+        close(fd);
         PRINTENDFUNC;
-        return -1;
+        throw xrt_core::error("Failed to mmap data for exported BO");
       }
 
       int fR = ftruncate(fd, bo->size);
@@ -1638,7 +1646,7 @@ namespace xclswemuhal2
       {
         close(fd);
         munmap(data, bo->size);
-        return -1;
+        throw xrt_core::error("Failed to truncate exported BO file");
       }
 
       DEBUG_MSGS("%s, %d( sFileName: %s size: %lx fd: %x )\n", __func__, __LINE__, sFileName.c_str(), size, fd);
@@ -1650,8 +1658,9 @@ namespace xclswemuhal2
 
       if (!data)
       {
+        close(fd);
         PRINTENDFUNC;
-        return -1;
+        throw xrt_core::error("Failed to mmap data for exported BO");
       }
 
       DEBUG_MSGS("%s, %d( sFileName: %s bo->base: %lx size: %lx fd: %x )\n", __func__, __LINE__, sFileName.c_str(), bo->base, size, fd);
@@ -1660,12 +1669,13 @@ namespace xclswemuhal2
 
     PRINTENDFUNC;
     DEBUG_MSGS("%s, %d( fd: %x ENDED )\n", __func__, __LINE__, fd);
-    return fd;
+    return std::make_unique<shared_object>(this, fd);
   }
   /***************************************************************************************/
 
   /******************************** xclImportBO *******************************************/
-  unsigned int SwEmuShim::xclImportBO(int boGlobalHandle, unsigned flags)
+  std::unique_ptr<xrt_core::buffer_handle>
+  SwEmuShim::xclImportBO(int boGlobalHandle, unsigned int flags)
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boGlobalHandle << std::endl;
@@ -1673,41 +1683,37 @@ namespace xclswemuhal2
     DEBUG_MSGS("%s, %d( boGlobalHandle: %x )\n", __func__, __LINE__, boGlobalHandle);
 
     auto itr = mFdToFileNameMap.find(boGlobalHandle);
-    if (itr != mFdToFileNameMap.end())
-    {
-      uint64_t size = std::get<1>((*itr).second);
-      DEBUG_MSGS("%s, %d(size: %zx )\n", __func__, __LINE__, size);
+    if (itr == mFdToFileNameMap.end())
+      throw xrt_core::error("No filename for global bo handle");
 
-      unsigned int importedBo = xclAllocBO(size, flags);
+    uint64_t size = std::get<1>((*itr).second);
+    DEBUG_MSGS("%s, %d(size: %zx )\n", __func__, __LINE__, size);
 
-      xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(importedBo);
-      if (!bo)
-      {
-        std::cerr << "ERROR HERE in importBO " << std::endl;
-        return -1;
-      }
+    auto importedBo = xclAllocBO(size, flags);
+    auto importedBoHandle = buffer_object::get_handle(importedBo.get());
 
-      mImportedBOs.insert(importedBo);
-      bo->fd = boGlobalHandle;
+    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(importedBoHandle);
+    if (!bo)
+      throw xrt_core::error("Error in importBO");
 
-      auto isSinglemMapDisabled = std::getenv("VITIS_SW_EMU_DISABLE_SINGLE_MMAP");
-      if (isSinglemMapDisabled)
-      {
-        bool ack;
-        const std::string &fileName = std::get<0>((*itr).second);
-        xclImportBO_RPC_CALL(xclImportBO, fileName, bo->base, size);
+    mImportedBOs.insert(importedBoHandle);
+    bo->fd = boGlobalHandle;
 
-        if (!ack)
-          return -1;
-      }
+    auto isSinglemMapDisabled = std::getenv("VITIS_SW_EMU_DISABLE_SINGLE_MMAP");
+    if (isSinglemMapDisabled) {
+      bool ack;
+      const std::string &fileName = std::get<0>((*itr).second);
+      xclImportBO_RPC_CALL(xclImportBO, fileName, bo->base, size);
 
-      DEBUG_MSGS("%s, %d( bo->base: %lx size: %zx )\n", __func__, __LINE__, bo->base, size);
-      PRINTENDFUNC;
-
-      DEBUG_MSGS("%s, %d( ENDED )\n", __func__, __LINE__);
-      return importedBo;
+      if (!ack)
+        throw xrt_core::error("rcp failed to acknowledge");
     }
-    return -1;
+
+    DEBUG_MSGS("%s, %d( bo->base: %lx size: %zx )\n", __func__, __LINE__, bo->base, size);
+    PRINTENDFUNC;
+
+    DEBUG_MSGS("%s, %d( ENDED )\n", __func__, __LINE__);
+    return importedBo;
   }
   /***************************************************************************************/
 
