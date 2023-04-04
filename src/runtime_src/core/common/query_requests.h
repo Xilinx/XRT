@@ -939,6 +939,7 @@ struct hw_context_info : request
    *  Versal -> populate PL and PS compute units
    */
   struct data {
+    std::string id;
     std::string xclbin_uuid;
     kds_cu_info::result_type pl_compute_units;
     kds_scu_info::result_type ps_compute_units;

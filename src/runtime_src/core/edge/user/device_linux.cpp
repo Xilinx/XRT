@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "device_linux.h"
 #include "xrt.h"
 #include "zynq_dev.h"
@@ -167,7 +153,7 @@ struct aie_metadata_info{
 };
 
 // Function to get aie max rows and cols by parsing aie_metadata sysfs node
-static aie_metadata_info 
+static aie_metadata_info
 get_aie_metadata_info(const xrt_core::device* device)
 {
   std::string err;
@@ -259,24 +245,24 @@ struct aie_shim_info_sysfs
 struct aie_mem_info_sysfs
 {
   using result_type = query::aie_mem_info_sysfs::result_type;
-	  
+
   static result_type
-  get(const xrt_core::device* device, key_type key) 
+  get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
-						
+
     /* Loop all mem tiles and collect all dma, events, errors, locks status */
     for (int i = 0; i < aie_meta.num_cols; ++i)
       for (int j = 0; j < (aie_meta.num_mem_row-1); ++j)
 	ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
 			  aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.mem_row))));
-	 
+
     boost::property_tree::ptree pt;
     pt.add_child("aie_mem",ptarray);
-    std::ostringstream oss; 
-    boost::property_tree::write_json(oss, pt); 
+    std::ostringstream oss;
+    boost::property_tree::write_json(oss, pt);
     std::string inifile_text = oss.str();
     return inifile_text;
   }
@@ -1011,6 +997,16 @@ set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
 {
   if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
     throw xrt_core::error(ret, "failed to set cu read range");
+}
+
+std::unique_ptr<buffer_handle>
+device_linux::
+import_bo(pid_t pid, shared_handle::export_handle ehdl)
+{
+  if (pid == 0 || getpid() == pid)
+    return xrt::shim_int::import_bo(get_device_handle(), ehdl);
+
+  throw xrt_core::error(std::errc::not_supported, __func__);
 }
 
 ////////////////////////////////////////////////////////////////

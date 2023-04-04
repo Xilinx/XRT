@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2019 Samsung Semiconductor, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
@@ -19,7 +19,9 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/AlignedAllocator.h"
 #include "core/common/api/hw_context_int.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/shared_handle.h"
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
 
@@ -52,6 +54,111 @@ struct shim
   HANDLE m_dev;
   std::shared_ptr<xrt_core::device> m_core_device;
 
+public:
+  class shared_object : public xrt_core::shared_handle
+  {
+    shim* m_shim;
+    xclBufferExportHandle m_ehdl;
+  public:
+    shared_object(shim* shim, xclBufferExportHandle ehdl)
+      : m_shim(shim)
+      , m_ehdl(ehdl)
+    {}
+
+    ~shared_object()
+    {}
+
+    // Detach and return export handle for legacy xclAPI use
+    xclBufferExportHandle
+    detach_handle()
+    {
+      return std::exchange(m_ehdl, XRT_NULL_BO_EXPORT);
+    }
+
+    export_handle
+    get_export_handle() const override
+    {
+      return static_cast<export_handle>(m_ehdl);
+    }
+  };
+
+  class buffer_object : public xrt_core::buffer_handle
+  {
+    shim* m_shim;
+    xclBufferHandle m_hdl;
+  public:
+    buffer_object(shim* shim, xclBufferHandle fd)
+      : m_shim(shim)
+      , m_hdl(fd)
+    {}
+
+    ~buffer_object()
+    {
+      m_shim->free_bo(m_hdl);
+    }
+
+    xclBufferHandle
+    get_handle() const
+    {
+      return m_hdl;
+    }
+
+    // Detach and return export handle for legacy xclAPI use
+    xclBufferHandle
+    detach_handle()
+    {
+      return std::exchange(m_hdl, XRT_NULL_BO);
+    }
+
+    // Export buffer for use with another process or device
+    // An exported buffer can be imported by another device
+    // or hardware context.
+    std::unique_ptr<xrt_core::shared_handle>
+    share() const override
+    {
+      throw xrt_core::error(std::errc::not_supported, __func__);
+    }
+
+    void*
+    map(map_type mt) override
+    {
+      return m_shim->map_bo(m_hdl, (mt == xrt_core::buffer_handle::map_type::write));
+    }
+
+    void
+    unmap(void* addr) override
+    {
+      m_shim->unmap_bo(m_hdl, addr);
+    }
+
+    void
+    sync(direction dir, size_t size, size_t offset) override
+    {
+      m_shim->sync_bo(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+    }
+
+    void
+    copy(const buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
+    {
+      throw xrt_core::error(std::errc::not_supported, __func__);
+    }
+
+    properties
+    get_properties() const override
+    {
+      xclBOProperties xprop;
+      m_shim->get_bo_properties(m_hdl, &xprop);
+      return {xprop.flags, xprop.size, xprop.paddr};
+    }
+
+    xclBufferHandle
+    get_xcl_handle() const override
+    {
+      return get_handle();
+    }
+  }; // buffer_object
+
+
   // Shim handle for hardware context Even as hw_emu does not
   // support hardware context, it still must implement a shim
   // hardware context handle representing the default slot
@@ -69,6 +176,12 @@ struct shim
       , m_slotidx(slotidx)
       , m_mode(mode)
     {}
+
+    void
+    update_access_mode(access_mode mode) override
+    {
+      m_mode = mode;
+    }
 
     slot_id
     get_slotidx() const override
@@ -94,26 +207,18 @@ struct shim
       return nullptr;
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(void* userptr, size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->alloc_user_ptr_bo(userptr, size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->alloc_user_ptr_bo(userptr, size, flags);
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->alloc_bo(size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->alloc_bo(size, flags);
     }
 
     xrt_core::cuidx_type
@@ -129,9 +234,9 @@ struct shim
     }
 
     void
-    exec_buf(xrt_buffer_handle cmd) override
+    exec_buf(xrt_core::buffer_handle* cmd) override
     {
-      m_shim->exec_buf(to_xclBufferHandle(cmd));
+      m_shim->exec_buf(cmd->get_xcl_handle());
     }
   }; // class hwcontext
 
@@ -214,15 +319,10 @@ struct shim
     CloseHandle(m_dev);
   }
 
-  buffer_handle_type
+  std::unique_ptr<xrt_core::buffer_handle>
   alloc_bo(size_t size, unsigned int flags)
   {
-    HANDLE bufferHandle;
-    DWORD error = ERROR_UNABLE_TO_CLEAN;
-    XOCL_CREATE_BO_ARGS createBOArgs;
-    DWORD bytesWritten;
-
-    bufferHandle = CreateFileW(L"\\\\.\\XOCL_USER-0" XOCL_USER_DEVICE_BUFFER_OBJECT_NAMESPACE,
+    HANDLE bufferHandle = CreateFileW(L"\\\\.\\XOCL_USER-0" XOCL_USER_DEVICE_BUFFER_OBJECT_NAMESPACE,
                               GENERIC_READ | GENERIC_WRITE,
                               0,
                               0,
@@ -230,18 +330,12 @@ struct shim
                               0,
                               0);
 
-    //
     // If this call fails, check to figure out what the error is and report it.
-    //
-    if (bufferHandle == INVALID_HANDLE_VALUE) {
+    if (bufferHandle == INVALID_HANDLE_VALUE)
+      throw xrt_core::system_error(GetLastError(), "CreateFileW failed");
 
-        error = GetLastError();
-
-        xrt_core::message::
-          send(xrt_core::message::severity_level::error, "XRT", "CreateFile failed with error %d", error);
-
-        goto done;
-    }
+    XOCL_CREATE_BO_ARGS createBOArgs;
+    DWORD bytesWritten;
 
     //'size' needs to be multiple of 4K
     createBOArgs.Size = ((size % 4096) == 0) ? size : (((4096 + size) / 4096) * 4096);
@@ -256,42 +350,17 @@ struct shim
                          0,
                          &bytesWritten,
                          nullptr)) {
-
-        error = GetLastError();
-
-        xrt_core::message::
-          send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl 4 failed with error %d", error);
-
-        goto done;
+      CloseHandle(bufferHandle);
+      throw xrt_core::system_error(GetLastError(), "IOCTL_XOCL_CREATE_BO failed");
     }
 
-    error = ERROR_SUCCESS;
-
-done:
-
-    if (error != ERROR_SUCCESS) {
-
-        if (bufferHandle != INVALID_HANDLE_VALUE) {
-
-            CloseHandle(bufferHandle);
-            bufferHandle = INVALID_HANDLE_VALUE;
-
-        }
-
-    }
-
-    return bufferHandle;
+    return std::make_unique<buffer_object>(this, bufferHandle);
   }
 
-  buffer_handle_type
+  std::unique_ptr<xrt_core::buffer_handle>
   alloc_user_ptr_bo(void* userptr, size_t size, unsigned int flags)
   {
-    HANDLE bufferHandle;
-    DWORD error = ERROR_UNABLE_TO_CLEAN;
-    XOCL_USERPTR_BO_ARGS userPtrBO;
-    DWORD bytesWritten;
-
-    bufferHandle = CreateFileW(L"\\\\.\\XOCL_USER-0" XOCL_USER_DEVICE_BUFFER_OBJECT_NAMESPACE,
+    HANDLE bufferHandle = CreateFileW(L"\\\\.\\XOCL_USER-0" XOCL_USER_DEVICE_BUFFER_OBJECT_NAMESPACE,
                                GENERIC_READ | GENERIC_WRITE,
                                0,
                                0,
@@ -302,16 +371,11 @@ done:
     //
     // If this call fails, check to figure out what the error is and report it.
     //
-    if (bufferHandle == INVALID_HANDLE_VALUE) {
+    if (bufferHandle == INVALID_HANDLE_VALUE)
+      throw xrt_core::system_error(GetLastError(), "CreateFileW failed");
 
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::error,"XRT", "CreateFile failed with error %d",error);
-
-      goto done;
-
-    }
+    XOCL_USERPTR_BO_ARGS userPtrBO;
+    DWORD bytesWritten;
 
     userPtrBO.Address = userptr;
     userPtrBO.Size = ((size % 4096) == 0) ? size : (((4096 + size) / 4096) * 4096);
@@ -326,31 +390,11 @@ done:
                          0,
                          &bytesWritten,
                          nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::error,"XRT", "DeviceIoControl 4 failed with error %d", error);
-
-      goto done;
+      CloseHandle(bufferHandle);
+      throw xrt_core::system_error(GetLastError(), "IOCTL_XOCL_USERPTR_BO failed");
     }
 
-    error = ERROR_SUCCESS;
-
-  done:
-
-    if (error != ERROR_SUCCESS) {
-
-      if (bufferHandle != INVALID_HANDLE_VALUE) {
-
-        CloseHandle(bufferHandle);
-        bufferHandle = INVALID_HANDLE_VALUE;
-
-      }
-
-    }
-
-    return bufferHandle;
+    return std::make_unique<buffer_object>(this, bufferHandle);
   }
 
 
@@ -1659,6 +1703,21 @@ create_hw_context(xclDeviceHandle handle,
   return shim->create_hw_context(xclbin_uuid, cfg_param, mode);
 }
 
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->alloc_bo(size, flags);
+}
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->alloc_user_ptr_bo(userptr, size, flags);
+}
+
 } // namespace xrt::shim_int
 ////////////////////////////////////////////////////////////////
 
@@ -1757,19 +1816,43 @@ xclClose(xclDeviceHandle handle)
 xclBufferHandle
 xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
 {
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
-  auto shim = get_shim_object(handle);
-  return shim->alloc_bo(size, flags);
+  try {
+    xrt_core::message::
+      send(xrt_core::message::severity_level::debug, "XRT", "xclAllocBO()");
+    auto shim = get_shim_object(handle);
+    auto bo = shim->alloc_bo(size, flags);
+    auto ptr = static_cast<shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_BO;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_BO;
+  }
 }
 
 xclBufferHandle
 xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned int flags)
 {
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
-  auto shim = get_shim_object(handle);
-  return shim->alloc_user_ptr_bo(userptr, size, flags);
+  try {
+    xrt_core::message::
+      send(xrt_core::message::severity_level::debug, "XRT", "xclAllocUserPtrBO()");
+    auto shim = get_shim_object(handle);
+    auto bo = shim->alloc_user_ptr_bo(userptr, size, flags);
+    auto ptr = static_cast<shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_BO;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_BO;
+  }
 }
 
 void*

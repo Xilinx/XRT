@@ -140,10 +140,8 @@ void kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 	list_for_each_entry_safe(cu_ctx, next, &hw_ctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
-		if (kds_del_context(kds, client, cu_ctx)) {
-			kds_err(client, "Deleting KDS Context failed");
-			goto out;
-		}
+		while (cu_ctx->ref_cnt)
+			kds_del_context(kds, client, cu_ctx);
 
 		if (kds_free_cu_ctx(client, cu_ctx)) {
 			kds_err(client, "Freeing CU Context failed");
@@ -324,17 +322,15 @@ int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
 {
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	if (!cu_ctx)
-	       return -EINVAL;
-	
-	if (cu_ctx->ref_cnt) {
-		/* Reference count must be reset before free the context */
+	if (!cu_ctx) {
 		kds_err(client, "Invalid CU Context requested to free");
 		return -EINVAL;
 	}
-	
-	list_del(&cu_ctx->link);
-	vfree(cu_ctx); 
+
+	if (!cu_ctx->ref_cnt) {
+		list_del(&cu_ctx->link);
+		vfree(cu_ctx);
+	}
 
 	return 0;
 }

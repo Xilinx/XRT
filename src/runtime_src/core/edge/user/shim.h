@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
@@ -13,7 +13,9 @@
 #include "core/common/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/shared_handle.h"
 #include "core/include/xdp/app_debug.h"
 
 #include <cstdint>
@@ -35,6 +37,122 @@ class shim {
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
 
+  // Shim handle for shared objects, like buffer and sync objects
+  class shared_object : public xrt_core::shared_handle
+  {
+    shim* m_shim;
+    xclBufferExportHandle m_ehdl;
+  public:
+    shared_object(shim* shim, xclBufferExportHandle ehdl)
+      : m_shim(shim)
+      , m_ehdl(ehdl)
+    {}
+
+    ~shared_object()
+    {
+      close(m_ehdl);
+    }
+
+    // Detach and return export handle for legacy xclAPI use
+    xclBufferExportHandle
+    detach_handle()
+    {
+      return std::exchange(m_ehdl, XRT_NULL_BO_EXPORT);
+    }
+
+    export_handle
+    get_export_handle() const override
+    {
+      return static_cast<export_handle>(m_ehdl);
+    }
+  }; // shared_object
+
+  // Shim handle for buffer object
+  class buffer_object : public xrt_core::buffer_handle
+  {
+    shim* m_shim;
+    xclBufferHandle m_hdl;
+
+  public:
+    buffer_object(shim* shim, xclBufferHandle hdl)
+      : m_shim(shim)
+      , m_hdl(hdl)
+    {}
+
+    ~buffer_object()
+    {
+      m_shim->xclFreeBO(m_hdl);
+    }
+
+    xclBufferHandle
+    get_handle() const
+    {
+      return m_hdl;
+    }
+
+    static xclBufferHandle
+    get_handle(const xrt_core::buffer_handle* bhdl)
+    {
+      return static_cast<const buffer_object*>(bhdl)->get_handle();
+    }
+
+    // Detach and return export handle for legacy xclAPI use
+    xclBufferHandle
+    detach_handle()
+    {
+      return std::exchange(m_hdl, XRT_NULL_BO);
+    }
+
+    // Export buffer for use with another process or device
+    // An exported buffer can be imported by another device
+    // or hardware context.
+    std::unique_ptr<xrt_core::shared_handle>
+    share() const override
+    {
+      return m_shim->xclExportBO(m_hdl);
+    }
+
+    void*
+    map(map_type mt) override
+    {
+      return m_shim->xclMapBO(m_hdl, (mt == xrt_core::buffer_handle::map_type::write));
+    }
+
+    void
+    unmap(void* addr) override
+    {
+      m_shim->xclUnmapBO(m_hdl, addr);
+    }
+
+    void
+    sync(direction dir, size_t size, size_t offset) override
+    {
+      m_shim->xclSyncBO(m_hdl, static_cast<xclBOSyncDirection>(dir), size, offset);
+    }
+
+    void
+    copy(const buffer_handle* src, size_t size, size_t dst_offset, size_t src_offset) override
+    {
+      auto bo_src = static_cast<const buffer_object*>(src);
+      m_shim->xclCopyBO(m_hdl, bo_src->get_handle(), size, dst_offset, src_offset);
+    }
+
+    properties
+    get_properties() const override
+    {
+      xclBOProperties xprop;
+      m_shim->xclGetBOProperties(m_hdl, &xprop);
+      return {xprop.flags, xprop.size, xprop.paddr};
+    }
+
+    xclBufferHandle
+    get_xcl_handle() const override
+    {
+      return m_hdl;
+    }
+  }; // buffer_object
+
+
   // Shim handle for hardware context Even as hw_emu does not
   // support hardware context, it still must implement a shim
   // hardware context handle representing the default slot
@@ -52,6 +170,12 @@ public:
       , m_slotidx(slotidx)
       , m_mode(mode)
     {}
+
+    void
+    update_access_mode(access_mode mode) override
+    {
+      m_mode = mode;
+    }
 
     slot_id
     get_slotidx() const override
@@ -77,26 +201,18 @@ public:
       return nullptr;
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(void* userptr, size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->xclAllocUserPtrBO(userptr, size, flags);
     }
 
-    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    std::unique_ptr<xrt_core::buffer_handle>
     alloc_bo(size_t size, unsigned int flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      auto bo = m_shim->xclAllocBO(size, flags);
-      if (bo == XRT_NULL_BO)
-        throw std::bad_alloc();
-
-      return to_xrt_buffer_handle(bo);
+      return m_shim->xclAllocBO(size, flags);
     }
 
     xrt_core::cuidx_type
@@ -112,9 +228,9 @@ public:
     }
 
     void
-    exec_buf(xrt_buffer_handle cmd) override
+    exec_buf(xrt_core::buffer_handle* cmd) override
     {
-      m_shim->xclExecBuf(to_xclBufferHandle(cmd));
+      m_shim->xclExecBuf(cmd->get_xcl_handle());
     }
   }; // class hwcontext
 
@@ -133,8 +249,18 @@ public:
   int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
   int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
-  unsigned int xclAllocBO(size_t size, unsigned flags);
-  unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+  std::unique_ptr<xrt_core::buffer_handle>
+  xclAllocBO(size_t size, unsigned flags);
+
+  std::unique_ptr<xrt_core::buffer_handle>
+  xclAllocUserPtrBO(void *userptr, size_t size, unsigned int flags);
+
+  std::unique_ptr<xrt_core::shared_handle>
+  xclExportBO(unsigned int boHandle);
+
+  std::unique_ptr<xrt_core::buffer_handle>
+  xclImportBO(int fd, unsigned int flags);
+
   unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);
   int xclWriteBO(unsigned int boHandle, const void *src, size_t size,
@@ -142,12 +268,11 @@ public:
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
   void *xclMapBO(unsigned int boHandle, bool write);
   int xclUnmapBO(unsigned int boHandle, void* addr);
-  int xclExportBO(unsigned int boHandle);
-  unsigned int xclImportBO(int fd, unsigned flags);
   unsigned int xclGetBOProperties(unsigned int boHandle,
                                   xclBOProperties *properties);
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
+  int resetDevice(xclResetKind kind);
 
   ////////////////////////////////////////////////////////////////
   // Context handling

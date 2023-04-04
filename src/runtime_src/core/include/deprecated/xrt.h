@@ -1,8 +1,8 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  *
- * Copyright (C) 2020, Xilinx Inc. All rights reserved
- * Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2020-2022, Xilinx Inc. All rights reserved
+ * Copyright (C) 2022-2023, Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifndef _XCL_XRT_DEPRECATED_H_
 #define _XCL_XRT_DEPRECATED_H_
@@ -79,34 +79,6 @@ typedef unsigned int xclBufferHandle;
 # define NULLBO	0xffffffff
 #endif
 #define XRT_NULL_BO NULLBO
-
-/*
- * typedef xrt_buffer_handle - opaque buffer handle
- *
- * A buffer handle of xrt_buffer_handle kind is obtained by allocating buffer
- * objects through ISHIM API. The buffer handle is used by XRT ISHIM APIs
- * that operate on on buffer objects.
- */
-typedef void * xrt_buffer_handle;
-#define XRT_INVALID_BUFFER_HANDLE ((xrt_buffer_handle)(uintptr_t)-1)
-
-static inline xclBufferHandle
-to_xclBufferHandle(xrt_buffer_handle hdl)
-{
-  return hdl == XRT_INVALID_BUFFER_HANDLE
-    ? XRT_NULL_BO
-#ifdef _WIN32
-    : hdl; // No cast needed, happen to be the same define as xclBufferHandle
-#else
-    : (xclBufferHandle)(uintptr_t)hdl;
-#endif
-}
-
-static inline xrt_buffer_handle
-to_xrt_buffer_handle(xclBufferHandle hdl)
-{
-  return hdl == XRT_NULL_BO ? XRT_INVALID_BUFFER_HANDLE : (xrt_buffer_handle)(uintptr_t)hdl;
-}
 
 /*
  * typedef xclBufferExportHandle

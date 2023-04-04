@@ -1,27 +1,16 @@
-/**
- * Copyright (C) 2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef PCIE_HWEMU_DEVICE_LINUX_H
 #define PCIE_HWEMU_DEVICE_LINUX_H
-
-#include "core/common/ishim.h"
-#include "core/pcie/common/device_pcie.h"
-
 #include "shim_int.h"
 
+#include "core/common/ishim.h"
+#include "core/common/shim/buffer_handle.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/shared_handle.h"
+
+#include "core/pcie/common/device_pcie.h"
 namespace xrt_core { namespace hwemu {
 
 // concrete class derives from device_edge, but mixes in
@@ -49,6 +38,21 @@ private:
   {
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
   }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, unsigned int flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  import_bo(pid_t pid, shared_handle::export_handle ehdl) override;
 };
 
 }} // hwemu, xrt_core

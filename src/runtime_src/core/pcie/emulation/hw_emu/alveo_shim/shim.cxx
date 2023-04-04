@@ -2792,7 +2792,9 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int HwEmShim::xclAllocBO(size_t size, unsigned flags)
+std::unique_ptr<xrt_core::buffer_handle>
+HwEmShim::
+xclAllocBO(size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   if (mLogStream.is_open())
@@ -2801,13 +2803,18 @@ unsigned int HwEmShim::xclAllocBO(size_t size, unsigned flags)
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   uint64_t result = xoclCreateBo(&info);
+  if (result)
+    throw xrt_core::system_error(result, "failed to allocate bo");
+
   PRINTENDFUNC;
-  return result ? mNullBO : info.handle;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+std::unique_ptr<xrt_core::buffer_handle>
+HwEmShim::
+xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   if (mLogStream.is_open())
@@ -2816,17 +2823,22 @@ unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   uint64_t result = xoclCreateBo(&info);
+  if (result)
+    throw xrt_core::system_error(result, "failed to allocate userptr bo");
+
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
-  if (bo) {
+  if (bo)
     bo->userptr = userptr;
-  }
+
   PRINTENDFUNC;
-  return result ? mNullBO : info.handle;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 /***************************************************************************************/
 
 /******************************** xclExportBO *******************************************/
-int HwEmShim::xclExportBO(unsigned int boHandle)
+std::unique_ptr<xrt_core::shared_handle>
+HwEmShim::
+xclExportBO(unsigned int boHandle)
 {
   //TODO
   if (mLogStream.is_open())
@@ -2835,47 +2847,44 @@ int HwEmShim::xclExportBO(unsigned int boHandle)
   }
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
-    return -1;
+    throw xrt_core::error("Cannot export unknown buffer handle");
 
   std::string sFileName = bo->filename;
-  if(sFileName.empty())
-  {
-    std::cout<<"Exported Buffer is not P2P "<<std::endl;
+  if(sFileName.empty()) {
     PRINTENDFUNC;
-    return -1;
+    throw xrt_core::error("Exported buffer is not P2P");
   }
 
-  uint64_t size = bo->size;
   int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
-  if (fd == -1)
-  {
-    printf("Error opening exported BO file.\n");
+  if (fd == -1) {
     PRINTENDFUNC;
-    return -1;
+    throw xrt_core::error("Error opening exported BO file");
   };
 
   char* data = (char*) mmap(0, bo->size , PROT_READ |PROT_WRITE |PROT_EXEC ,  MAP_SHARED, fd, 0);
-  if(!data)
+  if (!data)
   {
+    close(fd);
     PRINTENDFUNC;
-    return -1;
+    throw xrt_core::error("Failed to mmap data for exported BO");
   }
 
   int rf = ftruncate(fd, bo->size);
-  if(rf == -1 )
-  {
+  if (rf == -1) {
     close(fd);
-    munmap(data,size);
-    return -1;
+    munmap(data, bo->size);
+    throw xrt_core::error("Failed to truncate exported BO file");
   }
-  mFdToFileNameMap [fd] = std::make_tuple(sFileName,size,(void*)data,bo->flags);
+  mFdToFileNameMap [fd] = std::make_tuple(sFileName, bo->size, (void*)data, bo->flags);
   PRINTENDFUNC;
-  return fd;
+  return std::make_unique<shared_object>(this, fd);
 }
 /***************************************************************************************/
 
 /******************************** xclImportBO *******************************************/
-unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
+std::unique_ptr<xrt_core::buffer_handle>
+HwEmShim::
+xclImportBO(int boGlobalHandle, unsigned flags)
 {
   //TODO
   if (mLogStream.is_open())
@@ -2883,25 +2892,23 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boGlobalHandle << std::endl;
   }
   auto itr = mFdToFileNameMap.find(boGlobalHandle);
-  if(itr != mFdToFileNameMap.end())
-  {
-    int size = std::get<1>((*itr).second);
-    unsigned boFlags = std::get<3>((*itr).second);
-
-    unsigned int importedBo = xclAllocBO(size, boFlags);
-    xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
-    if(!bo)
-    {
-      std::cout<<"ERROR HERE in importBO "<<std::endl;
-      return -1;
-    }
-    mImportedBOs.insert(importedBo);
-    bo->fd = boGlobalHandle;
-    return importedBo;
+  if (itr == mFdToFileNameMap.end()) {
+    PRINTENDFUNC;
+    throw xrt_core::error("No filename for global bo handle");
   }
-  PRINTENDFUNC;
-  return -1;
 
+  int size = std::get<1>((*itr).second);
+  unsigned boFlags = std::get<3>((*itr).second);
+
+  auto importedBo = xclAllocBO(size, boFlags);
+  auto importedBoHandle = buffer_object::get_handle(importedBo.get());
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBoHandle);
+  if (!bo)
+    throw xrt_core::error("Error in importBO");
+
+  mImportedBOs.insert(importedBoHandle);
+  bo->fd = boGlobalHandle;
+  return importedBo;
 }
 /***************************************************************************************/
 
