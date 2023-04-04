@@ -30,7 +30,15 @@ if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "rhel"* ]]; then
     fi
 fi
 
-XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]:-${(%):-%x}}))
+
+if [ -n "$BASH_VERSION" ]; then
+    XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]:-${(%):-%x}}))
+elif [ -n "$ZSH_VERSION" ]; then
+    XILINX_XRT=$(readlink -f $(dirname ${(%):-%N}))
+else
+    echo "ERROR: Unsupported shell. Only bash and zsh are supported"
+    return 1
+fi
 
 if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     echo "Invalid location: $XILINX_XRT"
