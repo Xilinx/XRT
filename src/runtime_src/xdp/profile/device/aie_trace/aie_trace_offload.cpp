@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -217,7 +217,8 @@ bool AIETraceOffload::initReadTrace()
 
       XAie_MemInst memInst;
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
-      xclBufferExportHandle boExportHandle = xclExportBO(deviceHandle, buffers[i].boHandle);
+
+      xclBufferExportHandle boExportHandle = deviceIntf->getBufferExportHandle(buffers[i].boHandle);
       if(XRT_NULL_BO_EXPORT == boExportHandle) {
         throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
       }
