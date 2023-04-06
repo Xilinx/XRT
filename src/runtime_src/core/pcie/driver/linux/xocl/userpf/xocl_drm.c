@@ -1166,7 +1166,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
 	}
 
-	if (drm_p->xocl_mm != NULL) {
+	if (drm_p->xocl_mm) {
 		/* Validate the new memory topology with existing memory manager */
 		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
 				(drm_p->xocl_mm->end_addr != mm_end_addr) ||
@@ -1191,7 +1191,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 		}
 	}
 
-	if (drm_p->xocl_mm == NULL) {
+	if (!drm_p->xocl_mm) {
 		drm_p->xocl_mm = vzalloc(sizeof(struct xocl_mm));
 		if (!drm_p->xocl_mm) {
 			err = -ENOMEM;
