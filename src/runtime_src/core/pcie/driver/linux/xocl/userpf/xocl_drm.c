@@ -1166,8 +1166,6 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
 	}
 
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
-
 	if (drm_p->xocl_mm != NULL) {
 		/* Validate the new memory topology with existing memory manager */
 		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
@@ -1187,6 +1185,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 		}
 		else {
 			/* Memory manager initialization is done and consistent */
+			XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
 			mutex_unlock(&drm_p->mm_lock);
 			return 0;
 		}
@@ -1204,6 +1203,8 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 		if (err)
 			goto error;
 	}
+
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
 
 	err = xocl_p2p_mem_init(drm_p->xdev);
 	if (err && err != -ENODEV) {
