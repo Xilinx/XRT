@@ -31,7 +31,7 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_plugin.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 

@@ -9,9 +9,9 @@
 # ====================================================================
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace_new/x86")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/x86")
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace_new/edge")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/edge")
 endif()
 
 file(GLOB AIE_TRACE_PLUGIN_FILES
@@ -19,8 +19,8 @@ file(GLOB AIE_TRACE_PLUGIN_FILES
   "${PROFILE_DIR}/device/aie_trace/*.cpp"
   "${PROFILE_DIR}/device/hal_device/*.h"
   "${PROFILE_DIR}/device/hal_device/*.cpp"
-  "${PROFILE_DIR}/plugin/aie_trace_new/*.h"
-  "${PROFILE_DIR}/plugin/aie_trace_new/*.cpp"
+  "${PROFILE_DIR}/plugin/aie_trace/*.h"
+  "${PROFILE_DIR}/plugin/aie_trace/*.cpp"
   "${PROFILE_DIR}/writer/aie_trace/*.h"
   "${PROFILE_DIR}/writer/aie_trace/*.cpp"
   "${IMPL_DIR}/*.h"

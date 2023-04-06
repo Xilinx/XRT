@@ -390,7 +390,11 @@ struct shim
 
     ~buffer_object()
     {
-      m_shim->free_bo(m_fd);
+      try {
+        m_shim->free_bo(m_fd);
+      }
+      catch (...) {
+      }
     }
 
     int

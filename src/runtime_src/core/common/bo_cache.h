@@ -84,7 +84,8 @@ private:
     }
 
     auto execHandle = mDevice->alloc_bo(mBOSize, XCL_BO_FLAGS_EXECBUF);
-    return std::make_pair(std::move(execHandle), execHandle->map(buffer_handle::map_type::write));
+    auto map = execHandle->map(buffer_handle::map_type::write);
+    return std::make_pair(std::move(execHandle), map);
   }
 
   void

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,27 +14,22 @@
  * under the License.
  */
 
-#include "xdp/profile/plugin/aie_profile/aie_plugin.h"
+#include "aie_profile_plugin.h"
 
 namespace xdp {
 
-  // The AIE profiling plugin doesn't have any callbacks. Instead, it
-  //  only has a single static instance of the plugin object
-
-  static AIEProfilingPlugin aiePluginInstance;
+  static AieProfilePlugin aieProfilePluginInstance;
 
   static void updateAIECtrDevice(void* handle)
   {
-    if (AIEProfilingPlugin::alive()) {
-      aiePluginInstance.updateAIEDevice(handle);
-    }
+    if (AieProfilePlugin::alive()) 
+      aieProfilePluginInstance.updateAIEDevice(handle);
   }
 
   static void endAIECtrPoll(void* handle)
   {
-    if (AIEProfilingPlugin::alive()) {
-      aiePluginInstance.endPollforDevice(handle);
-    }
+    if (AieProfilePlugin::alive())
+      aieProfilePluginInstance.endPollforDevice(handle);
   }
 
 } // end namespace xdp

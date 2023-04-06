@@ -20,7 +20,7 @@
 #include <cstdint>
 
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 
 namespace xdp {
   
