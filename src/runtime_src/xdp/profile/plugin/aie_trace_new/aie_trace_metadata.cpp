@@ -109,7 +109,7 @@ namespace xdp {
     const std::set<std::string> validSettings {
       "graph_based_aie_tile_metrics", "tile_based_aie_tile_metrics",
       "graph_based_memory_tile_metrics", "tile_based_memory_tile_metrics",
-      "start_type", "start_time", "start_iteration", 
+      "start_type", "start_time", "start_iteration", "end_type",
       "periodic_offload", "reuse_buffer", "buffer_size", 
       "buffer_offload_interval_us", "file_dump_interval_s"
     };
