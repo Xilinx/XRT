@@ -1126,6 +1126,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	}
 
 	if (!topo) {
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
 		mutex_unlock(&drm_p->mm_lock);
 		/* Before return check if drm memory manager is initialized already. 
 		 * This is done from platform metadata.
@@ -1165,7 +1166,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
 	}
 
-	if (drm_p->xocl_mm_done && (drm_p->xocl_mm != NULL)) {
+	if (drm_p->xocl_mm) {
 		/* Validate the new memory topology with existing memory manager */
 		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
 				(drm_p->xocl_mm->end_addr != mm_end_addr) ||
@@ -1184,12 +1185,13 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 		}
 		else {
 			/* Memory manager initialization is done and consistent */
+			XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
 			mutex_unlock(&drm_p->mm_lock);
 			return 0;
 		}
 	}
 
-	if (drm_p->xocl_mm == NULL) {
+	if (!drm_p->xocl_mm) {
 		drm_p->xocl_mm = vzalloc(sizeof(struct xocl_mm));
 		if (!drm_p->xocl_mm) {
 			err = -ENOMEM;
@@ -1211,7 +1213,6 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 		goto error;
 	}
 
-	drm_p->xocl_mm_done = true;
 	mutex_unlock(&drm_p->mm_lock);
 
 	return 0;

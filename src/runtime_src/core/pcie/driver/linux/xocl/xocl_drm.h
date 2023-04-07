@@ -85,7 +85,6 @@ struct xocl_drm {
 	/* Memory manager */
 	struct xocl_mm		*xocl_mm;
 	bool			xocl_drm_mm_done;
-	bool			xocl_mm_done;
 	struct drm_xocl_mm_stat mm_usage_stat[MAX_MEM_BANK_COUNT];
 
 	/* Xocl driver memory list head */
