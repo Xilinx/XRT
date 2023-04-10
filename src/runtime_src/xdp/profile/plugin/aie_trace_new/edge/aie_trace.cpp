@@ -774,10 +774,8 @@ namespace xdp {
           bcId = memoryTrace->getStopBc();
           coreToMemBcMask |= (bcBit << bcId);
           if (type == module_type::mem_tile) {
-            // Temporary fix: config schema only supports IDs up to 127
-            //XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
-            //cfgTile->mem_tile_trace_config.stop_event = phyEvent;
-            cfgTile->mem_tile_trace_config.stop_event = 0;
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
+            cfgTile->mem_tile_trace_config.stop_event = phyEvent;
           }
           else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
