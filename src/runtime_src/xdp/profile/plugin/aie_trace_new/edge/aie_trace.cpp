@@ -1010,12 +1010,13 @@ namespace xdp {
 
   void AieTrace_EdgeImpl::flushAieTileTraceModule()
   {
+    if (mTraceFlushLocs.empty() && mMemTileTraceFlushLocs.empty())
+      return;
+
     auto handle = metadata->getHandle();
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
-    // Flush trace if requested or required
-    if (((mTraceFlushLocs.size() > 0) || (mMemTileTraceFlushLocs.size() > 0))
-        && (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))) {
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
       std::stringstream msg;
       msg << "Flushing AIE trace by forcing end event for "
           << mTraceFlushLocs.size() << " AIE tiles";
@@ -1024,6 +1025,8 @@ namespace xdp {
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
 
+    // Flush trace by forcing end event 
+    // NOTE: this informs tiles to output remaining packets (even partial)
     for (const auto& loc : mTraceFlushLocs)
       XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mTraceFlushEndEvent);
     for (const auto& loc : mMemTileTraceFlushLocs)

@@ -307,8 +307,10 @@ namespace xdp {
   {
     for (const auto& kv : handleToAIEData) {
       auto& AIEData = kv.second;
-      if (AIEData.valid)
+      if (AIEData.valid) {
+        AIEData.implementation->flushAieTileTraceModule();
         flushOffloader(AIEData.offloader, true);
+      }
     }
 
     XDPPlugin::endWrite();
