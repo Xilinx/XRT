@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+
 #define XRT_CORE_COMMON_SOURCE
 #include "info_memory.h"
 #include "ps_kernel.h"
