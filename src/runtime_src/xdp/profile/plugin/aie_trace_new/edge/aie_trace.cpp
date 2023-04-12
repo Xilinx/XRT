@@ -682,15 +682,15 @@ namespace xdp {
             cfgTile->mem_tile_trace_config.port_trace_is_master[0] = true;
             cfgTile->mem_tile_trace_config.port_trace_is_master[1] = true;
             cfgTile->mem_tile_trace_config.s2mm_channels[0] = channel0;
-            // For now, only one channel is monitored at a time
-            //cfgTile->mem_tile_trace_config.s2mm_channels[1] = channel1;
+            if (channel0 != channel1)
+              cfgTile->mem_tile_trace_config.s2mm_channels[1] = channel1;
           }
           else {
             cfgTile->mem_tile_trace_config.port_trace_is_master[0] = false;
             cfgTile->mem_tile_trace_config.port_trace_is_master[1] = false;
             cfgTile->mem_tile_trace_config.mm2s_channels[0] = channel0;
-            // For now, only one channel is monitored at a time
-            //cfgTile->mem_tile_trace_config.mm2s_channels[1] = channel1;
+            if (channel0 != channel1)
+              cfgTile->mem_tile_trace_config.mm2s_channels[1] = channel1;
           }
         }
         
