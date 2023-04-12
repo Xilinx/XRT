@@ -211,14 +211,11 @@ struct memory_info_collector
   // This function is shared with group topology, hence need to
   // know where the mem entry is comining from
   void
-  add_mem_usage_info(
-    const size_t idx,
-    const xrt_core::query::memstat_raw::result_type& mem_stat,
-    ptree_type& pt_mem)
+  add_mem_usage_info(const std::string& mem_stat, ptree_type& pt_mem)
   {
     uint64_t memory_usage = 0;
     uint64_t bo_count = 0;
-    std::stringstream {mem_stat[idx]} >> memory_usage >> bo_count; // idx has been validated
+    std::stringstream {mem_stat} >> memory_usage >> bo_count; // idx has been validated
     pt_mem.put("extended_info.usage.allocated_bytes", memory_usage);
     pt_mem.put("extended_info.usage.buffer_objects_count", bo_count);
   }
@@ -257,7 +254,7 @@ struct memory_info_collector
           ptree_type pt_mem;
           add_mem_ecc_info(&mem, pt_mem);
           add_mem_general_info(topology, &mem, pt_mem);
-          add_mem_usage_info(i, topology.statistics, pt_mem);
+          add_mem_usage_info(topology.statistics[i], pt_mem);
           add_mem_temp_info(i, topology.temperature, pt_mem);
           pt_mem_array.push_back(std::make_pair("", pt_mem));
         }
@@ -288,7 +285,7 @@ struct memory_info_collector
       for (int i = mem_topo->m_count; i < grp_topo->m_count; i++) {
         ptree_type pt_grp;
         add_mem_general_info(topology, &grp_topo->m_mem_data[i], pt_grp);
-        add_mem_usage_info(i, topology.statistics, pt_grp);
+        add_mem_usage_info(topology.statistics[i], pt_grp);
         pt_grp_array.push_back(std::make_pair("",pt_grp));
       }
     }
