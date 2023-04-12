@@ -17,7 +17,6 @@
 
 #include "pcidev.h"
 #include "xrt.h"
-#include "xclbin.h"
 
 #include <array>
 #include <fstream>
@@ -1031,35 +1030,6 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   }
 };
 
-struct memory_topology
-{
-  using data_type = query::mem_topology::data_type;
-  using result_type = query::mem_topology::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    const auto data = xrt_core::device_query<query::mem_topology_raw>(device);
-    const auto mem_topo = reinterpret_cast<const struct mem_topology*>(data.data());
-    const auto xclbin_uuid = xrt_core::device_query<query::xclbin_uuid>(device);
-    result_type topology;
-    for (int32_t index = 0; index < mem_topo->m_count; index++) {
-      data_type mem_data;
-      mem_data.xclbin_uuid = xclbin_uuid;
-      mem_data.hw_context_slot = 0;
-      mem_data.m_type = mem_topo->m_mem_data[index].m_type;
-      mem_data.m_used = mem_topo->m_mem_data[index].m_used;
-      memcpy(mem_data.m_tag, mem_topo->m_mem_data[index].m_tag, sizeof(mem_topo->m_mem_data[index].m_tag));
-      // The following two entries are unions
-      // Within the union using any name would work. So use the first!
-      mem_data.m_size = mem_topo->m_mem_data[index].m_size;
-      mem_data.m_base_address = mem_topo->m_mem_data[index].m_base_address;
-      topology.push_back(mem_data);
-    }
-    return topology;
-  }
-};
-
 /* Accelerator Deadlock Detector status
  * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
  */
@@ -1219,7 +1189,6 @@ initialize_query_table()
   emplace_sysfs_getput<query::ic_load_flash_address>           ("icap_controller", "load_flash_addr");
   emplace_sysfs_get<query::memstat>                            ("", "memstat");
   emplace_sysfs_get<query::memstat_raw>                        ("", "memstat_raw");
-  emplace_func0_request<query::mem_topology,                   memory_topology>();
   emplace_sysfs_get<query::mem_topology_raw>                   ("icap", "mem_topology");
   emplace_sysfs_get<query::dma_stream>                         ("dma", "");
   emplace_sysfs_get<query::group_topology>                     ("icap", "group_topology");

@@ -70,7 +70,6 @@ enum class key_type
   memstat,
   memstat_raw,
   temp_by_mem_topology,
-  mem_topology,
   mem_topology_raw,
   ip_layout_raw,
   debug_ip_layout_raw,
@@ -81,6 +80,7 @@ enum class key_type
   kds_scu_info,
   ps_kernel,
   hw_context_info,
+  hw_context_memory_info,
   xocl_errors,
   xclbin_full,
   ic_enable,
@@ -724,29 +724,6 @@ struct mem_topology_raw : request
 
   virtual boost::any
   get(const device*) const = 0;
-};
-
-struct mem_topology : request
-{
-  struct memory_data {
-    std::string xclbin_uuid;
-    uint32_t hw_context_slot;
-    uint8_t m_type;          // enum corresponding to mem_type.
-    uint8_t m_used;          // if 0 this bank is not present
-    union {
-        uint64_t m_size;     // if mem_type DDR, then size in KB;
-        uint64_t route_id;   // if streaming then "route_id"
-    };
-    union {
-        uint64_t m_base_address; // if DDR then the base address;
-        uint64_t flow_id;        // if streaming then "flow id"
-    };
-    unsigned char m_tag[16]; // DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
-  };
-
-  using data_type = struct memory_data;
-  using result_type = std::vector<data_type>;
-  static const key_type key = key_type::mem_topology;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -975,6 +952,33 @@ struct hw_context_info : request
   using result_type = std::vector<struct data>;
   using data_type = struct data;
   static const key_type key = key_type::hw_context_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/**
+ * Return all hardware contexts' memory info within a device
+ */
+struct hw_context_memory_info : request
+{
+  /**
+   * A structure to represent a single hardware context's memory contents on
+   * any device type. This structure contains all data that makes up a 
+   * hardware context memory structure across all device types.
+   */
+  struct data {
+    std::string id;
+    std::string xclbin_uuid;
+    mem_topology_raw::result_type topology;
+    group_topology::result_type grp_topology;
+    memstat_raw::result_type statistics;
+    temp_by_mem_topology::result_type temperature;
+  };
+
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::hw_context_memory_info;
 
   virtual boost::any
   get(const device*) const = 0;
