@@ -724,9 +724,6 @@ struct mem_topology_raw : request
 
   virtual boost::any
   get(const device*) const = 0;
-
-  virtual boost::any
-  get(const device*) const = 0;
 };
 
 struct xclbin_full : request
