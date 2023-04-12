@@ -75,6 +75,7 @@ enum class key_type
   debug_ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
+  device_status,
   kds_cu_info,
   sdm_sensor_info,
   kds_scu_info,
@@ -876,6 +877,18 @@ struct sdm_sensor_info : request
   get(const device*, const boost::any& req_type) const = 0;
 };
 
+/**
+ * Extract the status of the device KDS
+ */
+struct device_status : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::device_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct kds_cu_info : request
 {
   struct data {
@@ -941,6 +954,7 @@ struct hw_context_info : request
   struct data {
     std::string id;
     std::string xclbin_uuid;
+    device_status::result_type status;
     kds_cu_info::result_type pl_compute_units;
     kds_scu_info::result_type ps_compute_units;
   };

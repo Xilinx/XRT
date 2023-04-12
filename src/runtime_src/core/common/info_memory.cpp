@@ -593,6 +593,7 @@ populate_hardware_context(const xrt_core::device* device)
     }
 
     try {
+      hw_context.status = xrt_core::device_query<xq::device_status>(device);
       hw_context.pl_compute_units = xrt_core::device_query<xq::kds_cu_info>(device);
       hw_context.ps_compute_units = xrt_core::device_query<xq::kds_scu_info>(device);
     }
@@ -611,6 +612,7 @@ populate_hardware_context(const xrt_core::device* device)
     ptree_type pt_hw;
     pt_hw.put("id", boost::algorithm::to_upper_copy(hw.id));
     pt_hw.put("xclbin_uuid", boost::algorithm::to_upper_copy(hw.xclbin_uuid));
+    pt_hw.put("status", boost::algorithm::to_upper_copy(hw.status));
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }

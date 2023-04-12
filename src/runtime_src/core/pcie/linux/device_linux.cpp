@@ -1308,6 +1308,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mig_ecc_ce_ffa>                     ("mig", "ecc_ce_ffa");
   emplace_sysfs_get<query::mig_ecc_ue_ffa>                     ("mig", "ecc_ue_ffa");
   emplace_sysfs_get<query::flash_bar_offset>                   ("flash", "bar_off");
+  emplace_sysfs_get<query::device_status>                      ("", "device_bad_state");
   emplace_sysfs_get<query::is_mfg>                             ("", "mfg");
   emplace_sysfs_get<query::mfg_ver>                            ("", "mfg_ver");
   emplace_sysfs_get<query::is_recovery>                        ("", "recovery");
