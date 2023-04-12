@@ -9,7 +9,7 @@
 #define XRT_API_SOURCE         // in same dll as api
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_aie.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 #include "native_profile.h"
 #include "bo.h"
@@ -198,8 +198,15 @@ private:
   {
     auto prop = handle->get_properties();
     addr = prop.paddr;
-    grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
-    flags = static_cast<bo::flags>(prop.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
+
+    // Flags are what was used by shim::alloc_bo when the BO was
+    // created What is stored in bo_impl, are the flags that were used
+    // to indicate the type of the BO (per xrt::bo::flags). Currrently
+    // bo_impl doesn't track or provide access to the extension flags
+    // in xcl_bo_flags.
+    xcl_bo_flags xflags {prop.flags};
+    grpid = xflags.bank;
+    flags = static_cast<bo::flags>(xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
   }
 
 protected:
