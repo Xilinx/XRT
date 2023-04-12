@@ -612,7 +612,7 @@ populate_hardware_context(const xrt_core::device* device)
     ptree_type pt_hw;
     pt_hw.put("id", boost::algorithm::to_upper_copy(hw.id));
     pt_hw.put("xclbin_uuid", boost::algorithm::to_upper_copy(hw.xclbin_uuid));
-    pt_hw.put("status", boost::algorithm::to_upper_copy(hw.status));
+    pt_hw.put("status", std::to_string(hw.status));
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }
