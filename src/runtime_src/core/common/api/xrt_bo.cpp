@@ -990,7 +990,6 @@ alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags fla
   xcl_bo_flags xgrp{grp};
   xflags.bank = xgrp.bank;
   xflags.slot = xgrp.slot;
-
   auto hwctx  = device.get_hwctx_handle();
   return hwctx
     ? hwctx->alloc_bo(userptr, sz, xflags.all)
@@ -1005,7 +1004,6 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
   xcl_bo_flags xgrp{grp};
   xflags.bank = xgrp.bank;
   xflags.slot = xgrp.slot;
-
   try {
     auto hwctx  = device.get_hwctx_handle();
     return hwctx
