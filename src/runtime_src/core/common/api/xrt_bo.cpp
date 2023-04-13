@@ -10,6 +10,7 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/experimental/xrt_ext.h"
 
 #include "native_profile.h"
 #include "bo.h"
@@ -990,6 +991,7 @@ alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags fla
   xcl_bo_flags xgrp{grp};
   xflags.bank = xgrp.bank;
   xflags.slot = xgrp.slot;
+
   auto hwctx  = device.get_hwctx_handle();
   return hwctx
     ? hwctx->alloc_bo(userptr, sz, xflags.all)
@@ -1004,6 +1006,7 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
   xcl_bo_flags xgrp{grp};
   xflags.bank = xgrp.bank;
   xflags.slot = xgrp.slot;
+
   try {
     auto hwctx  = device.get_hwctx_handle();
     return hwctx
@@ -1470,6 +1473,53 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 }
 
 } // xrt
+
+////////////////////////////////////////////////////////////////
+// xrt_ext::bo C++ API implmentations (xrt_ext.h)
+////////////////////////////////////////////////////////////////
+namespace xrt::ext {
+
+static xrtBufferFlags
+adjust_buffer_flags(xrt::ext::bo::access_mode access)
+{
+  // xrt::ext::bo is always a host only BO
+  // instruction buffers are allocated as regular xrt::bo objects
+  // or to-be new first-class instruction buffer
+  xcl_bo_flags flags {0};
+  flags.flags = XRT_BO_FLAGS_HOST_ONLY;
+  flags.access = static_cast<uint32_t>(access);
+  return flags.all;
+}
+
+static std::shared_ptr<xrt::bo_impl>
+alloc_kbuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags)
+{
+  auto handle = userptr ? alloc_bo(device, userptr, sz, flags, 0) : alloc_bo(device, sz, flags, 0);
+  auto boh = std::make_shared<xrt::buffer_kbuf>(device, std::move(handle), sz);
+  return boh;
+}
+
+bo::
+bo(const xrt::device& device, size_t sz, access_mode access)
+  : xrt::bo::bo{alloc_kbuf(device_type{device.get_handle()}, nullptr, sz, adjust_buffer_flags(access))}
+{}
+
+bo::
+bo(const xrt::device& device, size_t sz)
+  : bo{device, sz, xrt::ext::bo::access_mode::local}
+{}
+
+bo::
+bo(const xrt::hw_context& hwctx, size_t sz, access_mode access)
+  : xrt::bo::bo{alloc_kbuf(device_type{hwctx}, nullptr, sz, adjust_buffer_flags(access))}
+{}
+
+bo::
+bo(const xrt::hw_context& hwctx, size_t sz)
+  : bo{hwctx, sz, xrt::ext::bo::access_mode::local}
+{}
+
+} // xrt::ext
 
 #ifdef XRT_ENABLE_AIE
 ////////////////////////////////////////////////////////////////
