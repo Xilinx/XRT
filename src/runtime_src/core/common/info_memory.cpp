@@ -244,8 +244,10 @@ struct memory_info_collector
 
     for (const auto& topology : hw_context_memories) {
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
+      
       for (int i = 0; i < mem_topo->m_count; ++i) {
         const auto& mem = mem_topo->m_mem_data[i];
+        
         if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
           add_stream_info(&mem, pt_stream_array);
         else {
@@ -328,18 +330,18 @@ public:
     }
 
     // validate the memory topologies for each hardware context
-    for (const auto& topo : hw_context_memories) {
-      const auto mem_topo = reinterpret_cast<const mem_topology*>(topo.topology.data());
-      const auto& mem_stat = topo.statistics;
-      const auto grp_topo = reinterpret_cast<const mem_topology*>(topo.grp_topology.data());
-      const auto mem_temp = reinterpret_cast<const uint32_t*>(topo.temperature.data());
+    for (const auto& memory : hw_context_memories) {
+      const auto mem_topo = reinterpret_cast<const mem_topology*>(memory.topology.data());
+      const auto& mem_stat = memory.statistics;
+      const auto grp_topo = reinterpret_cast<const mem_topology*>(memory.grp_topology.data());
+      const auto mem_temp = reinterpret_cast<const uint32_t*>(memory.temperature.data());
 
       // info gathering functions indexes mem_stat by mem_toplogy entry index
       if (mem_topo && mem_stat.size() < static_cast<size_t>(mem_topo->m_count))
         throw xrt_core::internal_error("incorrect memstat_raw entries");
 
       // info gathering functions indexes mem_temp by mem_topology entry index
-      if (mem_topo && mem_temp && topo.temperature.size() < static_cast<size_t>(mem_topo->m_count))
+      if (mem_topo && mem_temp && memory.temperature.size() < static_cast<size_t>(mem_topo->m_count))
         throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
 
       // info gathering functions indexes mem_stat by group_toplogy entry index
