@@ -346,8 +346,9 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       auto exp_ver = xrt_core::device_query_default<xrt_core::query::hwmon_sdm_target_msp_ver>(device, unavail);
       cur_ver = (boost::equals(cur_ver, zeroes)) ? unavail : cur_ver;
       exp_ver = (boost::equals(exp_ver, zeroes)) ? unavail : exp_ver;
-      if (boost::equals(cur_ver, unavail) || boost::equals(exp_ver, unavail))
-        warnings.push_back(boost::str(boost::format("SC version data missing. Expected: %s Current: %s") % exp_ver % cur_ver));
+      if (boost::equals(cur_ver, unavail) || boost::equals(exp_ver, unavail)) {
+        warnings.push_back(boost::str(boost::format("SC version data missing. Upgrade your shell") % exp_ver % cur_ver));
+      }
       else if (!boost::equals(cur_ver, exp_ver))
         warnings.push_back(boost::str(boost::format("Invalid SC version. Expected: %s Current: %s") % exp_ver % cur_ver));
     } catch (const xrt_core::error& e) {
