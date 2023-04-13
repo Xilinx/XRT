@@ -76,7 +76,7 @@ struct memory_info_collector
 {
   const xrt_core::device* device;          // device to query for info
 
-  std::vector<xrt_core::query::hw_context_memory_info::data_type> hw_context_mem;  // xclbin mem topology from device
+  std::vector<xrt_core::query::hw_context_memory_info::data_type> hw_context_memories;  // xclbin mem topology from device
 
   // Add bytes transferred by each PCIe channel to tree
   void
@@ -237,14 +237,12 @@ struct memory_info_collector
 
   // Add mem info for all mem entries in mem_topology section
   void
-  add_mem_info(
-    const std::vector<xq::hw_context_memory_info::data_type>& topologies,
-    ptree_type& pt)
+  add_mem_info(ptree_type& pt)
   {
     ptree_type pt_mem_array;
     ptree_type pt_stream_array;
 
-    for (const auto& topology : topologies) {
+    for (const auto& topology : hw_context_memories) {
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
       for (int i = 0; i < mem_topo->m_count; ++i) {
         const auto& mem = mem_topo->m_mem_data[i];
@@ -267,13 +265,11 @@ struct memory_info_collector
 
   // Add grp info for all mem entries in group_topology section
   void
-  add_grp_info(
-    const std::vector<xq::hw_context_memory_info::data_type>& topologies,
-    ptree_type& pt)
+  add_grp_info(ptree_type& pt)
   {
     ptree_type pt_grp_array;
 
-    for (const auto& topology : topologies) {
+    for (const auto& topology : hw_context_memories) {
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
       const auto grp_topo = reinterpret_cast<const mem_topology*>(topology.grp_topology.data());
 
@@ -300,14 +296,14 @@ public:
     : device(dev)
   {
     try {
-      hw_context_mem = xrt_core::device_query<xq::hw_context_memory_info>(device);
+      hw_context_memories = xrt_core::device_query<xq::hw_context_memory_info>(device);
     }
     catch (const xq::exception&) {
       //ignore if not defined. Try legacy method
     }
 
     // If the mem_topo is empty attempt the legacy method
-    if (hw_context_mem.empty()) {
+    if (hw_context_memories.empty()) {
       xq::hw_context_memory_info::data_type memory_topology;
       memory_topology.id = "0";
       memory_topology.topology = xrt_core::device_query<xq::mem_topology_raw>(device);
@@ -328,11 +324,11 @@ public:
         // Support noop devices
       }
 
-      hw_context_mem.push_back(memory_topology);
+      hw_context_memories.push_back(memory_topology);
     }
 
     // validate the memory topologies for each hardware context
-    for (const auto& topo : hw_context_mem) {
+    for (const auto& topo : hw_context_memories) {
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topo.topology.data());
       const auto& mem_stat = topo.statistics;
       const auto grp_topo = reinterpret_cast<const mem_topology*>(topo.grp_topology.data());
@@ -355,13 +351,13 @@ public:
   void
   collect(ptree_type& pt)
   {
-    if (hw_context_mem.empty())
+    if (hw_context_memories.empty())
       return;
 
     add_channel_info(pt);
     update_mig_cache(pt);  // why?
-    add_mem_info(hw_context_mem, pt);
-    add_grp_info(hw_context_mem, pt);
+    add_mem_info(pt);
+    add_grp_info(pt);
   }
 };
 
