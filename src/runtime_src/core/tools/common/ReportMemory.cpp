@@ -132,10 +132,12 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
     Table2D device_table(table_headers);
 
     try {
-      // Generate map of hw_context/xclbin uuid to the contained memories
+      // Generate map of hw_context/xclbin uuid to a list of formatted memory table entries
       std::map<std::tuple<std::string, std::string>, std::vector<std::vector<std::string>>> memory_map;
-      for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
+
+      for (const auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
         std::string slot, uuid, tag, size, type, temp, base_addr;
+
         for (auto& subv : v.second) {
           if (subv.first == "type") {
             type = subv.second.get_value<std::string>();
@@ -161,7 +163,8 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
         iter.first->second.push_back(entry_data);
       }
 
-      // Format the output of the memory map generated above into a table
+      // Within each hardware context add an index number to the front
+      // of each memory table entry
       for (auto& hw_context : memory_map) {
         _output << boost::format("    HW Context Slot: %s\n") % std::get<0>(hw_context.first);
         _output << boost::format("      Xclbin UUID: %s\n") % std::get<1>(hw_context.first);
