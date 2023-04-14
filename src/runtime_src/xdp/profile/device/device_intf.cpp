@@ -958,14 +958,14 @@ DeviceIntf::~DeviceIntf()
     return mDevice->getDeviceAddr(bufHandle);
   }
 
-  xclBufferExportHandle DeviceIntf::exportTraceBuffer(size_t id)
+  xclBufferExportHandle DeviceIntf::exportTraceBuf(size_t id)
   {
     std::lock_guard<std::mutex> lock(traceLock);
     return mDevice->exportBuffer(id);
   }
 
   // All buffers have to be 4k Aligned
-  uint64_t DeviceIntf::getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks)
+  uint64_t DeviceIntf::getAlignedTraceBufSize(uint64_t total_bytes, unsigned int num_chunks)
   {
     constexpr uint64_t TRACE_BUFFER_4K_MASK = 0xfffffffffffff000;
 

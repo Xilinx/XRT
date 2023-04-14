@@ -120,9 +120,9 @@ class DeviceIntf {
     XDP_EXPORT
     uint64_t getDeviceAddr(size_t bufHandle);
     XDP_EXPORT
-    xclBufferExportHandle exportTraceBuffer(size_t id);
+    xclBufferExportHandle exportTraceBuf(size_t id);
     XDP_EXPORT
-    uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
+    uint64_t getAlignedTraceBufSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
     bool hasFIFO() {return (mFifoCtrl != nullptr);};

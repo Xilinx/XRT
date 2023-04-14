@@ -63,7 +63,7 @@ AIETraceOffload::AIETraceOffload
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
 {
-  bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
+  bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 
   // Select appropriate reader
   if (isPLIO)
@@ -216,7 +216,7 @@ bool AIETraceOffload::initReadTrace()
 
       XAie_MemInst memInst;
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
-      xclBufferExportHandle boExportHandle = deviceIntf->exportTraceBuffer(buffers[i].bufId);
+      xclBufferExportHandle boExportHandle = deviceIntf->exportTraceBuf(buffers[i].bufId);
       if(XRT_NULL_BO_EXPORT == boExportHandle) {
         throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
       }
