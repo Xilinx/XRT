@@ -191,6 +191,14 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   return xrt_bos[boIndex].address();
 }
 
+xclBufferExportHandle HalDevice::exportBO(size_t id)
+{
+  if(!id) return XRT_NULL_BO_EXPORT;
+  size_t boIndex = id - 1;
+
+  return (xrt_bos[boIndex].export_buffer());
+}
+
 double HalDevice::getHostMaxBwRead()
 {
   return xclGetHostReadMaxBandwidthMBps(mHalDevice);
@@ -219,14 +227,6 @@ std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
   xclGetSubdevPath(mHalDevice, subdev.c_str(), index, buffer, maxSz);
 
   return std::string(buffer);
-}
-
-xclBufferExportHandle HalDevice::getBufferExportHandle(size_t id)
-{
-  if(!id) return XRT_NULL_BO_EXPORT;
-  size_t boIndex = id - 1;
-
-  return (xrt_bos[boIndex].export_buffer());
 }
 
 }

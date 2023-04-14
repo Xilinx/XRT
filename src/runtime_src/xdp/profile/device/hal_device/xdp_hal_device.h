@@ -52,11 +52,13 @@ public:
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
   virtual size_t alloc(size_t sz, uint64_t memoryIndex);
-  virtual void free(size_t xdpBoHandle);
-  virtual void* map(size_t xdpBoHandle);
-  virtual void unmap(size_t xdpBoHandle);
-  virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
-  virtual uint64_t getDeviceAddr(size_t xdpBoHandle);
+  virtual void   free(size_t id);
+  virtual void*  map(size_t id);
+  virtual void   unmap(size_t id);
+  virtual void   sync(size_t id, size_t sz, size_t offset, direction dir, bool async=false);
+  virtual xclBufferExportHandle exportBO(size_t id);
+  virtual uint64_t              getDeviceAddr(size_t id);
+
   virtual void* getRawDevice() { return mHalDevice ; }
 
   virtual double getHostMaxBwRead();
@@ -65,8 +67,6 @@ public:
   virtual double getKernelMaxBwWrite();
 
   virtual std::string getSubDevicePath(std::string& subdev, uint32_t index);
-
-  virtual xclBufferExportHandle getBufferExportHandle(size_t id);
 };
 }
 
