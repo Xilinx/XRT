@@ -1099,7 +1099,7 @@ DeviceIntf::~DeviceIntf()
     return status;
   }
 
-  xclBufferExportHandle DeviceIntf::getBufferExportHandle(size_t id)
+  xclBufferExportHandle DeviceIntf::exportBuffer(size_t id)
   {
     std::lock_guard<std::mutex> lock(traceLock);
     return mDevice->exportBuffer(id);

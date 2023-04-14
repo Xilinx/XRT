@@ -216,7 +216,7 @@ class DeviceIntf {
     bool hasHSDPforPL() { return mHSDPforPL; }
 
     XDP_EXPORT
-    xclBufferExportHandle getBufferExportHandle(size_t id);
+    xclBufferExportHandle exportBuffer(size_t id);
 
   private:
     // Turn on/off debug messages to stdout
