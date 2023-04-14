@@ -120,6 +120,8 @@ class DeviceIntf {
     XDP_EXPORT
     uint64_t getDeviceAddr(size_t bufHandle);
     XDP_EXPORT
+    xclBufferExportHandle exportTraceBuffer(size_t id);
+    XDP_EXPORT
     uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
@@ -214,9 +216,6 @@ class DeviceIntf {
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
-
-    XDP_EXPORT
-    xclBufferExportHandle exportBuffer(size_t id);
 
   private:
     // Turn on/off debug messages to stdout
