@@ -1102,7 +1102,7 @@ DeviceIntf::~DeviceIntf()
   xclBufferExportHandle DeviceIntf::getBufferExportHandle(size_t id)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    return mDevice->getBufferExportHandle(id);
+    return mDevice->exportBO(id);
   }
 
 } // namespace xdp
