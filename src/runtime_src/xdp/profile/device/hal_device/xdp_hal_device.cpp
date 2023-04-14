@@ -191,7 +191,7 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   return xrt_bos[boIndex].address();
 }
 
-xclBufferExportHandle HalDevice::exportBO(size_t id)
+xclBufferExportHandle HalDevice::exportBuffer(size_t id)
 {
   if(!id) return XRT_NULL_BO_EXPORT;
   size_t boIndex = id - 1;
