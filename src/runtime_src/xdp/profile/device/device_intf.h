@@ -114,11 +114,11 @@ class DeviceIntf {
     XDP_EXPORT
     size_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
     XDP_EXPORT
-    void freeTraceBuf(size_t bufHandle);
+    void freeTraceBuf(size_t id);
     XDP_EXPORT
-    void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
+    void* syncTraceBuf(size_t id ,uint64_t offset, uint64_t bytes);
     XDP_EXPORT
-    uint64_t getDeviceAddr(size_t bufHandle);
+    uint64_t getDeviceAddr(size_t id);
     XDP_EXPORT
     xclBufferExportHandle exportTraceBuf(size_t id);
     XDP_EXPORT

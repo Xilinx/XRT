@@ -922,18 +922,18 @@ DeviceIntf::~DeviceIntf()
   size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    auto bufHandle = mDevice->alloc(sz, memIdx);
-    if (bufHandle) {
+    auto bufId = mDevice->alloc(sz, memIdx);
+    if (bufId) {
     // Can't read a buffer xrt hasn't written to
-      mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+      mDevice->sync(bufId, sz, 0, xdp::Device::direction::HOST2DEVICE);
     }
-    return bufHandle;
+    return bufId;
   }
 
-  void DeviceIntf::freeTraceBuf(size_t bufHandle)
+  void DeviceIntf::freeTraceBuf(size_t id)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    mDevice->free(bufHandle);
+    mDevice->free(id);
   }
 
   /**
@@ -942,20 +942,20 @@ DeviceIntf::~DeviceIntf()
   * We can read the entire buffer in one go if we want to
   * or choose to read in chunks
   */
-  void* DeviceIntf::syncTraceBuf(size_t bufHandle, uint64_t offset, uint64_t bytes)
+  void* DeviceIntf::syncTraceBuf(size_t id, uint64_t offset, uint64_t bytes)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    auto addr = mDevice->map(bufHandle);
+    auto addr = mDevice->map(id);
     if (!addr)
       return nullptr;
-    mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
-    mDevice->unmap(bufHandle);
+    mDevice->sync(id, bytes, offset, xdp::Device::direction::DEVICE2HOST);
+    mDevice->unmap(id);
     return static_cast<char*>(addr) + offset;
   }
 
-  uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
+  uint64_t DeviceIntf::getDeviceAddr(size_t id)
   {
-    return mDevice->getDeviceAddr(bufHandle);
+    return mDevice->getDeviceAddr(id);
   }
 
   xclBufferExportHandle DeviceIntf::exportTraceBuf(size_t id)
