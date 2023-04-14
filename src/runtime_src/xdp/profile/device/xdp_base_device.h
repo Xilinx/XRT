@@ -55,7 +55,7 @@ public:
   virtual void   unmap(size_t id) = 0;
   virtual void   sync(size_t id, size_t sz, size_t offset, direction dir, bool async=false) = 0;
   virtual xclBufferExportHandle exportBuffer(size_t id) = 0;
-  virtual uint64_t              getDeviceAddr(size_t id) = 0;
+  virtual uint64_t              getBufferDeviceAddr(size_t id) = 0;
 
   virtual double getDeviceClock() = 0;
   virtual uint64_t getTraceTime() = 0;

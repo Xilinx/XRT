@@ -183,7 +183,7 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   xrt_bos[boIndex].sync(dir, size, offset);
 }
 
-uint64_t HalDevice::getDeviceAddr(size_t id)
+uint64_t HalDevice::getBufferDeviceAddr(size_t id)
 {
   if(!id) return 0;
   size_t boIndex = id - 1;

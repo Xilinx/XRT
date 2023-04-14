@@ -100,7 +100,7 @@ bool AIETraceOffload::setupPSKernel() {
       return bufferInitialized;
     }
 
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].bufId);
+    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
 
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
@@ -171,7 +171,7 @@ bool AIETraceOffload::initReadTrace()
     }
 
     // Data Mover will write input stream to this address
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].bufId);
+    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
 
     std::string msg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());

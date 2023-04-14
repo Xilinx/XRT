@@ -953,9 +953,9 @@ DeviceIntf::~DeviceIntf()
     return static_cast<char*>(addr) + offset;
   }
 
-  uint64_t DeviceIntf::getDeviceAddr(size_t id)
+  uint64_t DeviceIntf::getTraceBufDeviceAddr(size_t id)
   {
-    return mDevice->getDeviceAddr(id);
+    return mDevice->getBufferDeviceAddr(id);
   }
 
   xclBufferExportHandle DeviceIntf::exportTraceBuf(size_t id)

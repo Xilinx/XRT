@@ -57,7 +57,7 @@ public:
   virtual void   unmap(size_t id);
   virtual void   sync(size_t id, size_t sz, size_t offset, direction dir, bool async=false);
   virtual xclBufferExportHandle exportBuffer(size_t id);
-  virtual uint64_t              getDeviceAddr(size_t id);
+  virtual uint64_t              getBufferDeviceAddr(size_t id);
 
   virtual void* getRawDevice() { return mHalDevice ; }
 

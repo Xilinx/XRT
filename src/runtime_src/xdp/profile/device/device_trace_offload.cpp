@@ -446,7 +446,7 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
       return false;
 
     // Data Mover will write input stream to this address
-    bd.address = dev_intf->getDeviceAddr(bd.bufId);
+    bd.address = dev_intf->getTraceBufDeviceAddr(bd.bufId);
     dev_intf->initTS2MM(i, bd.alloc_size, bd.address, ts2mm_info.use_circ_buf);
 
     debug_stream
