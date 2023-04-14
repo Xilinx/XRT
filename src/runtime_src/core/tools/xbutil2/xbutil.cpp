@@ -16,6 +16,7 @@
 #include "tools/common/SubCmdJSON.h"
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/JSONConfigurable.h"
 
 // System include files
 #include <exception>
@@ -23,6 +24,8 @@
 #include <string>
 
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 // Program entry
 int main( int argc, char** argv )
@@ -30,6 +33,38 @@ int main( int argc, char** argv )
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
   const std::string executable = "xbutil";
+
+  // The currentDeviceCategories vector must be updated via query. Using preset values for now.
+  const std::vector<std::string> currentDeviceCategories = {"common", "alveo"};
+  std::vector<boost::property_tree::ptree> matchingTrees;
+  std::vector<boost::property_tree::ptree> cmdTrees;
+  std::vector<boost::property_tree::ptree> examineDeviceTrees;
+  std::vector<boost::property_tree::ptree> reportTrees;
+  boost::property_tree::ptree configTree;
+  try {
+    boost::property_tree::read_json("xbutil_command_config.json", configTree);
+    const boost::property_tree::ptree &cmdConfigs = configTree.get_child("cmd_configs");
+    cmdTrees = JSONConfigurable::parse_configuration_tree(currentDeviceCategories, cmdConfigs);
+    for (auto& cmdTree : cmdTrees) {
+      matchingTrees = JSONConfigurable::parse_configuration_tree({"examine"}, cmdTree.get_child("contents"));
+      for (auto& match : matchingTrees)
+        examineDeviceTrees.push_back(match);
+    }
+    for (auto& examineDeviceTree : examineDeviceTrees) {
+      matchingTrees = JSONConfigurable::parse_configuration_tree(currentDeviceCategories, examineDeviceTree.get_child("contents"));
+      for (auto& match : matchingTrees)
+        reportTrees.push_back(match);
+    }
+    for (auto& reportTree: reportTrees) {
+      std::cout << reportTree.get<std::string>("name") << std::endl;
+      for (auto& contentTree: reportTree.get_child("contents")) {
+        std::cout << contentTree.second.get_value<std::string>() << std::endl;
+      }
+    }
+  } catch (std::exception& e) {
+    // Handle exception. REPLACE THIS.
+    std::cout << e.what() << std::endl;
+  }
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
@@ -72,7 +107,7 @@ int main( int argc, char** argv )
       xrt_core::send_exception_message(e.what(), executable.c_str());
     else // Handle the operation canceled case
       XBUtilities::print_exception(e);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {
     xrt_core::send_exception_message("Unknown error", executable.c_str());

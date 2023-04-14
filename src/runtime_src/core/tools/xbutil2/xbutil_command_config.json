@@ -1,0 +1,21 @@
+{
+	"cmd_configs": [{
+		"name": "common",
+		"contents": [{
+			"name": "examine",
+			"contents": [{
+					"name": "common",
+					"contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
+				},
+				{
+					"name": "alveo",
+					"contents": ["error", "firewall", "mailbox"]
+				},
+				{
+					"name": "aie",
+					"contents": ["aie", "aiemem", "aieshim"]
+				}
+			]
+		}]
+	}]
+}
