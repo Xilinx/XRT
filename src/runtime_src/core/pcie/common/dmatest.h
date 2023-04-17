@@ -131,9 +131,11 @@ namespace xcldev {
             if (count > 0x40000)
                 count = 0x40000;
 
-	    xrt::hw_context::cfg_param_type cfg_param;
-	    mhwCtxHandle = mHandle->create_hw_context(mHandle->get_xclbin_uuid().get(), cfg_param, xrt::hw_context::access_mode::shared);
-	    mFlags |= ((mFlags & ~XRT_BO_FLAGS_MEMIDX_MASK) | (mhwCtxHandle->get_slotidx() << XRT_BO_FLAGS_SLOTIDX_SHIFT));
+	    mhwCtxHandle = mHandle->create_hw_context(mHandle->get_xclbin_uuid().get(), {}, xrt::hw_context::access_mode::shared);
+	    xcl_bo_flags xflags{mFlags};
+	    xflags.slot = mhwCtxHandle->get_slotidx();
+	    mFlags = xFlags.flags;
+
             for (long long i = 0; i < count; i++) {
                 // This can throw and callers of DMARunner are supposed to catch this.
                 xrt_core::aligned_ptr_type buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), mSize);
