@@ -69,6 +69,8 @@ struct xcl_bo_flags
   };
 };
 
+#define XRT_BO_FLAGS_SLOTIDX_SHIFT	16
+
 /**
  * XCL BO Flags bits layout
  *

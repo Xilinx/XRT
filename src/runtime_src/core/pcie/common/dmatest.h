@@ -45,6 +45,7 @@ namespace xcldev {
         using buffer_and_deleter = std::pair<std::unique_ptr<xrt_core::buffer_handle>, xrt_core::aligned_ptr_type>;
         std::vector<buffer_and_deleter> mBOList;
         std::shared_ptr<xrt_core::device> mHandle;
+	std::unique_ptr<xrt_core::hwctx_handle> mhwCtxHandle;
         size_t mSize;
         size_t mTotalSize;
         unsigned mFlags;
@@ -130,10 +131,13 @@ namespace xcldev {
             if (count > 0x40000)
                 count = 0x40000;
 
+	    xrt::hw_context::cfg_param_type cfg_param;
+	    mhwCtxHandle = mHandle->create_hw_context(mHandle->get_xclbin_uuid().get(), cfg_param, xrt::hw_context::access_mode::shared);
+	    mFlags |= ((mFlags & ~XRT_BO_FLAGS_MEMIDX_MASK) | (mhwCtxHandle->get_slotidx() << XRT_BO_FLAGS_SLOTIDX_SHIFT));
             for (long long i = 0; i < count; i++) {
                 // This can throw and callers of DMARunner are supposed to catch this.
                 xrt_core::aligned_ptr_type buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), mSize);
-                auto bo = mHandle->alloc_bo(buf.get(), mSize, mFlags);
+                auto bo = mhwCtxHandle->alloc_bo(buf.get(), mSize, mFlags);
                 if (!bo)
                     break;
                 std::memset(buf.get(), mPattern, mSize);
@@ -144,7 +148,9 @@ namespace xcldev {
         }
 
         ~DMARunner()
-        {}
+        {
+	    mBOList.clear();
+	}
 
         int run(std::ostream& ostr = std::cout) const {
             auto dma_threads = xrt_core::device_query<xrt_core::query::dma_threads_raw>(mHandle);
