@@ -133,7 +133,7 @@ namespace xcldev {
 
 	    mhwCtxHandle = mHandle->create_hw_context(mHandle->get_xclbin_uuid().get(), {}, xrt::hw_context::access_mode::shared);
 	    xcl_bo_flags xflags{mFlags};
-	    xflags.slot = mhwCtxHandle->get_slotidx();
+	    xflags.slot = static_cast<uint8_t>(mhwCtxHandle->get_slotidx());
 	    mFlags = xflags.flags;
 
             for (long long i = 0; i < count; i++) {
