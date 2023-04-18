@@ -134,7 +134,7 @@ namespace xcldev {
 	    mhwCtxHandle = mHandle->create_hw_context(mHandle->get_xclbin_uuid().get(), {}, xrt::hw_context::access_mode::shared);
 	    xcl_bo_flags xflags{mFlags};
 	    xflags.slot = mhwCtxHandle->get_slotidx();
-	    mFlags = xFlags.flags;
+	    mFlags = xflags.flags;
 
             for (long long i = 0; i < count; i++) {
                 // This can throw and callers of DMARunner are supposed to catch this.
@@ -151,6 +151,8 @@ namespace xcldev {
 
         ~DMARunner()
         {
+	    // This explicit call is to make sure BOs get free before hw context
+	    // handler (mhwCtxHandle) destructed.
 	    mBOList.clear();
 	}
 
