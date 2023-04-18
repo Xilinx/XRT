@@ -53,7 +53,7 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
   for(auto& k_dfx : pt_dfx) {
     const boost::property_tree::ptree& dfx = k_dfx.second;
     _output << boost::format("  Hardware Context ID: %s\n") % dfx.get<std::string>("id", "N/A");
-    _output << boost::format("    Status: %s\n") % dfx.get<std::string>("status", "Unknown");
+    _output << boost::format("    Context Status: %s\n") % dfx.get<std::string>("context_status", "Unknown");
     _output << boost::format("    Xclbin UUID: %s\n") % dfx.get<std::string>("xclbin_uuid", "N/A");
     const std::vector<Table2D::HeaderData> table_headers = {
       {"Index", Table2D::Justification::left},

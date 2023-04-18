@@ -887,6 +887,19 @@ struct device_status : request
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  parse_status(const result_type status)
+  {
+    switch (status) {
+      case 0:
+        return "HEALTHY";
+      case 1:
+        return "HANG";
+      default:
+        throw xrt_core::system_error(EINVAL, "Invalid device status: " + status);
+    }
+  }
 };
 
 struct kds_cu_info : request
@@ -954,7 +967,7 @@ struct hw_context_info : request
   struct data {
     std::string id;
     std::string xclbin_uuid;
-    device_status::result_type status;
+    device_status::result_type context_status;
     kds_cu_info::result_type pl_compute_units;
     kds_scu_info::result_type ps_compute_units;
   };
