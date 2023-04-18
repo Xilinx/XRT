@@ -6,8 +6,6 @@
 #include "xrt.h"   // This file implements xrt.h
 
 #include "ert.h"
-#include "pcidev.h"
-#include "system_linux.h"
 #include "xclbin.h"
 
 #include "core/common/shim/buffer_handle.h"
@@ -22,6 +20,7 @@
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/dev_factory.h"
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
@@ -768,7 +767,7 @@ shim(unsigned index)
 
 int shim::dev_init()
 {
-    auto dev = xrt_core::pci::get_dev(mBoardNumber);
+    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
     if(dev == nullptr) {
         xrt_logmsg(XRT_ERROR, "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
@@ -1350,7 +1349,8 @@ int shim::resetDevice(xclResetKind kind)
     auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
+        auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
+        dev->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -1771,7 +1771,8 @@ int shim::xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx)
         std::this_thread::sleep_for(std::chrono::seconds(5));
         while (!dev_hotplug_done) {
 	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
+        auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
+	    dev->sysfs_get<int>("",
 			    "dev_hotplug_done", err, dev_hotplug_done, 0);
     }
     dev_init();
@@ -1833,7 +1834,8 @@ int shim::xclLoadAxlf(const axlf *buffer)
         std::this_thread::sleep_for(std::chrono::seconds(5));
         while (!dev_hotplug_done) {
     	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    	    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
+            auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
+            dev->sysfs_get<int>("",
     			    "dev_hotplug_done", err, dev_hotplug_done, 0);
         }
         dev_init();
@@ -2191,7 +2193,7 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
 {
-    auto dev = xrt_core::pci::get_dev(mBoardNumber);
+    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
     std::string subdev_str = std::string(subdev);
 
     if (mLogStream.is_open()) {
@@ -2324,7 +2326,7 @@ double shim::xclGetKernelWriteMaxBandwidthMBps()
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
-  auto dev = xrt_core::pci::get_dev(mBoardNumber);
+  auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
   std::string subdev_str = std::string(subdev);
   std::string entry_str = std::string(entry);
   if (mLogStream.is_open()) {

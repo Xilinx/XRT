@@ -3,7 +3,8 @@
 add_library(xrt_noop SHARED
   device_noop.cpp
   shim.cpp
-  system_noop.cpp
+  pcidev_noop.cxx
+  pcidrv_noop.cxx
   $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )

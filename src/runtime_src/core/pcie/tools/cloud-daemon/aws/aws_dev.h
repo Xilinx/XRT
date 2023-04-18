@@ -11,9 +11,9 @@
 #include <iomanip>
 #include <string>
 #include "xclhal2.h"
+#include "core/pcie/linux/pcidev_linux.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
-#include "core/pcie/linux/pcidev.h"
 #include "core/pcie/linux/shim.h"
 #include "../mpd_plugin.h"
 #include "../common.h"

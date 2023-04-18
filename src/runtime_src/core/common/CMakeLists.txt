@@ -17,6 +17,7 @@ add_library(core_common_library_objects OBJECT
   memaccess.cpp
   message.cpp
   module_loader.cpp
+  dev_factory.cpp
   query_requests.cpp
   sensor.cpp
   system.cpp

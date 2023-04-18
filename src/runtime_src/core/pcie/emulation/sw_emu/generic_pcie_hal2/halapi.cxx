@@ -69,7 +69,7 @@ import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
   xclDeviceInfo2 info;
-  std::strcpy(info.mName, "xilinx:pcie-hw-em:7v3:1.0");
+  std::strcpy(info.mName, "xilinx:pcie-sw-em:7v3:1.0");
   info.mMagic = 0X586C0C6C;
   info.mHALMajorVersion = XCLHAL_MAJOR_VER;
   info.mHALMinorVersion = XCLHAL_MINOR_VER;
@@ -93,8 +93,8 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
 
   xclswemuhal2::SwEmuShim *handle = NULL;
   bool bDefaultDevice = false;
-  std::map<unsigned int, xclswemuhal2::SwEmuShim*>::iterator it = xclswemuhal2::devices.find(deviceIndex);
-  if(it != xclswemuhal2::devices.end())
+  std::map<unsigned int, xclswemuhal2::SwEmuShim*>::iterator it = xclswemuhal2::get_devices().find(deviceIndex);
+  if(it != xclswemuhal2::get_devices().end())
   {
     handle = (*it).second;
   }
@@ -112,7 +112,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     handle->xclOpen(logfileName);
     if (bDefaultDevice)
     {
-      std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW_EMU 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
+      std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW-EM 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-sw-em:7v3:1.0\"";
       if (xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
         std::cout << sDummyDeviceMsg << std::endl;
     }
@@ -126,7 +126,7 @@ void xclClose(xclDeviceHandle handle)
   if (!drv)
     return ;
   drv->xclClose();
-  if (xclswemuhal2::SwEmuShim::handleCheck(handle) && xclswemuhal2::devices.size() == 0) {
+  if (xclswemuhal2::SwEmuShim::handleCheck(handle) && xclswemuhal2::get_devices().size() == 0) {
     delete ((xclswemuhal2::SwEmuShim*)handle);
   }
 }
@@ -412,7 +412,9 @@ unsigned xclProbe()
     boost::property_tree::ptree platformData = std::get<5>(it);
 
     xclswemuhal2::SwEmuShim *handle = new xclswemuhal2::SwEmuShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
-    xclswemuhal2::devices[deviceIndex++] = handle;
+    //xclswemuhal2::devices[deviceIndex++] = handle;
+    xclswemuhal2::get_devices().insert({deviceIndex,handle});
+    deviceIndex++;
   }
 
   xclProbeCallCnt++;

@@ -2,7 +2,7 @@
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
-#include "system_hwemu.h"
+#include "core/common/system.h"
 #include "plugin/xdp/device_offload.h"
 
 #include "core/include/xclbin.h"
@@ -69,7 +69,11 @@ namespace xclhwemhal2 {
   namespace pt = boost::property_tree;
   namespace fs = boost::filesystem;
 
-  std::map<unsigned int, HwEmShim*> devices;
+  std::map<unsigned int, HwEmShim*>& get_devices() {
+    static std::map<unsigned int, HwEmShim*> devices;
+    return devices;
+  }
+
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
   std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
@@ -172,8 +176,8 @@ namespace xclhwemhal2 {
 
   static void saveWaveDataBases()
   {
-    std::map<unsigned int, HwEmShim*>::iterator start = devices.begin();
-    std::map<unsigned int, HwEmShim*>::iterator end = devices.end();
+    std::map<unsigned int, HwEmShim*>::iterator start = xclhwemhal2::get_devices().begin();
+    std::map<unsigned int, HwEmShim*>::iterator end = xclhwemhal2::get_devices().end();
     for(; start != end; start++)
     {
       HwEmShim* handle = (*start).second;
@@ -2674,8 +2678,8 @@ namespace xclhwemhal2 {
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
-    mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
-
+    //mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
+    mCoreDevice = xrt_core::get_userpf_device(this, mDeviceIndex);
     device_handles::add(this);
   }
 

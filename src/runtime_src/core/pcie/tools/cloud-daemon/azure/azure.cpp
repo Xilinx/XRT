@@ -414,7 +414,7 @@ AzureDev::~AzureDev()
 
 AzureDev::AzureDev(size_t index) : index(index)
 {
-    dev = xrt_core::pci::get_dev(index, true);
+    dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index, true));
     gettimeofday(&start, NULL);
 }
 

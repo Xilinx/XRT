@@ -7,7 +7,7 @@
 #ifndef PCIEFUNC_H
 #define PCIEFUNC_H
 
-#include "core/pcie/linux/pcidev.h"
+#include "core/pcie/linux/pcidev_linux.h"
 #include <mutex>
 #include <string>
 
@@ -23,7 +23,7 @@ public:
     int getMailbox();
     uint64_t getSwitch();
     int getIndex() const;
-    std::shared_ptr<xrt_core::pci::dev> getDev() const;
+    std::shared_ptr<xrt_core::pci::pcidev_linux> getDev() const;
 
     // Load config from device's sysfs nodes
     bool loadConf();
@@ -39,7 +39,7 @@ private:
     uint64_t chanSwitch = 0;
     int devId = 0;
     int mbxfd = -1;
-    std::shared_ptr<xrt_core::pci::dev> dev;
+    std::shared_ptr<xrt_core::pci::pcidev_linux> dev;
     size_t index;
     std::mutex lock;
     bool validConf();

@@ -6,6 +6,7 @@
 
 #include "config.h"
 #include "device.h"
+#include "dev_factory.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -22,21 +23,21 @@ namespace xrt_core {
  */
 class system
 {
-protected:
+public:
   XRT_CORE_COMMON_EXPORT
   system();
-public:
+//public:
   // REMOVE
   virtual void
-  get_xrt_info(boost::property_tree::ptree&) {}
+  get_xrt_info(boost::property_tree::ptree&);// {}
 
   // REMOVE
   virtual void
-  get_os_info(boost::property_tree::ptree&) {}
+  get_os_info(boost::property_tree::ptree&);// {}
 
   // REMOVE
   virtual void
-  get_devices(boost::property_tree::ptree&) const {}
+  get_devices(boost::property_tree::ptree&) const;// {}
 
   /**
    * get_device_id() - Convert string to device index
@@ -54,18 +55,20 @@ public:
   virtual device::id_type
   get_device_id(const std::string& str) const;
 
+  device::id_type
+  get_device_id_default(const std::string& str) const;
   /**
    */
   virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-  get_bdf_info(device::id_type, bool) const
-  {
+  get_bdf_info(device::id_type, bool) const;
+ /* {
     return std::make_tuple(uint16_t(0), uint16_t(0), uint16_t(0), uint16_t(0));
-  }
+  }*/
 
   /**
    */
   virtual std::pair<device::id_type, device::id_type>
-  get_total_devices(bool is_user = true) const = 0;
+  get_total_devices(bool is_user = true) const; //= 0;
 
   /**
    * get_userpf_device() - Open a new device specified by index
@@ -77,7 +80,7 @@ public:
    * when device is no longer referenced.
    */
   virtual std::shared_ptr<device>
-  get_userpf_device(device::id_type id) const = 0;
+  get_userpf_device(device::id_type id) const;// = 0;
 
   /**
    * get_userpf_device() - Get previous opened device from handle
@@ -93,13 +96,13 @@ public:
    * not called when device goes out of scope.
    */
   virtual std::shared_ptr<device>
-  get_userpf_device(device::handle_type hdl, device::id_type) const = 0;
+  get_userpf_device(device::handle_type hdl, device::id_type) const; // = 0;
 
   /**
    * get_mgmtpf_device() - construct mgmt device from device id
    */
   virtual std::shared_ptr<device>
-  get_mgmtpf_device(device::id_type id) const = 0;
+  get_mgmtpf_device(device::id_type id) const;// = 0;
 
   /**
    * get_monitor_access_type() -
@@ -113,16 +116,37 @@ public:
    */
   enum class monitor_access_type { bar, mmap, ioctl };
   virtual monitor_access_type
-  get_monitor_access_type() const
-  {
+  get_monitor_access_type() const;
+  /*{
     return monitor_access_type::bar;
-  }
+  }*/
 
   virtual void
-  program_plp(const device*, const std::vector<char>&, bool) const
-  {
+  program_plp(const device*, const std::vector<char>&, bool) const;
+  /*{
     throw std::runtime_error("plp program is not supported");
-  }
+  }*/
+
+  //copied system linux
+  virtual
+  std::shared_ptr<pci::dev>
+  get_pcidev(unsigned index, bool is_user = true) const;
+
+  virtual
+  size_t
+  get_num_dev_ready(bool is_user) const;
+
+  virtual
+  size_t
+  get_num_dev_total(bool is_user) const;
+
+  private:
+    std::vector<std::shared_ptr<pci::dev>> user_ready_list;
+    std::vector<std::shared_ptr<pci::dev>> user_nonready_list;
+
+    std::vector<std::shared_ptr<pci::dev>> mgmt_ready_list;
+    std::vector<std::shared_ptr<pci::dev>> mgmt_nonready_list;
+
 }; // system
 
 /**

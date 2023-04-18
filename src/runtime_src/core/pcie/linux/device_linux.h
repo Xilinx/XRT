@@ -30,6 +30,7 @@ public:
   virtual void xclmgmt_load_xclbin(const char* buffer) const override;
   virtual void device_shutdown() const override;
   virtual void device_online() const override;
+  virtual void program_plp(const std::vector<char>& buffer, bool force) const override;
 
 public:
   ////////////////////////////////////////////////////////////////

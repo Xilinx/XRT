@@ -329,7 +329,8 @@ unsigned xclProbe()
     boost::property_tree::ptree platformData = std::get<5>(it);
 
     xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
-    xclhwemhal2::devices[deviceIndex++] = handle;
+    xclhwemhal2::get_devices().insert({ deviceIndex,handle });
+    deviceIndex++;
   }
 
   xclProbeCallCnt++;
@@ -386,8 +387,8 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   xclhwemhal2::HwEmShim *handle = NULL;
 
   bool bDefaultDevice = false;
-  std::map<unsigned int, xclhwemhal2::HwEmShim*>::iterator it = xclhwemhal2::devices.find(deviceIndex);
-  if(it != xclhwemhal2::devices.end())
+  std::map<unsigned int, xclhwemhal2::HwEmShim*>::iterator it = xclhwemhal2::get_devices().find(deviceIndex);
+  if(it != xclhwemhal2::get_devices().end())
   {
     handle = (*it).second;
   }
@@ -423,7 +424,7 @@ void xclClose(xclDeviceHandle handle)
     return ;
   try {
     drv->xclClose();
-    if (xclhwemhal2::HwEmShim::handleCheck(handle) && xclhwemhal2::devices.size() == 0)
+    if (xclhwemhal2::HwEmShim::handleCheck(handle) && xclhwemhal2::get_devices().size() == 0)
       delete ((xclhwemhal2::HwEmShim *)handle);
   }
   catch (const std::exception& ex) {

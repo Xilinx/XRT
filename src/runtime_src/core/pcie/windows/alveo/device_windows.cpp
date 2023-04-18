@@ -1632,4 +1632,30 @@ void
 device_windows::
 xclmgmt_load_xclbin(const char* buffer) const {}
 
+void device_windows::
+program_plp(const std::vector<char>& buffer, bool force) const
+{
+  mgmtpf::plp_program(get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()), force);
+
+  // asynchronously check if the download is complete
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+  const static int program_timeout_sec = 15;
+  uint64_t plp_status = RP_DOWNLOAD_IN_PROGRESS;
+  int retry_count = 0;
+  while (retry_count++ < program_timeout_sec) {
+    mgmtpf::plp_program_status(get_mgmt_handle(), plp_status);
+
+    // check plp status
+    if (plp_status == RP_DOWLOAD_SUCCESS)
+      break;
+    else if (plp_status == RP_DOWLOAD_FAILED)
+      throw xrt_core::error("PLP programmming failed");
+
+    if (retry_count == program_timeout_sec)
+      throw xrt_core::error("PLP programmming timed out");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+}
+
 } // xrt_core

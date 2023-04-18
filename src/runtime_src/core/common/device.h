@@ -453,6 +453,12 @@ public:
   { throw std::runtime_error("Not implemented"); }
 
   /**
+ * program_plp() - program plp
+ */
+  virtual void program_plp(const std::vector<char>& buffer, bool force) const
+  { throw std::runtime_error("plp program is not supported"); }
+
+  /**
    * file_open() - Opens a scoped fd
    * THIS FUNCTION DOES NOT BELONG HERE
    */

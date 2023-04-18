@@ -57,6 +57,9 @@ using key_type = xrt_core::query::key_type;
 using addr_type = uint64_t;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
+//get devices map
+std::map<unsigned int, HwEmShim*>& get_devices();
+
   class Event {
     public:
       uint8_t awlen;
@@ -627,7 +630,5 @@ using addr_type = uint64_t;
       bool mSimDontRun;
       nocddr_fastaccess_hwemu mNocFastAccess;
   };
-
-  extern std::map<unsigned int, HwEmShim*> devices;
  }
 #endif

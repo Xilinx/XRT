@@ -2,9 +2,10 @@
 // Copyright (C) 2015-2017 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
-#include "pcidev.h"
+
 #include "shim.h"
 #include "xclbin.h"
+#include "pcidev_linux.h"
 
 #include "core/common/message.h"
 #include "core/include/xdp/aim.h"
@@ -65,7 +66,7 @@ namespace xocl {
                                          uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                          size_t size) {
     debug_ip_layout *map;
-    auto dev = xrt_core::pci::get_dev(mBoardNumber);
+    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(mBoardNumber));
     std::string subdev_str = "icap";
     std::string entry_str = "debug_ip_layout";
     std::string path = dev->get_sysfs_path(subdev_str, entry_str);

@@ -4,7 +4,6 @@
 add_library(core_pciecommon_objects OBJECT
   aie_stubs.cpp
   device_pcie.cpp
-  system_pcie.cpp
   )
 
 target_include_directories(core_pciecommon_objects

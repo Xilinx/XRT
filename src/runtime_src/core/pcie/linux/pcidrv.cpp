@@ -2,14 +2,15 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidrv.h"
+#include "pcidev_linux.h"
 #include <boost/filesystem.hpp>
 
 namespace xrt_core { namespace pci {
 
 void
 drv::
-scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
-             std::vector<std::shared_ptr<dev>>& nonready_list) const
+scan_devices(std::vector<std::shared_ptr<xrt_core::pci::dev>>& ready_list,
+             std::vector<std::shared_ptr<xrt_core::pci::dev>>& nonready_list) const
 {
   namespace bfs = boost::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";
@@ -24,7 +25,7 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
 
   for (auto& path : vec) {
     try {
-      auto pf = create_pcidev(path.filename().string());
+      auto pf = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(create_pcidev(path.filename().string()));
 
       // In docker, all host sysfs nodes are available. So, we need to check
       // devnode to make sure the device is really assigned to docker.
@@ -42,12 +43,4 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
     }
   }
 }
-
-std::shared_ptr<dev>
-drv::
-create_pcidev(const std::string& sysfs) const
-{
-  return std::make_shared<dev>(*this, sysfs);
-}
-
 } } // namespace xrt_core :: pci

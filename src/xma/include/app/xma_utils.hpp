@@ -28,7 +28,6 @@ typedef struct streambuf: public std::streambuf {
 } streambuf;
 
 void get_session_cmd_load();
-void get_system_info();
 
 //Check if it is a valid xma session
 //return: XMA_SUCCESS - if valid; XMA_ERROR - otherwise

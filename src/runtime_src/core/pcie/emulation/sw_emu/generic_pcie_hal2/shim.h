@@ -51,7 +51,9 @@ namespace xclswemuhal2
   //8GB MEMSIZE to access the MMAP FILE
   const uint64_t MEMSIZE = 0x0000000400000000;
   const auto endOfSimulationString = "received request to end simulation from connected initiator";
-
+  
+  //get devices map
+  std::map<unsigned int, SwEmuShim*>& get_devices();
   // XDMA Shim
   class SwEmuShim
   {
@@ -752,7 +754,7 @@ namespace xclswemuhal2
     std::vector<std::string> rtps;
     static unsigned int mGraphHandle;
   };
-  extern std::map<unsigned int, SwEmuShim *> devices;
+  
 
   // sParseLog structure parses a file named mFileName and looks for a matchString
   // On successfull match, print the line to the console

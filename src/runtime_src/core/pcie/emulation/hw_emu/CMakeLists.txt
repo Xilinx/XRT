@@ -19,7 +19,6 @@ file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.h"
   "${EM_SRC_DIR}/*.cxx"
   "${COMMON_PCIE_SRC_DIR}/aie_stubs.cpp"
-  "${COMMON_PCIE_SRC_DIR}/system_pcie.cpp"
   "${COMMON_PCIE_SRC_DIR}/device_pcie.cpp"
   "${EM_PLUGIN_SRC_DIR}/*.h"
   "${EM_PLUGIN_SRC_DIR}/*.cpp"

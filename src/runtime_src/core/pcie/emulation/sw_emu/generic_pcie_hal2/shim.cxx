@@ -2,10 +2,12 @@
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
-#include "system_swemu.h"
+
 #include "xclbin.h"
 
 #include "core/common/xclbin_parser.h"
+
+#include "core/common/system.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -19,7 +21,6 @@
 
 namespace xclswemuhal2
 {
-  std::map<unsigned int, SwEmuShim *> devices;
   unsigned int SwEmuShim::mBufferCount = 0;
   unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string, uint64_t, void *>> SwEmuShim::mFdToFileNameMap;
@@ -29,8 +30,12 @@ namespace xclswemuhal2
   const unsigned SwEmuShim::CONTROL_AP_DONE = 2;
   const unsigned SwEmuShim::CONTROL_AP_IDLE = 4;
   const unsigned SwEmuShim::CONTROL_AP_CONTINUE = 0x10;
-  constexpr unsigned int simulationWaitTime = 300;
-
+  constexpr unsigned int simulationWaitTime = 300;  
+ 
+  std::map<unsigned int, SwEmuShim*>& get_devices() {
+    static std::map<unsigned int, SwEmuShim*> devices;
+    return devices;
+  }
   std::map<std::string, std::string> SwEmuShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
   namespace bf = boost::filesystem;
@@ -162,8 +167,8 @@ namespace xclswemuhal2
 
   static void saveDeviceProcessOutputs()
   {
-    std::map<unsigned int, SwEmuShim *>::iterator start = devices.begin();
-    std::map<unsigned int, SwEmuShim *>::iterator end = devices.end();
+    std::map<unsigned int, SwEmuShim *>::iterator start = get_devices().begin();
+    std::map<unsigned int, SwEmuShim *>::iterator end = get_devices().end();
     for (; start != end; start++)
     {
       SwEmuShim *handle = (*start).second;
@@ -1188,7 +1193,8 @@ namespace xclswemuhal2
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
-    mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
+    //mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
+    mCoreDevice = xrt_core::get_userpf_device(this, mDeviceIndex);
   }
 
   void SwEmuShim::fillDeviceInfo(xclDeviceInfo2 *dest, xclDeviceInfo2 *src)

@@ -6,10 +6,10 @@
 
 #include "xclhal2.h"
 #include "../mpd_plugin.h"
+#include "core/pcie/linux/pcidev_linux.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
-#include "core/pcie/linux/pcidev.h"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -39,7 +39,7 @@ private:
 /*
  * Internal data structures this sample plugin uses
  */ 
-    std::shared_ptr<xrt_core::pci::dev> mgmtDev;
+    std::shared_ptr<xrt_core::pci::pcidev_linux> mgmtDev;
     int retrieve_xclbin(const xclBin *&orig_xclbin, std::vector<char> &real_xclbin);
     std::string calculate_md5(char *buf, size_t len);
     std::vector<char> read_file(const char *filename);

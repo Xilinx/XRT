@@ -6,10 +6,11 @@ add_subdirectory(plugin/xdp)
 add_library(core_pcielinux_objects OBJECT
   debug.cpp
   device_linux.cpp
-  pcidev.cpp
+  pcidev_linux.cpp
   pcidrv.cpp
+  pcidrv_xclmgmt.cpp
+  pcidrv_xocl.cpp
   shim.cpp
-  system_linux.cpp
   )
 
 target_compile_definitions(core_pcielinux_objects

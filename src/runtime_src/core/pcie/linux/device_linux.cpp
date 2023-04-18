@@ -15,7 +15,7 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "pcidev.h"
+#include "pcidev_linux.h"
 #include "xrt.h"
 
 #include <array>
@@ -27,6 +27,8 @@
 #include <string>
 #include <sys/syscall.h>
 #include <type_traits>
+#include <thread>
+#include <unistd.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
@@ -37,7 +39,7 @@
 namespace {
 
 namespace query = xrt_core::query;
-using pdev = std::shared_ptr<xrt_core::pci::dev>;
+using pdev = std::shared_ptr<xrt_core::pci::pcidev_linux>;
 using key_type = query::key_type;
 
 static int
@@ -62,13 +64,13 @@ get_render_value(const std::string& dir)
   return instance_num;
 }
 
-inline pdev
+inline std::shared_ptr<xrt_core::pci::pcidev_linux>
 get_pcidev(const xrt_core::device* device)
 {
   auto pdev = xrt_core::pci::get_dev(device->get_device_id(), device->is_userpf());
   if (!pdev)
     throw xrt_core::error("Invalid device handle");
-  return pdev;
+  return std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(pdev);
 }
 
 static std::vector<uint64_t>
@@ -483,7 +485,7 @@ struct hotplug_offline
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto mgmt_dev = xrt_core::pci::get_dev(device->get_device_id(), false);
+    auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(device->get_device_id(), false));
 
     // Remove both user_pf and mgmt_pf
     if (xrt_core::pci::shutdown(mgmt_dev, true, true))
@@ -1439,7 +1441,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
+  if (auto err = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false))->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -1447,7 +1449,7 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
+  if (auto err = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false))->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
 }
 
@@ -1456,7 +1458,7 @@ device_linux::
 reset(query::reset_type& key) const
 {
   std::string err;
-  xrt_core::pci::get_dev(get_device_id(), false)->sysfs_put(
+  std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false))->sysfs_put(
     key.get_subdev(), key.get_entry(), err, key.get_value());
   if (!err.empty())
     throw error("reset failed");
@@ -1466,14 +1468,14 @@ int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
-  return xrt_core::pci::get_dev(get_device_id(), false)->open(subdev, flag);
+  return std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false))->open(subdev, flag);
 }
 
 void
 device_linux::
 close(int dev_handle) const
 {
-  xrt_core::pci::get_dev(get_device_id(), false)->close(dev_handle);
+    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false))->close(dev_handle);
 }
 
 void
@@ -1489,7 +1491,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
-    ret = xrt_core::pci::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false))->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
@@ -1502,7 +1504,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
 void
 device_linux::
 device_shutdown() const {
-  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
+  auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false));
   // hot reset pcie device
   if (xrt_core::pci::shutdown(mgmt_dev))
     throw xrt_core::error("Hot resetting pci device failed.");
@@ -1511,8 +1513,8 @@ device_shutdown() const {
 void
 device_linux::
 device_online() const {
-  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
-  auto peer_dev = mgmt_dev->lookup_peer_dev();
+  auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(get_device_id(), false));
+  auto peer_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(mgmt_dev->lookup_peer_dev());
   std::string errmsg;
 
   peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
@@ -1637,6 +1639,37 @@ import_bo(pid_t pid, xrt_core::shared_handle::export_handle ehdl)
      "Importing buffer object from different process requires XRT "
      " built and installed on a system with 'pidfd' kernel support");
 #endif
+}
+
+void
+device_linux::
+program_plp(const std::vector<char>& buffer, bool force) const
+{
+  try {
+    xrt_core::scope_value_guard<int, std::function<void()>> fd = this->file_open("icap", O_WRONLY);
+    auto ret = ::write(fd.get(), buffer.data(), buffer.size());
+    if (static_cast<size_t>(ret) != buffer.size())
+      throw xrt_core::error(EINVAL, "Write plp to icap subdev failed");
+
+  }
+  catch (const std::exception& e) {
+    xrt_core::send_exception_message(e.what(), "XBMGMT");
+  }
+
+  auto value = xrt_core::query::rp_program_status::value_type(1);
+  xrt_core::device_update<xrt_core::query::rp_program_status>(this, value);
+
+  // asynchronously check if the download is complete
+  const static int program_timeout_sec = 60;
+  bool is_complete = false;
+  int retry_count = 0;
+  while (!is_complete && retry_count++ < program_timeout_sec) {
+    is_complete = xrt_core::query::rp_program_status::to_bool(xrt_core::device_query<xrt_core::query::rp_program_status>(this));
+    if (retry_count == program_timeout_sec)
+      throw xrt_core::error(ETIMEDOUT, "PLP programmming timed out");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
 }
 
 } // xrt_core

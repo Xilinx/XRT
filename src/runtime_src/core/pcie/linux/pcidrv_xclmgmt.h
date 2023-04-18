@@ -5,6 +5,7 @@
 #define _XCL_PCIDRV_XCLMGMT_H_
 
 #include "pcidrv.h"
+#include "pcidev_linux.h"
 #include <string>
 
 namespace xrt_core { namespace pci {
@@ -15,8 +16,8 @@ public:
   std::string
   name() const override { return "xclmgmt"; }
 
-  bool
-  is_user() const override { return false; }
+  std::shared_ptr<dev>
+  create_pcidev(const std::string& sysfs) const override;
 };
 
 } } // namespace xrt_core :: pci

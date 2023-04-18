@@ -4,12 +4,12 @@
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
-#include "pcidev.h"
 #include "xclhal2.h"
 
 #include "core/common/device.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "pcidev_linux.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/hwqueue_handle.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
@@ -170,7 +170,7 @@ public:
   exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* ctxhdl);
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
-  std::shared_ptr<xrt_core::pci::dev> mDev;
+  std::shared_ptr<xrt_core::pci::pcidev_linux> mDev;
   std::ofstream mLogStream;
   int mUserHandle;
   int mStreamHandle;

@@ -6,7 +6,8 @@ add_library(core_pciewindows_alveo_objects OBJECT
   mgmt.cpp
   perf.cpp
   shim.cpp
-  system_windows.cpp
+  pcidrv_windows.cxx
+  pcidev_windows.cxx
   )
 
 target_compile_definitions(core_pciewindows_alveo_objects

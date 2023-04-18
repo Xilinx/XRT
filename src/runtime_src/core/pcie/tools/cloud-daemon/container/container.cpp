@@ -149,7 +149,7 @@ Container::~Container()
 
 Container::Container(size_t index)
 {
-    mgmtDev = xrt_core::pci::get_dev(index, false);
+    mgmtDev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index, false));
 }
 
 //private methods, vendor dependant

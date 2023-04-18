@@ -49,7 +49,7 @@ int pcieFunc::getIndex() const
     return index;
 }
 
-std::shared_ptr<xrt_core::pci::dev> pcieFunc::getDev() const
+std::shared_ptr<xrt_core::pci::pcidev_linux> pcieFunc::getDev() const
 {
     return dev;
 }
@@ -157,7 +157,7 @@ void pcieFunc::log(int priority, const char *format, ...) const
 
 pcieFunc::pcieFunc(size_t index, bool user) : index(index)
 {
-    dev = xrt_core::pci::get_dev(index, user);
+    dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index, user));
 }
 
 pcieFunc::~pcieFunc()

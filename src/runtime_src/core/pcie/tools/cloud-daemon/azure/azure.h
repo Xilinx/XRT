@@ -8,9 +8,9 @@
 #include <vector>
 #include <string>
 #include "xclhal2.h"
+#include "core/pcie/linux/pcidev_linux.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
-#include "core/pcie/linux/pcidev.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "../common.h"
 #include "../mpd_plugin.h"
@@ -83,9 +83,9 @@ public:
         }
         for (size_t i = 0; i < total; i++) {
             std::string serialNumber, errmsg;
-	    xrt_core::pci::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
+            std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(i, true))->sysfs_get("xmc", "serial_num", errmsg, serialNumber);
 	        if (!errmsg.empty() || !regex_match(serialNumber, sn)) {
-           	    std::cerr << "azure warning(" << xrt_core::pci::get_dev(i, true)->m_sysfs_name << ")";
+           	    std::cerr << "azure warning(" << std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(i, true))->m_sysfs_name << ")";
                 std::cerr << " sysfs errmsg: " << errmsg;
                 std::cerr << " serialNumber: " << serialNumber;
                 std::cerr << std::endl;
@@ -101,7 +101,7 @@ private:
     static const int upload_retry { 15 };
     static const int reset_retry { 3 };
     static const int timeout_threshold { 120 }; //mailbox timeout set as 120 seconds
-    std::shared_ptr<xrt_core::pci::dev> dev;
+    std::shared_ptr<xrt_core::pci::pcidev_linux> dev;
     size_t index;
     struct timeval start;
     int UploadToWireServer(

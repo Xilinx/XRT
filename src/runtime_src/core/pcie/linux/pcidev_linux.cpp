@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2016-2020 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#include "pcidev.h"
-#include "pcidrv.h"
-#include "xclbin.h"
 
-#include "core/common/utils.h"
+#include "pcidev_linux.h"
+//#include "xclbin.h"
+
+//#include "utils.h"
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem.hpp>
@@ -31,133 +30,134 @@
 
 namespace {
 
-namespace bfs = boost::filesystem;
+    namespace bfs = boost::filesystem;
 
-static std::string
-get_name(const std::string& dir, const std::string& subdir)
-{
-  std::string line;
-  std::ifstream ifs(dir + "/" + subdir + "/name");
+    static std::string
+        get_name(const std::string& dir, const std::string& subdir)
+    {
+        std::string line;
+        std::ifstream ifs(dir + "/" + subdir + "/name");
 
-  if (ifs.is_open())
-    std::getline(ifs, line);
+        if (ifs.is_open())
+            std::getline(ifs, line);
 
-  return line;
-}
-
-// Helper to find subdevice directory name
-// Assumption: all subdevice's sysfs directory name starts with subdevice name!!
-static int
-get_subdev_dir_name(const std::string& dir, const std::string& subDevName, std::string& subdir)
-{
-  DIR *dp;
-  size_t sub_nm_sz = subDevName.size();
-
-  subdir = "";
-  if (subDevName.empty())
-    return 0;
-
-  int ret = -ENOENT;
-  dp = opendir(dir.c_str());
-  if (dp) {
-    struct dirent *entry;
-    while ((entry = readdir(dp))) {
-      std::string nm = get_name(dir, entry->d_name);
-      if (!nm.empty()) {
-        if (nm != subDevName)
-          continue;
-      } else if(strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
-                entry->d_name[sub_nm_sz] != '.') {
-        continue;
-      }
-      // found it
-      subdir = entry->d_name;
-      ret = 0;
-      break;
+        return line;
     }
-    closedir(dp);
-  }
 
-  return ret;
-}
+    // Helper to find subdevice directory name
+    // Assumption: all subdevice's sysfs directory name starts with subdevice name!!
+    static int
+        get_subdev_dir_name(const std::string& dir, const std::string& subDevName, std::string& subdir)
+    {
+        DIR* dp;
+        size_t sub_nm_sz = subDevName.size();
 
-static bool
-is_admin()
-{
-  return (getuid() == 0) || (geteuid() == 0);
-}
+        subdir = "";
+        if (subDevName.empty())
+            return 0;
 
-static size_t
-bar_size(const std::string &dir, unsigned bar)
-{
-  std::ifstream ifs(dir + "/resource");
-  if (!ifs.good())
-    return 0;
-  std::string line;
-  for (unsigned i = 0; i <= bar; i++) {
-    line.clear();
-    std::getline(ifs, line);
-  }
-  long long start, end, meta;
-  if (sscanf(line.c_str(), "0x%llx 0x%llx 0x%llx", &start, &end, &meta) != 3)
-    return 0;
-  return end - start + 1;
-}
+        int ret = -ENOENT;
+        dp = opendir(dir.c_str());
+        if (dp) {
+            struct dirent* entry;
+            while ((entry = readdir(dp))) {
+                std::string nm = get_name(dir, entry->d_name);
+                if (!nm.empty()) {
+                    if (nm != subDevName)
+                        continue;
+                }
+                else if (strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
+                    entry->d_name[sub_nm_sz] != '.') {
+                    continue;
+                }
+                // found it
+                subdir = entry->d_name;
+                ret = 0;
+                break;
+            }
+            closedir(dp);
+        }
 
-static int
-get_render_value(const std::string& dir)
-{
-  struct dirent *entry;
-  DIR *dp;
-  int instance_num = INVALID_ID;
-
-  dp = opendir(dir.c_str());
-  if (dp == NULL)
-    return instance_num;
-
-  while ((entry = readdir(dp))) {
-    if(strncmp(entry->d_name, RENDER_NM, sizeof (RENDER_NM) - 1) == 0) {
-      sscanf(entry->d_name, RENDER_NM "%d", &instance_num);
-      break;
+        return ret;
     }
-  }
 
-  closedir(dp);
+    static bool
+        is_admin()
+    {
+        return (getuid() == 0) || (geteuid() == 0);
+    }
 
-  return instance_num;
-}
+    static size_t
+        bar_size(const std::string& dir, unsigned bar)
+    {
+        std::ifstream ifs(dir + "/resource");
+        if (!ifs.good())
+            return 0;
+        std::string line;
+        for (unsigned i = 0; i <= bar; i++) {
+            line.clear();
+            std::getline(ifs, line);
+        }
+        long long start, end, meta;
+        if (sscanf(line.c_str(), "0x%llx 0x%llx 0x%llx", &start, &end, &meta) != 3)
+            return 0;
+        return end - start + 1;
+    }
 
-/*
- * wordcopy()
- *
- * Copy bytes word (32bit) by word.
- * Neither memcpy, nor std::copy work as they become byte copying
- * on some platforms.
- */
-inline void*
-wordcopy(void *dst, const void* src, size_t bytes)
-{
-  // assert dest is 4 byte aligned
-  assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
+    static int
+        get_render_value(const std::string& dir)
+    {
+        struct dirent* entry;
+        DIR* dp;
+        int instance_num = INVALID_ID;
 
-  using word = uint32_t;
-  volatile auto d = reinterpret_cast<word*>(dst);
-  auto s = reinterpret_cast<const word*>(src);
-  auto w = bytes/sizeof(word);
+        dp = opendir(dir.c_str());
+        if (dp == NULL)
+            return instance_num;
 
-  for (size_t i=0; i<w; ++i)
-    d[i] = s[i];
+        while ((entry = readdir(dp))) {
+            if (strncmp(entry->d_name, RENDER_NM, sizeof(RENDER_NM) - 1) == 0) {
+                sscanf(entry->d_name, RENDER_NM "%d", &instance_num);
+                break;
+            }
+        }
 
-  return dst;
-}
+        closedir(dp);
+
+        return instance_num;
+    }
+
+    /*
+     * wordcopy()
+     *
+     * Copy bytes word (32bit) by word.
+     * Neither memcpy, nor std::copy work as they become byte copying
+     * on some platforms.
+     */
+    inline void*
+        wordcopy(void* dst, const void* src, size_t bytes)
+    {
+        // assert dest is 4 byte aligned
+        assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
+
+        using word = uint32_t;
+        volatile auto d = reinterpret_cast<word*>(dst);
+        auto s = reinterpret_cast<const word*>(src);
+        auto w = bytes / sizeof(word);
+
+        for (size_t i = 0; i < w; ++i)
+            d[i] = s[i];
+
+        return dst;
+    }
 
 } // namespace
 
 namespace xrt_core { namespace pci {
-
+    
 namespace sysfs {
 
-static constexpr const char* dev_root = "/sys/bus/pci/devices/";
+static const std::string dev_root = "/sys/bus/pci/devices/";
 
 static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
@@ -166,7 +166,7 @@ get_path(const std::string& name, const std::string& subdev, const std::string& 
   if (get_subdev_dir_name(dev_root + name, subdev, subdir) != 0)
     return "";
 
-  std::string path = dev_root;
+  auto path = dev_root;
   path += name;
   path += "/";
   path += subdir;
@@ -189,9 +189,9 @@ open_path(const std::string& path, std::string& err, bool write, bool binary)
   if (!fs.is_open()) {
     std::stringstream ss;
     ss << "Failed to open " << path << " for "
-       << (binary ? "binary " : "")
-       << (write ? "writing" : "reading") << ": "
-       << strerror(errno) << std::endl;
+      << (binary ? "binary " : "")
+      << (write ? "writing" : "reading") << ": "
+      << strerror(errno) << std::endl;
     err = ss.str();
   }
   return fs;
@@ -199,8 +199,8 @@ open_path(const std::string& path, std::string& err, bool write, bool binary)
 
 static std::fstream
 open(const std::string& name,
-     const std::string& subdev, const std::string& entry,
-     std::string& err, bool write, bool binary)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, bool write, bool binary)
 {
   std::fstream fs;
   auto path = get_path(name, subdev, entry);
@@ -208,9 +208,10 @@ open(const std::string& name,
   if (path.empty()) {
     std::stringstream ss;
     ss << "Failed to find subdirectory for " << subdev
-       << " under " << dev_root + name << std::endl;
+      << " under " << dev_root + name << std::endl;
     err = ss.str();
-  } else {
+  }
+  else {
     fs = open_path(path, err, write, binary);
   }
 
@@ -219,8 +220,8 @@ open(const std::string& name,
 
 static void
 get(const std::string& name,
-    const std::string& subdev, const std::string& entry,
-    std::string& err, std::vector<std::string>& sv)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, std::vector<std::string>& sv)
 {
   std::fstream fs = open(name, subdev, entry, err, false, false);
   if (!err.empty())
@@ -267,8 +268,8 @@ get(const std::string& name,
 
 static void
 get(const std::string& name,
-    const std::string& subdev, const std::string& entry,
-    std::string& err, std::string& s)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, std::string& s)
 {
   std::vector<std::string> sv;
   get(name, subdev, entry, err, sv);
@@ -280,22 +281,22 @@ get(const std::string& name,
 
 static void
 get(const std::string& name,
-    const std::string& subdev, const std::string& entry,
-    std::string& err, std::vector<char>& buf)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, std::vector<char>& buf)
 {
   std::fstream fs = open(name, subdev, entry, err, false, true);
   if (!err.empty())
     return;
 
   buf.clear();
-  buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),
-             std::istreambuf_iterator<char>());
+  buf.insert(std::end(buf), std::istreambuf_iterator<char>(fs),
+    std::istreambuf_iterator<char>());
 }
 
 static void
 put(const std::string& name,
-    const std::string& subdev, const std::string& entry,
-    std::string& err, const std::string& input)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, const std::string& input)
 {
   std::fstream fs = open(name, subdev, entry, err, true, false);
   if (!err.empty())
@@ -305,15 +306,15 @@ put(const std::string& name,
   if (!fs.good()) {
     std::stringstream ss;
     ss << "Failed to write " << get_path(name, subdev, entry) << ": "
-       << strerror(errno) << std::endl;
+      << strerror(errno) << std::endl;
     err = ss.str();
   }
 }
 
 static void
 put(const std::string& name,
-    const std::string& subdev, const std::string& entry,
-    std::string& err, const std::vector<char>& buf)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, const std::vector<char>& buf)
 {
   std::fstream fs = open(name, subdev, entry, err, true, true);
   if (!err.empty())
@@ -324,15 +325,15 @@ put(const std::string& name,
   if (!fs.good()) {
     std::stringstream ss;
     ss << "Failed to write " << get_path(name, subdev, entry) << ": "
-       << strerror(errno) << std::endl;
+      << strerror(errno) << std::endl;
     err = ss.str();
   }
 }
 
 static void
 put(const std::string& name,
-    const std::string& subdev, const std::string& entry,
-    std::string& err, const unsigned int& input)
+  const std::string& subdev, const std::string& entry,
+  std::string& err, const unsigned int& input)
 {
   std::fstream fs = open(name, subdev, entry, err, true, false);
   if (!err.empty())
@@ -342,78 +343,107 @@ put(const std::string& name,
   if (!fs.good()) {
     std::stringstream ss;
     ss << "Failed to write " << get_path(name, subdev, entry) << ": "
-       << strerror(errno) << std::endl;
+      << strerror(errno) << std::endl;
     err = ss.str();
   }
 }
 
-} // sysfs
+}// sysfs
+
+pcidev_linux::
+pcidev_linux(const std::string& sysfs, bool isuser) : dev(isuser)
+{
+  std::string err;
+  m_sysfs_name = sysfs;
+  if (sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
+    throw std::invalid_argument(sysfs + " is not valid BDF");
+
+  m_is_mgmt = !isuser;
+
+  if (m_is_mgmt)
+    sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
+  else
+    m_instance = get_render_value(xrt_core::pci::sysfs::dev_root + sysfs + "/drm");
+
+  sysfs_get<int>("", "userbar", err, m_user_bar, 0);
+  m_user_bar_size = bar_size(xrt_core::pci::sysfs::dev_root + sysfs, m_user_bar);
+  sysfs_get<bool>("", "ready", err, m_is_ready, false);
+  m_user_bar_map = reinterpret_cast<char*>(MAP_FAILED);
+
+}
+
+pcidev_linux::
+~pcidev_linux()
+{
+  if (m_user_bar_map != MAP_FAILED)
+    ::munmap(m_user_bar_map, m_user_bar_size);
+}
 
 void
-dev::
+pcidev_linux::
 sysfs_get(const std::string& subdev, const std::string& entry,
-          std::string& err, std::vector<std::string>& ret)
+  std::string& err, std::vector<std::string>& ret)
 {
   sysfs::get(m_sysfs_name, subdev, entry, err, ret);
 }
 
 void
-dev::
+pcidev_linux::
 sysfs_get(const std::string& subdev, const std::string& entry,
-          std::string& err, std::vector<uint64_t>& ret)
+  std::string& err, std::vector<uint64_t>& ret)
 {
   sysfs::get(m_sysfs_name, subdev, entry, err, ret);
 }
 
 void
-dev::
+pcidev_linux::
 sysfs_get(const std::string& subdev, const std::string& entry,
-          std::string& err, std::vector<char>& ret)
+  std::string& err, std::vector<char>& ret)
 {
   sysfs::get(m_sysfs_name, subdev, entry, err, ret);
 }
 
 void
-dev::
+pcidev_linux::
 sysfs_get(const std::string& subdev, const std::string& entry,
-          std::string& err, std::string& s)
+  std::string& err, std::string& s)
 {
   sysfs::get(m_sysfs_name, subdev, entry, err, s);
 }
 
 void
-dev::
+pcidev_linux::
 sysfs_put(const std::string& subdev, const std::string& entry,
-          std::string& err, const std::string& input)
+  std::string& err, const std::string& input)
 {
   sysfs::put(m_sysfs_name, subdev, entry, err, input);
 }
 
 void
-dev::
+pcidev_linux::
 sysfs_put(const std::string& subdev, const std::string& entry,
-          std::string& err, const std::vector<char>& buf)
+  std::string& err, const std::vector<char>& buf)
 {
   sysfs::put(m_sysfs_name, subdev, entry, err, buf);
 }
 
 void
-dev::
+pcidev_linux::
 sysfs_put(const std::string& subdev, const std::string& entry,
-          std::string& err, const unsigned int& buf)
+  std::string& err, const unsigned int& buf)
 {
   sysfs::put(m_sysfs_name, subdev, entry, err, buf);
 }
 
 std::string
-dev::
+pcidev_linux::
 get_sysfs_path(const std::string& subdev, const std::string& entry)
 {
   return sysfs::get_path(m_sysfs_name, subdev, entry);
 }
 
 std::string
-dev::
+pcidev_linux::
 get_subdev_path(const std::string& subdev, uint idx) const
 {
   // Main devfs path
@@ -434,13 +464,13 @@ get_subdev_path(const std::string& subdev, uint idx) const
   path += m_is_mgmt ? ".m" : ".u";
   //if the domain number is big, the shift overflows, hence need to cast
   uint32_t dom = static_cast<uint32_t>(m_domain);
-  path += std::to_string( (dom<<16)+ (m_bus<<8) + (m_dev<<3) + m_func);
+  path += std::to_string((dom << 16) + (m_bus << 8) + (m_dev << 3) + m_func);
   path += "." + std::to_string(idx);
   return path;
 }
 
 int
-dev::
+pcidev_linux::
 open(const std::string& subdev, uint32_t idx, int flag) const
 {
   if (m_is_mgmt && !::is_admin())
@@ -451,42 +481,14 @@ open(const std::string& subdev, uint32_t idx, int flag) const
 }
 
 int
-dev::
+pcidev_linux::
 open(const std::string& subdev, int flag) const
 {
   return open(subdev, 0, flag);
 }
-
-dev::
-dev(const drv& driver, const std::string& sysfs) : m_sysfs_name(sysfs)
-{
-  std::string err;
-
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
-    throw std::invalid_argument(sysfs + " is not valid BDF");
-
-  m_is_mgmt = !driver.is_user();
-
-  if (m_is_mgmt)
-    sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
-  else
-    m_instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
-
-  sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::dev_root + sysfs, m_user_bar);
-  sysfs_get<bool>("", "ready", err, m_is_ready, false);
-  m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
-}
-
-dev::
-~dev()
-{
-  if (m_user_bar_map != MAP_FAILED)
-    ::munmap(m_user_bar_map, m_user_bar_size);
-}
-
+    
 int
-dev::
+pcidev_linux::
 map_usr_bar()
 {
   std::lock_guard<std::mutex> l(m_lock);
@@ -498,8 +500,8 @@ map_usr_bar()
   if (dev_handle < 0)
     return -errno;
 
-  m_user_bar_map = (char *)::mmap(0, m_user_bar_size,
-                                PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
+  m_user_bar_map = (char*)::mmap(0, m_user_bar_size,
+    PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
 
   // Mapping should stay valid after handle is closed
   // (according to man page)
@@ -512,7 +514,7 @@ map_usr_bar()
 }
 
 void
-dev::
+pcidev_linux::
 close(int dev_handle) const
 {
   if (dev_handle != -1)
@@ -521,7 +523,7 @@ close(int dev_handle) const
 
 
 int
-dev::
+pcidev_linux::
 pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
   if (m_user_bar_map == MAP_FAILED) {
@@ -529,12 +531,12 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
     if (ret)
       return ret;
   }
-  (void) wordcopy(buf, m_user_bar_map + offset, len);
+  (void)wordcopy(buf, m_user_bar_map + offset, len);
   return 0;
 }
 
 int
-dev::
+pcidev_linux::
 pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
 {
   if (m_user_bar_map == MAP_FAILED) {
@@ -542,13 +544,13 @@ pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
     if (ret)
       return ret;
   }
-  (void) wordcopy(m_user_bar_map + offset, buf, len);
+  (void)wordcopy(m_user_bar_map + offset, buf, len);
   return 0;
 }
 
 int
-dev::
-ioctl(int dev_handle, unsigned long cmd, void *arg) const
+pcidev_linux::
+ioctl(int dev_handle, unsigned long cmd, void* arg) const
 {
   if (dev_handle == -1) {
     errno = -EINVAL;
@@ -558,15 +560,15 @@ ioctl(int dev_handle, unsigned long cmd, void *arg) const
 }
 
 int
-dev::
+pcidev_linux::
 poll(int dev_handle, short events, int timeout_ms)
 {
-  pollfd info = {dev_handle, events, 0};
+  pollfd info = { dev_handle, events, 0 };
   return ::poll(&info, 1, timeout_ms);
 }
 
 void*
-dev::
+pcidev_linux::
 mmap(int dev_handle, size_t len, int prot, int flags, off_t offset)
 {
   if (dev_handle == -1) {
@@ -577,7 +579,7 @@ mmap(int dev_handle, size_t len, int prot, int flags, off_t offset)
 }
 
 int
-dev::
+pcidev_linux::
 munmap(int dev_handle, void* addr, size_t len)
 {
   if (dev_handle == -1) {
@@ -588,8 +590,8 @@ munmap(int dev_handle, void* addr, size_t len)
 }
 
 int
-dev::
-get_partinfo(std::vector<std::string>& info, void *blob)
+pcidev_linux::
+get_partinfo(std::vector<std::string>& info, void* blob)
 {
   std::vector<char> buf;
   if (!blob) {
@@ -601,13 +603,13 @@ get_partinfo(std::vector<std::string>& info, void *blob)
     blob = buf.data();
   }
 
-  struct fdt_header *bph = (struct fdt_header *)blob;
+  struct fdt_header* bph = (struct fdt_header*)blob;
   uint32_t version = be32toh(bph->version);
   uint32_t off_dt = be32toh(bph->off_dt_struct);
-  const char *p_struct = (const char *)blob + off_dt;
+  const char* p_struct = (const char*)blob + off_dt;
   uint32_t off_str = be32toh(bph->off_dt_strings);
-  const char *p_strings = (const char *)blob + off_str;
-  const char *p, *s;
+  const char* p_strings = (const char*)blob + off_str;
+  const char* p, * s;
   uint32_t tag;
   uint32_t level = 0;
 
@@ -648,7 +650,7 @@ get_partinfo(std::vector<std::string>& info, void *blob)
 }
 
 int
-dev::
+pcidev_linux::
 flock(int dev_handle, int op)
 {
   if (dev_handle == -1) {
@@ -658,45 +660,45 @@ flock(int dev_handle, int op)
   return ::flock(dev_handle, op);
 }
 
-std::shared_ptr<dev>
-dev::
-lookup_peer_dev()
+
+// Hand out a "device" instance that is specific to this type of device.
+// Caller will use this device to access device specific implementation of ishim.
+std::shared_ptr<device>
+pcidev_linux::create_device(device::handle_type handle, device::id_type id) const
+{
+  return std::shared_ptr<device_linux>(new device_linux(handle, id, !m_is_mgmt));
+}
+
+std::shared_ptr<pcidev_linux>
+pcidev_linux::lookup_peer_dev()
 {
   if (!m_is_mgmt)
     return nullptr;
 
   int i = 0;
-  for (auto udev = get_dev(i, true); udev; udev = get_dev(i, true), ++i)
+  for (auto udev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(get_dev(i, true)); udev; udev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(get_dev(i, true)), ++i)
     if (udev->m_domain == m_domain && udev->m_bus == m_bus && udev->m_dev == m_dev)
       return udev;
 
   return nullptr;
 }
-  
+
 device::handle_type
-dev::
-create_shim(device::id_type id) const
+pcidev_linux::create_shim(device::id_type id) const
 {
   return xclOpen(id, nullptr, XCL_QUIET);
 }
 
-std::shared_ptr<device>
-dev::
-create_device(device::handle_type handle, device::id_type id) const
-{
-  return std::shared_ptr<device_linux>(new device_linux(handle, id, !m_is_mgmt));
-}
-
 /*
- * This is for the RHEL 8.x kernel. From the RHEL 8.x kernel removed the runtime_active_kids sysfs
- * node for the Linux power driver. Hence, to get the active kids under a bridge we need this
- * alternative solution.
- */
+* This is for the RHEL 8.x kernel. From the RHEL 8.x kernel removed the runtime_active_kids sysfs
+* node for the Linux power driver. Hence, to get the active kids under a bridge we need this
+* alternative solution.
+*/
 int
-get_runtime_active_kids(std::string &pci_bridge_path)
+get_runtime_active_kids(std::string& pci_bridge_path)
 {
   int curr_act_dev = 0;
-  std::vector<bfs::path> vec{bfs::directory_iterator(pci_bridge_path), bfs::directory_iterator()};
+  std::vector<bfs::path> vec{ bfs::directory_iterator(pci_bridge_path), bfs::directory_iterator() };
 
   // Check number of Xilinx devices under this bridge.
   for (auto& path : vec) {
@@ -704,14 +706,14 @@ get_runtime_active_kids(std::string &pci_bridge_path)
       continue;
 
     path += "/vendor";
-    if(!bfs::exists(path))
-	    continue;
+    if (!bfs::exists(path))
+      continue;
 
     unsigned int vendor_id;
     bfs::ifstream file(path);
     file >> std::hex >> vendor_id;
     if (vendor_id != XILINX_ID)
-	    continue;
+      continue;
 
     curr_act_dev++;
   }
@@ -720,7 +722,7 @@ get_runtime_active_kids(std::string &pci_bridge_path)
 }
 
 int
-shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
+shutdown(std::shared_ptr<xrt_core::pci::pcidev_linux> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
   if (!mgmt_dev->m_is_mgmt)
     return -EINVAL;
@@ -837,7 +839,7 @@ shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
 }
 
 int
-check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err)
+check_p2p_config(const std::shared_ptr<xrt_core::pci::pcidev_linux>& dev, std::string& err)
 {
   std::string errmsg;
   int ret = P2P_CONFIG_DISABLED;
@@ -856,11 +858,11 @@ check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err)
     long long exp_bar = -1;
 
     for (unsigned int i = 0; i < p2p_cfg.size(); i++) {
-        const char *str = p2p_cfg[i].c_str();
-        std::sscanf(str, "bar:%lld", &bar);
-        std::sscanf(str, "exp_bar:%lld", &exp_bar);
-        std::sscanf(str, "rbar:%lld", &rbar);
-        std::sscanf(str, "remap:%lld", &remap);
+      const char* str = p2p_cfg[i].c_str();
+      std::sscanf(str, "bar:%lld", &bar);
+      std::sscanf(str, "exp_bar:%lld", &exp_bar);
+      std::sscanf(str, "rbar:%lld", &rbar);
+      std::sscanf(str, "remap:%lld", &remap);
     }
     if (bar == -1) {
       ret = P2P_CONFIG_NOT_SUPP;
@@ -882,5 +884,4 @@ check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err)
 
   return P2P_CONFIG_NOT_SUPP;
 }
-
 } } // namespace xrt_core :: pci
