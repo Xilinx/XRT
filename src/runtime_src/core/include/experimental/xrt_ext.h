@@ -8,6 +8,7 @@
 
 #include "xrt/detail/config.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_hw_context.h"
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -63,13 +64,56 @@ public:
   XRT_API_EXPORT
   bo(const xrt::device& device, size_t sz);
 
-  // To be removed when device level BOs can be shared between ctx
+  /**
+   * bo() - Constructor for buffer object
+   *
+   * @param hwctx
+   *  The hardware context that this buffer object uses for queue
+   *  operations such as syncing and residency operations.
+   * @param sz
+   *  Size of buffer
+   * @param access
+   *  Specific access mode for the buffer (see `enum access_mode`)
+   *
+   * This constructor creates a host_only buffer object with specified
+   * access mode.  The hardware context is used for syncing of data
+   * to from device and residency operations, which are all enqueued
+   * operations that are synchronized on fence objects.
+   */
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, size_t sz, access_mode access);
 
-  // To be removed when device level BOs can be shared between ctx
+  /**
+   * bo() - Constructor for buffer object
+   *
+   * @param hwctx
+   *  The hardware context that this buffer object uses for queue
+   *  operations such as syncing and residency operations.
+   * @param sz
+   *  Size of buffer
+   *
+   * This constructor creates a host_only buffer object with local
+   * access.
+   */
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, size_t sz);
+
+  /**
+   * bo() - Constructor to import an exported buffer from another process
+   *
+   * @param hwctx
+   *  The hardware context that this buffer object uses for queue
+   *  operations such as syncing and residency operations.
+   * @param pid
+   *  Process id of exporting process
+   * @param ehdl
+   *  Exported buffer handle, implementation specific type
+   *
+   * The exported buffer handle is obtained from exporting process by
+   * calling `export_buffer()` on the buffer to be exported.
+   */
+  XRT_API_EXPORT
+  bo(const xrt::hw_context& hwctx, pid_type pid, xclBufferExportHandle ehdl);
 };
 
 } // xrt::ext

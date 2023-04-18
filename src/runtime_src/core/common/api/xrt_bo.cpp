@@ -245,8 +245,12 @@ public:
   // Managed imported handle
   bo_impl(device_type dev, pid_type pid, xrt_core::shared_handle::export_handle ehdl)
     : device(std::move(dev))
-    , handle(device->import_bo(pid.pid, ehdl))
   {
+    auto hwctx = device.get_hwctx_handle();
+    handle = hwctx
+      ? hwctx->import_bo(pid.pid, ehdl)
+      : device->import_bo(pid.pid, ehdl);
+
     auto prop = handle->get_properties();
     size = prop.size;
   }
@@ -1517,6 +1521,11 @@ bo(const xrt::hw_context& hwctx, size_t sz, access_mode access)
 bo::
 bo(const xrt::hw_context& hwctx, size_t sz)
   : bo{hwctx, sz, xrt::ext::bo::access_mode::local}
+{}
+
+bo::
+bo(const xrt::hw_context& hwctx, pid_type pid, xclBufferExportHandle ehdl)
+  : xrt::bo::bo{alloc_import_from_pid(device_type{hwctx}, pid, ehdl)}
 {}
 
 } // xrt::ext
