@@ -86,8 +86,12 @@ static ssize_t mfg_ver_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	struct VmrStatus vmr_header = {};
 
-	return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, _GOLDEN_VER));
+	/*Checks for Versal VMR availability; returns -EINVALID for Versal VMR based device.*/
+	if(xocl_vmr_status(lro, &vmr_header) == -ENODEV)
+		return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, _GOLDEN_VER));
+	return -EINVAL;
 }
 static DEVICE_ATTR_RO(mfg_ver);
 
