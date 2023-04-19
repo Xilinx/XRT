@@ -878,7 +878,8 @@ struct sdm_sensor_info : request
 };
 
 /**
- * Extract the status of the device KDS
+ * Extract the status of the device
+ * This states whether or not a device is stuck due to an xclbin issue
  */
 struct device_status : request
 {

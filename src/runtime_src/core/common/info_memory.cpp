@@ -593,6 +593,7 @@ populate_hardware_context(const xrt_core::device* device)
     }
 
     try {
+      // For legacy devices  mark the single hardware context status as the device status
       hw_context.context_status = xrt_core::device_query<xq::device_status>(device);
       hw_context.pl_compute_units = xrt_core::device_query<xq::kds_cu_info>(device);
       hw_context.ps_compute_units = xrt_core::device_query<xq::kds_scu_info>(device);
