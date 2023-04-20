@@ -216,7 +216,7 @@ bool AIETraceOffload::initReadTrace()
 
       XAie_MemInst memInst;
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
-      xclBufferExportHandle boExportHandle = xclExportBO(deviceHandle, buffers[i].boHandle);
+      xclBufferExportHandle boExportHandle = deviceIntf->getBufferExportHandle(buffers[i].boHandle);
       if(XRT_NULL_BO_EXPORT == boExportHandle) {
         throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
       }

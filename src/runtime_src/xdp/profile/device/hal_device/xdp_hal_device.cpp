@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -218,6 +219,14 @@ std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
   xclGetSubdevPath(mHalDevice, subdev.c_str(), index, buffer, maxSz);
 
   return std::string(buffer);
+}
+
+xclBufferExportHandle HalDevice::getBufferExportHandle(size_t id)
+{
+  if(!id) return XRT_NULL_BO_EXPORT;
+  size_t boIndex = id - 1;
+
+  return (xrt_bos[boIndex].export_buffer());
 }
 
 }

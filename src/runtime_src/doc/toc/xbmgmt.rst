@@ -33,15 +33,41 @@ Currently supported ``xbmgmt`` commands are
 xbmgmt configure
 ~~~~~~~~~~~
 
-The ``xbmgmt configure`` command provides advanced options for configuring a device
+The ``xbmgmt configure`` command provides advanced options for configuring a device's memory, clock, and DDR memory retention settings. A .ini file input is required for configuration except for DDR memory retention. The .ini file can be located in a directory of your choosing with the path specified in the command.
 
-**The supported options**
+- TIP: Instead of creating a .ini file from scratch, use ``xbmgmt dump --config`` (see the ``xbmgmt dump`` section) to generate the file contents which can be edited accordingly.
 
-Configuring a device's memory or clock throttling settings using an .ini file
+**Command Options**
+
+The supported options are ``--input`` and ``--retention``. Command usage is below.
 
 .. code-block:: shell
 
-    xbmgmt configure [--device| -d] <management bdf> [--input] <filename with .ini extension>
+    xbmgmt configure [--device| -d] <management bdf> [--input] <path to filename with .ini extension>
+
+
+Enabling/Disabling clock throttling on a device
+
+- When enabled, clock throttling reduces the kernel clock frequency dynamically when either thermal or electrical sensors exceed defined threshold values. By lowering the clock frequency, clock throttling reduces the required power and subsequently generated heat. Only when all sensor values fall below their respective clock throttling threshold values will the kernel clock be restored to full performance.
+- Default clock throttling threshold values are available in `<UG1120> <https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms>`_ for supported platforms.
+- The contents of the .ini file for clock throttling configuration should be similar to the example provided below. Underneath the first line, ``[Device]``, specify one or more key-value pairings as needed.
+
+.. code-block:: ini
+
+    [Device]
+    throttling_enabled=true
+    throttling_power_override=200
+    throttling_temp_override=90
+
+- The definition of the three key-value pairings are given below.
+
+    - ``throttling_enabled`` : When set to ``true``, clock throttling will be enabled. When set to ``false``, clock throttling will be disabled, and no clock throttling will occur. The default value is ``false``.
+    - ``throttling_power_override`` : Provide a power threshold override in watts for clock throttling to activate. The default threshold value is given in `<UG1120> <https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms>`_.
+    - ``throttling_temp_override`` : Provide a temperature threshold override in Celsius for clock throttling to activate. The default threshold value is given in `<UG1120> <https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms>`_.
+
+- If a pairing is not listed in the .ini file, the default value (or the updated value from previous usage of ``xbmgmt configure --input``) is used.
+- Thresholds can be set higher or lower as necessary (e.g. debugging purposes). Note that cards still have built-in card and clock shutdown logic with independent thresholds to protect the cards.
+- To check clock throttling settings, use ``xbmgmt examine`` with the ``cmc`` report.
 
 
 Enabling/Disabling DDR memory retention on a device
@@ -71,11 +97,12 @@ Enabling/Disabling DDR memory retention on a device
     #Configure a device's memory settings using an image
     xbmgmt configure --device 0000:b3:00.0 --input /tmp/memory_config.ini
 
-    #Configure a device using edited output .ini from xbmgmt dump --config (see xbmgmt dump)
+    #Configure a device using edited output .ini from xbmgmt dump --config
     xbmgmt configure --device 0000:b3:00.0 --input /tmp/config.ini
 
     #Enable a device's DDR memory retention
     xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
+
 
 xbmgmt dump
 ~~~~~~~~~~~
@@ -122,14 +149,16 @@ Dumping the output of programmed system image
     #Dump system configuration. This .ini file can be edited and used as input for xbmgmt configure.
     xbmgmt dump --device 0000:b3:00.0 --config -o /tmp/config_dump.ini
 
-    #Example .ini file contents from xbmgmt dump --config
+    #Example .ini file contents from xbmgmt dump --config.
+    #Only edit the throttling_enabled, throttling_power_override, and throttling_temp_override values when editing clock throttling settings.
+    [Device]
     mailbox_channel_disable=0x0
     mailbox_channel_switch=0x0
     xclbin_change=0
     cache_xclbin=0
-    throttling_enabled=true #true or false to enable/disable clock throttling
-    throttling_power_override=200 #override threshold in Watts
-    throttling_temp_override=90 #override threshold in Celsius
+    throttling_enabled=true
+    throttling_power_override=200
+    throttling_temp_override=90
 
 
 xbmgmt examine

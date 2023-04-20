@@ -57,11 +57,11 @@ public:
 
   // Context specific buffer allocation
   virtual std::unique_ptr<buffer_handle>
-  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
+  alloc_bo(void* userptr, size_t size, uint64_t flags) = 0;
 
   // Context specific buffer allocation
   virtual std::unique_ptr<buffer_handle>
-  alloc_bo(size_t size, unsigned int flags) = 0;
+  alloc_bo(size_t size, uint64_t flags) = 0;
 
   // Legacy XRT may require special handling when opening a context on
   // a compute unit.  Ideally, the hardware context itself should

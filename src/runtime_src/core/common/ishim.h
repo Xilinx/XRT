@@ -105,10 +105,10 @@ struct ishim
   // Implemented explicitly by concrete shim device class
   ////////////////////////////////////////////////////////////////
   virtual std::unique_ptr<buffer_handle>
-  alloc_bo(size_t size, unsigned int flags) = 0;
+  alloc_bo(size_t size, uint64_t flags) = 0;
 
   virtual std::unique_ptr<buffer_handle>
-  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
+  alloc_bo(void* userptr, size_t size, uint64_t flags) = 0;
 
   // Import an exported BO from another process identified by argument pid.
   // This function is only supported on systems with pidfd kernel support

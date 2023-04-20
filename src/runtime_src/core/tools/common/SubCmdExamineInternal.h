@@ -14,15 +14,21 @@
  * under the License.
  */
 
-#ifndef __SubCmdExamine_h_
-#define __SubCmdExamine_h_
+#ifndef __SubCmdExamineInternal_h_
+#define __SubCmdExamineInternal_h_
 
+#include "tools/common/Report.h"
 #include "tools/common/SubCmd.h"
-#include "tools/common/SubCmdExamineInternal.h"
 
-class SubCmdExamine : public SubCmdExamineInternal {
+class SubCmdExamineInternal : public SubCmd {
  public:
-  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  virtual void execute(const SubCmdOptions &_options) const;
+
+ public:
+  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain);
+
+ public:
+  static ReportCollection uniqueReportCollection;
 
  private:
   std::string               m_device;
@@ -31,6 +37,7 @@ class SubCmdExamine : public SubCmdExamineInternal {
   std::string               m_format;
   std::string               m_output;
   bool                      m_help;
+  bool                      m_isUserDomain;
 };
 
 #endif
