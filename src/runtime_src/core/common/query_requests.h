@@ -80,6 +80,7 @@ enum class key_type
   kds_scu_info,
   ps_kernel,
   hw_context_info,
+  hw_context_memory_info,
   xocl_errors,
   xclbin_full,
   ic_enable,
@@ -948,6 +949,33 @@ struct hw_context_info : request
   using result_type = std::vector<struct data>;
   using data_type = struct data;
   static const key_type key = key_type::hw_context_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/**
+ * Return all hardware contexts' memory info within a device
+ */
+struct hw_context_memory_info : request
+{
+  /**
+   * A structure to represent a single hardware context's memory contents on
+   * any device type. This structure contains all data that makes up a 
+   * hardware context memory structure across all device types.
+   */
+  struct data {
+    std::string id;
+    std::string xclbin_uuid;
+    mem_topology_raw::result_type topology;
+    group_topology::result_type grp_topology;
+    memstat_raw::result_type statistics;
+    temp_by_mem_topology::result_type temperature;
+  };
+
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::hw_context_memory_info;
 
   virtual boost::any
   get(const device*) const = 0;
