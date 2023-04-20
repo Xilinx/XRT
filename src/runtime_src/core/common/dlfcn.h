@@ -80,6 +80,15 @@ dlsym(void* handle, const char* symbol)
   return ::GetProcAddress(HMODULE(handle),symbol);
 }
 
+inline std::string
+dlpath(const char* dllname) {
+    TCHAR dll_path[MAX_PATH];
+    if (!::GetModuleFileName(::GetModuleHandle(dllname), dll_path, MAX_PATH)) {
+        throw std::runtime_error("Get handle of " + std::string(dllname) + " failed");
+    }
+    return dll_path;
+}
+
 #endif
 
 } // xrt_core
