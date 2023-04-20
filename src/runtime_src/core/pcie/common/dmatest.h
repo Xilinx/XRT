@@ -44,6 +44,7 @@ namespace xcldev {
         using buffer_and_deleter = std::pair<xrt_buffer_handle, xrt_core::aligned_ptr_type>;
         std::vector<buffer_and_deleter> mBOList;
         std::shared_ptr<xrt_core::device> mHandle;
+	std::unique_ptr<xrt_core::hwctx_handle> mhwCtxHandle;
         size_t mSize;
         size_t mTotalSize;
         unsigned mFlags;
@@ -129,10 +130,15 @@ namespace xcldev {
             if (count > 0x40000)
                 count = 0x40000;
 
+	    mhwCtxHandle = mHandle->create_hw_context(mHandle->get_xclbin_uuid().get(), {}, xrt::hw_context::access_mode::shared);
+	    xcl_bo_flags xflags{mFlags};
+	    xflags.slot = static_cast<uint8_t>(mhwCtxHandle->get_slotidx());
+	    mFlags = xflags.flags;
+
             for (long long i = 0; i < count; i++) {
                 // This can throw and callers of DMARunner are supposed to catch this.
                 xrt_core::aligned_ptr_type buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), mSize);
-                auto bo = mHandle->alloc_bo(buf.get(), mSize, mFlags);
+                auto bo = mhwCtxHandle->alloc_bo(buf.get(), mSize, mFlags);
                 if (bo == XRT_INVALID_BUFFER_HANDLE)
                     break;
                 std::memset(buf.get(), mPattern, mSize);
