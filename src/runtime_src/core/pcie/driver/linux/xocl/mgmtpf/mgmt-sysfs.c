@@ -88,7 +88,10 @@ static ssize_t mfg_ver_show(struct device *dev,
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	struct VmrStatus vmr_header = {};
 
-	/*Checks for Versal VMR availability; returns -EINVALID for Versal VMR based device.*/
+	/*
+	 * Non-Versal Platform:	ret is ENODEV and continue Reg read from PCIE Bar
+	 * Versal Platform:	ret is 0 or any other and return EINVAL.
+	 */
 	if(xocl_vmr_status(lro, &vmr_header) == -ENODEV)
 		return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, _GOLDEN_VER));
 	return -EINVAL;
