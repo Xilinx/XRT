@@ -20,6 +20,8 @@
 
 // System include files
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <string>
 #include <iostream>
 #include <exception>
@@ -30,12 +32,19 @@ int main( int argc, char** argv )
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
 
+  boost::property_tree::ptree configTree;
+  try {
+    boost::property_tree::read_json("xbmgmt_command_config.json", configTree);
+  } catch (std::exception& e) {
+    throw xrt_core::error("Error when reading command configuration JSON");
+  }
+
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
-    subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false));
   }

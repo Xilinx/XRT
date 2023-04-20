@@ -1,5 +1,6 @@
-{
-	"cmd_configs": [{
+[{
+	"name": "cmd_configs",
+	"contents": [{
 		"name": "common",
 		"contents": [{
 			"name": "examine",
@@ -9,7 +10,7 @@
 				},
 				{
 					"name": "alveo",
-					"contents": ["error", "firewall", "mailbox"]
+					"contents": ["error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
 				},
 				{
 					"name": "aie",
@@ -18,4 +19,4 @@
 			]
 		}]
 	}]
-}
+}]

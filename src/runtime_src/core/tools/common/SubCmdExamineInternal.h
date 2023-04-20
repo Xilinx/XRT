@@ -25,7 +25,7 @@ class SubCmdExamineInternal : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain);
+  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree configurations);
 
  public:
   static ReportCollection uniqueReportCollection;

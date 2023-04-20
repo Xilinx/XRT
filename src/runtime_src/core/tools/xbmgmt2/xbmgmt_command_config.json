@@ -1,0 +1,14 @@
+[{
+	"name": "cmd_configs",
+	"contents": [{
+		"name": "common",
+		"contents": [{
+			"name": "examine",
+			"contents": [{
+					"name": "common",
+					"contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
+				}
+			]
+		}]
+	}]
+}]

@@ -21,34 +21,43 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+
 class JSONConfigurable {
-  public:
-    JSONConfigurable() {};
+private:
+  static boost::property_tree::ptree
+  parse_configuration( const std::vector<std::string>& targets,
+                       const boost::property_tree::ptree& configuration);
 
-    virtual const std::string& get_name() const = 0;
+public:
+  JSONConfigurable() {};
 
-    // template <class T, class = std::enable_if_t<std::is_base_of_v<JSONConfigurable, T>>>
-    // static std::vector<T>
-    // extractMatchingConfigurations(const std::vector<T>& items, const boost::property_tree::ptree& configuration)
-    // {
-    //   std::vector<T> output;
-    //   for (const auto& item : items) {
-    //     const std::string device_category = item.get_device_category();
-    //     boost::property_tree::ptree::value_type subtree;
-    //     try {
-    //       subtree = configuration.get_child(device_category);
-    //     } catch (const std::exception& e) {
-    //       throw std::runtime_error("Error: No JSON branch for '" + device_category + "'\n" + e.what());
-    //     }
-    //     if (!device_category.compare(subtree.first))
-    //       output.push_back(item);
-    //   }
-    //   return output;
-    // }
+  virtual const std::string& getConfigName() const = 0;
+
+  template <class T, class = std::enable_if_t<std::is_base_of_v<JSONConfigurable, T>>>
+  static std::map<std::string, std::vector<std::shared_ptr<T>>>
+  extractMatchingConfigurations(const std::vector<std::shared_ptr<T>>& items, const boost::property_tree::ptree& configuration)
+  {
+    const std::vector<std::string> currentDeviceCategories = {"common", "alveo", "aie"};
+    auto relevantItems = parse_configuration(currentDeviceCategories, configuration);
+
+    std::map<std::string, std::vector<std::shared_ptr<T>>> output;
+    for (const auto& relevantItem : relevantItems) {
+      std::vector<std::shared_ptr<T>> matches;
+      for (const auto& contentTree : relevantItem.second.get_child("contents")) {
+        for (const auto& item : items) {
+          if (boost::iequals(contentTree.second.get_value<std::string>(), item->getConfigName()))
+            matches.push_back(item);
+        }
+      }
+      output.insert(std::make_pair(relevantItem.second.get<std::string>("name"), matches));
+    }
+
+    return output;
+  };
+
+  static boost::property_tree::ptree
+  parse_configuration_tree( const std::vector<std::string>& targets,
+                            const boost::property_tree::ptree& configuration);
 };
-
-std::vector<boost::property_tree::ptree> 
-parse_configuration_tree( const std::vector<std::string>& targets,
-                          const boost::property_tree::ptree& configuration);
 
 #endif
