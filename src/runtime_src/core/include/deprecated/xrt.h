@@ -87,8 +87,8 @@ typedef unsigned int xclBufferHandle;
  * that can be passed between processes.
  */
 #ifdef _WIN32
-typedef void* xclBufferExportHandle;  // TBD
-#define NULLBOEXPORT INVALID_HANDLE_VALUE
+typedef uint64_t xclBufferExportHandle;  // TBD
+#define NULLBOEXPORT -1
 #else
 typedef int32_t xclBufferExportHandle;
 #define NULLBOEXPORT -1

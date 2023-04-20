@@ -180,8 +180,7 @@ std::string XrtDevice::getSubDevicePath(std::string& subdev, uint32_t index)
 
 xclBufferExportHandle XrtDevice::getBufferExportHandle(size_t /*id*/)
 {
-  return XRT_NULL_BO_EXPORT;
+  return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
 }
 
 }
-
