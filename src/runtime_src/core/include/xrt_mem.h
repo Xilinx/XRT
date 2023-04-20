@@ -60,11 +60,21 @@ extern "C" {
 struct xcl_bo_flags
 {
   union {
-    uint32_t flags;
+    uint64_t all;           // [63-0]
+
     struct {
-      uint16_t bank;       // [15-0]
-      uint8_t  slot;       // [16-23]
-      uint8_t  boflags;    // [24-31]
+      uint32_t flags;       // [31-0]
+      uint32_t extension;   // [63-32]
+    };
+
+    struct {
+      uint16_t bank;        // [15-0]
+      uint8_t  slot;        // [23-16]
+      uint8_t  boflags;     // [31-24]
+
+      // extension
+      uint32_t access : 2;  // [33-32]
+      uint32_t unused : 30; // [63-34]
     };
   };
 };
@@ -85,6 +95,12 @@ struct xcl_bo_flags
 #define	XCL_BO_FLAGS_HOST_ONLY		(1U << 29)
 #define	XCL_BO_FLAGS_P2P		(1U << 30)
 #define	XCL_BO_FLAGS_EXECBUF		(1U << 31)
+
+/**
+ * Shim level BO Flags for extension
+ */
+#define XRT_BO_ACCESS_SHARED 1
+#define XRT_BO_ACCESS_EXPORTED 2
 
 /**
  * XRT Native BO flags

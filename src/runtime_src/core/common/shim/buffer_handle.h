@@ -33,7 +33,7 @@ public:
   // properties - buffer details
   struct properties
   {
-    uint32_t flags;
+    uint64_t flags;
     uint64_t size;
     uint64_t paddr;
   };

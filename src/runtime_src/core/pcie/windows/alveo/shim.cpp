@@ -208,17 +208,17 @@ public:
     }
 
     std::unique_ptr<xrt_core::buffer_handle>
-    alloc_bo(void* userptr, size_t size, unsigned int flags) override
+    alloc_bo(void* userptr, size_t size, uint64_t flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      return m_shim->alloc_user_ptr_bo(userptr, size, flags);
+      return m_shim->alloc_user_ptr_bo(userptr, size, xcl_bo_flags{flags}.flags);
     }
 
     std::unique_ptr<xrt_core::buffer_handle>
-    alloc_bo(size_t size, unsigned int flags) override
+    alloc_bo(size_t size, uint64_t flags) override
     {
       // The hwctx is embedded in the flags, use regular shim path
-      return m_shim->alloc_bo(size, flags);
+      return m_shim->alloc_bo(size, xcl_bo_flags{flags}.flags);
     }
 
     xrt_core::cuidx_type

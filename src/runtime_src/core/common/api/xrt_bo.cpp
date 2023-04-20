@@ -9,7 +9,7 @@
 #define XRT_API_SOURCE         // in same dll as api
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_aie.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 #include "native_profile.h"
 #include "bo.h"
@@ -18,6 +18,7 @@
 #include "handle.h"
 #include "hw_context_int.h"
 #include "kernel_int.h"
+#include "xrt_mem.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
 #include "core/common/message.h"
@@ -198,8 +199,15 @@ private:
   {
     auto prop = handle->get_properties();
     addr = prop.paddr;
-    grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
-    flags = static_cast<bo::flags>(prop.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
+
+    // Flags are what was used by shim::alloc_bo when the BO was
+    // created. What is stored in bo_impl, are the flags that were used
+    // to indicate the type of the BO (per xrt::bo::flags). Currrently
+    // bo_impl doesn't track or provide access to the extension flags
+    // in xcl_bo_flags.
+    xcl_bo_flags xflags {prop.flags};
+    grpid = xflags.bank;
+    flags = static_cast<bo::flags>(xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
   }
 
 protected:
@@ -977,22 +985,32 @@ get_boh(xrtBufferHandle bhdl)
 static std::unique_ptr<xrt_core::buffer_handle>
 alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
+  // Embed grp in flags
+  xcl_bo_flags xflags{flags};
+  xcl_bo_flags xgrp{grp};
+  xflags.bank = xgrp.bank;
+  xflags.slot = xgrp.slot;
+
   auto hwctx  = device.get_hwctx_handle();
   return hwctx
-    ? hwctx->alloc_bo(userptr, sz, flags)
-    : device->alloc_bo(userptr, sz, flags);
+    ? hwctx->alloc_bo(userptr, sz, xflags.all)
+    : device->alloc_bo(userptr, sz, xflags.all);
 }
 
 static std::unique_ptr<xrt_core::buffer_handle>
 alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
+  // Embed grp in flags
+  xcl_bo_flags xflags{flags};
+  xcl_bo_flags xgrp{grp};
+  xflags.bank = xgrp.bank;
+  xflags.slot = xgrp.slot;
+
   try {
     auto hwctx  = device.get_hwctx_handle();
     return hwctx
-      ? hwctx->alloc_bo(sz, flags)
-      : device->alloc_bo(sz, flags);
+      ? hwctx->alloc_bo(sz, xflags.all)
+      : device->alloc_bo(sz, xflags.all);
   }
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {
@@ -1069,7 +1087,8 @@ alloc_nodma(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup
 static std::shared_ptr<xrt::bo_impl>
 alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto type = flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
+  xcl_bo_flags xflags{flags};
+  auto type = xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
   case 0:
 #ifndef XRT_EDGE
