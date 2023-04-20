@@ -541,34 +541,22 @@ namespace xclswemuhal2 {
           xilinxInstall = ".";
         }
 
-        std::string modelDirectory("");
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel"))
-          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel";
-        else
-          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
-
-#if defined(__aarch64__)
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel"))
-          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel";
-        else
-          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
-#elif defined(__arm__)
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynq/model/genericpciemodel"))
-          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynq/model/genericpciemodel";
-        else
-          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
-#endif
+        std::string modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel";
 
         FILE *filep;
         if ((filep = fopen(modelDirectory.c_str(), "r")) != nullptr)
         {
           // file exists
+          if (access(modelDirectory.c_str(), X_OK) != 0)
+          {
+            std::cout << "genericpciemodel binary does not have executable permission." << std::endl;
+          }
           fclose(filep);
         }
         else
         {
           //File not found, no memory leak since 'file' == NULL
-          std::cerr << "ERROR : [SW-EM 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          std::cerr << "ERROR : [SW_EMU 11] Unable to launch Device process. Please make sure that the XILINX_VITIS environment variable is set correctly, or genericpciemodel binary path exists." << std::endl;
           exit(1);
         }
 
@@ -856,7 +844,7 @@ namespace xclswemuhal2 {
     // get sorted cu addresses to match up with cu_index
     const auto& cuidx2addr = mCoreDevice->get_cus();
     if (cu_index >= cuidx2addr.size()) {
-      std::string strMsg = "ERROR: [SW-EMU 20] invalid CU index: " + std::to_string(cu_index);
+      std::string strMsg = "ERROR: [SW_EMU 20] invalid CU index: " + std::to_string(cu_index);
       mLogStream << __func__ << strMsg << std::endl;
       return false;
     }
@@ -880,7 +868,7 @@ namespace xclswemuhal2 {
 
   bool SwEmuShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) {
     if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0) {
-      std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
+      std::string strMsg = "ERROR: [SW_EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
       mLogStream << __func__ << strMsg << std::endl;
       return false;
     }
@@ -1289,7 +1277,7 @@ namespace xclswemuhal2 {
     if (result == xclemulation::MemoryManager::mNull) {
       auto ddrSize = mDDRMemoryManager[flags]->size();
       std::string ddrSizeStr = std::to_string(ddrSize);
-      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit " + ddrSizeStr + " Bytes";
+      std::string initMsg = "ERROR: [SW_EMU 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit " + ddrSizeStr + " Bytes";
       std::cout << initMsg << std::endl;
       return result;
     }
