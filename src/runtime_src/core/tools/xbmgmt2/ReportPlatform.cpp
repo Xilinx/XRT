@@ -362,7 +362,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   auto logic_uuid = _pt.get<std::string>("platform.current_shell.logic-uuid", "");
   auto interface_uuid = _pt.get<std::string>("platform.current_shell.interface-uuid", "");
   if (!logic_uuid.empty() && !interface_uuid.empty()) {
-    _output << fmtBasic % "Platform UUID" % logic_uuid;
+    _output << fmtBasic % "Logic UUID" % logic_uuid;
     _output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
     _output << fmtBasic % "Platform ID" % string_or_NA(_pt.get<std::string>("platform.current_shell.id", ""));
@@ -392,9 +392,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << fmtBasic % "Platform" % string_or_NA(available_shell.get<std::string>("vbnv"));
     _output << fmtBasic % "SC Version" % string_or_NA(available_shell.get<std::string>("sc_version"));
     // print platform ID, for 2RP, platform ID = logic UUID
-    auto platform_uuid = available_shell.get<std::string>("logic-uuid", "");
-    if (!platform_uuid.empty()) {
-      _output << fmtBasic % "Platform UUID" % platform_uuid;
+    auto logic_uuid = available_shell.get<std::string>("logic-uuid", "");
+    if (!logic_uuid.empty()) {
+      _output << fmtBasic % "Logic UUID" % logic_uuid;
     } else {
       _output << fmtBasic % "Platform ID" % string_or_NA(available_shell.get<std::string>("id"));
     }
