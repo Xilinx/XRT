@@ -1603,7 +1603,7 @@ xrtBOExport(xrtBufferHandle bhdl)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return XRT_NULL_BO_EXPORT;
+  return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
 }
 
 xrtBufferHandle
