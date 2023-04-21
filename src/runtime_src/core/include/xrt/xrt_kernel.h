@@ -17,6 +17,7 @@
 # include "experimental/xrt_exception.h"
 # include "experimental/xrt_fence.h"
 # include "experimental/xrt_hw_context.h"
+# include "experimental/xrt_module.h"
 # include <chrono>
 # include <condition_variable>
 # include <cstdint>
@@ -695,7 +696,7 @@ public:
 
 
   /// @cond
-  /// Experimental in 2022.2
+  /// Experimental in 2022.2, 2023.1, 2023.3
   XCL_DRIVER_DLLESPEC
   kernel(const xrt::hw_context& ctx, const std::string& name);
   /// @endcond
@@ -794,6 +795,10 @@ public:
   {
     return handle;
   }
+
+  kernel(std::shared_ptr<kernel_impl> impl)
+    : handle(std::move(impl))
+  {}
   /// @endcond
 
 private:
