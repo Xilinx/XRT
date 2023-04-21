@@ -12,6 +12,7 @@ add_library(core_common_api_library_objects OBJECT
   xrt_ip.cpp
   xrt_kernel.cpp
   xrt_message.cpp
+  xrt_module.cpp
   xrt_profile.cpp
   xrt_queue.cpp
   xrt_system.cpp
