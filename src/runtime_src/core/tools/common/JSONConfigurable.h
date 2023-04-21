@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,10 +33,12 @@ public:
 
   virtual const std::string& getConfigName() const = 0;
 
+  // Parses configuration ptree and returns a map of deviceCategory to items that are in the configuration ptree.
   template <class T, class = std::enable_if_t<std::is_base_of_v<JSONConfigurable, T>>>
   static std::map<std::string, std::vector<std::shared_ptr<T>>>
   extractMatchingConfigurations(const std::vector<std::shared_ptr<T>>& items, const boost::property_tree::ptree& configuration)
   {
+    // currentDeviceCategories must be updated to use a query for device categories of cards present.
     const std::vector<std::string> currentDeviceCategories = {"common", "alveo", "aie"};
     auto relevantItems = parse_configuration(currentDeviceCategories, configuration);
 
