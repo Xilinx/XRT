@@ -549,14 +549,15 @@ namespace xclswemuhal2 {
           // file exists
           if (access(modelDirectory.c_str(), X_OK) != 0)
           {
-            std::cout << "genericpciemodel binary does not have executable permission." << std::endl;
+            std::cerr << "ERROR: [SW_EMU 22] genericpciemodel binary does not have executable permission." << std::endl;
+            exit(1);
           }
           fclose(filep);
         }
         else
         {
           //File not found, no memory leak since 'file' == NULL
-          std::cerr << "ERROR : [SW_EMU 11] Unable to launch Device process. Please make sure that the XILINX_VITIS environment variable is set correctly, or genericpciemodel binary path exists." << std::endl;
+          std::cerr << "ERROR: [SW_EMU 11] Unable to launch Device process. Please make sure that the XILINX_VITIS environment variable is set correctly, or genericpciemodel binary path exists." << std::endl;
           exit(1);
         }
 
