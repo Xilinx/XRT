@@ -4,14 +4,14 @@
 #include "pcidrv_hwemu.h"
 
 namespace {
-//Register sw emu driver
+//Register hw emu driver
 struct pcidev_hwemu_reg
 {
   pcidev_hwemu_reg() {
         auto driver = std::make_shared<xrt_core::pci::pcidrv_hwemu>();
-        std::vector<std::shared_ptr<xrt_core::pci::dev>> user_ready_list;
+        std::vector<std::shared_ptr<xrt_core::dev>> user_ready_list;
         driver->scan_devices(user_ready_list);
-        xrt_core::pci::add_device_list(user_ready_list, /*isuser*/ true, /*isready*/ true);
+        xrt_core::add_device_list(user_ready_list, /*isuser*/ true, /*isready*/ true);
         std::cout << "pcidrv_hwemu registration done" << std::endl;        
    	}
 } pcidev_hwemu_reg;

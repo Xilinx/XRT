@@ -676,7 +676,7 @@ pcidev_linux::lookup_peer_dev()
     return nullptr;
 
   int i = 0;
-  for (auto udev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(get_dev(i, true)); udev; udev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(get_dev(i, true)), ++i)
+  for (auto udev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(i, true)); udev; udev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(i, true)), ++i)
     if (udev->m_domain == m_domain && udev->m_bus == m_bus && udev->m_dev == m_dev)
       return udev;
 

@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-namespace xrt_core { namespace pci {
+namespace xrt_core {
 
 //// Forward declaration
 //class drv;
@@ -28,10 +28,7 @@ class dev
 {
 public:
   bool m_is_mgmt = false;
-  uint16_t m_domain = INVALID_ID;
-  uint16_t m_bus = INVALID_ID;
-  uint16_t m_dev = INVALID_ID;
-  uint16_t m_func = INVALID_ID;
+  bool m_is_ready = false; 
   dev(bool isuser) {  
       m_is_mgmt = !isuser;  
   }
@@ -53,47 +50,22 @@ public:
 
   //get BDF 
   virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-  get_bdf_info(device::id_type id, bool is_user) const
+  get_bdf_info() const
   {
     return std::make_tuple(uint16_t(0), uint16_t(0), uint16_t(0), uint16_t(0));
   }
 };
 
-size_t
-get_dev_total(bool user = true);
 
 size_t
 get_dev_ready(bool user = true);
 
+size_t
+get_dev_total(bool user = true);
+
 std::shared_ptr<dev>
 get_dev(unsigned index, bool user = true);
 
-std::shared_ptr<dev>
-lookup_user_dev(std::shared_ptr<dev> mgmt_dev);
-
-/**
- * get_userpf_device
- * Force singleton initialization from static linking
- * with libxrt_core.
- */
-std::shared_ptr<device>
-get_userpf_device(device::handle_type device_handle, device::id_type id);
-
-/**
- * get_device_id_from_bdf() -
- * Force singleton initialization from static linking
- * with libxrt_core.
- */
-device::id_type
-get_device_id_from_bdf(const std::string& bdf);
-
-/**
- * Adding driver instance to the global list. Should only be called during system_linux's
- * constructor, either explicitly for built-in drivers or through dlopen for plug-in ones.
- * For now, once added, it cannot be removed until the list itself is out of scope.
- */
- //void
- //register_driver(std::shared_ptr<drv> driver);
 
 /**
  * Adding driver instance to the global list. Should only be called during system_linux's
@@ -101,11 +73,11 @@ get_device_id_from_bdf(const std::string& bdf);
  * For now, once added, it cannot be removed until the list itself is out of scope.
  */
 void
-add_device_list(std::vector<std::shared_ptr<xrt_core::pci::dev>> devlist, bool isuser, bool isready);
+add_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist, bool isuser, bool isready);
 
-const std::vector<std::shared_ptr<xrt_core::pci::dev>>&
+const std::vector<std::shared_ptr<xrt_core::dev>>&
 get_device_list(bool isuser, bool isready);
 
-} } // namespace xrt_core :: pci
+} // namespace xrt_core :: pci
 
 #endif

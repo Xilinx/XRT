@@ -32,30 +32,30 @@
 
 namespace device_list {
 
-  static std::vector<std::shared_ptr<xrt_core::pci::dev>> user_ready_list;
-  static std::vector<std::shared_ptr<xrt_core::pci::dev>> user_nonready_list;
-  static std::vector<std::shared_ptr<xrt_core::pci::dev>> mgmt_ready_list;
-  static std::vector<std::shared_ptr<xrt_core::pci::dev>> mgmt_nonready_list;
+  static std::vector<std::shared_ptr<xrt_core::dev>> user_ready_list;
+  static std::vector<std::shared_ptr<xrt_core::dev>> user_nonready_list;
+  static std::vector<std::shared_ptr<xrt_core::dev>> mgmt_ready_list;
+  static std::vector<std::shared_ptr<xrt_core::dev>> mgmt_nonready_list;
 
   void
-  append(std::vector<std::shared_ptr<xrt_core::pci::dev>> devlist, bool isuser, bool isready)
+  append(std::vector<std::shared_ptr<xrt_core::dev>> devlist, bool isuser, bool isready)
   {
-      for (auto pcidev : devlist) {
+      for (auto device : devlist) {
           if (isuser) {
               if (isready)
-                  user_ready_list.push_back(std::move(pcidev));
+                  user_ready_list.push_back(std::move(device));
               else
-                  user_nonready_list.push_back(std::move(pcidev));
+                  user_nonready_list.push_back(std::move(device));
           }
           else {
               if (isready)
-                  mgmt_ready_list.push_back(std::move(pcidev));
+                  mgmt_ready_list.push_back(std::move(device));
               else
-                  mgmt_nonready_list.push_back(std::move(pcidev));
+                  mgmt_nonready_list.push_back(std::move(device));
           }
       }
   }
-  const std::vector<std::shared_ptr<xrt_core::pci::dev>>&
+  const std::vector<std::shared_ptr<xrt_core::dev>>&
   get(bool isuser, bool isready)
   {
     if (isuser) {
@@ -73,18 +73,18 @@ namespace device_list {
   }
 } // namespcace device_list
 
-namespace xrt_core { namespace pci {
+namespace xrt_core {
 
 void
-add_device_list(std::vector<std::shared_ptr<xrt_core::pci::dev>> devlist, bool isuser, bool isready)
+add_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist, bool isuser, bool isready)
 {
     device_list::append(devlist, isuser, isready);
 }
 
-const std::vector<std::shared_ptr<xrt_core::pci::dev>>&
+const std::vector<std::shared_ptr<xrt_core::dev>>&
 get_device_list(bool isuser, bool isready)
 {
     return device_list::get(isuser, isready);
 }
 
-} } // namespace xrt_core :: pci
+} // namespace xrt_core

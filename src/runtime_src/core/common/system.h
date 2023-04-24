@@ -129,7 +129,7 @@ public:
 
   //copied system linux
   virtual
-  std::shared_ptr<pci::dev>
+  std::shared_ptr<dev>
   get_pcidev(unsigned index, bool is_user = true) const;
 
   virtual
@@ -141,11 +141,11 @@ public:
   get_num_dev_total(bool is_user) const;
 
   private:
-    std::vector<std::shared_ptr<pci::dev>> user_ready_list;
-    std::vector<std::shared_ptr<pci::dev>> user_nonready_list;
+    std::vector<std::shared_ptr<dev>> user_ready_list;
+    std::vector<std::shared_ptr<dev>> user_nonready_list;
 
-    std::vector<std::shared_ptr<pci::dev>> mgmt_ready_list;
-    std::vector<std::shared_ptr<pci::dev>> mgmt_nonready_list;
+    std::vector<std::shared_ptr<dev>> mgmt_ready_list;
+    std::vector<std::shared_ptr<dev>> mgmt_nonready_list;
 
 }; // system
 

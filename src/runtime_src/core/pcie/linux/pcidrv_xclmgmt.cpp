@@ -9,11 +9,11 @@ struct drv_xclmgmt_reg
 {
     drv_xclmgmt_reg() {
         auto driver = std::make_shared<xrt_core::pci::drv_xclmgmt>();
-        std::vector<std::shared_ptr<xrt_core::pci::dev>> mgmt_ready_list;
-        std::vector<std::shared_ptr<xrt_core::pci::dev>> mgmt_nonready_list;
+        std::vector<std::shared_ptr<xrt_core::dev>> mgmt_ready_list;
+        std::vector<std::shared_ptr<xrt_core::dev>> mgmt_nonready_list;
         driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
-        xrt_core::pci::add_device_list(mgmt_ready_list, /*isuser*/ false, /*isready*/ true);
-        xrt_core::pci::add_device_list(mgmt_nonready_list, /*isuser*/ false, /*isready*/ false);     
+        xrt_core::add_device_list(mgmt_ready_list, /*isuser*/ false, /*isready*/ true);
+        xrt_core::add_device_list(mgmt_nonready_list, /*isuser*/ false, /*isready*/ false);     
         std::cout << "drv_xclmgmt registration done" << std::endl;
     }
 } drv_xclmgmt_reg;

@@ -76,16 +76,16 @@ public:
     {
         std::regex sn("^[0-9a-zA-Z]{12}$");
         std::vector<std::string> ret = {};
-	    size_t total = xrt_core::pci::get_dev_total();
+	    size_t total = xrt_core::get_dev_total();
 	    if (!total) {
             std::cerr << "azure: No device found!" << std::endl;
             return ret;
         }
         for (size_t i = 0; i < total; i++) {
             std::string serialNumber, errmsg;
-            std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(i, true))->sysfs_get("xmc", "serial_num", errmsg, serialNumber);
+            std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(i, true))->sysfs_get("xmc", "serial_num", errmsg, serialNumber);
 	        if (!errmsg.empty() || !regex_match(serialNumber, sn)) {
-           	    std::cerr << "azure warning(" << std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(i, true))->m_sysfs_name << ")";
+           	    std::cerr << "azure warning(" << std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(i, true))->m_sysfs_name << ")";
                 std::cerr << " sysfs errmsg: " << errmsg;
                 std::cerr << " serialNumber: " << serialNumber;
                 std::cerr << std::endl;

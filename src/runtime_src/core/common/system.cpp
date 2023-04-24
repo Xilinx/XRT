@@ -205,14 +205,14 @@ system()
      else
        driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
    }*/
-  user_ready_list = xrt_core::pci::get_device_list(/*isuser*/ true, /*isready*/ true);
-  std::cout << "system_linux :: size of user_ready_list : " << user_ready_list.size() << std::endl;
-  user_nonready_list = xrt_core::pci::get_device_list(/*isuser*/ true, /*isready*/ false);
-  std::cout << "system_linux :: size of user_nonready_list : " << user_nonready_list.size() << std::endl;
-  mgmt_ready_list = xrt_core::pci::get_device_list(/*isuser*/ false, /*isready*/ true);
-  std::cout << "system_linux :: size of mgmt_ready_list : " << mgmt_ready_list.size() << std::endl;
-  mgmt_nonready_list = xrt_core::pci::get_device_list(/*isuser*/ false, /*isready*/ false);
-  std::cout << "system_linux :: size of mgmt_nonready_list : " << mgmt_nonready_list.size() << std::endl;
+  user_ready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ true);
+  std::cout << "system :: size of user_ready_list : " << user_ready_list.size() << std::endl;
+  user_nonready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ false);
+  std::cout << "system :: size of user_nonready_list : " << user_nonready_list.size() << std::endl;
+  mgmt_ready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ true);
+  std::cout << "system :: size of mgmt_ready_list : " << mgmt_ready_list.size() << std::endl;
+  mgmt_nonready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ false);
+  std::cout << "system :: size of mgmt_nonready_list : " << mgmt_nonready_list.size() << std::endl;
 }
 
 void
@@ -242,7 +242,7 @@ get_devices(boost::property_tree::ptree& pt) const
   pt.add_child("devices", pt_devices);
 }
 
-std::shared_ptr<pci::dev>
+std::shared_ptr<dev>
 system::
 get_pcidev(unsigned index, bool is_user) const
 {
@@ -392,12 +392,13 @@ get_device_id(const std::string& bdf) const
   unsigned int i = 0;
   for (auto dev = get_pcidev(0); dev; dev = get_pcidev(++i)) {
     // [dddd:bb:dd.f]
-    auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->m_domain % dev->m_bus % dev->m_dev % dev->m_func);
+    auto bdf_tuple = dev->get_bdf_info();
+    auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % std::get<0>(bdf_tuple) % std::get<1>(bdf_tuple) % std::get<2>(bdf_tuple) % std::get<3>(bdf_tuple));
     if (dev_bdf == bdf)
       return i;
     //consider default domain as 0000 and try to find a matching device
-    if (dev->m_domain == 0) {
-      dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % dev->m_bus % dev->m_dev % dev->m_func);
+    if (std::get<0>(bdf_tuple) == 0) {
+      dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % std::get<1>(bdf_tuple) % std::get<2>(bdf_tuple) % std::get<3>(bdf_tuple));
       if (dev_bdf == bdf)
         return i;
     }
@@ -420,7 +421,7 @@ get_bdf_info(device::id_type id, bool is_user) const
   auto pdev = get_pcidev(id, is_user);
   if(!pdev)
     return std::make_tuple(uint16_t(0), uint16_t(0), uint16_t(0), uint16_t(0));
-  return pdev->get_bdf_info(id, is_user);
+  return pdev->get_bdf_info();
 }
 
 std::shared_ptr<device>
@@ -628,48 +629,24 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force)
   instance().program_plp(dev, buffer, force);
 }
 
+size_t
+get_dev_ready(bool user)
+{
+  return instance().get_num_dev_ready(user);
+}
 
-namespace pci {
+size_t
+get_dev_total(bool user)
+{
+  return instance().get_num_dev_total(user);
+}
 
-  std::shared_ptr<device>
-  get_userpf_device(device::handle_type device_handle, device::id_type id)
-  {
-    //singleton_system_linux(); // force loading if necessary
-    return xrt_core::get_userpf_device(device_handle, id);
-  }
-
-  device::id_type
-  get_device_id_from_bdf(const std::string& bdf)
-  {
-    //singleton_system_linux(); // force loading if necessary
-    return xrt_core::get_device_id(bdf);
-  }
-
-  size_t
-  get_dev_ready(bool user)
-  {
-    return instance().get_num_dev_ready(user); //singleton_system_linux()->get_num_dev_ready(user);
-  }
-
-  size_t
-  get_dev_total(bool user)
-  {
-    return instance().get_num_dev_total(user); //singleton_system_linux()->get_num_dev_total(user);
-  }
-
-  std::shared_ptr<dev>
-  get_dev(unsigned index, bool user)
-  {
-    return instance().get_pcidev(index, user); //singleton_system_linux()->get_pcidev(index, user);
-  }
-
-  //void
-  //register_driver(std::shared_ptr<drv> driver)
-  //{
-  //  driver_list::append(driver);
-  //}
-
-} // namespace pci
+std::shared_ptr<dev>
+get_dev(unsigned index, bool user)
+{
+  return instance().get_pcidev(index, user);
+}
 
 } // xrt_core
+
 

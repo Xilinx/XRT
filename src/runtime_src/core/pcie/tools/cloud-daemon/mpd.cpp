@@ -298,7 +298,7 @@ void Mpd::run()
      *
      */
     for (size_t i = 0; i < total; i++) {
-        std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(i, true))->m_sysfs_name;
+        std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(i, true))->m_sysfs_name;
 	std::string major_minor;;
 	major_minor = get_xocl_major_minor(sysfs_name);
 
@@ -316,7 +316,7 @@ void Mpd::run()
         if (total == 0)
             syslog(LOG_INFO, "no device found");
         for (size_t i = 0; i < total; i++) {
-            std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(i, true))->m_sysfs_name;
+            std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(i, true))->m_sysfs_name;
 
             if (state_machine[sysfs_name] != MAILBOX_ADDED)
                 continue;
@@ -667,7 +667,7 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 // No retry is ever conducted.
 void Mpd::mpd_getMsg(size_t index)
 {
-    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index, true))->m_sysfs_name;
+    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, true))->m_sysfs_name;
     std::shared_ptr<Msgq<queue_msg>> msgq = threads_msgq[sysfs_name];
     int msdfd = -1, mbxfd = -1;
     int ret = 0;
@@ -800,7 +800,7 @@ void Mpd::mpd_getMsg(size_t index)
         close(msdfd);
 
     dev.log(LOG_INFO, "mpd_getMsg thread for %s exit!!",
-    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index))->m_sysfs_name.c_str());
+    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->m_sysfs_name.c_str());
 }
 
 // Client of MPD handling msg. Will quit on any error from either local mailbox or socket fd.
@@ -808,7 +808,7 @@ void Mpd::mpd_getMsg(size_t index)
 void Mpd::mpd_handleMsg(size_t index)
 {
     pcieFunc dev(index);
-    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index, true))->m_sysfs_name;
+    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, true))->m_sysfs_name;
     std::shared_ptr<Msgq<queue_msg>> msgq = threads_msgq[sysfs_name];
     for ( ;; ) {
         struct queue_msg msg;
@@ -825,7 +825,7 @@ void Mpd::mpd_handleMsg(size_t index)
     threads_handling[sysfs_name] = false;
 
     dev.log(LOG_INFO, "mpd_handleMsg thread for %s exit!!",
-    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index))->m_sysfs_name.c_str());
+    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->m_sysfs_name.c_str());
 }
 
 /*

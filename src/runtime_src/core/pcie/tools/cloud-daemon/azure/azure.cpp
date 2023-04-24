@@ -56,7 +56,7 @@ static std::vector<std::string> fpga_serial_number;
 int init(mpd_plugin_callbacks *cbs)
 {
     int ret = 1;
-    auto total = xrt_core::pci::get_dev_total();
+    auto total = xrt_core::get_dev_total();
     if (total == 0) {
         syslog(LOG_INFO, "azure: no device found");
         return ret;
@@ -414,7 +414,7 @@ AzureDev::~AzureDev()
 
 AzureDev::AzureDev(size_t index) : index(index)
 {
-    dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::pci::get_dev(index, true));
+    dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, true));
     gettimeofday(&start, NULL);
 }
 
