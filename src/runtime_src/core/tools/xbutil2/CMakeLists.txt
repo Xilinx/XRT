@@ -102,6 +102,13 @@ if (${XRT_NATIVE_BUILD} STREQUAL "no")
   install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_DIR}/share)
 endif()
 
+# Add xbmgmt command configuration file
+set(XBMGMT_CONFIG_FILE "xbutil_command_config.json")
+
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  install (PROGRAMS ${XBMGMT_CONFIG_FILE} DESTINATION ${XRT_CONFIG_INSTALL})
+endif()
+
 # Install our built executable
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_HELPER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})

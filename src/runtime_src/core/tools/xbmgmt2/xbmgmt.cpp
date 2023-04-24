@@ -34,9 +34,13 @@ int main( int argc, char** argv )
 
   boost::property_tree::ptree configTree;
   try {
-    boost::property_tree::read_json("xbmgmt_command_config.json", configTree);
-  } catch (std::exception& e) {
-    throw xrt_core::error("Error when reading command configuration JSON");
+    const std::string XRT_path = std::getenv("XILINX_XRT");
+    if (!XRT_path.empty())
+      boost::property_tree::read_json(XRT_path + "/etc/config/xbmgmt_command_config.json", configTree);
+    else
+      boost::property_tree::read_json("/opt/xilinx/xrt/etc/config/xbmgmt_command_config.json", configTree);
+  } catch (const std::exception& e) {
+    throw xrt_core::error(boost::str(boost::format("Error when reading command configuration JSON: %s") % e.what()));
   }
 
   {
