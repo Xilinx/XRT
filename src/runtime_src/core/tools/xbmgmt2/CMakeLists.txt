@@ -97,13 +97,6 @@ else()
   target_link_libraries(${XBMGMT2_NAME} PRIVATE pthread uuid dl)
 endif()
 
-# Add xbutil command configuration file
-set(XBUTIL_CONFIG_FILE "xbmgmt_command_config.json")
-
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  install (PROGRAMS ${XBUTIL_CONFIG_FILE} DESTINATION ${XRT_CONFIG_INSTALL})
-endif()
-
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
   install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})

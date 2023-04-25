@@ -5,9 +5,6 @@ if (${XRT_BOOST_VERSION} VERSION_LESS 1.64.0)
   add_compile_options(-DNO_BOOST_PROCESS)
 endif()
 
-# Add command configuration file location
-set(XRT_CONFIG_INSTALL "${XRT_INSTALL_DIR}/etc/config")
-
 xrt_add_subdirectory(xbutil2)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   xrt_add_subdirectory(xbmgmt2)

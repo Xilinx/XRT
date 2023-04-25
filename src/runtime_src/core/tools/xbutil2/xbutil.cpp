@@ -27,6 +27,32 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+const std::string& command_config = 
+R"(
+[{
+	"name": "cmd_configs",
+	"contents": [{
+		"name": "common",
+		"contents": [{
+			"name": "examine",
+			"contents": [{
+					"name": "common",
+					"contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
+				},
+				{
+					"name": "alveo",
+					"contents": ["error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
+				},
+				{
+					"name": "aie",
+					"contents": ["aie", "aiemem", "aieshim"]
+				}
+			]
+		}]
+	}]
+}]
+)";
+
 // Program entry
 int main( int argc, char** argv )
 {
@@ -35,15 +61,8 @@ int main( int argc, char** argv )
   const std::string executable = "xbutil";
 
   boost::property_tree::ptree configTree;
-  try {
-    const std::string XRT_path = std::getenv("XILINX_XRT");
-    if (!XRT_path.empty())
-      boost::property_tree::read_json(XRT_path + "/etc/config/xbutil_command_config.json", configTree);
-    else
-      boost::property_tree::read_json("/opt/xilinx/xrt/etc/config/xbutil_command_config.json", configTree);
-  } catch (const std::exception& e) {
-    throw xrt_core::error(boost::str(boost::format("Error when reading command configuration JSON: %s") % e.what()));
-  }
+  std::istringstream command_config_stream(command_config);
+  boost::property_tree::read_json(command_config_stream, configTree);
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
