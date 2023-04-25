@@ -131,7 +131,8 @@ get_pcidev(unsigned index, bool is_user) const
     if (index < user_ready_list.size())
       return user_ready_list[index];
 
-    return user_nonready_list[index - user_ready_list.size()];
+    return !user_nonready_list.size() ? NULL : 
+        user_nonready_list[index - user_ready_list.size()];
   }
 
   if (index < mgmt_ready_list.size())
