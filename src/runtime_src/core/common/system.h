@@ -140,13 +140,6 @@ public:
   size_t
   get_num_dev_total(bool is_user) const;
 
-  private:
-    std::vector<std::shared_ptr<dev>> user_ready_list;
-    std::vector<std::shared_ptr<dev>> user_nonready_list;
-
-    std::vector<std::shared_ptr<dev>> mgmt_ready_list;
-    std::vector<std::shared_ptr<dev>> mgmt_nonready_list;
-
 }; // system
 
 /**

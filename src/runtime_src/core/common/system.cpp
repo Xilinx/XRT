@@ -161,6 +161,11 @@ osNameImpl()
 
 namespace xrt_core {
 
+static std::vector<std::shared_ptr<xrt_core::dev>> user_ready_list;
+static std::vector<std::shared_ptr<xrt_core::dev>> user_nonready_list;
+static std::vector<std::shared_ptr<xrt_core::dev>> mgmt_ready_list;
+static std::vector<std::shared_ptr<xrt_core::dev>> mgmt_nonready_list;  
+
 // Singleton is initialized when libxrt_core is loaded
 // A concrete system object is constructed during static
 // global initialization.  Lifetime is until core library
@@ -170,27 +175,6 @@ system* singleton = nullptr;
 system::
 system()
 {
-  /*
-  if (singleton)
-    throw std::runtime_error
-    ("Multiple instances of XRT core shim library detected, only one\n"
-      "can be loaded at any given time.  Please check if application is\n"
-      "explicity linked with XRT core library (xrt_core, xrt_hwemu, or\n"
-      "xrt_swemu) and remove this linking. Use XCL_EMULATION_MODE set to\n"
-      "either hw_emu or sw_emu if running in emulation mode.");
-
-  singleton = this;
-  */
-
-  // Add built-in driver to the list.
- //xrt_core::pci::register_driver(std::make_shared<pci::drv_xocl>());
- //xrt_core::pci::register_driver(std::make_shared<pci::drv_xclmgmt>());
-
- // Load driver plug-ins. Driver list will be updated during loading.
- // Don't need to die on a plug-in loading failure.
- 
-  //load_shim();
-
   try {
     static xrt_core::shim_loader shim;//xrt_core
     static xrt_core::driver_loader plugins;
@@ -199,19 +183,13 @@ system()
     xrt_core::send_exception_message(err.what(), "WARNING");
   }
 
-  /* for (const auto& driver : xrt_core::pci::get_driver_list()) {
-     if (driver->is_user())
-       driver->scan_devices(user_ready_list, user_nonready_list);
-     else
-       driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
-   }*/
-  user_ready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ true);
+  //user_ready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ true);
   std::cout << "system :: size of user_ready_list : " << user_ready_list.size() << std::endl;
-  user_nonready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ false);
+  //user_nonready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ false);
   std::cout << "system :: size of user_nonready_list : " << user_nonready_list.size() << std::endl;
-  mgmt_ready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ true);
+  //mgmt_ready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ true);
   std::cout << "system :: size of mgmt_ready_list : " << mgmt_ready_list.size() << std::endl;
-  mgmt_nonready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ false);
+  //mgmt_nonready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ false);
   std::cout << "system :: size of mgmt_nonready_list : " << mgmt_nonready_list.size() << std::endl;
 }
 
@@ -645,6 +623,25 @@ std::shared_ptr<dev>
 get_dev(unsigned index, bool user)
 {
   return instance().get_pcidev(index, user);
+}
+
+void
+register_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist)
+{
+  for (auto device : devlist) {
+    if (device->m_is_mgmt) {
+      if (device->m_is_ready)
+        mgmt_ready_list.push_back(std::move(device));        
+      else
+        mgmt_nonready_list.push_back(std::move(device));        
+    }
+    else {
+      if (device->m_is_ready)
+        user_ready_list.push_back(std::move(device));
+      else
+        user_nonready_list.push_back(std::move(device));
+    }
+  }
 }
 
 } // xrt_core

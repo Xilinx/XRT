@@ -9,30 +9,30 @@ struct pcidev_hwemu_reg
 {
   pcidev_hwemu_reg() {
         auto driver = std::make_shared<xrt_core::pci::pcidrv_hwemu>();
-        std::vector<std::shared_ptr<xrt_core::dev>> user_ready_list;
-        driver->scan_devices(user_ready_list);
-        xrt_core::add_device_list(user_ready_list, /*isuser*/ true, /*isready*/ true);
+        std::vector<std::shared_ptr<xrt_core::dev>> dev_list;
+        driver->scan_devices(dev_list);
+        xrt_core::register_device_list(dev_list);
         std::cout << "pcidrv_hwemu registration done" << std::endl;        
    	}
 } pcidev_hwemu_reg;
 }
 
 namespace xrt_core { namespace pci {
+
 std::shared_ptr<dev>
-pcidrv_hwemu::create_pcidev(const std::string& sysfs) const
+pcidrv_hwemu::create_pcidev() const
 {
 	return std::make_shared<pcidev_hwemu>(/*isuser*/ true);
 }
 
 void
-pcidrv_hwemu::scan_devices(std::vector<std::shared_ptr<dev>>& ready_list) const
+pcidrv_hwemu::scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const
 {
 try {
 	auto nd = xclProbe();
 	std::cout << "num hw emu dev : " << nd << std::endl;
-    std::string sysfspath = "";
-    auto pf = create_pcidev(sysfspath);
-    ready_list.push_back(std::move(pf));
+  auto pf = create_pcidev();
+  dev_list.push_back(std::move(pf));
 }
 catch (const std::invalid_argument&) {
     //exeception

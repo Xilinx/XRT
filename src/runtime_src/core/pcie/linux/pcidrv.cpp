@@ -9,8 +9,7 @@ namespace xrt_core { namespace pci {
 
 void
 drv::
-scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list,
-             std::vector<std::shared_ptr<xrt_core::dev>>& nonready_list) const
+scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& dev_list) const
 {
   namespace bfs = boost::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";
@@ -33,10 +32,7 @@ scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list,
         continue;
 
       // Insert detected device into proper list.
-      if (pf->m_is_ready)
-        ready_list.push_back(std::move(pf));
-      else
-        nonready_list.push_back(std::move(pf));
+      dev_list.push_back(std::move(pf));   
     }
     catch (const std::invalid_argument& ex) {
       continue;

@@ -22,10 +22,10 @@ public:
   is_emulation() const { return true; }
 
   std::shared_ptr<dev>
-  create_pcidev(const std::string& sysfs) const ;
+  create_pcidev() const ;
 
   void
-  scan_devices(std::vector<std::shared_ptr<dev>>& ready_list) const;
+  scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const;
 
 };
 

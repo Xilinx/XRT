@@ -28,7 +28,7 @@ class dev
 {
 public:
   bool m_is_mgmt = false;
-  bool m_is_ready = false; 
+  bool m_is_ready = true; 
   dev(bool isuser) {  
       m_is_mgmt = !isuser;  
   }
@@ -73,10 +73,7 @@ get_dev(unsigned index, bool user = true);
  * For now, once added, it cannot be removed until the list itself is out of scope.
  */
 void
-add_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist, bool isuser, bool isready);
-
-const std::vector<std::shared_ptr<xrt_core::dev>>&
-get_device_list(bool isuser, bool isready);
+register_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist);
 
 } // namespace xrt_core :: pci
 

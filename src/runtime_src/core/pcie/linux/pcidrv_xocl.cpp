@@ -9,11 +9,9 @@ struct drv_xocl_reg
 {
     drv_xocl_reg() {
         auto driver = std::make_shared<xrt_core::pci::drv_xocl>();     
-        std::vector<std::shared_ptr<xrt_core::dev>> user_ready_list;
-        std::vector<std::shared_ptr<xrt_core::dev>> user_nonready_list;
-        driver->scan_devices(user_ready_list, user_nonready_list);
-        xrt_core::add_device_list(user_ready_list, /*isuser*/ true, /*isready*/ true);
-        xrt_core::add_device_list(user_nonready_list, /*isuser*/ true, /*isready*/ false);
+        std::vector<std::shared_ptr<xrt_core::dev>> dev_list;
+        driver->scan_devices(dev_list);
+        xrt_core::register_device_list(dev_list);
         std::cout << "drv_xocl registration done" << std::endl;
     }
 } drv_xocl_reg;

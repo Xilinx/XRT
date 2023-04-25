@@ -355,6 +355,7 @@ pcidev_linux(const std::string& sysfs, bool isuser) : dev(isuser)
 {
   std::string err;
   m_sysfs_name = sysfs;
+  m_is_ready = false;
   if (sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
     throw std::invalid_argument(sysfs + " is not valid BDF");
 

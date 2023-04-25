@@ -18,8 +18,7 @@ public:
 
   // Scan system, find all supported devices and add them to the list
   virtual void
-  scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list,
-               std::vector<std::shared_ptr<xrt_core::dev>>& nonready_list) const;
+  scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& dev_list) const;
   // Create the type of pci::dev driven by this driver which can be added to the list
   virtual std::shared_ptr<xrt_core::dev>
   create_pcidev(const std::string& sysfs) const = 0;
