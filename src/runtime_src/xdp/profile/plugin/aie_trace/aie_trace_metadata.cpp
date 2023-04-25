@@ -16,6 +16,8 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+
 #include <cstdint>
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -23,16 +25,14 @@
 #include <memory>
 #include <regex>
 
-#include "aie_trace_metadata.h"
-
 #include "core/common/device.h"
-#include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "aie_trace_metadata.h"
+#include "core/common/message.h"
 #include "core/edge/common/aie_parser.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
   namespace pt = boost::property_tree;
@@ -109,7 +109,7 @@ namespace xdp {
     const std::set<std::string> validSettings {
       "graph_based_aie_tile_metrics", "tile_based_aie_tile_metrics",
       "graph_based_memory_tile_metrics", "tile_based_memory_tile_metrics",
-      "start_type", "start_time", "start_iteration", 
+      "start_type", "start_time", "start_iteration", "end_type",
       "periodic_offload", "reuse_buffer", "buffer_size", 
       "buffer_offload_interval_us", "file_dump_interval_s"
     };
@@ -581,11 +581,11 @@ namespace xdp {
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
-      if (graphMetrics[i].size() == 5) {
+      if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
             configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i][4]);
+            configChannel1[e] = std::stoi(graphMetrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -638,11 +638,11 @@ namespace xdp {
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
-      if (graphMetrics[i].size() == 5) {
+      if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
             configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i][4]);
+            configChannel1[e] = std::stoi(graphMetrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -685,11 +685,11 @@ namespace xdp {
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
-      if (metrics[i].size() == 4) {
+      if (metrics[i].size() > 2) {
         try {
           for (auto &e : tiles) {
             configChannel0[e] = std::stoi(metrics[i][2]);
-            configChannel1[e] = std::stoi(metrics[i][3]);
+            configChannel1[e] = std::stoi(metrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -741,10 +741,10 @@ namespace xdp {
 
       uint8_t channel0 = 0;
       uint8_t channel1 = 1;
-      if (metrics[i].size() == 5) {
+      if (metrics[i].size() > 3) {
         try {
           channel0 = std::stoi(metrics[i][3]);
-          channel1 = std::stoi(metrics[i][4]);
+          channel1 = std::stoi(metrics[i].back());
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -821,10 +821,10 @@ namespace xdp {
       configMetrics[tile] = metrics[i][1];
       
       // Grab channel numbers (if specified; MEM tiles only)
-      if (metrics[i].size() == 4) {
+      if (metrics[i].size() > 2) {
         try {
           configChannel0[tile] = std::stoi(metrics[i][2]);
-          configChannel1[tile] = std::stoi(metrics[i][3]);
+          configChannel1[tile] = std::stoi(metrics[i].back());
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName

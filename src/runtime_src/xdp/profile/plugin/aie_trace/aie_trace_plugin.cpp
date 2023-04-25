@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -307,8 +307,10 @@ namespace xdp {
   {
     for (const auto& kv : handleToAIEData) {
       auto& AIEData = kv.second;
-      if (AIEData.valid)
+      if (AIEData.valid) {
+        AIEData.implementation->flushAieTileTraceModule();
         flushOffloader(AIEData.offloader, true);
+      }
     }
 
     XDPPlugin::endWrite();
