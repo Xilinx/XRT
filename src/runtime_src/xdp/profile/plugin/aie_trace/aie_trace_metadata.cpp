@@ -16,8 +16,6 @@
 
 #define XDP_SOURCE
 
-
-
 #include <cstdint>
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
