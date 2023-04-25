@@ -26,18 +26,18 @@ class system
 public:
   XRT_CORE_COMMON_EXPORT
   system();
-//public:
-  // REMOVE
-  virtual void
-  get_xrt_info(boost::property_tree::ptree&);// {}
 
   // REMOVE
   virtual void
-  get_os_info(boost::property_tree::ptree&);// {}
+  get_xrt_info(boost::property_tree::ptree&);
 
   // REMOVE
   virtual void
-  get_devices(boost::property_tree::ptree&) const;// {}
+  get_os_info(boost::property_tree::ptree&);
+
+  // REMOVE
+  virtual void
+  get_devices(boost::property_tree::ptree&) const;
 
   /**
    * get_device_id() - Convert string to device index
@@ -61,14 +61,11 @@ public:
    */
   virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
   get_bdf_info(device::id_type, bool) const;
- /* {
-    return std::make_tuple(uint16_t(0), uint16_t(0), uint16_t(0), uint16_t(0));
-  }*/
 
   /**
    */
   virtual std::pair<device::id_type, device::id_type>
-  get_total_devices(bool is_user = true) const; //= 0;
+  get_total_devices(bool is_user = true) const;
 
   /**
    * get_userpf_device() - Open a new device specified by index
@@ -80,7 +77,7 @@ public:
    * when device is no longer referenced.
    */
   virtual std::shared_ptr<device>
-  get_userpf_device(device::id_type id) const;// = 0;
+  get_userpf_device(device::id_type id) const;
 
   /**
    * get_userpf_device() - Get previous opened device from handle
@@ -96,13 +93,13 @@ public:
    * not called when device goes out of scope.
    */
   virtual std::shared_ptr<device>
-  get_userpf_device(device::handle_type hdl, device::id_type) const; // = 0;
+  get_userpf_device(device::handle_type hdl, device::id_type) const;
 
   /**
    * get_mgmtpf_device() - construct mgmt device from device id
    */
   virtual std::shared_ptr<device>
-  get_mgmtpf_device(device::id_type id) const;// = 0;
+  get_mgmtpf_device(device::id_type id) const;
 
   /**
    * get_monitor_access_type() -
@@ -117,17 +114,10 @@ public:
   enum class monitor_access_type { bar, mmap, ioctl };
   virtual monitor_access_type
   get_monitor_access_type() const;
-  /*{
-    return monitor_access_type::bar;
-  }*/
 
   virtual void
   program_plp(const device*, const std::vector<char>&, bool) const;
-  /*{
-    throw std::runtime_error("plp program is not supported");
-  }*/
 
-  //copied system linux
   virtual
   std::shared_ptr<dev>
   get_pcidev(unsigned index, bool is_user = true) const;

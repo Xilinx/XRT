@@ -45,7 +45,7 @@
 #define PFM_NAME "pcie"
 #elif defined (_WIN32)
 #define MACHINE_NODE_PATH ""
-#define PFM_NAME "windows"
+#define PFM_NAME "pcie"
 #else
 #error "Unsupported platform"
 #define MACHINE_NODE_PATH ""
@@ -67,19 +67,30 @@ driver_version(const std::string& driver)
   boost::property_tree::ptree _pt;
   std::string ver("unknown");
   std::string hash("unknown");
-  std::string path("/sys/module/");
-  path += driver;
-  path += "/version";
 
-  std::ifstream stream(path);
-  if (stream.is_open()) {
-    std::string line;
-    getline(stream, line);
-    std::stringstream ss(line);
+  if (std::strcmp(PFM_NAME, pcie_pfm) == 0) {
+    std::string path("/sys/module/");
+    path += driver;
+    path += "/version";
+    std::ifstream stream(path);
+    if (stream.is_open()) {
+      std::string line;
+      getline(stream, line);
+      std::stringstream ss(line);
+      getline(ss, ver, ',');
+      getline(ss, hash, ',');
+    }
+  }
+  else {
+    //dkms flow is not available for zocl
+   //so version.h file is not available at zocl build time
+#if defined(XRT_DRIVER_VERSION)
+    std::string zocl_driver_ver = XRT_DRIVER_VERSION;
+    std::stringstream ss(zocl_driver_ver);
     getline(ss, ver, ',');
     getline(ss, hash, ',');
+#endif
   }
-
   _pt.put("name", driver);
   _pt.put("version", ver);
   _pt.put("hash", hash);
@@ -276,11 +287,19 @@ system::
 get_xrt_info(boost::property_tree::ptree& pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
-
-  //for (const auto& drv : xrt_core::pci::get_driver_list()) // TODO::?
-  //  _ptDriverInfo.push_back( {"", driver_version(drv->name())} ); 
-  _ptDriverInfo.push_back({ "", driver_version("xocl") });
-  _ptDriverInfo.push_back({ "", driver_version("xclmgmt") });
+  if (std::strcmp(PFM_NAME, pcie_pfm) == 0) { //pcie
+    //for (const auto& drv : xrt_core::pci::get_driver_list()) // TODO::?
+    //  _ptDriverInfo.push_back( {"", driver_version(drv->name())} ); 
+    _ptDriverInfo.push_back({ "", driver_version("xocl") });
+    _ptDriverInfo.push_back({ "", driver_version("xclmgmt") });
+  }
+  else { //edge
+    pt.put("build.version", xrt_build_version);
+    pt.put("build.hash", xrt_build_version_hash);
+    pt.put("build.date", xrt_build_version_date);
+    pt.put("build.branch", xrt_build_version_branch);
+    _ptDriverInfo.push_back(std::make_pair("", driver_version("zocl")));
+  }
   pt.put_child("drivers", _ptDriverInfo);
 }
 
@@ -316,14 +335,18 @@ get_os_info(boost::property_tree::ptree& pt)
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
   pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
+  //pt.put("now", xrt_core::timestamp());
   boost::property_tree::ptree _ptLibInfo;
   _ptLibInfo.push_back({ "", glibc_info() });
   pt.put_child("libraries", _ptLibInfo);
 
+#ifndef XRT_EDGE
   char hostname[256] = { 0 };
   gethostname(hostname, 256);
   std::string hn(hostname);
   pt.put("hostname", hn);
+#endif
+
 #endif
 
 #ifdef _WIN32

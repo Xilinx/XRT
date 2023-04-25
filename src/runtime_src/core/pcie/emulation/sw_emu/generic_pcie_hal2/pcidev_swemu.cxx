@@ -8,7 +8,8 @@ namespace xrt_core { namespace pci {
   std::shared_ptr<device> 
   pcidev_swemu::create_device(device::handle_type handle, device::id_type id) const
   {
-	  return std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(handle, id, !m_is_mgmt));
+	  return (!handle) ? std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(nullptr, id, false)) :
+                       std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(handle, id, true));
   }
 
   device::handle_type

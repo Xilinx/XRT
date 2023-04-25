@@ -118,7 +118,7 @@ std::map<uint64_t, uint32_t *> shim::mKernelControl;
 
 shim::
 shim(unsigned index)
-  : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
+  : mCoreDevice(xrt_core::get_userpf_device(this, index))
   , mBoardNumber(index)
   , mKernelClockFreq(100)
   , mCuMaps(128, nullptr)
