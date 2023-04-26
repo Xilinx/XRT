@@ -2,9 +2,9 @@
 // Copyright (C) 2015-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
-#include "system_swemu.h"
 #include "pllauncher_defines.h"
 #include "core/include/xclbin.h"
+#include "core/common/system.h"
 #include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>

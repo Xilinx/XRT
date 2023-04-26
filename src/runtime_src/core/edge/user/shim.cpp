@@ -2,7 +2,6 @@
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
-#include "system_linux.h"
 
 #include "core/include/shim_int.h"
 #include "core/include/xdp/aim.h"
@@ -17,6 +16,7 @@
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/config_reader.h"
+#include "core/common/dev_factory.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"

@@ -19,4 +19,4 @@ namespace xrt_core {
       return xclOpen(id, nullptr, XCL_QUIET);
     }
   }
-} // namespace xrt_core :: pci
+} // namespace xrt_core :: edge

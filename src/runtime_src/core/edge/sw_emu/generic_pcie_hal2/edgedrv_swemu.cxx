@@ -1,32 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
-#include "edgedrv_zocl.h"
+#include "edgedrv_swemu.h"
 
 namespace {
   //Register sw emu driver
-  struct edgedev_linux_reg
+  struct edgedev_swemu_reg
   {
-    edgedev_linux_reg() {
-      auto driver = std::make_shared<xrt_core::edge::edgedrv_zocl>();
+    edgedev_swemu_reg() {
+      auto driver = std::make_shared<xrt_core::edge::edgedrv_swemu>();
       std::vector<std::shared_ptr<xrt_core::dev>> dev_list;
       driver->scan_devices(dev_list);
       xrt_core::register_device_list(dev_list);
-      std::cout << "edgedrv_zocl registration done" << std::endl;
+      std::cout << "edgedrv_swemu registration done" << std::endl;
     }
-  } edgedev_linux_reg;
+  } edgedev_swemu_reg;
 }
 
 namespace xrt_core {
   namespace edge {
     std::shared_ptr<xrt_core::dev>
-    edgedrv_zocl::create_edgedev() const
+    edgedrv_swemu::create_edgedev() const
     {
-      return std::make_shared<edgedev_linux>(/*isuser*/ true);
+      return std::make_shared<edgedev_swemu>(/*isuser*/ true);
     }
 
     void
-    edgedrv_zocl::scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list) const
+    edgedrv_swemu::scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list) const
     {
       try {
         auto nd = xclProbe();
@@ -36,7 +36,7 @@ namespace xrt_core {
       }
       catch (const std::invalid_argument&) {
         //exeception
-        std::cout << "************ edgedrv_zocl:scan_devices : exeception **********" << std::endl;
+        std::cout << "************ edgedrv_swemu:scan_devices : exeception **********" << std::endl;
       }
     }
 

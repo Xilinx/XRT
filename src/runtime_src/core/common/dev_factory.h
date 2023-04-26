@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef _XCL_PCIDEV_H_
-#define _XCL_PCIDEV_H_
+#ifndef _XCL_DEV_FACTORY_H_
+#define _XCL_DEV_FACTORY_H_
 
-//#include "device_linux.h"
 #include "device.h"
 
 #include <fcntl.h>
