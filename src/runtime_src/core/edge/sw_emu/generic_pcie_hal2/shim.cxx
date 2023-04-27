@@ -202,6 +202,7 @@ namespace xclswemuhal2 {
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
     mDeviceProcessInQemu = true;
     mFpgaDevice = "";
+    mSocketThreadFinished_fut = mSocketThreadFinished_promise.get_future();
   }
 
   size_t SwEmuShim::alloc_void(size_t new_size)
@@ -627,7 +628,8 @@ namespace xclswemuhal2 {
 
   int SwEmuShim::xclLoadXclBin(const xclBin *header)
   {
-    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
     if (!xclswemuhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu, mFpgaDevice)) {
       printf("ERROR:Xclbin validation failed\n");
@@ -966,15 +968,18 @@ namespace xclswemuhal2 {
   }
 
   void SwEmuShim::socketConnection(bool isTCPSocket) {
-    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
+    if (mLogStream.is_open())
+      mLogStream << __func__ << "TCP connection started" << std::endl;
     if (!sock)
       sock = new unix_socket(isTCPSocket);
     if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established" << std::endl;
+    mSocketThreadFinished_promise.set_value(true);
   }
 
   int SwEmuShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
-    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " begin " << std::endl;
 
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
@@ -999,13 +1004,20 @@ namespace xclswemuhal2 {
       }
     }
     //Create thread for TCP socket connection
-    std::thread tcpSockThread = std::thread(&SwEmuShim::socketConnection, this, true);
-
+    std::thread tcpSockThread = std::thread([&]()
+                                        { this->socketConnection(true); });
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if (!simDontRun) {
+    if (!simDontRun)
+    {
       if (!xclswemuhal2::isRemotePortMapped) {
         xclswemuhal2::initRemotePortMap(mFpgaDevice);
       }
+      // Lets' ensure the socket thread is started, before device process starts.
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " waiting for future object to be ready." << std::endl;
+
+      std::cout << "\n waiting for tcp socket future object to be ready.";
+
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
       cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
@@ -1020,6 +1032,7 @@ namespace xclswemuhal2 {
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
       memcpy((char*)(xclswemuhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
+
 
     std::string xmlFile = "";
     std::string binaryDirectory("");

@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <future>
 #include <thread>
 #include <tuple>
 #include <sys/wait.h>
@@ -524,6 +525,8 @@ namespace xclswemuhal2 {
       create_hw_context(const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
 
   private:
+      std::future<bool> mSocketThreadFinished_fut;
+      std::promise<bool> mSocketThreadFinished_promise;
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
 
