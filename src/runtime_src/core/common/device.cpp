@@ -348,6 +348,10 @@ const std::vector<uint64_t>&
 device::
 get_cus() const
 {
+  // This function returns a reference to internal data
+  // that is modified when an xclbin is loaded.  Normally
+  // not an issue since only single xclbin is supported
+  // when using this API.
   if (m_cu2idx.size() > 1)
     throw error(std::errc::not_supported, "multiple xclbins not supported");
 
@@ -358,6 +362,7 @@ cuidx_type
 device::
 get_cuidx(slot_id slot, const std::string& cuname) const
 {
+  std::lock_guard lk(m_mutex);
   auto slot_itr = m_cu2idx.find(slot);
   if (slot_itr == m_cu2idx.end())
     throw error(EINVAL, "No such compute unit '" + cuname + "'");
