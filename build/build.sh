@@ -45,6 +45,7 @@ usage()
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
+    echo "[-noinit]                   Do not initialize Git submodules"
     echo "[-noctest]                  Skip unit tests"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
@@ -85,6 +86,7 @@ opt=1
 dbg=1
 edge=0
 nocmake=0
+init_submodule=1
 nobuild=0
 noctest=0
 static_boost=""
@@ -130,6 +132,10 @@ while [ $# -gt 0 ]; do
             ;;
         -nocmake)
             nocmake=1
+            shift
+            ;;
+        -noinit)
+            init_submodule=0
             shift
             ;;
         -noctest)
@@ -266,8 +272,9 @@ fi
 
 #If git modules config file exist then try to clone them
 GIT_MODULES=$BUILDDIR/../.gitmodules
-if [ -f "$GIT_MODULES" ]; then
+if [[ -f "$GIT_MODULES" && $init_submodule == 1 ]]; then
     cd $BUILDDIR/../
+    echo "Updating Git XRT submodule, use -noinit option to avoid updating"
     git submodule update --init
     cd $BUILDDIR
 fi
