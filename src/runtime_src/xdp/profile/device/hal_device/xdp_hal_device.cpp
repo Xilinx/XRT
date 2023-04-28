@@ -223,11 +223,10 @@ std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
 
 xclBufferExportHandle HalDevice::getBufferExportHandle(size_t id)
 {
-  if(!id) return XRT_NULL_BO_EXPORT;
+  if(!id) return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
   size_t boIndex = id - 1;
 
   return (xrt_bos[boIndex].export_buffer());
 }
 
 }
-

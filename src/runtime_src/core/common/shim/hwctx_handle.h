@@ -6,6 +6,7 @@
 #include "core/common/cuidx_type.h"
 #include "core/common/error.h"
 #include "core/common/shim/hwqueue_handle.h"
+#include "core/common/shim/shared_handle.h"
 
 #include "xrt/xrt_hw_context.h"
 
@@ -57,11 +58,18 @@ public:
 
   // Context specific buffer allocation
   virtual std::unique_ptr<buffer_handle>
-  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
+  alloc_bo(void* userptr, size_t size, uint64_t flags) = 0;
 
   // Context specific buffer allocation
   virtual std::unique_ptr<buffer_handle>
-  alloc_bo(size_t size, unsigned int flags) = 0;
+  alloc_bo(size_t size, uint64_t flags) = 0;
+
+  // Import an exported BO from another process identified by argument pid.
+  virtual std::unique_ptr<buffer_handle>
+  import_bo(pid_t, shared_handle::export_handle)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 
   // Legacy XRT may require special handling when opening a context on
   // a compute unit.  Ideally, the hardware context itself should

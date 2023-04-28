@@ -76,15 +76,15 @@ public:
   }
 
   std::unique_ptr<buffer_handle>
-  alloc_bo(size_t size, unsigned int flags) override
+  alloc_bo(size_t size, uint64_t flags) override
   {
-    return xrt::shim_int::alloc_bo(get_device_handle(), size, flags);
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, xcl_bo_flags{flags}.flags);
   }
 
   std::unique_ptr<buffer_handle>
-  alloc_bo(void* userptr, size_t size, unsigned int flags) override
+  alloc_bo(void* userptr, size_t size, uint64_t flags) override
   {
-    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, flags);
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
   }
   ////////////////////////////////////////////////////////////////
 

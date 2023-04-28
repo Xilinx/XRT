@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Authors: Lizhi.Hou@xilinx.com
@@ -394,6 +394,15 @@ static struct bin_attribute kds_scustat_raw_attr = {
 	.write = NULL,
 	.size = 0
 };
+
+static ssize_t
+device_bad_state_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->kds.bad_state);
+}
+static DEVICE_ATTR_RO(device_bad_state);
 
 static ssize_t
 kds_interrupt_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -956,6 +965,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_nodma.attr,
 	&dev_attr_host_mem_size.attr,
 	&dev_attr_versal.attr,
+	&dev_attr_device_bad_state.attr,
 	NULL,
 };
 
