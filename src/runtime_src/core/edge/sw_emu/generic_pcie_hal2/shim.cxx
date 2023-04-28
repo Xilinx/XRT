@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
+#include <chrono>
 
 namespace xclswemuhal2 {
 
@@ -966,6 +967,7 @@ namespace xclswemuhal2 {
   }
 
   void SwEmuShim::socketConnection(bool isTCPSocket) {
+    tcp_socket_pr.set_value(true);
     if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
     if (!sock)
       sock = new unix_socket(isTCPSocket);
@@ -999,10 +1001,22 @@ namespace xclswemuhal2 {
       }
     }
     //Create thread for TCP socket connection
+    auto fut = tcp_socket_pr.get_future();
     std::thread tcpSockThread = std::thread(&SwEmuShim::socketConnection, this, true);
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
+       std::future_status status;
+       auto counter = 0;
+      do {
+        status = fut.wait_for(std::chrono::seconds(1));
+      } while (status != std::future_status::ready && ++counter < 30);
+      
+      std::cout<<"\n the counter value is "<<counter;
+      if (status != std::future_status::ready) {
+        std::cerr<<"ERROR: [SW_EMU 13] TCP/IP socket thread is not started yet,something wrong with OS, So exiting the application now.";
+        exit(1);
+      }
       if (!xclswemuhal2::isRemotePortMapped) {
         xclswemuhal2::initRemotePortMap(mFpgaDevice);
       }
