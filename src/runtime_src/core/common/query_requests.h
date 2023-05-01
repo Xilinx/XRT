@@ -897,6 +897,8 @@ struct device_status : request
         return "HEALTHY";
       case 1:
         return "HANG";
+      case 2:
+        return "UNKNOWN";
       default:
         throw xrt_core::system_error(EINVAL, "Invalid device status: " + status);
     }
@@ -968,7 +970,6 @@ struct hw_context_info : request
   struct data {
     std::string id;
     std::string xclbin_uuid;
-    device_status::result_type context_status;
     kds_cu_info::result_type pl_compute_units;
     kds_scu_info::result_type ps_compute_units;
   };

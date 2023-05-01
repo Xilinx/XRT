@@ -37,7 +37,7 @@ ReportDynamicRegion::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
+ReportDynamicRegion::writeReport( const xrt_core::device* _pDevice,
                        const boost::property_tree::ptree& _pt, 
                        const std::vector<std::string>& /*_elementsFilter*/,
                        std::ostream & _output) const
@@ -50,10 +50,13 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
   if(pt_dfx.empty())
     return;
 
+  const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(_pDevice, 2);
+  _output << boost::format("  Device Status: %s\n") % xrt_core::query::device_status::parse_status(device_status);
+
   for(auto& k_dfx : pt_dfx) {
     const boost::property_tree::ptree& dfx = k_dfx.second;
     _output << boost::format("  Hardware Context ID: %s\n") % dfx.get<std::string>("id", "N/A");
-    _output << boost::format("    Context Status: %s\n") % dfx.get<std::string>("context_status", "Unknown");
+    
     _output << boost::format("    Xclbin UUID: %s\n") % dfx.get<std::string>("xclbin_uuid", "N/A");
     const std::vector<Table2D::HeaderData> table_headers = {
       {"Index", Table2D::Justification::left},
