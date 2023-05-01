@@ -392,9 +392,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << fmtBasic % "Platform" % string_or_NA(available_shell.get<std::string>("vbnv"));
     _output << fmtBasic % "SC Version" % string_or_NA(available_shell.get<std::string>("sc_version"));
     // print platform ID, for 2RP, platform ID = logic UUID
-    auto logic_uuid = available_shell.get<std::string>("logic-uuid", "");
-    if (!logic_uuid.empty()) {
-      _output << fmtBasic % "Logic UUID" % logic_uuid;
+    auto available_shell_logic_uuid = available_shell.get<std::string>("logic-uuid", "");
+    if (!available_shell_logic_uuid.empty()) {
+      _output << fmtBasic % "Logic UUID" % available_shell_logic_uuid;
     } else {
       _output << fmtBasic % "Platform ID" % string_or_NA(available_shell.get<std::string>("id"));
     }
