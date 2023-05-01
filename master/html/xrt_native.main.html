@@ -117,7 +117,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
@@ -1325,7 +1324,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <span id="_CPPv3NK3xrt6kernel6offsetEi"></span><span id="_CPPv2NK3xrt6kernel6offsetEi"></span><span id="xrt::kernel::offset__iC"></span><span class="target" id="classxrt_1_1kernel_1ac08ab6cbafa0b1ad09f8c0a6941a0c68"></span>uint32_t <code class="descname">offset</code><span class="sig-paren">(</span>int <em>argno</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6kernel6offsetEi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1kernel_1ac08ab6cbafa0b1ad09f8c0a6941a0c68"><span class="std std-ref">offset()</span></a> - Get the offset of kernel argument</p>
 <p><p>Use with </p>
-<code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1kernel_1a5b9c53ff845a8086428b568ea8be6d5b"><span class="std std-ref"><span class="pre">read_register()</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1kernel_1a051841cbd86a31c1d916fe492be72d07"><span class="std std-ref"><span class="pre">write_register()</span></span></a></code> if manually reading or writing kernel registers for explicit arguments. <dl class="docutils">
+<code class="docutils literal notranslate"><span class="pre">read_register()</span></code> and <code class="docutils literal notranslate"><span class="pre">write_register()</span></code> if manually reading or writing kernel registers for explicit arguments. <dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>The kernel register offset of the argument with specified index</dd>
 <dt><strong>Parameters</strong></dt>
@@ -1335,41 +1334,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </dd>
 </dl>
 </p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv4N3xrt6kernel14write_registerE8uint32_t8uint32_t">
-<span id="_CPPv3N3xrt6kernel14write_registerE8uint32_t8uint32_t"></span><span id="_CPPv2N3xrt6kernel14write_registerE8uint32_t8uint32_t"></span><span id="xrt::kernel::write_register__uint32_t.uint32_t"></span><span class="target" id="classxrt_1_1kernel_1a051841cbd86a31c1d916fe492be72d07"></span>void <code class="descname">write_register</code><span class="sig-paren">(</span>uint32_t <em>offset</em>, uint32_t <em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6kernel14write_registerE8uint32_t8uint32_t" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>write() - Write to the address range of a kernel</p>
-<p><p>Throws std::out_or_range if offset is outside the kernel address space</p>
-<dl class="docutils">
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">offset</span></code>: Offset in register space to write to </li>
-<li><code class="docutils literal notranslate"><span class="pre">data</span></code>: Data to write</li>
-</ul>
-</dd>
-</dl>
-</p>
-<p>The kernel must be associated with exactly one kernel instance (compute unit), which must be opened for exclusive access. </p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv4NK3xrt6kernel13read_registerE8uint32_t">
-<span id="_CPPv3NK3xrt6kernel13read_registerE8uint32_t"></span><span id="_CPPv2NK3xrt6kernel13read_registerE8uint32_t"></span><span id="xrt::kernel::read_register__uint32_tC"></span><span class="target" id="classxrt_1_1kernel_1a5b9c53ff845a8086428b568ea8be6d5b"></span>uint32_t <code class="descname">read_register</code><span class="sig-paren">(</span>uint32_t <em>offset</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6kernel13read_registerE8uint32_t" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>read() - Read data from kernel address range</p>
-<p><p>Throws std::out_or_range if offset is outside the kernel address space</p>
-<dl class="docutils">
-<dt><strong>Return</strong></dt>
-<dd>Value read from offset</dd>
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">offset</span></code>: Offset in register space to read from </li>
-</ul>
-</dd>
-</dl>
-</p>
-<p>The kernel must be associated with exactly one kernel instance (compute unit), which must be opened for exclusive access. </p>
 </dd></dl>
 
 <dl class="function">
@@ -2275,6 +2239,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>UUID of xclbin</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4NK3xrt6xclbin18get_interface_uuidEv">
+<span id="_CPPv3NK3xrt6xclbin18get_interface_uuidEv"></span><span id="_CPPv2NK3xrt6xclbin18get_interface_uuidEv"></span><span id="xrt::xclbin::get_interface_uuidC"></span><span class="target" id="classxrt_1_1xclbin_1a0eb7fe93108c6a6384f0ec353e046eab"></span><a class="reference internal" href="#_CPPv4N3xrt4uuidE" title="xrt::uuid">uuid</a> <code class="descname">get_interface_uuid</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin18get_interface_uuidEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a0eb7fe93108c6a6384f0ec353e046eab"><span class="std std-ref">get_interface_uuid()</span></a> - Get the interface uuid of the xclbin</p>
+<p><p>An exception is thrown if the data is missing. </p>
+<dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>Interface uuid of the xclbin</dd>
 </dl>
 </p>
 </dd></dl>
