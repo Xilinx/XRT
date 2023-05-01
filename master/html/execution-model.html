@@ -111,7 +111,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
@@ -190,7 +189,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div>
 <div class="section" id="memory-management">
 <h2>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this headline">¶</a></h2>
-<p>Both PCIe based and embedded platforms use a unified multi-thread/process capable memory management API defined in <a class="reference internal" href="xrt.main.html"><span class="doc">XRT Core Library</span></a> document.</p>
+<p>Both PCIe based and embedded platforms use a unified multi-thread/process capable memory management API defined in <span class="xref std std-doc">xrt.main</span> document.</p>
 <p>For both class of platforms, memory management is performed inside Linux kernel driver. Both drivers use DRM GEM for memory management which includes buffer allocator, buffer mmap support, reference counting of buffers and DMA-BUF export/import. These operations are made available via ioctls exported by the drivers.</p>
 <div class="section" id="xocl">
 <h3>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h3>

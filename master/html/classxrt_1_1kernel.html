@@ -360,16 +360,6 @@ template&lt;typename ... Args&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>read() - Read data from kernel address range</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">offset</td><td>Offset in register space to read from </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>Value read from offset</dd></dl>
-<p>Throws std::out_or_range if offset is outside the kernel address space</p>
-<p>The kernel must be associated with exactly one kernel instance (compute unit), which must be opened for exclusive access. </p>
 
 </div>
 </div>
@@ -398,16 +388,6 @@ template&lt;typename ... Args&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>write() - Write to the address range of a kernel</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">offset</td><td>Offset in register space to write to </td></tr>
-    <tr><td class="paramname">data</td><td>Data to write</td></tr>
-  </table>
-  </dd>
-</dl>
-<p>Throws std::out_or_range if offset is outside the kernel address space</p>
-<p>The kernel must be associated with exactly one kernel instance (compute unit), which must be opened for exclusive access. </p>
 
 </div>
 </div>

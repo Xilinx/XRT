@@ -99,7 +99,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
@@ -199,12 +198,44 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div></blockquote>
 <div class="section" id="xbmgmt-configure">
 <h2>xbmgmt configure<a class="headerlink" href="#xbmgmt-configure" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code> command provides advanced options for configuring a device</p>
-<p><strong>The supported options</strong></p>
-<p>Configuring a device’s memory or clock throttling settings using an .ini file</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--input<span class="o">]</span> &lt;filename with .ini extension&gt;
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code> command provides advanced options for configuring a device’s memory, clock, and DDR memory retention settings. A .ini file input is required for configuration except for DDR memory retention. The .ini file can be located in a directory of your choosing with the path specified in the command.</p>
+<ul class="simple">
+<li>TIP: Instead of creating a .ini file from scratch, use <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span> <span class="pre">--config</span></code> (see the <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> section) to generate the file contents which can be edited accordingly.</li>
+</ul>
+<p><strong>Command Options</strong></p>
+<p>The supported options are <code class="docutils literal notranslate"><span class="pre">--input</span></code> and <code class="docutils literal notranslate"><span class="pre">--retention</span></code>. Command usage is below.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--input<span class="o">]</span> &lt;path to filename with .ini extension&gt;
 </pre></div>
 </div>
+<p>Enabling/Disabling clock throttling on a device</p>
+<ul class="simple">
+<li>When enabled, clock throttling reduces the kernel clock frequency dynamically when either thermal or electrical sensors exceed defined threshold values. By lowering the clock frequency, clock throttling reduces the required power and subsequently generated heat. Only when all sensor values fall below their respective clock throttling threshold values will the kernel clock be restored to full performance.</li>
+<li>Default clock throttling threshold values are available in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a> for supported platforms.</li>
+<li>The contents of the .ini file for clock throttling configuration should be similar to the example provided below. Underneath the first line, <code class="docutils literal notranslate"><span class="pre">[Device]</span></code>, specify one or more key-value pairings as needed.</li>
+</ul>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Device]</span>
+<span class="na">throttling_enabled</span><span class="o">=</span><span class="s">true</span>
+<span class="na">throttling_power_override</span><span class="o">=</span><span class="s">200</span>
+<span class="na">throttling_temp_override</span><span class="o">=</span><span class="s">90</span>
+</pre></div>
+</div>
+<ul>
+<li><p class="first">The definition of the three key-value pairings are given below.</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">throttling_enabled</span></code> : When set to <code class="docutils literal notranslate"><span class="pre">true</span></code>, clock throttling will be enabled. When set to <code class="docutils literal notranslate"><span class="pre">false</span></code>, clock throttling will be disabled, and no clock throttling will occur. The default value is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">throttling_power_override</span></code> : Provide a power threshold override in watts for clock throttling to activate. The default threshold value is given in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">throttling_temp_override</span></code> : Provide a temperature threshold override in Celsius for clock throttling to activate. The default threshold value is given in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a>.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">If a pairing is not listed in the .ini file, the default value (or the updated value from previous usage of <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span> <span class="pre">--input</span></code>) is used.</p>
+</li>
+<li><p class="first">Thresholds can be set higher or lower as necessary (e.g. debugging purposes). Note that cards still have built-in card and clock shutdown logic with independent thresholds to protect the cards.</p>
+</li>
+<li><p class="first">To check clock throttling settings, use <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> with the <code class="docutils literal notranslate"><span class="pre">cmc</span></code> report.</p>
+</li>
+</ul>
 <p>Enabling/Disabling DDR memory retention on a device</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --retention <span class="o">[</span>ENABLE<span class="p">|</span>DISABLE<span class="o">]</span>
 </pre></div>
@@ -227,7 +258,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure a device&#39;s memory settings using an image</span>
 xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/memory_config.ini
 
-<span class="c1">#Configure a device using edited output .ini from xbmgmt dump --config (see xbmgmt dump)</span>
+<span class="c1">#Configure a device using edited output .ini from xbmgmt dump --config</span>
 xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/config.ini
 
 <span class="c1">#Enable a device&#39;s DDR memory retention</span>
@@ -270,14 +301,16 @@ xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --flash -o /tmp/flash_d
 <span class="c1">#Dump system configuration. This .ini file can be edited and used as input for xbmgmt configure.</span>
 xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config_dump.ini
 
-<span class="c1">#Example .ini file contents from xbmgmt dump --config</span>
+<span class="c1">#Example .ini file contents from xbmgmt dump --config.</span>
+<span class="c1">#Only edit the throttling_enabled, throttling_power_override, and throttling_temp_override values when editing clock throttling settings.</span>
+<span class="o">[</span>Device<span class="o">]</span>
 <span class="nv">mailbox_channel_disable</span><span class="o">=</span>0x0
 <span class="nv">mailbox_channel_switch</span><span class="o">=</span>0x0
 <span class="nv">xclbin_change</span><span class="o">=</span><span class="m">0</span>
 <span class="nv">cache_xclbin</span><span class="o">=</span><span class="m">0</span>
-<span class="nv">throttling_enabled</span><span class="o">=</span><span class="nb">true</span> <span class="c1">#true or false to enable/disable clock throttling</span>
-<span class="nv">throttling_power_override</span><span class="o">=</span><span class="m">200</span> <span class="c1">#override threshold in Watts</span>
-<span class="nv">throttling_temp_override</span><span class="o">=</span><span class="m">90</span> <span class="c1">#override threshold in Celsius</span>
+<span class="nv">throttling_enabled</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">throttling_power_override</span><span class="o">=</span><span class="m">200</span>
+<span class="nv">throttling_temp_override</span><span class="o">=</span><span class="m">90</span>
 </pre></div>
 </div>
 </div>
