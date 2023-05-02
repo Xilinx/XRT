@@ -34,7 +34,7 @@
 namespace xdp {
 
 
-  AieProfile_IpuImpl::AieProfile_IpuImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
+  AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
       : AieProfileImpl(database, metadata) 
   {
     // auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
@@ -48,7 +48,7 @@ namespace xdp {
     //   aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie2_profile_config");
   }
 
-  void AieProfile_IpuImpl::updateDevice()
+  void AieProfile_WinImpl::updateDevice()
   {
 
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
@@ -71,20 +71,20 @@ namespace xdp {
 
   }
 
-  bool AieProfile_IpuImpl::setMetricsSettings(uint64_t deviceId, void* handle)
+  bool AieProfile_WinImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     std::cout << deviceId << handle << std::endl;
     return true;
   }
 
-  void AieProfile_IpuImpl::poll(uint32_t index, void* handle)
+  void AieProfile_WinImpl::poll(uint32_t index, void* handle)
   {
     std::cout << index << handle << std::endl;
-    // For now, we are waiting for a way to retreive polling information from IPU.  
+    // For now, we are waiting for a way to retreive polling information from the AIE.  
     return;
   }
 
-  void AieProfile_IpuImpl::freeResources()
+  void AieProfile_WinImpl::freeResources()
   {
     // TODO - if there are any resources we need to free after the application is complete, it must be done here.  
    

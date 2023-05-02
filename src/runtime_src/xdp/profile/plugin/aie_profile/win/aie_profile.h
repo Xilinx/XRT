@@ -26,10 +26,10 @@
 
 namespace xdp {
   
-  class AieProfile_IpuImpl : public AieProfileImpl{
+  class AieProfile_WinImpl : public AieProfileImpl{
     public:
-      AieProfile_IpuImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
-      ~AieProfile_IpuImpl() = default;
+      AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
+      ~AieProfile_WinImpl() = default;
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
@@ -54,8 +54,6 @@ namespace xdp {
       // std::unordered_set<void*> inputs;
       // std::unordered_set<void*> outputs;
       // std::unordered_set<void*> buffers;
-    
-
   };
 
 }   
