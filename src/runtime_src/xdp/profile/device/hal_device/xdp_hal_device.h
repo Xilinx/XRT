@@ -56,7 +56,8 @@ public:
   virtual void*  map(size_t id);
   virtual void   unmap(size_t id);
   virtual void   sync(size_t id, size_t sz, size_t offset, direction dir, bool async=false);
-  virtual uint64_t getDeviceAddr(size_t id);
+  virtual xclBufferExportHandle exportBuffer(size_t id);
+  virtual uint64_t              getBufferDeviceAddr(size_t id);
 
   virtual void* getRawDevice() { return mHalDevice ; }
 
@@ -67,7 +68,6 @@ public:
 
   virtual std::string getSubDevicePath(std::string& subdev, uint32_t index);
 
-  virtual xclBufferExportHandle getBufferExportHandle(size_t id);
 };
 }
 
