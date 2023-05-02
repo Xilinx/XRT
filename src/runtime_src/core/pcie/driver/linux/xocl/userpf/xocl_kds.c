@@ -1636,6 +1636,7 @@ xocl_kds_reserve_scu_subdevices(struct xocl_dev *xdev, struct xrt_cu_info *scu_i
 				    scu_info[i].iname);
 
 		scu_info[i].inst_idx = retval;
+		scu_info[i].cu_idx = retval;
 	}
 }
 
@@ -2245,7 +2246,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		struct xgq_cmd_resp_query_cu resp;
 		void *xgq;
 
-		ret = xocl_kds_xgq_query_cu(xdev, i, 0, &resp);
+		ret = xocl_kds_xgq_query_cu(xdev, cu_info[i].cu_idx, 0, &resp);
 		if (ret)
 			goto create_regular_cu;
 
@@ -2265,7 +2266,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		struct xgq_cmd_resp_query_cu resp;
 		void *xgq;
 
-		ret = xocl_kds_xgq_query_cu(xdev, i, DOMAIN_PS, &resp);
+		ret = xocl_kds_xgq_query_cu(xdev, scu_info[i].cu_idx, DOMAIN_PS, &resp);
 		if (ret)
 			goto create_regular_cu;
 

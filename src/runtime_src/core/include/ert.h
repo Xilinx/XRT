@@ -341,6 +341,7 @@ struct config_sk_image_uuid {
   uint32_t num_cus;
   uint32_t sk_name[5];
   unsigned char     sk_uuid[16];
+  uint32_t slot_id;
 };
 
 /**

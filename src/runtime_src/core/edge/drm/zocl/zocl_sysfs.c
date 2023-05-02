@@ -125,37 +125,6 @@ static ssize_t kds_numcus_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kds_numcus);
 
-static ssize_t kds_skstat_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	struct soft_krnl *sk;
-	struct soft_cu *scu;
-	ssize_t sz = 0;
-	int i;
-
-	if (!zdev || !zdev->soft_kernel)
-		return 0;
-
-	sk = zdev->soft_kernel;
-	mutex_lock(&sk->sk_lock);
-	for (i = 0; i < sk->sk_ncus; i++) {
-		scu = sk->sk_cu[i];
-		if (scu) {
-			sz += sprintf(buf+sz, "SK %d\n", i);
-			sz += sprintf(buf+sz, " flags %d\n", scu->sc_flags);
-			sz += sprintf(buf+sz, " usage %lld\n", scu->usage);
-			sz += sprintf(buf+sz, " vregs[0] 0x%x\n", ((u32*)scu->sc_vregs)[0]);
-		} else {
-			sz += sprintf(buf+sz, "SK %d is released\n", i);
-		}
-	}
-	mutex_unlock(&sk->sk_lock);
-
-	return sz;
-}
-static DEVICE_ATTR_RO(kds_skstat);
-
 static ssize_t
 kds_interval_store(struct device *dev, struct device_attribute *da,
 	       const char *buf, size_t count)
@@ -433,7 +402,6 @@ static DEVICE_ATTR_WO(zocl_reset);
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
-	&dev_attr_kds_skstat.attr,
 	&dev_attr_kds_xrt_version.attr,
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_stat.attr,

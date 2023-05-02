@@ -28,29 +28,6 @@
 #define SK_DONE			1
 #define SK_RUNNING		2
 
-struct soft_cu {
-	void			*sc_vregs;
-	struct drm_gem_object	*gem_obj;
-
-	/*
-	 * This semaphore is used for each soft kernel
-	 * CU to wait for next command. When new command
-	 * for this CU comes in or we are told to abort
-	 * a CU, ert will up this semaphore.
-	 */
-	struct semaphore	sc_sem;
-
-	uint32_t		sc_flags;
-	uint64_t		usage;
-
-	/*
-	 * soft cu pid and parent pid. This can be used to identify if the
-	 * soft cu is still running or not. The parent should never crash
-	 */
-	uint32_t		sc_pid;
-	uint32_t		sc_parent_pid;
-};
-
 struct scu_image {
 	uint32_t		si_start;	/* start instance # */
 	uint32_t		si_end;		/* end instance # */
@@ -62,7 +39,6 @@ struct scu_image {
 struct soft_krnl {
 	struct list_head	sk_cmd_list;
 	struct mutex		sk_lock;
-	struct soft_cu		*sk_cu[MAX_SOFT_KERNEL];
 
 	/*
 	 * sk_ncus is a counter represents how many
@@ -70,10 +46,10 @@ struct soft_krnl {
 	 */
 	uint32_t		sk_ncus;
 
-	int			sk_meta_bohdl;	/* metadata BO handle */
-	struct drm_zocl_bo	*sk_meta_bo;		/* BO to hold metadata */
-	uint32_t		sk_nimg;
-	struct scu_image	*sk_img;
+	int			sk_meta_bohdl[MAX_PR_SLOT_NUM];	/* metadata BO handle */
+	struct drm_zocl_bo	*sk_meta_bo[MAX_PR_SLOT_NUM];		/* BO to hold metadata */
+	uint32_t		sk_nimg[MAX_PR_SLOT_NUM];
+	struct scu_image	*sk_img[MAX_PR_SLOT_NUM];
 	wait_queue_head_t	sk_wait_queue;
 };
 
