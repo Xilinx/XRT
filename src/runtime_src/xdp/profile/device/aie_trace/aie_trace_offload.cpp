@@ -63,7 +63,7 @@ AIETraceOffload::AIETraceOffload
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
 {
-  bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
+  bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 
   // Select appropriate reader
   if (isPLIO)
@@ -100,7 +100,7 @@ bool AIETraceOffload::setupPSKernel() {
       return bufferInitialized;
     }
 
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].boHandle);
 
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
@@ -171,7 +171,7 @@ bool AIETraceOffload::initReadTrace()
     }
 
     // Data Mover will write input stream to this address
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].boHandle);
 
     std::string msg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
@@ -216,7 +216,7 @@ bool AIETraceOffload::initReadTrace()
 
       XAie_MemInst memInst;
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
-      xclBufferExportHandle boExportHandle = deviceIntf->getBufferExportHandle(buffers[i].boHandle);
+      xclBufferExportHandle boExportHandle = deviceIntf->exportTraceBuf(buffers[i].boHandle);
       if(XRT_NULL_BO_EXPORT == boExportHandle) {
         throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
       }
