@@ -127,20 +127,23 @@ std::shared_ptr<pci::dev>
 system_linux::
 get_pcidev(unsigned index, bool is_user) const
 {
-  if (is_user) {
-    if (index < user_ready_list.size())
-      return user_ready_list[index];
+  try {
+    if (is_user) {
+      if (index < user_ready_list.size())
+        return user_ready_list[index];
 
-    if ((index - user_ready_list.size()) < user_nonready_list.size())
-      return user_nonready_list[index - user_ready_list.size()];
+      if ((index - user_ready_list.size()) < user_nonready_list.size())
+        return user_nonready_list.at(index - user_ready_list.size());
+    }
 
+    if (index < mgmt_ready_list.size())
+      return mgmt_ready_list[index];
+
+    return mgmt_nonready_list.at(index - mgmt_ready_list.size());
+  }
+  catch (const std::exception&) {
     return nullptr;
   }
-
-  if (index < mgmt_ready_list.size())
-    return mgmt_ready_list[index];
-
-  return mgmt_nonready_list[index - mgmt_ready_list.size()];
 }
 
 size_t
