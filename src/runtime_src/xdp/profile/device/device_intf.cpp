@@ -965,7 +965,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // All buffers have to be 4k Aligned
-  uint64_t DeviceIntf::getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks)
+  uint64_t DeviceIntf::getAlignedTraceBufSize(uint64_t total_bytes, unsigned int num_chunks)
   {
     constexpr uint64_t TRACE_BUFFER_4K_MASK = 0xfffffffffffff000;
 
