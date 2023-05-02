@@ -953,7 +953,13 @@ DeviceIntf::~DeviceIntf()
     return static_cast<char*>(addr) + offset;
   }
 
-  uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
+  xclBufferExportHandle DeviceIntf::exportTraceBuf(size_t id)
+  {
+    std::lock_guard<std::mutex> lock(traceLock);
+    return mDevice->exportBuffer(id);
+  }
+
+  uint64_t DeviceIntf::getTraceBufDeviceAddr(size_t bufHandle)
   {
     return mDevice->getBufferDeviceAddr(bufHandle);
   }
@@ -1097,12 +1103,6 @@ DeviceIntf::~DeviceIntf()
       status += ip->getDeadlockDiagnosis(print);
 
     return status;
-  }
-
-  xclBufferExportHandle DeviceIntf::getBufferExportHandle(size_t id)
-  {
-    std::lock_guard<std::mutex> lock(traceLock);
-    return mDevice->exportBuffer(id);
   }
 
 } // namespace xdp

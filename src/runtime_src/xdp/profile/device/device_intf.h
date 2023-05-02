@@ -118,7 +118,9 @@ class DeviceIntf {
     XDP_EXPORT
     void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
     XDP_EXPORT
-    uint64_t getDeviceAddr(size_t bufHandle);
+    xclBufferExportHandle exportTraceBuf(size_t id);
+    XDP_EXPORT
+    uint64_t getTraceBufDeviceAddr(size_t bufHandle);
     XDP_EXPORT
     uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
 
@@ -214,9 +216,6 @@ class DeviceIntf {
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
-
-    XDP_EXPORT
-    xclBufferExportHandle getBufferExportHandle(size_t id);
 
   private:
     // Turn on/off debug messages to stdout
