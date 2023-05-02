@@ -430,14 +430,14 @@ static size_t xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, char *buf
 				sizeof(log) * log_idx,
 				sizeof(log));
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
-
-			/* calling call back function */
-			count += dump_cb(xgq, buf ? buf + count : NULL, log.log_buf);
-			if (count > PAGE_SIZE) {
-				XGQ_WARN(xgq, "message size %ld exceeds page %ld",
+			if((PAGE_SIZE - count) < sizeof(log.log_buf)){
+				XGQ_WARN(xgq, "Ignoring messages size %ld exceeds page %ld",
 					count, PAGE_SIZE);
 				break;
 			}
+
+			/* calling call back function */
+			count += dump_cb(xgq, buf ? buf + count : NULL, log.log_buf);
 		}
 	} else {
 		XGQ_WARN(xgq, "vmr payload partition table is not available");
