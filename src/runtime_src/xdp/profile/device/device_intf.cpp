@@ -955,7 +955,7 @@ DeviceIntf::~DeviceIntf()
 
   uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
   {
-    return mDevice->getDeviceAddr(bufHandle);
+    return mDevice->getBufferDeviceAddr(bufHandle);
   }
 
   // All buffers have to be 4k Aligned
@@ -1102,7 +1102,7 @@ DeviceIntf::~DeviceIntf()
   xclBufferExportHandle DeviceIntf::getBufferExportHandle(size_t id)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    return mDevice->getBufferExportHandle(id);
+    return mDevice->exportBuffer(id);
   }
 
 } // namespace xdp
