@@ -21,7 +21,7 @@ class shared_handle
 {
 public:
 #ifdef _WIN32
-  using export_handle = void*;
+  using export_handle = uint64_t;
 #else
   using export_handle = int;
 #endif
