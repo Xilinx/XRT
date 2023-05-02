@@ -194,13 +194,9 @@ system()
     xrt_core::send_exception_message(err.what(), "WARNING");
   }
 
-  //user_ready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ true);
   std::cout << "system :: size of user_ready_list : " << user_ready_list.size() << std::endl;
-  //user_nonready_list = xrt_core::get_device_list(/*isuser*/ true, /*isready*/ false);
   std::cout << "system :: size of user_nonready_list : " << user_nonready_list.size() << std::endl;
-  //mgmt_ready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ true);
   std::cout << "system :: size of mgmt_ready_list : " << mgmt_ready_list.size() << std::endl;
-  //mgmt_nonready_list = xrt_core::get_device_list(/*isuser*/ false, /*isready*/ false);
   std::cout << "system :: size of mgmt_nonready_list : " << mgmt_nonready_list.size() << std::endl;
 }
 
@@ -233,7 +229,7 @@ get_devices(boost::property_tree::ptree& pt) const
 
 std::shared_ptr<dev>
 system::
-get_pcidev(unsigned index, bool is_user) const
+get_device(unsigned index, bool is_user) const
 {
   if (is_user) {
     if (index < user_ready_list.size())
@@ -391,7 +387,7 @@ get_device_id(const std::string& bdf) const
     return system::get_device_id_default(bdf);
 
   unsigned int i = 0;
-  for (auto dev = get_pcidev(0); dev; dev = get_pcidev(++i)) {
+  for (auto dev = get_device(0); dev; dev = get_device(++i)) {
     // [dddd:bb:dd.f]
     auto bdf_tuple = dev->get_bdf_info();
     auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % std::get<0>(bdf_tuple) % std::get<1>(bdf_tuple) % std::get<2>(bdf_tuple) % std::get<3>(bdf_tuple));
@@ -419,7 +415,7 @@ std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
 system::
 get_bdf_info(device::id_type id, bool is_user) const
 {
-  auto pdev = get_pcidev(id, is_user);
+  auto pdev = get_device(id, is_user);
   if(!pdev)
     return std::make_tuple(uint16_t(0), uint16_t(0), uint16_t(0), uint16_t(0));
   return pdev->get_bdf_info();
@@ -429,7 +425,7 @@ std::shared_ptr<device>
 system::
 get_userpf_device(device::id_type id) const
 {
-  auto pdev = get_pcidev(id, true);
+  auto pdev = get_device(id, true);
   if (!pdev)
     return nullptr;
   return xrt_core::get_userpf_device(pdev->create_shim(id));
@@ -439,7 +435,7 @@ std::shared_ptr<device>
 system::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
-  auto pdev = get_pcidev(id, true);
+  auto pdev = get_device(id, true);
   return pdev->create_device(handle, id);
 }
 
@@ -447,7 +443,7 @@ std::shared_ptr<device>
 system::
 get_mgmtpf_device(device::id_type id) const
 {
-  auto pdev = get_pcidev(id, false);
+  auto pdev = get_device(id, false);
   return pdev->create_device(nullptr, id);
 }
 
@@ -645,7 +641,7 @@ get_dev_total(bool user)
 std::shared_ptr<dev>
 get_dev(unsigned index, bool user)
 {
-  return instance().get_pcidev(index, user);
+  return instance().get_device(index, user);
 }
 
 void

@@ -116,8 +116,8 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
 
   xclswemuhal2::SwEmuShim *handle = nullptr;
   bool bDefaultDevice = false;
-  std::map<unsigned int, xclswemuhal2::SwEmuShim*>::iterator it = xclswemuhal2::devices.find(deviceIndex);
-  if(it != xclswemuhal2::devices.end())
+  std::map<unsigned int, xclswemuhal2::SwEmuShim*>::iterator it = xclswemuhal2::get_devices().find(deviceIndex);
+  if(it != xclswemuhal2::get_devices().end())
   {
     handle = (*it).second;
   }
@@ -125,7 +125,9 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   {
     handle = new xclswemuhal2::SwEmuShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
     bDefaultDevice = true;
-    xclswemuhal2::devices[deviceIndex++] = handle;
+    //xclswemuhal2::devices[deviceIndex++] = handle;
+    xclswemuhal2::get_devices().insert({ deviceIndex,handle });
+    deviceIndex++;
   }
 
   if (!xclswemuhal2::SwEmuShim::handleCheck(handle)) {
@@ -144,7 +146,7 @@ void xclClose(xclDeviceHandle handle)
   if (!drv)
     return ;
   drv->xclClose();
-  if (xclswemuhal2::SwEmuShim::handleCheck(handle) && xclswemuhal2::devices.size() == 0) {
+  if (xclswemuhal2::SwEmuShim::handleCheck(handle) && xclswemuhal2::get_devices().size() == 0) {
     delete ((xclswemuhal2::SwEmuShim*)handle);
   }
 }
@@ -453,7 +455,9 @@ unsigned xclProbe()
       info.mName[length] = '\0';
     }
     xclswemuhal2::SwEmuShim *handle = new xclswemuhal2::SwEmuShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
-    xclswemuhal2::devices[deviceIndex++] = handle;
+    //xclswemuhal2::devices[deviceIndex++] = handle;
+    xclswemuhal2::get_devices().insert({ deviceIndex,handle });
+    deviceIndex++;
   }
 
   xclProbeCallCnt++;

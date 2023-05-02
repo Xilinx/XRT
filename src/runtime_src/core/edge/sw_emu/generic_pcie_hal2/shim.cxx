@@ -13,7 +13,11 @@
 
 namespace xclswemuhal2 {
 
-  std::map<unsigned int, SwEmuShim*> devices;
+  std::map<unsigned int, SwEmuShim*>& get_devices() {
+    static std::map<unsigned int, SwEmuShim*> devices;
+    return devices;
+  }
+
   unsigned int SwEmuShim::mBufferCount = 0;
   unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string,int,void*> > SwEmuShim::mFdToFileNameMap;
@@ -266,8 +270,8 @@ namespace xclswemuhal2 {
 
   static void saveDeviceProcessOutputs()
   {
-    std::map<unsigned int, SwEmuShim*>::iterator start = devices.begin();
-    std::map<unsigned int, SwEmuShim*>::iterator end = devices.end();
+    std::map<unsigned int, SwEmuShim*>::iterator start = get_devices().begin();
+    std::map<unsigned int, SwEmuShim*>::iterator end = get_devices().end();
     for(; start != end; start++)
     {
       SwEmuShim* handle = (*start).second;
@@ -1499,7 +1503,7 @@ namespace xclswemuhal2 {
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
-    mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
+    mCoreDevice = xrt_core::get_userpf_device(this, mDeviceIndex);
   }
 
   void SwEmuShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)

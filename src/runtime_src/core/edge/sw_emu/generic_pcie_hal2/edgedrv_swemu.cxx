@@ -30,7 +30,7 @@ namespace xrt_core {
     {
       try {
         auto nd = xclProbe();
-        std::cout << "num zocl dev" << nd << std::endl;
+        std::cout << "num se_emu dev: " << nd << std::endl;
         auto pf = create_edgedev();
         ready_list.push_back(std::move(pf));
       }

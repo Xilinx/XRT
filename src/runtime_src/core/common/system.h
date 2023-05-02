@@ -120,7 +120,7 @@ public:
 
   virtual
   std::shared_ptr<dev>
-  get_pcidev(unsigned index, bool is_user = true) const;
+  get_device(unsigned index, bool is_user = true) const;
 
   virtual
   size_t

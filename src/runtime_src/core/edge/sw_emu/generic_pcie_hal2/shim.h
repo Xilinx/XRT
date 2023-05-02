@@ -41,6 +41,8 @@
 #endif
 
 namespace xclswemuhal2 {
+  //get devices map
+  std::map<unsigned int, SwEmuShim*>& get_devices();
   // XDMA Shim
   class SwEmuShim {
     public:
@@ -645,7 +647,6 @@ namespace xclswemuhal2 {
     std::vector<std::string> rtps;
     static unsigned int mGraphHandle;
   };
-  extern std::map<unsigned int, SwEmuShim*> devices;
 }
 
 #endif
