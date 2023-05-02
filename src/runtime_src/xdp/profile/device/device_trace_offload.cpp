@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -446,7 +446,7 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
       return false;
 
     // Data Mover will write input stream to this address
-    bd.address = dev_intf->getDeviceAddr(bd.buf);
+    bd.address = dev_intf->getTraceBufDeviceAddr(bd.buf);
     dev_intf->initTS2MM(i, bd.alloc_size, bd.address, ts2mm_info.use_circ_buf);
 
     debug_stream
