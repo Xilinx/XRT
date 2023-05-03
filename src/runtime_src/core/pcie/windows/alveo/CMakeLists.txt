@@ -6,7 +6,8 @@ add_library(core_pciewindows_alveo_objects OBJECT
   mgmt.cpp
   perf.cpp
   shim.cpp
-  pcidrv_windows.cxx
+  pcidrv_user.cxx
+  pcidrv_mgmt.cxx
   pcidev_windows.cxx
   )
 

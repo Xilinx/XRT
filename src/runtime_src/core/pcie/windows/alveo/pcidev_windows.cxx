@@ -3,6 +3,7 @@
 
 #include "pcidev_windows.h"
 #include "mgmt.h"
+#include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
 
 #include <chrono>
 #include <ctime>

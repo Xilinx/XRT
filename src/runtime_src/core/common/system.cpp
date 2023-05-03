@@ -8,12 +8,8 @@
 #include "gen/version.h"
 #include "query_requests.h"
 
-
 #include <boost/format.hpp>
 #include <boost/property_tree/ini_parser.hpp>
-#include <gnu/libc-version.h>
-#include <sys/utsname.h>
-
 #include <chrono>
 #include <ctime>
 #include <fstream>
@@ -22,8 +18,13 @@
 #include <mutex>
 #include <regex>
 #include <thread>
-#include <unistd.h>
 #include <vector>
+
+#ifdef __linux__
+#include <gnu/libc-version.h>
+#include <sys/utsname.h>
+#include <unistd.h>
+#endif
 
 #ifdef _WIN32
 #include <setupapi.h>
@@ -61,6 +62,7 @@ static const char* pcie_pfm = "pcie";
 // mutex to protect insertion
 static std::mutex mutex;
 
+#ifdef __linux__
 static boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
@@ -117,6 +119,7 @@ machine_info()
   }
   return model;
 }
+#endif
 
 #ifdef _WIN32
 static std::string
@@ -283,6 +286,7 @@ system::
 get_xrt_info(boost::property_tree::ptree& pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
+#ifdef __linux__
   if (std::strcmp(PFM_NAME, pcie_pfm) == 0) { //pcie
     //for (const auto& drv : xrt_core::pci::get_driver_list()) // TODO::?
     //  _ptDriverInfo.push_back( {"", driver_version(drv->name())} ); 
@@ -296,6 +300,7 @@ get_xrt_info(boost::property_tree::ptree& pt)
     pt.put("build.branch", xrt_build_version_branch);
     _ptDriverInfo.push_back(std::make_pair("", driver_version("zocl")));
   }
+#endif
   pt.put_child("drivers", _ptDriverInfo);
 }
 
@@ -408,7 +413,7 @@ std::pair<device::id_type, device::id_type>
 system::
 get_total_devices(bool is_user) const
 {
-  return std::make_pair(get_num_dev_total(is_user), get_num_dev_ready(is_user));
+  return std::make_pair(static_cast<device::id_type>(get_num_dev_total(is_user)), static_cast<device::id_type>(get_num_dev_ready(is_user)));
 }
 
 std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef _XCL_PCIDRV_WINDOWS_H_
-#define _XCL_PCIDRV_WINDOWS_H_
+#ifndef _XCL_PCIDRV_MGMT_H_
+#define _XCL_PCIDRV_MGMT_H_
 
 #include "pcidev_windows.h"
 #include <string>
 
 namespace xrt_core { namespace pci {
 
-class drv_windows
+class pcidrv_mgmt
 {
 public:
   std::string
-  name() const { return "windows"; }
+  name() const { return "mgmtpf"; }
 
   bool
   is_user() const { return true; }

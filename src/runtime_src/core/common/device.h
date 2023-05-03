@@ -455,7 +455,7 @@ public:
   /**
  * program_plp() - program plp
  */
-  virtual void program_plp(const std::vector<char>& buffer, bool force) const
+  virtual void program_plp(const std::vector<char>& , bool) const
   { throw std::runtime_error("plp program is not supported"); }
 
   /**

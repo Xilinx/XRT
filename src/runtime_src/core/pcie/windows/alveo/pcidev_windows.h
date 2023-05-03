@@ -18,13 +18,13 @@ public:
   // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
   virtual std::shared_ptr<device>
-  create_device(device::handle_type handle, device::id_type id) const override;
+  create_device(device::handle_type handle, device::id_type id) const;
 
   virtual device::handle_type
-  create_shim(device::id_type id) const override;
+  create_shim(device::id_type id) const;
 
   virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-  get_bdf_info(device::id_type id, bool is_user) const override;
+  get_bdf_info(device::id_type id, bool is_user) const;
 };
 
 } } // namespace xrt_core :: pci

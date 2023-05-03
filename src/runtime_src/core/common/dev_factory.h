@@ -12,11 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <sys/mman.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
 namespace xrt_core {
 
 //// Forward declaration
@@ -71,6 +66,7 @@ get_dev(unsigned index, bool user = true);
  * constructor, either explicitly for built-in drivers or through dlopen for plug-in ones.
  * For now, once added, it cannot be removed until the list itself is out of scope.
  */
+XRT_CORE_COMMON_EXPORT
 void
 register_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist);
 
