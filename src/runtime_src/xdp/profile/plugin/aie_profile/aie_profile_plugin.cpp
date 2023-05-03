@@ -86,15 +86,16 @@ namespace xdp
   uint64_t AieProfilePlugin::getDeviceIDFromHandle(void *handle)
   {
 
-#ifdef _WIN32
-    return 0;
-#else
+
     constexpr uint32_t PATH_LENGTH = 512;
 
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
+#ifdef _WIN32
+    return 0;
+#else
     char pathBuf[PATH_LENGTH];
     memset(pathBuf, 0, PATH_LENGTH);
 
@@ -140,7 +141,7 @@ namespace xdp
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
 #ifdef _WIN32
-    AIEData.implementation = std::make_unique<AieProfile_IpuImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
 #else
