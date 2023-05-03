@@ -2,6 +2,8 @@
 # Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
 #
 
+if( NOT WIN32)
+
 # find_package(PythonLibs is depracted as of cmake 3.12.
 if (CMAKE_VERSION VERSION_LESS "3.12")
   find_package(PythonLibs 3.4.0 REQUIRED)
@@ -14,6 +16,7 @@ if (CMAKE_VERSION VERSION_LESS "3.12")
   endif(PythonLibs_FOUND)
   set(HAS_PYTHON ${PythonLibs_FOUND})
 else()
+  set(Python3_FIND_STRATEGY "VERSION")
   find_package(Python3 COMPONENTS Development Interpreter)
   if (Python3_FOUND)
     message("-- Python libs version: ${Python3_VERSION}")
@@ -25,13 +28,25 @@ else()
 endif(CMAKE_VERSION VERSION_LESS "3.12")
 
 if (HAS_PYTHON)
-  if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
-    SET(PKGDIR "dist-packages")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
-    SET(PKGDIR "site-packages")
-  endif(${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
+	#  if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
+	#    SET(PKGDIR "site-packages")
+	#  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
+	#    SET(PKGDIR "site-packages")
+	#  endif(${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
 
-  find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/usr/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  execute_process(COMMAND bash "-c" "pip3 show pybind11 | grep Location: | cut -d ' ' -f2"
+    RESULT_VARIABLE pybind_found
+    OUTPUT_VARIABLE PKGDIR
+    ERROR_VARIABLE ERR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+  message("-- pybind11 location: ${PKGDIR}")
+
+  #find_package(pybind11 2.10.4 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/usr/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  #message("Looking in /home/$ENV{USER}/.local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  #find_package(pybind11 2.10.4 REQUIRED PATHS "/home/$ENV{USER}/.local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/home/$ENV{USER}/.local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}/pybind11")
 endif(HAS_PYTHON)
 
 if (pybind11_FOUND)
@@ -47,3 +62,43 @@ if (pybind11_FOUND)
 else(pybind11_FOUND)
   message(WARNING "-- pybind11 or python3 libs not found, pybind11 support disabled")
 endif(pybind11_FOUND)
+
+else()
+# = WINDOWS ===================================================================
+find_package(Python3 COMPONENTS Development Interpreter)
+if (Python3_FOUND)
+  message("-- Python libs version: ${Python3_VERSION}")
+  message("-- PYTHON_INCLUDE_PATH ${Python3_INCLUDE_DIRS}")
+  set(PYTHONLIBS_VERSION_MAJOR ${Python3_VERSION_MAJOR})
+  set(PYTHONLIBS_VERSION_MINOR ${Python3_VERSION_MINOR})
+endif(Python3_FOUND)
+
+set(HAS_PYTHON ${Python3_FOUND})
+
+if (HAS_PYTHON)
+  execute_process(COMMAND bash "-c" "py.exe -m pip show pybind11 | grep Location: | cut -d ' ' -f2"
+      RESULT_VARIABLE pybind_found
+      OUTPUT_VARIABLE PKGDIR
+      ERROR_VARIABLE ERR
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+  message("-- pybind11 location: ${PKGDIR}")
+  find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}/pybind11")
+endif(HAS_PYTHON)
+
+if (pybind11_FOUND)
+  INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+  pybind11_add_module(pyxrt src/pyxrt.cpp)
+  target_link_libraries(pyxrt PRIVATE xrt_coreutil uuid pthread)
+
+  install(TARGETS pyxrt
+    EXPORT xrt-targets
+    LIBRARY DESTINATION ${XRT_INSTALL_PYTHON_DIR} ${XRT_NAMELINK_SKIP}
+    )
+
+else(pybind11_FOUND)
+  message(WARNING "-- pybind11 or python3 libs not found, pybind11 support disabled")
+endif(pybind11_FOUND)
+
+endif()

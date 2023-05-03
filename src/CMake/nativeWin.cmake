@@ -95,3 +95,6 @@ add_subdirectory(runtime_src)
 
 # --- Find Package Support ---
 include (CMake/findpackage.cmake)
+
+# --- Python bindings ---
+add_subdirectory(python)
