@@ -183,7 +183,15 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   xrt_bos[boIndex].sync(dir, size, offset);
 }
 
-uint64_t HalDevice::getDeviceAddr(size_t id)
+xclBufferExportHandle HalDevice::exportBuffer(size_t id)
+{
+  if(!id) return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
+  size_t boIndex = id - 1;
+
+  return (xrt_bos[boIndex].export_buffer());
+}
+
+uint64_t HalDevice::getBufferDeviceAddr(size_t id)
 {
   if(!id) return 0;
   size_t boIndex = id - 1;
@@ -219,14 +227,6 @@ std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
   xclGetSubdevPath(mHalDevice, subdev.c_str(), index, buffer, maxSz);
 
   return std::string(buffer);
-}
-
-xclBufferExportHandle HalDevice::getBufferExportHandle(size_t id)
-{
-  if(!id) return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
-  size_t boIndex = id - 1;
-
-  return (xrt_bos[boIndex].export_buffer());
 }
 
 }
