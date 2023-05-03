@@ -22,40 +22,41 @@
 #include "core/include/xrt/xrt_kernel.h"
 // #include "aiegraph.hpp"
 
-#include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 
-namespace xdp {
-  
-  class AieProfile_WinImpl : public AieProfileImpl{
-    public:
-      AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
-      ~AieProfile_WinImpl() = default;
+namespace xdp
+{
 
-      void updateDevice();
-      void poll(uint32_t index, void* handle);
-      void freeResources();
-      bool setMetricsSettings(uint64_t deviceId, void* handle);
+  class AieProfile_WinImpl : public AieProfileImpl
+  {
+  public:
+    AieProfile_WinImpl(VPDatabase *database, std::shared_ptr<AieProfileMetadata> metadata);
+    ~AieProfile_WinImpl() = default;
 
-    private:
-      xrt::device device;
-      // xrt::kernel aie_profile_kernel;
+    void updateDevice();
+    void poll(uint32_t index, void *handle);
+    void freeResources();
+    bool setMetricsSettings(uint64_t deviceId, void *handle);
 
-      // //inpu specific private members
-      // std::string name;
-      
+  private:
+    xrt::device device;
+    // xrt::kernel aie_profile_kernel;
 
-      // AIEGraphHandle aiegraph_handle;
-      //XrtContext &xrt_context_
-      //std::vector<bd_bundle> bd_bundles;
-      // xrt::bo bo_fm;
-      // xrt::bo bo_instr;
-      // std::vector<xrt::bo> bufferidx_to_xrt_subbo;
+    // //inpu specific private members
+    // std::string name;
 
-      // std::unordered_set<void*> inputs;
-      // std::unordered_set<void*> outputs;
-      // std::unordered_set<void*> buffers;
+    // AIEGraphHandle aiegraph_handle;
+    // XrtContext &xrt_context_
+    // std::vector<bd_bundle> bd_bundles;
+    // xrt::bo bo_fm;
+    // xrt::bo bo_instr;
+    // std::vector<xrt::bo> bufferidx_to_xrt_subbo;
+
+    // std::unordered_set<void*> inputs;
+    // std::unordered_set<void*> outputs;
+    // std::unordered_set<void*> buffers;
   };
 
-}   
+}
 
 #endif
