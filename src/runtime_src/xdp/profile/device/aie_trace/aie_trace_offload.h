@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -49,7 +49,7 @@ if(!m_debug); else std::cout
 
 struct AIETraceBufferInfo
 {
-  size_t   boHandle;
+  size_t   bufId;
 //  uint64_t allocSz;	// currently all the buffers are equal size
   uint64_t usedSz;
   uint64_t offset;
@@ -58,7 +58,7 @@ struct AIETraceBufferInfo
   bool     offloadDone;
 
   AIETraceBufferInfo()
-    : boHandle(0),
+    : bufId(0),
       usedSz(0),
       offset(0),
       rollover_count(0),
