@@ -562,6 +562,7 @@ __xocl_create_bo_ioctl(struct drm_device *dev, struct drm_file *filp,
 	if (bo_type != XOCL_BO_EXECBUF) {
 		/* Currently userspace will provide the corresponding hw context id.
 		 * Driver has to map that hw context to the corresponding slot id.
+		 * This is not valid for Host memory.
 		 */
 		hw_ctx_id = xocl_bo_slot_idx(args->flags);
 		ret = xocl_get_slot_id_by_hw_ctx_id(xdev, filp, hw_ctx_id);
@@ -571,6 +572,7 @@ __xocl_create_bo_ioctl(struct drm_device *dev, struct drm_file *filp,
 		slot_id = ret;
 		args->flags = xocl_bo_set_slot_idx(args->flags, slot_id);
 	}
+
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
