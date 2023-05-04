@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/alveo_shim")
 set(EM_PLUGIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/alveo_shim/plugin/xdp")

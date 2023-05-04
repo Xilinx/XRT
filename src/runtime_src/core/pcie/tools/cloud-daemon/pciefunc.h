@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 /* Class defining device model needed by all daemons. */
 

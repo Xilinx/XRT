@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #define XCL_DRIVER_DLL_EXPORT
 #include "device_windows.h"

@@ -650,7 +650,7 @@ get_dev(unsigned index, bool user)
 }
 
 void
-register_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist)
+register_device_list(const std::vector<std::shared_ptr<xrt_core::dev>>& devlist)
 {
   for (auto device : devlist) {
     if (device->m_is_mgmt) {

@@ -59,7 +59,7 @@ get_dev(unsigned index, bool user = true);
  */
 XRT_CORE_COMMON_EXPORT
 void
-register_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist);
+register_device_list(const std::vector<std::shared_ptr<xrt_core::dev>>& devlist);
 
 } // namespace xrt_core
 
