@@ -1000,8 +1000,11 @@ namespace xclswemuhal2 {
         }
       }
     }
-    //Create thread for TCP socket connection
+    // TCP socket thread sets a promise to ensure it is started.
+    // once, thread starts, server gets ready by shim driver
+    // device process can easily make connect() call when server is ready.
     auto fut = tcp_socket_pr.get_future();
+    //Create thread for TCP socket connection
     std::thread tcpSockThread = std::thread(&SwEmuShim::socketConnection, this, true);
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
@@ -1012,7 +1015,6 @@ namespace xclswemuhal2 {
         status = fut.wait_for(std::chrono::seconds(1));
       } while (status != std::future_status::ready && ++counter < 30);
       
-      std::cout<<"\n the counter value is "<<counter;
       if (status != std::future_status::ready) {
         std::cerr<<"ERROR: [SW_EMU 13] TCP/IP socket thread is not started yet,something wrong with OS, So exiting the application now.";
         exit(1);
