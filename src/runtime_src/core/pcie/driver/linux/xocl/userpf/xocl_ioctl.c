@@ -744,8 +744,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	}
 
 done:
-	/* Update the slot */
-	*slot = slot_id;
 	if (size < 0)
 		err = size;
 	if (err) {
@@ -766,6 +764,8 @@ done:
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
 
 out_done:
+	/* Update the slot */
+	*slot = slot_id;
 	vfree(axlf);
 	return err;
 }
