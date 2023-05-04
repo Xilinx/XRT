@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef _XCL_EDGEDEV_SWEMU_H_
 #define _XCL_EDGEDEV_SWEMU_H_
@@ -8,22 +8,22 @@
 #include "core/common/dev_factory.h"
 #include <string>
 
-namespace xrt_core {
-  namespace edge {
-    class edgedev_swemu : public dev
-    {
-    public:
+namespace xrt_core { namespace edge {
 
-      edgedev_swemu(bool isuser) :dev(isuser) {}
-      // Hand out a "device" instance that is specific to this type of device.
-      // Caller will use this device to access device specific implementation of ishim.
-      virtual std::shared_ptr<device>
-        create_device(device::handle_type handle, device::id_type id) const override;
+  class edgedev_swemu : public dev
+  {
+  public:
 
-      virtual device::handle_type
-        create_shim(device::id_type id) const override;
-    };
-  }
-} // namespace xrt_core :: edge
+    edgedev_swemu(bool isuser) :dev(isuser) {}
+    // Hand out a "device" instance that is specific to this type of device.
+    // Caller will use this device to access device specific implementation of ishim.
+    virtual std::shared_ptr<device>
+      create_device(device::handle_type handle, device::id_type id) const override;
+
+    virtual device::handle_type
+      create_shim(device::id_type id) const override;
+  };
+
+} } // namespace xrt_core :: edge
 
 #endif

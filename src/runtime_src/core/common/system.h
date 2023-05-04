@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_CORE_SYSTEM_H
 #define XRT_CORE_SYSTEM_H
 
@@ -28,15 +28,15 @@ public:
   system();
 
   // REMOVE
-  virtual void
+  void
   get_xrt_info(boost::property_tree::ptree&);
 
   // REMOVE
-  virtual void
+  void
   get_os_info(boost::property_tree::ptree&);
 
   // REMOVE
-  virtual void
+  void
   get_devices(boost::property_tree::ptree&) const;
 
   /**
@@ -52,19 +52,19 @@ public:
    * on this function converting the string to a device index.
    */
   XRT_CORE_COMMON_EXPORT
-  virtual device::id_type
+  device::id_type
   get_device_id(const std::string& str) const;
 
   device::id_type
   get_device_id_default(const std::string& str) const;
   /**
    */
-  virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+  std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
   get_bdf_info(device::id_type, bool) const;
 
   /**
    */
-  virtual std::pair<device::id_type, device::id_type>
+  std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user = true) const;
 
   /**
@@ -76,7 +76,7 @@ public:
    * The returned device is managed, such that xclClose is called
    * when device is no longer referenced.
    */
-  virtual std::shared_ptr<device>
+  std::shared_ptr<device>
   get_userpf_device(device::id_type id) const;
 
   /**
@@ -92,13 +92,13 @@ public:
    * The returned device is unmanaged, in other words xclClose is
    * not called when device goes out of scope.
    */
-  virtual std::shared_ptr<device>
+  std::shared_ptr<device>
   get_userpf_device(device::handle_type hdl, device::id_type) const;
 
   /**
    * get_mgmtpf_device() - construct mgmt device from device id
    */
-  virtual std::shared_ptr<device>
+  std::shared_ptr<device>
   get_mgmtpf_device(device::id_type id) const;
 
   /**
@@ -112,21 +112,18 @@ public:
    * here so that clients trigger off of the type.
    */
   enum class monitor_access_type { bar, mmap, ioctl };
-  virtual monitor_access_type
+  monitor_access_type
   get_monitor_access_type() const;
 
-  virtual void
+  void
   program_plp(const device*, const std::vector<char>&, bool) const;
 
-  virtual
   std::shared_ptr<dev>
   get_device(unsigned index, bool is_user = true) const;
 
-  virtual
   size_t
   get_num_dev_ready(bool is_user) const;
 
-  virtual
   size_t
   get_num_dev_total(bool is_user) const;
 

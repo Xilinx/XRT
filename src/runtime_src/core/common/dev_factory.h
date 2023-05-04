@@ -1,23 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2016-2020 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _XCL_DEV_FACTORY_H_
 #define _XCL_DEV_FACTORY_H_
 
 #include "device.h"
-
-#include <fcntl.h>
-#include <memory>
-#include <mutex>
-#include <string>
 #include <vector>
 
 namespace xrt_core {
 
-//// Forward declaration
-//class drv;
-
-// One PCIe function on FPGA or AIE device
+// One function on FPGA or AIE device
 class dev
 {
 public:
@@ -62,14 +53,14 @@ get_dev(unsigned index, bool user = true);
 
 
 /**
- * Adding driver instance to the global list. Should only be called during system_linux's
- * constructor, either explicitly for built-in drivers or through dlopen for plug-in ones.
+ * Adding device_factory instance to the global list. Should only be called from global object of
+ * built-in drivers through dlopen.
  * For now, once added, it cannot be removed until the list itself is out of scope.
  */
 XRT_CORE_COMMON_EXPORT
 void
 register_device_list(std::vector<std::shared_ptr<xrt_core::dev>> devlist);
 
-} // namespace xrt_core :: pci
+} // namespace xrt_core
 
 #endif

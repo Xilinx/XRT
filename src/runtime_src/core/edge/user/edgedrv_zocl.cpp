@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "edgedrv_zocl.h"
 
@@ -17,28 +17,24 @@ namespace {
   } edgedev_linux_reg;
 }
 
-namespace xrt_core {
-  namespace edge {
-    std::shared_ptr<xrt_core::dev>
-    edgedrv_zocl::create_edgedev() const
-    {
-      return std::make_shared<edgedev_linux>(/*isuser*/ true);
-    }
-
-    void
-    edgedrv_zocl::scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list) const
-    {
-      try {
-        auto nd = xclProbe();
-        std::cout << "num zocl dev" << nd << std::endl;
-        auto pf = create_edgedev();
-        ready_list.push_back(std::move(pf));
-      }
-      catch (const std::invalid_argument&) {
-        //exeception
-        std::cout << "************ edgedrv_zocl:scan_devices : exeception **********" << std::endl;
-      }
-    }
-
+namespace xrt_core { namespace edge {
+  std::shared_ptr<xrt_core::dev>
+  edgedrv_zocl::create_edgedev() const
+  {
+    return std::make_shared<edgedev_linux>(/*isuser*/ true);
   }
-} // namespace xrt_core :: edge
+
+  void
+  edgedrv_zocl::scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& ready_list) const
+  {
+    try {
+      auto nd = xclProbe();
+      std::cout << "num zocl dev " << nd << std::endl;
+      auto pf = create_edgedev();
+      ready_list.push_back(std::move(pf));
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error(e.what());
+    }
+  }
+} } // namespace xrt_core :: edge

@@ -17,30 +17,27 @@ namespace {
   } pcidrv_user_reg;
 }
 
-namespace xrt_core {
-  namespace pci {
-    std::shared_ptr<dev>
-    pcidrv_user::create_pcidev() const
-    {
-      return std::make_shared<pcidev_windows>(/*isuser*/ true);
-    }
-
-    void
-    pcidrv_user::scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const
-    {
-      try {
-        auto nd = xclProbe(); //userpf
-        std::cout << "num of windows userpf dev : " << nd << std::endl;
-        for (unsigned int idx = 0; idx < nd; idx++) {
-          auto pf = create_pcidev();
-          dev_list.push_back(std::move(pf));
-        }
-      }
-      catch (const std::invalid_argument&) {
-        //exeception
-        std::cout << "************ pcidrv_user:scan_devices : exeception **********" << std::endl;
-      }
-    }
-
+namespace xrt_core { namespace pci {
+  std::shared_ptr<dev>
+  pcidrv_user::create_pcidev() const
+  {
+    return std::make_shared<pcidev_windows>(/*isuser*/ true);
   }
-} // namespace xrt_core :: pci
+
+  void
+  pcidrv_user::scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const
+  {
+    try {
+      auto nd = xclProbe(); //userpf
+      std::cout << "num of windows userpf dev : " << nd << std::endl;
+      for (unsigned int idx = 0; idx < nd; idx++) {
+        auto pf = create_pcidev();
+        dev_list.push_back(std::move(pf));
+      }
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error(e.what());
+    }
+  }
+
+ } } // namespace xrt_core :: pci

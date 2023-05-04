@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidev_linux.h"
 //#include "xclbin.h"
@@ -30,126 +30,126 @@
 
 namespace {
 
-    namespace bfs = boost::filesystem;
+  namespace bfs = boost::filesystem;
 
-    static std::string
-        get_name(const std::string& dir, const std::string& subdir)
-    {
-        std::string line;
-        std::ifstream ifs(dir + "/" + subdir + "/name");
+  static std::string
+  get_name(const std::string& dir, const std::string& subdir)
+  {
+    std::string line;
+    std::ifstream ifs(dir + "/" + subdir + "/name");
 
-        if (ifs.is_open())
-            std::getline(ifs, line);
+    if (ifs.is_open())
+      std::getline(ifs, line);
 
-        return line;
-    }
+    return line;
+  }
 
-    // Helper to find subdevice directory name
-    // Assumption: all subdevice's sysfs directory name starts with subdevice name!!
-    static int
-        get_subdev_dir_name(const std::string& dir, const std::string& subDevName, std::string& subdir)
-    {
-        DIR* dp;
-        size_t sub_nm_sz = subDevName.size();
+  // Helper to find subdevice directory name
+  // Assumption: all subdevice's sysfs directory name starts with subdevice name!!
+  static int
+  get_subdev_dir_name(const std::string& dir, const std::string& subDevName, std::string& subdir)
+  {
+    DIR* dp;
+    size_t sub_nm_sz = subDevName.size();
 
-        subdir = "";
-        if (subDevName.empty())
-            return 0;
+    subdir = "";
+    if (subDevName.empty())
+      return 0;
 
-        int ret = -ENOENT;
-        dp = opendir(dir.c_str());
-        if (dp) {
-            struct dirent* entry;
-            while ((entry = readdir(dp))) {
-                std::string nm = get_name(dir, entry->d_name);
-                if (!nm.empty()) {
-                    if (nm != subDevName)
-                        continue;
-                }
-                else if (strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
-                    entry->d_name[sub_nm_sz] != '.') {
-                    continue;
-                }
-                // found it
-                subdir = entry->d_name;
-                ret = 0;
-                break;
-            }
-            closedir(dp);
+    int ret = -ENOENT;
+    dp = opendir(dir.c_str());
+    if (dp) {
+      struct dirent* entry;
+      while ((entry = readdir(dp))) {
+        std::string nm = get_name(dir, entry->d_name);
+        if (!nm.empty()) {
+          if (nm != subDevName)
+            continue;
         }
-
-        return ret;
-    }
-
-    static bool
-        is_admin()
-    {
-        return (getuid() == 0) || (geteuid() == 0);
-    }
-
-    static size_t
-        bar_size(const std::string& dir, unsigned bar)
-    {
-        std::ifstream ifs(dir + "/resource");
-        if (!ifs.good())
-            return 0;
-        std::string line;
-        for (unsigned i = 0; i <= bar; i++) {
-            line.clear();
-            std::getline(ifs, line);
+        else if (strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
+          entry->d_name[sub_nm_sz] != '.') {
+          continue;
         }
-        long long start, end, meta;
-        if (sscanf(line.c_str(), "0x%llx 0x%llx 0x%llx", &start, &end, &meta) != 3)
-            return 0;
-        return end - start + 1;
+        // found it
+        subdir = entry->d_name;
+        ret = 0;
+        break;
+      }
+      closedir(dp);
     }
 
-    static int
-        get_render_value(const std::string& dir)
-    {
-        struct dirent* entry;
-        DIR* dp;
-        int instance_num = INVALID_ID;
+    return ret;
+  }
 
-        dp = opendir(dir.c_str());
-        if (dp == NULL)
-            return instance_num;
+  static bool
+  is_admin()
+  {
+    return (getuid() == 0) || (geteuid() == 0);
+  }
 
-        while ((entry = readdir(dp))) {
-            if (strncmp(entry->d_name, RENDER_NM, sizeof(RENDER_NM) - 1) == 0) {
-                sscanf(entry->d_name, RENDER_NM "%d", &instance_num);
-                break;
-            }
-        }
+  static size_t
+  bar_size(const std::string& dir, unsigned bar)
+  {
+    std::ifstream ifs(dir + "/resource");
+    if (!ifs.good())
+      return 0;
+    std::string line;
+    for (unsigned i = 0; i <= bar; i++) {
+      line.clear();
+      std::getline(ifs, line);
+    }
+    long long start, end, meta;
+    if (sscanf(line.c_str(), "0x%llx 0x%llx 0x%llx", &start, &end, &meta) != 3)
+      return 0;
+    return end - start + 1;
+  }
 
-        closedir(dp);
+  static int
+  get_render_value(const std::string& dir)
+  {
+    struct dirent* entry;
+    DIR* dp;
+    int instance_num = INVALID_ID;
 
-        return instance_num;
+    dp = opendir(dir.c_str());
+    if (dp == NULL)
+      return instance_num;
+
+    while ((entry = readdir(dp))) {
+      if (strncmp(entry->d_name, RENDER_NM, sizeof(RENDER_NM) - 1) == 0) {
+        sscanf(entry->d_name, RENDER_NM "%d", &instance_num);
+        break;
+      }
     }
 
-    /*
-     * wordcopy()
-     *
-     * Copy bytes word (32bit) by word.
-     * Neither memcpy, nor std::copy work as they become byte copying
-     * on some platforms.
-     */
-    inline void*
-        wordcopy(void* dst, const void* src, size_t bytes)
-    {
-        // assert dest is 4 byte aligned
-        assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
+    closedir(dp);
 
-        using word = uint32_t;
-        volatile auto d = reinterpret_cast<word*>(dst);
-        auto s = reinterpret_cast<const word*>(src);
-        auto w = bytes / sizeof(word);
+    return instance_num;
+  }
 
-        for (size_t i = 0; i < w; ++i)
-            d[i] = s[i];
+  /*
+   * wordcopy()
+   *
+   * Copy bytes word (32bit) by word.
+   * Neither memcpy, nor std::copy work as they become byte copying
+   * on some platforms.
+   */
+  inline void*
+  wordcopy(void* dst, const void* src, size_t bytes)
+  {
+    // assert dest is 4 byte aligned
+    assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
 
-        return dst;
-    }
+    using word = uint32_t;
+    volatile auto d = reinterpret_cast<word*>(dst);
+    auto s = reinterpret_cast<const word*>(src);
+    auto w = bytes / sizeof(word);
+
+    for (size_t i = 0; i < w; ++i)
+      d[i] = s[i];
+
+    return dst;
+  }
 
 } // namespace
 

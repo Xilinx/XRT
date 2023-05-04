@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidrv_noop.h"
 
@@ -17,26 +17,26 @@ namespace {
   }pcidev_noop_reg;
 }
 
-namespace xrt_core { namespace pci {
-std::shared_ptr<dev>
-pcidrv_noop::create_pcidev() const
-{
-	return std::make_shared<pcidev_noop>(/*isuser*/ true);
-}
+namespace xrt_core {
+  namespace pci {
+  std::shared_ptr<dev>
+  pcidrv_noop::create_pcidev() const
+  {
+    return std::make_shared<pcidev_noop>(/*isuser*/ true);
+  }
 
-void
-pcidrv_noop::scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const
-{
-  try {
-    auto nd = xclProbe();
-    std::cout << "num noop dev" << nd << std::endl;
-    auto pf = create_pcidev();
-    dev_list.push_back(std::move(pf));
+  void
+  pcidrv_noop::scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const
+  {
+    try {
+      auto nd = xclProbe();
+      std::cout << "num noop dev" << nd << std::endl;
+      auto pf = create_pcidev();
+      dev_list.push_back(std::move(pf));
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error(e.what());
+    }
   }
-  catch (const std::invalid_argument&) {
-    //exeception
-    std::cout << "************ pcidrv_noop:scan_devices : exeception **********" << std::endl;
-  }
-}
 
 } } // namespace xrt_core :: pci

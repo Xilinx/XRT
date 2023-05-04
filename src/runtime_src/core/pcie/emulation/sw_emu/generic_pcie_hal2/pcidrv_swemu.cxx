@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidrv_swemu.h"
 
@@ -17,28 +17,24 @@ namespace {
   } pcidev_swemu_reg;
 }
 
-namespace xrt_core {
-  namespace pci {
-    std::shared_ptr<dev>
-    pcidrv_swemu::create_pcidev() const
-    {
-      return std::make_shared<pcidev_swemu>(/*isuser*/ true);
-    }
-
-    void
-    pcidrv_swemu::scan_devices(std::vector<std::shared_ptr<dev>>& ready_list) const
-    {
-      try {
-        auto nd = xclProbe();
-        std::cout << "num sw emu dev" << nd << std::endl;
-        auto pf = create_pcidev();
-        ready_list.push_back(std::move(pf));
-      }
-      catch (const std::invalid_argument&) {
-        //exeception
-        std::cout << "************ pcidrv__swemu:scan_devices : exeception **********" << std::endl;
-      }
-    }
-
+namespace xrt_core { namespace pci {
+  std::shared_ptr<dev>
+  pcidrv_swemu::create_pcidev() const
+  {
+    return std::make_shared<pcidev_swemu>(/*isuser*/ true);
   }
-} // namespace xrt_core :: pci
+
+  void
+  pcidrv_swemu::scan_devices(std::vector<std::shared_ptr<dev>>& ready_list) const
+  {
+    try {
+      auto nd = xclProbe();
+      std::cout << "num sw_emu dev " << nd << std::endl;
+      auto pf = create_pcidev();
+      ready_list.push_back(std::move(pf));
+    }
+    catch (const std::exception& e) {
+      throw std::runtime_error(e.what());
+    }
+  }
+} } // namespace xrt_core :: pci
