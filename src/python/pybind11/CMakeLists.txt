@@ -28,11 +28,6 @@ else()
 endif(CMAKE_VERSION VERSION_LESS "3.12")
 
 if (HAS_PYTHON)
-	#  if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
-	#    SET(PKGDIR "site-packages")
-	#  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
-	#    SET(PKGDIR "site-packages")
-	#  endif(${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
 
   execute_process(COMMAND bash "-c" "pip3 show pybind11 | grep Location: | cut -d ' ' -f2"
     RESULT_VARIABLE pybind_found
@@ -43,9 +38,6 @@ if (HAS_PYTHON)
 
   message("-- pybind11 location: ${PKGDIR}")
 
-  #find_package(pybind11 2.10.4 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/usr/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
-  #message("Looking in /home/$ENV{USER}/.local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
-  #find_package(pybind11 2.10.4 REQUIRED PATHS "/home/$ENV{USER}/.local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/home/$ENV{USER}/.local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
   find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}/pybind11")
 endif(HAS_PYTHON)
 
@@ -65,6 +57,7 @@ endif(pybind11_FOUND)
 
 else()
 # = WINDOWS ===================================================================
+
 find_package(Python3 COMPONENTS Development Interpreter)
 if (Python3_FOUND)
   message("-- Python libs version: ${Python3_VERSION}")
