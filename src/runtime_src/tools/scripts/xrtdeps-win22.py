@@ -760,6 +760,10 @@ class pybind11_package():
           print(f"Did not find a compatible installation of pybind11")
           print(f"Trying to install pybind11=={self.expected_version} from pypi...")
           self.install()
+          
+          print(f"Confirming installation of pybind11 {expected_version}")
+          if self.check_installed():
+              print("Pybind11 installed successfully")
     
     def check_installed(self):
         try:
@@ -781,7 +785,6 @@ class pybind11_package():
         result = subprocess.run(["py.exe", "-m", "pip", "install", f"pybind11=={self.expected_version}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         try:
             assert result.returncode == 0
-            self.installed = True
             print(f"Pybind11 {self.expected_version} successfully installed")
         except:
             print(result.stdout)
