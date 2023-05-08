@@ -118,7 +118,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
   const Table2D::HeaderData colon = {":", Table2D::Justification::left};
   const Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::left};
-  const Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::left};
+  const Table2D::HeaderData id = {"Logic UUID", Table2D::Justification::left};
   const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::left};
   const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::left};
   const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
