@@ -17,6 +17,17 @@
 #include "memorymanager.h"
 
 namespace xclemulation {
+
+  std::map<uint64_t, uint64_t>& get_default_map() {
+    static std::map<uint64_t, uint64_t> DEFAULT_MAP;
+    return DEFAULT_MAP;
+  }
+  std::string& get_default_tag() {
+    static std::string DEFAULT_TAG("");
+    return DEFAULT_TAG;
+  }
+
+
   MemoryManager::MemoryManager(uint64_t size, uint64_t start,
       unsigned alignment,std::string& tag ) : mSize(size), mStart(start), mAlignment(alignment), mTag(tag),
   mCoalesceThreshold(4), mFreeSize(0)

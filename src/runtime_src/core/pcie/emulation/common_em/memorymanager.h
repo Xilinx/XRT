@@ -28,8 +28,8 @@
 
 namespace xclemulation
 {
-static std::map<uint64_t,uint64_t> DEFAULT_MAP;
-static std::string DEFAULT_TAG("");
+std::map<uint64_t, uint64_t>& get_default_map();
+std::string& get_default_tag();
     class MemoryManager 
     {
         std::mutex mMemManagerMutex;
@@ -49,9 +49,9 @@ static std::string DEFAULT_TAG("");
 	std::list<MemoryManager*> mChildMemories;
 
     public:
-        MemoryManager(uint64_t size, uint64_t start, unsigned alignment, std::string&tag = DEFAULT_TAG );
+        MemoryManager(uint64_t size, uint64_t start, unsigned alignment, std::string&tag = xclemulation::get_default_tag());
         ~MemoryManager();
-        uint64_t alloc(size_t& size, unsigned int paddingFactor = 0,std::map<uint64_t,uint64_t>& chunks = DEFAULT_MAP);
+        uint64_t alloc(size_t& size, unsigned int paddingFactor = 0,std::map<uint64_t,uint64_t>& chunks = xclemulation::get_default_map());
         void free(uint64_t buf);
         void reset();
 
