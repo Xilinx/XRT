@@ -175,8 +175,7 @@ namespace xdp {
       boost::replace_all(settingsString, "bandwidths", "throughputs");
     }
 
-    // Each of the metrics can have ; separated multiple values. Process and
-    // save all
+    // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> settingsVector;
     boost::replace_all(settingsString, " ", "");
     boost::split(settingsVector, settingsString, boost::is_any_of(";"));
@@ -355,8 +354,7 @@ namespace xdp {
     return tiles;
   }
 
-  // Find all AIE tiles associated with a graph and module type (kernel_name =
-  // all)
+  // Find all AIE tiles associated with a graph and module type (kernel_name = all)
   std::vector<tile_type> AieProfileMetadata::get_aie_tiles(const xrt_core::device* device,
                                                            const std::string& graph_name, module_type type)
   {
@@ -442,12 +440,10 @@ namespace xdp {
     // STEP 1 : Parse per-graph or per-kernel settings
 
     /* AIE_profile_settings config format ; Multiple values can be specified for
-     * a metric separated with ';' AI Engine Tiles graph_based_aie_metrics =
-     * <graph name|all>:<kernel
+     * a metric separated with ';' AI Engine Tiles graph_based_aie_metrics = <graph name|all>:<kernel
      * name|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
      * graph_based_aie_memory_metrics = <graph name|all>:<kernel
-     * name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>
-     * MEM Tiles
+     * name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs> MEM Tiles
      * graph_based_memory_tile_metrics = <graph name|all>:<kernel
      * name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
      */
@@ -811,8 +807,7 @@ namespace xdp {
         maxCol = std::stoi(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
-        // maxColumn is not an integer i.e either 1st style or wrong format,
-        // skip for now
+        // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
         continue;
       }
       uint32_t minCol = 0;
@@ -820,8 +815,7 @@ namespace xdp {
         minCol = std::stoi(metrics[i][0]);
       }
       catch (std::invalid_argument const&) {
-        // 2nd style but expected min column is not an integer, give warning
-        // and skip
+        // 2nd style but expected min column is not an integer, give warning and skip
         xrt_core::message::send(severity_level::warning, "XRT",
                                 "Minimum column specification in "
                                 "tile_based_interface_tile_metrics is not "
@@ -863,14 +857,12 @@ namespace xdp {
         col = std::stoi(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
-        // max column is not a number, so the expected single column
-        // specification. Handle this here
+        // max column is not a number, so the expected single column specification. Handle this here
         try {
           col = std::stoi(metrics[i][0]);
         }
         catch (std::invalid_argument const&) {
-          // Expected column specification is not a number. Give warning
-          // and skip
+          // Expected column specification is not a number. Give warning and skip
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Column specification in tile_based_interface_tile_metrics "
                                   "is not an integer and hence skipped.");
