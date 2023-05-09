@@ -17,13 +17,10 @@
 #ifndef AIE_PROFILE_CONFIG_DOT_H
 #define AIE_PROFILE_CONFIG_DOT_H
 
-namespace xdp
-{
-  namespace built_in
-  {
+namespace xdp {
+  namespace built_in {
 
-    enum class CoreMetrics : uint8_t
-    {
+    enum class CoreMetrics : uint8_t {
       HEAT_MAP = 0,
       STALLS = 1,
       EXECUTION = 2,
@@ -35,8 +32,7 @@ namespace xdp
       EVENTS = 8
     };
 
-    enum class MemoryMetrics : uint8_t
-    {
+    enum class MemoryMetrics : uint8_t {
       CONFLICTS = 0,
       DMA_LOCKS = 1,
       DMA_STALLS_S2MM = 2,
@@ -45,15 +41,9 @@ namespace xdp
       READ_BANDWIDTHS = 5
     };
 
-    enum class InterfaceMetrics : uint8_t
-    {
-      INPUT_BANDWIDTHS = 0,
-      OUTPUT_BANDWIDTHS = 1,
-      PACKETS = 2
-    };
+    enum class InterfaceMetrics : uint8_t { INPUT_BANDWIDTHS = 0, OUTPUT_BANDWIDTHS = 1, PACKETS = 2 };
 
-    enum class MemTileMetrics : uint8_t
-    {
+    enum class MemTileMetrics : uint8_t {
       INPUT_CHANNELS = 0,
       INPUT_CHANNELS_DETAILS = 1,
       OUTPUT_CHANNELS = 2,
@@ -70,8 +60,7 @@ namespace xdp
     // Since this is transferred from host to device, it should have
     // a C-Style interface.
 
-    struct ProfileTileType
-    {
+    struct ProfileTileType {
       uint16_t row;
       uint16_t col;
       uint16_t itr_mem_row;
@@ -84,8 +73,7 @@ namespace xdp
       int8_t channel1 = -1;
     };
 
-    struct ProfileInputConfiguration
-    {
+    struct ProfileInputConfiguration {
       static constexpr auto NUM_CORE_COUNTERS = 4;
       static constexpr auto NUM_MEMORY_COUNTERS = 2;
       static constexpr auto NUM_SHIM_COUNTERS = 2;
@@ -95,11 +83,10 @@ namespace xdp
       uint16_t offset;
 
       // uint16_t numTiles[NUM_MODULES]; // Make unique variab
-      ProfileTileType tiles[1]; // flexible array member
+      ProfileTileType tiles[1];  // flexible array member
     };
 
-    struct PSCounterInfo
-    {
+    struct PSCounterInfo {
       uint8_t moduleName;
       uint16_t col;
       uint16_t row;
@@ -107,19 +94,18 @@ namespace xdp
       uint16_t endEvent;
       uint32_t counterValue;
       uint32_t payload;
-      uint8_t counterNum; //.Counter number in the tile
-      uint32_t counterId; // Counter ID in list of all possible counters
+      uint8_t counterNum;  //.Counter number in the tile
+      uint32_t counterId;  // Counter ID in list of all possible counters
       uint8_t resetEvent;
       uint64_t timerValue;
     };
 
-    struct ProfileOutputConfiguration
-    {
+    struct ProfileOutputConfiguration {
       uint32_t numCounters;
       PSCounterInfo counters[1];
     };
 
-  } // end namespace built_in
-} // end namespace xdp
+  }  // end namespace built_in
+}  // end namespace xdp
 
 #endif

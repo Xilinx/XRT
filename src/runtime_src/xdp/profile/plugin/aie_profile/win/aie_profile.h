@@ -24,21 +24,19 @@
 
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 
-namespace xdp
-{
+namespace xdp {
 
-  class AieProfile_WinImpl : public AieProfileImpl
-  {
-  public:
-    AieProfile_WinImpl(VPDatabase *database, std::shared_ptr<AieProfileMetadata> metadata);
+  class AieProfile_WinImpl : public AieProfileImpl {
+   public:
+    AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
     ~AieProfile_WinImpl() = default;
 
     void updateDevice();
-    void poll(uint32_t index, void *handle);
+    void poll(uint32_t index, void* handle);
     void freeResources();
-    bool setMetricsSettings(uint64_t deviceId, void *handle);
+    bool setMetricsSettings(uint64_t deviceId, void* handle);
 
-  private:
+   private:
     xrt::device device;
     // xrt::kernel aie_profile_kernel;
 
@@ -57,6 +55,6 @@ namespace xdp
     // std::unordered_set<void*> buffers;
   };
 
-}
+}  // namespace xdp
 
 #endif

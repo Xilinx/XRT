@@ -75,14 +75,18 @@ namespace xdp {
     AieProfilePlugin::live = false;
   }
 
-  bool AieProfilePlugin::alive() { return AieProfilePlugin::live; }
+  bool AieProfilePlugin::alive()
+  {
+    return AieProfilePlugin::live;
+  }
 
   uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
   {
     constexpr uint32_t PATH_LENGTH = 512;
 
     auto itr = handleToAIEData.find(handle);
-    if (itr != handleToAIEData.end()) return itr->second.deviceID;
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
 
 #ifdef _WIN32
     return 0;
@@ -100,9 +104,11 @@ namespace xdp {
   void AieProfilePlugin::updateAIEDevice(void* handle)
   {
     // Don't update if no profiling is requested
-    if (!xrt_core::config::get_aie_profile()) return;
+    if (!xrt_core::config::get_aie_profile())
+      return;
 
-    if (!handle) return;
+    if (!handle)
+      return;
 
     auto deviceID = getDeviceIDFromHandle(handle);
 
@@ -128,14 +134,11 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
 #ifdef _WIN32
-    AIEData.implementation =
-        std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
-    AIEData.implementation =
-        std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
 #else
-    AIEData.implementation =
-        std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
+    AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
 #endif
     auto& implementation = AIEData.implementation;
 
@@ -168,16 +171,13 @@ namespace xdp {
 
     std::string outputFile = "aie_profile_" + deviceName + timestamp + ".csv";
 
-    VPWriter* writer =
-        new AIEProfilingWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
+    VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
     writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(),
-                                      "AIE_PROFILE");
+    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
     // Start the AIE profiling thread
     AIEData.threadCtrlBool = true;
-    auto device_thread =
-        std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
+    auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
     // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
     // implementation.get(), mIndex, handle);
     AIEData.thread = std::move(device_thread);
@@ -188,14 +188,14 @@ namespace xdp {
   void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
   {
     auto it = handleToAIEData.find(handle);
-    if (it == handleToAIEData.end()) return;
+    if (it == handleToAIEData.end())
+      return;
 
     auto& should_continue = it->second.threadCtrlBool;
 
     while (should_continue) {
       handleToAIEData[handle].implementation->poll(index, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(
-          handleToAIEData[handle].metadata->getPollingIntervalVal()));
+      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
     }
     // Final Polling Operation
     handleToAIEData[handle].implementation->poll(index, handle);

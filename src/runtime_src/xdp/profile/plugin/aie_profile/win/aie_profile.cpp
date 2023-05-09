@@ -33,8 +33,7 @@
 
 namespace xdp {
 
-  AieProfile_WinImpl::AieProfile_WinImpl(
-      VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
+  AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
       : AieProfileImpl(database, metadata)
   {
     // auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
@@ -57,7 +56,7 @@ namespace xdp {
 
   void setupAIEProfiler(uint8_t col, uint8_t row, uint32_t start, uint32_t end)
   {
-    std::cout << col << row << start << end;
+    std::cout << col << " " << row << " " << start << " " << end << std::endl;
     // aiegraph_handle_.clearTransactionBuffer();
     // buffers_.clear();
     // inputs_.clear();
