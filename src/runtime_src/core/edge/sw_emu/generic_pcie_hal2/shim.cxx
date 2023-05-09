@@ -1017,7 +1017,8 @@ namespace xclswemuhal2 {
       
       if (status != std::future_status::ready) {
         std::cerr<<"ERROR: [SW_EMU 13] TCP/IP socket thread is not started yet,something wrong with OS, So exiting the application now.";
-        exit(1);
+        return -1;
+        //exit(1);
       }
       if (!xclswemuhal2::isRemotePortMapped) {
         xclswemuhal2::initRemotePortMap(mFpgaDevice);
