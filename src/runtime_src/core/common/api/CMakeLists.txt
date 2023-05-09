@@ -7,6 +7,7 @@ add_library(core_common_api_library_objects OBJECT
   xrt_bo.cpp
   xrt_device.cpp
   xrt_error.cpp
+  xrt_fence.cpp
   xrt_hw_context.cpp
   xrt_ini.cpp
   xrt_ip.cpp
