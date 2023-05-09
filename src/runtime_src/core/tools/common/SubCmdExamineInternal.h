@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,7 +25,7 @@ class SubCmdExamineInternal : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain);
+  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree configurations);
 
  public:
   static ReportCollection uniqueReportCollection;

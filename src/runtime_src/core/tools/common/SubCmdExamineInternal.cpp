@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdExamineInternal.h"
+#include "JSONConfigurable.h"
 #include "core/common/error.h"
 
 // Utilities
@@ -26,11 +26,10 @@ namespace po = boost::program_options;
 #include <fstream>
 #include <regex>
 
-// Common reports here. Add unique reports in constructor below.
 static ReportCollection fullReportCollection = {};
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain)
+SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree configurations)
     : SubCmd("examine", 
              _isUserDomain ? "Status of the system and device" : "Returns detail information for the specified device.")
     , m_device("")
@@ -52,7 +51,12 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
     setIsDefaultDevValid(false);
 
   // -- Build up the report & format options
-  fullReportCollection.insert(fullReportCollection.end(), SubCmdExamineInternal::uniqueReportCollection.begin(), SubCmdExamineInternal::uniqueReportCollection.end());
+  auto examineDeviceTrees = JSONConfigurable::parse_configuration_tree({getConfigName()}, configurations);
+  auto currentExamineTrees = JSONConfigurable::extractMatchingConfigurations<Report>(SubCmdExamineInternal::uniqueReportCollection, examineDeviceTrees);
+  for (auto it = currentExamineTrees.begin(); it != currentExamineTrees.end(); it++) {
+    for (const auto& reportPtr : it->second)
+      fullReportCollection.push_back(reportPtr);
+  }
   static const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
   static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 

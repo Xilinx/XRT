@@ -23,8 +23,10 @@
 #include <string>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
+
+#include "JSONConfigurable.h"
   
-class OptionOptions {
+class OptionOptions : public JSONConfigurable {
  public:
   typedef std::vector<std::string> SubCmdOptions;
 
@@ -39,6 +41,7 @@ class OptionOptions {
     return m_selfOption.options()[0];
   };
   const std::string &longName() const { return m_longName; };
+  const std::string &getConfigName() const { return longName(); };
   const std::string optionNameString() const { return m_shortName.empty() ? m_longName : m_longName + "," + m_shortName; };
   const std::string &description() const {return m_description; };
   const std::string &extendedHelp() const { return m_extendedHelp; };

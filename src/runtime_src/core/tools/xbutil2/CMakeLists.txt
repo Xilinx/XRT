@@ -8,6 +8,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBMain.cpp"
   "../common/XBUtilitiesCore.cpp"
   "../common/XBUtilities.cpp"
+  "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
   "../common/SubCmdExamineInternal.cpp"
   "../common/OptionOptions.cpp"

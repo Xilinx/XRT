@@ -24,9 +24,10 @@
 #include <map>
 #include <boost/program_options.hpp>
 
+#include "JSONConfigurable.h"
 #include "OptionOptions.h"
   
-class SubCmd {
+class SubCmd : public JSONConfigurable {
  public:
    using SubCmdOptions = std::vector<std::string>;
    using SubOptionOptions = std::vector<std::shared_ptr<OptionOptions>>;
@@ -36,6 +37,7 @@ class SubCmd {
 
  public:
    const std::string &getName() const { return m_subCmdName; };
+   const std::string &getConfigName() const { return getName(); };
    const std::string &getShortDescription() const { return m_shortDescription; };
    bool isHidden() const { return m_isHidden; };
    bool isDeprecated() const { return m_isDeprecated; };
