@@ -14,14 +14,14 @@
  * under the License.
  */
 
-#define XDP_SOURCE 
+#define XDP_SOURCE
+
+#include "aie_profile.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
-#include <memory>
 #include <cstring>
-
-#include "aie_profile.h"
+#include <memory>
 
 #include "core/common/message.h"
 #include "core/common/time.h"
@@ -33,11 +33,10 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile/x86/aie_profile_kernel_config.h"
 
-
 constexpr uint32_t ALIGNMENT_SIZE = 4096;
 
-constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 22; //Calculated maximum output size for all 400 tiles
-constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2; // input/output must be aligned to 4096
+constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 22;  // Calculated maximum output size for all 400 tiles
+constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2;    // input/output must be aligned to 4096
 
 namespace xdp {
   using ProfileInputConfiguration = xdp::built_in::ProfileInputConfiguration;
@@ -47,65 +46,62 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
   AieProfile_x86Impl::AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      : AieProfileImpl(database, metadata) 
+      : AieProfileImpl(database, metadata)
   {
     auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
     device = xrt::device(spdevice);
-  
+
     auto uuid = device.get_xclbin_uuid();
 
     if (metadata->getHardwareGen() == 1)
       aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
-    else 
+    else
       aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie2_profile_config");
   }
 
   void AieProfile_x86Impl::updateDevice()
   {
-
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
-  
   }
 
   bool AieProfile_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-
     int NUM_MODULES = metadata->getNumModules();
 
-    //Create the Configuration PS kernel 
-    // Calculate number of tiles per module
+    // Create the Configuration PS kernel
+    //  Calculate number of tiles per module
     int numTiles = 0;
-    for(int module = 0; module < NUM_MODULES; ++module) {
+    for (int module = 0; module < NUM_MODULES; ++module) {
       numTiles += metadata->getConfigMetrics(module).size();
     }
 
-    std::size_t total_size = sizeof(ProfileInputConfiguration) + sizeof(ProfileTileType[numTiles-1]);
+    std::size_t total_size = sizeof(ProfileInputConfiguration) + sizeof(ProfileTileType[numTiles - 1]);
     ProfileInputConfiguration* input_params = (ProfileInputConfiguration*)malloc(total_size);
     input_params->numTiles = numTiles;
     input_params->offset = metadata->getAIETileRowOffset();
-    
-    
 
-    //Create the Profile Tile Struct with All Tiles
+    // Create the Profile Tile Struct with All Tiles
     ProfileTileType profileTiles[numTiles];
     int tile_idx = 0;
 
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
 
-    for(int module = 0; module < NUM_MODULES; ++module) {
+    for (int module = 0; module < NUM_MODULES; ++module) {
       auto configMetrics = metadata->getConfigMetrics(module);
-      for (auto &tileMetric : configMetrics){
+      for (auto& tileMetric : configMetrics) {
         profileTiles[tile_idx].col = tileMetric.first.col;
         profileTiles[tile_idx].row = tileMetric.first.row;
         profileTiles[tile_idx].itr_mem_row = tileMetric.first.itr_mem_row;
         profileTiles[tile_idx].itr_mem_col = tileMetric.first.itr_mem_col;
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
-        profileTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second, metadata->getModuleType(module));
+        profileTiles[tile_idx].metricSet =
+            metadata->getMetricSetIndex(tileMetric.second, metadata->getModuleType(module));
         profileTiles[tile_idx].tile_mod = module;
 
-        //If the tile is a memtile, check if any channel specification is present
+        // If the tile is a memtile, check if any channel specification is
+        // present
         if (configChannel0.count(tileMetric.first))
           profileTiles[tile_idx].channel0 = configChannel0[tileMetric.first];
         if (configChannel1.count(tileMetric.first))
@@ -119,13 +115,12 @@ namespace xdp {
     uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
 
     try {
-      
-      //input bo  
+      // input bo
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
       auto inbo_map = inbo.map<uint8_t*>();
       std::fill(inbo_map, inbo_map + INPUT_SIZE, 0);
-   
-      //output bo
+
+      // output bo
       auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
       auto outbo_map = outbo.map<uint8_t*>();
       memset(outbo_map, 0, OUTPUT_SIZE);
@@ -138,16 +133,18 @@ namespace xdp {
 
       outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
       ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
-    
-      for (uint32_t i = 0; i < cfg->numCounters; i++){
+
+      for (uint32_t i = 0; i < cfg->numCounters; i++) {
         // Store counter info in database
         auto& counter = cfg->counters[i];
         std::string counterName = "AIE Counter " + std::to_string(counter.counterId);
-        (db->getStaticInfo()).addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
-        counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload, metadata->getClockFreqMhz() , 
-        metadata->getModuleName(counter.moduleName), counterName);
+        (db->getStaticInfo())
+            .addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
+                           counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload,
+                           metadata->getClockFreqMhz(), metadata->getModuleName(counter.moduleName), counterName);
       }
-    } catch (...) {
+    }
+    catch (...) {
       std::string msg = "The aie_profile_config PS kernel was not found.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       free(input_params);
@@ -164,16 +161,15 @@ namespace xdp {
 
   void AieProfile_x86Impl::poll(uint32_t index, void* handle)
   {
-
     try {
-      //input bo  
-      // We Don't need to pass data from the db for polling since
-      // the counters are stored locally in PS memory after setup
+      // input bo
+      //  We Don't need to pass data from the db for polling since
+      //  the counters are stored locally in PS memory after setup
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
       auto inbo_map = inbo.map<uint8_t*>();
-      memset(inbo_map, 0, INPUT_SIZE); 
-   
-      //output bo
+      memset(inbo_map, 0, INPUT_SIZE);
+
+      // output bo
       auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
       auto outbo_map = outbo.map<uint8_t*>();
       memset(outbo_map, 0, OUTPUT_SIZE);
@@ -183,7 +179,7 @@ namespace xdp {
       outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
       ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
 
-      for (uint32_t i = 0; i < cfg->numCounters; i++){
+      for (uint32_t i = 0; i < cfg->numCounters; i++) {
         std::vector<uint64_t> values;
         auto& counter = cfg->counters[i];
         values.push_back(counter.col);
@@ -196,9 +192,9 @@ namespace xdp {
         values.push_back(counter.payload);
         double timestamp = xrt_core::time_ns() / 1.0e6;
         db->getDynamicInfo().addAIESample(index, timestamp, values);
-      } 
-
-    } catch (...) {
+      }
+    }
+    catch (...) {
       std::string msg = "The aie_profile polling failed.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
@@ -210,19 +206,20 @@ namespace xdp {
     try {
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
       auto inbo_map = inbo.map<uint8_t*>();
-      memset(inbo_map, 0, INPUT_SIZE); 
-   
-      //output bo
+      memset(inbo_map, 0, INPUT_SIZE);
+
+      // output bo
       auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
       auto outbo_map = outbo.map<uint8_t*>();
       memset(outbo_map, 0, OUTPUT_SIZE);
 
       auto run = aie_profile_kernel(inbo, outbo, 2 /*cleanup iteration*/);
       run.wait();
-    } catch (...) {
+    }
+    catch (...) {
       std::string msg = "The aie_profile cleanup failed.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
     }
   }
-}
+}  // namespace xdp
