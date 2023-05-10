@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- *
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -14,22 +15,22 @@
  * under the License.
  */
 
-#ifndef AIE_DEBUG_DOT_H
-#define AIE_DEBUG_DOT_H
+#ifndef AIE_STATUS_DOT_H
+#define AIE_STATUS_DOT_H
 
 namespace xdp {
 namespace aie {
 
-namespace debug {
+namespace status {
   void load();
   void register_callbacks(void* handle);
   void warning_callbacks();
-} // end namespace debug
+} // end namespace status
 
-namespace dbg {
+namespace sts {
   void update_device(void* handle);
   void end_poll(void* handle);
-} // end namespace dbg
+} // end namespace sts
 
 } // end namespace aie
 } // end namespace xdp
