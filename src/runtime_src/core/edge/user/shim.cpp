@@ -44,7 +44,7 @@
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/aie_debug.h"
+#include "plugin/xdp/aie_status.h"
 
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
@@ -143,7 +143,7 @@ shim::
   xdp::aie::finish_flush_device(this) ;
 #endif
   xdp::aie::ctr::end_poll(this);
-  xdp::aie::dbg::end_poll(this);
+  xdp::aie::sts::end_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -2238,7 +2238,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::aie::update_device(handle);
 #endif
     xdp::aie::ctr::update_device(handle);
-    xdp::aie::dbg::update_device(handle);
+    xdp::aie::sts::update_device(handle);
 #ifndef __HWEM__
     xdp::pl_deadlock::update_device(handle);
 
