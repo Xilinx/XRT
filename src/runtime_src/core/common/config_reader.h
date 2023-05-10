@@ -856,6 +856,20 @@ get_aie_trace_settings_tile_based_memory_tile_metrics()
 }
 
 inline std::string
+get_aie_trace_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
 get_aie_trace_settings_buffer_size()
 {
   static std::string value = detail::get_string_value("AIE_trace_settings.buffer_size", "8M");

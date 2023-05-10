@@ -117,13 +117,19 @@ namespace xdp {
                  "Configuration level used for AI Engine trace per graph");
     addParameter("AIE_trace_settings.graph_based_memory_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_graph_based_memory_tile_metrics(),
-                 "Configuration level used for MEM tile trace per graph");
+                 "Configuration level used for memory tile trace per graph");
+    addParameter("AIE_trace_settings.graph_based_interface_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_graph_based_interface_tile_metrics(),
+                 "Configuration level used for interface tile trace per graph");
     addParameter("AIE_trace_settings.tile_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per tile");
     addParameter("AIE_trace_settings.tile_based_memory_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_tile_based_memory_tile_metrics(),
-                 "Configuration level used for MEM tile trace per tile");
+                 "Configuration level used for memory tile trace per tile");
+    addParameter("AIE_trace_settings.tile_based_interface_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_tile_based_interface_tile_metrics(),
+                 "Configuration level used for interface tile trace per tile");
     addParameter("AIE_trace_settings.buffer_size",
                  xrt_core::config::get_aie_trace_settings_buffer_size(),
                  "Size of buffer to allocate for AI Engine trace");

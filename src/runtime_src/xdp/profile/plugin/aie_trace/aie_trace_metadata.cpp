@@ -87,13 +87,19 @@ namespace xdp {
         getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_memory_tile_metrics());
     auto memGraphMetricsSettings = 
         getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_memory_tile_metrics());
+    auto shimTileMetricsSettings = 
+        getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_interface_tile_metrics());
+    auto shimGraphMetricsSettings = 
+        getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_interface_tile_metrics());
 
     if (aieTileMetricsSettings.empty() && aieGraphMetricsSettings.empty()
-        && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()) {
+        && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()
+        && shimTileMetricsSettings.empty() && shimGraphMetricsSettings.empty()) {
         isValidMetrics = false;
     } else {
       getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::core);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
+      getConfigMetricsForTiles(shimTileMetricsSettings, shimGraphMetricsSettings, module_type::shim);
       setTraceStartControl();
     }
   }
@@ -109,6 +115,7 @@ namespace xdp {
     const std::set<std::string> validSettings {
       "graph_based_aie_tile_metrics", "tile_based_aie_tile_metrics",
       "graph_based_memory_tile_metrics", "tile_based_memory_tile_metrics",
+      "graph_based_interface_tile_metrics", "tile_based_interface_tile_metrics",
       "start_type", "start_time", "start_iteration", "end_type",
       "periodic_offload", "reuse_buffer", "buffer_size", 
       "buffer_offload_interval_us", "file_dump_interval_s"
