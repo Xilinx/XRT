@@ -93,6 +93,11 @@ class AieTraceMetadata{
                                            const std::string& graph_name,
                                            module_type type);
 
+    std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
+    std::vector<tile_type> get_interface_tiles(const xrt_core::device* device,
+                                               const std::string& metricStr, int16_t channelId,
+                                               bool useColumn, uint32_t minCol, uint32_t maxCol);
+
     std::vector<std::string> get_graphs(const xrt_core::device* device);
     std::vector<std::string> get_kernels(const xrt_core::device* device);
     double get_clock_freq_mhz(const xrt_core::device* device);

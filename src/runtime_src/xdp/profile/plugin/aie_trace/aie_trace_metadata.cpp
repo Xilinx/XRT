@@ -481,6 +481,79 @@ namespace xdp {
     return memTiles;
   }
 
+  std::unordered_map<std::string, plio_config> AieTraceMetadata::get_plios(const xrt_core::device* device)
+  {
+    auto data = device->get_axlf_section(AIE_METADATA);
+    if (!data.first || !data.second)
+      return {};
+
+    pt::ptree aie_meta;
+    read_aie_metadata(data.first, data.second, aie_meta);
+    std::unordered_map<std::string, plio_config> plios;
+
+    for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
+      plio_config plio;
+
+      plio.id = plio_node.second.get<uint32_t>("id");
+      plio.name = plio_node.second.get<std::string>("name");
+      plio.logicalName = plio_node.second.get<std::string>("logical_name");
+      plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
+      plio.streamId = plio_node.second.get<uint16_t>("stream_id");
+      plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
+
+      plios[plio.name] = plio;
+    }
+
+    return plios;
+  }
+
+  std::vector<tile_type> AieTraceMetadata::get_interface_tiles(const xrt_core::device* device,
+                                                               const std::string& metricStr, int16_t channelId,
+                                                               bool useColumn, uint32_t minCol, uint32_t maxCol)
+  {
+    std::vector<tile_type> tiles;
+
+    int plioCount = 0;
+    auto plios = get_plios(device);
+    for (auto& plio : plios) {
+      auto isMaster = plio.second.slaveOrMaster;
+      auto streamId = plio.second.streamId;
+      auto shimCol = plio.second.shimColumn;
+
+      // If looking for specific ID, make sure it matches
+      if ((channelId >= 0) && (channelId != streamId))
+        continue;
+
+      // Make sure it's desired polarity
+      // NOTE: input = slave (data flowing from PLIO)
+      //       output = master (data flowing to PLIO)
+      if ((isMaster && (metricStr == "input_throughputs")) || (!isMaster && (metricStr == "output_throughputs")))
+        continue;
+
+      plioCount++;
+
+      if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol))) {
+        // shimCol is not within minCol:maxCol range. So skip.
+        continue;
+      }
+
+      tile_type tile = {0};
+      tile.col = shimCol;
+      tile.row = 0;
+      // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+      tile.itr_mem_col = isMaster;
+      tile.itr_mem_row = streamId;
+      tiles.push_back(tile);
+    }
+
+    if ((plioCount == 0) && (channelId >= 0)) {
+      std::string msg =
+          "No tiles used channel ID " + std::to_string(channelId) + ". Please specify a valid channel ID.";
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
+    }
+    return tiles;
+  }
+
   // Find all AIE or MEM tiles associated with a graph and kernel
   //   kernel_name = all      : all tiles in graph
   //   kernel_name = <kernel> : only tiles used by that specific kernel
