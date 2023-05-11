@@ -18,6 +18,7 @@
 #include "zocl_drv.h"
 #include "zocl_cu.h"
 #include "zocl_sk.h"
+#include "zocl_xclbin.h"
 
 int
 zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
@@ -52,49 +53,67 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		u32 bohdl = 0xffffffff;
 		u32 meta_bohdl = 0xffffffff;
 		int i, ret;
+		u32 slot_id = MAX_PR_SLOT_NUM;
+		xuid_t *slot_uuid = NULL;
 
 		cmd = scmd->skc_packet;
 
-		if (sk->sk_meta_bohdl >= 0) {
-			meta_bohdl = sk->sk_meta_bohdl;
+		/* Look for slot_id corresponding to UUID */
+		for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
+			mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
+			slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
+			mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
+			if(uuid_equal(slot_uuid,(xuid_t *)cmd->sk_uuid)) {
+				slot_id = i;
+				break;
+			}
+		}
+
+		if (slot_id == MAX_PR_SLOT_NUM) {
+			DRM_ERROR("PS Kernel UUID %s not found!",cmd->sk_uuid);
+			return -EINVAL;
+		}
+
+		if (sk->sk_meta_bohdl[slot_id] >= 0) {
+			meta_bohdl = sk->sk_meta_bohdl[slot_id];
 		} else {
 			ret = drm_gem_handle_create(filp,
-						    &sk->sk_meta_bo->cma_base.base, &meta_bohdl);
+						    &sk->sk_meta_bo[slot_id]->cma_base.base, &meta_bohdl);
 
 			if (ret) {
 				DRM_WARN("%s Failed create metadata BO handle: %d\n",
 					 __func__, ret);
 				meta_bohdl = 0xffffffff;
 			} else {
-				sk->sk_meta_bohdl = meta_bohdl;
+				sk->sk_meta_bohdl[slot_id] = meta_bohdl;
 				DRM_INFO("sk_meta_data BO handle 0x%x created\n",meta_bohdl);
 			}
 		}
 
-		for (i = 0; i < sk->sk_nimg; i++) {
-			if(strcmp(sk->sk_img[i].scu_name,(char *)cmd->sk_name)!=0) {
+		for (i = 0; i < sk->sk_nimg[slot_id]; i++) {
+			if(strcmp(sk->sk_img[slot_id][i].scu_name,(char *)cmd->sk_name)!=0) {
 				DRM_INFO("SK image name %s not matching sk_name %s\n",
-					 sk->sk_img[i].scu_name,(char *)cmd->sk_name);
+					 sk->sk_img[slot_id][i].scu_name,(char *)cmd->sk_name);
 				continue;
 			}
 			DRM_INFO("Found SK image name %s matching sk_name %s\n",
-				 sk->sk_img[i].scu_name,(char *)cmd->sk_name);
+				 sk->sk_img[slot_id][i].scu_name,(char *)cmd->sk_name);
 
-			if (sk->sk_img[i].si_bohdl >= 0) {
-				bohdl = sk->sk_img[i].si_bohdl;
+			if (sk->sk_img[slot_id][i].si_bohdl >= 0) {
+				bohdl = sk->sk_img[slot_id][i].si_bohdl;
 				break;
 			}
 
 			ret = drm_gem_handle_create(filp,
-			    &sk->sk_img[i].si_bo->cma_base.base, &bohdl);
+			    &sk->sk_img[slot_id][i].si_bo->cma_base.base, &bohdl);
 
 			if (ret) {
 				DRM_WARN("%s Failed create BO handle: %d\n",
 				    __func__, ret);
 				bohdl = 0xffffffff;
 			} else {
-				sk->sk_img[i].si_bohdl = bohdl;
-				DRM_INFO("sk_img[%d] BO handle %d created\n",i,bohdl);
+				sk->sk_img[slot_id][i].si_bohdl = bohdl;
+				DRM_INFO("sk_img[%d][%d] BO handle %d created\n",slot_id,i,bohdl);
 			}
 
 			break;
@@ -235,22 +254,24 @@ void
 zocl_fini_soft_kernel(struct drm_zocl_dev *zdev)
 {
 	struct soft_krnl *sk;
-	int i;
+	int i, j;
 
 	BUG_ON(!zdev);
 	sk = zdev->soft_kernel;
 	mutex_lock(&sk->sk_lock);
 
-	if(!IS_ERR(&sk->sk_meta_bo)) {
-		zocl_drm_free_bo(sk->sk_meta_bo);
-	}
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
+		if(!IS_ERR(&sk->sk_meta_bo[i])) {
+			zocl_drm_free_bo(sk->sk_meta_bo[i]);
+		}
 	
-	for (i = 0; i < sk->sk_nimg; i++) {
-		if (IS_ERR(&sk->sk_img[i].si_bo))
-			continue;
-		zocl_drm_free_bo(sk->sk_img[i].si_bo);
+		for (j = 0; j < sk->sk_nimg[i]; j++) {
+			if (IS_ERR(&sk->sk_img[i][j].si_bo))
+				continue;
+			zocl_drm_free_bo(sk->sk_img[i][j].si_bo);
+		}
+		kfree(sk->sk_img[i]);
 	}
-	kfree(sk->sk_img);
 
 	mutex_unlock(&sk->sk_lock);
 	mutex_destroy(&sk->sk_lock);
