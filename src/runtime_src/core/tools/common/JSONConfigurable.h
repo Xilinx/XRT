@@ -21,7 +21,6 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-
 class JSONConfigurable {
 private:
   static boost::property_tree::ptree
@@ -38,20 +37,18 @@ public:
   static std::map<std::string, std::vector<std::shared_ptr<T>>>
   extractMatchingConfigurations(const std::vector<std::shared_ptr<T>>& items, const boost::property_tree::ptree& configuration)
   {
-    // currentDeviceCategories must be updated to use a query for device categories of cards present.
-    const std::vector<std::string> currentDeviceCategories = {"common", "alveo", "aie"};
-    auto relevantItems = parse_configuration(currentDeviceCategories, configuration);
-
     std::map<std::string, std::vector<std::shared_ptr<T>>> output;
-    for (const auto& relevantItem : relevantItems) {
+    for (const auto& relevantItem : configuration) {
       std::vector<std::shared_ptr<T>> matches;
       for (const auto& contentTree : relevantItem.second.get_child("contents")) {
         for (const auto& item : items) {
-          if (boost::iequals(contentTree.second.get_value<std::string>(), item->getConfigName()))
+          if (boost::iequals(contentTree.second.get_value<std::string>(), item->getConfigName())) {
             matches.push_back(item);
+            break;
+          }
         }
       }
-      output.insert(std::make_pair(relevantItem.second.get<std::string>("name"), matches));
+      output.insert(std::make_pair(relevantItem.first, matches));
     }
 
     return output;
