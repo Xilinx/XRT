@@ -16,7 +16,7 @@
 
 #include "plugin/xdp/plugin_loader.h"
 
-#include "plugin/xdp/aie_debug.h"
+#include "plugin/xdp/aie_status.h"
 #include "plugin/xdp/aie_profile.h"
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_device_offload.h"
