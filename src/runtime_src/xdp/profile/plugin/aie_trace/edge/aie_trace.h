@@ -14,95 +14,93 @@
  * under the License.
  */
 
-
 #ifndef AIE_TRACE_DOT_H
 #define AIE_TRACE_DOT_H
 
 #include <cstdint>
 
-#include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xaiefal/xaiefal.hpp"
+#include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 
 namespace xdp {
 
-  class AieTrace_EdgeImpl : public AieTraceImpl{
-    public:
-      XDP_EXPORT
-      AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
-        // : AieTraceImpl(database, metadata);
-      ~AieTrace_EdgeImpl() = default;
-      
-      XDP_EXPORT
-      virtual void updateDevice();
-      XDP_EXPORT
-      virtual void flushAieTileTraceModule();
+  class AieTrace_EdgeImpl : public AieTraceImpl {
+   public:
+    XDP_EXPORT
+    AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
+    // : AieTraceImpl(database, metadata);
+    ~AieTrace_EdgeImpl() = default;
 
-    private: 
-      typedef XAie_Events            EventType;
-      typedef std::vector<EventType> EventVector;
-      typedef std::vector<uint32_t>  ValueVector;
+    XDP_EXPORT
+    virtual void updateDevice();
+    XDP_EXPORT
+    virtual void flushAieTileTraceModule();
 
-      module_type getTileType(uint16_t row);
-      void configEventSelections(XAie_DevInst* aieDevInst,
-                                 const XAie_LocType loc,
-                                 const XAie_ModuleType mod,
-                                 const module_type type,
-                                 const std::string metricSet,
-                                 const uint8_t channel0,
-                                 const uint8_t channel);
-      bool setMetricsSettings(uint64_t deviceId, 
-                      void* handle);
-      void releaseCurrentTileCounters(int numCoreCounters, 
-                                      int numMemoryCounters);
-      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, 
-                          XAie_LocType& loc, 
-                          const module_type type,
-                          const std::string& metricSet);
-      void printTileStats(xaiefal::XAieDev* aieDevice, 
-                          const tile_type& tile);
-      bool configureStartIteration(xaiefal::XAieMod& core);
-      bool configureStartDelay(xaiefal::XAieMod& core);
-     
-      bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
-      void setTraceStartControl(void* handle);
-      uint64_t checkTraceBufSize(uint64_t size);
-      inline uint32_t bcIdToEvent(int bcId);
+   private:
+    typedef XAie_Events EventType;
+    typedef std::vector<EventType> EventVector;
+    typedef std::vector<uint32_t> ValueVector;
 
-    private:
-      XAie_DevInst*     aieDevInst = nullptr;
-      xaiefal::XAieDev* aieDevice  = nullptr;
+    module_type getTileType(uint16_t row);
+    void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, const XAie_ModuleType mod,
+                               const module_type type, const std::string metricSet, const uint8_t channel0,
+                               const uint8_t channel);
+    bool setMetricsSettings(uint64_t deviceId, void* handle);
+    void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
+    bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const module_type type,
+                        const std::string& metricSet);
+    void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+    bool configureStartIteration(xaiefal::XAieMod& core);
+    bool configureStartDelay(xaiefal::XAieMod& core);
 
-      std::set<std::string> metricSets;
-      std::map<std::string, EventVector> mCoreEventSets;
-      std::map<std::string, EventVector> mMemoryEventSets;
-      std::map<std::string, EventVector> mMemTileEventSets;
+    bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
+    void setTraceStartControl(void* handle);
+    uint64_t checkTraceBufSize(uint64_t size);
+    inline uint32_t bcIdToEvent(int bcId);
 
-      // AIE profile counters
-      std::vector<tile_type> mCoreCounterTiles;
-      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
-      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
+   private:
+    XAie_DevInst* aieDevInst = nullptr;
+    xaiefal::XAieDev* aieDevice = nullptr;
 
-      // Counter metrics (same for all sets)
-      EventType   mCoreTraceStartEvent;
-      EventType   mCoreTraceEndEvent;
-      EventType   mMemTileTraceStartEvent;
-      EventType   mMemTileTraceEndEvent;
-      EventType   mTraceFlushEndEvent;
-      EventType   mMemTileTraceFlushEndEvent;
+    std::set<std::string> metricSets;
+    std::map<std::string, EventVector> mCoreEventSets;
+    std::map<std::string, EventVector> mMemoryEventSets;
+    std::map<std::string, EventVector> mMemTileEventSets;
+    std::map<std::string, EventVector> mInterfaceTileEventSets;
 
-      EventVector mCoreCounterStartEvents;
-      EventVector mCoreCounterEndEvents;
-      ValueVector mCoreCounterEventValues;
+    // AIE profile counters
+    std::vector<tile_type> mCoreCounterTiles;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mInterfaceCounters;
 
-      EventVector mMemoryCounterStartEvents;
-      EventVector mMemoryCounterEndEvents;
-      ValueVector mMemoryCounterEventValues;
+    // Counter metrics (same for all sets)
+    EventType mCoreTraceStartEvent;
+    EventType mCoreTraceEndEvent;
+    EventType mMemTileTraceStartEvent;
+    EventType mMemTileTraceEndEvent;
+    EventType mInterfaceTileTraceStartEvent;
+    EventType mInterfaceTileTraceEndEvent;
+    EventType mTraceFlushEndEvent;
 
-      // Tile locations to apply trace end and flush
-      std::vector<XAie_LocType> mTraceFlushLocs;
-      std::vector<XAie_LocType> mMemTileTraceFlushLocs;
+    EventVector mCoreCounterStartEvents;
+    EventVector mCoreCounterEndEvents;
+    ValueVector mCoreCounterEventValues;
+
+    EventVector mMemoryCounterStartEvents;
+    EventVector mMemoryCounterEndEvents;
+    ValueVector mMemoryCounterEventValues;
+
+    EventVector mInterfaceCounterStartEvents;
+    EventVector mInterfaceCounterEndEvents;
+    ValueVector mInterfaceCounterEventValues;
+
+    // Tile locations to apply trace end and flush
+    std::vector<XAie_LocType> mTraceFlushLocs;
+    std::vector<XAie_LocType> mMemTileTraceFlushLocs;
+    std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
   };
 
-}   
+}  // namespace xdp
 
 #endif

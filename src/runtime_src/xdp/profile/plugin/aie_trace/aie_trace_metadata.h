@@ -60,7 +60,8 @@ class AieTraceMetadata{
 
     std::map<module_type, std::string> defaultSets {
       { module_type::core,     "functions"},
-      { module_type::mem_tile, "input_channels"}
+      { module_type::mem_tile, "input_channels"},
+      { module_type::shim,     "channels"}
     };
 
     void* handle;
@@ -107,6 +108,8 @@ class AieTraceMetadata{
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
                                   std::vector<std::string>& graphMetricsSettings,
                                   module_type type);
+    void getConfigMetricsForInterfaceTiles(const std::vector<std::string>& metricsSettings,
+                                           const std::vector<std::string> graphMetricsSettings);
     void setTraceStartControl();
     uint8_t getMetricSetIndex(std::string metricString);
    

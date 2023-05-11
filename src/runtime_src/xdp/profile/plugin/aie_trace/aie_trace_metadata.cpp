@@ -95,11 +95,11 @@ namespace xdp {
     if (aieTileMetricsSettings.empty() && aieGraphMetricsSettings.empty()
         && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()
         && shimTileMetricsSettings.empty() && shimGraphMetricsSettings.empty()) {
-        isValidMetrics = false;
+      isValidMetrics = false;
     } else {
       getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::core);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
-      getConfigMetricsForTiles(shimTileMetricsSettings, shimGraphMetricsSettings, module_type::shim);
+      getConfigMetricsForInterfaceTiles(shimTileMetricsSettings, shimGraphMetricsSettings);
       setTraceStartControl();
     }
   }
@@ -430,7 +430,7 @@ namespace xdp {
     return tiles;    
   }
 
-  // Find all MEM tiles associated with a graph and kernel
+  // Find all memory tiles associated with a graph and kernel
   //   kernel_name = all      : all tiles in graph
   //   kernel_name = <kernel> : only tiles used by that specific kernel
   std::vector<tile_type> 
@@ -554,7 +554,7 @@ namespace xdp {
     return tiles;
   }
 
-  // Find all AIE or MEM tiles associated with a graph and kernel
+  // Find all AIE or memory tiles associated with a graph and kernel
   //   kernel_name = all      : all tiles in graph
   //   kernel_name = <kernel> : only tiles used by that specific kernel
   std::vector<tile_type> 
@@ -613,7 +613,7 @@ namespace xdp {
       return;
     if ((getHardwareGen() == 1) && (type == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
-        "MEM tiles are not available in AIE1. Trace settings will be ignored.");
+        "Memory tiles are not available in AIE1. Trace settings will be ignored.");
       return;
     }
       
@@ -632,7 +632,7 @@ namespace xdp {
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
      * AI Engine Tiles
      * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
-     * MEM Tiles (AIE2 and beyond)
+     * Memory Tiles (AIE2 and beyond)
      * graph_based_memory_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
@@ -660,7 +660,7 @@ namespace xdp {
         configMetrics[e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
@@ -717,7 +717,7 @@ namespace xdp {
         configMetrics[e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
@@ -742,7 +742,7 @@ namespace xdp {
      * Range of tiles
      * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>
      *  
-     * MEM Tiles (AIE2 and beyond)
+     * Memory Tiles (AIE2 and beyond)
      * Single or all tiles
      * tile_based_memory_tile_metrics = <{<column>,<row>}|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      * Range of tiles
@@ -764,7 +764,7 @@ namespace xdp {
         configMetrics[e] = metrics[i][1];
       }
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (metrics[i].size() > 2) {
         try {
           for (auto &e : tiles) {
@@ -850,7 +850,7 @@ namespace xdp {
           
           configMetrics[tile] = metrics[i][2];
 
-          // Grab channel numbers (if specified; MEM tiles only)
+          // Grab channel numbers (if specified; memory tiles only)
           if (metrics[i].size() == 5) {
             configChannel0[tile] = channel0;
             configChannel1[tile] = channel1;
@@ -900,7 +900,7 @@ namespace xdp {
 
       configMetrics[tile] = metrics[i][1];
       
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (metrics[i].size() > 2) {
         try {
           configChannel0[tile] = std::stoi(metrics[i][2]);
@@ -957,6 +957,289 @@ namespace xdp {
 
     // If needed, turn on debug fal messages
     // xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
+  }
+
+  // Resolve Interface metrics
+  void AieTraceMetadata::getConfigMetricsForInterfaceTiles(const std::vector<std::string>& metricsSettings,
+                                                           const std::vector<std::string> graphMetricsSettings)
+  {
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
+      return;
+
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+
+    auto allValidKernels = get_kernels(device.get());
+    auto allValidGraphs = get_graphs(device.get());
+
+    std::set<tile_type> allValidTiles;
+    auto validTilesVec = get_interface_tiles(device.get(), "all", type);
+    std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), tileCompare);
+
+    // STEP 1 : Parse per-graph or per-kernel settings
+    /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * Interface Tiles
+     * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<channels|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     */
+
+    std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
+
+    // Graph Pass 1 : process only "all" metric setting
+    for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
+      // Split done only in Pass 1
+      boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
+
+      // Check if graph is not all or if invalid kernel
+      if (graphMetrics[i][0].compare("all") != 0)
+        continue;
+      if ((graphMetrics[i][1].compare("all") != 0)
+          && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+        std::stringstream msg;
+        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
+            << "setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+
+      auto tiles = get_tiles(device.get(), graphMetrics[i][0], type, graphMetrics[i][1]);
+      for (auto &e : tiles) {
+        configMetrics[e] = graphMetrics[i][2];
+      }
+
+      // Grab channel numbers (if specified; memory tiles only)
+      if (graphMetrics[i].size() > 3) {
+        try {
+          for (auto &e : tiles) {
+            configChannel0[e] = std::stoi(graphMetrics[i][3]);
+            configChannel1[e] = std::stoi(graphMetrics[i].back());
+          }
+        } catch (...) {
+          std::stringstream msg;
+          msg << "Channel specifications in graph_based_interface_metrics " 
+              << "are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        }
+      }
+    } // Graph Pass 1
+
+    // Graph Pass 2 : process per graph metric setting
+    for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
+      // Check if already processed or if invalid
+      if (graphMetrics[i][0].compare("all") == 0)
+        continue;
+      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
+        std::stringstream msg;
+        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_interface_metrics "
+            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+      if ((graphMetrics[i][1].compare("all") != 0)
+          && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+        std::stringstream msg;
+        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
+            << "setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+
+      // Check if specified graph exists
+      auto graphs = get_graphs(device.get());
+      if (!graphs.empty() && (std::find(graphs.begin(), graphs.end(), graphMetrics[i][0]) == graphs.end())) {
+        std::stringstream msg;
+        msg << "Could not find graph named " << graphMetrics[i][0] 
+            << ", as specified in graph_based_interface_tile_metrics configuration."
+            << " Following graphs are present in the design : " << graphs[0];
+        for (size_t j = 1; j < graphs.size(); j++) {
+          msg << ", " + graphs[j];
+        }
+        msg << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+
+      auto tiles = get_tiles(device.get(), graphMetrics[i][0], type, graphMetrics[i][1]);
+      for (auto &e : tiles) {
+        configMetrics[e] = graphMetrics[i][2];
+      }
+
+      // Grab channel numbers (if specified; memory tiles only)
+      if (graphMetrics[i].size() > 3) {
+        try {
+          for (auto &e : tiles) {
+            configChannel0[e] = std::stoi(graphMetrics[i][3]);
+            configChannel1[e] = std::stoi(graphMetrics[i].back());
+          }
+        } catch (...) {
+          std::stringstream msg;
+          msg << "Channel specifications in graph_based_interface_tile_metrics "
+              << "are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        }
+      }
+    } // Graph Pass 2
+
+    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for
+     * a metric separated with ';' Single or all tiles
+     * tile_based_interface_tile_metrics =
+     * [[<column|all>:<off|channels|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]]
+     * Range of tiles
+     * tile_based_interface_tile_metrics =
+     * [<mincolumn>:<maxcolumn>:<off|channels|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]]]
+     */
+
+    std::vector<std::vector<std::string>> metrics(metricsSettings.size());
+
+    // Pass 1 : process only "all" metric setting
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // Split done only in Pass 1
+      boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
+
+      if (metrics[i][0].compare("all") != 0)
+        continue;
+
+      int16_t channelId = (metrics[i].size() < 3) ? -1 : static_cast<uint16_t>(std::stoul(metrics[i][2]));
+      auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId);
+
+      for (auto& e : tiles) {
+        configMetrics[e] = metrics[i][1];
+      }
+    }  // Pass 1
+
+    // Pass 2 : process only range of tiles metric setting
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
+        continue;
+
+      uint32_t maxCol = 0;
+      try {
+        maxCol = std::stoi(metrics[i][1]);
+      }
+      catch (std::invalid_argument const&) {
+        // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
+        continue;
+      }
+      uint32_t minCol = 0;
+      try {
+        minCol = std::stoi(metrics[i][0]);
+      }
+      catch (std::invalid_argument const&) {
+        // 2nd style but expected min column is not an integer, give warning and skip
+        xrt_core::message::send(severity_level::warning, "XRT",
+                                "Minimum column specification in "
+                                "tile_based_interface_tile_metrics is not "
+                                "an integer and hence skipped.");
+        continue;
+      }
+
+      int16_t channelId = 0;
+      if (metrics[i].size() == 4) {
+        try {
+          channelId = static_cast<uint16_t>(std::stoul(metrics[i][3]));
+        }
+        catch (std::invalid_argument const&) {
+          // Expected channel Id is not an integer, give warning and
+          // ignore channelId
+          xrt_core::message::send(severity_level::warning, "XRT",
+                                  "Channel ID specification in "
+                                  "tile_based_interface_tile_metrics is "
+                                  "not an integer and hence ignored.");
+          channelId = -1;
+        }
+      }
+
+      auto tiles = get_interface_tiles(device.get(), metrics[i][2], channelId, true, minCol, maxCol);
+
+      for (auto& t : tiles) {
+        configMetrics[t] = metrics[i][2];
+      }
+    }  // Pass 2
+
+    // Pass 3 : process only single tile metric setting
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // Skip range specification, invalid format, or already processed
+      if ((metrics[i].size() == 4) || (metrics[i].size() < 2) || (metrics[i][0].compare("all") == 0))
+        continue;
+
+      uint32_t col = 0;
+      try {
+        col = std::stoi(metrics[i][1]);
+      }
+      catch (std::invalid_argument const&) {
+        // max column is not a number, so the expected single column specification. Handle this here
+        try {
+          col = std::stoi(metrics[i][0]);
+        }
+        catch (std::invalid_argument const&) {
+          // Expected column specification is not a number. Give warning and skip
+          xrt_core::message::send(severity_level::warning, "XRT",
+                                  "Column specification in tile_based_interface_tile_metrics "
+                                  "is not an integer and hence skipped.");
+          continue;
+        }
+
+        int16_t channelId = -1;
+        if (metrics[i].size() == 3) {
+          try {
+            channelId = static_cast<uint16_t>(std::stoul(metrics[i][2]));
+          }
+          catch (std::invalid_argument const&) {
+            // Expected channel Id is not an integer, give warning and
+            // ignore channelId
+            xrt_core::message::send(severity_level::warning, "XRT",
+                                    "Channel ID specification in "
+                                    "tile_based_interface_tile_metrics is not an integer "
+                                    "and hence ignored.");
+            channelId = -1;
+          }
+        }
+
+        auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId, true, col, col);
+
+        for (auto& t : tiles) {
+          configMetrics[t] = metrics[i][1];
+        }
+      }
+    }  // Pass 3
+
+    // Set default, check validity, and remove "off" tiles
+    auto defaultSet = defaultSets[moduleIdx];
+    // auto totalTiles = get_interface_tiles(device.get(), defaultSet, -1);
+    // for (auto &e : totalTiles) {
+    //   if (configMetrics.find(e) == configMetrics.end())
+    //   {
+    //     configMetrics[e] = defaultSet;
+    //   }
+    // }
+
+    bool showWarning = true;
+    std::vector<tile_type> offTiles;
+
+    for (auto& tileMetric : configMetrics) {
+      // Save list of "off" tiles
+      if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Ensure requested metric set is supported (if not, use default)
+      auto metricVec = metricStrings[module_type::shim];
+      if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
+        if (showWarning) {
+          std::string msg = "Unable to find interface_tile metric set " + tileMetric.second + ". Using default of " +
+                            defaultSet + ". ";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          showWarning = false;
+        }
+        tileMetric.second = defaultSet;
+      }
+    }
+
+    // Remove all the "off" tiles
+    for (auto& t : offTiles) {
+      configMetrics.erase(t);
+    }
   }
 
   std::vector<gmio_type> 
@@ -1048,7 +1331,7 @@ namespace xdp {
   }
 
   uint8_t AieTraceMetadata::getMetricSetIndex(std::string metricString) {
-    // Verify metric set is valid for either AIE or MEM tiles, 
+    // Verify metric set is valid for either AIE or memory tiles, 
     // and convert to index to pass to PS kernel.
     auto metricSetItr = std::find(metricSets.begin(), metricSets.end(), metricString);
     auto memTileMetricSetItr = std::find(memTileMetricSets.begin(), memTileMetricSets.end(), metricString);
