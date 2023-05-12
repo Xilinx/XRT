@@ -613,6 +613,7 @@ populate_hardware_context(const xrt_core::device* device)
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }
+
   return pt;
 }
 
