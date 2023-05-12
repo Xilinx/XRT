@@ -76,6 +76,7 @@ enum class key_type
   ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
+  device_status,
   kds_cu_info,
   kds_mode,
   kds_cu_stat,
@@ -723,6 +724,34 @@ struct kds_mode : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+/**
+ * Extract the status of the device
+ * This states whether or not a device is stuck due to an xclbin issue
+ */
+struct device_status : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::device_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  parse_status(const result_type status)
+  {
+    switch (status) {
+      case 0:
+        return "HEALTHY";
+      case 1:
+        return "HANG";
+      case 2:
+        return "UNKNOWN";
+      default:
+        throw xrt_core::system_error(EINVAL, "Invalid device status: " + status);
+    }
+  }
 };
 
 struct kds_cu_stat : request
