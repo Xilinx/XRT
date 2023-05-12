@@ -103,13 +103,6 @@ namespace xdp {
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     mCoreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
 
-    /*
-     * This is needed because the last trace packet needs to be "flushed".
-     * To output the last packet, we use event generate register to create
-     * this event and gracefully shut down trace modules.
-     */
-    mTraceFlushEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-
     // **** Memory Module Trace ****
     // NOTE 1: Core events listed here are broadcast by the resource manager
     // NOTE 2: These are supplemented with counter events as those are dependent
@@ -421,13 +414,15 @@ namespace xdp {
     auto configChannel1 = metadata->getConfigChannel1();
 
     // Decide when to use user event for trace end to enable flushing
+    // NOTE: This is needed to "flush" the last trace packet.
+    //       We use the event generate register to create this 
+    //       event and gracefully shut down trace modules.
     bool useTraceFlush = false;
     if ((metadata->getUseUserControl()) || (metadata->getUseGraphIterator()) || (metadata->getUseDelay()) ||
         (xrt_core::config::get_aie_trace_settings_end_type() == "event1")) {
       if (metadata->getUseUserControl())
         mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-      mCoreTraceEndEvent = mTraceFlushEndEvent;
-      mMemTileTraceEndEvent = mMemTileTraceFlushEndEvent;
+      mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
       useTraceFlush = true;
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))
@@ -450,11 +445,14 @@ namespace xdp {
       auto loc = XAie_TileLoc(col, row);
 
       // Store location to flush at end of run
-      if (useTraceFlush) {
+      if (useTraceFlush || (type == module_type::mem_tile) 
+          || (type == module_type::shim)) {
         if (type == module_type::core)
           mTraceFlushLocs.push_back(loc);
         else if (type == module_type::mem_tile)
           mMemTileTraceFlushLocs.push_back(loc);
+        else if (type == module_type::shim)
+          mInterfaceTileTraceFlushLocs.push_back(loc);
       }
 
       // AIE config object for this tile
@@ -1039,12 +1037,16 @@ namespace xdp {
     }
 
     // Flush trace by forcing end event
-    // NOTE: this informs tiles to output remaining packets (even partial)
-    for (const auto& loc : mTraceFlushLocs) XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mTraceFlushEndEvent);
+    // NOTE: this informs tiles to output remaining packets (even if partial)
+    for (const auto& loc : mTraceFlushLocs) 
+      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mCoreTraceEndEvent);
     for (const auto& loc : mMemTileTraceFlushLocs)
-      XAie_EventGenerate(aieDevInst, loc, XAIE_MEM_MOD, mMemTileTraceFlushEndEvent);
+      XAie_EventGenerate(aieDevInst, loc, XAIE_MEM_MOD, mMemTileTraceEndEvent);
+    for (const auto& loc : mInterfaceTileTraceFlushLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceEndEvent);
 
     mTraceFlushLocs.clear();
     mMemTileTraceFlushLocs.clear();
+    mInterfaceTileTraceFlushLocs.clear();
   }
 }  // namespace xdp

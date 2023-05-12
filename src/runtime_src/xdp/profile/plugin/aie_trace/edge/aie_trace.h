@@ -81,7 +81,6 @@ namespace xdp {
     EventType mMemTileTraceEndEvent;
     EventType mInterfaceTileTraceStartEvent;
     EventType mInterfaceTileTraceEndEvent;
-    EventType mTraceFlushEndEvent;
 
     EventVector mCoreCounterStartEvents;
     EventVector mCoreCounterEndEvents;
