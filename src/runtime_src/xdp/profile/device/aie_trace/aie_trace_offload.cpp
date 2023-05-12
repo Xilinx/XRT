@@ -63,7 +63,7 @@ AIETraceOffload::AIETraceOffload
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
 {
-  bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
+  bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 
   // Select appropriate reader
   if (isPLIO)
@@ -93,14 +93,14 @@ bool AIETraceOffload::setupPSKernel() {
 
   xdp::built_in::GMIOBuffer hostBuffer[numStream];
   for (uint64_t i = 0; i < numStream; i ++) {
-    buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 0);
+    buffers[i].bufId = deviceIntf->allocTraceBuf(bufAllocSz, 0);
     
-    if (!buffers[i].boHandle) {
+    if (!buffers[i].bufId) {
       bufferInitialized = false;
       return bufferInitialized;
     }
 
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
 
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
@@ -164,14 +164,14 @@ bool AIETraceOffload::initReadTrace()
   checkCircularBufferSupport();
 
   for(uint64_t i = 0; i < numStream ; ++i) {
-    buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
-    if (!buffers[i].boHandle) {
+    buffers[i].bufId = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
+    if (!buffers[i].bufId) {
       bufferInitialized = false;
       return bufferInitialized;
     }
 
     // Data Mover will write input stream to this address
-    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
 
     std::string msg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
@@ -216,7 +216,7 @@ bool AIETraceOffload::initReadTrace()
 
       XAie_MemInst memInst;
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
-      xclBufferExportHandle boExportHandle = deviceIntf->getBufferExportHandle(buffers[i].boHandle);
+      xclBufferExportHandle boExportHandle = deviceIntf->exportTraceBuf(buffers[i].bufId);
       if(XRT_NULL_BO_EXPORT == boExportHandle) {
         throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
       }
@@ -246,12 +246,12 @@ void AIETraceOffload::endReadTrace()
 {
   // reset
   for (uint64_t i = 0; i < numStream ; ++i) {
-  if (!buffers[i].boHandle)
+  if (!buffers[i].bufId)
     continue;
 
   if (isPLIO) {
     deviceIntf->resetAIETs2mm(i);
-//    deviceIntf->freeTraceBuf(b.boHandle);
+//    deviceIntf->freeTraceBuf(b.bufId);
   } else {
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
@@ -276,8 +276,8 @@ void AIETraceOffload::endReadTrace()
 #endif
     
   }
-  deviceIntf->freeTraceBuf(buffers[i].boHandle);
-  buffers[i].boHandle = 0;
+  deviceIntf->freeTraceBuf(buffers[i].bufId);
+  buffers[i].bufId = 0;
   }
   bufferInitialized = false;
 }
@@ -399,7 +399,7 @@ uint64_t AIETraceOffload::syncAndLog(uint64_t index)
 
   // Sync to host
   auto start = std::chrono::steady_clock::now();
-  void* hostBuf = deviceIntf->syncTraceBuf(bd.boHandle, bd.offset, nBytes);
+  void* hostBuf = deviceIntf->syncTraceBuf(bd.bufId, bd.offset, nBytes);
   auto end = std::chrono::steady_clock::now();
   debug_stream
     << "ts2mm_" << index << " : bytes : " << nBytes << " "

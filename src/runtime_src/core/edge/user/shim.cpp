@@ -1017,6 +1017,7 @@ xclSKGetCmd(xclSKCmd *cmd)
     cmd->meta_bohdl = scmd.meta_bohdl;
     memcpy(cmd->uuid, &scmd.uuid, sizeof(cmd->uuid));
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
+    cmd->slot_id = scmd.slot_id;
   }
 
   return ret ? -errno : ret;

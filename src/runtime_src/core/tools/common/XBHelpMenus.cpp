@@ -213,6 +213,9 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     ptDevice.put("interface_type", "pcie");
     ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
 
+    const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(device, 2);
+    ptDevice.put("device_status", xrt_core::query::device_status::parse_status(device_status));
+
     bool is_mfg = false;
     try {
       is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);

@@ -35,7 +35,7 @@ namespace xdp {
   {    
   }
 
-  bool AIEProfilingWriter::write(bool openNewFile)
+  bool AIEProfilingWriter::write(bool)
   {
     // Report HW generation to inform analysis how to interpret event IDs
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);

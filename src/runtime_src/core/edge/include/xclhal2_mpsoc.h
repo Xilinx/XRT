@@ -40,6 +40,7 @@ struct xclSKCmd {
     int		bohdl;
     int		meta_bohdl;
     uuid_t      uuid;
+    uint32_t	slot_id;
 };
 
 struct xclAIECmd {

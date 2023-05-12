@@ -103,7 +103,7 @@ xilinx_xrt()
 #if defined (__aarch64__) || defined (__arm__)
     xrt = bfs::path("/usr");
 #elif defined (_WIN32)
-    xrt = bfs::path("C:/Windows/System32/AMD");
+    xrt = bfs::path(xrt_core::dlpath("xrt_coreutil.dll")).parent_path();
 #else
     throw std::runtime_error("XILINX_XRT not set");
 #endif

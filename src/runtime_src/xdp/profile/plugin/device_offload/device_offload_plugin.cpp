@@ -197,7 +197,7 @@ namespace xdp {
       size_t num_ts2mm = devInterface->getNumberTS2MM();
       trace_buffer_size = GetTS2MMBufSize();
 
-      uint64_t each_buffer_size = devInterface->getAlignedTraceBufferSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
+      uint64_t each_buffer_size = devInterface->getAlignedTraceBufSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
 
       // Initialize all of the buffers with the size requested by
       // the user.
@@ -226,7 +226,7 @@ namespace xdp {
           auto eightyPercent =
             static_cast<uint64_t>(static_cast<double>(memorySz) * 0.8);
           eightyPercent =
-            devInterface->getAlignedTraceBufferSize(eightyPercent, 1);
+            devInterface->getAlignedTraceBufSize(eightyPercent, 1);
 
           buf_sizes[i] = eightyPercent;
           std::string msg = "Trace buffer size for TS2MM " + std::to_string(i)

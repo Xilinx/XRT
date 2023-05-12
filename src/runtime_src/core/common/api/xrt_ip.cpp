@@ -250,7 +250,7 @@ public:
     , m_ipctx(xrt::hw_context{xrt::device{m_device}, xid, hwctx_access_mode()}, nm)
     , m_uid(create_uid())
   {
-    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);
+    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , m_uid);
   }
 
   ip_impl(const xrt::hw_context& hwctx, const std::string& nm)
@@ -258,12 +258,12 @@ public:
     , m_ipctx(hwctx, nm)
     , m_uid(create_uid())
   {
-    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);
+    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , m_uid);
   }
 
   ~ip_impl()
   {
-    XRT_DEBUGF("ip_impl::~ip_impl(%d)\n" , uid);
+    XRT_DEBUGF("ip_impl::~ip_impl(%d)\n" , m_uid);
   }
 
   ip_impl(const ip_impl&) = delete;

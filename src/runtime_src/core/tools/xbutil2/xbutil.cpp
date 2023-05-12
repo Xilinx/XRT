@@ -16,6 +16,7 @@
 #include "tools/common/SubCmdJSON.h"
 #include "tools/common/XBMain.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/JSONConfigurable.h"
 
 // System include files
 #include <exception>
@@ -23,6 +24,34 @@
 #include <string>
 
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+
+const std::string& command_config = 
+R"(
+[{
+	"name": "cmd_configs",
+	"contents": [{
+		"name": "common",
+		"contents": [{
+			"name": "examine",
+			"contents": [{
+					"name": "common",
+					"contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
+				},
+				{
+					"name": "alveo",
+					"contents": ["error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
+				},
+				{
+					"name": "aie",
+					"contents": ["aie", "aiemem", "aieshim"]
+				}
+			]
+		}]
+	}]
+}]
+)";
 
 // Program entry
 int main( int argc, char** argv )
@@ -31,12 +60,16 @@ int main( int argc, char** argv )
   SubCmdsCollection subCommands;
   const std::string executable = "xbutil";
 
+  boost::property_tree::ptree configTree;
+  std::istringstream command_config_stream(command_config);
+  boost::property_tree::read_json(command_config_stream, configTree);
+
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
-    subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false,  false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false,  false, false));
+    subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false));
 
     // Parse sub commands from json files
     populateSubCommandsFromJSON(subCommands, executable);
@@ -72,7 +105,7 @@ int main( int argc, char** argv )
       xrt_core::send_exception_message(e.what(), executable.c_str());
     else // Handle the operation canceled case
       XBUtilities::print_exception(e);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {
     xrt_core::send_exception_message("Unknown error", executable.c_str());

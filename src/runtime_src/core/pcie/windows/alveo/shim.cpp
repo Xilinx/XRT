@@ -1960,7 +1960,7 @@ xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return INVALID_HANDLE_VALUE;
+  return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
 }
 
 xclBufferHandle

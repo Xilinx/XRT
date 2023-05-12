@@ -276,7 +276,7 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
   std::cout << boost::format("  %-20s : %s\n") % "SC Version" % platform_to_flash.get<std::string>("sc_version", "N/A");
   auto logic_uuid = platform_to_flash.get<std::string>("logic-uuid", "");
   if (!logic_uuid.empty()) {
-    std::cout << boost::format("  %-20s : %s\n") % "Platform UUID" % logic_uuid;
+    std::cout << boost::format("  %-20s : %s\n") % "Logic UUID" % logic_uuid;
   } else {
     std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % platform_to_flash.get<std::string>("id", "N/A");
   }

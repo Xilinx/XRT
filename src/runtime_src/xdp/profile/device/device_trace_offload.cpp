@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -380,7 +380,7 @@ sync_and_log(uint64_t index)
 
   uint64_t nBytes = bd.used_size - bd.offset;
   auto start = std::chrono::steady_clock::now();
-  void* host_buf = dev_intf->syncTraceBuf(bd.buf, bd.offset, nBytes);
+  void* host_buf = dev_intf->syncTraceBuf(bd.bufId, bd.offset, nBytes);
   auto end = std::chrono::steady_clock::now();
 
   debug_stream
@@ -441,12 +441,12 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
     auto& bd = ts2mm_info.buffers[i];
     bd.alloc_size = buf_sizes[i];
 
-    bd.buf = dev_intf->allocTraceBuf(bd.alloc_size, dev_intf->getTS2MmMemIndex(i));
-    if (!bd.buf)
+    bd.bufId = dev_intf->allocTraceBuf(bd.alloc_size, dev_intf->getTS2MmMemIndex(i));
+    if (!bd.bufId)
       return false;
 
     // Data Mover will write input stream to this address
-    bd.address = dev_intf->getDeviceAddr(bd.buf);
+    bd.address = dev_intf->getTraceBufDeviceAddr(bd.bufId);
     dev_intf->initTS2MM(i, bd.alloc_size, bd.address, ts2mm_info.use_circ_buf);
 
     debug_stream
@@ -469,8 +469,8 @@ reset_s2mm()
       dev_intf->initTS2MM(i, 0, ts2mm_info.buffers[i].address, 0);
 
     dev_intf->resetTS2MM(i);
-    dev_intf->freeTraceBuf(ts2mm_info.buffers[i].buf);
-    ts2mm_info.buffers[i].buf = 0;
+    dev_intf->freeTraceBuf(ts2mm_info.buffers[i].bufId);
+    ts2mm_info.buffers[i].bufId = 0;
   }
   ts2mm_info.buffers.clear();
 }

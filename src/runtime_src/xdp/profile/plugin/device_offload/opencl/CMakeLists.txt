@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Advanced Micro Devices, Inc.  All rights reserved.
+# Copyright (C) 2022-2023 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
 # ====================================================================
@@ -9,8 +9,6 @@
 # ====================================================================
 
 file(GLOB OPENCL_DEVICE_OFFLOAD_PLUGIN_FILES
-  "${PROFILE_DIR}/device/xrt_device/*.h"
-  "${PROFILE_DIR}/device/xrt_device/*.cpp"
   "${PROFILE_DIR}/plugin/device_offload/*.h"
   "${PROFILE_DIR}/plugin/device_offload/*.cpp"
   "${PROFILE_DIR}/plugin/device_offload/opencl/*.h"

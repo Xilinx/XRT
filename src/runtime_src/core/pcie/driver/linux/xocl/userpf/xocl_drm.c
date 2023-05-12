@@ -715,7 +715,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 
 		phy_bank_exists = true;
 		start_addr = mem_data->m_base_address;
-		end_addr = start_addr + mem_data->m_size;
+		end_addr = start_addr + mem_data->m_size * 1024;
 
 #if defined(XOCL_DRM_FREE_MALLOC)
 		ret = drm_mm_insert_node_in_range(xocl_mm->mm, dnode, size, PAGE_SIZE, 0,
