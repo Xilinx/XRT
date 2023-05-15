@@ -292,7 +292,10 @@ ReportDynamicRegion::writeReport( const xrt_core::device* _pDevice,
   if(pt_dfx.empty())
     return;
 
-  const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(_pDevice, 2);
+  auto device_status = 2;
+  try {
+    device_status = xrt_core::device_query<xrt_core::query::device_status>(_pDevice);
+  } catch (...) {}
   _output << boost::format("  Device Status: %s\n") % xrt_core::query::device_status::parse_status(device_status);
 
   for(auto& k_dfx : pt_dfx) {
