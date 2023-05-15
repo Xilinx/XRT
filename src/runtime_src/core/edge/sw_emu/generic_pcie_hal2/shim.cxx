@@ -427,7 +427,7 @@ namespace xclswemuhal2 {
     return true ;
   }
 
-  void SwEmuShim::launchDeviceProcess(bool debuggable, std::string& binaryDirectory)
+  bool SwEmuShim::launchDeviceProcess(bool debuggable, std::string& binaryDirectory)
   {
     std::lock_guard lk(mProcessLaunchMtx);
     systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
@@ -439,7 +439,7 @@ namespace xclswemuhal2 {
     binaryCounter++;
     if(sock)
     {
-      return;
+      return true;
     }
 
     struct sigaction s;
@@ -490,6 +490,7 @@ namespace xclswemuhal2 {
         }
         else {
           std::cerr << "ERROR : [SW_EMU 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          // the child process can exit now cleanly.
           exit(1);
         }
 
@@ -536,8 +537,8 @@ namespace xclswemuhal2 {
 
         if (access(modelDirectory.c_str(), X_OK) != 0)
         {
-          std::cerr << "ERROR: [SW_EMU 22] genericpciemodel binary does not have executable permission." << std::endl;
-          exit(1);
+          std::cerr << "ERROR: [SW_EMU 22] genericpciemodel binary does not present or does not have executable permission." << std::endl;
+          return false;
         }
 
         const char* childArgv[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr } ;
@@ -567,6 +568,7 @@ namespace xclswemuhal2 {
       }
     }
     sock = new unix_socket;
+    return true;
   }
 
   void SwEmuShim::getCuRangeIdx() {
@@ -635,7 +637,9 @@ namespace xclswemuhal2 {
     }
 
     std::string binaryDirectory("");
-    launchDeviceProcess(debuggable,binaryDirectory);
+    if (launchDeviceProcess(debuggable,binaryDirectory) == false) {
+      return -1;
+    }
 
     if(header)
     {
@@ -1196,7 +1200,9 @@ namespace xclswemuhal2 {
   void SwEmuShim::launchTempProcess()
   {
     std::string binaryDirectory("");
-    launchDeviceProcess(false,binaryDirectory);
+    if (launchDeviceProcess(false,binaryDirectory) == false) {
+      return;
+    }
     std::string xmlFile("");
     std::string tempdlopenfilename("");
     SHIM_UNUSED bool ack = true;

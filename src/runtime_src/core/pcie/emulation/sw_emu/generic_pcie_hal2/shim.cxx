@@ -440,7 +440,7 @@ namespace xclswemuhal2
 
         if (access(modelDirectory.c_str(), X_OK) != 0)
         {
-          std::cerr << "ERROR: [SW_EMU 23] genericpciemodel binary does not have executable permission." << std::endl;
+          std::cerr << "ERROR: [SW_EMU 23] genericpciemodel binary does not present or does not have executable permission." << std::endl;
           return false;
         }
 
@@ -484,7 +484,7 @@ namespace xclswemuhal2
           std::cerr << "FATAL ERROR : child process did not launch" << std::endl;
           exit(EXIT_FAILURE);
         }
-        // fork successful, so exit parent process.
+        // fork successful, child process can exit now cleanly.
         exit(0);
       }
     }
