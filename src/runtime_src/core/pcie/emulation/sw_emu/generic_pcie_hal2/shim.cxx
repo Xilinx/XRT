@@ -802,7 +802,8 @@ namespace xclswemuhal2
   void SwEmuShim::launchTempProcess()
   {
     std::string binaryDirectory("");
-    launchDeviceProcess(false, binaryDirectory);
+    if (launchDeviceProcess(false, binaryDirectory) == false)
+      return;
     std::string xmlFile("");
     std::string tempdlopenfilename("");
     SHIM_UNUSED bool ack = true;
