@@ -369,7 +369,7 @@ namespace xclswemuhal2
     char *login_user = getenv("USER");
     if (!login_user)
     {
-      std::cerr << "ERROR: [SW-EMU 22] $USER variable is not SET. Please make sure the USER env variable is set properly." << std::endl;
+      std::cerr << "ERROR: [SW_EMU 22] $USER variable is not SET. Please make sure the USER env variable is set properly." << std::endl;
      // exit(EXIT_FAILURE);
       return false;
     }
@@ -396,7 +396,7 @@ namespace xclswemuhal2
         if (vitisInstallEnvvar != NULL)
           xilinxInstall = std::string(vitisInstallEnvvar);
         else {
-          std::cerr << "ERROR : [SW-EMU 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          std::cerr << "ERROR : [SW_EMU 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
           return false;
         }
 
@@ -874,7 +874,7 @@ namespace xclswemuhal2
     {
       auto ddrSize = mDDRMemoryManager[flags]->size();
       std::string ddrSizeStr = std::to_string(ddrSize);
-      std::string initMsg = "ERROR: [SW-EMU 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit 16 GB.";
+      std::string initMsg = "ERROR: [SW_EMU 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit 16 GB.";
       std::cout << initMsg << std::endl;
       return result;
     }
@@ -957,7 +957,7 @@ namespace xclswemuhal2
     const auto& cuidx2addr = mCoreDevice->get_cus();
     if (cu_index >= cuidx2addr.size())
     {
-      std::string strMsg = "ERROR: [SW-EMU 20] invalid CU index: " + std::to_string(cu_index);
+      std::string strMsg = "ERROR: [SW_EMU 20] invalid CU index: " + std::to_string(cu_index);
       mLogStream << __func__ << strMsg << std::endl;
       return false;
     }
@@ -986,7 +986,7 @@ namespace xclswemuhal2
   {
     if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0)
     {
-      std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
+      std::string strMsg = "ERROR: [SW_EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
       mLogStream << __func__ << strMsg << std::endl;
       return false;
     }

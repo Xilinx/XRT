@@ -405,7 +405,7 @@ unsigned xclProbe()
 {
   if(!xclemulation::isXclEmulationModeHwEmuOrSwEmu())
   {
-    std::string initMsg ="ERROR: [SW-EMU 09] Please set XCL_EMULATION_MODE to \"sw_emu\" to run software emulation. ";
+    std::string initMsg ="ERROR: [SW_EMU 09] Please set XCL_EMULATION_MODE to \"sw_emu\" to run software emulation. ";
     std::cout<<initMsg<<std::endl;
     return 0;
   }
