@@ -491,7 +491,7 @@ namespace xclswemuhal2 {
         else {
           std::cerr << "ERROR : [SW_EMU 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
           // the child process can exit now cleanly.
-          exit(1);
+          return false;
         }
 
         char *xilinxHLSEnvVar = getenv("XILINX_HLS");
