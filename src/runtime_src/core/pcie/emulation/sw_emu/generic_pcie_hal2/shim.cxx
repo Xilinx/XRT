@@ -431,12 +431,6 @@ namespace xclswemuhal2
           setenv("LD_LIBRARY_PATH", sLdLibs.c_str(), true);
         }
 
-        if (xilinxInstall.empty())
-        {
-          std::cerr << "ERROR : [SW-EMU 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
-          return false;
-        }
-
         std::string modelDirectory("");
 
         if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel"))
@@ -488,7 +482,7 @@ namespace xclswemuhal2
         if (r == -1)
         {
           std::cerr << "FATAL ERROR : child process did not launch" << std::endl;
-          return false;
+          exit(EXIT_FAILURE);
         }
         // fork successful, so exit parent process.
         exit(0);
