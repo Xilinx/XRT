@@ -97,7 +97,6 @@ namespace built_in {
     static constexpr auto NUM_MEMORY_TRACE_EVENTS = 8;
     static constexpr auto NUM_MEM_TILE_TRACE_EVENTS = 8;
 
-
     uint32_t delayCycles;
     uint32_t iterationCount;
     uint16_t numTiles;
@@ -138,10 +137,10 @@ namespace built_in {
 
   struct MemTileTraceData 
   {
-    uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
-    bool port_trace_is_master[NUM_MEM_TILE_PORTS];
-    uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
-    uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    uint8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS] = {};
+    bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
+    uint8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {};
+    uint8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {};
 
     uint32_t packet_type = 0;
     uint32_t start_event = EVENT_CORE_ACTIVE; 

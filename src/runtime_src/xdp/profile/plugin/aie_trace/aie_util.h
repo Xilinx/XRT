@@ -1,0 +1,72 @@
+/**
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef AIE_UTIL_DOT_H
+#define AIE_UTIL_DOT_H
+
+#include <boost/property_tree/ptree.hpp>
+#include <set>
+#include <map>
+#include <vector>
+
+#include "xdp/config.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "core/common/device.h"
+
+namespace xdp {
+  bool tileCompare(tile_type tile1, tile_type tile2);
+  inline void throwIfError(bool err, const char* msg);
+  static void readAIEMetadata(const char* data, size_t size, 
+                              boost::property_tree::ptree& aie_project);
+
+  int getHardwareGeneration(const xrt_core::device* device);
+  uint16_t getAIETileRowOffset(const xrt_core::device* device);
+  aiecompiler_options getAIECompilerOptions(const xrt_core::device* device);
+  std::vector<std::string> getValidGraphs(const xrt_core::device* device);
+  std::vector<std::string> getValidKernels(const xrt_core::device* device);
+  std::vector<std::string> getValidPorts(const xrt_core::device* device);
+
+  std::unordered_map<std::string, plio_config> getPLIOs(const xrt_core::device* device);
+  std::vector<gmio_config> getGMIOs(const xrt_core::device* device);
+  std::vector<gmio_config> getTraceGMIOs(const xrt_core::device* device);
+  std::vector<gmio_config> getChildGMIOs(const xrt_core::device* device,
+                                         const std::string& childStr);
+  std::vector<tile_type> getInterfaceTiles(const xrt_core::device* device,
+                                           const std::string& graphName,
+                                           const std::string& portName = "all",
+                                           const std::string& metricStr = "channels",
+                                           int16_t channelId = -1,
+                                           bool useColumn = false, 
+                                           uint32_t minCol = 0, 
+                                           uint32_t maxCol = 0);
+
+  std::vector<tile_type> getMemoryTiles(const xrt_core::device* device, 
+                                        const std::string& graph_name,
+                                        const std::string& kernel_name = "all");
+
+  std::vector<tile_type> getAIETiles(const xrt_core::device* device,
+                                     const std::string& graph_name);
+  std::vector<tile_type> getEventTiles(const xrt_core::device* device, 
+                                       const std::string& graph_name,
+                                       module_type type);
+  std::vector<tile_type> getTiles(const xrt_core::device* device, 
+                                  const std::string& graph_name,
+                                  module_type type, 
+                                  const std::string& kernel_name = "all");
+
+}
+
+#endif

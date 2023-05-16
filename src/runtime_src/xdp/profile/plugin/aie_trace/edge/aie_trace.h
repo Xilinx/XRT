@@ -42,14 +42,16 @@ namespace xdp {
     typedef std::vector<uint32_t> ValueVector;
 
     module_type getTileType(uint16_t row);
-    void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, const XAie_ModuleType mod,
-                               const module_type type, const std::string metricSet, const uint8_t channel0,
+    void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, 
+                               const XAie_ModuleType mod, const module_type type, 
+                               const std::string metricSet, const uint8_t channel0,
                                const uint8_t channel);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
     void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
-    bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const module_type type,
-                        const std::string& metricSet);
+    bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
+                        const module_type type, const std::string& metricSet);
     void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+    void printTraceEventStats(uint64_t deviceId);
     bool configureStartIteration(xaiefal::XAieMod& core);
     bool configureStartDelay(xaiefal::XAieMod& core);
 
@@ -62,10 +64,9 @@ namespace xdp {
     XAie_DevInst* aieDevInst = nullptr;
     xaiefal::XAieDev* aieDevice = nullptr;
 
-    std::set<std::string> metricSets;
     std::map<std::string, EventVector> mCoreEventSets;
     std::map<std::string, EventVector> mMemoryEventSets;
-    std::map<std::string, EventVector> mMemTileEventSets;
+    std::map<std::string, EventVector> mMemoryTileEventSets;
     std::map<std::string, EventVector> mInterfaceTileEventSets;
 
     // AIE profile counters
@@ -77,8 +78,8 @@ namespace xdp {
     // Counter metrics (same for all sets)
     EventType mCoreTraceStartEvent;
     EventType mCoreTraceEndEvent;
-    EventType mMemTileTraceStartEvent;
-    EventType mMemTileTraceEndEvent;
+    EventType mMemoryTileTraceStartEvent;
+    EventType mMemoryTileTraceEndEvent;
     EventType mInterfaceTileTraceStartEvent;
     EventType mInterfaceTileTraceEndEvent;
 
@@ -96,8 +97,11 @@ namespace xdp {
 
     // Tile locations to apply trace end and flush
     std::vector<XAie_LocType> mTraceFlushLocs;
-    std::vector<XAie_LocType> mMemTileTraceFlushLocs;
+    std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
     std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
+
+    // Keep track of number of events reserved per module and/or tile
+    int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];
   };
 
 }  // namespace xdp

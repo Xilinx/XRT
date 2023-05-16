@@ -124,8 +124,12 @@ constexpr uint32_t NUM_TRACE_PCS = 4;
 constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
-constexpr uint32_t NUM_MEM_TILE_PORTS = 8;
-constexpr uint32_t NUM_MEM_TILE_CHAN_SEL = 2;
+constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
+constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
+
+constexpr uint32_t CORE_BROADCAST_EVENT_BASE = 107;
+constexpr uint32_t ES1_TRACE_COUNTER = 1020;
+constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
 
 }
 

@@ -182,7 +182,8 @@ namespace xdp {
     return settingsVector;
   }
 
-  std::unordered_map<std::string, plio_config> AieProfileMetadata::get_plios(const xrt_core::device* device)
+  std::unordered_map<std::string, plio_config> 
+  AieProfileMetadata::get_plios(const xrt_core::device* device)
   {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
