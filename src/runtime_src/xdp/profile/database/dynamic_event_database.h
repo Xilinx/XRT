@@ -57,12 +57,12 @@ namespace xdp {
     // information per execution.  This abstracts the host API event
     // storage and matching of start with end events.  User level events
     // are also stored here as well as dependency information.
-    HostDB* host = nullptr;
+    std::unique_ptr<HostDB> host = nullptr;
 
     // Device related information.  There can be multiple devices active
     // in each execution.  This abstracts the device events and the
     // matching of start with end device events.
-    std::map<uint64_t, DeviceDB*> devices;
+    std::map<uint64_t, std::unique_ptr<DeviceDB>> devices;
     DeviceDB* getDeviceDB(uint64_t deviceId);
 
     // A unique event id for every event added to the database, both host
@@ -82,7 +82,7 @@ namespace xdp {
 
   public:
     XDP_EXPORT VPDynamicDatabase(VPDatabase* d);
-    XDP_EXPORT ~VPDynamicDatabase();
+    XDP_EXPORT ~VPDynamicDatabase() = default;
 
     // For multiple xclbin designs, add a device event that marks the
     // transition from one xclbin to another

@@ -74,18 +74,12 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
-    if (runSummary != nullptr) {
-      runSummary->write(false) ;
-      delete runSummary ;
-    }
+    if (runSummary != nullptr)
+      runSummary->write(false);
 
     // AIE specific functions
     if (aieDevice != nullptr && deallocateAieDevice != nullptr)
-      deallocateAieDevice(aieDevice) ;
-
-    for (const auto& iter : deviceInfo) {
-      delete iter.second ;
-    }
+      deallocateAieDevice(aieDevice);
   }
 
   // ***********************************************************************
@@ -227,7 +221,7 @@ namespace xdp {
       openedFiles.push_back(std::make_pair(name, type)) ;
 
       if (runSummary == nullptr)
-        runSummary = new VPRunSummaryWriter("xrt.run_summary", db) ;
+        runSummary = std::make_unique<VPRunSummaryWriter>("xrt.run_summary", db);
     }
     runSummary->write(false) ;
   }
@@ -253,7 +247,7 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return nullptr ;
-    return deviceInfo[deviceId] ;
+    return deviceInfo[deviceId].get();
   }
 
   std::vector<std::string> VPStaticDatabase::getDeviceNames()
@@ -269,11 +263,11 @@ namespace xdp {
 
   std::vector<DeviceInfo*> VPStaticDatabase::getDeviceInfos()
   {
-    std::vector<DeviceInfo*> infos ;
+    std::vector<DeviceInfo*> infos;
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     for (const auto& device : deviceInfo) {
-      infos.push_back(device.second) ;
+      infos.push_back(device.second.get());
     }
     return infos ;
   }
@@ -364,18 +358,6 @@ namespace xdp {
     return deviceInfo[deviceId]->deviceName ;
   }
 
-  void VPStaticDatabase::setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return ;
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-    if (!xclbin)
-      return ;
-    xclbin->deviceIntf = devIntf ;
-  }
-
   DeviceIntf* VPStaticDatabase::getDeviceIntf(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -416,15 +398,6 @@ namespace xdp {
       xclbin->deviceIntf = nullptr;
     }
     return xclbin->deviceIntf;
-  }
-
-  void VPStaticDatabase::setKDMACount(uint64_t deviceId, uint64_t num)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return ;
-    deviceInfo[deviceId]->kdmaCount = num ;
   }
 
   uint64_t VPStaticDatabase::getKDMACount(uint64_t deviceId)
@@ -581,36 +554,6 @@ namespace xdp {
       return nullptr ;
 
     return xclbin->pl.cus[cuId] ;
-  }
-
-  std::map<int32_t, ComputeUnitInstance*>*
-  VPStaticDatabase::getCUs(uint64_t deviceId)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return nullptr ;
-
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-    if (!xclbin)
-      return nullptr ;
-
-    return &(xclbin->pl.cus) ;
-  }
-
-  std::map<int32_t, Memory*>*
-  VPStaticDatabase::getMemoryInfo(uint64_t deviceId)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return nullptr ;
-
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-    if (!xclbin)
-      return nullptr ;
-
-    return &(xclbin->pl.memoryInfo) ;
   }
 
   Memory* VPStaticDatabase::getMemory(uint64_t deviceId, int32_t memId)
@@ -1372,7 +1315,7 @@ namespace xdp {
 
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
-      DeviceInfo *devInfo = itr->second;
+      DeviceInfo *devInfo = itr->second.get();
       // Are we attempting to load the same xclbin multiple times?
       XclbinInfo* xclbin = devInfo->currentXclbin() ;
       if (xclbin && device->get_xclbin_uuid() == xclbin->uuid) {
@@ -2007,15 +1950,14 @@ namespace xdp {
     auto itr = deviceInfo.find(deviceId);
     if (itr == deviceInfo.end()) {
       // This is the first time this device was loaded with an xclbin
-      devInfo = new DeviceInfo();
-      devInfo->deviceId = deviceId ;
+      deviceInfo[deviceId] = std::make_unique<DeviceInfo>();
+      devInfo = deviceInfo[deviceId].get();
+      devInfo->deviceId = deviceId;
       if (isEdge())
-        devInfo->isEdgeDevice = true ;
-      deviceInfo[deviceId] = devInfo ;
-
+        devInfo->isEdgeDevice = true;
     } else {
       // This is a previously used device being reloaded with a new xclbin
-      devInfo = itr->second ;
+      devInfo = itr->second.get();
       devInfo->cleanCurrentXclbinInfo() ;
     }
     
