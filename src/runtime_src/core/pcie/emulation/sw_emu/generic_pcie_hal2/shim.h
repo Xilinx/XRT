@@ -665,7 +665,7 @@ namespace xclswemuhal2
     std::map<uint64_t, std::pair<std::string, unsigned int>> kernelArgsInfo;
     xclDeviceInfo2 mDeviceInfo;
 
-    void launchDeviceProcess(bool debuggable, std::string &binDir);
+    bool launchDeviceProcess(bool debuggable, std::string &binDir);
     void launchTempProcess();
     void initMemoryManager(std::list<xclemulation::DDRBank> &DDRBankList);
     std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;

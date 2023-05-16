@@ -112,7 +112,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     handle->xclOpen(logfileName);
     if (bDefaultDevice)
     {
-      std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW-EM 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
+      std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW_EMU 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
       if (xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
         std::cout << sDummyDeviceMsg << std::endl;
     }
@@ -381,7 +381,7 @@ unsigned xclProbe()
 {
   if(!xclemulation::isXclEmulationModeHwEmuOrSwEmu())
   {
-    std::string initMsg ="ERROR: [SW-EM 09] Please set XCL_EMULATION_MODE to \"sw_emu\" to run software emulation. ";
+    std::string initMsg ="ERROR: [SW_EMU 09] Please set XCL_EMULATION_MODE to \"sw_emu\" to run software emulation. ";
     std::cout<<initMsg<<std::endl;
     return 0;
   }
