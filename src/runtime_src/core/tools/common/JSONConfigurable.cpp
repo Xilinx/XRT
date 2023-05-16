@@ -19,7 +19,7 @@ JSONConfigurable::parse_configuration(
         for (const auto& config : configTree.second.get_child("contents")) {
           const auto& pt = config.second;
           if (boost::iequals(target, pt.get<std::string>("name")))
-            output.push_back(std::make_pair(configTree.second.get<std::string>("name"), pt));
+            output.push_back({ configTree.second.get<std::string>("name"), pt });
         }
       }
     }
