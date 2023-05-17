@@ -23,19 +23,22 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
-  class UserEventsPlugin : public XDPPlugin
-  {
+  class UserEventsPlugin : public XDPPlugin {
   private:
     static bool live;
-  public:
-    UserEventsPlugin() ;
-    ~UserEventsPlugin() ;
 
-    static bool alive() { return UserEventsPlugin::live; }
+  public:
+    UserEventsPlugin();
+    ~UserEventsPlugin();
+
+    static bool alive()
+    {
+      return UserEventsPlugin::live;
+    }
 
     // Called when the database is destroyed before the plugin
-    virtual void writeAll(bool openNewFiles = true) ;
-  } ;
+    virtual void writeAll(bool openNewFiles = true);
+  };
 } // end namespace xdp
 
 #endif
