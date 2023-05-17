@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +22,7 @@
 #include <mutex>
 #include <vector>
 
+#include "xdp/config.h"
 #include "xdp/profile/database/dynamic_info/samples.h"
 #include "xdp/profile/database/dynamic_info/types.h"
 
@@ -40,7 +41,7 @@ namespace xdp {
 
   public:
     AIEDB() = default;
-    ~AIEDB();
+    XDP_EXPORT ~AIEDB();
 
     void addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz,
                          bool copy, uint64_t numTraceStreams);
