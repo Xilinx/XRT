@@ -17,11 +17,11 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/plugin/user/user_cb.h"
-
 #include "core/common/time.h"
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/user_events.h"
+#include "xdp/profile/plugin/user/user_cb.h"
 #include "xdp/profile/plugin/user/user_plugin.h"
 
 namespace xdp {
