@@ -34,11 +34,7 @@ R"(
 		"name": "common",
 		"contents": [{
 			"name": "examine",
-			"contents": [{
-					"name": "common",
-					"contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
-				}
-			]
+			"contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
 		}]
 	}]
 }]

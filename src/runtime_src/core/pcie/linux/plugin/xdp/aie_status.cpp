@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +15,7 @@
  * under the License.
  */
 
-#include "aie_debug.h"
+#include "aie_status.h"
 
 #include <iostream>
 
@@ -23,11 +24,11 @@
 
 namespace xdp {
 namespace aie {
-namespace debug {
+namespace status {
   void load()
   {
 #ifdef XRT_ENABLE_AIE
-    static xrt_core::module_loader xdp_aie_loader("xdp_aie_debug_plugin",
+    static xrt_core::module_loader xdp_aie_loader("xdp_aie_status_plugin",
                                                   register_callbacks,
                                                   warning_callbacks);
 #endif
@@ -42,34 +43,34 @@ namespace debug {
   {
     using ftype = void (*)(void*); // Device handle
 
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEStatusDevice"));
     if (xrt_core::dlerror() != nullptr)
       update_device_cb = nullptr;
 
-    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugPoll"));
+    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEStatusPoll"));
     if (xrt_core::dlerror() != nullptr)
       end_poll_cb = nullptr;
   }
 
   void warning_callbacks()
   {
-    // No warnings for AIE debug
+    // No warnings for AIE status
   }
 
-} // end namespace debug
+} // end namespace status
 
-namespace dbg {
+namespace sts {
   void update_device(void* handle)
   {
-    if (debug::update_device_cb != nullptr)
-      debug::update_device_cb(handle);
+    if (status::update_device_cb != nullptr)
+      status::update_device_cb(handle);
   }
 
   void end_poll(void* handle)
   {
-    if (debug::end_poll_cb != nullptr)
-      debug::end_poll_cb(handle);
+    if (status::end_poll_cb != nullptr)
+      status::end_poll_cb(handle);
   }
-} // end namespace dbg
+} // end namespace sts
 } // end namespace aie
 } // end namespace xdp

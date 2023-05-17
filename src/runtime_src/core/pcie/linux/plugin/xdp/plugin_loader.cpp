@@ -16,7 +16,7 @@
 
 #include "plugin/xdp/plugin_loader.h"
 
-#include "plugin/xdp/aie_debug.h"
+#include "plugin/xdp/aie_status.h"
 #include "plugin/xdp/aie_profile.h"
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_device_offload.h"
@@ -46,7 +46,7 @@ bool load()
     xdp::hal::device_offload::load();
 
   if (xrt_core::config::get_aie_status())
-    xdp::aie::debug::load();
+    xdp::aie::status::load();
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();

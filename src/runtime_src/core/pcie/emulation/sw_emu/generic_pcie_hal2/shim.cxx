@@ -325,7 +325,7 @@ namespace xclswemuhal2
     return true;
   }
 
-  void SwEmuShim::launchDeviceProcess(bool debuggable, std::string &binaryDirectory)
+  bool SwEmuShim::launchDeviceProcess(bool debuggable, std::string &binaryDirectory)
   {
     std::lock_guard lk(mProcessLaunchMtx);
     systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
@@ -337,7 +337,7 @@ namespace xclswemuhal2
     binaryCounter++;
     if (sock)
     {
-      return;
+      return true;
     }
 
     struct sigaction s;
@@ -369,8 +369,9 @@ namespace xclswemuhal2
     char *login_user = getenv("USER");
     if (!login_user)
     {
-      std::cerr << "ERROR: [SW-EMU 22] $USER variable is not SET. Please make sure the USER env variable is set properly." << std::endl;
-      exit(EXIT_FAILURE);
+      std::cerr << "ERROR: [SW_EMU 22] $USER variable is not SET. Please make sure the USER env variable is set properly." << std::endl;
+     // exit(EXIT_FAILURE);
+      return false;
     }
     // Spawn off the process to run the stub
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
@@ -394,23 +395,9 @@ namespace xclswemuhal2
         char *vitisInstallEnvvar = getenv("XILINX_VITIS");
         if (vitisInstallEnvvar != NULL)
           xilinxInstall = std::string(vitisInstallEnvvar);
-
-        char *scoutInstallEnvvar = getenv("XILINX_SCOUT");
-        if (scoutInstallEnvvar != NULL && xilinxInstall.empty())
-          xilinxInstall = std::string(scoutInstallEnvvar);
-
-        char *installEnvvar = getenv("XILINX_SDX");
-        if (installEnvvar != NULL && xilinxInstall.empty())
-        {
-          xilinxInstall = std::string(installEnvvar);
-        }
-        else
-        {
-          installEnvvar = getenv("XILINX_OPENCL");
-          if (installEnvvar != NULL)
-          {
-            xilinxInstall = std::string(installEnvvar);
-          }
+        else {
+          std::cerr << "ERROR : [SW_EMU 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          return false;
         }
 
         char *xilinxHLSEnvVar = getenv("XILINX_HLS");
@@ -444,42 +431,17 @@ namespace xclswemuhal2
           setenv("LD_LIBRARY_PATH", sLdLibs.c_str(), true);
         }
 
-        if (xilinxInstall.empty())
-        {
-          std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
-          exit(1);
-        }
-
         std::string modelDirectory("");
-#if defined(RDIPF_aarch64)
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel"))
-          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel";
-        else
-          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
 
-#elif defined(RDIPF_arm64)
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynq/model/genericpciemodel"))
-          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynq/model/genericpciemodel";
-        else
-          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
-#else
         if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel"))
           modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel";
         else
           modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/generic_pcie/model/genericpciemodel";
-#endif
 
-        FILE *filep;
-        if ((filep = fopen(modelDirectory.c_str(), "r")) != NULL)
+        if (access(modelDirectory.c_str(), X_OK) != 0)
         {
-          // file exists
-          fclose(filep);
-        }
-        else
-        {
-          //File not found, no memory leak since 'file' == NULL
-          std::cerr << "ERROR : [SW-EM 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
-          exit(1);
+          std::cerr << "ERROR: [SW_EMU 23] genericpciemodel binary does not present or does not have executable permission." << std::endl;
+          return false;
         }
 
         const char *childArgv[6] = {NULL, NULL, NULL, NULL, NULL, NULL};
@@ -520,12 +482,14 @@ namespace xclswemuhal2
         if (r == -1)
         {
           std::cerr << "FATAL ERROR : child process did not launch" << std::endl;
-          exit(1);
+          exit(EXIT_FAILURE);
         }
+        // fork successful, child process can exit now cleanly.
         exit(0);
       }
     }
     sock = new unix_socket("EMULATION_SOCKETID");
+    return true;
   }
 
   void SwEmuShim::getCuRangeIdx()
@@ -603,7 +567,8 @@ namespace xclswemuhal2
     if (boost::filesystem::exists(extIoTxtFile))
       boost::filesystem::remove(extIoTxtFile);
 
-    launchDeviceProcess(debuggable, binaryDirectory);
+    if (launchDeviceProcess(debuggable, binaryDirectory) == false)
+      return -1;
 
     if (header)
     {
@@ -837,7 +802,8 @@ namespace xclswemuhal2
   void SwEmuShim::launchTempProcess()
   {
     std::string binaryDirectory("");
-    launchDeviceProcess(false, binaryDirectory);
+    if (launchDeviceProcess(false, binaryDirectory) == false)
+      return;
     std::string xmlFile("");
     std::string tempdlopenfilename("");
     SHIM_UNUSED bool ack = true;
@@ -909,7 +875,7 @@ namespace xclswemuhal2
     {
       auto ddrSize = mDDRMemoryManager[flags]->size();
       std::string ddrSizeStr = std::to_string(ddrSize);
-      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit 16 GB.";
+      std::string initMsg = "ERROR: [SW_EMU 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit 16 GB.";
       std::cout << initMsg << std::endl;
       return result;
     }
@@ -992,7 +958,7 @@ namespace xclswemuhal2
     const auto& cuidx2addr = mCoreDevice->get_cus();
     if (cu_index >= cuidx2addr.size())
     {
-      std::string strMsg = "ERROR: [SW-EMU 20] invalid CU index: " + std::to_string(cu_index);
+      std::string strMsg = "ERROR: [SW_EMU 20] invalid CU index: " + std::to_string(cu_index);
       mLogStream << __func__ << strMsg << std::endl;
       return false;
     }
@@ -1021,7 +987,7 @@ namespace xclswemuhal2
   {
     if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0)
     {
-      std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
+      std::string strMsg = "ERROR: [SW_EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
       mLogStream << __func__ << strMsg << std::endl;
       return false;
     }
