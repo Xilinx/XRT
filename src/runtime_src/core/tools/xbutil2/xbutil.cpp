@@ -30,26 +30,26 @@
 const std::string& command_config = 
 R"(
 [{
-	"name": "cmd_configs",
-	"contents": [{
-		"name": "common",
-		"contents": [{
-			"name": "examine",
-			"contents": [{
-					"name": "common",
-					"contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
-				},
-				{
-					"name": "alveo",
-					"contents": ["error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
-				},
-				{
-					"name": "aie",
-					"contents": ["aie", "aiemem", "aieshim"]
-				}
-			]
-		}]
-	}]
+    "name": "cmd_configs",
+    "contents": [{
+        "name": "common",
+        "contents": [{
+            "name": "examine",
+            "contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
+        }]
+    },{
+        "name": "alveo",
+        "contents": [{
+            "name": "examine",
+            "contents": ["error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
+        }]
+    },{
+        "name": "aie",
+        "contents": [{
+            "name": "examine",
+            "contents": ["aie", "aiemem", "aieshim"]
+        }]
+    }]
 }]
 )";
 
