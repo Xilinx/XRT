@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,13 +21,13 @@
 #include <boost/property_tree/ptree.hpp>
 #include <set>
 
-#include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "xdp/profile/plugin/aie_status/aie_status_plugin.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
+#include "xdp/profile/writer/aie_status/aie_status_writer.h"
 
 #include "core/common/message.h"
 #include "core/common/system.h"
@@ -68,12 +68,12 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
-  bool AIEDebugPlugin::live = false;
+  bool AIEStatusPlugin::live = false;
 
-  AIEDebugPlugin::AIEDebugPlugin() 
+  AIEStatusPlugin::AIEStatusPlugin() 
       : XDPPlugin()
   {
-    AIEDebugPlugin::live = true;
+    AIEStatusPlugin::live = true;
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_status);
@@ -82,7 +82,7 @@ namespace xdp {
     mPollingInterval = xrt_core::config::get_aie_status_interval_us();
   }
 
-  AIEDebugPlugin::~AIEDebugPlugin()
+  AIEStatusPlugin::~AIEStatusPlugin()
   {
     // Stop the polling thread
     endPoll();
@@ -91,16 +91,16 @@ namespace xdp {
     if (VPDatabase::alive())
       db->unregisterPlugin(this);
 
-    AIEDebugPlugin::live = false;
+    AIEStatusPlugin::live = false;
   }
 
-  bool AIEDebugPlugin::alive()
+  bool AIEStatusPlugin::alive()
   {
-    return AIEDebugPlugin::live;
+    return AIEStatusPlugin::live;
   }
 
-  // Get tiles to debug
-  void AIEDebugPlugin::getTilesForDebug(void* handle)
+  // Get tiles to status
+  void AIEStatusPlugin::getTilesForStatus(void* handle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
@@ -115,7 +115,7 @@ namespace xdp {
     // Report tiles (debug only)
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
       std::stringstream msg;
-      msg << "Tiles used for AIE debug:\n";
+      msg << "Tiles used for AIE status:\n";
       for (const auto& kv : mGraphCoreTilesMap) {
         msg << kv.first << " : ";
         for (const auto& tile : kv.second)
@@ -126,7 +126,7 @@ namespace xdp {
     }
   }
 
-  std::string AIEDebugPlugin::getCoreStatusString(uint32_t status) {
+  std::string AIEStatusPlugin::getCoreStatusString(uint32_t status) {
     std::string statusStr;
 
     if (status & 0x000001)
@@ -181,7 +181,7 @@ namespace xdp {
     return statusStr;
   }
 
-  void AIEDebugPlugin::pollDeadlock(uint64_t index, void* handle)
+  void AIEStatusPlugin::pollDeadlock(uint64_t index, void* handle)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
@@ -364,7 +364,7 @@ namespace xdp {
     }
   }
 
-  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter)
+  void AIEStatusPlugin::writeStatus(uint64_t index, void* handle, VPWriter* aieWriter)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
@@ -376,12 +376,11 @@ namespace xdp {
         continue;
 
       aieWriter->write(false, handle);
-      aieshimWriter->write(false, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
 
-  void AIEDebugPlugin::updateAIEDevice(void* handle)
+  void AIEStatusPlugin::updateAIEDevice(void* handle)
   {
     // Don't update if no debug/status is requested
     if (!xrt_core::config::get_aie_status())
@@ -404,7 +403,7 @@ namespace xdp {
     }
 
     // Update list of tiles to debug
-    getTilesForDebug(handle);
+    getTilesForStatus(handle);
 
     // Open the writer for this device
     struct xclDeviceInfo2 info;
@@ -420,26 +419,20 @@ namespace xdp {
       currentTime = std::string(buf);
     }
 
-    // Create and register aie status writer
+    // Create and register AIE status writer
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
-    VPWriter* aieWriter = new AIEDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
+    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
-    // Create and register aie shim status writer
-    filename = "aieshim_status_" + devicename + "_" + currentTime + ".json";
-    VPWriter* aieshimWriter = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
-    writers.push_back(aieshimWriter);
-    db->getStaticInfo().addOpenedFile(aieshimWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
-
-    // Start the AIE debug thread
+    // Start the AIE status thread
     mThreadCtrlMap[handle] = true;
     // NOTE: This does not start the threads immediately.
     mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(deviceID, handle); } };
-    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(deviceID, handle, aieWriter, aieshimWriter); } };
+    mStatusThreadMap[handle] = std::thread { [=] { writeStatus(deviceID, handle, aieWriter); } };
   }
 
-  void AIEDebugPlugin::endPollforDevice(void* handle)
+  void AIEStatusPlugin::endPollforDevice(void* handle)
   {
     // Last chance at writing status reports
     for (auto w : writers)
@@ -457,17 +450,17 @@ namespace xdp {
     }
 
     {
-      auto it = mDebugThreadMap.find(handle);
-      if (it != mDebugThreadMap.end()) {
+      auto it = mStatusThreadMap.find(handle);
+      if (it != mStatusThreadMap.end()) {
         it->second.join();
-        mDebugThreadMap.erase(it);
+        mStatusThreadMap.erase(it);
       }
     }
 
     mThreadCtrlMap.erase(handle);
   }
 
-  void AIEDebugPlugin::endPoll()
+  void AIEStatusPlugin::endPoll()
   {
     // Ask all threads to end
     for (auto& p : mThreadCtrlMap)
@@ -476,15 +469,15 @@ namespace xdp {
     for (auto& t : mDeadlockThreadMap)
       t.second.join();
 
-    for (auto& t : mDebugThreadMap)
+    for (auto& t : mStatusThreadMap)
       t.second.join();
 
     mThreadCtrlMap.clear();
     mDeadlockThreadMap.clear();
-    mDebugThreadMap.clear();
+    mStatusThreadMap.clear();
   }
 
-  uint16_t AIEDebugPlugin::getAIETileRowOffset(void* handle)
+  uint16_t AIEStatusPlugin::getAIETileRowOffset(void* handle)
   {
     static uint16_t rowOffset = 1;
     static bool gotValue = false;
@@ -503,7 +496,7 @@ namespace xdp {
     return rowOffset;
   }
 
-  void AIEDebugPlugin::read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project)
+  void AIEStatusPlugin::read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project)
   {
     std::stringstream aie_stream;
     aie_stream.write(data,size);

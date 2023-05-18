@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,8 +15,8 @@
  * under the License.
  */
 
-#ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
-#define XDP_AIE_DEBUG_PLUGIN_DOT_H
+#ifndef XDP_AIE_STATUS_PLUGIN_DOT_H
+#define XDP_AIE_STATUS_PLUGIN_DOT_H
 
 #include <atomic>
 #include <boost/property_tree/ptree.hpp>
@@ -40,11 +41,11 @@ namespace xdp {
 
   using tile_type = xrt_core::edge::aie::tile_type;
 
-  class AIEDebugPlugin : public XDPPlugin
+  class AIEStatusPlugin : public XDPPlugin
   {
   public:
-    AIEDebugPlugin();
-    ~AIEDebugPlugin();
+    AIEStatusPlugin();
+    ~AIEStatusPlugin();
 
     XDP_EXPORT
     void updateAIEDevice(void* handle);
@@ -55,7 +56,7 @@ namespace xdp {
     static bool alive();
 
   private:
-    void getTilesForDebug(void* handle);
+    void getTilesForStatus(void* handle);
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
     uint16_t getAIETileRowOffset(void* handle);
@@ -63,7 +64,7 @@ namespace xdp {
                                   boost::property_tree::ptree& aie_project);
     // Threads used by this plugin
     void pollDeadlock(uint64_t index, void* handle);
-    void writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter);
+    void writeStatus(uint64_t index, void* handle, VPWriter* aieWriter);
 
   private:
 
@@ -75,7 +76,7 @@ namespace xdp {
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     // Threads mapped to device handles
     std::map<void*,std::thread> mDeadlockThreadMap;
-    std::map<void*,std::thread> mDebugThreadMap;
+    std::map<void*,std::thread> mStatusThreadMap;
     // Graphname -> coretiles
     std::map<std::string,std::vector<tile_type>> mGraphCoreTilesMap;
   };

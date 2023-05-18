@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,45 +15,35 @@
  * under the License.
  */
 
-#ifndef AIE_DEBUG_WRITER_DOT_H
-#define AIE_DEBUG_WRITER_DOT_H
+#ifndef AIE_STATUS_WRITER_DOT_H
+#define AIE_STATUS_WRITER_DOT_H
 
 #include <string>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include "xdp/profile/writer/vp_base/vp_writer.h"
+#include "core/include/xrt/xrt_kernel.h"
+
+namespace bpt = boost::property_tree;
 
 namespace xdp {
 
   /*
-   * Writer for AIE tiles status
+   * Writer for AIE status
    */
-  class AIEDebugWriter : public VPWriter
+  class AIEStatusWriter : public VPWriter
   {
   public:
-    AIEDebugWriter(const char* fileName, const char* deviceName,
+    AIEStatusWriter(const char* fileName, const char* deviceName,
                    uint64_t deviceIndex);
-    ~AIEDebugWriter();
+    ~AIEStatusWriter();
 
     virtual bool write(bool openNewFile);
     virtual bool write(bool openNewFile, void* handle);
 
   private:
-    std::string mDeviceName;
-    uint64_t mDeviceIndex;
-    bool mWroteValidData;
-  };
 
-  /*
-   * Writer for AIE shim tiles status
-   */
-  class AIEShimDebugWriter : public VPWriter
-  {
-  public:
-    AIEShimDebugWriter(const char* fileName, const char* deviceName,
-                       uint64_t deviceIndex);
-    ~AIEShimDebugWriter();
-
-    virtual bool write(bool openNewFile);
-    virtual bool write(bool openNewFile, void* handle);
+    bool writeDevice(bool openNewFile, xrt::device xrtDevice);
 
   private:
     std::string mDeviceName;
