@@ -27,6 +27,21 @@ namespace po = boost::program_options;
 #include <regex>
 
 static ReportCollection fullReportCollection = {};
+static std::map<std::string, std::vector<std::shared_ptr<Report>>> reportMappings;
+static std::map<std::string, boost::program_options::options_description> optionMappings;
+
+void
+SubCmdExamineInternal::create_common_options(boost::program_options::options_description& options, const std::string& report_string)
+{
+  static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+  options.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + report_string).c_str() )
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+}
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree configurations)
@@ -52,26 +67,49 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
 
   // -- Build up the report & format options
   auto examineDeviceTrees = JSONConfigurable::parse_configuration_tree({getConfigName()}, configurations);
-  auto currentExamineTrees = JSONConfigurable::extractMatchingConfigurations<Report>(SubCmdExamineInternal::uniqueReportCollection, examineDeviceTrees);
-  for (auto it = currentExamineTrees.begin(); it != currentExamineTrees.end(); it++) {
-    for (const auto& reportPtr : it->second)
-      fullReportCollection.push_back(reportPtr);
-  }
-  static const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
-  static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+  reportMappings = JSONConfigurable::extractMatchingConfigurations<Report>(SubCmdExamineInternal::uniqueReportCollection, examineDeviceTrees);
 
-  m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
-    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;
+  for (const auto& report_pair : reportMappings) {
+    // Generate a list of common and relevant mappings for help menu generation
+    ReportCollection reportCollection = report_pair.second;
+    for (const auto& report : reportMappings["common"])
+      reportCollection.push_back(report);
+
+    boost::program_options::options_description options;
+    create_common_options(options, XBU::create_suboption_list_string(reportCollection, true));
+    optionMappings.emplace(report_pair.first, options);
+
+    // Generate complete list of all possible reports
+    for (const auto& report : report_pair.second) {
+      fullReportCollection.push_back(report);
+    }
+  }
+  // Emplace temporary all option until shim upgrade is complete
+  boost::program_options::options_description options;
+  create_common_options(options, XBU::create_suboption_list_string(fullReportCollection, true));
+  optionMappings.emplace("all", options);
+
+  static const std::string reportOptionValues = XBU::create_suboption_list_map(reportMappings);
+  create_common_options(m_commonOptions, reportOptionValues);
   
   if (m_isUserDomain)
     m_hiddenOptions.add_options()
       ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
     ;
+}
+
+void
+SubCmdExamineInternal::print_help() const
+{
+  if (m_device.empty()) {
+    printHelp();
+    return;
+  }
+
+  // Get the device and validate which reports should be displayed
+  //auto device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), m_isUserDomain);
+  //auto device_type = device.get_device_type?? This does not exist yet
+  printHelp(optionMappings["all"]); // Replace all with device_type when ready
 }
 
 void
@@ -85,7 +123,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested
   if (m_help) {
-    printHelp();
+    print_help();
     return;
   }
   
@@ -115,7 +153,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   if (schemaVersion == Report::SchemaVersion::unknown) {
     std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % validated_format << std::endl
               << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
-    printHelp();
+    print_help();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

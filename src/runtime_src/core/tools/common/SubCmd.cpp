@@ -59,6 +59,22 @@ SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection
                                       customHelpSection);
 }
 
+void 
+SubCmd::printHelp(boost::program_options::options_description common_options) const
+{
+  XBUtilities::report_subcommand_help(m_executableName,
+                                      m_subCmdName,
+                                      m_longDescription,
+                                      m_exampleSyntax,
+                                      common_options,
+                                      m_hiddenOptions,
+                                      m_globalOptions,
+                                      m_positionals,
+                                      m_subOptionOptions,
+                                      false,
+                                      "");
+}
+
 std::vector<std::string> 
 SubCmd::process_arguments( po::variables_map& vm,
                            const SubCmdOptions& _options,
