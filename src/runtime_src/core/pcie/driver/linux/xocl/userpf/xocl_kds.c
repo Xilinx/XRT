@@ -1941,6 +1941,10 @@ xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		if (cu_info[i].num_args)
 			max_off_arg_size = cu_info[i].args[max_off_idx].size;
 		cfg_cu->payload_size = max_off + max_off_arg_size + sizeof(struct xgq_cmd_sq_hdr);
+		if(cfg_cu->payload_size > MAX_CQ_SLOT_SIZE) {
+			userpf_err(xdev, "CU Argument Size %x > MAX_CQ_SLOT_SIZE!", cfg_cu->payload_size);
+			return -ENOMEM;
+		}
 		/*
 		 * Times 2 to make sure XGQ slot size is bigger than the size of
 		 * key-value pair commands, eg. ERT_START_KEY_VAL.
@@ -1951,7 +1955,7 @@ xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		 */
 		cfg_cu->payload_size = cfg_cu->payload_size * 2;
 		if(cfg_cu->payload_size > MAX_CQ_SLOT_SIZE) {
-			userpf_err(xdev, "CU Argument Size %x > MAX_CQ_SLOT_SIZE, setting it to MAX_CQ_SLOT_SIZE!", cfg_cu->payload_size);
+			userpf_err(xdev, "CU Argument Size for Key-Valye Pair of %x > MAX_CQ_SLOT_SIZE, setting it to MAX_CQ_SLOT_SIZE!  Key-Value pair will not be supported!", cfg_cu->payload_size);
 			cfg_cu->payload_size = MAX_CQ_SLOT_SIZE;
 		}
 
