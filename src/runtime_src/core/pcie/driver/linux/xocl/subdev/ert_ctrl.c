@@ -558,22 +558,22 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 
 static void ert_ctrl_unset_xgq(struct platform_device *pdev, int id)
 {
-    struct ert_ctrl *ec = platform_get_drvdata(pdev);
-    xdev_handle_t xdev = xocl_get_xdev(pdev);
-    struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[id];
+	struct ert_ctrl *ec = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[id];
 
-    xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
-    xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
+	xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
+	xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
 
-    if (ec->ec_exgq[id] == NULL)
-        return;
+	if (ec->ec_exgq[id] == NULL)
+		return;
 
-    if (!ec->ec_xgq_ips) {
-        xocl_intc_ert_config(xdev, id, false);
-        xocl_intc_ert_request(xdev, id, NULL, NULL);
-    }
-    xocl_xgq_fini(ec->ec_exgq[id]);
-    ec->ec_exgq[id] = NULL;
+	if (!ec->ec_xgq_ips) {
+		xocl_intc_ert_config(xdev, id, false);
+		xocl_intc_ert_request(xdev, id, NULL, NULL);
+	}
+	xocl_xgq_fini(ec->ec_exgq[id]);
+	ec->ec_exgq[id] = NULL;
 }
 
 static int ert_ctrl_xgq_init(struct ert_ctrl *ec)
@@ -871,20 +871,21 @@ static int ert_ctrl_cq_init(struct platform_device *pdev)
 static int ert_ctrl_remove(struct platform_device *pdev)
 {
 	struct ert_ctrl	*ec = NULL;
-    xdev_handle_t xdev = xocl_get_xdev(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct ert_ctrl_xgq_cu  *xgq_ips = NULL;
 	void *hdl = NULL;
-    int i = 0;
+	int i = 0;
 
 	ec = platform_get_drvdata(pdev);
 	if (!ec)
 		return -EINVAL;
 
-    for (i = 0; i < ec->ec_num_xgq_ips; i++) {
-        struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[i];
+	for (i = 0; i < ec->ec_num_xgq_ips; i++) {
+		xgq_ips = &ec->ec_xgq_ips[i];
 
-        xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
-        xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
-    }
+		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
+		xocl_user_interrupt_reg(xdev, xgq_ips->ecxc_xgq_irq, NULL, NULL);
+	}
 
 	if (ec->ec_connected)
 		ert_ctrl_disconnect(pdev);
