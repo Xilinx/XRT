@@ -1945,6 +1945,9 @@ class run_impl
   validate_bo_at_index(size_t index, const xrt::bo& bo)
   {
     xcl_bo_flags grp {xrt_core::bo::group_id(bo)};
+    if (grp.bank == XRT_BO_BANK_NOT_USED)
+      return bo;
+
     if (validate_ip_arg_connectivity(index, grp.bank))
       return bo;
 

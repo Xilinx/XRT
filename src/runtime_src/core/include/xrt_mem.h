@@ -103,6 +103,11 @@ struct xcl_bo_flags
 #define XRT_BO_ACCESS_EXPORTED 2
 
 /**
+ * Sentinel for bank when it is not used
+ */
+#define XRT_BO_BANK_NOT_USED 0xFFFF
+
+/**
  * XRT Native BO flags
  *
  * These flags are simple aliases for use with XRT native BO APIs.

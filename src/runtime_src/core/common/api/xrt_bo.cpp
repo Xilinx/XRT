@@ -1495,10 +1495,21 @@ adjust_buffer_flags(xrt::ext::bo::access_mode access)
   return flags.all;
 }
 
+// xrt::ext::bo is always a host only BO and group is not used default
+// to sentinel that can be special cased when BOs are validated as
+// part of setting kernel arguments.
+static int
+no_group_id()
+{
+  xcl_bo_flags grp {};
+  grp.bank = XRT_BO_BANK_NOT_USED;
+  return static_cast<int>(grp.flags);
+}
+
 static std::shared_ptr<xrt::bo_impl>
 alloc_kbuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags)
 {
-  auto handle = userptr ? alloc_bo(device, userptr, sz, flags, 0) : alloc_bo(device, sz, flags, 0);
+  auto handle = userptr ? alloc_bo(device, userptr, sz, flags, 0) : alloc_bo(device, sz, flags, no_group_id());
   auto boh = std::make_shared<xrt::buffer_kbuf>(device, std::move(handle), sz);
   return boh;
 }
