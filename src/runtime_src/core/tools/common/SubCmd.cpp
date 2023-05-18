@@ -60,19 +60,30 @@ SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection
 }
 
 void 
-SubCmd::printHelp(boost::program_options::options_description common_options) const
+SubCmd::printHelp(const std::string& device_name,
+                  bool is_user_domain,
+                  bool removeLongOptDashes,
+                  const std::string& customHelpSection) const
 {
+  if (device_name.empty()) {
+    printHelp(removeLongOptDashes, customHelpSection);
+    return;
+  }
+
+  // Get the device and validate which reports should be displayed
+  //auto device = XBU::get_device(boost::algorithm::to_lower_copy(device_name), is_user_domain);
+  //auto device_type = device.get_device_type?? This does not exist yet
   XBUtilities::report_subcommand_help(m_executableName,
-                                      m_subCmdName,
-                                      m_longDescription,
-                                      m_exampleSyntax,
-                                      common_options,
-                                      m_hiddenOptions,
-                                      m_globalOptions,
-                                      m_positionals,
-                                      m_subOptionOptions,
-                                      false,
-                                      "");
+                                    m_subCmdName,
+                                    m_longDescription,
+                                    m_exampleSyntax,
+                                    m_deviceSpecificOptions.at("all"),
+                                    m_hiddenOptions,
+                                    m_globalOptions,
+                                    m_positionals,
+                                    m_subOptionOptions,
+                                    removeLongOptDashes,
+                                    customHelpSection);
 }
 
 std::vector<std::string> 

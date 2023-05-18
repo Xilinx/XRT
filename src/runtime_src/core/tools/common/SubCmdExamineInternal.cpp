@@ -28,7 +28,6 @@ namespace po = boost::program_options;
 
 static ReportCollection fullReportCollection = {};
 static std::map<std::string, std::vector<std::shared_ptr<Report>>> reportMappings;
-static std::map<std::string, boost::program_options::options_description> optionMappings;
 
 void
 SubCmdExamineInternal::create_common_options(boost::program_options::options_description& options, const std::string& report_string)
@@ -77,7 +76,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
 
     boost::program_options::options_description options;
     create_common_options(options, XBU::create_suboption_list_string(reportCollection, true));
-    optionMappings.emplace(report_pair.first, options);
+    m_deviceSpecificOptions.emplace(report_pair.first, options);
 
     // Generate complete list of all possible reports
     for (const auto& report : report_pair.second) {
@@ -87,7 +86,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   // Emplace temporary all option until shim upgrade is complete
   boost::program_options::options_description options;
   create_common_options(options, XBU::create_suboption_list_string(fullReportCollection, true));
-  optionMappings.emplace("all", options);
+  m_deviceSpecificOptions.emplace("all", options);
 
   static const std::string reportOptionValues = XBU::create_suboption_list_map(reportMappings);
   create_common_options(m_commonOptions, reportOptionValues);
@@ -96,20 +95,6 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
     m_hiddenOptions.add_options()
       ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
     ;
-}
-
-void
-SubCmdExamineInternal::print_help() const
-{
-  if (m_device.empty()) {
-    printHelp();
-    return;
-  }
-
-  // Get the device and validate which reports should be displayed
-  //auto device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), m_isUserDomain);
-  //auto device_type = device.get_device_type?? This does not exist yet
-  printHelp(optionMappings["all"]); // Replace all with device_type when ready
 }
 
 void
@@ -123,7 +108,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested
   if (m_help) {
-    print_help();
+    printHelp(m_device, m_isUserDomain);
     return;
   }
   
@@ -153,7 +138,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   if (schemaVersion == Report::SchemaVersion::unknown) {
     std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % validated_format << std::endl
               << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
-    print_help();
+    printHelp(m_device, m_isUserDomain);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

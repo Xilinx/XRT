@@ -32,7 +32,6 @@ class SubCmdExamineInternal : public SubCmd {
 
  private:
   void create_common_options(boost::program_options::options_description& options, const std::string& report_string);
-  void print_help() const;
 
   std::string               m_device;
   std::vector<std::string>  m_reportNames;
