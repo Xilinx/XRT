@@ -24,6 +24,7 @@
 #include <mutex>
 #include <vector>
 
+#include "xdp/config.h"
 #include "xdp/profile/database/dynamic_info/dependency_manager.h"
 #include "xdp/profile/database/dynamic_info/mark.h"
 #include "xdp/profile/database/dynamic_info/types.h"
@@ -73,7 +74,7 @@ namespace xdp {
 
   public:
     HostDB() = default;
-    ~HostDB();
+    XDP_EXPORT ~HostDB();
 
     // Functions to add host events to the database
     void addSortedEvent(VTFEvent* event);
