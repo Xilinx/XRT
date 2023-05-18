@@ -255,7 +255,6 @@ namespace xdp {
   {
     std::vector<tile_type> tiles;
 
-    int plioCount = 0;
     auto plios = getPLIOs(device);
     for (auto& plio : plios) {
       auto isMaster = plio.second.slaveOrMaster;
@@ -270,7 +269,6 @@ namespace xdp {
       if ((logicalName.find(portName) == std::string::npos)
            && (portName.compare("all") != 0))
         continue;
-
       auto currGraph = name.substr(name.find_last_of(".")+1);
       if ((currGraph.find(graphName) == std::string::npos)
            && (graphName.compare("all") != 0))
@@ -279,17 +277,13 @@ namespace xdp {
       // Make sure it's desired polarity
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
-      if ((metricStr != "channels")
-          || (isMaster && (metricStr.find("input") != std::string::npos))
-          || (!isMaster && (metricStr.find("output") != std::string::npos)))
+      if ((metricStr != "ports")
+          && ((isMaster && (metricStr.find("input") != std::string::npos))
+          || (!isMaster && (metricStr.find("output") != std::string::npos))))
         continue;
-
-      plioCount++;
-
-      if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol))) {
-        // shimCol is not within minCol:maxCol range. So skip.
+      // Make sure column is within specified range (if specified)
+      if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
         continue;
-      }
 
       tile_type tile = {0};
       tile.col = shimCol;
@@ -300,7 +294,7 @@ namespace xdp {
       tiles.push_back(tile);
     }
 
-    if ((plioCount == 0) && (channelId >= 0)) {
+    if (tiles.empty() && (channelId >= 0)) {
       std::string msg =
           "No tiles used channel ID " + std::to_string(channelId) + ". Please specify a valid channel ID.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);

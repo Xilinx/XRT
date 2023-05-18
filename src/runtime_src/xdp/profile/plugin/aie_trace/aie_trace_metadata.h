@@ -117,17 +117,17 @@ class AieTraceMetadata {
     std::map<module_type, std::string> defaultSets {
       { module_type::core,     "functions"},
       { module_type::mem_tile, "input_channels"},
-      { module_type::shim,     "channels"}
+      { module_type::shim,     "ports"}
     };
 
     std::map <module_type, std::vector<std::string>> metricSets {
       { module_type::core,     {"functions", "functions_partial_stalls", 
                                 "functions_all_stalls", "all"} },
-      { module_type::shim,     {"channels", "input_channels", "output_channels", 
-                                "input_channels_stalls", "output_channels_stalls", 
-                                "input_channels_details", "output_channels_details"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
-                                "output_channels", "output_channels_stalls"} }
+                                "output_channels", "output_channels_stalls"} },
+      { module_type::shim,     {"ports", "input_ports", "output_ports",
+                                "input_ports_stalls", "output_ports_stalls", 
+                                "input_ports_details", "output_ports_details"} }
     };
 
     void* handle;

@@ -513,14 +513,14 @@ namespace xdp {
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
         std::stringstream infoMsg;
-        auto tileName = (type == module_type::mem_tile) ? "memory" : "AIE";
+        auto tileName = (type == module_type::mem_tile) ? "memory" 
+            : ((type == module_type::shim) ? "interface" : "AIE");
         infoMsg << "Configuring " << tileName << " tile (" << col << "," << row 
                 << ") for trace using metric set " << metricSet;
         xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
       }
 
       // Check Resource Availability
-      // For now only counters are checked
       if (!tileHasFreeRsc(aieDevice, loc, type, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT",
                                 "Tile doesn't have enough free resources for "
@@ -623,21 +623,21 @@ namespace xdp {
           cfg.reset_event = phyEvent;
           cfg.event_value = mMemoryCounterEventValues[i];
         }
-      }
 
-      // Catch when counters cannot be reserved: report, release, and return
-      if ((numCoreCounters < mCoreCounterStartEvents.size()) ||
-          (numMemoryCounters < mMemoryCounterStartEvents.size())) {
-        std::stringstream msg;
-        msg << "Unable to reserve " << mCoreCounterStartEvents.size() << " core counters"
-            << " and " << mMemoryCounterStartEvents.size() << " memory counters"
-            << " for AIE tile (" << col << "," << row << ") required for trace.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        // Catch when counters cannot be reserved: report, release, and return
+        if ((numCoreCounters < mCoreCounterStartEvents.size()) ||
+            (numMemoryCounters < mMemoryCounterStartEvents.size())) {
+          std::stringstream msg;
+          msg << "Unable to reserve " << mCoreCounterStartEvents.size() << " core counters"
+              << " and " << mMemoryCounterStartEvents.size() << " memory counters"
+              << " for AIE tile (" << col << "," << row << ") required for trace.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-        releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
-        // Print resources availability for this tile
-        printTileStats(aieDevice, tile);
-        return false;
+          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
+          // Print resources availability for this tile
+          printTileStats(aieDevice, tile);
+          return false;
+        }
       }
 
       //
@@ -932,7 +932,7 @@ namespace xdp {
           TraceE->getRscId(L, M, S);
           // Get Physical event
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, memoryEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, interfaceEvents[i], &phyEvent);
           cfgTile->interface_tile_trace_config.traced_events[S] = phyEvent;
         }
 
@@ -943,7 +943,6 @@ namespace xdp {
           uint8_t phyEvent = 0;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceStartEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.start_event = phyEvent;
-          
           // Stop
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceEndEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.stop_event = phyEvent;
