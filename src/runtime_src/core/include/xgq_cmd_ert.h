@@ -282,6 +282,16 @@ struct xgq_cmd_query_cu {
 };
 
 /**
+ * struct xgq_cmd_query_mem: query MEM command
+ */
+struct xgq_cmd_query_mem {
+	struct xgq_cmd_sq_hdr hdr;
+
+	/* word 2 */
+	uint32_t rsvd1;
+};
+
+/**
  * struct xgq_cmd_resp_query_cu: query CU command response
  *
  * @status: status of the CU
@@ -314,6 +324,25 @@ struct xgq_cmd_resp_query_cu {
 		};
 	};
 	uint32_t rcode;
+};
+
+/**
+ * struct xgq_cmd_resp_query_mem: query Memory command response
+ *
+ * @status: status of the MEM
+ *
+ * @mem_start_addr: Start address of the memory
+ * @mem_size: memory size
+ *
+ */
+struct xgq_cmd_resp_query_mem {
+       struct xgq_cmd_cq_hdr hdr;
+
+       struct {
+	       uint64_t mem_start_addr;
+	       uint64_t mem_size;
+       };
+       uint32_t rcode;
 };
 
 /**

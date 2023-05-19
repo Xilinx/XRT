@@ -957,6 +957,18 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	}
 }
 
+static void zert_cmd_query_mem(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
+			       struct xgq_com_queue_entry *resp)
+{
+	struct xgq_cmd_resp_query_mem *r = (struct xgq_cmd_resp_query_mem *)resp;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+
+	r->mem_start_addr = zdev->host_mem;
+	r->mem_size = zdev->host_mem_len;
+
+	init_resp(resp, cmd->cid, 0);
+}
+
 struct zert_ops {
 	u32 op;
 	char *name;
@@ -967,6 +979,7 @@ struct zert_ops {
 	{ XGQ_CMD_OP_CFG_CU, "XGQ_CMD_OP_CFG_CU", zert_cmd_cfg_cu },
 	{ XGQ_CMD_OP_UNCFG_CU, "XGQ_CMD_OP_UNCFG_CU", zert_cmd_uncfg_cu },
 	{ XGQ_CMD_OP_QUERY_CU, "XGQ_CMD_OP_QUERY_CU", zert_cmd_query_cu },
+	{ XGQ_CMD_OP_QUERY_MEM, "XGQ_CMD_OP_QUERY_MEM", zert_cmd_query_mem },
 	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zert_cmd_identify },
 	{ XGQ_CMD_OP_TIMESET, "XGQ_CMD_OP_TIMESET", zert_cmd_timeset }
 };

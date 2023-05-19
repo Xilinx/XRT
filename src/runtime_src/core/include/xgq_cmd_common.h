@@ -112,6 +112,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_DATA_INTEGRITY   	= 0x10e,
 	XGQ_CMD_OP_EXIT             	= 0x10f,
 	XGQ_CMD_OP_UNCFG_CU	        = 0x110,
+	XGQ_CMD_OP_QUERY_MEM	        = 0x111,
 
 	/* Common command type */
 	XGQ_CMD_OP_BARRIER		= 0x200,
