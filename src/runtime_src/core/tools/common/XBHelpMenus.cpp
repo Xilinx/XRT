@@ -697,10 +697,19 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       ptDevice.put("interface_type", "pcie");
       ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
 
+      auto device_status = 2;
+      try {
+        device_status = xrt_core::device_query<xrt_core::query::device_status>(device);
+      } catch (...) {}
+      ptDevice.put("device_status", xrt_core::query::device_status::parse_status(device_status));
+
       bool is_mfg = false;
       try {
         is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-      } catch (...) {}
+      } 
+      catch (...) {
+        is_mfg = false;
+      }
 
       //if factory mode
       std::string platform = "<not defined>";
