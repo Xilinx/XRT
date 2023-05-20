@@ -284,11 +284,17 @@ struct xgq_cmd_query_cu {
 /**
  * struct xgq_cmd_query_mem: query MEM command
  */
+enum xgq_cmd_query_mem_type {
+	XGQ_CMD_QUERY_MEM_ADDR =	0x0,
+	XGQ_CMD_QUERY_MEM_SIZE =	0x1,
+};
+
 struct xgq_cmd_query_mem {
 	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
-	uint32_t rsvd1;
+	uint32_t type:1;
+	uint32_t rsvd1:31;
 };
 
 /**
@@ -339,8 +345,7 @@ struct xgq_cmd_resp_query_mem {
        struct xgq_cmd_cq_hdr hdr;
 
        struct {
-	       uint64_t mem_start_addr;
-	       uint64_t mem_size;
+	       uint64_t mem_info;
        };
        uint32_t rcode;
 };

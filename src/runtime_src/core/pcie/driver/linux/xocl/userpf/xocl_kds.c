@@ -2145,6 +2145,7 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 }
 
 static int __xocl_kds_xgq_query_mem(struct xocl_dev *xdev,
+				  enum xgq_cmd_query_mem_type type,
 				  struct xgq_cmd_resp_query_mem *resp)
 {
 	struct xgq_cmd_query_mem *query_mem = NULL;
@@ -2163,6 +2164,7 @@ static int __xocl_kds_xgq_query_mem(struct xocl_dev *xdev,
 	query_mem->hdr.opcode = XGQ_CMD_OP_QUERY_MEM;
 	query_mem->hdr.count = sizeof(*query_mem) - sizeof(query_mem->hdr);
 	query_mem->hdr.state = 1;
+	query_mem->type = type;
 
 	xcmd->cb.notify_host = xocl_kds_xgq_notify;
 	xcmd->cb.free = kds_free_command;
@@ -2177,14 +2179,11 @@ static int __xocl_kds_xgq_query_mem(struct xocl_dev *xdev,
 		return ret;
 
 	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		userpf_err(xdev, "Query MEM failed cstate(%d) rcode(%d)",
-				resp->hdr.cstate, resp->rcode);
+		userpf_err(xdev, "Query MEM type %d failed cstate(%d) rcode(%d)",
+				type, resp->hdr.cstate, resp->rcode);
 		return -EINVAL;
 	}
 
-	userpf_info(xdev, "Query MEM completed\n");
-	userpf_info(xdev, "Memory Start address %d\n", resp->mem_start_addr);
-	userpf_info(xdev, "Memory size %d\n", resp->mem_size);
 	return 0;
 }
 
@@ -2193,13 +2192,21 @@ int xocl_kds_xgq_query_mem(struct xocl_dev *xdev, struct mem_data *mem_data)
 	struct xgq_cmd_resp_query_mem resp;
 	int ret = 0;
 
-	ret = __xocl_kds_xgq_query_mem(xdev, &resp);
+	ret = __xocl_kds_xgq_query_mem(xdev, XGQ_CMD_QUERY_MEM_ADDR, &resp);
 	if (ret)
 		return ret;
 
-	mem_data->m_base_address = resp.mem_start_addr;
-	mem_data->m_size = resp.mem_size;
+	mem_data->m_base_address = resp.mem_info;
+	ret = __xocl_kds_xgq_query_mem(xdev, XGQ_CMD_QUERY_MEM_SIZE, &resp);
+	if (ret)
+		return ret;
+
+	mem_data->m_size = resp.mem_info;
 	mem_data->m_used = true;
+
+	userpf_info(xdev, "Query MEM completed\n");
+	userpf_info(xdev, "Memory Start address %llx\n", mem_data->m_base_address);
+	userpf_info(xdev, "Memory size %llx\n", mem_data->m_size);
 
 	return 0;
 }
@@ -2480,7 +2487,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 			if (ret)
 				goto out;
 		
-			ret = xocl_kds_xgq_query_mem(xdev, XOCL_DRM(xdev)->ps_mem_data); 
+			ret = xocl_kds_xgq_query_mem(xdev, &XOCL_DRM(xdev)->ps_mem_data); 
 			if (ret)
 				goto out;
 

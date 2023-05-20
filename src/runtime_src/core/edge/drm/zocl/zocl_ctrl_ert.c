@@ -899,7 +899,6 @@ done:
 	init_resp(resp, cmd->cid, rc);
 }
 
-
 static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
 			      struct xgq_com_queue_entry *resp)
 {
@@ -960,11 +959,24 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 static void zert_cmd_query_mem(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
 			       struct xgq_com_queue_entry *resp)
 {
+	struct xgq_cmd_query_mem *c = (struct xgq_cmd_query_mem *)cmd;
 	struct xgq_cmd_resp_query_mem *r = (struct xgq_cmd_resp_query_mem *)resp;
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 
-	r->mem_start_addr = zdev->host_mem;
-	r->mem_size = zdev->host_mem_len;
+	switch (c->type) {
+        case XGQ_CMD_QUERY_MEM_ADDR:
+		r->mem_info = zdev->host_mem;
+		break;
+
+	case XGQ_CMD_QUERY_MEM_SIZE:
+		r->mem_info = zdev->host_mem_len;
+		break;
+
+	default:
+		zert_err(zert, "Unknown query mem type: %d", c->type);
+		init_resp(resp, cmd->cid, -EINVAL);
+		break;
+	}
 
 	init_resp(resp, cmd->cid, 0);
 }

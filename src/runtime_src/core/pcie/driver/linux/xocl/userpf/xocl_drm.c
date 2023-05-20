@@ -811,7 +811,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
 	}
 	else {
 		ret = xocl_mm_insert_node_range(drm_p,
-				grp_topology->m_mem_data[memidx], node, size);
+				&grp_topology->m_mem_data[memidx], node, size);
 	}
 
         XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev, slotidx);
