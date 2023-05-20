@@ -701,7 +701,6 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 
 	BUG_ON(!xocl_mm && !xocl_mm->mm);
 
-
 	for (i = 0; i < grp_topology->m_count; i++) {
 		mem_data = &grp_topology->m_mem_data[i];
 		if ((convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) ||

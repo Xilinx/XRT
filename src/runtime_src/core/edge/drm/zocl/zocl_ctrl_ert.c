@@ -963,13 +963,17 @@ static void zert_cmd_query_mem(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr
 	struct xgq_cmd_resp_query_mem *r = (struct xgq_cmd_resp_query_mem *)resp;
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 
+	init_resp(resp, cmd->cid, 0);
+
 	switch (c->type) {
         case XGQ_CMD_QUERY_MEM_ADDR:
-		r->mem_info = zdev->host_mem;
+		r->l_mem_info = (u32)zdev->host_mem;
+		r->h_mem_info = (u32)((zdev->host_mem & 0xFFFFFFFF00000000LL) >> 32);
 		break;
 
 	case XGQ_CMD_QUERY_MEM_SIZE:
-		r->mem_info = zdev->host_mem_len;
+		r->l_mem_info = (u32)zdev->host_mem_len;
+		r->h_mem_info = (u32)((zdev->host_mem_len & 0xFFFFFFFF00000000LL) >> 32);
 		break;
 
 	default:
@@ -977,8 +981,6 @@ static void zert_cmd_query_mem(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr
 		init_resp(resp, cmd->cid, -EINVAL);
 		break;
 	}
-
-	init_resp(resp, cmd->cid, 0);
 }
 
 struct zert_ops {

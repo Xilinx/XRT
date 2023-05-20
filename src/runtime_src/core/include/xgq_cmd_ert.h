@@ -345,7 +345,8 @@ struct xgq_cmd_resp_query_mem {
        struct xgq_cmd_cq_hdr hdr;
 
        struct {
-	       uint64_t mem_info;
+	       uint32_t l_mem_info;
+	       uint32_t h_mem_info;
        };
        uint32_t rcode;
 };

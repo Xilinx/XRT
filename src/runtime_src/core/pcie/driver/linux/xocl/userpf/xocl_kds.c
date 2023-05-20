@@ -2196,12 +2196,14 @@ int xocl_kds_xgq_query_mem(struct xocl_dev *xdev, struct mem_data *mem_data)
 	if (ret)
 		return ret;
 
-	mem_data->m_base_address = resp.mem_info;
+	mem_data->m_base_address = (uint64_t) resp.h_mem_info << 32 | resp.l_mem_info;
+
+	memset(&resp, 0, sizeof(struct xgq_cmd_resp_query_mem));
 	ret = __xocl_kds_xgq_query_mem(xdev, XGQ_CMD_QUERY_MEM_SIZE, &resp);
 	if (ret)
 		return ret;
 
-	mem_data->m_size = resp.mem_info;
+	mem_data->m_size = (uint64_t) resp.h_mem_info << 32 | resp.l_mem_info;
 	mem_data->m_used = true;
 
 	userpf_info(xdev, "Query MEM completed\n");
