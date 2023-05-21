@@ -10,6 +10,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_error.h
   xrt_exception.h
   xrt_ext.h
+  xrt_fence.h
   xrt_hw_context.h
   xrt_ini.h
   xrt_ip.h

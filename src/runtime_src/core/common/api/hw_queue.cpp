@@ -3,19 +3,20 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #define XRT_API_SOURCE         // in same dll as API sources
-
 #include "hw_queue.h"
 
 #include "command.h"
-#include "fence.h"
 #include "hw_context_int.h"
+#include "fence_int.h"
 
 #include "core/common/debug.h"
 #include "core/common/device.h"
 #include "core/common/thread.h"
-#include "experimental/xrt_hw_context.h"
 #include "core/include/ert.h"
 #include "core/include/xrt_hwqueue.h"
+
+#include "xrt/xrt_hw_context.h"
+#include "experimental/xrt_fence.h"
 
 #include <algorithm>
 #include <atomic>
@@ -360,13 +361,13 @@ public:
   virtual std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) = 0;
 
-  // Enqueue a command returning a fence that can be waited on
-  virtual fence
-  enqueue(xrt_core::command* cmd) = 0;
+  // Enqueue a command dependency
+  virtual void
+  submit_wait(const xrt::fence& fence) = 0;
 
-  // Enqueue a command with dependencies
-  virtual fence
-  enqueue(xrt_core::command* cmd, const std::vector<fence>& waits) = 0;
+  // Signal a command dependency
+  virtual void
+  submit_signal(const xrt::fence& fence) = 0;
 
   // Managed start uses command manager for monitoring command
   // completion
@@ -429,16 +430,16 @@ public:
     m_qhdl->submit_command(cmd->get_exec_bo());
   }
 
-  fence
-  enqueue(xrt_core::command* cmd) override
+  void
+  submit_wait(const xrt::fence& fence) override
   {
-    return m_qhdl->enqueue_command(cmd->get_exec_bo());
+    m_qhdl->submit_wait(xrt_core::fence_int::get_fence_handle(fence));
   }
 
-  fence
-  enqueue(xrt_core::command* cmd, const std::vector<fence>& waits) override
+  void
+  submit_signal(const xrt::fence& fence) override
   {
-    return m_qhdl->enqueue_command(cmd->get_exec_bo(), {waits.begin(), waits.end()});
+    m_qhdl->submit_signal(xrt_core::fence_int::get_fence_handle(fence));
   }
 };
 
@@ -604,16 +605,16 @@ public:
     m_device->exec_buf(cmd->get_exec_bo());
   }
 
-  fence
-  enqueue(xrt_core::command*) override
+  void
+  submit_wait(const xrt::fence&) override
   {
-    throw std::runtime_error("kds_device::enqueue not implemented");
+    throw std::runtime_error("kds_device::submit_wait_on_fence not implemented");
   }
 
-  fence
-  enqueue(xrt_core::command*, const std::vector<fence>&) override
+  void
+  submit_signal(const xrt::fence&) override
   {
-    throw std::runtime_error("kds_device::enqueue not implemented");
+    throw std::runtime_error("kds_device::submit_wait_on_fence not implemented");
   }
 };
 
@@ -749,18 +750,18 @@ wait(const xrt_core::command* cmd) const
   get_handle()->wait(cmd, 0);
 }
 
-fence
+void
 hw_queue::
-enqueue(xrt_core::command* cmd)
+submit_wait(const xrt::fence& fence)
 {
-  return get_handle()->enqueue(cmd);
+  get_handle()->submit_wait(fence);
 }
 
-fence
+void
 hw_queue::
-enqueue(xrt_core::command* cmd, const std::vector<fence>& waits)
+submit_signal(const xrt::fence& fence)
 {
-  return get_handle()->enqueue(cmd, waits);
+  get_handle()->submit_signal(fence);
 }
 
 // Wait for command completion for unmanaged command execution with timeout
