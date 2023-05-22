@@ -763,7 +763,9 @@ class pybind11_package():
           self.install()
           
           print(f"Validating pybind11 {expected_version} installation...")
-          if self.check_installed():
+          # 2nd install check as a subprocess, because we can't cleanly reload
+          # the pybind11 module within this script
+          if self.check_installed_subprocess():
               print("Pybind11 installed successfully")
     
     def check_installed(self):
@@ -781,7 +783,16 @@ class pybind11_package():
 
         self.installed = True
         return True
-    
+
+    def check_installed_subprocess(self):
+        result = subprocess.run(["py.exe", "-c", f"import pybind11; assert pybind11.__version__ == '" + self.expected_version + "'"], stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            self.installed = True
+            return True
+        else:
+            print(f"Pybind11: validation failed")
+            return False
+ 
     def install(self):
         result = subprocess.run(["py.exe", "-m", "pip", "install", f"pybind11=={self.expected_version}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         try:
