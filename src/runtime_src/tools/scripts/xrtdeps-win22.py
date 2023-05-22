@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2023 Xilinx, Inc. All rights reserved.
 #
 # =============================================================================
 # Checks and validates the windows installation environment
@@ -67,7 +67,7 @@ def main():
   parser.add_argument('--icd', action="store_true", help='install Khronos OpenCL icd loader library')
   parser.add_argument('--opencl', action="store_true", help='install Khronos OpenCL header files')
   parser.add_argument('--gtest', action="store_true", help='install gtest libraries')
-  parser.add_argument('--python', action="store_true", help='install python dependencies (pybind11)')
+  parser.add_argument('--pybind11', action="store_true", help='install python dependencies (pybind11)')
   parser.add_argument('--validate_all_requirements', action="store_true", help='validate all XRT dependent libraries and tools are installed')
   parser.add_argument('--verbose', action="store_true", help='enables script verbosity')
   args = parser.parse_args()
@@ -130,13 +130,14 @@ def main():
     return True
 
   # -- Install python packages ----------------------------------------------
-  if args.python:
+  if args.pybind11:
     pybind = pybind11_package()
     if not pybind.installed:
       print("")
       print("ERROR: The Python pybind11 package could not be installed")
       print("        Please make sure you have pip3 installed on your system and try adding it with")
       print("        py.exe -m pip install pybind11=='2.10.4'")
+      return True
 
   return False
 
@@ -754,14 +755,14 @@ class pybind11_package():
         self.expected_version = expected_version
         
         if self.check_installed():
-            print(f"Successfully found pybind11 installation")
+            print("Successfully found pybind11 installation")
             pass
         else: 
-          print(f"Did not find a compatible installation of pybind11")
-          print(f"Trying to install pybind11=={self.expected_version} from pypi...")
+          print("Did not find a compatible installation of pybind11")
+          print(f"Installing pybind11 {self.expected_version} via pypi...")
           self.install()
           
-          print(f"Confirming installation of pybind11 {expected_version}")
+          print(f"Validating pybind11 {expected_version} installation...")
           if self.check_installed():
               print("Pybind11 installed successfully")
     
@@ -769,7 +770,7 @@ class pybind11_package():
         try:
             import pybind11
         except ImportError:
-            print(f"Pybind11: not installed")
+            print("Pybind11: not installed")
             return False
             
         try:
