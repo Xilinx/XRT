@@ -269,10 +269,6 @@ namespace xdp {
       auto currGraph   = name.substr(0, namePos);
       auto currPort    = name.substr(namePos+1);
 
-std::cout << "!!!!!!!!!! Checking port " << currPort << " in graph "
-          << currGraph << " and comparing to requested port "
-          << portName << " in graph " << graphName << std::endl;
-
       // Make sure this matches what we're looking for
       if ((channelId >= 0) && (channelId != streamId))
         continue;
@@ -284,8 +280,6 @@ std::cout << "!!!!!!!!!! Checking port " << currPort << " in graph "
            && (graphName.compare(currGraph) != 0))
         continue;
 
-std::cout << "!!!!!!!!!! metricStr = " << metricStr << std::endl;
-
       // Make sure it's desired polarity
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
@@ -296,8 +290,6 @@ std::cout << "!!!!!!!!!! metricStr = " << metricStr << std::endl;
       // Make sure column is within specified range (if specified)
       if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
         continue;
-
-std::cout << "!!!!!!!!!! Passed polarity and column test!" << std::endl;
 
       tile_type tile = {0};
       tile.col = shimCol;
