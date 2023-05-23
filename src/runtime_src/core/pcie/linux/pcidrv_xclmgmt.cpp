@@ -9,7 +9,7 @@ namespace {
   {
     drv_xclmgmt_reg() {
       auto driver = std::make_shared<xrt_core::pci::drv_xclmgmt>();
-      std::vector<std::shared_ptr<xrt_core::dev>> dev_list;
+      std::vector<std::shared_ptr<xrt_core::device_factory>> dev_list;
       driver->scan_devices(dev_list);
       xrt_core::register_device_list(dev_list);
       std::cout << "drv_xclmgmt registration done" << std::endl;
@@ -19,7 +19,7 @@ namespace {
 
 namespace xrt_core {
   namespace pci {
-    std::shared_ptr<dev>
+    std::shared_ptr<device_factory>
     drv_xclmgmt::create_pcidev(const std::string& sysfs) const
     {
       return std::make_shared<pcidev_linux>(sysfs,  /*isuser*/ false);

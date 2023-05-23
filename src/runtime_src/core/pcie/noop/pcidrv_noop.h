@@ -21,11 +21,11 @@ public:
   bool
   is_emulation() const { return false; }
 
-  std::shared_ptr<dev>
+  std::shared_ptr<device_factory>
   create_pcidev() const ;
 
   void
-  scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const;
+  scan_devices(std::vector<std::shared_ptr<device_factory>>& dev_list) const;
 
 };
 

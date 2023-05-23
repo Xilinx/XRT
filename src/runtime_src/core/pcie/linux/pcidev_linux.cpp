@@ -351,7 +351,7 @@ put(const std::string& name,
 }// sysfs
 
 pcidev_linux::
-pcidev_linux(const std::string& sysfs, bool isuser) : dev(isuser)
+pcidev_linux(const std::string& sysfs, bool isuser) : device_factory(isuser)
 {
   std::string err;
   m_sysfs_name = sysfs;

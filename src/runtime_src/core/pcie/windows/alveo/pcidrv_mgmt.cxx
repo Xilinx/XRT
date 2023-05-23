@@ -10,7 +10,7 @@ namespace {
   {
     pcidrv_mgmt_reg() {
       auto driver = std::make_shared<xrt_core::pci::pcidrv_mgmt>();
-      std::vector<std::shared_ptr<xrt_core::dev>> dev_list;
+      std::vector<std::shared_ptr<xrt_core::device_factory>> dev_list;
       driver->scan_devices(dev_list);
       xrt_core::register_device_list(dev_list);
       std::cout << "pcidrv_mgmt registration done" << std::endl;
@@ -19,14 +19,14 @@ namespace {
 }
 
 namespace xrt_core { namespace pci {
-  std::shared_ptr<dev>
+  std::shared_ptr<device_factory>
   pcidrv_mgmt::create_pcidev() const
   {
     return std::make_shared<pcidev_windows>(/*isuser*/ false);
   }
 
   void
-  pcidrv_mgmt::scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const
+  pcidrv_mgmt::scan_devices(std::vector<std::shared_ptr<device_factory>>& dev_list) const
   {
     try {
       auto nd = mgmtpf::probe();

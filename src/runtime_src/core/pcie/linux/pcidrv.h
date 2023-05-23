@@ -4,7 +4,7 @@
 #ifndef _XCL_PCIDRV_H_
 #define _XCL_PCIDRV_H_
 
-#include "core/common/dev_factory.h"
+#include "core/common/device_factory.h"
 
 namespace xrt_core { namespace pci {
 
@@ -18,9 +18,9 @@ public:
 
   // Scan system, find all supported devices and add them to the list
   virtual void
-  scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& dev_list) const;
+  scan_devices(std::vector<std::shared_ptr<xrt_core::device_factory>>& dev_list) const;
   // Create the type of pci::dev driven by this driver which can be added to the list
-  virtual std::shared_ptr<xrt_core::dev>
+  virtual std::shared_ptr<xrt_core::device_factory>
   create_pcidev(const std::string& sysfs) const = 0;
 };
 

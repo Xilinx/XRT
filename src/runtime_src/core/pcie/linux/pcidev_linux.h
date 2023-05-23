@@ -6,7 +6,7 @@
 
 #include "pcidrv.h"
 #include "device_linux.h"
-#include "core/common/dev_factory.h"
+#include "core/common/device_factory.h"
 #include <string>
 
 #include <fcntl.h>
@@ -58,7 +58,7 @@ struct fdt_header {
 };
 
 namespace xrt_core { namespace pci {
-  class pcidev_linux : public dev
+  class pcidev_linux : public device_factory
   {
   public:
     // Fundamental and static information for this device are defined as class

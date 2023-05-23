@@ -16,7 +16,7 @@
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/config_reader.h"
-#include "core/common/dev_factory.h"
+#include "core/common/device_factory.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"

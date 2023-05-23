@@ -5,12 +5,12 @@
 #define _XCL_PCIDEV_WINDOWS_H_
 
 #include "device_windows.h"
-#include "core/common/dev_factory.h"
+#include "core/common/device_factory.h"
 #include <string>
 
 namespace xrt_core { namespace pci {
 
-class pcidev_windows : public dev
+class pcidev_windows : public device_factory
 {
 public:
 

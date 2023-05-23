@@ -20,11 +20,11 @@ namespace xrt_core { namespace edge {
     bool
       is_emulation() const { return false; }
 
-    std::shared_ptr<dev>
+    std::shared_ptr<device_factory>
       create_edgedev() const;
 
     void
-      scan_devices(std::vector<std::shared_ptr<dev>>& dev_list) const;
+      scan_devices(std::vector<std::shared_ptr<device_factory>>& dev_list) const;
   };
 } } // namespace xrt_core :: edge
 

@@ -16,7 +16,7 @@ public:
   std::string
   name() const override { return "xclmgmt"; }
 
-  std::shared_ptr<dev>
+  std::shared_ptr<device_factory>
   create_pcidev(const std::string& sysfs) const override;
 };
 

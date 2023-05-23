@@ -6,7 +6,7 @@
 
 #include "config.h"
 #include "device.h"
-#include "dev_factory.h"
+#include "device_factory.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -118,7 +118,7 @@ public:
   void
   program_plp(const device*, const std::vector<char>&, bool) const;
 
-  std::shared_ptr<dev>
+  std::shared_ptr<device_factory>
   get_device(unsigned index, bool is_user = true) const;
 
   size_t

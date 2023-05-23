@@ -9,16 +9,16 @@
 namespace xrt_core {
 
 // One function on FPGA or AIE device
-class dev
+class device_factory
 {
 public:
   bool m_is_mgmt = false;
   bool m_is_ready = true; 
-  dev(bool isuser) {  
+  device_factory(bool isuser) {  
       m_is_mgmt = !isuser;  
   }
   
-  virtual ~dev() {}
+  virtual ~device_factory() {}
  
   // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
@@ -48,7 +48,7 @@ get_dev_ready(bool user = true);
 size_t
 get_dev_total(bool user = true);
 
-std::shared_ptr<dev>
+std::shared_ptr<device_factory>
 get_dev(unsigned index, bool user = true);
 
 
@@ -59,7 +59,7 @@ get_dev(unsigned index, bool user = true);
  */
 XRT_CORE_COMMON_EXPORT
 void
-register_device_list(const std::vector<std::shared_ptr<xrt_core::dev>>& devlist);
+register_device_list(const std::vector<std::shared_ptr<xrt_core::device_factory>>& devlist);
 
 } // namespace xrt_core
 

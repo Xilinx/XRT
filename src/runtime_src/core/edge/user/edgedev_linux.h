@@ -5,16 +5,16 @@
 #define _XCL_EDGEDEV_LINUX_H_
 
 #include "device_linux.h"
-#include "core/common/dev_factory.h"
+#include "core/common/device_factory.h"
 #include <string>
 
 namespace xrt_core {
   namespace edge {
-    class edgedev_linux : public dev
+    class edgedev_linux : public device_factory
     {
     public:
 
-      edgedev_linux(bool isuser) :dev(isuser) {}
+      edgedev_linux(bool isuser) :device_factory(isuser) {}
       // Hand out a "device" instance that is specific to this type of device.
       // Caller will use this device to access device specific implementation of ishim.
       virtual std::shared_ptr<device>

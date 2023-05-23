@@ -9,7 +9,7 @@ namespace xrt_core { namespace pci {
 
 void
 drv::
-scan_devices(std::vector<std::shared_ptr<xrt_core::dev>>& dev_list) const
+scan_devices(std::vector<std::shared_ptr<xrt_core::device_factory>>& dev_list) const
 {
   namespace bfs = boost::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";

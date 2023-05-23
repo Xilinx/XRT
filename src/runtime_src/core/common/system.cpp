@@ -175,10 +175,10 @@ osNameImpl()
 
 namespace xrt_core {
 
-static std::vector<std::shared_ptr<xrt_core::dev>> user_ready_list;
-static std::vector<std::shared_ptr<xrt_core::dev>> user_nonready_list;
-static std::vector<std::shared_ptr<xrt_core::dev>> mgmt_ready_list;
-static std::vector<std::shared_ptr<xrt_core::dev>> mgmt_nonready_list;  
+static std::vector<std::shared_ptr<xrt_core::device_factory>> user_ready_list;
+static std::vector<std::shared_ptr<xrt_core::device_factory>> user_nonready_list;
+static std::vector<std::shared_ptr<xrt_core::device_factory>> mgmt_ready_list;
+static std::vector<std::shared_ptr<xrt_core::device_factory>> mgmt_nonready_list;  
 
 // Singleton is initialized when libxrt_core is loaded
 // A concrete system object is constructed during static
@@ -230,7 +230,7 @@ get_devices(boost::property_tree::ptree& pt) const
   pt.add_child("devices", pt_devices);
 }
 
-std::shared_ptr<dev>
+std::shared_ptr<device_factory>
 system::
 get_device(unsigned index, bool is_user) const
 {
@@ -643,14 +643,14 @@ get_dev_total(bool user)
   return instance().get_num_dev_total(user);
 }
 
-std::shared_ptr<dev>
+std::shared_ptr<device_factory>
 get_dev(unsigned index, bool user)
 {
   return instance().get_device(index, user);
 }
 
 void
-register_device_list(const std::vector<std::shared_ptr<xrt_core::dev>>& devlist)
+register_device_list(const std::vector<std::shared_ptr<xrt_core::device_factory>>& devlist)
 {
   for (auto device : devlist) {
     if (device->m_is_mgmt) {
