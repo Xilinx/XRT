@@ -47,7 +47,9 @@ namespace xdp {
     checkSettings();
 
     counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
-    
+    // Get polling interval (in usec)
+    pollingInterval = xrt_core::config::get_aie_trace_settings_poll_timers_interval_us();
+
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();

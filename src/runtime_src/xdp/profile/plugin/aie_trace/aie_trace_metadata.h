@@ -22,8 +22,8 @@
 #include <map>
 #include <vector>
 
-#include "aie_util.h"
 #include "xdp/config.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "core/common/device.h"
 #include "core/common/system.h"
@@ -81,6 +81,7 @@ class AieTraceMetadata {
     bool getIsValidMetrics() {return isValidMetrics;}
 
     void* getHandle() {return handle;}
+    uint32_t getPollingIntervalVal(){return pollingInterval;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
     std::string getMetricStr() {return metricSet;}
     std::map<tile_type, std::string> getConfigMetrics() {return configMetrics;}
@@ -101,6 +102,7 @@ class AieTraceMetadata {
     bool runtimeMetrics;
     bool continuousTrace;
 
+    uint32_t pollingInterval;
     uint32_t iterationCount = 0;
     uint64_t delayCycles = 0;
     uint64_t deviceID;

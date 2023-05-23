@@ -145,6 +145,9 @@ namespace xdp {
     addParameter("AIE_trace_settings.file_dump_interval_s",
                  xrt_core::config::get_aie_trace_settings_file_dump_interval_s(),
                  "Interval for dumping AI Engine trace files to host (in s)");
+    addParameter("AIE_trace_settings.poll_timers_interval_us",
+                 xrt_core::config::get_aie_trace_settings_poll_timers_interval_us(),
+                 "Interval for polling AI Engine timers (in us)");
 #endif
   }
 

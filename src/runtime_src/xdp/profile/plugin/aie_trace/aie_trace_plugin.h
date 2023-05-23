@@ -39,6 +39,7 @@ namespace xdp {
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
+    void pollAIETimers(uint32_t index, void* handle);
     void flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn);
 
   private:
@@ -51,6 +52,8 @@ namespace xdp {
       std::unique_ptr<AIETraceLogger> logger;
       std::unique_ptr<AieTraceImpl> implementation;
       std::shared_ptr<AieTraceMetadata> metadata;
+      std::atomic<bool> threadCtrlBool;
+      std::thread thread;
     };
     std::map<void*, AIEData>  handleToAIEData;
   };

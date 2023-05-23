@@ -170,10 +170,12 @@ namespace xdp {
 
     std::vector<std::string> ports;
 
+    // Traverse all PLIO and include logical and port names
     for (auto &plio : plios) {
       std::vector<std::string> nameVec;
-      boost::split(nameVec, plio.second.logicalName, boost::is_any_of("."));
+      boost::split(nameVec, plio.second.name, boost::is_any_of("."));
       ports.emplace_back(nameVec.back());
+      ports.emplace_back(plio.second.logicalName);
     }
 
     return ports;
@@ -257,22 +259,28 @@ namespace xdp {
 
     auto plios = getPLIOs(device);
     for (auto& plio : plios) {
-      auto isMaster = plio.second.slaveOrMaster;
-      auto streamId = plio.second.streamId;
-      auto shimCol = plio.second.shimColumn;
-      auto name = plio.second.name;
+      auto isMaster    = plio.second.slaveOrMaster;
+      auto streamId    = plio.second.streamId;
+      auto shimCol     = plio.second.shimColumn;
       auto logicalName = plio.second.logicalName;
+      auto name        = plio.second.name;
+
+      auto namePos     = name.find_last_of(".");
+      auto currPort    = name.substr(0, namePos);
+      auto currGraph   = name.substr(namePos+1);
 
       // Make sure this matches what we're looking for
       if ((channelId >= 0) && (channelId != streamId))
         continue;
-      if ((logicalName.find(portName) == std::string::npos)
-           && (portName.compare("all") != 0))
+      if ((portName.compare("all") != 0)
+           && (portName.compare(currPort) != 0)
+           && (portName.compare(logicalName) != 0))
         continue;
-      auto currGraph = name.substr(name.find_last_of(".")+1);
-      if ((currGraph.find(graphName) == std::string::npos)
-           && (graphName.compare("all") != 0))
+      if ((graphName.compare("all") != 0)
+           && (graphName.compare(currGraph) != 0))
         continue;
+
+std::cout << "!!!!!!!!!! metricStr = " << metricStr << std::endl;
 
       // Make sure it's desired polarity
       // NOTE: input = slave (data flowing from PLIO)
@@ -285,13 +293,15 @@ namespace xdp {
       if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
         continue;
 
+std::cout << "!!!!!!!!!! Passed polarity and column test!" << std::endl;
+
       tile_type tile = {0};
       tile.col = shimCol;
       tile.row = 0;
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
       tile.itr_mem_col = isMaster;
       tile.itr_mem_row = streamId;
-      tiles.push_back(tile);
+      tiles.emplace_back(std::move(tile));
     }
 
     if (tiles.empty() && (channelId >= 0)) {

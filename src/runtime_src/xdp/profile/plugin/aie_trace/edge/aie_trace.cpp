@@ -17,7 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/edge/aie_trace.h"
-#include "xdp/profile/plugin/aie_trace/aie_util.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
@@ -27,6 +27,7 @@
 #include <regex>
 
 #include "core/common/message.h"
+#include "core/common/time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -389,19 +390,16 @@ namespace xdp {
     }
   }
 
-  // Release counters from latest tile (because something went wrong)
-  void AieTrace_EdgeImpl::releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters)
+  // Release resources (because something went wrong)
+  void AieTrace_EdgeImpl::freeResources()
   {
-    for (int i = 0; i < numCoreCounters; i++) {
-      mCoreCounters.back()->stop();
-      mCoreCounters.back()->release();
-      mCoreCounters.pop_back();
-      mCoreCounterTiles.pop_back();
+    for (auto& c : mPerfCounters) {
+      c->stop();
+      c->release();
     }
-    for (int i = 0; i < numMemoryCounters; i++) {
-      mMemoryCounters.back()->stop();
-      mMemoryCounters.back()->release();
-      mMemoryCounters.pop_back();
+    for (auto& p : mStreamPorts) {
+      p->stop();
+      p->release();
     }
   }
 
@@ -414,12 +412,105 @@ namespace xdp {
     return module_type::core;
   }
 
+  uint16_t AieTrace_EdgeImpl::getRelativeRow(uint16_t absRow)
+  {
+    auto rowOffset = metadata->getRowOffset();
+    if (absRow == 0)
+      return 0;
+    if (absRow < rowOffset)
+      return (absRow - 1);
+    return (absRow - rowOffset);
+  }
+
+  module_type 
+  AieTrace_EdgeImpl::getModuleType(uint16_t absRow, XAie_ModuleType mod)
+  {
+    if (absRow == 0)
+      return module_type::shim;
+    if (absRow < metadata->getRowOffset())
+      return module_type::mem_tile;
+    return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
+  }
+
+  bool AieTrace_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
+  {
+    // AIE tiles
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) 
+        && (event < XAIE_EVENT_GROUP_BROADCAST_CORE))
+      return true;
+    // Interface tiles
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
+        && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
+      return true;
+    // Memory tiles
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
+        && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
+      return true;
+
+    return false;
+  }
+
+  // Configure stream switch ports for monitoring purposes
+  // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
+  void AieTrace_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                                  xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
+                                                  const module_type type, const XAie_Events event,
+                                                  const int countnum, const std::string metricSet,
+                                                  const uint8_t channel)
+  {
+    // Only configure as needed: must be applicable event and only need at most two
+    if (!isStreamSwitchPortEvent(event) || (countnum > 1))
+      return;
+
+    auto switchPortRsc = xaieTile.sswitchPort();
+    auto ret = switchPortRsc->reserve();
+    if (ret != AieRC::XAIE_OK)
+      return;
+
+    uint32_t rscId = 0;
+    XAie_LocType tmpLoc;
+    XAie_ModuleType tmpMod;
+    switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
+
+    // AIE Tiles (e.g., trace streams)
+    if (type == module_type::core) {
+      // Define stream switch port to monitor core or memory trace
+      uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
+      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+      return;
+    }
+
+    // Interface tiles (e.g., PLIO, GMIO)
+    if (type == module_type::shim) {
+      // Grab slave/master and stream ID
+      // NOTE: stored in getTilesForProfiling() above
+      auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+
+      // Define stream switch port to monitor interface 
+      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
+      return;
+    }
+
+    // MEM tiles
+    if (metricSet.find("trace") != std::string::npos) {
+      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, 0);
+    }
+    else {
+      auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
+        XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
+    }
+
+    mStreamPorts.push_back(switchPortRsc);
+  }
+
   void AieTrace_EdgeImpl::configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
                                                 const XAie_ModuleType mod, const module_type type,
                                                 const std::string metricSet, const uint8_t channel0,
                                                 const uint8_t channel1)
   {
-    if (type != module_type::mem_tile)
+    if ((type != module_type::mem_tile) && (type != module_type::shim))
       return;
 
     XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
@@ -460,22 +551,23 @@ namespace xdp {
     // NOTE: rows are stored as absolute as required by resource manager
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
-      auto tile = tileMetric.first;
-      auto col = tile.col;
-      auto row = tile.row;
-      auto type = getTileType(row);
-      auto typeInt = static_cast<int>(type);
+      auto tile       = tileMetric.first;
+      auto col        = tile.col;
+      auto row        = tile.row;
+      auto type       = getTileType(row);
+      auto typeInt    = static_cast<int>(type);
+      auto& xaieTile  = aieDevice->tile(col, row);
+      auto loc        = XAie_TileLoc(col, row);
 
       xaiefal::XAieMod core;
       xaiefal::XAieMod memory;
       xaiefal::XAieMod shim;
       if (type == module_type::core)
-        core = aieDevice->tile(col, row).core();
+        core = xaieTile.core();
       if (type == module_type::shim)
-        shim = aieDevice->tile(col, row).pl();
+        shim = xaieTile.pl();
       else
-        memory = aieDevice->tile(col, row).mem();
-      auto loc = XAie_TileLoc(col, row);
+        memory = xaieTile.mem();
 
       // Store location to flush at end of run
       if (useTraceFlush || (type == module_type::mem_tile) 
@@ -566,8 +658,7 @@ namespace xdp {
           if (perfCounter->start() != XAIE_OK)
             break;
 
-          mCoreCounterTiles.push_back(tile);
-          mCoreCounters.push_back(perfCounter);
+          mPerfCounters.push_back(perfCounter);
           numCoreCounters++;
 
           // Update config file
@@ -609,7 +700,7 @@ namespace xdp {
           if (perfCounter->start() != XAIE_OK)
             break;
 
-          mMemoryCounters.push_back(perfCounter);
+          mPerfCounters.push_back(perfCounter);
           numMemoryCounters++;
 
           // Update config file
@@ -633,7 +724,7 @@ namespace xdp {
               << " for AIE tile (" << col << "," << row << ") required for trace.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
+          freeResources();
           // Print resources availability for this tile
           printTileStats(aieDevice, tile);
           return false;
@@ -668,7 +759,7 @@ namespace xdp {
           msg << "Unable to reserve core module trace control for AIE tile (" << col << "," << row << ").";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
+          freeResources();
           // Print resources availability for this tile
           printTileStats(aieDevice, tile);
           return false;
@@ -724,7 +815,7 @@ namespace xdp {
           msg << "Unable to reserve memory trace control for AIE tile (" << col << "," << row << ").";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
+          freeResources();
           // Print resources availability for this tile
           printTileStats(aieDevice, tile);
           return false;
@@ -884,7 +975,7 @@ namespace xdp {
           msg << "Unable to reserve trace control for interface tile (" << col << "," << row << ").";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-          //releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
+          freeResources();
           // Print resources availability for this tile
           printTileStats(aieDevice, tile);
           return false;
@@ -923,6 +1014,11 @@ namespace xdp {
           if (TraceE->start() != XAIE_OK)
             break;
           numInterfaceTraceEvents++;
+
+          // Channel number is based on monitoring port 0 or 1
+          auto channel = (interfaceEvents[i] <= XAIE_EVENT_PORT_TLAST_0_PL) ? channel0 : channel1;
+          configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, type,
+                                  interfaceEvents[i], i, metricSet, channel);
 
           // Update config file
           // Get Trace slot
@@ -1133,5 +1229,40 @@ namespace xdp {
     mTraceFlushLocs.clear();
     mMemoryTileTraceFlushLocs.clear();
     mInterfaceTileTraceFlushLocs.clear();
+  }
+
+  void AieTrace_EdgeImpl::pollTimers(uint32_t index, void* handle)
+  {
+    // Wait until xclbin has been loaded and device has been updated in database
+    if (!(db->getStaticInfo().isDeviceReady(index)))
+      return;
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    if (!aieDevInst)
+      return;
+
+    uint64_t timerValue = 0;
+
+    // Iterate over all specified AIE tiles to read timers
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
+      auto col           = tileMetric.first.col;
+      auto row           = tileMetric.first.row;
+      auto loc           = XAie_TileLoc(col, row);
+      auto moduleType    = getModuleType(row, XAIE_CORE_MOD);
+      auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
+                         : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
+                         : XAIE_MEM_MOD);
+      
+      double timestamp1 = xrt_core::time_ns() / 1.0e6;
+      XAie_ReadTimer(aieDevInst, loc, falModuleType, &timerValue);
+      double timestamp2 = xrt_core::time_ns() / 1.0e6;
+      
+      std::vector<uint64_t> values;
+      values.push_back(col);
+      values.push_back(getRelativeRow(row));
+      values.push_back(timerValue);
+
+      db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);
+    }
   }
 }  // namespace xdp

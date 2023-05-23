@@ -35,13 +35,23 @@ namespace xdp {
     virtual void updateDevice();
     XDP_EXPORT
     virtual void flushAieTileTraceModule();
+    void pollTimers(uint32_t index, void* handle);
 
    private:
     typedef XAie_Events EventType;
     typedef std::vector<EventType> EventVector;
     typedef std::vector<uint32_t> ValueVector;
 
+    void freeResources();
     module_type getTileType(uint16_t row);
+    uint16_t getRelativeRow(uint16_t absRow);
+    module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
+    bool isStreamSwitchPortEvent(const XAie_Events event);
+    void configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                 xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
+                                 const module_type type, const XAie_Events event,
+                                 const int countnum, const std::string metricSet,
+                                 const uint8_t channel);
     void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, 
                                const XAie_ModuleType mod, const module_type type, 
                                const std::string metricSet, const uint8_t channel0,
@@ -70,10 +80,8 @@ namespace xdp {
     std::map<std::string, EventVector> mInterfaceTileEventSets;
 
     // AIE profile counters
-    std::vector<tile_type> mCoreCounterTiles;
-    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
-    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
-    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mInterfaceCounters;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
 
     // Counter metrics (same for all sets)
     EventType mCoreTraceStartEvent;

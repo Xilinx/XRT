@@ -911,6 +911,12 @@ get_aie_trace_settings_file_dump_interval_s()
   return value;
 }
 
+inline unsigned int
+get_aie_trace_settings_poll_timers_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.poll_timers_interval_us", 100);
+  return value;
+}
 
 }} // config,xrt_core
 

@@ -96,6 +96,11 @@ namespace xdp {
     return module_type::core;
   }
 
+  void AieTrace_x86Impl::pollTimers(uint32_t index, void* handle) 
+  {
+    // TBD: poll AIE timers similar to Edge implementation
+  }
+
   bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle) {
       
     //Gather data to send to PS Kernel

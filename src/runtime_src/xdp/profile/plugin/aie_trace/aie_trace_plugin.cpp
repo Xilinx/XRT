@@ -31,6 +31,7 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
+#include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 
 #ifdef XRT_X86_BUILD
   #include "x86/aie_trace.h"
@@ -247,6 +248,50 @@ namespace xdp {
     // Continuous Trace Offload is supported only for PLIO flow
     if (AIEData.metadata->getContinuousTrace())
       offloader->startOffload();
+
+    // Open the timestamps writer for this device
+    auto time = std::time(nullptr);
+
+#ifdef _WIN32
+    std::tm tm{};
+    localtime_s(&tm, &time);
+    std::string deviceName = "win_device";
+#else
+    auto tm = *std::localtime(&time);
+    struct xclDeviceInfo2 info;
+    xclGetDeviceInfo2(handle, &info);
+    std::string deviceName = std::string(info.mName);
+#endif
+
+    // Writer for timestamp file
+    std::ostringstream timeOss;
+    timeOss << std::put_time(&tm, "_%Y_%m_%d_%H%M%S");
+    std::string outputFile = "aie_trace_timestamps_" + deviceName + timeOss.str() + ".csv";
+
+    VPWriter* tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
+    writers.push_back(tsWriter);
+    db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
+
+    // Start the AIE trace timestamps thread
+    AIEData.threadCtrlBool = true;
+    auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers, this, deviceID, handle);
+    AIEData.thread = std::move(device_thread);
+  }
+
+  void AieTracePluginUnified::pollAIETimers(uint32_t index, void* handle)
+  {
+    auto it = handleToAIEData.find(handle);
+    if (it == handleToAIEData.end())
+      return;
+
+    auto& should_continue = it->second.threadCtrlBool;
+
+    while (should_continue) {
+      handleToAIEData[handle].implementation->pollTimers(index, handle);
+      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
+    }
+    // Final Polling Operation
+    handleToAIEData[handle].implementation->pollTimers(index, handle);
   }
 
   void AieTracePluginUnified::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn)
