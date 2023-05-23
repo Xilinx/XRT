@@ -44,7 +44,7 @@ void fini(void *mpc_cookie);
 int init(mpd_plugin_callbacks *cbs)
 {
     int ret = 1;
-    auto total = xrt_core::get_dev_total();
+    auto total = xrt_core::get_device_factory_total();
     if (total == 0) {
         syslog(LOG_INFO, "Container: no device found");
         return ret;
@@ -149,7 +149,7 @@ Container::~Container()
 
 Container::Container(size_t index)
 {
-    mgmtDev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, false));
+    mgmtDev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index, false));
 }
 
 //private methods, vendor dependant

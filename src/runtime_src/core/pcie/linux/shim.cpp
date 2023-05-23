@@ -767,7 +767,7 @@ shim(unsigned index)
 
 int shim::dev_init()
 {
-    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(mBoardNumber));
+    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(mBoardNumber));
     if(dev == nullptr) {
         xrt_logmsg(XRT_ERROR, "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
@@ -1349,7 +1349,7 @@ int shim::resetDevice(xclResetKind kind)
     auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(mBoardNumber));
+        auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(mBoardNumber));
         dev->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
         auto end = std::chrono::system_clock::now();
@@ -1771,7 +1771,7 @@ int shim::xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx)
         std::this_thread::sleep_for(std::chrono::seconds(5));
         while (!dev_hotplug_done) {
 	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(mBoardNumber));
+        auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(mBoardNumber));
 	    dev->sysfs_get<int>("",
 			    "dev_hotplug_done", err, dev_hotplug_done, 0);
     }
@@ -1834,7 +1834,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
         std::this_thread::sleep_for(std::chrono::seconds(5));
         while (!dev_hotplug_done) {
     	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(mBoardNumber));
+            auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(mBoardNumber));
             dev->sysfs_get<int>("",
     			    "dev_hotplug_done", err, dev_hotplug_done, 0);
         }
@@ -2193,7 +2193,7 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
 {
-    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(mBoardNumber));
+    auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(mBoardNumber));
     std::string subdev_str = std::string(subdev);
 
     if (mLogStream.is_open()) {
@@ -2326,7 +2326,7 @@ double shim::xclGetKernelWriteMaxBandwidthMBps()
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
-  auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(mBoardNumber));
+  auto dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(mBoardNumber));
   std::string subdev_str = std::string(subdev);
   std::string entry_str = std::string(entry);
   if (mLogStream.is_open()) {
@@ -2731,7 +2731,7 @@ unsigned int
 xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
-    return xrt_core::get_dev_ready();
+    return xrt_core::get_device_factory_ready();
   }) ;
 }
 
@@ -2740,7 +2740,7 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
   return xdp::hal::profiling_wrapper("xclOpen", [deviceIndex] {
   try {
-    if(xrt_core::get_dev_total() <= deviceIndex) {
+    if(xrt_core::get_device_factory_total() <= deviceIndex) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
         std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return static_cast<xclDeviceHandle>(nullptr);

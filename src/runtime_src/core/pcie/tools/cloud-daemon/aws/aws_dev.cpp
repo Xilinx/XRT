@@ -46,7 +46,7 @@ void fini(void *mpc_cookie);
 int init(mpd_plugin_callbacks *cbs)
 {
     int ret = 1;
-    auto total = xrt_core::get_dev_total();
+    auto total = xrt_core::get_device_factory_total();
     if (total == 0) {
         syslog(LOG_INFO, "aws: no device found");
         return ret;
@@ -445,7 +445,7 @@ int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *r
 #ifndef INTERNAL_TESTING_FOR_AWS
 static void awsPciRescan(int index)
 {
-    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, true))->m_sysfs_name;
+    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index, true))->m_sysfs_name;
     int mBoardNumber = index_map[sysfs_name];
     std::this_thread::sleep_for(std::chrono::seconds(1));
     int dev_offline = -1;
@@ -456,18 +456,18 @@ static void awsPciRescan(int index)
     
     // removal & rescan will make the host mem configed lost. so if there is host mem config
     // save the info and reconfig it after the removal & rescan
-    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->sysfs_get("", "host_mem_size", err, hostmem_size, static_cast<uint64_t>(0));
+    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index))->sysfs_get("", "host_mem_size", err, hostmem_size, static_cast<uint64_t>(0));
     if (hostmem_size)
         std::cout << "host mem config information saved: " << hostmem_size << std::endl;
     
     fpga_pci_rescan_slot_app_pfs(mBoardNumber);
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->sysfs_get<int>("", "dev_offline", err, dev_offline, -1);
+        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index))->sysfs_get<int>("", "dev_offline", err, dev_offline, -1);
     }
     if (!hostmem_size) {
         //no need to reconfig host mem, just tell the user xclbin load ioctl can be re-issued now
-        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->sysfs_put("", "dev_hotplug_done", err, 1);
+        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index))->sysfs_put("", "dev_hotplug_done", err, 1);
         return;
     }
     
@@ -477,7 +477,7 @@ static void awsPciRescan(int index)
     // still need to notify user to avoid hang
     if (!handle) {
         std::cerr << "host mem config not recovered" << std::endl;
-        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->sysfs_put("", "dev_hotplug_done", err, 1);
+        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index))->sysfs_put("", "dev_hotplug_done", err, 1);
         return;
     }
     std::cout << "host mem reconfig (size: " << hostmem_size << ")..." << std::endl;
@@ -486,7 +486,7 @@ static void awsPciRescan(int index)
     xclClose(handle);
     
     //tell the user xclbin load ioctl can be re-issued now
-    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->sysfs_put("", "dev_hotplug_done", err, 1);
+    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index))->sysfs_put("", "dev_hotplug_done", err, 1);
 }
 #endif
 
@@ -563,7 +563,7 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
         imageInfoOld.sh_version != imageInfoNew.sh_version) {
         std::cout << "pci removal & rescan..." << std::endl;
         std::string err;
-        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index))->sysfs_put("", "dev_hotplug_done", err, 0);
+        std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index))->sysfs_put("", "dev_hotplug_done", err, 0);
 	    
         if (rescan_thread[mBoardNumber].joinable())
                 rescan_thread[mBoardNumber].join();
@@ -725,7 +725,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName)
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, true))->m_sysfs_name;
+    std::string sysfs_name = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index, true))->m_sysfs_name;
     std::cout << "AwsDev: " << sysfs_name << "(index: " << index << ")" << std::endl;
 #ifdef INTERNAL_TESTING_FOR_AWS
     mBoardNumber = index;

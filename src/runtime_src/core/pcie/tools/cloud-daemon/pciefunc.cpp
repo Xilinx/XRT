@@ -157,7 +157,7 @@ void pcieFunc::log(int priority, const char *format, ...) const
 
 pcieFunc::pcieFunc(size_t index, bool user) : index(index)
 {
-    dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(index, user));
+    dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(index, user));
 }
 
 pcieFunc::~pcieFunc()

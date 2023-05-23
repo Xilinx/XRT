@@ -41,22 +41,23 @@ public:
   }
 };
 
-
+// get list of device_factory objects which are in ready state from registered device list.
 size_t
-get_dev_ready(bool user = true);
+get_device_factory_ready(bool user = true);
 
+// get total number of device_factory objects from registered device list.
 size_t
-get_dev_total(bool user = true);
+get_device_factory_total(bool user = true);
 
+//get device_factory from list of registered device list.
 std::shared_ptr<device_factory>
-get_dev(unsigned index, bool user = true);
+get_device_factory(unsigned index, bool user = true);
 
 
-/**
- * Adding device_factory instance to the global list. Should only be called from global object of
- * built-in drivers through dlopen.
- * For now, once added, it cannot be removed until the list itself is out of scope.
- */
+// Adding device_factory instance to the global list. Should only be called from global object of
+// built-in drivers through dlopen.
+// For now, once added, it cannot be removed until the list itself is out of scope.
+
 XRT_CORE_COMMON_EXPORT
 void
 register_device_list(const std::vector<std::shared_ptr<xrt_core::device_factory>>& devlist);

@@ -632,19 +632,19 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force)
 }
 
 size_t
-get_dev_ready(bool user)
+get_device_factory_ready(bool user)
 {
   return instance().get_num_dev_ready(user);
 }
 
 size_t
-get_dev_total(bool user)
+get_device_factory_total(bool user)
 {
   return instance().get_num_dev_total(user);
 }
 
 std::shared_ptr<device_factory>
-get_dev(unsigned index, bool user)
+get_device_factory(unsigned index, bool user)
 {
   return instance().get_device(index, user);
 }

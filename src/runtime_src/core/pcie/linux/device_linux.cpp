@@ -67,7 +67,7 @@ get_render_value(const std::string& dir)
 inline std::shared_ptr<xrt_core::pci::pcidev_linux>
 get_pcidev(const xrt_core::device* device)
 {
-  auto pdev = xrt_core::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = xrt_core::get_device_factory(device->get_device_id(), device->is_userpf());
   if (!pdev)
     throw xrt_core::error("Invalid device handle");
   return std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(pdev);
@@ -485,7 +485,7 @@ struct hotplug_offline
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(device->get_device_id(), false));
+    auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(device->get_device_id(), false));
 
     // Remove both user_pf and mgmt_pf
     if (xrt_core::pci::shutdown(mgmt_dev, true, true))
@@ -1441,7 +1441,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false))->pcieBarRead(offset, buf, len))
+  if (auto err = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false))->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -1449,7 +1449,7 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false))->pcieBarWrite(offset, buf, len))
+  if (auto err = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false))->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
 }
 
@@ -1458,7 +1458,7 @@ device_linux::
 reset(query::reset_type& key) const
 {
   std::string err;
-  std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false))->sysfs_put(
+  std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false))->sysfs_put(
     key.get_subdev(), key.get_entry(), err, key.get_value());
   if (!err.empty())
     throw error("reset failed");
@@ -1468,14 +1468,14 @@ int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
-  return std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false))->open(subdev, flag);
+  return std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false))->open(subdev, flag);
 }
 
 void
 device_linux::
 close(int dev_handle) const
 {
-    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false))->close(dev_handle);
+    std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false))->close(dev_handle);
 }
 
 void
@@ -1491,7 +1491,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
-    ret = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false))->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false))->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
@@ -1504,7 +1504,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
 void
 device_linux::
 device_shutdown() const {
-  auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false));
+  auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false));
   // hot reset pcie device
   if (xrt_core::pci::shutdown(mgmt_dev))
     throw xrt_core::error("Hot resetting pci device failed.");
@@ -1513,7 +1513,7 @@ device_shutdown() const {
 void
 device_linux::
 device_online() const {
-  auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_dev(get_device_id(), false));
+  auto mgmt_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(xrt_core::get_device_factory(get_device_id(), false));
   auto peer_dev = std::dynamic_pointer_cast<xrt_core::pci::pcidev_linux>(mgmt_dev->lookup_peer_dev());
   std::string errmsg;
 

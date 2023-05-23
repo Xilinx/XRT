@@ -294,7 +294,7 @@ void Common::postStop()
 Common::Common(const std::string &name, const std::string &plugin_path, bool for_user) :
     name(name), plugin_path(plugin_path)
 {
-    total = xrt_core::get_dev_total(for_user);
+    total = xrt_core::get_device_factory_total(for_user);
     plugin_handle = nullptr;
 }
 
