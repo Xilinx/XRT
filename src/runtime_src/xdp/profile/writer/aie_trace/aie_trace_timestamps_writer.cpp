@@ -46,6 +46,7 @@ namespace xdp {
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
 
     // Write header
+    fout << "Version: 1.0\n";
     fout << "Target device: " << mDeviceName << "\n";
     fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";

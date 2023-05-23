@@ -1241,28 +1241,28 @@ namespace xdp {
     if (!aieDevInst)
       return;
 
-    uint64_t timerValue = 0;
+    // Only read first timer and assume common time domain across all tiles
+    static auto tileMetrics = metadata->getConfigMetrics();
+    if (tileMetrics.empty())
+      return;
 
-    // Iterate over all specified AIE tiles to read timers
-    for (auto& tileMetric : metadata->getConfigMetrics()) {
-      auto col           = tileMetric.first.col;
-      auto row           = tileMetric.first.row;
-      auto loc           = XAie_TileLoc(col, row);
-      auto moduleType    = getModuleType(row, XAIE_CORE_MOD);
-      auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
-                         : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
-                         : XAIE_MEM_MOD);
-      
-      double timestamp1 = xrt_core::time_ns() / 1.0e6;
-      XAie_ReadTimer(aieDevInst, loc, falModuleType, &timerValue);
-      double timestamp2 = xrt_core::time_ns() / 1.0e6;
-      
-      std::vector<uint64_t> values;
-      values.push_back(col);
-      values.push_back(getRelativeRow(row));
-      values.push_back(timerValue);
+    static auto tile   = tileMetrics.begin()->first;
+    auto loc           = XAie_TileLoc(tile.col, tile.row);
+    auto moduleType    = getModuleType(tile.row, XAIE_CORE_MOD);
+    auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
+                       : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
+                       : XAIE_MEM_MOD);
 
-      db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);
-    }
+    uint64_t timerValue = 0;  
+    double timestamp1 = xrt_core::time_ns() / 1.0e6;
+    XAie_ReadTimer(aieDevInst, loc, falModuleType, &timerValue);
+    double timestamp2 = xrt_core::time_ns() / 1.0e6;
+      
+    std::vector<uint64_t> values;
+    values.push_back(tile.col);
+    values.push_back(getRelativeRow(tile.row));
+    values.push_back(timerValue);
+
+    db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);
   }
 }  // namespace xdp

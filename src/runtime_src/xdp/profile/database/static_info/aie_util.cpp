@@ -266,8 +266,12 @@ namespace xdp {
       auto name        = plio.second.name;
 
       auto namePos     = name.find_last_of(".");
-      auto currPort    = name.substr(0, namePos);
-      auto currGraph   = name.substr(namePos+1);
+      auto currGraph   = name.substr(0, namePos);
+      auto currPort    = name.substr(namePos+1);
+
+std::cout << "!!!!!!!!!! Checking port " << currPort << " in graph "
+          << currGraph << " and comparing to requested port "
+          << portName << " in graph " << graphName << std::endl;
 
       // Make sure this matches what we're looking for
       if ((channelId >= 0) && (channelId != streamId))

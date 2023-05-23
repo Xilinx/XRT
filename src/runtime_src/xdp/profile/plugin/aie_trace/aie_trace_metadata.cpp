@@ -683,8 +683,13 @@ namespace xdp {
         continue;
       if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
         std::stringstream msg;
-        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_interface_metrics "
-            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find graph named " << graphMetrics[i][0] 
+            << ", as specified in graph_based_interface_tile_metrics configuration."
+            << " Following graphs are present in the design : " << allValidGraphs[0];
+        for (size_t j = 1; j < allValidGraphs.size(); j++) {
+          msg << ", " + allValidGraphs[j];
+        }
+        msg << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -693,20 +698,6 @@ namespace xdp {
         std::stringstream msg;
         msg << "Port " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
             << "setting " << graphMetricsSettings[i] << " will be ignored.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        continue;
-      }
-
-      // Check if specified graph exists
-      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
-        std::stringstream msg;
-        msg << "Could not find graph named " << graphMetrics[i][0] 
-            << ", as specified in graph_based_interface_tile_metrics configuration."
-            << " Following graphs are present in the design : " << allValidGraphs[0];
-        for (size_t j = 1; j < allValidGraphs.size(); j++) {
-          msg << ", " + allValidGraphs[j];
-        }
-        msg << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
