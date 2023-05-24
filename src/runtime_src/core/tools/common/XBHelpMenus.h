@@ -19,9 +19,6 @@ namespace XBUtilities {
   using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
 
   std::string 
-    create_suboption_list_string_map(const std::map<std::string, VectorPairStrings>& _collection);
-  
-  std::string 
     create_suboption_list_map(const std::map<std::string, std::vector<std::shared_ptr<Report>>>& reportCollection);
 
   std::string 

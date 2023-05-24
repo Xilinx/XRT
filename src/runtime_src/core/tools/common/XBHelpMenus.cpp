@@ -31,8 +31,8 @@ static unsigned int m_maxColumnWidth = 100;
 static unsigned int m_shortDescriptionColumn = 24;
 
 // ------ F U N C T I O N S ---------------------------------------------------
-std::string 
-XBUtilities::create_suboption_list_string_map(const std::map<std::string, VectorPairStrings>& _collection)
+static std::string 
+create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>& _collection)
 {
   // Working variables
   const unsigned int maxColumnWidth = m_maxColumnWidth - m_shortDescriptionColumn; 
@@ -125,43 +125,16 @@ XBUtilities::create_suboption_list_map(const std::map<std::string, std::vector<s
         { return (a.first.compare(b.first) < 0); });
   }
 
-  return create_suboption_list_string_map(reportDescriptionCollection);
+  return create_suboption_list_map_string(reportDescriptionCollection);
 }
 
 std::string 
 XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
 {
-  // Working variables
-  const unsigned int maxColumnWidth = m_maxColumnWidth - m_shortDescriptionColumn; 
-  std::string supportedValues;        // Formatted string of supported values
-                                      
-  // Make a copy of the data (since it is going to be modified)
-  VectorPairStrings workingCollection = _collection;
-
-  // Determine the indention width
-  unsigned int maxStringLength = 0;
-  for (auto & pairs : workingCollection) {
-    // Determine if the keyName needs to have 'quotes', if so add them
-    if (pairs.first.find(' ') != std::string::npos ) {
-      pairs.first.insert(0, 1, '\'');  
-      pairs.first += "\'";     
-    }
-
-    maxStringLength = std::max<unsigned int>(maxStringLength, static_cast<unsigned int>(pairs.first.length()));
-  }
-
-  const unsigned int indention = maxStringLength + 5;  // New line indention after the '-' character (5 extra spaces)
-  boost::format reportFmt(std::string("  %-") + std::to_string(maxStringLength) + "s - %s");  
-  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s");  
-
-  // Report names and description
-  for (const auto & pairs : workingCollection) {
-    boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
-    auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
-    supportedValues += formattedString + "\n";
-  }
-
-  return supportedValues;
+  std::map<std::string, VectorPairStrings> collection = {
+    {"common", _collection}
+  };
+  return create_suboption_list_map_string(collection);
 }
 
 std::string 
