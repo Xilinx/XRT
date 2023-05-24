@@ -92,6 +92,7 @@ public:
   std::map<std::string, boost::program_options::options_description> m_deviceSpecificOptions;
 
  private:
+  void printHelp(bool removeLongOptDashes, const std::string& customHelpSection, const boost::program_options::options_description& common_options) const;
   SubCmd() = delete;
 
  // Variables

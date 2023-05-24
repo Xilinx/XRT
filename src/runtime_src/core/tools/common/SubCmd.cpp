@@ -43,14 +43,16 @@ SubCmd::SubCmd(const std::string & _name,
   // Empty
 }
 
-void 
-SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection) const
+void
+SubCmd::printHelp(bool removeLongOptDashes,
+                  const std::string& customHelpSection,
+                  const boost::program_options::options_description& common_options) const
 {
   XBUtilities::report_subcommand_help(m_executableName,
                                       m_subCmdName,
                                       m_longDescription,
                                       m_exampleSyntax,
-                                      m_commonOptions,
+                                      common_options,
                                       m_hiddenOptions,
                                       m_globalOptions,
                                       m_positionals,
@@ -60,31 +62,28 @@ SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection
 }
 
 void 
+SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection) const
+{
+  printHelp(removeLongOptDashes, customHelpSection, m_commonOptions);
+}
+
+void 
 SubCmd::printHelp(const std::string& device_name,
                   bool is_user_domain,
                   bool removeLongOptDashes,
                   const std::string& customHelpSection) const
 {
+  // If no device is specified revert to using the member variable common options
   if (device_name.empty()) {
     printHelp(removeLongOptDashes, customHelpSection);
     return;
   }
 
-  // Get the device type and validate which reports should be displayed
+  // If a device is specfied get the device type and validate which reports should be displayed
   //auto device = XBU::get_device(boost::algorithm::to_lower_copy(device_name), is_user_domain);
   //auto device_type = device.get_device_type?? This does not exist yet
   //auto options = m_deviceSpecificOptions.at(device_type);
-  XBUtilities::report_subcommand_help(m_executableName,
-                                    m_subCmdName,
-                                    m_longDescription,
-                                    m_exampleSyntax,
-                                    m_deviceSpecificOptions.at("all"),
-                                    m_hiddenOptions,
-                                    m_globalOptions,
-                                    m_positionals,
-                                    m_subOptionOptions,
-                                    removeLongOptDashes,
-                                    customHelpSection);
+  printHelp(removeLongOptDashes, customHelpSection, m_deviceSpecificOptions.at("all"));
 }
 
 std::vector<std::string> 
