@@ -69,7 +69,7 @@ SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection
 
 void 
 SubCmd::printHelp(const std::string& device_name,
-                  bool is_user_domain,
+                  bool /*is_user_domain*/,
                   bool removeLongOptDashes,
                   const std::string& customHelpSection) const
 {

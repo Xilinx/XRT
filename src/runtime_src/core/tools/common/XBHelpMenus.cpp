@@ -72,7 +72,7 @@ create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>&
   // Print out all other device specific options
   for (const auto& map_pair : workingCollection) {
     std::string device_string = map_pair.first;
-    device_string[0] = std::toupper(device_string[0]);
+    device_string[0] = static_cast<char>(std::toupper(device_string[0]));
     if (!device_string.empty())
       supportedValues += device_string + ":\n";
     // Report names and description
