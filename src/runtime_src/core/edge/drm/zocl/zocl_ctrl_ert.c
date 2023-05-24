@@ -62,6 +62,7 @@
 #define ERT_CQ_IRQ			0
 #define ERT_CU_IRQ			1
 
+#define ZOCL_HOSTMEM_MASK		0xFFFFffff00000000LL
 /*
  * CQ format version 1.0:
  * First word on CQ is version number, followed by ctrl XGQ, which may go up to 1.5k.
@@ -968,12 +969,12 @@ static void zert_cmd_query_mem(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr
 	switch (c->type) {
         case XGQ_CMD_QUERY_MEM_ADDR:
 		r->l_mem_info = (u32)zdev->host_mem;
-		r->h_mem_info = (u32)((zdev->host_mem & 0xFFFFFFFF00000000LL) >> 32);
+		r->h_mem_info = (u32)((zdev->host_mem & ZOCL_HOSTMEM_MASK) >> 32);
 		break;
 
 	case XGQ_CMD_QUERY_MEM_SIZE:
 		r->l_mem_info = (u32)zdev->host_mem_len;
-		r->h_mem_info = (u32)((zdev->host_mem_len & 0xFFFFFFFF00000000LL) >> 32);
+		r->h_mem_info = (u32)((zdev->host_mem_len & ZOCL_HOSTMEM_MASK) >> 32);
 		break;
 
 	default:

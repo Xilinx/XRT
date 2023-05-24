@@ -944,14 +944,14 @@ int xocl_cleanup_mem_all(struct xocl_drm *drm_p)
 	uint32_t slot_id = 0;
 
 	mutex_lock(&drm_p->mm_lock);
-	
-    for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
+
+	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
 		ret = xocl_cleanup_mem_nolock(drm_p, slot_id);
 		if (ret)
 			break;
 	}
-	
-    mutex_unlock(&drm_p->mm_lock);
+
+	mutex_unlock(&drm_p->mm_lock);
 	return ret;
 }
 
@@ -977,8 +977,6 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm)
 {
 	int err = 0;
 	int i = 0;
-	uint64_t mm_end_addr = 0xffffFFFFffffFFFF;
-	uint64_t mm_start_addr = 0;
 	
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
@@ -1004,7 +1002,7 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm)
 	}
 
 	/* Initialize with max and min possible value */
-	drm_mm_init(xocl_mm->mm, mm_start_addr, (mm_end_addr - mm_start_addr));
+	drm_mm_init(xocl_mm->mm, 0, U64_MAX);
 	xocl_info(drm_p->ddev->dev, "drm_mm_init called for the maximum memory range possible");
 
 	return 0;
@@ -1038,7 +1036,7 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
 				"init p2p mem failed, err %d", err);
 
 error:
-	if (err)
+	if (err && err != -ENODEV)
 		xocl_cleanup_drm_memory_manager(xocl_mm);
         
 	mutex_unlock(&drm_p->mm_lock);
@@ -1070,124 +1068,6 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
         return 0;
 }
 
-#if 0
-static int xocl_init_memory_manager(struct xocl_drm *drm_p)
-{
-	struct mem_topology *topo = NULL;
-	struct mem_data *mem_data = NULL;
-        uint64_t mm_start_addr = 0;
-        uint64_t mm_end_addr = 0;
-	size_t ddr_bank_size = 0;
-	int err = 0;
-	int i = 0;
-	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
-
-	mutex_lock(&drm_p->mm_lock);
-	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, legacy_slot_id);
-	if (err) {
-		mutex_unlock(&drm_p->mm_lock);
-		return err;
-	}
-
-	if (!topo) {
-		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
-		mutex_unlock(&drm_p->mm_lock);
-		/* Before return check if drm memory manager is initialized already. 
-		 * This is done from platform metadata.
-		 */
-		if (drm_p->xocl_drm_mm_done)
-			return 0;
-		else
-			return -EINVAL;
-	}
-
-	/* Initialize with max and min possible value */
-        mm_start_addr = 0xffffFFFFffffFFFF;
-        mm_end_addr = 0;
-
-        /* Initialize all the banks and their sizes */
-        /* Currently only fixed sizes are supported */
-        for (i = 0; i < topo->m_count; i++) {
-                mem_data = &topo->m_mem_data[i];
-                ddr_bank_size = mem_data->m_size * 1024;
-
-		if (!ddr_bank_size)
-			continue;
-
-		if (XOCL_IS_STREAM(topo, i))
-                        continue;
-
-		if (XOCL_IS_PS_KERNEL_MEM(topo, i))
-			continue;
-
-		if (!is_mem_region_valid(drm_p, mem_data))
-			continue;
-
-		/* Update the start and end address for the memory manager */
-		if (mem_data->m_base_address < mm_start_addr)
-			mm_start_addr = mem_data->m_base_address;
-		if ((mem_data->m_base_address + ddr_bank_size) > mm_end_addr)
-			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
-	}
-
-	/* Get the PS memory range from device query */
-	xocl_kds_xgq_query_mem(drm_p->xdev, ps_mem_data);
-
-	if (drm_p->xocl_mm) {
-		/* Validate the new memory topology with existing memory manager */
-		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
-				(drm_p->xocl_mm->end_addr != mm_end_addr) ||
-				(drm_p->xocl_mm->m_count != topo->m_count)) {
-			/* If there is some memory already in use then we can't 
-			 * reinitialize the memory manager. But if no memory is 
-			 * in use then we will be able to reintialize the memory
-			 * manager again with updated topology.
-			 */
-			if(xocl_check_topology(drm_p))
-				err = -EINVAL;
-			else
-				err = -EAGAIN;
-
-			goto error;
-		}
-		else {
-			/* Memory manager initialization is done and consistent */
-			XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
-			mutex_unlock(&drm_p->mm_lock);
-			return 0;
-		}
-	}
-
-	if (!drm_p->xocl_mm) {
-		drm_p->xocl_mm = vzalloc(sizeof(struct xocl_mm));
-		if (!drm_p->xocl_mm) {
-			err = -ENOMEM;
-			goto error;
-		}
-
-		err = xocl_init_drm_mm(drm_p, drm_p->xocl_mm, mm_start_addr, mm_end_addr,
-				topo->m_count);
-		if (err)
-			goto error;
-	}
-
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
-
-	mutex_unlock(&drm_p->mm_lock);
-
-	return 0;
-
-error:
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
-	if (err)
-	       xocl_cleanup_memory_manager(drm_p);	
-	
-	mutex_unlock(&drm_p->mm_lock);
-
-	return err;
-}
-#endif
-
 int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 {
 	size_t ddr_bank_size;
@@ -1206,24 +1086,6 @@ int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 		reserved1 = 0x80000000;
 		reserved2 = 0x1000000;
 	}
-
-#if 0
-	/* Initialize the memory manager  */
-	err = xocl_init_memory_manager(drm_p);
-	if (err) {
-
-		/* If mem topology is not consistent then reintialize it 
-		 * again with the updated memory topology.
-		 */
-		if (err == -EAGAIN) 
-			err = xocl_init_memory_manager(drm_p);
-
-		if (err) {
-			xocl_xdev_err(drm_p->ddev->dev, "Memory Initialize failed 0x%x", err);
-			return err;
-		}
-	}
-#endif
 
 	mutex_lock(&drm_p->mm_lock);
 	drm_p->cma_bank_idx = -1;

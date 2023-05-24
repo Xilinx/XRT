@@ -2488,10 +2488,10 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 			ret = xocl_kds_xgq_uncfg_cu(xdev, 0, DOMAIN_PL, true);
 			if (ret)
 				goto out;
-		
+
 			ret = xocl_kds_xgq_query_mem(xdev, &XOCL_DRM(xdev)->ps_mem_data); 
 			if (ret) 
-	            userpf_info(xdev, "WARN ! Device doesn't configure for PS Kernel memory\n");
+				userpf_info(xdev, "WARN ! Device doesn't configure for PS Kernel memory\n");
 
 			xdev->reset_ert_cus = false;
 		}
