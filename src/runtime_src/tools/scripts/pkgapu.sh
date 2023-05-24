@@ -298,13 +298,15 @@ if [ -e $IMAGES_DIR/sdk.sh ]; then
         echo "sdk.sh exists copy it to apu package"
         cp $IMAGES_DIR/sdk.sh $SDK
 fi
-# Generate PS Kernel xclbin
-# Hardcoding the ps kernel xclbin name to ps_kernels.xclbin
-# We can create one xclbin per PS Kernel also based on future requirements
-PS_KERNELS_XCLBIN="$BUILD_DIR/lib/firmware/xilinx/ps_kernels/ps_kernels.xclbin"
+
 #Extract ps_kernels_lib from rootfs tar
 tar -C $BUILD_DIR -xf $IMAGES_DIR/rootfs.tar.gz ./usr/lib/ps_kernels_lib
 if [ $? -eq 0 ]; then
+    # Generate PS Kernel xclbin
+    # This xclbin contains all the built-in kernels
+    # Hardcoding the ps kernel xclbin name to ps_kernels.xclbin
+    # We can create one xclbin per PS Kernel also based on future requirements
+    PS_KERNELS_XCLBIN="$BUILD_DIR/lib/firmware/xilinx/ps_kernels/ps_kernels.xclbin"
     PS_KERNEL_DIR=$BUILD_DIR/usr/lib/ps_kernels_lib
     ps_kernel_command="xclbinutil --output $PS_KERNELS_XCLBIN "
     pk_exists=0
@@ -319,7 +321,27 @@ if [ $? -eq 0 ]; then
         echo "Running $ps_kernel_command"
         $ps_kernel_command
     fi
+
+    # Extract generated PS Kernel xclbins here
+    # This handles the xclbins required for device validation
+    PS_KERNEL_XCLBINS_DIR="$BUILD_DIR/lib/firmware/xilinx/xclbins"
+    PS_KERNEL_DIR=$BUILD_DIR/usr/lib/xclbin_lib
+    ps_kernel_command="xclbinutil --output $PS_KERNELS_XCLBIN "
+    pk_exists=0
+    for entry in "$PS_KERNEL_DIR"/*.so
+    do
+            pk_exists=1
+            ps_kernel_command+=" --add-pskernel $entry"
+    done
+    # Generate xclbin if atleast one PS Kernel exists
+    if [ $pk_exists -eq 1 ]; then
+        # Run final xclbinutil command to generate the PS Kernels xclbin
+        echo "Running $ps_kernel_command"
+        $ps_kernel_command
+    fi
+
 fi
+
 
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
