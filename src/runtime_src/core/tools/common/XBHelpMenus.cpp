@@ -57,14 +57,24 @@ XBUtilities::create_suboption_list_string_map(const std::map<std::string, Vector
 
   const unsigned int indention = maxStringLength + 5;  // New line indention after the '-' character (5 extra spaces)
   boost::format reportFmt(std::string("  %-") + std::to_string(maxStringLength) + "s - %s");  
-  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s");  
+  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s");
 
-  // Device type and valid reports
+  // Print out common options first
+  const auto common_options = workingCollection.find("common");
+  // Report names and description
+  for (const auto& pairs : common_options->second) {
+    boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
+    auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
+    supportedValues += formattedString + "\n";
+  }
+  workingCollection.erase(common_options);
+
+  // Print out all other device specific options
   for (const auto& map_pair : workingCollection) {
-    // Device type
-    std::string device_type = map_pair.first;
-    device_type[0] = std::toupper(device_type[0]);
-    supportedValues += device_type + " Reports:\n";
+    std::string device_string = map_pair.first;
+    device_string[0] = std::toupper(device_string[0]);
+    if (!device_string.empty())
+      supportedValues += device_string + ":\n";
     // Report names and description
     for (const auto& pairs : map_pair.second) {
       boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
@@ -81,6 +91,12 @@ XBUtilities::create_suboption_list_map(const std::map<std::string, std::vector<s
 {
   std::map<std::string, VectorPairStrings> reportDescriptionCollection;
 
+  static std::map<std::string, std::string> deviceTypeMap = {
+    {"aie", "AIE Specific"},
+    {"alveo", "Alveo Specific"},
+    {"common", "common"}
+  };
+
   // Add the report names and description
   for (const auto& report_pair : reportCollection) {
     VectorPairStrings collection;
@@ -90,12 +106,17 @@ XBUtilities::create_suboption_list_map(const std::map<std::string, std::vector<s
         continue;
       collection.emplace_back(report->getReportName(), report->getShortDescription());
     }
-    reportDescriptionCollection.emplace(report_pair.first, collection);
-  }
 
-  // 'verbose' option
-  // if (_addAllOption) 
-  //   reportDescriptionCollection.emplace_back("all", "All known reports are produced");
+    // Add the 'all' options to the common report group
+    if (boost::iequals(report_pair.first, "common"))
+      collection.emplace_back("all", "All known reports are produced");
+
+    auto map_it = deviceTypeMap.find(report_pair.first);
+    if (map_it == deviceTypeMap.end())
+      reportDescriptionCollection.emplace(report_pair.first, collection);
+    else
+      reportDescriptionCollection.emplace(map_it->second, collection);
+  }
 
   // Sort the collection
   for (auto& collection : reportDescriptionCollection) {

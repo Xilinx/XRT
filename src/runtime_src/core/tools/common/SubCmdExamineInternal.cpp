@@ -68,6 +68,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   auto examineDeviceTrees = JSONConfigurable::parse_configuration_tree({getConfigName()}, configurations);
   reportMappings = JSONConfigurable::extractMatchingConfigurations<Report>(SubCmdExamineInternal::uniqueReportCollection, examineDeviceTrees);
 
+  // Create device specific help menu options
   for (const auto& report_pair : reportMappings) {
     // Generate a list of common and relevant mappings for help menu generation
     ReportCollection reportCollection = report_pair.second;
@@ -83,11 +84,13 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
       fullReportCollection.push_back(report);
     }
   }
+
   // Emplace temporary all option until shim upgrade is complete
   boost::program_options::options_description options;
   create_common_options(options, XBU::create_suboption_list_string(fullReportCollection, true));
   m_deviceSpecificOptions.emplace("all", options);
 
+  // Generate the help menu option when a device is not specified
   static const std::string reportOptionValues = XBU::create_suboption_list_map(reportMappings);
   create_common_options(m_commonOptions, reportOptionValues);
   

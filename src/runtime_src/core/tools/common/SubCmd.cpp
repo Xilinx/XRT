@@ -70,9 +70,10 @@ SubCmd::printHelp(const std::string& device_name,
     return;
   }
 
-  // Get the device and validate which reports should be displayed
+  // Get the device type and validate which reports should be displayed
   //auto device = XBU::get_device(boost::algorithm::to_lower_copy(device_name), is_user_domain);
   //auto device_type = device.get_device_type?? This does not exist yet
+  //auto options = m_deviceSpecificOptions.at(device_type);
   XBUtilities::report_subcommand_help(m_executableName,
                                     m_subCmdName,
                                     m_longDescription,
