@@ -14,7 +14,7 @@ class pcidev_windows : public device_factory
 {
 public:
 
-  pcidev_windows(bool isuser):dev(isuser){}
+  pcidev_windows(bool isuser):device_factory(isuser){}
   // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
   virtual std::shared_ptr<device>
