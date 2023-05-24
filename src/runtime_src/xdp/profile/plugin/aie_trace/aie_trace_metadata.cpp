@@ -280,8 +280,8 @@ namespace xdp {
     uint16_t rowOffset = (type == module_type::mem_tile) ? 1 : getRowOffset();
     auto tileName = (type == module_type::mem_tile) ? "memory" : "aie";
 
-    auto allValidKernels = getValidKernels(device.get());
     auto allValidGraphs = getValidGraphs(device.get());
+    auto allValidKernels = getValidKernels(device.get());
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = getTiles(device.get(), "all", type);
@@ -309,8 +309,11 @@ namespace xdp {
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
-        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_" << tileName
-            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find kernel " << graphMetrics[i][1] 
+            << " as specified in graph_based_" << tileName << "_metrics setting."
+            << " The following kernels are valid : " << allValidKernels[0];
+        for (size_t j = 1; j < allValidKernels.size(); j++)
+          msg << ", " << allValidKernels[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -343,31 +346,22 @@ namespace xdp {
         continue;
       if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
         std::stringstream msg;
-        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_" << tileName
-            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find graph " << graphMetrics[i][0] 
+            << ", as specified in graph_based_" << tileName << "_tile_metrics setting."
+            << " The following graphs are valid : " << allValidGraphs[0];
+        for (size_t j = 1; j < allValidGraphs.size(); j++)
+          msg << ", " + allValidGraphs[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
-        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_" << tileName
-            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        continue;
-      }
-
-      // Check if specified graph exists
-      auto graphs = getValidGraphs(device.get());
-      if (!graphs.empty() && (std::find(graphs.begin(), graphs.end(), graphMetrics[i][0]) == graphs.end())) {
-        std::stringstream msg;
-        msg << "Could not find graph named " << graphMetrics[i][0] 
-            << ", as specified in graph_based_" << tileName << "_tile_metrics configuration."
-            << " Following graphs are present in the design : " << graphs[0];
-        for (size_t j = 1; j < graphs.size(); j++) {
-          msg << ", " + graphs[j];
-        }
-        msg << ".";
+        msg << "Could not find kernel " << graphMetrics[i][1] 
+            << " as specified in graph_based_" << tileName << "_metrics setting."
+            << " The following kernels are valid : " << allValidKernels[0];
+        for (size_t j = 1; j < allValidKernels.size(); j++)
+          msg << ", " << allValidKernels[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -629,7 +623,7 @@ namespace xdp {
 
     auto allValidGraphs = getValidGraphs(device.get());
     auto allValidPorts = getValidPorts(device.get());
-
+    
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Interface Tiles
@@ -649,8 +643,11 @@ namespace xdp {
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
         std::stringstream msg;
-        msg << "Port " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
-            << "setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find port " << graphMetrics[i][1] 
+            << ", as specified in graph_based_interface_tile_metrics setting."
+            << " The following ports are valid : " << allValidPorts[0];
+        for (size_t j = 1; j < allValidPorts.size(); j++)
+          msg << ", " + allValidPorts[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -683,21 +680,22 @@ namespace xdp {
         continue;
       if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
         std::stringstream msg;
-        msg << "Could not find graph named " << graphMetrics[i][0] 
-            << ", as specified in graph_based_interface_tile_metrics configuration."
-            << " Following graphs are present in the design : " << allValidGraphs[0];
-        for (size_t j = 1; j < allValidGraphs.size(); j++) {
+        msg << "Could not find graph " << graphMetrics[i][0] 
+            << ", as specified in graph_based_interface_tile_metrics setting."
+            << " The following graphs are valid : " << allValidGraphs[0];
+        for (size_t j = 1; j < allValidGraphs.size(); j++)
           msg << ", " + allValidGraphs[j];
-        }
-        msg << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
         std::stringstream msg;
-        msg << "Port " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
-            << "setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find port " << graphMetrics[i][1] 
+            << ", as specified in graph_based_interface_tile_metrics setting."
+            << " The following ports are valid : " << allValidPorts[0];
+        for (size_t j = 1; j < allValidPorts.size(); j++)
+          msg << ", " + allValidPorts[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }

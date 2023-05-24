@@ -510,7 +510,7 @@ namespace xdp {
                                                 const std::string metricSet, const uint8_t channel0,
                                                 const uint8_t channel1)
   {
-    if ((type != module_type::mem_tile) && (type != module_type::shim))
+    if (type != module_type::mem_tile)
       return;
 
     XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;

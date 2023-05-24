@@ -179,33 +179,6 @@ namespace xdp {
     return settingsVector;
   }
 
-  std::unordered_map<std::string, plio_config> 
-  AieProfileMetadata::get_plios(const xrt_core::device* device)
-  {
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return {};
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-    std::unordered_map<std::string, plio_config> plios;
-
-    for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
-      plio_config plio;
-
-      plio.id = plio_node.second.get<uint32_t>("id");
-      plio.name = plio_node.second.get<std::string>("name");
-      plio.logicalName = plio_node.second.get<std::string>("logical_name");
-      plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
-      plio.streamId = plio_node.second.get<uint16_t>("stream_id");
-      plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
-
-      plios[plio.name] = plio;
-    }
-
-    return plios;
-  }
-
   // Find all MEM tiles associated with a graph and kernel
   //   kernel_name = all      : all tiles in graph
   //   kernel_name = <kernel> : only tiles used by that specific kernel
@@ -380,8 +353,8 @@ namespace xdp {
     uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
     auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
-    auto allValidKernels = get_kernels(device.get());
-    auto allValidGraphs = get_graphs(device.get());
+    auto allValidGraphs = getValidGraphs(device.get());
+    auto allValidKernels = getValidKernels(device.get());
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = get_tiles(device.get(), "all", mod);
@@ -412,8 +385,11 @@ namespace xdp {
       if ((graphMetrics[i][1].compare("all") != 0) &&
           (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
-        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_" << modName << "_metrics setting "
-            << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find kernel " << graphMetrics[i][1] 
+            << " as specified in graph_based_" << modName << "_metrics setting."
+            << " The following kernels are valid : " << allValidKernels[0];
+        for (size_t j = 1; j < allValidKernels.size(); j++)
+          msg << ", " << allValidKernels[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -446,16 +422,22 @@ namespace xdp {
         continue;
       if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
         std::stringstream msg;
-        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_" << modName << "_metrics setting "
-            << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find graph " << graphMetrics[i][0] 
+            << " as specified in graph_based_" << modName << "_metrics setting."
+            << " The following graphs are valid : " << allValidGraphs[0];
+        for (size_t j = 1; j < allValidGraphs.size(); j++)
+          msg << ", " << allValidGraphs[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
       if ((graphMetrics[i][1].compare("all") != 0) &&
           (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
-        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_" << modName << "_metrics setting "
-            << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find kernel " << graphMetrics[i][1] 
+            << " as specified in graph_based_" << modName << "_metrics setting."
+            << " The following kernels are valid : " << allValidKernels[0];
+        for (size_t j = 1; j < allValidKernels.size(); j++)
+          msg << ", " << allValidKernels[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -734,8 +716,11 @@ namespace xdp {
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
         std::stringstream msg;
-        msg << "Port " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
-            << "setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find port " << graphMetrics[i][1] 
+            << " as specified in graph_based_interface_tile_metrics setting."
+            << " The following ports are valid : " << allValidPorts[0];
+        for (size_t j = 1; j < allValidPorts.size(); j++)
+          msg << ", " << allValidPorts[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -769,21 +754,22 @@ namespace xdp {
         continue;
       if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
         std::stringstream msg;
-        msg << "Could not find graph named " << graphMetrics[i][0] 
-            << ", as specified in graph_based_interface_tile_metrics configuration."
-            << " Following graphs are present in the design : " << allValidGraphs[0];
-        for (size_t j = 1; j < allValidGraphs.size(); j++) {
-          msg << ", " + allValidGraphs[j];
-        }
-        msg << ".";
+        msg << "Could not find graph " << graphMetrics[i][0] 
+            << ", as specified in graph_based_interface_tile_metrics setting."
+            << " The following graphs are valid : " << allValidGraphs[0];
+        for (size_t j = 1; j < allValidGraphs.size(); j++)
+          msg << ", " << allValidGraphs[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
         std::stringstream msg;
-        msg << "Port " << graphMetrics[i][1] << " not found. The graph_based_interface_metrics "
-            << "setting " << graphMetricsSettings[i] << " will be ignored.";
+        msg << "Could not find port " << graphMetrics[i][1] 
+            << ", as specified in graph_based_interface_tile_metrics setting."
+            << " The following ports are valid : " << allValidPorts[0];
+        for (size_t j = 1; j < allValidPorts.size(); j++)
+          msg << ", " << allValidPorts[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -871,8 +857,7 @@ namespace xdp {
           channelId = static_cast<uint16_t>(std::stoul(metrics[i][3]));
         }
         catch (std::invalid_argument const&) {
-          // Expected channel Id is not an integer, give warning and
-          // ignore channelId
+          // Expected channel Id is not an integer, give warning and ignore channelId
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Channel ID specification in "
                                   "tile_based_interface_tile_metrics is "
@@ -953,8 +938,8 @@ namespace xdp {
       auto metricVec = metricStrings[module_type::shim];
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
         if (showWarning) {
-          std::string msg = "Unable to find interface_tile metric set " + tileMetric.second + ". Using default of " +
-                            defaultSet + ". ";
+          std::string msg = "Unable to find interface_tile metric set " + tileMetric.second 
+                          + ". Using default of " + defaultSet + ". ";
           xrt_core::message::send(severity_level::warning, "XRT", msg);
           showWarning = false;
         }
@@ -973,49 +958,6 @@ namespace xdp {
     std::stringstream aie_stream;
     aie_stream.write(data, size);
     pt::read_json(aie_stream, aie_project);
-  }
-
-  std::vector<std::string> AieProfileMetadata::get_graphs(const xrt_core::device* device)
-  {
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return {};
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-    std::vector<std::string> graphs;
-
-    for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-      std::string graphName = graph.second.get<std::string>("name");
-      graphs.push_back(graphName);
-    }
-
-    return graphs;
-  }
-
-  std::vector<std::string> AieProfileMetadata::get_kernels(const xrt_core::device* device)
-  {
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return {};
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-    std::vector<std::string> kernels;
-
-    // Grab all kernel to tile mappings
-    auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-    if (!kernelToTileMapping)
-      return {};
-
-    for (auto const& mapping : kernelToTileMapping.get()) {
-      std::vector<std::string> names;
-      std::string functionStr = mapping.second.get<std::string>("function");
-      boost::split(names, functionStr, boost::is_any_of("."));
-      std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
-    }
-
-    return kernels;
   }
 
   uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod)
