@@ -86,7 +86,7 @@ namespace trace {
       trace::finish_flush_device_cb(handle);
   }
 
-  void end_poll(void* handle)
+  void end_poll_trace(void* handle)
   {
     if (trace::end_poll_cb != nullptr)
       trace::end_poll_cb(handle);

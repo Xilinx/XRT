@@ -141,6 +141,7 @@ shim::
 #ifndef __HWEM__
 //  xdphal::finish_flush_device(handle) ;
   xdp::aie::finish_flush_device(this) ;
+  xdp::aie::end_poll_trace(this);
 #endif
   xdp::aie::ctr::end_poll(this);
   xdp::aie::sts::end_poll(this);

@@ -71,6 +71,7 @@ void finish_flush_device(void* handle)
   hal::flush_device(handle);
   aie::finish_flush_device(handle);
   aie::ctr::end_poll(handle);
+  aie::end_poll_trace(handle);
 }
 
 } // end namespace xdp
