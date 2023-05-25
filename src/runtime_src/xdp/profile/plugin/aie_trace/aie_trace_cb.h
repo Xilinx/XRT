@@ -24,6 +24,7 @@ extern "C" {
 XDP_EXPORT void updateAIEDevice(void* handle) ;
 XDP_EXPORT void flushAIEDevice(void* handle) ;
 XDP_EXPORT void finishFlushAIEDevice(void* handle) ;
+XDP_EXPORT void endAIETracePoll(void* handle) ;
 
 }
 #endif

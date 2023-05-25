@@ -22,6 +22,7 @@ namespace aie {
   void update_device(void* handle);
   void flush_device(void* handle);
   void finish_flush_device(void* handle);
+  void end_poll(void* handle);
 
 namespace trace {
   void load();

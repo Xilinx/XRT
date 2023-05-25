@@ -35,6 +35,7 @@ namespace trace {
   std::function<void (void*)> update_device_cb;
   std::function<void (void*)> flush_device_cb;
   std::function<void (void*)> finish_flush_device_cb;
+  std::function<void (void*)> end_poll_cb;
 
   void register_callbacks(void* handle)
   {
@@ -50,6 +51,10 @@ namespace trace {
     finish_flush_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
     if (xrt_core::dlerror() != NULL)
       finish_flush_device_cb = nullptr;
+
+    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIETracePoll"));
+    if (xrt_core::dlerror() != nullptr)
+      end_poll_cb = nullptr;
   }
 
   void warning_function()
@@ -81,5 +86,10 @@ namespace trace {
       trace::finish_flush_device_cb(handle);
   }
 
+  void end_poll(void* handle)
+  {
+    if (trace::end_poll_cb != nullptr)
+      trace::end_poll_cb(handle);
+  }
 } // end namespace aie
 } // end namespace xdp

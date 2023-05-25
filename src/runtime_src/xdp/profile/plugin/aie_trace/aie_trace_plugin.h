@@ -35,13 +35,15 @@ namespace xdp {
     void flushAIEDevice(void* handle);
     void finishFlushAIEDevice(void* handle);
     virtual void writeAll(bool openNewFiles) override;
+    XDP_EXPORT void endPollforDevice(void* handle);
     static bool alive();
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
     void pollAIETimers(uint32_t index, void* handle);
     void flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn);
-
+    void endPoll();
+    
   private:
     static bool live;
     struct AIEData {

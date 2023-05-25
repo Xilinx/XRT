@@ -28,7 +28,6 @@ namespace xdp {
    public:
     XDP_EXPORT
     AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
-    // : AieTraceImpl(database, metadata);
     ~AieTrace_EdgeImpl() = default;
 
     XDP_EXPORT
@@ -36,13 +35,13 @@ namespace xdp {
     XDP_EXPORT
     virtual void flushAieTileTraceModule();
     void pollTimers(uint32_t index, void* handle);
-
+    void freeResources();
+    
    private:
     typedef XAie_Events EventType;
     typedef std::vector<EventType> EventVector;
     typedef std::vector<uint32_t> ValueVector;
 
-    void freeResources();
     module_type getTileType(uint16_t row);
     uint16_t getRelativeRow(uint16_t absRow);
     module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);

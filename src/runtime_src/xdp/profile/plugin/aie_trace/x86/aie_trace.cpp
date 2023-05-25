@@ -281,8 +281,8 @@ namespace xdp {
     return true; //placeholder
   }
 
-  void AieTrace_x86Impl::flushAieTileTraceModule (){
-
+  void AieTrace_x86Impl::flushAieTileTraceModule ()
+  {
     try { 
       //input bo
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
@@ -312,8 +312,8 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
   }
 
-
-  void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct) {
+  void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct) 
+  {
     MessageConfiguration* messages = reinterpret_cast<MessageConfiguration*>(messageStruct);
     for (uint32_t i = 0; i < messages->numMessages; i++) {
       auto packet = messages->packets[i];
@@ -382,5 +382,11 @@ namespace xdp {
           break;
       }
     }
+  }
+
+  // Release resources
+  void AieTrace_x86Impl::freeResources()
+  {
+    // TODO: release resources
   }
 }

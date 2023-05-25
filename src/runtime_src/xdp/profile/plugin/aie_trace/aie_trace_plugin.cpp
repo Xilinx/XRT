@@ -58,6 +58,9 @@ namespace xdp {
 
   AieTracePluginUnified::~AieTracePluginUnified()
   {
+    // Stop thread to write timestamps
+    endPoll();
+
     if (VPDatabase::alive()) {
       try {
         writeAll(false);
@@ -253,21 +256,15 @@ namespace xdp {
     auto time = std::time(nullptr);
 
 #ifdef _WIN32
-    std::tm tm{};
-    localtime_s(&tm, &time);
     std::string deviceName = "win_device";
 #else
-    auto tm = *std::localtime(&time);
     struct xclDeviceInfo2 info;
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
 #endif
 
     // Writer for timestamp file
-    std::ostringstream timeOss;
-    timeOss << std::put_time(&tm, "_%Y_%m_%d_%H%M%S");
-    std::string outputFile = "aie_trace_timestamps_" + deviceName + timeOss.str() + ".csv";
-
+    std::string outputFile = "aie_event_timestamps.csv";
     VPWriter* tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
     writers.push_back(tsWriter);
     db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
@@ -290,8 +287,6 @@ namespace xdp {
       handleToAIEData[handle].implementation->pollTimers(index, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
     }
-    // Final Polling Operation
-    handleToAIEData[handle].implementation->pollTimers(index, handle);
   }
 
   void AieTracePluginUnified::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn)
@@ -368,4 +363,23 @@ namespace xdp {
     return AieTracePluginUnified::live;
   }
 
+  void AieTracePluginUnified::endPollforDevice(void* handle)
+  {
+    // Ask thread to stop
+    auto& AIEData = handleToAIEData[handle];
+    AIEData.threadCtrlBool = false;
+    AIEData.thread.join();
+    AIEData.implementation->freeResources();
+    handleToAIEData.erase(handle);
+  }
+
+  void AieTracePluginUnified::endPoll()
+  {
+    // Ask all threads to end
+    for (auto& p : handleToAIEData) 
+      p.second.threadCtrlBool = false;
+    for (auto& p : handleToAIEData) 
+      p.second.thread.join();
+    handleToAIEData.clear();
+  }
 } // end namespace xdp

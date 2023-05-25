@@ -390,7 +390,7 @@ namespace xdp {
     }
   }
 
-  // Release resources (because something went wrong)
+  // Release resources
   void AieTrace_EdgeImpl::freeResources()
   {
     for (auto& c : mPerfCounters) {

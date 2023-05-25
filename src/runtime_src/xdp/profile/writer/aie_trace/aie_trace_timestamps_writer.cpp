@@ -32,18 +32,14 @@ namespace xdp {
   }
 
   AIETraceTimestampsWriter::~AIETraceTimestampsWriter()
-  {    
+  {
   }
 
   bool AIETraceTimestampsWriter::write(bool)
   {
-    // Report HW generation to inform analysis how to interpret event IDs
+    // Report HW generation and clock frequency
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-    
-    // Grab AIE clock freq from first counter in metadata
-    // NOTE: Assumed the same for all tiles
-    auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
-    double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
+    double aieClockFreqMhz = (db->getStaticInfo()).getClockRateMHz(mDeviceIndex, false);
 
     // Write header
     fout << "Version: 1.0\n";
