@@ -2514,11 +2514,11 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS, false);
+			ret = xocl_kds_xgq_query_cu(xdev, xcu->info.inst_idx, DOMAIN_PS, &resp);
 			if (ret)
 				goto out;
 
-			ret = xocl_kds_xgq_query_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, &resp);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS, false);
 			if (ret)
 				goto out;
 
@@ -2538,11 +2538,11 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, false);
+			ret = xocl_kds_xgq_query_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, &resp);
 			if (ret)
 				goto out;
 
-			ret = xocl_kds_xgq_query_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, &resp);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL, false);
 			if (ret)
 				goto out;
 
