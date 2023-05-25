@@ -16,17 +16,18 @@ set_target_properties(${PS_KERNEL_NAME} PROPERTIES
   SOVERSION ${XRT_SOVERSION}
   )
 
-install (TARGETS ${PS_KERNEL_NAME} 
-  EXPORT xrt-targets
-  LIBRARY DESTINATION ${XCLBIN_KERNELS_INSTALL_DIR}
-  )
+target_link_libraries(${PS_KERNEL_NAME}
+  PRIVATE
+  xrt_coreutil
+  xrt_core
+)
 
-set(PS_KERNEL_LOCATION "${XCLBIN_KERNELS_INSTALL_DIR}/${PS_KERNEL_NAME}.so")
+set(PS_KERNEL_LOCATION "lib${PS_KERNEL_NAME}.so")
 
 add_custom_command(
   OUTPUT ${XCLBIN_NAME}
-  COMMAND xclbinutil --output ${XCLBIN_NAME} --add-pskernel ${PS_KERNEL_LOCATION}
-  DEPENDS ${PS_KERNEL_NAME}
+  COMMAND "xclbinutil" --output ${XCLBIN_NAME} --add-pskernel ${PS_KERNEL_LOCATION}
+  DEPENDS ${PS_KERNEL_NAME} "xclbinutil"
   )
 
 add_custom_target(xclbin ALL
