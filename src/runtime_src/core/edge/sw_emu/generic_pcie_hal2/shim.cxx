@@ -990,22 +990,32 @@ namespace xclswemuhal2 {
         std::cerr<<"ERROR: [SW_EMU 13] TCP/IP socket thread is not started yet,something wrong with OS, So exiting the application now.";
         return -1;
       }
+      else {
+       std::cout<<"\n future_status is ready after counter became::"<<counter;
+      }
       if (!xclswemuhal2::isRemotePortMapped) {
         xclswemuhal2::initRemotePortMap(mFpgaDevice);
+        std::cout<<"\n initRemotePortMap initiated.\n ";
       }
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
       cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
       cmd->addArg(debugMode.c_str());
+      std::cout<<"\n PLLAUNCHER Started.\n ";
       uint32_t length;
       uint8_t* buff = cmd->generateBuffer(&length);
       for (unsigned int i = 0; i < length; i += 4) {
         uint32_t copySize = (length - i) > 4 ? 4 : length - i;
         memcpy(((char*)(xclswemuhal2::remotePortMappedPointer)) + i, buff + i, copySize);
       }
+      std::cout<<"\n PLLAUNCHER data communication started.\n ";
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
       memcpy((char*)(xclswemuhal2::remotePortMappedPointer), &cPacketEndChar, 1);
+      std::cout<<"\n PLLAUNCHER data communication finished.\n ";
+    }
+    else {
+      std::cout<<"\n isDontRun is True.\n";
     }
 
     std::string xmlFile = "";
@@ -1019,7 +1029,7 @@ namespace xclswemuhal2 {
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     binaryCounter++;
-
+    std::cout<<"\n Waiting for socket thread to finish.\n ";
     //Join tcp socket thread.
     if (tcpSockThread.joinable()) {
        tcpSockThread.join();
