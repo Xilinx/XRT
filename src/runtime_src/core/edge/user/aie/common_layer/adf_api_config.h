@@ -31,8 +31,8 @@ struct driver_config
     uint8_t num_columns;
     uint8_t num_rows;
     uint8_t shim_row;
-    uint8_t reserved_row_start;
-    uint8_t reserved_num_rows;
+    uint8_t mem_row_start;
+    uint8_t mem_num_rows;
     uint8_t aie_tile_row_start;
     uint8_t aie_tile_num_rows;
     uint8_t partition_num_cols;

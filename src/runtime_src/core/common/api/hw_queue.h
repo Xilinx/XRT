@@ -6,11 +6,14 @@
 #include "core/common/config.h"
 #include "xrt/detail/pimpl.h"
 
+#include "experimental/xrt_fence.h"
+
 #include <chrono>
 #include <condition_variable>
 #include <vector>
 
 namespace xrt {
+class fence;  
 class hw_context;
 }
 
@@ -61,13 +64,13 @@ public:
   std::cv_status
   wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const;
 
-  // Enqueue a command returning a fence that can be waited on
-  xrt_core::fence
-  enqueue(xrt_core::command* cmd);
+  // Enqueue a command dependency
+  void
+  submit_wait(const xrt::fence& fence);
 
-  // Enqueue a command with dependencies
-  xrt_core::fence
-  enqueue(xrt_core::command* cmd, const std::vector<xrt_core::fence>& waits);
+  // Enqueue a command to signal the fence 
+  void
+  submit_signal(const xrt::fence& fence);
 
   // Wait for one call to exec_wait to return either from
   // some command completing or from a timeout.

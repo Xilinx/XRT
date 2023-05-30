@@ -186,8 +186,16 @@ get_aie_metadata_info(const xrt_core::device* device)
   aie_meta.num_rows = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
   aie_meta.shim_row = pt.get<uint32_t>("aie_metadata.driver_config.shim_row");
   aie_meta.core_row = pt.get<uint32_t>("aie_metadata.driver_config.aie_tile_row_start");
-  aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_row_start");
-  aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_num_rows");
+  if (!pt.get_optional<uint32_t>("aie_metadata.driver_config.mem_row_start") || 
+      !pt.get_optional<uint32_t>("aie_metadata.driver_config.mem_num_rows")) {
+       aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_row_start");
+       aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_num_rows");
+  }
+  else {
+       aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.mem_row_start");
+       aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.mem_num_rows");
+  }
+
   return aie_meta;
 }
 
@@ -468,6 +476,17 @@ struct aie_reg_read
 
   XAie_DevInst* devInst;         // AIE Device Instance
 
+  uint8_t mem_row_start, mem_num_rows;
+  if (!pt.get_optional<uint8_t>("aie_metadata.driver_config.mem_row_start") ||
+      !pt.get_optional<uint8_t>("aie_metadata.driver_config.mem_num_rows")) {
+       mem_row_start = pt.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+       mem_num_rows = pt.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+  }
+  else {
+       mem_row_start = pt.get<uint8_t>("aie_metadata.driver_config.mem_row_start");
+       mem_num_rows = pt.get<uint8_t>("aie_metadata.driver_config.mem_num_rows");
+  }
+
   XAie_SetupConfig(ConfigPtr,
     pt.get<uint8_t>("aie_metadata.driver_config.hw_gen"),
     pt.get<uint64_t>("aie_metadata.driver_config.base_address"),
@@ -476,8 +495,8 @@ struct aie_reg_read
     pt.get<uint8_t>("aie_metadata.driver_config.num_columns"),
     pt.get<uint8_t>("aie_metadata.driver_config.num_rows"),
     pt.get<uint8_t>("aie_metadata.driver_config.shim_row"),
-    pt.get<uint8_t>("aie_metadata.driver_config.reserved_row_start"),
-    pt.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows"),
+    mem_row_start,
+    mem_num_rows,
     pt.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start"),
     pt.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows"));
 

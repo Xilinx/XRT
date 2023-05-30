@@ -39,23 +39,26 @@ public:
   virtual int
   wait_command(buffer_handle* cmd, uint32_t timeout_ms) const = 0;
 
-  // Enqueue a command
-  //
-  // @cmd      Handle to command to enqueue
-  // @return   Fence handle with ownership passed to caller
-  virtual std::unique_ptr<fence_handle>
-  enqueue_command(buffer_handle*)
+  // Submit wait on a fence.  The fence prevents the hardware queue from
+  // proceeding until the fence is signaled.
+  virtual void
+  submit_wait(const fence_handle*)
   {
     throw std::runtime_error("not supported");
   }
 
-  // Enqueue a command along with its dependencies.
-  //
-  // @cmd      Handle to command to enqueue
-  // @waits    List of fence handles that must be signaled prior to execution
-  // @return   Fence handle with ownership passed to caller
-  virtual std::unique_ptr<fence_handle>
-  enqueue_command(buffer_handle*, const std::vector<fence_handle*>&)
+  // Submit list of waits.  The fences prevents the hardware queue from
+  // proceeding until they are all signaled.
+  virtual void
+  submit_wait(const std::vector<fence_handle*>&)
+  {
+    throw std::runtime_error("not supported");
+  }
+
+  // Submit signal on a fence.  The fence is signaled when the hardware
+  // queue reaches this point.
+  virtual void
+  submit_signal(const fence_handle*)
   {
     throw std::runtime_error("not supported");
   }

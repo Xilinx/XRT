@@ -939,10 +939,10 @@ namespace xclswemuhal2 {
 
   void SwEmuShim::socketConnection(bool isTCPSocket) {
     tcp_socket_pr.set_value(true);
-    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
+    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started after setting the promise here." << std::endl;
     if (!sock)
       sock = new unix_socket(isTCPSocket);
-    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established" << std::endl;
+    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established by now!" << std::endl;
   }
 
   int SwEmuShim::xclLoadXclBinNewFlow(const xclBin *header)
@@ -990,22 +990,44 @@ namespace xclswemuhal2 {
         std::cerr<<"ERROR: [SW_EMU 13] TCP/IP socket thread is not started yet,something wrong with OS, So exiting the application now.";
         return -1;
       }
+      else {
+        if (mLogStream.is_open())
+          mLogStream << __func__ <<"\n future_status is ready after counter became::"<<counter;
+      }
       if (!xclswemuhal2::isRemotePortMapped) {
         xclswemuhal2::initRemotePortMap(mFpgaDevice);
+        if (mLogStream.is_open())
+          mLogStream << __func__ <<"\n initRemotePortMap initiated.\n ";
       }
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
+      if (mLogStream.is_open())
+        mLogStream << __func__ <<"\n PLLAUNCHER Created.\n ";      
+
       cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
       cmd->addArg(debugMode.c_str());
+      if (mLogStream.is_open())
+        mLogStream << __func__ <<"\n PLLAUNCHER Started.\n ";
       uint32_t length;
       uint8_t* buff = cmd->generateBuffer(&length);
+      if (mLogStream.is_open())
+        mLogStream << __func__ <<"\n generateBuffer completed.\n ";
+
       for (unsigned int i = 0; i < length; i += 4) {
         uint32_t copySize = (length - i) > 4 ? 4 : length - i;
         memcpy(((char*)(xclswemuhal2::remotePortMappedPointer)) + i, buff + i, copySize);
       }
+      if (mLogStream.is_open())
+        mLogStream << __func__ <<"\n PLLAUNCHER data communication started.\n ";
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
       memcpy((char*)(xclswemuhal2::remotePortMappedPointer), &cPacketEndChar, 1);
+      if (mLogStream.is_open())
+        mLogStream << __func__ <<"\n PLLAUNCHER data communication finished.\n ";
+    }
+    else {
+      if (mLogStream.is_open())
+        mLogStream << __func__ <<"\n isDontRun is True.\n";
     }
 
     std::string xmlFile = "";
@@ -1019,6 +1041,8 @@ namespace xclswemuhal2 {
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     binaryCounter++;
+    if (mLogStream.is_open())
+      mLogStream << __func__ <<"\n Waiting for socket thread to finish.\n ";
 
     //Join tcp socket thread.
     if (tcpSockThread.joinable()) {

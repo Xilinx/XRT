@@ -22,7 +22,6 @@
 #include "command.h"
 #include "context_mgr.h"
 #include "device_int.h"
-#include "fence.h"
 #include "handle.h"
 #include "hw_context_int.h"
 #include "hw_queue.h"
@@ -888,24 +887,6 @@ public:
     }
 
     return {get_state_raw(), std::cv_status::no_timeout};
-  }
-
-  xrt_core::fence
-  enqueue(const std::vector<xrt_core::fence>& waits)
-  {
-    {
-      std::lock_guard<std::mutex> lk(m_mutex);
-      if (!m_done)
-        throw std::runtime_error("bad command state, can't enqueue");
-      m_managed = m_done = false;
-    }
-    return m_hwqueue.enqueue(this, waits);
-  }
-
-  xrt_core::fence
-  enqueue()
-  {
-    return enqueue({});
   }
 
   ////////////////////////////////////////////////////////////////
@@ -1975,12 +1956,11 @@ class run_impl
 
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  xrt_core::hw_queue m_hwqueue;           // hw queue for command submission
   std::vector<ipctx> ips;                 // ips controlled by this run object
-  std::vector<xrt_core::fence> m_waits;   // fence lifetime management
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
-  xrt_core::fence m_fence;                // fence for current invocation
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
@@ -2020,10 +2000,11 @@ public:
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))                        // share ownership
+    , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
     , core_device(kernel->get_core_device())      // cache core device
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , uid(create_uid())
   {
@@ -2035,10 +2016,11 @@ public:
   explicit
   run_impl(const run_impl* rhs)
     : kernel(rhs->kernel)
+    , m_hwqueue(rhs->m_hwqueue)
     , ips(rhs->ips)
     , cumask(rhs->cumask)
     , core_device(rhs->core_device)
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
@@ -2061,12 +2043,6 @@ public:
   get_kernel() const
   {
     return kernel.get();
-  }
-
-  xrt_core::fence
-  get_fence() const
-  {
-    return m_fence;
   }
 
   template <typename ERT_COMMAND_TYPE>
@@ -2248,18 +2224,15 @@ public:
   }
 
   void
-  enqueue()
+  submit_wait(const xrt::fence& fence)
   {
-    prep_start();
-    m_fence = cmd->enqueue();
+    m_hwqueue.submit_wait(fence);
   }
 
   void
-  enqueue(const std::vector<xrt_core::fence>& waits)
+  submit_signal(const xrt::fence& fence)
   {
-    prep_start();
-    m_waits = waits;
-    m_fence = cmd->enqueue(m_waits);
+    m_hwqueue.submit_signal(fence);
   }
 
   void
@@ -3096,23 +3069,6 @@ start(const autostart& iterations)
 
 void
 run::
-enqueue()
-{
-  handle->enqueue();
-}
-
-void
-run::
-enqueue(const std::vector<run>& waits)
-{
-  std::vector<xrt_core::fence> fence_waits;
-  std::transform(waits.begin(), waits.end(), std::back_inserter(fence_waits),
-                 [](auto& r) { return r.get_handle()->get_fence(); });
-  handle->enqueue(fence_waits);
-}
-
-void
-run::
 stop()
 {
   handle->stop();
@@ -3225,6 +3181,20 @@ get_ert_packet() const
   return xdp::native::profiling_wrapper("xrt::run::get_ert_packet", [this]{
     return handle->get_ert_packet();
   });
+}
+
+void
+run::
+submit_wait(const xrt::fence& fence)
+{
+  handle->submit_wait(fence);
+}
+
+void
+run::
+submit_signal(const xrt::fence& fence)
+{
+  handle->submit_signal(fence);
 }
 
 kernel::
