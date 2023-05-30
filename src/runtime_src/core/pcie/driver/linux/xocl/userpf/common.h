@@ -259,6 +259,7 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
 			  struct ip_layout *ip_layout,
 			  struct ps_kernel_node *ps_kernel);
 int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
+int xocl_kds_xgq_query_mem(struct xocl_dev *xdev, struct mem_data *mem_data);
 int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
 			       u32 start, u32 size);
 
