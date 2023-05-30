@@ -59,12 +59,8 @@ struct xocl_cma_bank {
 struct xocl_mm {
 	/* Memory manager */
 	struct drm_mm           *mm;
-	uint64_t		start_addr;
-	uint64_t		end_addr;
-	uint32_t                m_count;
 
-	/* Array of bo  stats 
-	 * for whole device memory manager */
+	/* Array of bo stats for whole device memory manager */
 	struct drm_xocl_mm_stat *bo_usage_stat;
 };
 
@@ -84,12 +80,11 @@ struct xocl_drm {
 
 	/* Memory manager */
 	struct xocl_mm		*xocl_mm;
-	bool			xocl_drm_mm_done;
 	struct drm_xocl_mm_stat mm_usage_stat[MAX_MEM_BANK_COUNT];
 
 	/* Xocl driver memory list head */
 	struct list_head        mem_list_head;
-
+	struct mem_data		ps_mem_data;
 	int			cma_bank_idx;
 };
 
