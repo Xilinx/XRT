@@ -900,7 +900,6 @@ done:
 	init_resp(resp, cmd->cid, rc);
 }
 
-
 static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
 			      struct xgq_com_queue_entry *resp)
 {

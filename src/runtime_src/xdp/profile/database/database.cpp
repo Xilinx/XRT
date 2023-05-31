@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,7 +31,7 @@ namespace xdp {
   {
     VPDatabase::live = true ;
 
-    summary = new SummaryWriter("summary.csv", this) ;
+    summary = std::make_unique<SummaryWriter>("summary.csv", this);
   }
 
   // The database and all the plugins are singletons and can be
@@ -50,7 +51,6 @@ namespace xdp {
     if (summary != nullptr) {
       staticdb.addOpenedFile(summary->getcurrentFileName(), "PROFILE_SUMMARY") ;
       summary->write(false) ;
-      delete summary ;
     }
 
     plugins.clear();

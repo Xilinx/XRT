@@ -944,14 +944,14 @@ int xocl_cleanup_mem_all(struct xocl_drm *drm_p)
 	uint32_t slot_id = 0;
 
 	mutex_lock(&drm_p->mm_lock);
-	
-    for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
+
+	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
 		ret = xocl_cleanup_mem_nolock(drm_p, slot_id);
 		if (ret)
 			break;
 	}
-	
-    mutex_unlock(&drm_p->mm_lock);
+
+	mutex_unlock(&drm_p->mm_lock);
 	return ret;
 }
 
@@ -1166,6 +1166,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 
 done:
 	XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev, slot_id);
+
 	if (err)
 		xocl_cleanup_mem_nolock(drm_p, slot_id);
 

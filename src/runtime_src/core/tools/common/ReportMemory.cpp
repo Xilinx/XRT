@@ -122,15 +122,6 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << std::endl;
     _output << "  Memory Topology" << std::endl;
 
-    const Table2D::HeaderData h_index = {"Index", Table2D::Justification::left};
-    const Table2D::HeaderData h_tag = {"Tag", Table2D::Justification::left};
-    const Table2D::HeaderData h_type = {"Type", Table2D::Justification::left};
-    const Table2D::HeaderData h_temp = {"Temp(C)", Table2D::Justification::left};
-    const Table2D::HeaderData h_size = {"Size", Table2D::Justification::left};
-    const Table2D::HeaderData h_address = {"Base Address", Table2D::Justification::left};
-    const std::vector<Table2D::HeaderData> table_headers = {h_index, h_tag, h_type, h_temp, h_size, h_address};
-    Table2D device_table(table_headers);
-
     try {
       // Generate map of hw_context/xclbin uuid to a list of formatted memory table entries
       std::map<std::tuple<std::string, std::string>, std::vector<std::vector<std::string>>> memory_map;
@@ -163,21 +154,29 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
         iter.first->second.push_back(entry_data);
       }
 
-      // Within each hardware context add an index number to the front
-      // of each memory table entry
+      // Output the contents of each hardware context
       for (auto& hw_context : memory_map) {
         _output << boost::format("    HW Context Slot: %s\n") % std::get<0>(hw_context.first);
         _output << boost::format("      Xclbin UUID: %s\n") % std::get<1>(hw_context.first);
 
+        const Table2D::HeaderData h_index = {"Index", Table2D::Justification::left};
+        const Table2D::HeaderData h_tag = {"Tag", Table2D::Justification::left};
+        const Table2D::HeaderData h_type = {"Type", Table2D::Justification::left};
+        const Table2D::HeaderData h_temp = {"Temp(C)", Table2D::Justification::left};
+        const Table2D::HeaderData h_size = {"Size", Table2D::Justification::left};
+        const Table2D::HeaderData h_address = {"Base Address", Table2D::Justification::left};
+        const std::vector<Table2D::HeaderData> table_headers = {h_index, h_tag, h_type, h_temp, h_size, h_address};
+        Table2D device_table(table_headers);
+
+        // Place each compute unit into a table
         auto& entry_list = hw_context.second;
         for (size_t hw_index = 0; hw_index < entry_list.size(); hw_index++) {
           auto& entry_list_item = entry_list[hw_index];
           entry_list_item.insert(entry_list_item.begin(), std::to_string(hw_index));
           device_table.addEntry(entry_list_item);
         }
+        _output << device_table.toString("      ");
       }
-
-      _output << device_table.toString("      ");
     }
     catch( std::exception const&) {
         // eat the exception, probably bad path

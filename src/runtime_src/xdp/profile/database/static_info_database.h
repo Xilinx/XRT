@@ -69,7 +69,7 @@ namespace xdp {
     // Parent pointer to database so we can issue broadcasts
     VPDatabase* db ;
     // The static database handles the single instance of the run summary
-    VPWriter* runSummary ;
+    std::unique_ptr<VPWriter> runSummary;
 
   private:
     // ********* Information specific to each host execution **********
@@ -94,7 +94,7 @@ namespace xdp {
     std::vector<std::string> softwareEmulationPortBitWidths ;
 
     // Device Specific Information mapped to the Unique Device Id
-    std::map<uint64_t, DeviceInfo*> deviceInfo;
+    std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
 
     // Static info can be accessed via any host thread, so we have
     //  fine grained locks on each of the types of data.
@@ -247,10 +247,8 @@ namespace xdp {
     XDP_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
     XDP_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ; 
     XDP_EXPORT std::string getDeviceName(uint64_t deviceId) ;
-    XDP_EXPORT void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf) ;
     XDP_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
     XDP_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
-    XDP_EXPORT void setKDMACount(uint64_t deviceId, uint64_t num) ;
     XDP_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;
@@ -263,9 +261,6 @@ namespace xdp {
     XDP_EXPORT std::string getXclbinName(uint64_t deviceId) ;
     XDP_EXPORT std::vector<XclbinInfo*> getLoadedXclbins(uint64_t deviceId) ;
     XDP_EXPORT ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId) ;
-    XDP_EXPORT
-    std::map<int32_t, ComputeUnitInstance*>* getCUs(uint64_t deviceId) ;
-    XDP_EXPORT std::map<int32_t, Memory*>* getMemoryInfo(uint64_t deviceId) ;
     XDP_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
