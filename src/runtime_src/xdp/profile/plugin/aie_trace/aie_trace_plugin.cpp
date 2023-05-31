@@ -264,7 +264,7 @@ namespace xdp {
     // Writer for timestamp file
     std::string outputFile = "aie_event_timestamps.csv";
     VPWriter* tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
-    //writers.push_back(tsWriter);
+    writers.push_back(tsWriter);
     db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
 
     // Start the AIE trace timestamps thread
