@@ -43,6 +43,7 @@ namespace xdp {
     if (AieTracePluginUnified::alive())
       aieTracePluginInstance.finishFlushAIEDevice(handle);
   }
+  
 } // end namespace xdp
 
 extern "C" 

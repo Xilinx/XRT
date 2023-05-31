@@ -15,6 +15,7 @@
 
 #ifdef __cplusplus
 # include "experimental/xrt_exception.h"
+# include "experimental/xrt_fence.h"
 # include "experimental/xrt_hw_context.h"
 # include <chrono>
 # include <condition_variable>
@@ -324,17 +325,6 @@ public:
     wait2(std::chrono::milliseconds{0});
   }
 
-  /// @cond
-  /// Experimental in 2023.1
-  XCL_DRIVER_DLLESPEC
-  void
-  enqueue();
-
-  XCL_DRIVER_DLLESPEC
-  void
-  enqueue(const std::vector<run>& waits);
-  /// @endcond
-
   /**
    * state() - Check the current state of a run object
    *
@@ -466,6 +456,17 @@ public:
   {
     set_arg_at_index(index, boh);
   }
+
+  ///@cond
+  /// Experimental in 2023.2
+  XCL_DRIVER_DLLESPEC
+  void
+  submit_wait(const xrt::fence& fence);
+  
+  XCL_DRIVER_DLLESPEC
+  void
+  submit_signal(const xrt::fence& fence);
+  ///@endcond
 
   /**
    * set_arg - set named argument

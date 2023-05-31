@@ -54,6 +54,7 @@ namespace xdp {
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_trace);
+    db->getStaticInfo().setAieApplication();
   }
 
   AieTracePluginUnified::~AieTracePluginUnified()

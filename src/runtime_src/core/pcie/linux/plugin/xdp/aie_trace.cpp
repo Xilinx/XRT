@@ -83,5 +83,6 @@ namespace trace {
       trace::finish_flush_device_cb(handle) ;
     }
   }
+  
 } // end namespace aie
 } // end namespace xdp

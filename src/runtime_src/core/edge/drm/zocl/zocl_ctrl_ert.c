@@ -62,6 +62,7 @@
 #define ERT_CQ_IRQ			0
 #define ERT_CU_IRQ			1
 
+#define ZOCL_HOSTMEM_MASK		0xFFFFffff00000000LL
 /*
  * CQ format version 1.0:
  * First word on CQ is version number, followed by ctrl XGQ, which may go up to 1.5k.
@@ -899,7 +900,6 @@ done:
 	init_resp(resp, cmd->cid, rc);
 }
 
-
 static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
 			      struct xgq_com_queue_entry *resp)
 {
@@ -957,6 +957,33 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	}
 }
 
+static void zert_cmd_query_mem(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
+			       struct xgq_com_queue_entry *resp)
+{
+	struct xgq_cmd_query_mem *c = (struct xgq_cmd_query_mem *)cmd;
+	struct xgq_cmd_resp_query_mem *r = (struct xgq_cmd_resp_query_mem *)resp;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+
+	init_resp(resp, cmd->cid, 0);
+
+	switch (c->type) {
+        case XGQ_CMD_QUERY_MEM_ADDR:
+		r->l_mem_info = (u32)zdev->host_mem;
+		r->h_mem_info = (u32)((zdev->host_mem & ZOCL_HOSTMEM_MASK) >> 32);
+		break;
+
+	case XGQ_CMD_QUERY_MEM_SIZE:
+		r->l_mem_info = (u32)zdev->host_mem_len;
+		r->h_mem_info = (u32)((zdev->host_mem_len & ZOCL_HOSTMEM_MASK) >> 32);
+		break;
+
+	default:
+		zert_err(zert, "Unknown query mem type: %d", c->type);
+		init_resp(resp, cmd->cid, -EINVAL);
+		break;
+	}
+}
+
 struct zert_ops {
 	u32 op;
 	char *name;
@@ -967,6 +994,7 @@ struct zert_ops {
 	{ XGQ_CMD_OP_CFG_CU, "XGQ_CMD_OP_CFG_CU", zert_cmd_cfg_cu },
 	{ XGQ_CMD_OP_UNCFG_CU, "XGQ_CMD_OP_UNCFG_CU", zert_cmd_uncfg_cu },
 	{ XGQ_CMD_OP_QUERY_CU, "XGQ_CMD_OP_QUERY_CU", zert_cmd_query_cu },
+	{ XGQ_CMD_OP_QUERY_MEM, "XGQ_CMD_OP_QUERY_MEM", zert_cmd_query_mem },
 	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zert_cmd_identify },
 	{ XGQ_CMD_OP_TIMESET, "XGQ_CMD_OP_TIMESET", zert_cmd_timeset }
 };

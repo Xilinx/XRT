@@ -30,19 +30,7 @@ namespace xdp {
   VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
     db(d), eventId(1)
   {
-    host = new HostDB();
-  }
-
-  VPDynamicDatabase::~VPDynamicDatabase()
-  {
-    if (host != nullptr)
-      delete host;
-
-    std::lock_guard<std::mutex> lock(deviceDBLock);
-    for (auto& iter : devices) {
-      auto device = iter.second;
-      delete device;
-    }
+    host = std::make_unique<HostDB>();
   }
 
   // For designs that load multiple xclbins, we add an event into the database
@@ -82,8 +70,8 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(deviceDBLock);
     if (devices.find(deviceId) == devices.end())
-      devices[deviceId] = new DeviceDB;
-    return devices[deviceId];
+      devices[deviceId] = std::make_unique<DeviceDB>();
+    return devices[deviceId].get();
   }
 
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)

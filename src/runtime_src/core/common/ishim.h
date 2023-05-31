@@ -14,9 +14,9 @@
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
-#include "xrt/xrt_uuid.h"
-
 #include "xrt/xrt_hw_context.h"
+#include "xrt/xrt_uuid.h"
+#include "experimental/xrt_fence.h"
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
@@ -115,6 +115,17 @@ struct ishim
   // Redo when supporting windows
   virtual std::unique_ptr<buffer_handle>
   import_bo(pid_t, shared_handle::export_handle)
+  { throw not_supported_error{__func__}; }
+
+  ////////////////////////////////////////////////////////////////
+  // Interfaces for fence handling
+  ////////////////////////////////////////////////////////////////
+  virtual std::unique_ptr<fence_handle>
+  create_fence(xrt::fence::access_mode)
+  { throw not_supported_error{__func__}; }
+  
+  virtual std::unique_ptr<fence_handle>
+  import_fence(pid_t, shared_handle::export_handle)
   { throw not_supported_error{__func__}; }
   ////////////////////////////////////////////////////////////////
   // Interfaces for hw context handling

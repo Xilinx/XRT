@@ -3,7 +3,12 @@
 #ifndef XRT_CORE_FENCE_HANDLE_H
 #define XRT_CORE_FENCE_HANDLE_H
 
+#include "core/common/shim/shared_handle.h"
+
+#include "experimental/xrt_fence.h"
+
 #include <cstdint>
+#include <memory>
 
 namespace xrt_core {
 
@@ -19,28 +24,35 @@ class fence_handle
 {
   // Flags that indicate what kind of fence to create
 public:
-  enum class flags { tbd };
-
-#ifdef _WIN32
-  using export_handle = void*;
-#else
-  using export_handle = int;
-#endif
+  using export_handle = shared_handle::export_handle;
+  using access_mode = xrt::fence::access_mode;
 
 public:
   // Destruction must destroy the underlying hardware queue
   virtual ~fence_handle()
   {}
 
+  // Make a deep copy of a fence handle.   There is no shared
+  // state between the original and the clone.
+  virtual std::unique_ptr<fence_handle>
+  clone() const = 0;
+
   // Export a fence for use with another process or device
   // An exported fence can be imported by a hwqueue.
-  virtual export_handle
-  export_fence() = 0;
+  virtual std::unique_ptr<shared_handle>
+  share() const = 0;
 
   // Wait for a fence to be signaled
   // This is a blocking call
   virtual void
   wait(uint32_t timeout_ms) const = 0;
+
+  // Return the next state of the fence.  The next state is the value
+  // that will be used when the fence is signaled or waited on.  The
+  // next state is incremented when the fence is signaled or waited on.
+  // Implementation detail to facilitate debugging.
+  virtual uint64_t
+  get_next_state() const = 0;
 };
 
 } // xrt_core

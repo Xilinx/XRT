@@ -46,8 +46,8 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         driver_config.num_columns,
         driver_config.num_rows,
         driver_config.shim_row,
-        driver_config.reserved_row_start,
-        driver_config.reserved_num_rows,
+        driver_config.mem_row_start,
+        driver_config.mem_num_rows,
         driver_config.aie_tile_row_start,
         driver_config.aie_tile_num_rows);
 
@@ -74,7 +74,7 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     devInst = &DevInst;
 
     adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    adf::config_manager::initialize(devInst, driver_config.reserved_num_rows, aiecompiler_options.broadcast_enable_core);
+    adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
 
     fal_util::initialize(devInst); //resource manager initialization
     
