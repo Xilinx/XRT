@@ -97,7 +97,7 @@ namespace xdp {
 
     // Clean out old data every time xclbin gets updated
     if (handleToAIEData.find(handle) != handleToAIEData.end())
-        handleToAIEData.erase(handle);
+      handleToAIEData.erase(handle);
 
     //Setting up struct 
     auto& AIEData = handleToAIEData[handle];
@@ -268,11 +268,9 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
 
     // Start the AIE trace timestamps thread
-std::cout << "!!!!!!!!!! Setting up thread to poll timers!" << std::endl;
     AIEData.threadCtrlBool = true;
     auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers, this, deviceID, handle);
     AIEData.thread = std::move(device_thread);
-std::cout << "!!!!!!!!!! device_thread = " << AIEData.thread.get_id() << std::endl;
   }
 
   void AieTracePluginUnified::pollAIETimers(uint32_t index, void* handle)
@@ -321,7 +319,6 @@ std::cout << "!!!!!!!!!! device_thread = " << AIEData.thread.get_id() << std::en
 
   void AieTracePluginUnified::finishFlushAIEDevice(void* handle)
   {
-std::cout << "!!!!!!!!!! finishFlushAIEDevice start" << std::endl;
     if (!handle)
       return;
     auto itr = handleToAIEData.find(handle);
@@ -364,7 +361,6 @@ std::cout << "!!!!!!!!!! finishFlushAIEDevice start" << std::endl;
 
   void AieTracePluginUnified::endPollforDevice(void* handle)
   {
-std::cout << "!!!!!!!!!! endPollforDevice start" << std::endl;
     auto itr = handleToAIEData.find(handle);
     if (itr == handleToAIEData.end())
       return;
@@ -372,32 +368,19 @@ std::cout << "!!!!!!!!!! endPollforDevice start" << std::endl;
     if (!AIEData.valid)
       return;
 
-std::cout << "STEP 1: thread = " << AIEData.thread.get_id() << std::endl;
-std::cout.flush();
     AIEData.threadCtrlBool = false;
-std::cout << "STEP 2" << std::endl;
-std::cout.flush();
     if (AIEData.thread.joinable())
       AIEData.thread.join();
-std::cout << "STEP 3" << std::endl;
-std::cout.flush();
     AIEData.implementation->freeResources();
-std::cout << "STEP 4" << std::endl;
-std::cout.flush();
-    handleToAIEData.erase(handle);
-std::cout << "!!!!!!!!!! endPollforDevice end" << std::endl;
-std::cout.flush();
   }
 
   void AieTracePluginUnified::endPoll()
   {
-std::cout << "!!!!!!!!!! endPoll start" << std::endl;
     // Ask all threads to end
     for (auto& p : handleToAIEData) 
       p.second.threadCtrlBool = false;
     for (auto& p : handleToAIEData) 
       p.second.thread.join();
     handleToAIEData.clear();
-std::cout << "!!!!!!!!!! endPoll end" << std::endl;
   }
 } // end namespace xdp
