@@ -1071,9 +1071,8 @@ namespace xdp {
 
     // Report trace events reserved per tile
     printTraceEventStats(deviceId);
-
     return true;
-  }  // end setaieTileMetricsSettings
+  }  // end setMetricsSettings
 
   uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize)
   {
@@ -1257,7 +1256,7 @@ namespace xdp {
     double timestamp1 = xrt_core::time_ns() / 1.0e6;
     XAie_ReadTimer(aieDevInst, loc, falModuleType, &timerValue);
     double timestamp2 = xrt_core::time_ns() / 1.0e6;
-      
+    
     std::vector<uint64_t> values;
     values.push_back(tile.col);
     values.push_back(getRelativeRow(tile.row));

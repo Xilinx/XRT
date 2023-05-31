@@ -35,7 +35,7 @@ namespace xdp {
     void flushAIEDevice(void* handle);
     void finishFlushAIEDevice(void* handle);
     virtual void writeAll(bool openNewFiles) override;
-    XDP_EXPORT void endPollforDevice(void* handle);
+    void endPollforDevice(void* handle);
     static bool alive();
 
   private:

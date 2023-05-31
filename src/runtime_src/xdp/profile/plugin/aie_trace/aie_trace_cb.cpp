@@ -43,12 +43,6 @@ namespace xdp {
     if (AieTracePluginUnified::alive())
       aieTracePluginInstance.finishFlushAIEDevice(handle);
   }
-
-  static void endAIETracePoll(void* handle)
-  {
-    if (AieTracePluginUnified::alive())
-      aieTracePluginInstance.endPollforDevice(handle);
-  }
 } // end namespace xdp
 
 extern "C" 
@@ -67,10 +61,4 @@ extern "C"
 void finishFlushAIEDevice(void* handle)
 {
   xdp::finishFlushAIEDevice(handle);
-}
-
-extern "C"
-void endAIETracePoll(void* handle)
-{
-  xdp::endAIETracePoll(handle);
 }
