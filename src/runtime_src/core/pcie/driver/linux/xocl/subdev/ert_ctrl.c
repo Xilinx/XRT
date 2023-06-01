@@ -556,24 +556,26 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 	return;
 }
 
-static void ert_ctrl_unset_xgq(struct platform_device *pdev, int id)
+static void ert_ctrl_unset_xgq(struct platform_device *pdev, void *xgq_handle)
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[id];
+	int xgq_id = xocl_get_xgq_id(xgq_handle);
+	struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[xgq_id];
 
-	xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
-	xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
-
-	if (ec->ec_exgq[id] == NULL)
-		return;
-
-	if (!ec->ec_xgq_ips) {
-		xocl_intc_ert_config(xdev, id, false);
-		xocl_intc_ert_request(xdev, id, NULL, NULL);
+	if (xgq_ips) {
+		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
+		xocl_user_interrupt_reg(xdev, xgq_ips->ecxc_xgq_irq, NULL, NULL);
 	}
-	xocl_xgq_fini(ec->ec_exgq[id]);
-	ec->ec_exgq[id] = NULL;
+
+	if (ec->ec_exgq[xgq_id]) {
+		if (!ec->ec_xgq_ips) {
+			xocl_intc_ert_config(xdev, xgq_id, false);
+			xocl_intc_ert_request(xdev, xgq_id, NULL, NULL);
+		}
+		xocl_xgq_fini(ec->ec_exgq[xgq_id]);
+		ec->ec_exgq[xgq_id] = NULL;
+	}
 }
 
 static int ert_ctrl_xgq_init(struct ert_ctrl *ec)

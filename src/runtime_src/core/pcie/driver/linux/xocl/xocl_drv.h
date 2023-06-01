@@ -2028,7 +2028,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
-	       void (* unset_xgq)(struct platform_device *pdev, int id);
+	       void (* unset_xgq)(struct platform_device *pdev, void *xgq);
 	       void (* dump_xgq)(struct platform_device *pdev); /** TODO: Remove this line before 2022.2 release **/
 	};
 
@@ -2059,9 +2059,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
-#define xocl_ert_ctrl_unset_xgq(xdev, id) \
+#define xocl_ert_ctrl_unset_xgq(xdev, xgq) \
 	(ERT_CTRL_CB(xdev, unset_xgq) ? \
-	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev), id) : NULL)
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev), xgq) : NULL)
 /** TODO: Remove below debug function before 2022.2 release **/
 #define xocl_ert_ctrl_dump(xdev) \
 	(ERT_CTRL_CB(xdev, dump_xgq) ? \
