@@ -18,17 +18,11 @@
 #define __SubCmdConfigure_h_
 
 #include "tools/common/SubCmd.h"
+#include "tools/common/SubCmdConfigureInternal.h"
 
-class SubCmdConfigure : public SubCmd {
+class SubCmdConfigure : public SubCmdConfigureInternal {
  public:
-  virtual void execute(const SubCmdOptions &_options) const;
-
- public:
-  SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-  virtual ~SubCmdConfigure() {};
-
- private:
-  bool m_help;
+  SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree configurations);
 };
 
 #endif

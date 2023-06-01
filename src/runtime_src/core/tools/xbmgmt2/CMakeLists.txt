@@ -10,6 +10,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBUtilities.cpp"
   "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdConfigureInternal.cpp"
   "../common/SubCmdExamineInternal.cpp"
   "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
@@ -36,6 +37,8 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "OO_UpdateShell.cpp"
   "OO_ChangeBoot.cpp"
   "OO_UpdateXclbin.cpp"
+  "OO_Input.cpp"
+  "OO_Retention.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )

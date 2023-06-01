@@ -35,7 +35,10 @@ R"(
 		"contents": [{
 			"name": "examine",
 			"contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
-		}]
+		},{
+      "name": "configure",
+      "contents": ["input", "retention"]
+    }]
 	}]
 }]
 )";
@@ -57,7 +60,7 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
     subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false, configTree));
   }
 
   const std::string executable = "xbmgmt";

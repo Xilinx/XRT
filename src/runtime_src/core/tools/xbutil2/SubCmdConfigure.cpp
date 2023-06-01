@@ -18,77 +18,17 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdConfigure.h"
+#include "tools/common/SubCmdConfigureInternal.h"
 #include "OO_HostMem.h"
 #include "OO_P2P.h"
 
-#include "common/system.h"
-#include "common/device.h"
+std::vector<std::shared_ptr<OptionOptions>> SubCmdConfigureInternal::optionOptionsCollection = {
+  std::make_shared<OO_HostMem>("host-mem"),
+  std::make_shared<OO_P2P>("p2p"),
+};
 
-// 3rd Party Library - Include Files
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
-
-// System - Include Files
-#include <iostream> 
-
-#include "common/system.h"
-#include "common/device.h"
-#include <boost/format.hpp>
-#include <map>
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
-
-SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("configure", 
-             "Device and host configuration")
-    , m_help(false)
+SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree configurations)
+    : SubCmdConfigureInternal(_isHidden, _isDepricated, _isPreliminary, true /*isUserDomain*/, configurations)
 {
-  const std::string longDescription = "Device and host configuration.";
-  setLongDescription(longDescription);
-  setExampleSyntax("");
-  setIsHidden(_isHidden);
-  setIsDeprecated(_isDepricated);
-  setIsPreliminary(_isPreliminary);
-
-  m_commonOptions.add_options()
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;
-
-  addSubOption(std::make_shared<OO_HostMem>("host-mem"));
-  addSubOption(std::make_shared<OO_P2P>("p2p"));
-}
-
-
-void
-SubCmdConfigure::execute(const SubCmdOptions& _options) const
-{
-  // =========== Process the options ========================================
-  po::variables_map vm;
-  // Used for the suboption arguments
-  auto topOptions = process_arguments(vm, _options, false);
-
-  // Find the subOption;
-  auto optionOption = checkForSubOption(vm);
-
-  // No suboption print help
-  if (!optionOption) {
-    if (m_help) {
-      printHelp();
-      return;
-    }
-    // If help was not requested and additional options dont match we must throw to prevent
-    // invalid positional arguments from passing through without warnings
-    std::cerr << "ERROR: Suboption missing" << std::endl;
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // 2) Process the top level options
-  if (m_help)
-    topOptions.push_back("--help");
-
-  optionOption->setGlobalOptions(getGlobalOptions());
-  
-  // Execute the option
-  optionOption->execute(topOptions);
+  // Empty
 }
