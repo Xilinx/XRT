@@ -14,11 +14,13 @@
  * under the License.
  */
 
-#include <vector>
-
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/database.h"
+
+#include <vector>
+#include <iostream>
+#include <iomanip>
 
 namespace xdp {
 
@@ -57,7 +59,8 @@ namespace xdp {
         db->getDynamicInfo().getAIETimerSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      fout << sample.timestamp1 << ","
+      fout << std::fixed << std::setprecision(6)
+           << sample.timestamp1 << ","
            << sample.timestamp2 << ",";
       for (auto value : sample.values) {
         fout << value << ",";
