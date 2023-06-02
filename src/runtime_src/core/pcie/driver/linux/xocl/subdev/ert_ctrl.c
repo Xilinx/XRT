@@ -563,7 +563,7 @@ static void ert_ctrl_unset_xgq(struct platform_device *pdev, void *xgq_handle)
 	int xgq_id = xocl_get_xgq_id(xgq_handle);
 	struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[xgq_id];
 
-	if (xgq_ips) {
+	if ((xgq_id < ec->ec_num_xgq_ips) && xgq_ips) {
 		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
 		xocl_user_interrupt_reg(xdev, xgq_ips->ecxc_xgq_irq, NULL, NULL);
 	}
