@@ -39,10 +39,10 @@ namespace xdp {
   std::vector<std::string> getValidKernels(const xrt_core::device* device);
   std::vector<std::string> getValidPorts(const xrt_core::device* device);
 
-  std::unordered_map<std::string, plio_config> getPLIOs(const xrt_core::device* device);
-  std::vector<gmio_config> getGMIOs(const xrt_core::device* device);
-  std::vector<gmio_config> getTraceGMIOs(const xrt_core::device* device);
-  std::vector<gmio_config> getChildGMIOs(const xrt_core::device* device,
+  std::unordered_map<std::string, io_config> getPLIOs(const xrt_core::device* device);
+  std::unordered_map<std::string, io_config> getGMIOs(const xrt_core::device* device);
+  std::unordered_map<std::string, io_config> getTraceGMIOs(const xrt_core::device* device);
+  std::unordered_map<std::string, io_config> getChildGMIOs(const xrt_core::device* device,
                                          const std::string& childStr);
   std::vector<tile_type> getInterfaceTiles(const xrt_core::device* device,
                                            const std::string& graphName,

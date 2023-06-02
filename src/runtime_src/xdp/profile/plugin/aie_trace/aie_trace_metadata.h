@@ -56,7 +56,8 @@ class AieTraceMetadata {
       auto device = xrt_core::get_userpf_device(handle);
       return getAIETileRowOffset(device.get());
     }
-    std::vector<gmio_config> get_trace_gmios(const xrt_core::device* device) {
+    std::unordered_map<std::string, io_config> 
+    get_trace_gmios(const xrt_core::device* device) {
       return getTraceGMIOs(device);
     }
     std::string getMetricString(uint8_t index) {

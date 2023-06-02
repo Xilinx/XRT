@@ -165,23 +165,30 @@ namespace xdp {
   std::vector<std::string> getValidPorts(const xrt_core::device* device)
   {
     auto plios = getPLIOs(device);
-    if (plios.empty())
+    auto gmios = getGMIOs(device);
+    if (plios.empty() && gmios.empty())
       return {};
 
     std::vector<std::string> ports;
 
-    // Traverse all PLIO and include logical and port names
+    // Traverse all I/O and include logical and port names
     for (auto &plio : plios) {
       std::vector<std::string> nameVec;
       boost::split(nameVec, plio.second.name, boost::is_any_of("."));
       ports.emplace_back(nameVec.back());
       ports.emplace_back(plio.second.logicalName);
     }
+    for (auto &gmio : gmios) {
+      std::vector<std::string> nameVec;
+      boost::split(nameVec, gmio.second.name, boost::is_any_of("."));
+      ports.emplace_back(nameVec.back());
+      ports.emplace_back(gmio.second.logicalName);
+    }
 
     return ports;
   }
 
-  std::unordered_map<std::string, plio_config> 
+  std::unordered_map<std::string, io_config> 
   getPLIOs(const xrt_core::device* device)
   {
     auto data = device->get_axlf_section(AIE_METADATA);
@@ -190,11 +197,12 @@ namespace xdp {
 
     pt::ptree aie_meta;
     readAIEMetadata(data.first, data.second, aie_meta);
-    std::unordered_map<std::string, plio_config> plios;
+    std::unordered_map<std::string, io_config> plios;
 
     for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
-      plio_config plio;
+      io_config plio;
 
+      plio.type = 0;
       plio.id = plio_node.second.get<uint32_t>("id");
       plio.name = plio_node.second.get<std::string>("name");
       plio.logicalName = plio_node.second.get<std::string>("logical_name");
@@ -208,17 +216,19 @@ namespace xdp {
     return plios;
   }
 
-  std::vector<gmio_config> getGMIOs(const xrt_core::device* device)
+  std::unordered_map<std::string, io_config>
+  getGMIOs(const xrt_core::device* device)
   {
     return getChildGMIOs(device, "aie_metadata.GMIOs");
   }
 
-  std::vector<gmio_config> getTraceGMIOs(const xrt_core::device* device)
+  std::unordered_map<std::string, io_config>
+  getTraceGMIOs(const xrt_core::device* device)
   {
     return getChildGMIOs(device, "aie_metadata.TraceGMIOs");
   }
 
-  std::vector<gmio_config>
+  std::unordered_map<std::string, io_config>
   getChildGMIOs(const xrt_core::device* device, const std::string& childStr)
   {
     auto data = device->get_axlf_section(AIE_METADATA);
@@ -227,24 +237,26 @@ namespace xdp {
 
     pt::ptree aie_meta;
     readAIEMetadata(data.first, data.second, aie_meta);
-    auto trace_gmios = aie_meta.get_child_optional(childStr);
-    if (!trace_gmios)
+    auto gmiosMetadata = aie_meta.get_child_optional(childStr);
+    if (!gmiosMetadata)
       return {};
 
-    std::vector<gmio_config> gmios;
+    std::unordered_map<std::string, io_config> gmios;
 
-    for (auto& gmio_node : trace_gmios.get()) {
-      gmio_config gmio;
+    for (auto& gmio_node : gmiosMetadata.get()) {
+      io_config gmio;
 
+      gmio.type = 1;
       gmio.id = gmio_node.second.get<uint32_t>("id");
-      //gmio.name = gmio_node.second.get<std::string>("name");
-      //gmio.type = gmio_node.second.get<uint16_t>("type");
+      gmio.name = gmio_node.second.get<std::string>("name");
+      gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
+      gmio.slaveOrMaster = gmio_node.second.get<uint16_t>("type");
       gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
       gmio.channelNum = gmio_node.second.get<uint16_t>("channel_number");
       gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
       gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
-      gmios.emplace_back(std::move(gmio));
+      gmios[gmio.name] = gmio;
     }
 
     return gmios;

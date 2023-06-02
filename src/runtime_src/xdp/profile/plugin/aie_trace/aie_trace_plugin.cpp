@@ -137,8 +137,11 @@ namespace xdp {
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
       if (device != nullptr) {
-        for (auto& gmio : AIEData.metadata->get_trace_gmios(device.get()))
-          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength);
+        for (auto& gmioEntry : AIEData.metadata->get_trace_gmios(device.get())) {
+          auto gmio = gmioEntry.second;
+          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, 
+              gmio.channelNum, gmio.streamId, gmio.burstLength);
+        }
       }
       (db->getStaticInfo()).setIsGMIORead(deviceID, true);
     }

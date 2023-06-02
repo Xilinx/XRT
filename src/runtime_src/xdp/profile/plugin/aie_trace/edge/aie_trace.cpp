@@ -140,21 +140,23 @@ namespace xdp {
     // **** Memory Tile Trace ****
     mMemoryTileEventSets = {
         {"input_channels",
-         {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL1_START_TASK_MEM_TILE,
-          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_BD_MEM_TILE,
+         {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_S2MM_SEL1_START_TASK_MEM_TILE,
+          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,   XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_BD_MEM_TILE,
           XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_TASK_MEM_TILE}},
         {"input_channels_stalls",
-         {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,
-          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
-          XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE}},
+         {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,
+          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE,
+          XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE,      XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE, 
+          XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE}},
         {"output_channels",
-         {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL1_START_TASK_MEM_TILE,
-          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_BD_MEM_TILE,
+         {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_MM2S_SEL1_START_TASK_MEM_TILE,
+          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,   XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_BD_MEM_TILE,
           XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_TASK_MEM_TILE}},
         {"output_channels_stalls",
-         {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
-          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
-          XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}}};
+         {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
+          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE, 
+          XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE,      XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, 
+          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}}};
 
     // Memory tile trace is flushed at end of run
     mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
@@ -516,6 +518,33 @@ namespace xdp {
     XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
+  }
+
+  void AieTrace_EdgeImpl::configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                           const std::string metricSet, const XAie_Events event)
+  {
+    // For now, only memory tiles are supported
+    if ((event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE)
+        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE))
+      return;
+
+    // AIE core register offsets
+    constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
+
+    // Event is DMA_S2MM_Sel0_stalled_lock or DMA_MM2S_Sel0_stalled_lock
+    uint16_t eventNum = (metricSet.find("input") != std::string::npos) ? 33 : 35;
+
+    // Register Edge_Detection_event_control
+    // 26    Event 1 triggered on falling edge
+    // 25    Event 1 triggered on rising edge
+    // 23:16 Input event for edge event 1
+    // 10    Event 0 triggered on falling edge
+    //  9    Event 0 triggered on rising edge
+    //  7:0  Input event for edge event 0
+    uint32_t edgeEventsValue = (1 << 26) + (eventNum << 16) + (1 << 9) + eventNum;
+
+    auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+    XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, edgeEventsValue);
   }
 
   bool AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
@@ -889,6 +918,9 @@ namespace xdp {
           if (TraceE->start() != XAIE_OK)
             break;
           numMemoryTraceEvents++;
+
+          // Configure edge events (as needed)
+          configEdgeEvents(aieDevInst, tile, metricSet, memoryEvents[i]);
 
           // Update config file
           // Get Trace slot

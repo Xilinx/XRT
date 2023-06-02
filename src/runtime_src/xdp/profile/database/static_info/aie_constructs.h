@@ -56,32 +56,27 @@ enum class module_type {
     }
   };
 
-  struct plio_config
+  struct io_config
   { 
-    /// PLIO object id
+    // Object id
     int id;
-    /// PLIO variable name
+    // Variable name
     std::string name;
-    /// PLIO loginal name
+    // Loginal name
     std::string logicalName;
-    /// Shim tile column to where the GMIO is mapped
+    // Column where I/O is mapped
     short shimColumn;
-    /// slave or master. 0:slave, 1:master
+    // slave or master - 0:slave, 1:master
     short slaveOrMaster;
-    /// Shim stream switch port id
+    // Shim stream switch port id
     short streamId;
+    // Channel number
+    short channelNum;
+    // Burst length
+    short burstLength;
+    // I/O type - 0:PLIO, 1:GMIO
+    short type;
   };  
-
-  struct gmio_config
-  {
-    std::string     name;
-    uint32_t        id;
-    uint16_t        type;
-    uint16_t        shimColumn;
-    uint16_t        channelNum;
-    uint16_t        streamId;
-    uint16_t        burstLength;
-  };
 
   /*
    * Represents AIE counter configuration for a single counter
