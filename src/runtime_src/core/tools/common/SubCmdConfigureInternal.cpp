@@ -34,7 +34,8 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream> 
+#include <iostream>
+#include <fstream>
 
 #include "common/system.h"
 #include "common/device.h"
