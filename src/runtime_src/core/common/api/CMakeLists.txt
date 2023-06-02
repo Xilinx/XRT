@@ -6,6 +6,7 @@ add_library(core_common_api_library_objects OBJECT
   native_profile.cpp
   xrt_bo.cpp
   xrt_device.cpp
+  xrt_elf.cpp
   xrt_error.cpp
   xrt_fence.cpp
   xrt_hw_context.cpp

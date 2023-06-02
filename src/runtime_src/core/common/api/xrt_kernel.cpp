@@ -1451,16 +1451,6 @@ private:
     return data;  // no skipping
   }
 
-  uint32_t*
-  initialize_dpu(uint32_t* data)
-  {
-    auto dpu = reinterpret_cast<ert_dpu_data*>(data);
-    auto bo = xrt_core::module_int::get_instruction_buffer(module, name);
-    dpu->instruction_buffer = bo.address();
-    dpu->instruction_count = bo.size() / sizeof(int);
-    return dpu->data; // skip to data[1]
-  }
-
   static uint32_t
   create_uid()
   {
@@ -1586,9 +1576,6 @@ public:
     if (kcmd->opcode == ERT_START_FA)
       data = initialize_fadesc(data);
 
-    if (kcmd->opcode == ERT_START_DPU)
-      data = initialize_dpu(data);
-
     return data;
   }
 
@@ -1602,6 +1589,12 @@ public:
   get_xclbin() const
   {
     return xclbin;
+  }
+
+  xrt::module
+  get_module() const
+  {
+    return module;
   }
 
   const std::bitset<max_cus>&
@@ -1886,6 +1879,15 @@ class run_impl
     return count++;
   }
 
+  static xrt::module
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx)
+  {
+    if (!module)
+      return {};
+
+    return {module, hwctx};
+  }
+
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
@@ -1975,8 +1977,37 @@ class run_impl
     return pkt->data + (rhs->data - rhs_pkt->data);
   }
 
+  // For DPU kernels, initialize the instruction buffer and count in
+  // the command packet, both of which are before regular kernel
+  // arguments.  The function returns the data payload after the
+  // preceeding instruction buffer and count; this data payload is
+  // where regular kernel arguments are placed.
+  uint32_t*
+  initialize_dpu(uint32_t* payload)
+  {
+    auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+    auto bo = xrt_core::module_int::get_instruction_buffer(m_module, kernel->get_name());
+    dpu->instruction_buffer = bo.address();
+    dpu->instruction_count = bo.size() / sizeof(int);
+    return dpu->data; // skip to data[1]
+  }
+
+  // Initialize the command packet with special case for DPU kernels
+  uint32_t*
+  initialize_command(kernel_command* pkt)
+  {
+    auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
+    auto payload = kernel->initialize_command(pkt);
+
+    if (kcmd->opcode == ERT_START_DPU)
+      payload = initialize_dpu(payload);
+
+    return payload;
+  }
+
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  xrt::module m_module;                   // instruction module (optional)
   xrt_core::hw_queue m_hwqueue;           // hw queue for command submission
   std::vector<ipctx> ips;                 // ips controlled by this run object
   std::bitset<max_cus> cumask;            // cumask for command execution
@@ -2020,13 +2051,14 @@ public:
   // data member before starting the command.
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
-    : kernel(std::move(k))                        // share ownership
+    : kernel(std::move(k))
+    , m_module(copy_module(kernel->get_module(), kernel->get_hw_context()))
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
-    , core_device(kernel->get_core_device())      // cache core device
+    , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
-    , data(kernel->initialize_command(cmd.get())) // default encodes CUs
+    , data(initialize_command(cmd.get()))
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
@@ -2037,6 +2069,7 @@ public:
   explicit
   run_impl(const run_impl* rhs)
     : kernel(rhs->kernel)
+    , m_module(rhs->m_module)
     , m_hwqueue(rhs->m_hwqueue)
     , ips(rhs->ips)
     , cumask(rhs->cumask)
@@ -2152,6 +2185,10 @@ public:
     auto bo = validate_bo_at_index(index, argbo);
     auto& arg = kernel->get_arg(index);
     set_arg_value(arg, bo);
+
+    if (m_module) {
+      XRT_PRINTF("run_impl::set_arg_at_index(%d) patch bo(%p)\n", index, bo.address());
+    }
   }
 
   void
@@ -2851,10 +2888,12 @@ alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
 }
 
 static std::shared_ptr<xrt::kernel_impl>
-alloc_kernel_from_module(const xrt::module& module, const std::string& name)
+alloc_kernel_from_module(const std::shared_ptr<device_type>& dev,
+                         const xrt::hw_context& hwctx,
+                         const xrt::module& module,
+                         const std::string& name)
 {
-  auto hwctx = module.get_hw_context();
-  return std::make_shared<xrt::kernel_impl>(get_device(hwctx.get_device()), hwctx, module, name);
+  return std::make_shared<xrt::kernel_impl>(dev, hwctx, module, name);
 }
 
 static std::shared_ptr<xrt::mailbox_impl>
@@ -3414,8 +3453,8 @@ what() const noexcept
 namespace xrt::ext {
 
 kernel::
-kernel(const xrt::module& mod, const std::string& name)
-  : xrt::kernel::kernel{alloc_kernel_from_module(mod, name)}
+kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name)
+  : xrt::kernel::kernel{alloc_kernel_from_module(get_device(ctx.get_device()), ctx, mod, name)}
 {}
 
 } // xrt::ext

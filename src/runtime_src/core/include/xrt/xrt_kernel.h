@@ -17,7 +17,6 @@
 # include "experimental/xrt_exception.h"
 # include "experimental/xrt_fence.h"
 # include "experimental/xrt_hw_context.h"
-# include "experimental/xrt_module.h"
 # include <chrono>
 # include <condition_variable>
 # include <cstdint>

@@ -125,11 +125,13 @@ public:
   /**
    * kernel() - Constructor from module
    *
+   * @param hwctx
+   *   The hardware context that this kernel is created in.
    * @param module
    *   A module with elf binary instruction code which the
-   *   kernel function will execute
+   *   kernel function will execute.
    * @param name
-   *  Name of kernel function to construct
+   *  Name of kernel function to construct.
    *
    * The module contains an elf binary with instructions for maybe
    * multiple functions.  When the kernel is constructed, the
@@ -138,7 +140,7 @@ public:
    * in an ERT packet along with the kernel function arguments.
    */
   XRT_API_EXPORT
-  kernel(const xrt::module& mod, const std::string& name);
+  kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name);
 };
 
 } // xrt::ext

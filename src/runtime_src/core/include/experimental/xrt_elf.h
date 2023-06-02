@@ -3,12 +3,11 @@
 #ifndef XRT_ELF_H_
 #define XRT_ELF_H_
 
+#include "xrt/detail/config.h"
 #include "xrt/detail/pimpl.h"
 #include "xrt/xrt_uuid.h"
 
 #ifdef __cplusplus
-# include <utility>
-# include <vector>
 # include <string>
 #endif
 
@@ -31,6 +30,10 @@ class elf_impl;
 class elf : public detail::pimpl<elf_impl>
 {
 public:
+  XRT_API_EXPORT
+  elf(const std::string& fnm);
+  
+  XRT_API_EXPORT
   xrt::uuid
   get_cfg_uuid() const;
 };
