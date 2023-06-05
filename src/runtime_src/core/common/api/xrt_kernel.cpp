@@ -1988,7 +1988,7 @@ class run_impl
     auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
     auto bo = xrt_core::module_int::get_instruction_buffer(m_module, kernel->get_name());
     dpu->instruction_buffer = bo.address();
-    dpu->instruction_count = bo.size() / sizeof(int);
+    dpu->instruction_buffer_size = bo.size();
     return dpu->data; // skip to data[1]
   }
 

@@ -154,9 +154,9 @@ struct ert_start_kernel_cmd {
  * arguments.
  */
 struct ert_dpu_data {
-  uint64_t instruction_buffer;  /* buffer address 2 words */
-  uint32_t instruction_count;   /* number of instructions */
-  uint32_t data[1];             /* count-4 number of words */
+  uint64_t instruction_buffer;       /* buffer address 2 words */
+  uint32_t instruction_buffer_size;  /* size of buffer in bytes */
+  uint32_t data[1];                  /* count-4 number of words */
 };
 
 #ifndef U30_DEBUG
