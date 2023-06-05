@@ -560,11 +560,10 @@ static void ert_ctrl_unset_xgq(struct platform_device *pdev, void *xgq_handle)
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int xgq_id = xocl_get_xgq_id(xgq_handle);
 	struct ert_ctrl_xgq_cu  *xgq_ips = NULL;
+	int xgq_id = xocl_get_xgq_id(xgq_handle);
 
-	if (xgq_id == -EINVAL)
-		return;
+	BUG_ON(xgq_id == -EINVAL);
 
 	xgq_ips = &ec->ec_xgq_ips[xgq_id];
 	if ((xgq_id < ec->ec_num_xgq_ips) && xgq_ips) {
