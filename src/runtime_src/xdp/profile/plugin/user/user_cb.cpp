@@ -26,7 +26,7 @@
 
 namespace xdp {
 
-  static UserEventsPlugin userEventsPluginInstance ;
+  static UserEventsPlugin userEventsPluginInstance;
 
   static void user_event_start_cb(unsigned int functionID,
                                   const char* label,
@@ -35,25 +35,25 @@ namespace xdp {
     if (!VPDatabase::alive() || !UserEventsPlugin::alive())
       return;
 
-    uint64_t timestamp = xrt_core::time_ns() ;
-    VPDatabase* db = userEventsPluginInstance.getDatabase() ;
+    uint64_t timestamp = xrt_core::time_ns();
+    VPDatabase* db = userEventsPluginInstance.getDatabase();
 
-    const char* labelStr   = (label == nullptr)   ? "" : label ;
-    const char* tooltipStr = (tooltip == nullptr) ? "" : tooltip ;
+    const char* labelStr = (label == nullptr) ? "" : label;
+    const char* tooltipStr = (tooltip == nullptr) ? "" : tooltip;
 
-    VTFEvent* event = new UserRange(0, 
+    VTFEvent* event = new UserRange(0,
                                     static_cast<double>(timestamp),
                                     true, // isStart
                                     (db->getDynamicInfo()).addString(labelStr),
-                                    (db->getDynamicInfo()).addString(tooltipStr)) ;
-    (db->getDynamicInfo()).addEvent(event) ;
-    (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
+                                    (db->getDynamicInfo()).addString(tooltipStr));
+    (db->getDynamicInfo()).addEvent(event);
+    (db->getDynamicInfo()).markStart(functionID, event->getEventId());
 
     // Record information for statistics
     std::pair<const char*, const char*> desc =
-      std::make_pair(labelStr, tooltipStr) ;
+      std::make_pair(labelStr, tooltipStr);
 
-    (db->getDynamicInfo()).markRange(functionID, desc, timestamp) ;
+    (db->getDynamicInfo()).markRange(functionID, desc, timestamp);
     (db->getStats()).addRangeCount(desc);
   }
 
@@ -62,22 +62,22 @@ namespace xdp {
     if (!VPDatabase::alive() || !UserEventsPlugin::alive())
       return;
 
-    uint64_t timestamp = xrt_core::time_ns() ;
-    VPDatabase* db = userEventsPluginInstance.getDatabase() ;
+    uint64_t timestamp = xrt_core::time_ns();
+    VPDatabase* db = userEventsPluginInstance.getDatabase();
 
-    uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
-    VTFEvent* event = new UserRange(start, 
+    uint64_t start = (db->getDynamicInfo()).matchingStart(functionID);
+    VTFEvent* event = new UserRange(start,
                                     static_cast<double>(timestamp),
                                     false, // isStart
                                     0,
-                                    0) ;
+                                    0);
 
-    (db->getDynamicInfo()).addEvent(event) ;
+    (db->getDynamicInfo()).addEvent(event);
 
     // Record information for statistics
-    UserRangeInfo desc = db->getDynamicInfo().matchingRange(functionID) ;
-    std::pair<const char*, const char*> str = { desc.label, desc.tooltip } ;
-    (db->getStats()).recordRangeDuration(str, timestamp - desc.startTimestamp) ;
+    UserRangeInfo desc = db->getDynamicInfo().matchingRange(functionID);
+    std::pair<const char*, const char*> str = { desc.label, desc.tooltip };
+    (db->getStats()).recordRangeDuration(str, timestamp - desc.startTimestamp);
   }
 
   static void user_event_happened_cb(const char* label)
@@ -85,16 +85,16 @@ namespace xdp {
     if (!VPDatabase::alive() || !UserEventsPlugin::alive())
       return;
 
-    double timestamp = xrt_core::time_ns() ;
-    VPDatabase* db = userEventsPluginInstance.getDatabase() ;
+    double timestamp = xrt_core::time_ns();
+    VPDatabase* db = userEventsPluginInstance.getDatabase();
 
-    uint64_t l = 0 ;
+    uint64_t l = 0;
 
     if (label != nullptr)
-      l = (db->getDynamicInfo()).addString(label) ;
+      l = (db->getDynamicInfo()).addString(label);
 
-    VTFEvent* event = new UserMarker(0, timestamp, l) ;
-    (db->getDynamicInfo()).addEvent(event) ;
+    VTFEvent* event = new UserMarker(0, timestamp, l);
+    (db->getDynamicInfo()).addEvent(event);
 
     (db->getStats()).addEventCount(label);
   }
@@ -104,41 +104,43 @@ namespace xdp {
     if (!VPDatabase::alive() || !UserEventsPlugin::alive())
       return;
 
-    VPDatabase* db = userEventsPluginInstance.getDatabase() ;
+    VPDatabase* db = userEventsPluginInstance.getDatabase();
 
-    uint64_t l = 0 ;
+    uint64_t l = 0;
+
     if (label != nullptr)
-      l = (db->getDynamicInfo()).addString(label) ;
-    VTFEvent* event = new UserMarker(0, static_cast<double>(time_ns), l) ;
+      l = (db->getDynamicInfo()).addString(label);
 
-    (db->getDynamicInfo()).addEvent(event) ;
+    VTFEvent* event = new UserMarker(0, static_cast<double>(time_ns), l);
+
+    (db->getDynamicInfo()).addEvent(event);
     (db->getStats()).addEventCount(label);
   }
 
 } // end namespace xdp
 
-extern "C" 
+extern "C"
 void user_event_start_cb(unsigned int functionID,
                          const char* label,
                          const char* tooltip)
 {
-  xdp::user_event_start_cb(functionID, label, tooltip) ;
+  xdp::user_event_start_cb(functionID, label, tooltip);
 }
 
 extern "C"
 void user_event_end_cb(unsigned int functionID)
 {
-  xdp::user_event_end_cb(functionID) ;
+  xdp::user_event_end_cb(functionID);
 }
-    
+
 extern "C"
 void user_event_happened_cb(const char* label)
 {
-  xdp::user_event_happened_cb(label) ;
+  xdp::user_event_happened_cb(label);
 }
 
 extern "C"
 void user_event_time_ns_cb(unsigned long long int time_ns, const char* label)
 {
-  xdp::user_event_time_ns_cb(time_ns, label) ;
+  xdp::user_event_time_ns_cb(time_ns, label);
 }
