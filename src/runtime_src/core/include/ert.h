@@ -146,6 +146,19 @@ struct ert_start_kernel_cmd {
   uint32_t data[1];            /* count-1 number of words */
 };
 
+/**
+ * struct ert_dpu_data - interpretation of data payload for ERT_START_DPU
+ *
+ * The data payload for ERT_START_DPU is interpreted as fixed instruction
+ * buffer address along with instruction count, followed by regular kernel
+ * arguments.
+ */
+struct ert_dpu_data {
+  uint64_t instruction_buffer;       /* buffer address 2 words */
+  uint32_t instruction_buffer_size;  /* size of buffer in bytes */
+  uint32_t data[1];                  /* count-4 number of words */
+};
+
 #ifndef U30_DEBUG
 #define ert_write_return_code(cmd, value) \
 do { \
@@ -474,7 +487,7 @@ struct ert_access_valid_cmd {
  * @ERT_CMD_STATE_QUEUED:      Internal scheduler state
  * @ERT_CMD_STATE_SUBMITTED:   Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:     Internal scheduler state
- * @ERT_CMD_STATE_COMPLETED:   Set by scheduler when command completes 
+ * @ERT_CMD_STATE_COMPLETED:   Set by scheduler when command completes
  * @ERT_CMD_STATE_ERROR:       Set by scheduler if command failed
  * @ERT_CMD_STATE_ABORT:       Set by scheduler if command abort
  * @ERT_CMD_STATE_TIMEOUT:     Set by scheduler if command timeout and reset
@@ -514,6 +527,7 @@ struct cu_cmd_state_timestamps {
  * @ERT_SK_START:       start a soft kernel
  * @ERT_SK_UNCONFIG:    unconfigure a soft kernel
  * @ERT_START_KEY_VAL:  same as ERT_START_CU but with key-value pair flavor
+ * @ERT_START_DPU:      instruction buffer command format
  */
 enum ert_cmd_opcode {
   ERT_START_CU      = 0,
@@ -534,6 +548,7 @@ enum ert_cmd_opcode {
   ERT_START_KEY_VAL = 15,
   ERT_ACCESS_TEST_C = 16,
   ERT_ACCESS_TEST   = 17,
+  ERT_START_DPU     = 18,
 };
 
 /**

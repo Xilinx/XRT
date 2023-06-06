@@ -9,6 +9,8 @@
 #include "xrt/detail/config.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_hw_context.h"
+#include "xrt/xrt_kernel.h"
+#include "experimental/xrt_module.h"
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -114,6 +116,31 @@ public:
    */
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, pid_type pid, xclBufferExportHandle ehdl);
+};
+
+
+class kernel : public xrt::kernel
+{
+public:
+  /**
+   * kernel() - Constructor from module
+   *
+   * @param hwctx
+   *   The hardware context that this kernel is created in.
+   * @param module
+   *   A module with elf binary instruction code which the
+   *   kernel function will execute.
+   * @param name
+   *  Name of kernel function to construct.
+   *
+   * The module contains an elf binary with instructions for maybe
+   * multiple functions.  When the kernel is constructed, the
+   * corresponding function is located in the module.  The
+   * instructions for the function are sent to the kernel mode driver
+   * in an ERT packet along with the kernel function arguments.
+   */
+  XRT_API_EXPORT
+  kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name);
 };
 
 } // xrt::ext

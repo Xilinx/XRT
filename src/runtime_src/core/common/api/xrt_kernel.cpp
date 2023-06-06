@@ -12,8 +12,10 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/experimental/xrt_ext.h"
 #include "core/include/experimental/xrt_mailbox.h"
+#include "core/include/experimental/xrt_module.h"
 #include "core/include/experimental/xrt_xclbin.h"
 #include "core/include/ert.h"
 #include "core/include/ert_fa.h"
@@ -26,6 +28,7 @@
 #include "hw_context_int.h"
 #include "hw_queue.h"
 #include "kernel_int.h"
+#include "module_int.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
 
@@ -463,8 +466,8 @@ class ip_context
   // @default_connection: default connectivity for an argument
   class connectivity
   {
-    static constexpr int32_t no_memidx = -1;
-    static constexpr size_t max_connections = 64;
+    static constexpr int32_t no_memidx {-1};
+    static constexpr size_t max_connections {64};
     std::vector<encoded_bitset<max_connections>> connections; // indexed by argidx
     std::vector<int32_t> default_connection;                  // indexed by argidx
 
@@ -668,9 +671,6 @@ private:
   uint64_t m_address;         // cache base address for programming
   size_t m_size;              // cache address space size
 };
-
-// Remove when c++17
-constexpr int32_t ip_context::connectivity::no_memidx;
 
 // class kernel_command - Immplements command API expected by schedulers
 //
@@ -1280,6 +1280,7 @@ private:
   std::shared_ptr<ctxmgr_type> ctxmgr; // device context mgr ownership
   xrt::hw_context hwctx;               // context for hw resources if any (can be null)
   xrt_core::hw_queue hwqueue;          // hwqueue for command submission (shared by all runs)
+  xrt::module module;                  // module with instructions for function
   xrt::xclbin xclbin;                  // xclbin with this kernel
   xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
   std::vector<argument> args;          // kernel args sorted by argument index
@@ -1431,14 +1432,14 @@ private:
       kcmd->opcode = (protocol == control_type::fa) ? ERT_START_FA : ERT_START_CU;
       break;
     case kernel_type::dpu :
-      kcmd->opcode = ERT_START_CU;
+      kcmd->opcode = (module ? ERT_START_DPU : ERT_START_CU);
       break;
     case kernel_type::none:
       throw std::runtime_error("Internal error: wrong kernel type can't set cmd opcode");
     }
   }
 
-  void
+  uint32_t*
   initialize_fadesc(uint32_t* data)
   {
     auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
@@ -1447,6 +1448,7 @@ private:
     desc->input_entry_bytes = fa_input_entry_bytes;
     desc->num_output_entries = fa_num_outputs;
     desc->output_entry_bytes = fa_output_entry_bytes;
+    return data;  // no skipping
   }
 
   static uint32_t
@@ -1475,12 +1477,13 @@ public:
   //
   // The ctxmgr is not directly used by kernel_impl, but its
   // construction and shared ownership must be tied to the kernel_impl
-  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
+  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(std::move(ctx))                                    // hw context
     , hwqueue(hwctx)                                           // hw queue
+    , module{std::move(mod)}                                   // module if any
     , xclbin(hwctx.get_xclbin())                               // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
@@ -1520,6 +1523,11 @@ public:
     // amend args with computed data based on kernel protocol
     amend_args();
   }
+
+  // Delegating constructor with no module
+  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
+    : kernel_impl{dev, ctx, {}, nm}
+  {}
 
   ~kernel_impl()
   {
@@ -1566,7 +1574,7 @@ public:
     auto data = kcmd->data + kcmd->extra_cu_masks;
 
     if (kcmd->opcode == ERT_START_FA)
-      initialize_fadesc(data);
+      data = initialize_fadesc(data);
 
     return data;
   }
@@ -1581,6 +1589,12 @@ public:
   get_xclbin() const
   {
     return xclbin;
+  }
+
+  xrt::module
+  get_module() const
+  {
+    return module;
   }
 
   const std::bitset<max_cus>&
@@ -1865,6 +1879,15 @@ class run_impl
     return count++;
   }
 
+  static xrt::module
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx)
+  {
+    if (!module)
+      return {};
+
+    return {module, hwctx};
+  }
+
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
@@ -1954,8 +1977,37 @@ class run_impl
     return pkt->data + (rhs->data - rhs_pkt->data);
   }
 
+  // For DPU kernels, initialize the instruction buffer and count in
+  // the command packet, both of which are before regular kernel
+  // arguments.  The function returns the data payload after the
+  // preceeding instruction buffer and count; this data payload is
+  // where regular kernel arguments are placed.
+  uint32_t*
+  initialize_dpu(uint32_t* payload)
+  {
+    auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+    auto bo = xrt_core::module_int::get_instruction_buffer(m_module, kernel->get_name());
+    dpu->instruction_buffer = bo.address();
+    dpu->instruction_buffer_size = bo.size();
+    return dpu->data; // skip to data[1]
+  }
+
+  // Initialize the command packet with special case for DPU kernels
+  uint32_t*
+  initialize_command(kernel_command* pkt)
+  {
+    auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
+    auto payload = kernel->initialize_command(pkt);
+
+    if (kcmd->opcode == ERT_START_DPU)
+      payload = initialize_dpu(payload);
+
+    return payload;
+  }
+
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  xrt::module m_module;                   // instruction module (optional)
   xrt_core::hw_queue m_hwqueue;           // hw queue for command submission
   std::vector<ipctx> ips;                 // ips controlled by this run object
   std::bitset<max_cus> cumask;            // cumask for command execution
@@ -1999,13 +2051,14 @@ public:
   // data member before starting the command.
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
-    : kernel(std::move(k))                        // share ownership
+    : kernel(std::move(k))
+    , m_module(copy_module(kernel->get_module(), kernel->get_hw_context()))
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
-    , core_device(kernel->get_core_device())      // cache core device
+    , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
-    , data(kernel->initialize_command(cmd.get())) // default encodes CUs
+    , data(initialize_command(cmd.get()))
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
@@ -2016,6 +2069,7 @@ public:
   explicit
   run_impl(const run_impl* rhs)
     : kernel(rhs->kernel)
+    , m_module(rhs->m_module)
     , m_hwqueue(rhs->m_hwqueue)
     , ips(rhs->ips)
     , cumask(rhs->cumask)
@@ -2131,6 +2185,10 @@ public:
     auto bo = validate_bo_at_index(index, argbo);
     auto& arg = kernel->get_arg(index);
     set_arg_value(arg, bo);
+
+    if (m_module) {
+      XRT_PRINTF("run_impl::set_arg_at_index(%d) patch bo(%p)\n", index, bo.address());
+    }
   }
 
   void
@@ -2829,6 +2887,15 @@ alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
   return std::make_shared<xrt::kernel_impl>(dev, hwctx, name);
 }
 
+static std::shared_ptr<xrt::kernel_impl>
+alloc_kernel_from_module(const std::shared_ptr<device_type>& dev,
+                         const xrt::hw_context& hwctx,
+                         const xrt::module& module,
+                         const std::string& name)
+{
+  return std::make_shared<xrt::kernel_impl>(dev, hwctx, module, name);
+}
+
 static std::shared_ptr<xrt::mailbox_impl>
 get_mailbox_impl(const xrt::run& run)
 {
@@ -3378,7 +3445,19 @@ what() const noexcept
   return m_impl->m_message.c_str();
 }
 
-}
+} // xrt
+
+////////////////////////////////////////////////////////////////
+// xrt_ext::bo C++ API implmentations (xrt_ext.h)
+////////////////////////////////////////////////////////////////
+namespace xrt::ext {
+
+kernel::
+kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name)
+  : xrt::kernel::kernel{alloc_kernel_from_module(get_device(ctx.get_device()), ctx, mod, name)}
+{}
+
+} // xrt::ext
 
 ////////////////////////////////////////////////////////////////
 // xrt_kernel API implmentations (xrt_kernel.h)
