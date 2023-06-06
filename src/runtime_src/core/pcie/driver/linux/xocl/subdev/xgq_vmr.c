@@ -330,7 +330,7 @@ static void xgq_submitted_cmds_drain(struct xocl_xgq_vmr *xgq)
 		xgq_cmd = list_entry(pos, struct xocl_xgq_vmr_cmd, xgq_cmd_list);
 
 		/* Finding timed out cmds */
-		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
+		if (time_after(jiffies, xgq_cmd->xgq_cmd_timeout_jiffies)) {
 			list_del(pos);
 
 			xgq_cmd->xgq_cmd_rcode = -ETIME;
