@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2023 Xilinx, Inc. All rights reserved.
 #
 # =============================================================================
 # Checks and validates the windows installation environment
@@ -67,6 +67,7 @@ def main():
   parser.add_argument('--icd', action="store_true", help='install Khronos OpenCL icd loader library')
   parser.add_argument('--opencl', action="store_true", help='install Khronos OpenCL header files')
   parser.add_argument('--gtest', action="store_true", help='install gtest libraries')
+  parser.add_argument('--pybind11', action="store_true", help='install python dependencies (pybind11)')
   parser.add_argument('--validate_all_requirements', action="store_true", help='validate all XRT dependent libraries and tools are installed')
   parser.add_argument('--verbose', action="store_true", help='enables script verbosity')
   args = parser.parse_args()
@@ -87,7 +88,7 @@ def main():
   icdLibraryObj = ICDLibrary(args.icd)
   libraries.append( icdLibraryObj )       
 
-# -- gtest Library
+  # -- gtest Library
   gtestLibraryObj = GTestLibrary(args.gtest)
   libraries.append( gtestLibraryObj )
 
@@ -127,6 +128,16 @@ def main():
   # -- Install the given libraries -------------------------------------------
   if installLibraries( libraries, verbose) == True:
     return True
+
+  # -- Install python packages ----------------------------------------------
+  if args.pybind11:
+    pybind = pybind11_package()
+    if not pybind.installed:
+      print("")
+      print("ERROR: The Python pybind11 package could not be installed")
+      print("        Please make sure you have pip3 installed on your system and try adding it with")
+      print("        py.exe -m pip install pybind11=='2.10.4'")
+      return True
 
   return False
 
@@ -723,6 +734,74 @@ class GTestLibrary:
   # --
   def skipBuild(self):
     return self.skipBuildInstall == False
+
+#==============================================================================
+# -- Class: pybind11_package  -------------------------------------------------
+#==============================================================================
+class pybind11_package():
+    """
+    This class contains methods to check for a pybind11 installation and to
+    install the package using pip. Note that even if a pybind11 version exists,
+    if it doesn't match the expected_version parameter it will be overwritten.
+
+    Parameters
+    ----------
+    expected_version : str
+        Desired pybind11 version
+    """
+
+    def __init__(self, expected_version='2.10.4'):
+        self.installed = False
+        self.expected_version = expected_version
+        
+        if self.check_installed():
+            print("Successfully found pybind11 installation")
+            pass
+        else: 
+          print("Did not find a compatible installation of pybind11")
+          print(f"Installing pybind11 {self.expected_version} via pypi...")
+          self.install()
+          
+          print(f"Validating pybind11 {expected_version} installation...")
+          # 2nd install check as a subprocess, because we can't cleanly reload
+          # the pybind11 module within this script
+          if self.check_installed_subprocess():
+              print("Pybind11 installed successfully")
+    
+    def check_installed(self):
+        try:
+            import pybind11
+        except ImportError:
+            print("Pybind11: not installed")
+            return False
+            
+        try:
+            assert pybind11.__version__ == self.expected_version
+        except:
+            print(f"Pybind11: found version {pybind11.__version__} -- expected {self.expected_version}")
+            return False
+
+        self.installed = True
+        return True
+
+    def check_installed_subprocess(self):
+        result = subprocess.run(["py.exe", "-c", f"import pybind11; assert pybind11.__version__ == '" + self.expected_version + "'"], stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            self.installed = True
+            return True
+        else:
+            print(f"Pybind11: validation failed")
+            return False
+ 
+    def install(self):
+        result = subprocess.run(["py.exe", "-m", "pip", "install", f"pybind11=={self.expected_version}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        try:
+            assert result.returncode == 0
+            print(f"Pybind11 {self.expected_version} successfully installed")
+        except:
+            print(result.stdout)
+            print(f"Pybind11: installation failed, please check your python environment")
+
 
 # ============================================================================
 # Helper methods
