@@ -29,17 +29,17 @@
 const std::string& command_config = 
 R"(
 [{
-	"name": "cmd_configs",
-	"contents": [{
-		"name": "common",
-		"contents": [{
-			"name": "examine",
-			"contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
-		},{
-      "name": "configure",
-      "contents": ["input", "retention"]
+    "name": "cmd_configs",
+    "contents": [{
+        "name": "common",
+        "contents": [{
+            "name": "examine",
+            "contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
+        },{
+            "name": "configure",
+            "contents": ["input", "retention"]
+        }]
     }]
-	}]
 }]
 )";
 

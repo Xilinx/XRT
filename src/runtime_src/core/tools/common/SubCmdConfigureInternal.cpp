@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -208,15 +195,8 @@ show_device_conf(xrt_core::device* device)
 
   std::cout << bdf << "\n";
 
-  bool is_mfg = false;
-  bool is_recovery = false;
-  try {
-    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
-  }
-  catch (const std::exception& ex) {
-    std::cerr << ex.what() << "\n";
-  }
+  bool is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
+  bool is_recovery = xrt_core::device_query_default<xrt_core::query::is_recovery>(device, false);
 
   if (is_mfg || is_recovery)
     throw xrt_core::error(std::errc::operation_canceled, "This operation is not supported with manufacturing image.\n");
@@ -232,31 +212,20 @@ show_device_conf(xrt_core::device* device)
   }
   std::cout << node_data_format % "Security level" % sec_level;
 
-  std::string throttling_enabled = not_supported;
+  bool throttling_enabled = false;
+  bool throttling_supported = true;
   try {
     throttling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
   }
   catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for u30 and vck5000
+    throttling_supported = false;
   }
-  std::cout << node_data_format % "Clock Throttling enabled" % throttling_enabled;
+  std::cout << node_data_format % "Clock Throttling enabled" % (throttling_supported ? (throttling_enabled ? "true" : "false") : not_supported);
 
-  std::string throttling_power_override = not_supported;
-  try {
-    throttling_power_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
-  }
-  catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for u30 and vck5000
-  }
+  std::string throttling_power_override = xrt_core::device_query_default<xrt_core::query::xmc_scaling_power_override>(device, not_supported);
   std::cout << node_data_format % "Throttling threshold power override" % throttling_power_override;
 
-  std::string throttling_temp_override = not_supported;
-  try {
-    throttling_temp_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
-  }
-  catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for u30 and vck5000
-  }
+  std::string throttling_temp_override = xrt_core::device_query_default<xrt_core::query::xmc_scaling_temp_override>(device, not_supported);
   std::cout << node_data_format % "Throttling threshold temp override" % throttling_temp_override;
 
   std::string data_retention_string = not_supported;
