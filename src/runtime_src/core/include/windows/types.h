@@ -17,7 +17,9 @@
 #ifndef core_include_windows_types_h_
 #define core_include_windows_types_h_
 
-typedef size_t ssize_t;
+#include <stdint.h>
+
+typedef int64_t ssize_t;
 typedef int pid_t;
 
 #endif
