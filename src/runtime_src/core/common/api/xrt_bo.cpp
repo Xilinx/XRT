@@ -1046,9 +1046,6 @@ alloc_ubuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags f
   if (is_nodma(device.get_core_device()))
     throw xrt_core::error(EINVAL, "userptr is not supported for NoDMA platforms");
 
-  if (flags & XRT_BO_FLAGS_HOST_ONLY)
-    throw xrt_core::error(EINVAL, "userptr is not supported for host only buffers");
-
   // error if userptr is not aligned properly
   if (!is_aligned_ptr(userptr))
     throw xrt_core::error(EINVAL, "userptr is not aligned");
