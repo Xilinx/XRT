@@ -270,6 +270,8 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			}
 		}
 	}
+
+	xdev->reset_ert_cus = true;
 }
 
 int xocl_program_shell(struct xocl_dev *xdev, bool force)

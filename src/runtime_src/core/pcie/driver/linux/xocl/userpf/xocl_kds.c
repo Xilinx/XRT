@@ -2463,7 +2463,6 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	int i = 0;
 	struct xrt_cu *xcu = NULL;
 	struct kds_cu_mgmt *cu_mgmt = NULL;
-	struct xgq_cmd_resp_query_cu resp = {};
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
@@ -2527,6 +2526,8 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 			if (ret)
 				goto out;
 		}
+
+		xocl_ert_ctrl_unset_xgq(xdev, xcu->info.xgq);
 	}
 
 	cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
@@ -2545,13 +2546,13 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 			if (ret)
 				goto out;
 		}
+
+		xocl_ert_ctrl_unset_xgq(xdev, xcu->info.xgq);
 	}
 
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	if (ret)
 		goto out;
-
-	xocl_ert_ctrl_unset_xgq(xdev);
 
 out:
 	if (ret)
