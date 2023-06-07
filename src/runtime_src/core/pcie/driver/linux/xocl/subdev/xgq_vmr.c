@@ -307,7 +307,7 @@ static bool xgq_submitted_cmd_check(struct xocl_xgq_vmr *xgq)
 		xgq_cmd = list_entry(pos, struct xocl_xgq_vmr_cmd, xgq_cmd_list);
 
 		/* Finding timed out cmds */
-		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
+		if (time_after(jiffies, xgq_cmd->xgq_cmd_timeout_jiffies)) {
 			XGQ_ERR(xgq, "cmd id: %d op: 0x%x timed out, hot reset is required!",
 				xgq_cmd->xgq_cmd_entry.hdr.cid,
 				xgq_cmd->xgq_cmd_entry.hdr.opcode);
@@ -330,7 +330,7 @@ static void xgq_submitted_cmds_drain(struct xocl_xgq_vmr *xgq)
 		xgq_cmd = list_entry(pos, struct xocl_xgq_vmr_cmd, xgq_cmd_list);
 
 		/* Finding timed out cmds */
-		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
+		if (time_after(jiffies, xgq_cmd->xgq_cmd_timeout_jiffies)) {
 			list_del(pos);
 
 			xgq_cmd->xgq_cmd_rcode = -ETIME;
