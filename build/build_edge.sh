@@ -374,8 +374,8 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
 
 #Uncomment the following 2 lines to change TMP_DIR location
-echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
-echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
+#echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
+#echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
