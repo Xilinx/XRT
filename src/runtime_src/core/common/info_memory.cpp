@@ -244,7 +244,10 @@ struct memory_info_collector
 
     for (const auto& topology : hw_context_memories) {
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
-      
+
+      if (!mem_topo)
+        continue;
+
       for (int i = 0; i < mem_topo->m_count; ++i) {
         const auto& mem = mem_topo->m_mem_data[i];
         
@@ -275,7 +278,7 @@ struct memory_info_collector
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
       const auto grp_topo = reinterpret_cast<const mem_topology*>(topology.grp_topology.data());
 
-      if (!grp_topo)
+      if (!mem_topo || !grp_topo)
         continue;
 
       // group_topology prepends all mem_topology entries so groups
