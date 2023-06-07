@@ -122,7 +122,7 @@ class module_sram : public module_impl
     xrt::bo bo{m_hwctx, data.second, xrt::bo::flags::cacheable, 1 /* fix me */};
     std::memcpy(bo.map(), data.first, data.second);
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    XRT_PRINTF("<- module_sram::create_instruction_buffer() bo.address(0x%x)\n", bo.address());
+    XRT_PRINTF("<- module_sram::create_instruction_buffer()\n");
     return bo;
   }
 
