@@ -1526,7 +1526,7 @@ public:
 
   // Delegating constructor with no module
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
-    : kernel_impl{dev, ctx, {}, nm}
+    : kernel_impl{std::move(dev), std::move(ctx), {}, nm}
   {}
 
   ~kernel_impl()
@@ -2187,7 +2187,7 @@ public:
     set_arg_value(arg, bo);
 
     if (m_module) {
-      XRT_PRINTF("run_impl::set_arg_at_index(%d) patch bo(%p)\n", index, bo.address());
+      XRT_PRINTF("run_impl::set_arg_at_index(%lu) patch bo\n", index);
     }
   }
 
