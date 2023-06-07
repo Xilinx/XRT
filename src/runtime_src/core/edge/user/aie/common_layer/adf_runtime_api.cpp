@@ -439,7 +439,7 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     // write the new selector value
     driverStatus |= XAie_DataMemWrWord(config_manager::s_pDevInst, selectorTile, pRTPConfig->selectorAddr, selector);
 
-    if (pRTPConfig->hasLock)
+    if (pRTPConfig->hasLock && bAcquireLock)
     {
         // release selector and buffer locks for ME
         // still need to release async RTP selector lock FOR_READ even when the graph is suspended;
