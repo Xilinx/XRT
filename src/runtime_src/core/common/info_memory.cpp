@@ -570,40 +570,21 @@ populate_hardware_context(const xrt_core::device* device)
     hw_context_stats = xrt_core::device_query<xq::hw_context_info>(device);
   }
   catch (const xq::no_such_key&) {
-    // Ignoring if not available: Edge Case
+    // Legacy Case
+    xq::hw_context_info::data_type hw_context;
+
+    hw_context.id = "0";
+    hw_context.xclbin_uuid = xrt_core::device_query_default<xq::xclbin_uuid>(device, "");
+    hw_context.pl_compute_units = xrt_core::device_query_default<xq::kds_cu_info>(device, {});
+    hw_context.ps_compute_units = xrt_core::device_query_default<xq::kds_scu_info>(device, {});
+
+    // Account for devices that do not have an xclbin uuid but have compute units
+    if (!hw_context.xclbin_uuid.empty() || !hw_context.pl_compute_units.empty() || !hw_context.ps_compute_units.empty())
+      hw_context_stats.push_back(hw_context);
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
-  }
-
-  // If hw context info gave nothing try legacy path
-  // Legacy path will only give one hw context
-  if (hw_context_stats.empty()) {
-    xq::hw_context_info::data_type hw_context;
-
-    hw_context.id = "0";
-
-    try {
-      hw_context.xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
-    }
-    catch (const xq::exception&) {
-      // Support noop devices
-    }
-
-    try {
-      hw_context.pl_compute_units = xrt_core::device_query<xq::kds_cu_info>(device);
-      hw_context.ps_compute_units = xrt_core::device_query<xq::kds_scu_info>(device);
-    }
-    catch (const xq::no_such_key&) {
-      // Ignoring if not available
-    }
-    catch (const std::exception& ex) {
-      pt.put("error_msg", ex.what());
-      return pt;
-    }
-
-    hw_context_stats.push_back(hw_context);
   }
 
   for (const auto& hw : hw_context_stats) {
