@@ -42,12 +42,6 @@ PYBIND11_MODULE(pyxrt, m) {
  */
     m.attr("XCL_BO_FLAGS_NONE") = py::int_(XCL_BO_FLAGS_NONE);
 
-    m.attr("XRT_BO_FLAGS_CACHEABLE") = py::int_(XRT_BO_FLAGS_CACHEABLE);
-    m.attr("XRT_BO_FLAGS_DEV_ONLY") = py::int_(XRT_BO_FLAGS_DEV_ONLY);
-    m.attr("XRT_BO_FLAGS_HOST_ONLY") = py::int_(XRT_BO_FLAGS_HOST_ONLY);
-    m.attr("XRT_BO_FLAGS_P2P") = py::int_(XRT_BO_FLAGS_P2P);
-    m.attr("XRT_BO_FLAGS_SVM") = py::int_(XRT_BO_FLAGS_SVM);
-
     py::enum_<xclBOSyncDirection>(m, "xclBOSyncDirection", "DMA flags used with DMA API")
     .value("XCL_BO_SYNC_BO_TO_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE)
         .value("XCL_BO_SYNC_BO_FROM_DEVICE", xclBOSyncDirection::XCL_BO_SYNC_BO_FROM_DEVICE)
@@ -323,35 +317,4 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("get_mems", &xrt::xclbin::get_mems, "Get list of memory objects")
         .def("get_axlf", &xrt::xclbin::get_axlf, "Get the axlf data of the xclbin");
 
-
-//#if !defined(__x86_64__)
-//py::enum_<xrt::graph::access_mode>(m, "xrt_graph_access_mode")
-//    .value("exclusive", xrt::graph::access_mode::exclusive)
-//    .value("primary", xrt::graph::access_mode::primary)
-//    .value("shared", xrt::graph::access_mode::shared);
-//
-//
-///*
-// *
-// * xrt::graph
-// *
-// */
-//py::class_<xrt::graph>(m, "graph")
-//    .def(py::init([] (const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
-//                      xrt::graph::access_mode am = xrt::graph::access_mode::primary) {
-//                      return new xrt::graph(device, xclbin_id, name, am);
-//                  }))
-//    .def("reset", &xrt::graph::reset)
-//    .def("get_timestamp", &xrt::graph::get_timestamp)
-//    .def("run", &xrt::graph::run)
-//    .def("wait", ([](xrt::graph &g, uint64_t cycles)  {
-//                      g.wait(cycles);
-//                  }))
-//    .def("wait", ([](xrt::graph &g, std::chrono::milliseconds timeout_ms)  {
-//                      g.wait(timeout_ms);
-//                  }))
-//    .def("suspend", &xrt::graph::suspend)
-//    .def("resume", &xrt::graph::resume)
-//    .def("end", &xrt::graph::end);
-//#endif
 }

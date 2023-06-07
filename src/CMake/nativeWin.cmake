@@ -97,4 +97,4 @@ add_subdirectory(runtime_src)
 include (CMake/findpackage.cmake)
 
 # --- Python bindings ---
-add_subdirectory(python)
+xrt_add_subdirectory(python)
