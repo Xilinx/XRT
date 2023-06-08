@@ -644,7 +644,7 @@ get_device_factory_total(bool user)
 }
 
 std::shared_ptr<device_factory>
-get_device_factory(unsigned index, bool user)
+get_device_factory(unsigned int index, bool user)
 {
   return instance().get_device(index, user);
 }
@@ -653,14 +653,14 @@ void
 register_device_list(const std::vector<std::shared_ptr<xrt_core::device_factory>>& devlist)
 {
   for (auto device : devlist) {
-    if (device->m_is_mgmt) {
-      if (device->m_is_ready)
+    if (device->is_mgmt()) {
+      if (device->is_ready())
         mgmt_ready_list.push_back(std::move(device));        
       else
         mgmt_nonready_list.push_back(std::move(device));        
     }
     else {
-      if (device->m_is_ready)
+      if (device->is_ready())
         user_ready_list.push_back(std::move(device));
       else
         user_nonready_list.push_back(std::move(device));

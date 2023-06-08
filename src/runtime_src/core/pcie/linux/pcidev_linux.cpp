@@ -355,20 +355,22 @@ pcidev_linux(const std::string& sysfs, bool isuser) : device_factory(isuser)
 {
   std::string err;
   m_sysfs_name = sysfs;
-  m_is_ready = false;
+  set_ready(false);
   if (sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
     throw std::invalid_argument(sysfs + " is not valid BDF");
 
-  m_is_mgmt = !isuser;
+  set_mgmt(!isuser);
 
-  if (m_is_mgmt)
+  if (is_mgmt())
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
   else
     m_instance = get_render_value(xrt_core::pci::sysfs::dev_root + sysfs + "/drm");
 
   sysfs_get<int>("", "userbar", err, m_user_bar, 0);
   m_user_bar_size = bar_size(xrt_core::pci::sysfs::dev_root + sysfs, m_user_bar);
-  sysfs_get<bool>("", "ready", err, m_is_ready, false);
+  bool ready = false;
+  sysfs_get<bool>("", "ready", err, ready, false);
+  set_ready(ready);
   m_user_bar_map = reinterpret_cast<char*>(MAP_FAILED);
 
 }
@@ -450,7 +452,7 @@ get_subdev_path(const std::string& subdev, uint idx) const
   // Main devfs path
   if (subdev.empty()) {
     std::string instStr = std::to_string(m_instance);
-    if (m_is_mgmt) {
+    if (is_mgmt()) {
       std::string prefixStr = "/dev/xclmgmt";
       return prefixStr + instStr;
     }
@@ -462,7 +464,7 @@ get_subdev_path(const std::string& subdev, uint idx) const
   std::string path("/dev/xfpga/");
 
   path += subdev;
-  path += m_is_mgmt ? ".m" : ".u";
+  path += is_mgmt() ? ".m" : ".u";
   //if the domain number is big, the shift overflows, hence need to cast
   uint32_t dom = static_cast<uint32_t>(m_domain);
   path += std::to_string((dom << 16) + (m_bus << 8) + (m_dev << 3) + m_func);
@@ -474,7 +476,7 @@ int
 pcidev_linux::
 open(const std::string& subdev, uint32_t idx, int flag) const
 {
-  if (m_is_mgmt && !::is_admin())
+  if (is_mgmt() && !::is_admin())
     throw std::runtime_error("Root privileges required");
 
   std::string devfs = get_subdev_path(subdev, idx);
@@ -667,13 +669,13 @@ flock(int dev_handle, int op)
 std::shared_ptr<device>
 pcidev_linux::create_device(device::handle_type handle, device::id_type id) const
 {
-  return std::shared_ptr<device_linux>(new device_linux(handle, id, !m_is_mgmt));
+  return std::shared_ptr<device_linux>(new device_linux(handle, id, !is_mgmt()));
 }
 
 std::shared_ptr<pcidev_linux>
 pcidev_linux::lookup_peer_dev()
 {
-  if (!m_is_mgmt)
+  if (!is_mgmt())
     return nullptr;
 
   int i = 0;
@@ -725,7 +727,7 @@ get_runtime_active_kids(std::string& pci_bridge_path)
 int
 shutdown(std::shared_ptr<xrt_core::pci::pcidev_linux> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
-  if (!mgmt_dev->m_is_mgmt)
+  if (!mgmt_dev->is_mgmt())
     return -EINVAL;
 
   auto udev = mgmt_dev->lookup_peer_dev();
@@ -845,7 +847,7 @@ check_p2p_config(const std::shared_ptr<xrt_core::pci::pcidev_linux>& dev, std::s
   std::string errmsg;
   int ret = P2P_CONFIG_DISABLED;
 
-  if (dev->m_is_mgmt) {
+  if (dev->is_mgmt()) {
     return -EINVAL;
   }
   err.clear();

@@ -8,17 +8,18 @@
 
 namespace xrt_core {
 
-// One function on FPGA or AIE device
+// Device factory creates xrt_core::device for each device type.
+// Each device type has to derive from this class.
 class device_factory
 {
 public:
-  bool m_is_mgmt = false;
-  bool m_is_ready = true; 
-  device_factory(bool isuser) {  
-      m_is_mgmt = !isuser;  
+  device_factory(bool isuser = true) : m_is_mgmt{ !isuser }
+  {
+    m_is_ready = true;
   }
   
-  virtual ~device_factory() {}
+  virtual ~device_factory() 
+  {}
  
   // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
@@ -33,25 +34,53 @@ public:
   virtual device::handle_type
   create_shim(device::id_type id) const = 0;
 
-  //get BDF 
+  // Get DBDF for the device, it has information like domain, bus, dev, func
   virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
   get_bdf_info() const
   {
     return std::make_tuple(uint16_t(0), uint16_t(0), uint16_t(0), uint16_t(0));
   }
+
+  // Set ready state to the device
+  void set_ready(const bool& ready) 
+  { 
+    m_is_ready = ready;
+  }
+
+  // Get ready stae of the device
+  bool is_ready() const 
+  { 
+    return m_is_ready;
+  }
+
+  // Set device type
+  void set_mgmt(const bool& mgmt)
+  { 
+    m_is_mgmt = mgmt;
+  }
+
+  // Get device type
+  bool is_mgmt() const
+  {
+    return m_is_mgmt;
+  }
+
+private:
+  bool m_is_mgmt;
+  bool m_is_ready;
 };
 
-// get list of device_factory objects which are in ready state from registered device list.
+// Get list of device_factory objects which are in ready state from registered device list.
 size_t
 get_device_factory_ready(bool user = true);
 
-// get total number of device_factory objects from registered device list.
+// Get total number of device_factory objects from registered device list.
 size_t
 get_device_factory_total(bool user = true);
 
-//get device_factory from list of registered device list.
+// Get device_factory from list of registered device list.
 std::shared_ptr<device_factory>
-get_device_factory(unsigned index, bool user = true);
+get_device_factory(unsigned int index, bool user = true);
 
 
 // Adding device_factory instance to the global list. Should only be called from global object of
