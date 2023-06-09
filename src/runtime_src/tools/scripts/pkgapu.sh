@@ -177,7 +177,6 @@ if [[ ! -d $IMAGES_DIR ]]; then
 	error "Please specify the valid path of APU images by -images"
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
-source /proj/xbuilds/2022.2_released/installs/lin64/Vitis/2022.2/settings64.sh
 
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
@@ -309,13 +308,12 @@ if [ $? -eq 0 ]; then
     # Generate PS Kernel xclbins
     # We create one xclbin per PS Kernel
     PS_KERNEL_DIR=$BUILD_DIR/usr/lib/ps_kernels_lib
-    pk_exists=0
-    for entry in "$PS_KERNEL_DIR"/*.so
+
+    # Extract generated xclbins here
+    # This handles the xclbins required for device validation
+    for entry in "$PS_KERNEL_DIR"/*.xclbin
     do
-        # Remove .so suffix from filename
-        f=$(basename -- "$entry")
-        f=${f%.so}
-        xclbinutil --output $PS_KERNELS_XCLBIN_PATH/$f.xclbin --add-pskernel $entry --force
+        cp $entry $PS_KERNELS_XCLBIN_PATH
     done
 fi
 
