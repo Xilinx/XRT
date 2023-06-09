@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -97,7 +97,7 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::streampos fileSize = _istream.tellg();  // Go to the end
 
   // Copy the buffer into memory
-  std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+  std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[fileSize]);
   _istream.clear();                                // Clear any previous errors
   _istream.seekg(0);                               // Go to the beginning
   _istream.read((char*)memBuffer.get(), fileSize); // Read in the buffer into memory
@@ -188,7 +188,7 @@ SectionVenderMetadata::createDefaultImage(std::istream& _istream, std::ostringst
 
   // Write Data
   {
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[venderMetadataHdr.m_image_size]);
+    std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[venderMetadataHdr.m_image_size]);
     _istream.seekg(0);
     _istream.clear();
     _istream.read(reinterpret_cast<char*>(memBuffer.get()), venderMetadataHdr.m_image_size);

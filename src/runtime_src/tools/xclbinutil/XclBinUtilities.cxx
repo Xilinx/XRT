@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020-2022 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2023 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -429,7 +429,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
   if (signature.signedBySize != 0)
   {
     _istream.seekg(signatureOffset + signature.signedByOffset);
-    std::unique_ptr<char> data( new char[ signature.signedBySize ] );
+    std::unique_ptr<char[]> data( new char[ signature.signedBySize ] );
     _istream.read( data.get(), signature.signedBySize );
     _sSignedBy = std::string(data.get(), signature.signedBySize);
   }
@@ -438,7 +438,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
   if (signature.signatureSize != 0)
   {
     _istream.seekg(signatureOffset + signature.signatureOffset);
-    std::unique_ptr<char> data( new char[ signature.signatureSize ] );
+    std::unique_ptr<char[]> data( new char[ signature.signatureSize ] );
     _istream.read( data.get(), signature.signatureSize );
     _sSignature = std::string(data.get(), signature.signatureSize);
   }
