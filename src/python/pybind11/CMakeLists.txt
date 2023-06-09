@@ -33,7 +33,7 @@ if (HAS_PYTHON)
     SET(PKGDIR "site-packages")
   endif(${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
 
-  find_package(pybind11 2.10.4 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/usr/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/usr/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
 endif(HAS_PYTHON)
 
 if (pybind11_FOUND)
