@@ -20,7 +20,21 @@ target_link_libraries(${PS_KERNEL_NAME}
   xrt_core
 )
 
-install (TARGETS ${PS_KERNEL_NAME}
-  EXPORT xrt-targets
-  LIBRARY DESTINATION ${PS_KERNEL_INSTALL_DIR}
-)
+set(XCLBIN_NAME "${PS_KERNEL_NAME}.xclbin")
+set(XCLBIN_TARGET "${PS_KERNEL_NAME}_xclbin")
+set(PS_KERNEL_LOCATION "lib${PS_KERNEL_NAME}.so")
+set(XCLBIN_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/${XCLBIN_NAME}")
+
+add_custom_command(
+  OUTPUT ${XCLBIN_LOCATION}
+  COMMAND "/opt/xilinx/xrt/bin/xclbinutil" --output ${XCLBIN_LOCATION} --add-pskernel ${PS_KERNEL_LOCATION} --force
+  DEPENDS ${PS_KERNEL_NAME}
+  )
+
+add_custom_target(${XCLBIN_TARGET} ALL
+  DEPENDS ${XCLBIN_LOCATION}
+  )
+
+install (FILES ${XCLBIN_LOCATION}
+  DESTINATION ${PS_KERNEL_INSTALL_DIR}
+  )
