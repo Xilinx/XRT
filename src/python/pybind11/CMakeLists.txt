@@ -64,7 +64,7 @@ endif(Python3_FOUND)
 set(HAS_PYTHON ${Python3_FOUND})
 
 if (HAS_PYTHON)
-  execute_process(COMMAND bash "-c" "py.exe -m pip show pybind11 | grep Location: | cut -d ' ' -f2"
+    execute_process(COMMAND ${Python3_EXECUTABLE} -c "import os, pathlib, pybind11; print(pathlib.Path(os.path.dirname(pybind11.__file__)).as_posix())"
       RESULT_VARIABLE pybind_found
       OUTPUT_VARIABLE PKGDIR
       ERROR_VARIABLE ERR
@@ -72,7 +72,8 @@ if (HAS_PYTHON)
       )
 
   message("-- pybind11 location: ${PKGDIR}")
-  find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}/pybind11")
+  find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}")
+
 endif(HAS_PYTHON)
 
 if (pybind11_FOUND)
