@@ -67,12 +67,16 @@ if (HAS_PYTHON)
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import os, pathlib, pybind11; print(pathlib.Path(os.path.dirname(pybind11.__file__)).as_posix())"
       RESULT_VARIABLE pybind_found
       OUTPUT_VARIABLE PKGDIR
-      ERROR_VARIABLE ERR
+      ERROR_VARIABLE pybind_error
       OUTPUT_STRIP_TRAILING_WHITESPACE
       )
 
-  message("-- pybind11 location: ${PKGDIR}")
-  find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}")
+  if(pybind_found EQUAL 0)
+    message("-- pybind11 location: ${PKGDIR}")
+    find_package(pybind11 2.10.4 REQUIRED PATHS "${PKGDIR}")
+  else()
+    message(WARNING "-- Failed to import pybind11. Error: ${pybind_error}")
+  endif()
 
 endif(HAS_PYTHON)
 
