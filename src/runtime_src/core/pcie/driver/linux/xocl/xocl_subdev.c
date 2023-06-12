@@ -54,7 +54,7 @@ void xocl_subdev_fini(xdev_handle_t xdev_hdl)
 			kfree(core->subdevs[i]);
 			core->subdevs[i] = NULL;
 		}
-		
+
 	}
 
 	if (core->dyn_subdev_store) {
@@ -196,7 +196,7 @@ int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	}
 
 	xocl_unlock_xdev(xdev_hdl);
-	
+
 	return subdev->info.dev_idx;
 }
 
@@ -413,7 +413,11 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+			fallthrough;
+#else
 			/* fall through */
+#endif
 		case XOCL_SUBDEV_STATE_ADDED:
 		default:
 			__xocl_platform_device_unreg(xdev_hdl, pldev, state);
@@ -505,7 +509,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 				res[i].end += iostart;
 			/*
 			 * Make sure the resource of subdevice is a
-			 * child of the pci bar resource in the 
+			 * child of the pci bar resource in the
 			 * resource tree.
 			 */
 			res[i].parent = &(core->pdev->resource[bar_idx]);
@@ -614,7 +618,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		memcpy(res, sdev_info->res, sizeof(*res) * sdev_info->num_res);
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].name) {
-				res[i].name = subdev->res_name + 
+				res[i].name = subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN;
 				strncpy(subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN,
@@ -1484,7 +1488,7 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
  * |----------------------+-----|
  * | rsvd                       |
  * |----------------------------|
- *   ... start 1st entry ...          
+ *   ... start 1st entry ...
  * +--------------+---+---+-----|
  * |uuid(15:0)    |bar|rev| type|
  * |--------------+---+---+-----|
@@ -1685,7 +1689,11 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			    (subdev_info.priv_data))->flash_type,
 			    FLASH_TYPE_QSPIPS, strlen(FLASH_TYPE_QSPIPS));
 			/* default is FLASH_TYPE_SPI, thus pass through. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+			fallthrough;
+#else
 			/* fall through */
+#endif
 		case XOCL_VSEC_FLASH_TYPE_SPI_IP:
 		case XOCL_VSEC_FLASH_TYPE_SPI_REG:
 			xocl_xdev_dbg(xdev,
@@ -1725,7 +1733,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ, &bar, &offset, NULL);
 	if (!ret) {
-		int bar_payload = 0; 
+		int bar_payload = 0;
 		u64 offset_payload = 0;
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VMR_VSEC;
 
@@ -1839,7 +1847,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_fetch_dynamic_platform(core, &in, -1);
 		vsec = true;
 	}
-		
+
 	/* workaround firewall completer abort issue */
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
 	if (cap) {
@@ -1960,10 +1968,10 @@ int xocl_enable_vmr_boot(xdev_handle_t xdev)
 	err = xocl_vmr_enable_multiboot(xdev);
 	if (err && err != -ENODEV) {
 		xocl_xdev_info(xdev, "config vmr multi-boot failed. err: %d. continue to reset.", err);
-	} 
+	}
 
 	/*
-	 * set reset signal 
+	 * set reset signal
 	 */
 	err = xocl_pmc_enable_reset(xdev);
 	if (err && err != -ENODEV) {
@@ -2173,7 +2181,7 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 	}
 
 	xocl_dbg(&pdev->dev, "waiting for %d ms", i);
-	if (i == timeout) 
+	if (i == timeout)
 		return -ETIME;
 
 	return 0;

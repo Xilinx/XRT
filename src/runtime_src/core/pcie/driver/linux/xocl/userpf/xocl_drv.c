@@ -1324,7 +1324,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_dev *xdev, uint32_t i
 	struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[idx];
 	struct sg_table *sgt = NULL;
 
-	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, user_addr, page_sz))) {
+	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, (uint64_t *)user_addr, page_sz))) {
 		xocl_err(dev, "Invalid huge page user pointer\n");
 		ret = -ENOMEM;
 		goto done;

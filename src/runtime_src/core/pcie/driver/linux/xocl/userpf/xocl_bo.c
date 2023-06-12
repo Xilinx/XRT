@@ -744,11 +744,10 @@ int xocl_userptr_bo_ioctl(
 		goto out1;
 	}
 
-	ret = XOCL_ACCESS_OK(VERIFY_WRITE, args->addr, args->size);
-
-
+	ret = XOCL_ACCESS_OK(VERIFY_WRITE, (uint64_t *)args->addr, args->size);
 	if (!ret) {
-		ret = XOCL_ACCESS_OK(VERIFY_READ, args->addr, args->size);
+		ret = XOCL_ACCESS_OK(VERIFY_READ, (uint64_t *)args->addr,
+				     args->size);
 		if (!ret)
 			goto out0;
 		else

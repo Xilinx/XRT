@@ -238,12 +238,12 @@ static int xclmgmt_get_buddy_cb(struct device *dev, void *data)
 	 * 1.non xilinx device
 	 * 2.itself
 	 * 3.other devcies not being droven by same driver. using func id
-	 * may not handle u25 where there is another device on same card 
+	 * may not handle u25 where there is another device on same card
 	 */
 	if (!src_xdev || !dev || to_pci_dev(dev)->vendor != 0x10ee ||
 	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
 		XOCL_DEV_ID(src_xdev->core.pdev) || !dev->driver ||
-		strcmp(dev->driver->name, "xclmgmt")) 
+		strcmp(dev->driver->name, "xclmgmt"))
 		return 0;
 
 	tgt_xdev = dev_get_drvdata(dev);
@@ -611,7 +611,8 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL, devctl);
 	pci_write_config_word(bus->self, PCI_COMMAND, pci_cmd);
 
-	pci_enable_device(pdev);
+	if (pci_enable_device(pdev))
+		mgmt_err(lro, "failed to enable pci device");
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
@@ -1007,7 +1008,7 @@ static const void* xclmgmt_get_interface_uuid(struct xclmgmt_dev *lro) {
 
 	/*
 	 * don't need blp uuid. do we have multiple interface uuid?
-	 */ 
+	 */
 	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
 		-1, PROP_INTERFACE_UUID, &uuid, NULL);
 	if (!uuid || node < 0)
