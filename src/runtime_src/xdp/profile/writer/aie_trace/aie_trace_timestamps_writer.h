@@ -29,7 +29,7 @@ namespace xdp {
                              uint64_t deviceIndex);
     ~AIETraceTimestampsWriter();
 
-    virtual bool write(bool openNewFile = true);
+    virtual bool write(bool openNewFile);
     
   private:
     std::string mDeviceName;

@@ -211,11 +211,10 @@ namespace xdp {
   bool AieTrace_EdgeImpl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
-    aieDevice = static_cast<xaiefal::XAieDev*>(
-        db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
+    aieDevice = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(severity_level::warning, "XRT",
-                              "Unable to get AIE device. AIE event trace will not be available.");
+          "Unable to get AIE device. AIE event trace will not be available.");
       return false;
     }
 
@@ -234,12 +233,12 @@ namespace xdp {
 
     // Set metrics for counters and trace events
     if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
-      std::string msg(
-          "Unable to configure AIE trace control and events. No "
-          "trace will be generated.");
+      std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
     }
+
+    mPollTimers = true;
   }
 
   bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
@@ -338,8 +337,11 @@ namespace xdp {
     auto loc = XAie_TileLoc(col, row);
     std::stringstream msg;
 
-    const std::string groups[3] = {XAIEDEV_DEFAULT_GROUP_GENERIC, XAIEDEV_DEFAULT_GROUP_STATIC,
-                                   XAIEDEV_DEFAULT_GROUP_AVAIL};
+    const std::string groups[3] = {
+      XAIEDEV_DEFAULT_GROUP_GENERIC,
+      XAIEDEV_DEFAULT_GROUP_STATIC, 
+      XAIEDEV_DEFAULT_GROUP_AVAIL
+    };
 
     msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
     for (auto& g : groups) {
@@ -350,7 +352,8 @@ namespace xdp {
       msg << "Resource Group : " << std::left << std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
-          << "Broadcast Channels : " << bc << " " << std::endl;
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
     }
     msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
     for (auto& g : groups) {
@@ -361,7 +364,8 @@ namespace xdp {
       msg << "Resource Group : " << std::left << std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
-          << "Broadcast Channels : " << bc << " " << std::endl;
+          << "Broadcast Channels : " << bc << " " 
+          << std::endl;
     }
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
@@ -550,15 +554,20 @@ namespace xdp {
   bool AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     if (!metadata->getIsValidMetrics()) {
-      std::string msg(
-          "AIE trace metrics were not specified in xrt.ini. AIE "
-          "event trace will not be available.");
+      std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return false;
     }
 
+    // Get channel configurations (memory and interface tiles)
     auto configChannel0 = metadata->getConfigChannel0();
     auto configChannel1 = metadata->getConfigChannel1();
+
+    // Zero trace event tile counts
+    for (int m = 0; m < static_cast<int>(module_type::num_types); ++m) {
+      for (int n = 0; n <= NUM_TRACE_EVENTS; ++n)
+        mNumTileTraceEvents[m][n] = 0;
+    }
 
     // Decide when to use user event for trace end to enable flushing
     // NOTE: This is needed to "flush" the last trace packet.
@@ -615,8 +624,7 @@ namespace xdp {
       cfgTile->trace_metric_set = metricSet;
 
       // Get vector of pre-defined metrics for this set
-      // NOTE: these are local copies as we are adding tile/counter-specific
-      // events
+      // NOTE: these are local copies as we are adding tile/counter-specific events
       EventVector coreEvents;
       EventVector memoryCrossEvents;
       EventVector memoryEvents;
@@ -644,8 +652,7 @@ namespace xdp {
       // Check Resource Availability
       if (!tileHasFreeRsc(aieDevice, loc, type, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT",
-                                "Tile doesn't have enough free resources for "
-                                "trace. Aborting trace configuration.");
+            "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         printTileStats(aieDevice, tile);
         return false;
       }
@@ -1234,6 +1241,9 @@ namespace xdp {
 
   void AieTrace_EdgeImpl::flushAieTileTraceModule()
   {
+    // Stop polling
+    mPollTimers = false;
+
     if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty())
       return;
 
@@ -1265,7 +1275,7 @@ namespace xdp {
   void AieTrace_EdgeImpl::pollTimers(uint32_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
-    if (!(db->getStaticInfo().isDeviceReady(index)))
+    if (!mPollTimers || !(db->getStaticInfo().isDeviceReady(index)))
       return;
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;

@@ -164,27 +164,19 @@ namespace xdp {
   
   std::vector<std::string> getValidPorts(const xrt_core::device* device)
   {
-    auto plios = getPLIOs(device);
-    auto gmios = getGMIOs(device);
-    if (plios.empty() && gmios.empty())
+    auto ios = getAllIOs(device);
+    if (ios.empty())
       return {};
 
     std::vector<std::string> ports;
 
     // Traverse all I/O and include logical and port names
-    for (auto &plio : plios) {
+    for (auto &io : ios) {
       std::vector<std::string> nameVec;
-      boost::split(nameVec, plio.second.name, boost::is_any_of("."));
+      boost::split(nameVec, io.second.name, boost::is_any_of("."));
       ports.emplace_back(nameVec.back());
-      ports.emplace_back(plio.second.logicalName);
+      ports.emplace_back(io.second.logicalName);
     }
-    for (auto &gmio : gmios) {
-      std::vector<std::string> nameVec;
-      boost::split(nameVec, gmio.second.name, boost::is_any_of("."));
-      ports.emplace_back(nameVec.back());
-      ports.emplace_back(gmio.second.logicalName);
-    }
-
     return ports;
   }
 
@@ -209,6 +201,8 @@ namespace xdp {
       plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
       plio.streamId = plio_node.second.get<uint16_t>("stream_id");
       plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
+      plio.channelNum = 0;
+      plio.burstLength = 0;
 
       plios[plio.name] = plio;
     }
@@ -261,7 +255,16 @@ namespace xdp {
 
     return gmios;
   }
-                                         
+
+  std::unordered_map<std::string, io_config>
+  getAllIOs(const xrt_core::device* device)
+  {
+    auto ios = getPLIOs(device);
+    auto gmios = getGMIOs(device);
+    ios.merge(gmios);
+    return ios;
+  }
+
   std::vector<tile_type> getInterfaceTiles(const xrt_core::device* device,
                                            const std::string& graphName, const std::string& portName,
                                            const std::string& metricStr, int16_t channelId,
@@ -269,13 +272,13 @@ namespace xdp {
   {
     std::vector<tile_type> tiles;
 
-    auto plios = getPLIOs(device);
-    for (auto& plio : plios) {
-      auto isMaster    = plio.second.slaveOrMaster;
-      auto streamId    = plio.second.streamId;
-      auto shimCol     = plio.second.shimColumn;
-      auto logicalName = plio.second.logicalName;
-      auto name        = plio.second.name;
+    auto ios = getAllIOs(device);
+    for (auto& io : ios) {
+      auto isMaster    = io.second.slaveOrMaster;
+      auto streamId    = io.second.streamId;
+      auto shimCol     = io.second.shimColumn;
+      auto logicalName = io.second.logicalName;
+      auto name        = io.second.name;
 
       auto namePos     = name.find_last_of(".");
       auto currGraph   = name.substr(0, namePos);

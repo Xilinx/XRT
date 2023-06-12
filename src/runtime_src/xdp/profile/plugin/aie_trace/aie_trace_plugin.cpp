@@ -68,6 +68,7 @@ namespace xdp {
       }
       catch(...) {
       }
+      
       db->unregisterPlugin(this);
     }
     // If the database is dead, then we must have already forced a 
@@ -266,7 +267,7 @@ namespace xdp {
 
     // Writer for timestamp file
     std::string outputFile = "aie_event_timestamps.csv";
-    VPWriter* tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
+    auto tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
     writers.push_back(tsWriter);
     db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
 
@@ -346,6 +347,9 @@ namespace xdp {
   void AieTracePluginUnified::writeAll(bool openNewFiles)
   {
     for (const auto& kv : handleToAIEData) {
+      // End polling thread
+      endPollforDevice(kv.first);
+
       auto& AIEData = kv.second;
       if (AIEData.valid) {
         AIEData.implementation->flushAieTileTraceModule();
@@ -380,10 +384,10 @@ namespace xdp {
   void AieTracePluginUnified::endPoll()
   {
     // Ask all threads to end
-    for (auto& p : handleToAIEData) 
+    for (auto& p : handleToAIEData) { 
       p.second.threadCtrlBool = false;
-    for (auto& p : handleToAIEData) 
-      p.second.thread.join();
-    handleToAIEData.clear();
+      if (p.second.thread.joinable())
+        p.second.thread.join();
+    }
   }
 } // end namespace xdp

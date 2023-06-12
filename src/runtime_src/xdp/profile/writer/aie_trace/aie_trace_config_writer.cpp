@@ -52,7 +52,6 @@ namespace xdp {
     if (tiles != nullptr) {
       for (auto& tile: *tiles) {  
         if (tile->type == module_type::core) {
-
           bpt::ptree AieTileTraceConfig_C;
           bpt::ptree core_trace_config;
           bpt::ptree memory_trace_config;
@@ -333,9 +332,8 @@ namespace xdp {
 
     EventTraceConfigs.push_back(std::make_pair("", EventTraceConfigs_C));
     pt.add_child("EventTraceConfigs", EventTraceConfigs);
-    //bpt::write_json(std::cout, pt);
+    
     write_jsonEx(getcurrentFileName(), pt);
     return true;
   }
-
 }

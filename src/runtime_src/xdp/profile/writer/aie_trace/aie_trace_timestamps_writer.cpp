@@ -43,32 +43,34 @@ namespace xdp {
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
     double aieClockFreqMhz = (db->getStaticInfo()).getClockRateMHz(mDeviceIndex, false);
 
+    std::ofstream fos;
+    fos.open( getcurrentFileName() );
+
     // Write header
-    fout << "Version: 1.0\n";
-    fout << "Target device: " << mDeviceName << "\n";
-    fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
-    fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
-    fout << "timestamp1"   << ","
-         << "timestamp2"   << ","
-         << "column"       << ","
-         << "row"          << ","
-         << "timer"        << ",\n";
+    fos << "Version: 1.0\n";
+    fos << "Target device: " << mDeviceName << "\n";
+    fos << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
+    fos << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
+    fos << "timestamp1"   << ","
+        << "timestamp2"   << ","
+        << "column"       << ","
+        << "row"          << ","
+        << "timer"        << ",\n";
 
     // Write all data elements
     std::vector<counters::DoubleSample> samples =
         db->getDynamicInfo().getAIETimerSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      fout << std::fixed << std::setprecision(6)
-           << sample.timestamp1 << ","
-           << sample.timestamp2 << ",";
-      for (auto value : sample.values) {
-        fout << value << ",";
-      }
-      fout << "\n";
+      fos << std::fixed << std::setprecision(6)
+          << sample.timestamp1 << ","
+          << sample.timestamp2 << ",";
+      for (auto value : sample.values)
+        fos << value << ",";
+      fos << "\n";
     }
 
-    fout.flush();
+    fos.close();
     return true;
   }
 

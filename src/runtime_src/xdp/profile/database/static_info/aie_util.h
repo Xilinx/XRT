@@ -43,7 +43,8 @@ namespace xdp {
   std::unordered_map<std::string, io_config> getGMIOs(const xrt_core::device* device);
   std::unordered_map<std::string, io_config> getTraceGMIOs(const xrt_core::device* device);
   std::unordered_map<std::string, io_config> getChildGMIOs(const xrt_core::device* device,
-                                         const std::string& childStr);
+                                                           const std::string& childStr);
+  std::unordered_map<std::string, io_config> getAllIOs(const xrt_core::device* device);
   std::vector<tile_type> getInterfaceTiles(const xrt_core::device* device,
                                            const std::string& graphName,
                                            const std::string& portName = "all",
