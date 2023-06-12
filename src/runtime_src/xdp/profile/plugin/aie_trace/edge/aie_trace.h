@@ -72,7 +72,6 @@ namespace xdp {
     inline uint32_t bcIdToEvent(int bcId);
 
    private:
-    bool mPollTimers = false;
     XAie_DevInst* aieDevInst = nullptr;
     xaiefal::XAieDev* aieDevice = nullptr;
 

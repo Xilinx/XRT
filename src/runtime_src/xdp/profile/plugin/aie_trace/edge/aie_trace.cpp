@@ -237,8 +237,6 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
     }
-
-    mPollTimers = true;
   }
 
   bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
@@ -1241,9 +1239,6 @@ namespace xdp {
 
   void AieTrace_EdgeImpl::flushAieTileTraceModule()
   {
-    // Stop polling
-    mPollTimers = false;
-
     if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty())
       return;
 
@@ -1275,7 +1270,7 @@ namespace xdp {
   void AieTrace_EdgeImpl::pollTimers(uint32_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
-    if (!mPollTimers || !(db->getStaticInfo().isDeviceReady(index)))
+    if (!(db->getStaticInfo().isDeviceReady(index)))
       return;
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
