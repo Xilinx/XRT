@@ -95,8 +95,8 @@ public:
     void
     open_context(const xrt_core::device* device, xrt::aie::access_mode am);
 
-    bool
-    is_context_set();
+    xrt::aie::access_mode
+    get_access_mode();
 
     void
     sync_bo(xrt::bo& bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);

@@ -526,9 +526,7 @@ xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xcl
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   auto bosize = bo.size();
 
@@ -552,9 +550,7 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum x
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   auto bosize = bo.size();
 
@@ -578,9 +574,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   aieArray->wait_gmio(gmioName);
 }
@@ -596,9 +590,7 @@ xclResetAieArray(xclDeviceHandle handle)
     throw xrt_core::error(-EINVAL, "No AIE presented");
   auto aieArray = drv->getAieArray();
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   aieArray->reset(device.get());
 #else
@@ -621,9 +613,7 @@ xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, con
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   return aieArray->start_profiling(option, value_or_empty(port1Name), value_or_empty(port2Name), value);
 }
@@ -643,9 +633,7 @@ xclReadProfiling(xclDeviceHandle handle, int phdl)
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   return aieArray->read_profiling(phdl);
 }
@@ -665,9 +653,7 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
   auto aieArray = getAieArray();
 #endif
 
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
+  aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
 
   return aieArray->stop_profiling(phdl);
 }

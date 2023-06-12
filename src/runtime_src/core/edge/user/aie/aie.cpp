@@ -32,6 +32,8 @@
 
 namespace zynqaie {
 
+std::mutex am_lock;
+
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
     DevInst = {0};
@@ -113,6 +115,10 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 {
 #ifndef __AIESIM__
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+  std::lock_guard access_lock_guard(am_lock);
+  if (access_mode != xrt::aie::access_mode::none) {
+	  return;
+  }
 
   auto current_am = drv->getAIEAccessMode();
   if (current_am != xrt::aie::access_mode::none)
@@ -120,18 +126,19 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 
   int ret = drv->openAIEContext(am);
   if (ret)
-      throw xrt_core::error(ret, "Fail to open AIE context");
+    throw xrt_core::error(ret, "Fail to open AIE context");
 
   drv->setAIEAccessMode(am);
   access_mode = am;
 #endif
 }
 
-bool
+xrt::aie::access_mode
 Aie::
-is_context_set()
+get_access_mode()
 {
-  return (access_mode != xrt::aie::access_mode::none);
+  std::lock_guard access_lock_guard(am_lock);
+  return access_mode;
 }
 
 void
@@ -141,7 +148,7 @@ sync_bo(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t s
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
 
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
   auto gmio_itr = gmio_apis.find(gmioName);
@@ -163,7 +170,7 @@ sync_bo_nb(xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't sync BO: AIE is not initialized");
 
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't sync BO");
 
   auto gmio_itr = gmio_apis.find(gmioName);
@@ -184,7 +191,7 @@ wait_gmio(const std::string& gmioName)
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't wait GMIO: AIE is not initialized");
 
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't wait gmio");
 
   auto gmio_itr = gmio_apis.find(gmioName);
@@ -260,7 +267,7 @@ reset(const xrt_core::device* device)
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
 
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't reset AIE");
 
   XAie_Finish(devInst);
@@ -285,7 +292,7 @@ start_profiling(int option, const std::string& port1_name, const std::string& po
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Start profiling fails: AIE is not initialized");
 
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
 
   switch (option) {
@@ -311,7 +318,7 @@ uint64_t
 Aie::
 read_profiling(int phdl)
 {
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
 
   uint64_t value = 0;
@@ -326,7 +333,7 @@ void
 Aie::
 stop_profiling(int phdl)
 {
-  if (access_mode == xrt::aie::access_mode::shared)
+  if (get_access_mode() == xrt::aie::access_mode::shared)
     throw xrt_core::error(-EPERM, "Shared AIE context can't do profiling");
   if (eventRecords.size() > phdl)
     adf::profiling::stop(eventRecords[phdl].acquiredResources);
