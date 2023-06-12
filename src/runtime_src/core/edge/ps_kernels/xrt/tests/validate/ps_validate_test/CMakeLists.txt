@@ -27,7 +27,7 @@ set(XCLBIN_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/${XCLBIN_NAME}")
 
 add_custom_command(
   OUTPUT ${XCLBIN_LOCATION}
-  COMMAND "/opt/xilinx/xrt/bin/xclbinutil" --output ${XCLBIN_LOCATION} --add-pskernel ${PS_KERNEL_LOCATION} --force
+  COMMAND "${MY_VITIS}/bin/xclbinutil" --output ${XCLBIN_LOCATION} --add-pskernel ${PS_KERNEL_LOCATION} --force
   DEPENDS ${PS_KERNEL_NAME}
   )
 
