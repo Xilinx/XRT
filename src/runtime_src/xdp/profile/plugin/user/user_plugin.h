@@ -15,7 +15,7 @@
  */
 
 // This file contains the plugin for user events.  There will be a user API
-//  that is accessible to host code developers.
+// that is accessible to host code developers.
 
 #ifndef USER_PLUGIN_DOT_H
 #define USER_PLUGIN_DOT_H
@@ -23,19 +23,18 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
-  class UserEventsPlugin : public XDPPlugin
-  {
-  private:
-    static bool live;
-  public:
-    UserEventsPlugin() ;
-    ~UserEventsPlugin() ;
+  class UserEventsPlugin : public XDPPlugin {
+    private:
+      static bool live;
+    public:
+      UserEventsPlugin();
+      ~UserEventsPlugin();
 
-    static bool alive() { return UserEventsPlugin::live; }
+      static bool alive() { return UserEventsPlugin::live; }
 
-    // Called when the database is destroyed before the plugin
-    virtual void writeAll(bool openNewFiles = true) ;
-  } ;
+      // Called when the database is destroyed before the plugin
+      virtual void writeAll(bool openNewFiles = true);
+  };
 } // end namespace xdp
 
 #endif
