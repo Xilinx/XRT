@@ -1,8 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#
-set(PS_KERNEL_INSTALL_DIR "${XRT_INSTALL_LIB_DIR}/ps_kernels_lib")
-
+# Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 set(PS_KERNEL_NAME "ps_bandwidth")
 
 add_library(${PS_KERNEL_NAME} SHARED

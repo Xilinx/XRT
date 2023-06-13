@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 
 # This script creates rpm and deb packages for Versal APU firmware and Built-in PS Kernels.
@@ -305,13 +306,18 @@ if [ $? -eq 0 ]; then
     # Generate the output directory
     PS_KERNELS_XCLBIN_PATH="$BUILD_DIR/lib/firmware/xilinx/ps_kernels"
     mkdir -p $PS_KERNELS_XCLBIN_PATH
-    # Generate PS Kernel xclbins
-    # We create one xclbin per PS Kernel
+    # Copy over PS kernel xclbins built by XRT
     PS_KERNEL_DIR=$BUILD_DIR/usr/lib/ps_kernels_lib
 
     # Extract generated xclbins here
     # This handles the xclbins required for device validation
     for entry in "$PS_KERNEL_DIR"/*.xclbin
+    do
+        cp $entry $PS_KERNELS_XCLBIN_PATH
+    done
+
+    # Copy the configuration json files for PS kernels
+    for entry in "$PS_KERNEL_DIR"/*.json
     do
         cp $entry $PS_KERNELS_XCLBIN_PATH
     done
