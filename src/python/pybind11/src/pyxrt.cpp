@@ -9,7 +9,6 @@
  *          sonal.santan@xilinx.com
  */
 
-
 // XRT includes
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -79,7 +78,8 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("host", xrt::info::device::host)
         .value("dynamic_regions", xrt::info::device::dynamic_regions)
         .value("vmr", xrt::info::device::vmr);
-/*
+
+ /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
  *
@@ -87,6 +87,16 @@ PYBIND11_MODULE(pyxrt, m) {
     py::class_<xrt::uuid>(m, "uuid", "XRT UUID object to identify a compiled xclbin binary")
         .def(py::init<char *>())
         .def("to_string", &xrt::uuid::to_string, "Convert XRT UUID object to string");
+
+/*
+*  xrt::hw_context
+*/
+
+    py::class_<xrt::hw_context>(m, "hw_context", "A hardware context associates an xclbin with hardware resources.")
+        .def(py::init<>())
+        .def(py::init([](const xrt::device& d, const xrt::uuid& u) {
+            return new xrt::hw_context(d, u);
+        }));
 
 /*
  *
@@ -105,6 +115,9 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("load_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
                                 return d.load_xclbin(xclbin);
                             }, "Load the xclbin to the device")
+        .def("register_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
+                                return d.register_xclbin(xclbin);
+                            }, "Register an xclbin with the device")
         .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid, "Return the UUID object representing the xclbin loaded on the device")
         .def("get_info", [] (xrt::device& d, xrt::info::device key) {
                              /* Convert the value to string since we can have only one return type for get_info() */
@@ -188,14 +201,17 @@ PYBIND11_MODULE(pyxrt, m) {
                           xrt::kernel::cu_access_mode m) {
                            return new xrt::kernel(d, u, n, m);
                        }))
-  	.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n) {
-                           return new xrt::kernel(d, u, n);
+  	    .def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n) {
+                               return new xrt::kernel(d, u, n);
+                       }))
+        .def(py::init([](const xrt::hw_context& ctx, const std::string& n) {
+                               return new xrt::kernel(ctx, n);
                        }))
         .def("__call__", [](xrt::kernel& k, py::args args) -> xrt::run {
                              int i = 0;
                              xrt::run r(k);
 
-                             for (const auto& item : args) {
+                             for (auto item : args) {
                                  try {
                                      r.set_arg(i, item.cast<xrt::bo>());
                                  }
@@ -246,6 +262,9 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("sync", ([](xrt::bo &b, xclBOSyncDirection dir, size_t size, size_t offset)  {
                           b.sync(dir, size, offset);
                       }), "Synchronize (DMA or cache flush/invalidation) the buffer in the requested direction")
+        .def("sync", ([](xrt::bo& b, xclBOSyncDirection dir) {
+                          b.sync(dir);
+                      }), "Sync entire buffer content in specified direction.")
         .def("map", ([](xrt::bo &b)  {
                          return py::memoryview::from_memory(b.map(), b.size());
                      }), "Create a byte accessible memory view of the buffer object")
@@ -292,46 +311,10 @@ PYBIND11_MODULE(pyxrt, m) {
         .def(py::init([](const axlf* top) {
                           return new xrt::xclbin(top);
                       }))
-        .def("get_ips", ([](xrt::xclbin& xbin) {
-                         xbin.get_ips();
-                      }))
-        .def("get_ips", ([](xrt::xclbin& xbin, const std::string& nm) {
-                         xbin.get_ips(nm);
-                      }))
         .def("get_kernels", &xrt::xclbin::get_kernels, "Get list of kernels from xclbin")
         .def("get_xsa_name", &xrt::xclbin::get_xsa_name, "Get Xilinx Support Archive (XSA) name of xclbin")
         .def("get_uuid", &xrt::xclbin::get_uuid, "Get the uuid of the xclbin")
-        .def("get_mems", &xrt::xclbin::get_mems, "Get list of memory objects");
+        .def("get_mems", &xrt::xclbin::get_mems, "Get list of memory objects")
+        .def("get_axlf", &xrt::xclbin::get_axlf, "Get the axlf data of the xclbin");
 
-
-#if !defined(__x86_64__)
-py::enum_<xrt::graph::access_mode>(m, "xrt_graph_access_mode")
-    .value("exclusive", xrt::graph::access_mode::exclusive)
-    .value("primary", xrt::graph::access_mode::primary)
-    .value("shared", xrt::graph::access_mode::shared);
-
-
-/*
- *
- * xrt::graph
- *
- */
-py::class_<xrt::graph>(m, "graph")
-    .def(py::init([] (const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
-                      xrt::graph::access_mode am = xrt::graph::access_mode::primary) {
-                      return new xrt::graph(device, xclbin_id, name, am);
-                  }))
-    .def("reset", &xrt::graph::reset)
-    .def("get_timestamp", &xrt::graph::get_timestamp)
-    .def("run", &xrt::graph::run)
-    .def("wait", ([](xrt::graph &g, uint64_t cycles)  {
-                      g.wait(cycles);
-                  }))
-    .def("wait", ([](xrt::graph &g, std::chrono::milliseconds timeout_ms)  {
-                      g.wait(timeout_ms);
-                  }))
-    .def("suspend", &xrt::graph::suspend)
-    .def("resume", &xrt::graph::resume)
-    .def("end", &xrt::graph::end);
-#endif
 }
