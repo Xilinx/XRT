@@ -67,7 +67,7 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
-enable_vdu()
+enable_vdu_init()
 {
     VERSAL_PROJECT_DIR=$1
     APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
@@ -88,35 +88,8 @@ enable_vdu()
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
     
     # Generate vdu modules and add them to apu package
-    
-    # Enable VDU kernel module 
-    VDU_MOD_BB_FILE=$APU_RECIPES_DIR/kernel-module-vdu.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n kernel-module-vdu --enable
-    fi
-    cp -rf $VDU_MOD_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu/
-    
-    # Enable VDU firmware 
-    VDU_FIRMWARE_BB_FILE=$APU_RECIPES_DIR/vdu-firmware.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n vdu-firmware --enable
-    fi
-    cp -rf $VDU_FIRMWARE_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware/
-    
-    # Enable VDU control software library 
-    # This is not required as PS Kernels statically linking with control software, Enabling this to debug standalone control software 
-    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-ctrlsw.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-ctrlsw --enable
-    fi
-    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw/
-
     echo "IMAGE_INSTALL:append = \" libvdu-ctrlsw kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
     echo "MACHINE_FEATURES = \"vdu\""  >> build/conf/local.conf
-    #sed -i '1iMACHINE = \" versal-ai-core-generic \"' build/conf/local.conf
 
 }
 
@@ -384,7 +357,7 @@ if [[ $apu_package == 1 ]]; then
   if [[ $AARCH = $versal_dir ]]; then
     # configure the project with appropriate options
     config_versal_project .
-    enable_vdu .
+    enable_vdu_init .
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
