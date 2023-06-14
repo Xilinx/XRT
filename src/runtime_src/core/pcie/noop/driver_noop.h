@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef _XCL_PCIDRV_NOOP_H_
-#define _XCL_PCIDRV_NOOP_H_
+#ifndef XCL_DRIVER_NOOP_H_
+#define XCL_DRIVER_NOOP_H_
 
-#include "pcidev_noop.h"
-#include <string>
+#include "device_factory_noop.h"
 
-namespace xrt_core { namespace pci {
+namespace xrt_core::noop {
 
-class pcidrv_noop
+class driver_noop
 {
 public:
   std::string
@@ -21,14 +20,13 @@ public:
   bool
   is_emulation() const { return false; }
 
-  std::shared_ptr<device_factory>
+  std::shared_ptr<xrt_core::device_factory>
   create_pcidev() const ;
 
   void
-  scan_devices(std::vector<std::shared_ptr<device_factory>>& dev_list) const;
-
+  scan_devices(std::vector<std::shared_ptr<xrt_core::device_factory>>& dev_list) const;
 };
 
-} } // namespace xrt_core :: pci
+} // xrt_core::noop
 
 #endif

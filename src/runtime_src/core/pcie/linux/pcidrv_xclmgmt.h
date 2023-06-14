@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef _XCL_PCIDRV_XCLMGMT_H_
-#define _XCL_PCIDRV_XCLMGMT_H_
+#ifndef XCL_PCIDRV_XCLMGMT_H_
+#define XCL_PCIDRV_XCLMGMT_H_
 
 #include "pcidrv.h"
 #include "pcidev_linux.h"

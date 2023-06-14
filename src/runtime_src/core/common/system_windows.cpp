@@ -19,20 +19,16 @@
 #include <regex>
 #include <thread>
 #include <vector>
-#include <gnu/libc-version.h>
-#include <sys/utsname.h>
-#include <unistd.h>
 
-#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
-#define MACHINE_NODE_PATH "/proc/device-tree/model"
-#define PFM_NAME "edge"
-#elif defined(__PPC64__)
-#define MACHINE_NODE_PATH "/proc/device-tree/model-name"
-#define PFM_NAME "edge"
-// /proc/device-tree/system-id may be 000000
-// /proc/device-tree/model may be 00000
-#elif defined (__x86_64__)
-#define MACHINE_NODE_PATH "/sys/devices/virtual/dmi/id/product_name"
+#ifdef _WIN32
+#include <setupapi.h>
+#include <windows.h>
+#pragma warning (disable : 4996)
+#pragma comment (lib, "Setupapi.lib")
+#endif
+
+#if defined (_WIN32)
+#define MACHINE_NODE_PATH ""
 #define PFM_NAME "pcie"
 #else
 #error "Unsupported platform"
@@ -48,62 +44,56 @@ static const char* pcie_pfm = "pcie";
 // mutex to protect insertion
 static std::mutex mutex;
 
-static boost::property_tree::ptree
-driver_version(const std::string& driver)
+#ifdef _WIN32
+static std::string
+getmachinename()
 {
-  boost::property_tree::ptree _pt;
-  std::string ver("unknown");
-  std::string hash("unknown");
+  std::string machine;
+  SYSTEM_INFO sysInfo;
 
-  if (std::strcmp(PFM_NAME, pcie_pfm) == 0) {
-    std::string path("/sys/module/");
-    path += driver;
-    path += "/version";
-    std::ifstream stream(path);
-    if (stream.is_open()) {
-      std::string line;
-      getline(stream, line);
-      std::stringstream ss(line);
-      getline(ss, ver, ',');
-      getline(ss, hash, ',');
-    }
+  // Get hardware info
+  ZeroMemory(&sysInfo, sizeof(SYSTEM_INFO));
+  GetSystemInfo(&sysInfo);
+  // Set processor architecture
+  switch (sysInfo.wProcessorArchitecture) {
+  case PROCESSOR_ARCHITECTURE_AMD64:
+    machine = "x86_64";
+    break;
+  case PROCESSOR_ARCHITECTURE_IA64:
+    machine = "ia64";
+    break;
+  case PROCESSOR_ARCHITECTURE_INTEL:
+    machine = "x86";
+    break;
+  case PROCESSOR_ARCHITECTURE_UNKNOWN:
+  default:
+    machine = "unknown";
+    break;
   }
-  else {
-    //dkms flow is not available for zocl
-   //so version.h file is not available at zocl build time
-#if defined(XRT_DRIVER_VERSION)
-    std::string zocl_driver_ver = XRT_DRIVER_VERSION;
-    std::stringstream ss(zocl_driver_ver);
-    getline(ss, ver, ',');
-    getline(ss, hash, ',');
-#endif
-  }
-  _pt.put("name", driver);
-  _pt.put("version", ver);
-  _pt.put("hash", hash);
-  return _pt;
-}
-
-static boost::property_tree::ptree
-glibc_info()
-{
-  boost::property_tree::ptree _pt;
-  _pt.put("name", "glibc");
-  _pt.put("version", gnu_get_libc_version());
-  return _pt;
+  return machine;
 }
 
 static std::string
-machine_info()
+osNameImpl()
 {
-  std::string model("unknown");
-  std::ifstream stream(MACHINE_NODE_PATH);
-  if (stream.good()) {
-    std::getline(stream, model);
-    stream.close();
+  OSVERSIONINFO vi;
+  vi.dwOSVersionInfoSize = sizeof(vi);
+  if (GetVersionEx(&vi) == 0)
+    throw xrt_core::error("Cannot get OS version information");
+  switch (vi.dwPlatformId)
+  {
+  case VER_PLATFORM_WIN32s:
+    return "Windows 3.x";
+  case VER_PLATFORM_WIN32_WINDOWS:
+    return vi.dwMinorVersion == 0 ? "Windows 95" : "Windows 98";
+  case VER_PLATFORM_WIN32_NT:
+    return "Windows NT";
+  default:
+    return "Unknown";
   }
-  return model;
 }
+#endif
+
 }
 
 namespace xrt_core {
@@ -154,7 +144,7 @@ get_devices(boost::property_tree::ptree& pt) const
     auto device = xrt_core::get_userpf_device(device_id);
     boost::property_tree::ptree pt_pcie;
     device->get_info(pt_pcie);
-    pt_device.add_child(PFM_NAME, pt_pcie);
+    pt_device.add_child("pcie", pt_pcie);
 
     // Create our array of data
     pt_devices.push_back(std::make_pair("", pt_device));
@@ -219,63 +209,46 @@ system::
 get_xrt_info(boost::property_tree::ptree& pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
-  if (std::strcmp(PFM_NAME, pcie_pfm) == 0) { //pcie
-    //for (const auto& drv : xrt_core::pci::get_driver_list()) // TODO::?
-    //  _ptDriverInfo.push_back( {"", driver_version(drv->name())} ); 
-    _ptDriverInfo.push_back({ "", driver_version("xocl") });
-    _ptDriverInfo.push_back({ "", driver_version("xclmgmt") });
-  }
-  else { //edge
-    pt.put("build.version", xrt_build_version);
-    pt.put("build.hash", xrt_build_version_hash);
-    pt.put("build.date", xrt_build_version_date);
-    pt.put("build.branch", xrt_build_version_branch);
-    _ptDriverInfo.push_back(std::make_pair("", driver_version("zocl")));
-  }
   pt.put_child("drivers", _ptDriverInfo);
+//TODO
+// _pt.put("xocl",      driver_version("xocl"));
+// _pt.put("xclmgmt",   driver_version("xclmgmt"));
 }
 
 void
 system::
 get_os_info(boost::property_tree::ptree& pt)
 {
-  struct utsname sysinfo;
-  if (!uname(&sysinfo)) {
-    pt.put("sysname", sysinfo.sysname);
-    pt.put("release", sysinfo.release);
-    pt.put("version", sysinfo.version);
-    pt.put("machine", sysinfo.machine);
-  }
+#ifdef _WIN32
+  char value[128];
+  DWORD BufferSize = sizeof value;
+  pt.put("sysname", osNameImpl());
+  //Reassign buffer size since it get override with size of value by RegGetValueA() call
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("release", value);
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("version", value);
+  pt.put("machine", getmachinename());
 
-  // The file is a requirement as per latest Linux standards
-  std::ifstream ifs("/etc/os-release");
-  if (ifs.good()) {
-    boost::property_tree::ptree opt;
-    boost::property_tree::ini_parser::read_ini(ifs, opt);
-    std::string val = opt.get<std::string>("PRETTY_NAME", "");
-    if (val.length()) {
-      if ((val.front() == '"') && (val.back() == '"')) {
-        val.erase(0, 1);
-        val.erase(val.size() - 1);
-      }
-      pt.put("distribution", val);
-    }
-    ifs.close();
-  }
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("distribution", value);
 
-  pt.put("model", machine_info());
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("model", value);
+
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ComputerName\\ComputerName", "ComputerName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("hostname", value);
+
+  MEMORYSTATUSEX mem;
+  mem.dwLength = sizeof(mem);
+  GlobalMemoryStatusEx(&mem);
+  pt.put("memory_bytes", (boost::format("0x%llx") % mem.ullTotalPhys).str());
   pt.put("cores", std::thread::hardware_concurrency());
-  pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
-  //pt.put("now", xrt_core::timestamp());
-  boost::property_tree::ptree _ptLibInfo;
-  _ptLibInfo.push_back({ "", glibc_info() });
-  pt.put_child("libraries", _ptLibInfo);
-
-#ifndef XRT_EDGE
-  char hostname[256] = { 0 };
-  gethostname(hostname, 256);
-  std::string hn(hostname);
-  pt.put("hostname", hn);
 #endif
 }
 
@@ -283,26 +256,7 @@ device::id_type
 system::
 get_device_id(const std::string& bdf) const
 {
-  // Treat non bdf as device index
-  if (bdf.find_first_not_of("0123456789") == std::string::npos)
-    return system::get_device_id_default(bdf);
-
-  unsigned int i = 0;
-  for (auto dev = get_device(0); dev; dev = get_device(++i)) {
-    // [dddd:bb:dd.f]
-    auto bdf_tuple = dev->get_bdf_info();
-    auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % std::get<0>(bdf_tuple) % std::get<1>(bdf_tuple) % std::get<2>(bdf_tuple) % std::get<3>(bdf_tuple));
-    if (dev_bdf == bdf)
-      return i;
-    //consider default domain as 0000 and try to find a matching device
-    if (std::get<0>(bdf_tuple) == 0) {
-      dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % std::get<1>(bdf_tuple) % std::get<2>(bdf_tuple) % std::get<3>(bdf_tuple));
-      if (dev_bdf == bdf)
-        return i;
-    }
-  }
-
-  throw xrt_core::system_error(EINVAL, "No such device '" + bdf + "'");
+     return system::get_device_id_default(bdf);
 }
 
 std::pair<device::id_type, device::id_type>
@@ -544,3 +498,5 @@ register_device_list(const std::vector<std::shared_ptr<xrt_core::device_factory>
 }
 
 } // xrt_core
+
+

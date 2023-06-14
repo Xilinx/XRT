@@ -3,7 +3,14 @@
 # Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 add_subdirectory(api)
 
-add_library(core_common_library_objects OBJECT
+if( NOT WIN32)
+set(SYS_FILE_NAME  "system.cpp")
+else()
+# = WINDOWS ===================================================================
+set(SYS_FILE_NAME  "system_windows.cpp")
+endif()
+
+ add_library(core_common_library_objects OBJECT
   asd_parser.cpp
   config_reader.cpp
   debug.cpp
@@ -19,7 +26,7 @@ add_library(core_common_library_objects OBJECT
   module_loader.cpp
   query_requests.cpp
   sensor.cpp
-  system.cpp
+  ${SYS_FILE_NAME}
   thread.cpp
   time.cpp
   utils.cpp

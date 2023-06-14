@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef _XCL_DEV_FACTORY_H_
-#define _XCL_DEV_FACTORY_H_
+#ifndef _XCL_DEVICE_FACTORY_H_
+#define _XCL_DEVICE_FACTORY_H_
 
 #include "device.h"
 #include <vector>
@@ -42,7 +42,7 @@ public:
   }
 
   // Set ready state to the device
-  void set_ready(const bool& ready) 
+  void set_ready(bool ready) 
   { 
     m_is_ready = ready;
   }
@@ -54,7 +54,7 @@ public:
   }
 
   // Set device type
-  void set_mgmt(const bool& mgmt)
+  void set_mgmt(bool mgmt)
   { 
     m_is_mgmt = mgmt;
   }
