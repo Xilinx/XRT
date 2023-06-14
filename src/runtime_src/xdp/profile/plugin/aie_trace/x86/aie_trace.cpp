@@ -319,11 +319,7 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
   }
 
-<<<<<<< HEAD
-  void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct) 
-=======
   void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct)
->>>>>>> 47b38eaaea13415ad45b519f40e4ff8c62671e26
   {
     MessageConfiguration* messages = reinterpret_cast<MessageConfiguration*>(messageStruct);
     for (uint32_t i = 0; i < messages->numMessages; i++) {
