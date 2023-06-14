@@ -65,8 +65,8 @@ namespace xdp::counters {
   // Different container to handle two timestamps
   struct DoubleSample
   {
-    double timestamp1;
-    double timestamp2;
+    unsigned long timestamp1;
+    unsigned long timestamp2;
     std::vector<uint64_t> values;
   };
 } // end namespace xdp::counters

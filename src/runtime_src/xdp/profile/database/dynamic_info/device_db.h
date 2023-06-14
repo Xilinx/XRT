@@ -107,7 +107,7 @@ namespace xdp {
     void addAIESample(double timestamp, const std::vector<uint64_t>& values)
     { aie_db.addAIESample(timestamp, values);  }
 
-    void addAIETimerSample(double timestamp1, double timestamp2, 
+    void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2, 
                            const std::vector<uint64_t>& values)
     { aie_db.addAIETimerSample(timestamp1, timestamp2, values);  }
 

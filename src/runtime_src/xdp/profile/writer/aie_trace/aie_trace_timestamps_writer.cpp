@@ -51,19 +51,18 @@ namespace xdp {
     fos << "Target device: " << mDeviceName << "\n";
     fos << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
     fos << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
-    fos << "timestamp1"   << ","
-        << "timestamp2"   << ","
-        << "column"       << ","
-        << "row"          << ","
-        << "timer"        << ",\n";
+    fos << "timestamp1(nsec)" << ","
+        << "timestamp2(nsec)" << ","
+        << "column"           << ","
+        << "row"              << ","
+        << "timer(cycles)"    << ",\n";
 
     // Write all data elements
     std::vector<counters::DoubleSample> samples =
         db->getDynamicInfo().getAIETimerSamples(mDeviceIndex);
 
     for (auto& sample : samples) {
-      fos << std::fixed << std::setprecision(6)
-          << sample.timestamp1 << ","
+      fos << sample.timestamp1 << ","
           << sample.timestamp2 << ",";
       for (auto value : sample.values)
         fos << value << ",";

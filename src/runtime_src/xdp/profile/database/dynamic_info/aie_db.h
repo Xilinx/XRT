@@ -53,7 +53,7 @@ namespace xdp {
     { samples.addSample({timestamp, values}); }
 
     inline
-    void addAIETimerSample(double timestamp1, double timestamp2, 
+    void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2, 
                            const std::vector<uint64_t>& values)
     { timerSamples.addSample({timestamp1, timestamp2, values}); }
 

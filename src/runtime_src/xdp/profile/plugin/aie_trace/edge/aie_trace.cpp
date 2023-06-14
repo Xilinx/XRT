@@ -1290,9 +1290,9 @@ namespace xdp {
                        : XAIE_MEM_MOD);
 
     uint64_t timerValue = 0;  
-    double timestamp1 = xrt_core::time_ns() / 1.0e6;
+    auto timestamp1 = xrt_core::time_ns();
     XAie_ReadTimer(aieDevInst, loc, falModuleType, &timerValue);
-    double timestamp2 = xrt_core::time_ns() / 1.0e6;
+    auto timestamp2 = xrt_core::time_ns();
     
     std::vector<uint64_t> values;
     values.push_back(tile.col);
