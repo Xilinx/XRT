@@ -141,7 +141,7 @@ namespace xdp {
       uint32_t row;
       TileTraceData core_trace_config;
       TileTraceData memory_trace_config;
-      MemTileTraceData mem_tile_trace_config;
+      MemTileTraceData memory_tile_trace_config;
       TileData(uint32_t c, uint32_t r) : column(c), row(r)
       {}
     };
