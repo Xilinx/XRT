@@ -246,7 +246,7 @@ namespace xdp {
         cfgTile->memory_tile_trace_config.packet_type = cfg->tiles[i].memory_tile_trace_config.packet_type;
 
         // Add Mem-tile specific metrics
-        for (uint32_t channel = 0; channel < NUM_MEM_TILE_CHAN_SEL; channel++) {
+        for (uint32_t channel = 0; channel < NUM_CHANNEL_SELECTS; channel++) {
           cfgTile->memory_tile_trace_config.port_trace_ids[channel] =
               cfg->tiles[i].memory_tile_trace_config.port_trace_ids[channel];
           cfgTile->memory_tile_trace_config.port_trace_is_master[channel] =
