@@ -10,7 +10,7 @@
     },
     {
       "name": "ps_validate.xclbin",
-      "dependencies": ["ps_validate.xclbin"]
+      "dependencies": []
     }
   ]
 }
