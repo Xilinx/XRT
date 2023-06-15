@@ -29,8 +29,8 @@
 namespace xdp {
   bool tileCompare(tile_type tile1, tile_type tile2);
   inline void throwIfError(bool err, const char* msg);
-  static void readAIEMetadata(const char* data, size_t size, 
-                              boost::property_tree::ptree& aie_project);
+  void readAIEMetadata(const char* data, size_t size, 
+                       boost::property_tree::ptree& aie_project);
 
   int getHardwareGeneration(const xrt_core::device* device);
   uint16_t getAIETileRowOffset(const xrt_core::device* device);

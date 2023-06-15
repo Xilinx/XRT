@@ -91,7 +91,7 @@ namespace xdp {
   {
     if (absRow == 0)
       return module_type::shim;
-    if (absRow < metadata->getAIETileRowOffset())
+    if (absRow < metadata->getRowOffset())
       return module_type::mem_tile;
     return module_type::core;
   }
@@ -132,7 +132,7 @@ namespace xdp {
     input_params->useOneDelayCounter = metadata->getUseOneDelayCounter();
     input_params->counterScheme = counterSchemeInt;
     input_params->hwGen = metadata->getHardwareGen();
-    input_params->offset = metadata->getAIETileRowOffset();
+    input_params->offset = metadata->getRowOffset();
 
     TraceTileType traceTiles[numTiles];
 
@@ -217,8 +217,8 @@ namespace xdp {
               cfg->tiles[i].core_trace_config.traced_events[tracedEvent];
           cfgTile->memory_trace_config.traced_events[tracedEvent] =
               cfg->tiles[i].memory_trace_config.traced_events[tracedEvent];
-          cfgTile->mem_tile_trace_config.traced_events[tracedEvent] =
-              cfg->tiles[i].mem_tile_trace_config.traced_events[tracedEvent];
+          cfgTile->memory_tile_trace_config.traced_events[tracedEvent] =
+              cfg->tiles[i].memory_tile_trace_config.traced_events[tracedEvent];
         }
 
         // Update the broadcast events for the core module
@@ -234,8 +234,8 @@ namespace xdp {
         cfgTile->memory_trace_config.start_event = cfg->tiles[i].memory_trace_config.start_event;
         cfgTile->memory_trace_config.stop_event = cfg->tiles[i].memory_trace_config.stop_event;
 
-        cfgTile->mem_tile_trace_config.start_event = cfg->tiles[i].mem_tile_trace_config.start_event;
-        cfgTile->mem_tile_trace_config.stop_event = cfg->tiles[i].mem_tile_trace_config.stop_event;
+        cfgTile->memory_tile_trace_config.start_event = cfg->tiles[i].memory_tile_trace_config.start_event;
+        cfgTile->memory_tile_trace_config.stop_event = cfg->tiles[i].memory_tile_trace_config.stop_event;
 
         // Update broadcast Masks for core
         cfgTile->core_trace_config.broadcast_mask_east = cfg->tiles[i].core_trace_config.broadcast_mask_east;
@@ -243,19 +243,19 @@ namespace xdp {
 
         // Update Packet type for memory modules or memtiles
         cfgTile->memory_trace_config.packet_type = cfg->tiles[i].memory_trace_config.packet_type;
-        cfgTile->mem_tile_trace_config.packet_type = cfg->tiles[i].mem_tile_trace_config.packet_type;
+        cfgTile->memory_tile_trace_config.packet_type = cfg->tiles[i].memory_tile_trace_config.packet_type;
 
         // Add Mem-tile specific metrics
         for (uint32_t channel = 0; channel < NUM_MEM_TILE_CHAN_SEL; channel++) {
-          cfgTile->mem_tile_trace_config.port_trace_ids[channel] =
-              cfg->tiles[i].mem_tile_trace_config.port_trace_ids[channel];
-          cfgTile->mem_tile_trace_config.port_trace_is_master[channel] =
-              cfg->tiles[i].mem_tile_trace_config.port_trace_is_master[channel] == 1 ? true : false;
+          cfgTile->memory_tile_trace_config.port_trace_ids[channel] =
+              cfg->tiles[i].memory_tile_trace_config.port_trace_ids[channel];
+          cfgTile->memory_tile_trace_config.port_trace_is_master[channel] =
+              cfg->tiles[i].memory_tile_trace_config.port_trace_is_master[channel] == 1 ? true : false;
 
-          cfgTile->mem_tile_trace_config.s2mm_channels[channel] =
-              cfg->tiles[i].mem_tile_trace_config.s2mm_channels[channel];
-          cfgTile->mem_tile_trace_config.mm2s_channels[channel] =
-              cfg->tiles[i].mem_tile_trace_config.mm2s_channels[channel];
+          cfgTile->memory_tile_trace_config.s2mm_channels[channel] =
+              cfg->tiles[i].memory_tile_trace_config.s2mm_channels[channel];
+          cfgTile->memory_tile_trace_config.mm2s_channels[channel] =
+              cfg->tiles[i].memory_tile_trace_config.mm2s_channels[channel];
         }
 
         (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
