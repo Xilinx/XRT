@@ -744,11 +744,10 @@ int xocl_userptr_bo_ioctl(
 		goto out1;
 	}
 
-	ret = XOCL_ACCESS_OK(VERIFY_WRITE, args->addr, args->size);
-
-
+	ret = XOCL_ACCESS_OK(VERIFY_WRITE, (uint64_t *)args->addr, args->size);
 	if (!ret) {
-		ret = XOCL_ACCESS_OK(VERIFY_READ, args->addr, args->size);
+		ret = XOCL_ACCESS_OK(VERIFY_READ, (uint64_t *)args->addr,
+				     args->size);
 		if (!ret)
 			goto out0;
 		else
@@ -1387,7 +1386,12 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 	}
 
 	vma->vm_private_data = obj;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_MIXEDMAP;
+#else
+	vm_flags_set(vma, VM_MIXEDMAP);
+#endif
 
 	return 0;
 }

@@ -83,6 +83,8 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 		return -EINVAL;
 	}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 	 * we have "struct page" for all backing pages for bo
 	 */
@@ -93,6 +95,11 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags &= ~VM_IO;
 	vma->vm_flags |= VM_MIXEDMAP;
 	vma->vm_flags |= mm->def_flags;
+#else
+	vm_flags_clear(vma, VM_PFNMAP | VM_IO);
+	vm_flags_set(vma, VM_MIXEDMAP | mm->def_flags);
+#endif
+
 	vma->vm_pgoff = 0;
 
 	/* Override pgprot_writecombine() mapping setup by
@@ -149,8 +156,13 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
 
 	ret = io_remap_pfn_range(vma, vma->vm_start,
 				 res_start >> PAGE_SHIFT,
@@ -652,7 +664,7 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 	mutex_lock(&drm_p->mm_lock);
 	xocl_cleanup_memory_manager(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
-	
+
 	drm_put_dev(drm_p->ddev);
 	mutex_destroy(&drm_p->mm_lock);
 
@@ -791,7 +803,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
 	struct drm_mm_node *node = xobj->mm_node;
 	struct xocl_mem_stat *curr_mem = NULL;
 	struct mem_topology *grp_topology = NULL;
-	
+
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
         if (drm_p->xocl_mm->mm == NULL)
                 return -EINVAL;
@@ -909,7 +921,7 @@ int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_ban
 	struct xocl_dev *xdev = (struct xocl_dev *)drm_p->xdev;
 
 	if (!xdev->cma_bank) {
-		xocl_warn(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");		
+		xocl_warn(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");
 		return 0;
 	}
 
@@ -977,7 +989,7 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm)
 {
 	int err = 0;
 	int i = 0;
-	
+
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
 	if (!xocl_mm)
@@ -1038,7 +1050,7 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
 error:
 	if (err && err != -ENODEV)
 		xocl_cleanup_drm_memory_manager(xocl_mm);
-        
+
 	mutex_unlock(&drm_p->mm_lock);
 	return err;
 }
@@ -1063,7 +1075,7 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 
         /* cleanup the memory manager */
 	xocl_cleanup_drm_memory_manager(xocl_mm);
-	drm_p->xocl_mm = NULL;		
+	drm_p->xocl_mm = NULL;
 
         return 0;
 }
@@ -1106,7 +1118,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
 		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
 		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
-		
+
 		if (XOCL_IS_P2P_MEM(group_topo, i)) {
 			if (mem_data->m_used) {
 				xocl_p2p_mem_map(drm_p->xdev,
@@ -1133,25 +1145,25 @@ int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 		xocl_info(drm_p->ddev->dev, "   Initializing Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "    base_addr:0x%llx, total size:0x%lx",
 			mem_data->m_base_address, ddr_bank_size);
-	
+
 		if (convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) {
 			drm_p->cma_bank_idx = i;
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
 			if (err) {
-				xocl_err(drm_p->ddev->dev, 
+				xocl_err(drm_p->ddev->dev,
 					"Run host_mem to setup host memory access, request 0x%lx bytes",
 					ddr_bank_size);
 				goto done;
 			}
 		}
-	
+
 		if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
 			reserved_end = mem_data->m_base_address + ddr_bank_size;
 			reserved_start = reserved_end - reserved1 - reserved2;
 			xocl_info(drm_p->ddev->dev, "  reserved region:0x%llx - 0x%llx",
 				reserved_start, reserved_end - 1);
 		}
-	
+
 		mem_stat = vzalloc(sizeof(struct xocl_mem_stat));
 		if (!mem_stat) {
 			err = -ENOMEM;
@@ -1172,6 +1184,6 @@ done:
 
 	mutex_unlock(&drm_p->mm_lock);
 	xocl_info(drm_p->ddev->dev, "ret %d", err);
-	
+
 	return err;
 }

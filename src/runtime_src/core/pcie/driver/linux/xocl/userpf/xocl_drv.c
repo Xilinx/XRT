@@ -500,12 +500,12 @@ static int xocl_get_buddy_cb(struct device *dev, void *data)
 	 * 1.non xilinx device
 	 * 2.itself
 	 * 3.other devcies not being droven by same driver. using func id
-	 * may not handle u25 where there is another device on same card 
+	 * may not handle u25 where there is another device on same card
 	 */
 	if (!src_xdev || !dev || to_pci_dev(dev)->vendor != 0x10ee ||
 	   	XOCL_DEV_ID(to_pci_dev(dev)) ==
 		XOCL_DEV_ID(src_xdev->core.pdev) || !dev->driver ||
-		strcmp(dev->driver->name, "xocl")) 
+		strcmp(dev->driver->name, "xocl"))
 		return 0;
 
 	tgt_xdev = dev_get_drvdata(dev);
@@ -526,7 +526,7 @@ static int xocl_get_buddy_cb(struct device *dev, void *data)
  * mutex lock to prevent multile reset from happening simutaniously
  * this is necessary for case where there are multiple FPGAs on same
  * card, and reset one also triggers reset on others.
- * to simplify, just don't allow reset to any multiple FPGAs happen 
+ * to simplify, just don't allow reset to any multiple FPGAs happen
  */
 static DEFINE_MUTEX(xocl_reset_mutex);
 
@@ -721,14 +721,14 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_af_check(xdev, NULL);
 		/* Get the updated xocl firewall status */
 		xocl_af_get_data(xdev, &fw_status);
-		userpf_info(xdev, 
+		userpf_info(xdev,
 			"AXI Firewall %llu tripped", fw_status.err_detected_level);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;
 		err_last.ts = fw_status.err_detected_time;
-		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP, 
-			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP,
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL,
 			XRT_ERROR_MODULE_FIREWALL, XRT_ERROR_CLASS_HARDWARE);
 		xocl_insert_error_record(&xdev->core, &err_last);
 		xocl_drvinst_set_offline(xdev->core.drm, true);
@@ -1214,7 +1214,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_drvinst_release(xdev, &hdl);
 
 	xocl_queue_destroy(xdev);
-	
+
 	/* Free pinned pages before call xocl_drm_fini */
 	xocl_cma_bank_free(xdev);
 
@@ -1324,7 +1324,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_dev *xdev, uint32_t i
 	struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[idx];
 	struct sg_table *sgt = NULL;
 
-	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, user_addr, page_sz))) {
+	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, (uint64_t *)user_addr, page_sz))) {
 		xocl_err(dev, "Invalid huge page user pointer\n");
 		ret = -ENOMEM;
 		goto done;
@@ -1369,7 +1369,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_dev *xdev, uint32_t i
 
 	if (sgt->orig_nents != sgt->nents) {
 		ret =-ENOMEM;
-		goto done;		
+		goto done;
 	}
 
 	cma_mem->size = page_sz;
@@ -1404,7 +1404,7 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 	 * rounddown_pow_of_two 255=>>128 63=>>32
 	 */
 	if (rounddown_num != cma_info->entry_num) {
-		DRM_ERROR("Request %lld, round down to power of 2 %lld\n", 
+		DRM_ERROR("Request %lld, round down to power of 2 %lld\n",
 				cma_info->entry_num, rounddown_num);
 		return -EINVAL;
 	}
@@ -1992,7 +1992,12 @@ static int __init xocl_init(void)
 {
 	int		ret, i = 0;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
+#else
+	xrt_class = class_create("xrt_user");
+#endif
+
 	if (IS_ERR(xrt_class)) {
 		ret = PTR_ERR(xrt_class);
 		goto err_class_create;
