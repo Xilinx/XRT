@@ -549,21 +549,21 @@ namespace {
           configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, memTileMetricSet, channel0, channel1);
 
           // Record for runtime config file
-          cfgTile.mem_tile_trace_config.port_trace_ids[0] = channel0;
-          cfgTile.mem_tile_trace_config.port_trace_ids[1] = channel1;
+          cfgTile.memory_tile_trace_config.port_trace_ids[0] = channel0;
+          cfgTile.memory_tile_trace_config.port_trace_ids[1] = channel1;
           if ((memTileMetricSet == xdp::built_in::MemTileMetricSet::INPUT_CHANNELS) ||
               (memTileMetricSet == xdp::built_in::MemTileMetricSet::INPUT_CHANNELS_STALLS)) {
-            cfgTile.mem_tile_trace_config.port_trace_is_master[0] = 1;
-            cfgTile.mem_tile_trace_config.port_trace_is_master[1] = 1;
-            cfgTile.mem_tile_trace_config.s2mm_channels[0] = channel0;
+            cfgTile.memory_tile_trace_config.port_trace_is_master[0] = 1;
+            cfgTile.memory_tile_trace_config.port_trace_is_master[1] = 1;
+            cfgTile.memory_tile_trace_config.s2mm_channels[0] = channel0;
             if (channel0 != channel1)
-              cfgTile.mem_tile_trace_config.s2mm_channels[1] = channel1;
+              cfgTile.memory_tile_trace_config.s2mm_channels[1] = channel1;
           } else {
-            cfgTile.mem_tile_trace_config.port_trace_is_master[0] = 0;
-            cfgTile.mem_tile_trace_config.port_trace_is_master[1] = 0;
-            cfgTile.mem_tile_trace_config.mm2s_channels[0] = channel0;
+            cfgTile.memory_tile_trace_config.port_trace_is_master[0] = 0;
+            cfgTile.memory_tile_trace_config.port_trace_is_master[1] = 0;
+            cfgTile.memory_tile_trace_config.mm2s_channels[0] = channel0;
             if (channel0 != channel1)
-              cfgTile.mem_tile_trace_config.mm2s_channels[1] = channel1;
+              cfgTile.memory_tile_trace_config.mm2s_channels[1] = channel1;
           }
         }
 
@@ -593,7 +593,7 @@ namespace {
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
 
           if (type == xdp::module_type::mem_tile) {
-            cfgTile.mem_tile_trace_config.traced_events[S] = phyEvent;
+            cfgTile.memory_tile_trace_config.traced_events[S] = phyEvent;
           } else {
             cfgTile.core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile.memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
@@ -623,7 +623,7 @@ namespace {
           // cfgTile.memory_trace_config.traced_events[S] = phyEvent;
 
           if (type == xdp::module_type::mem_tile)
-            cfgTile.mem_tile_trace_config.traced_events[S] = phyEvent;
+            cfgTile.memory_tile_trace_config.traced_events[S] = phyEvent;
           else
             cfgTile.memory_trace_config.traced_events[S] = phyEvent;
         }
@@ -638,7 +638,7 @@ namespace {
 
           if (type == xdp::module_type::mem_tile) {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
-            cfgTile.mem_tile_trace_config.start_event = phyEvent;
+            cfgTile.memory_tile_trace_config.start_event = phyEvent;
 
           } else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
@@ -651,7 +651,7 @@ namespace {
           coreToMemBcMask |= (bcBit << bcId);
           if (type == xdp::module_type::mem_tile) {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
-            cfgTile.mem_tile_trace_config.stop_event = bcIdToEvent(bcId);
+            cfgTile.memory_tile_trace_config.stop_event = bcIdToEvent(bcId);
           } else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
             cfgTile.memory_trace_config.stop_event = bcIdToEvent(bcId);
@@ -684,7 +684,7 @@ namespace {
         // Update memory packet type in config file
         // NOTE: Use time packets for memory module (type 1)
         if (type == xdp::module_type::mem_tile)
-          cfgTile.mem_tile_trace_config.packet_type = packetType;
+          cfgTile.memory_tile_trace_config.packet_type = packetType;
         else
           cfgTile.memory_trace_config.packet_type = packetType;
 
