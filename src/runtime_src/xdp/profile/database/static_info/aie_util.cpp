@@ -404,23 +404,23 @@ namespace xdp {
       for (auto& node : graph.second.get_child("core_columns")) {
         tiles.push_back(tile_type());
         auto& t = tiles.at(count++);
-        t.col = std::stoul(node.second.data());
+        t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
       }
 
       int num_tiles = count;
       count = startCount;
       for (auto& node : graph.second.get_child("core_rows"))
-        tiles.at(count++).row = std::stoul(node.second.data()) + rowOffset;
+        tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
       throwIfError(count < num_tiles,"core_rows < num_tiles");
 
       count = startCount;
       for (auto& node : graph.second.get_child("iteration_memory_columns"))
-        tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
+        tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
       throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
       count = startCount;
       for (auto& node : graph.second.get_child("iteration_memory_rows"))
-        tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
+        tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
       throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
       count = startCount;
@@ -466,13 +466,13 @@ namespace xdp {
         for (auto& node : graph.second.get_child(col_name)) {
           tiles.push_back(tile_type());
           auto& t = tiles.at(count++);
-          t.col = std::stoul(node.second.data());
+          t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child(row_name))
-          tiles.at(count++).row = std::stoul(node.second.data());
+          tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
         throwIfError(count < num_tiles,"rows < num_tiles");
     }
 
