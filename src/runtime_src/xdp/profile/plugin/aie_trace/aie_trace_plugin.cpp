@@ -89,8 +89,6 @@ namespace xdp {
     return deviceID;
   }
   
-  
-
   void AieTracePluginUnified::updateAIEDevice(void* handle)
   {
     if (!handle)
@@ -248,15 +246,7 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         AIEData.valid = false;
     }
-
-    //Sets up and calls the PS kernel on x86 implementation
-    //Sets up and the hardware on the edge implementation
-    AIEData.implementation->updateDevice();
-
-    // Continuous Trace Offload is supported only for PLIO flow
-    if (AIEData.metadata->getContinuousTrace())
-      offloader->startOffload();
-
+    
 #ifdef _WIN32
     std::string deviceName = "win_device";
 #else
@@ -272,9 +262,18 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
 
     // Start the AIE trace timestamps thread
+    // NOTE: we purposely start polling before configuring trace events
     AIEData.threadCtrlBool = true;
     auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers, this, deviceID, handle);
     AIEData.thread = std::move(device_thread);
+
+    //Sets up and calls the PS kernel on x86 implementation
+    //Sets up and the hardware on the edge implementation
+    AIEData.implementation->updateDevice();
+
+    // Continuous Trace Offload is supported only for PLIO flow
+    if (AIEData.metadata->getContinuousTrace())
+      offloader->startOffload();
   }
 
   void AieTracePluginUnified::pollAIETimers(uint32_t index, void* handle)
