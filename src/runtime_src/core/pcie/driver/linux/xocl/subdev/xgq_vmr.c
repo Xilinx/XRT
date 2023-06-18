@@ -131,7 +131,7 @@ struct xocl_xgq_vmr_cmd {
 	void			*xgq_cmd_arg;
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq_vmr	*xgq_vmr;
-	u64			xgq_cmd_timeout_jiffies; /* timout till */
+	unsigned long		xgq_cmd_timeout_jiffies; /* for time_after */
 	int			xgq_cmd_rcode;
 	/* xgq complete command can return in-line data via payload */
 	struct xgq_cmd_cq_default_payload	xgq_cmd_cq_payload;
