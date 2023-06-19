@@ -32,6 +32,10 @@
 
 namespace zynqaie {
 
+/* Added this lock to make AIE context thread safe. If AIE context is opened
+ * multiple time then we may need to protect this as there can be only one
+ * active AIE context possible.
+ */
 std::mutex am_lock;
 
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
@@ -116,9 +120,10 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 #ifndef __AIESIM__
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
   std::lock_guard access_lock_guard(am_lock);
-  if (access_mode != xrt::aie::access_mode::none) {
+
+  /* If AIE context is already opened then return from here */
+  if (access_mode != xrt::aie::access_mode::none)
 	  return;
-  }
 
   auto current_am = drv->getAIEAccessMode();
   if (current_am != xrt::aie::access_mode::none)
