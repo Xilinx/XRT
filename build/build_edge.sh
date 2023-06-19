@@ -309,7 +309,9 @@ if [ -f $SETTINGS_FILE ]; then
     source $SETTINGS_FILE
 fi
 source $PETALINUX/settings.sh
-source /proj/xbuilds/2023.2_daily_latest/installs/lin64/Vitis/2023.2/settings64.sh
+
+VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
+source $VITIS_FILE
 
 if [[ $AARCH = $aarch64_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then

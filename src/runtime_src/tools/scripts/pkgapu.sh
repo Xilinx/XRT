@@ -167,6 +167,10 @@ FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
 INSTALL_ROOT="$BUILD_DIR/lib"
 SDK="$BUILD_DIR/lib/firmware/xilinx/sysroot/sdk.sh"
 
+THIS_SCRIPT_DIR="$( cd "$( dirname "${THIS_SCRIPT}" )" >/dev/null 2>&1 && pwd )"
+VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
+source $VITIS_FILE
+
 if [[ $clean == 1 ]]; then
 	echo $PWD
 	echo "/bin/rm -rf $BUILD_DIR"
