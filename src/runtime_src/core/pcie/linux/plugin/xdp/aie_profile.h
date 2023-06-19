@@ -19,21 +19,21 @@
 #define AIE_PROFILE_DOT_H
 
 namespace xdp {
-namespace aie {
-namespace profile {
+  namespace aie {
+    namespace profile {
 
-  void load();
-  void register_callbacks(void* handle);
-  void warning_callbacks();
+      void load();
+      void register_callbacks(void* handle);
+      void warning_callbacks();
 
-} // end namespace profile
+    } // end namespace profile
 
-namespace ctr {
-  void update_device(void* handle);
-  void end_poll(void* handle);
-} // end namespace ctr
+    namespace ctr {
+      void update_device(void* handle);
+      void end_poll(void* handle);
+    } // end namespace ctr
 
-} // end namespace aie
+  } // end namespace aie
 } // end namespace xdp
 
 #endif
