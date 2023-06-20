@@ -1,6 +1,5 @@
 /**
- *  Copyright (C) 2020 Xilinx, Inc
- *  Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,25 +14,17 @@
  * under the License.
  */
 
-#ifndef AIE_PROFILE_DOT_H
-#define AIE_PROFILE_DOT_H
+#ifndef XDP_PLUGIN_AIE_PROFILE_CB_H
+#define XDP_PLUGIN_AIE_PROFILE_CB_H
 
-namespace xdp {
-  namespace aie {
-    namespace profile {
+#include "xdp/config.h"
 
-      void load();
-      void register_callbacks(void* handle);
-      void warning_callbacks();
+extern "C"
+XDP_EXPORT
+void updateAIECtrDevice(void* handle);
 
-    } // end namespace profile
-
-    namespace ctr {
-      void update_device(void* handle);
-      void end_poll(void* handle);
-    } // end namespace ctr
-
-  } // end namespace aie
-} // end namespace xdp
+extern "C"
+XDP_EXPORT
+void endAIECtrPoll(void* handle);
 
 #endif
