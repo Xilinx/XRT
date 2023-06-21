@@ -20,9 +20,12 @@
 #include <cstdint>
 
 #include "core/include/xrt/xrt_kernel.h"
-// #include "aiegraph.hpp"
-
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
+
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp {
 
@@ -37,22 +40,8 @@ namespace xdp {
     bool setMetricsSettings(uint64_t deviceId, void* handle);
 
    private:
-    xrt::device device;
-    // xrt::kernel aie_profile_kernel;
-
-    // //inpu specific private members
-    // std::string name;
-
-    // AIEGraphHandle aiegraph_handle;
-    // XrtContext &xrt_context_
-    // std::vector<bd_bundle> bd_bundles;
-    // xrt::bo bo_fm;
-    // xrt::bo bo_instr;
-    // std::vector<xrt::bo> bufferidx_to_xrt_subbo;
-
-    // std::unordered_set<void*> inputs;
-    // std::unordered_set<void*> outputs;
-    // std::unordered_set<void*> buffers;
+      XAie_DevInst aieDevInst = { 0 };
+     
   };
 
 }  // namespace xdp
