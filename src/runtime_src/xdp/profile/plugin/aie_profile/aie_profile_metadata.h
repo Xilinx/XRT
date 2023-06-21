@@ -65,6 +65,8 @@ class AieProfileMetadata{
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
+    boost::property_tree::ptree aie_meta; 
+    bool invalidXclbinMetadata;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -88,32 +90,28 @@ class AieProfileMetadata{
     uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
-    std::vector<std::string> get_graphs(const xrt_core::device* device);
-    std::vector<std::string> get_kernels(const xrt_core::device* device);
-    std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
-    std::vector<tile_type> get_interface_tiles(const xrt_core::device* device, 
-                                               const std::string &metricStr,
+    std::vector<std::string> get_graphs();
+    std::vector<std::string> get_kernels();
+    std::unordered_map<std::string, plio_config> get_plios();
+    std::vector<tile_type> get_interface_tiles(const std::string &metricStr,
                                                int16_t channelId = -1,
                                                bool useColumn = false, 
                                                uint32_t minCol = 0, 
                                                uint32_t maxCol = 0);
-    std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name,
+    std::vector<tile_type> get_mem_tiles(const std::string& graph_name,
                                          const std::string& kernel_name = "all");
-    std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
-                                           const std::string& graph_name, 
+    std::vector<tile_type> get_event_tiles(const std::string& graph_name, 
                                            module_type type);
-    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name,
+    std::vector<tile_type> get_aie_tiles(const std::string& graph_name,
                                          module_type type);
-    std::vector<tile_type> get_tiles(const xrt_core::device* device, 
-                                     const std::string& graph_name,
+    std::vector<tile_type> get_tiles(const std::string& graph_name,
                                      module_type type, 
                                      const std::string& kernel_name = "all");
 
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
+    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
 
     double getClockFreqMhz(){return clockFreqMhz;}
     std::string getModuleName(int module){return moduleNames[module];}

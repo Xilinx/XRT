@@ -19,6 +19,8 @@
 #include "aie_profile.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/property_tree/ptree.hpp>
+
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -54,30 +56,23 @@ namespace xdp {
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
   }
 
-  void setupAIEProfiler(uint8_t col, uint8_t row, uint32_t start, uint32_t end)
-  {
-    std::cout << col << " " << row << " " << start << " " << end << std::endl;
-    // aiegraph_handle_.clearTransactionBuffer();
-    // buffers_.clear();
-    // inputs_.clear();
-    // outputs_.clear();
-    // bufferidx_to_xrt_subbo_.clear();
-    // buffer_to_xrt_bo_.clear();
 
-    // std::vector<uint32_t>pc_list;
-    // pc_list.push_back(start);
-    // pc_list.push_back(end);
-  }
 
   bool AieProfile_WinImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
+    std::cout << "reached setmetricssettings" << std::endl;
     std::cout << deviceId << handle << std::endl;
+
+    uint16_t num_rows = metadata->getAIEConfigMetadata("num_rows").get_value<uint16_t>();
+    uint16_t num_cols = metadata->getAIEConfigMetadata("num_columns").get_value<uint16_t>();
+    std::cout << "NumRows: " << num_rows << std::endl;
+    std::cout << "NumCols: " << num_cols << std::endl;
     return true;
   }
 
   void AieProfile_WinImpl::poll(uint32_t index, void* handle)
   {
-    std::cout << index << handle << std::endl;
+    std::cout << "Polling! " << index << handle << std::endl;
     // For now, we are waiting for a way to retreive polling information from
     // the AIE.
     return;

@@ -113,7 +113,7 @@ namespace xdp {
     auto deviceID = getDeviceIDFromHandle(handle);
 
     // Update the static database with information from xclbin
-    (db->getStaticInfo()).updateDevice(deviceID, handle);
+    // (db->getStaticInfo()).updateDevice(deviceID, handle);
     {
 #ifdef XDP_MINIMAL_BUILD
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
