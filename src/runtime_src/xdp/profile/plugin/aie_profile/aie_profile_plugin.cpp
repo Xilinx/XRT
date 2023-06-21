@@ -36,7 +36,7 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
-#ifdef _WIN32
+#ifdef XDP_MINIMAL_BUILD
 #include "win/aie_profile.h"
 // #include "shim.h"
 #elif defined(XRT_X86_BUILD)
@@ -82,15 +82,15 @@ namespace xdp {
 
   uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
   {
-    constexpr uint32_t PATH_LENGTH = 512;
-
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
-#ifdef _WIN32
+#ifdef XDP_MINIMAL_BUILD
     return 0;
 #else
+    constexpr uint32_t PATH_LENGTH = 512;
+    
     char pathBuf[PATH_LENGTH];
     memset(pathBuf, 0, PATH_LENGTH);
 
@@ -115,7 +115,7 @@ namespace xdp {
     // Update the static database with information from xclbin
     (db->getStaticInfo()).updateDevice(deviceID, handle);
     {
-#ifdef _WIN32
+#ifdef XDP_MINIMAL_BUILD
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
       struct xclDeviceInfo2 info;
@@ -133,7 +133,7 @@ namespace xdp {
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
-#ifdef _WIN32
+#ifdef XDP_MINIMAL_BUILD
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
