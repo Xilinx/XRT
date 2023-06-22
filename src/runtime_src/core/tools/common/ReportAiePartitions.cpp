@@ -51,8 +51,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     const auto start_col = partition.get<uint64_t>("start_col");
     const auto num_cols = partition.get<uint64_t>("num_cols");
     std::string column_string;
-    for (uint64_t i = 0; i < num_cols; i++)
-      column_string += std::to_string(start_col + i) + ", ";
+    for (uint64_t i = 0; i < num_cols; i++) {
+      column_string += std::to_string(start_col + i);
+      if (i < num_cols - 1)
+        column_string += ", ";
+    }
     _output << "  Columns: [" << column_string << "]\n";
 
     const std::vector<Table2D::HeaderData> table_headers = {
