@@ -126,6 +126,7 @@ enum class key_type
   aie_status_version,
   aie_tiles_stats,
   aie_tiles_status_info,
+  aie_partition_info,
 
   idcode,
   data_retention,
@@ -1474,6 +1475,28 @@ struct aie_tiles_status_info : request
 
   virtual boost::any
   get(const device* device, const boost::any& param) const = 0;
+};
+
+// Used to retrive aie tiles status info
+struct aie_partition_info : request
+{
+  struct data
+  {
+    std::string xclbin_uuid;
+    uint64_t    slot_id;
+    uint64_t    start_col;
+    uint64_t    num_cols;
+    uint64_t    usage_count;
+    uint64_t    migration_count;
+    uint64_t    bo_sync_count;
+
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::aie_partition_info;
+
+  virtual boost::any
+  get(const device* device) const = 0;
 };
 
 struct clock_freqs_mhz : request

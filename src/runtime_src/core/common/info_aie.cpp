@@ -423,6 +423,39 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
   return pt;
 }
 
+// Populate the AIE Mem tile information from the input XRT device
+boost::property_tree::ptree
+populate_aie_partition(const xrt_core::device* device, const std::string& desc)
+{
+  boost::property_tree::ptree pt;
+  const auto data = xrt_core::device_query<qr::aie_partition_info>(device);
+  // Group the hw contexts based on their which AIE partitions they use
+  std::map<std::tuple<uint64_t, uint64_t>, boost::property_tree::ptree> pt_map;
+  for (const auto entry : data) {
+    auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
+
+    boost::property_tree::ptree pt_entry;
+    pt_entry.put("xclbin_uuid", entry.xclbin_uuid);
+    pt_entry.put("slot_id", entry.slot_id);
+    pt_entry.put("usage_count", entry.usage_count);
+    pt_entry.put("migration_count", entry.migration_count);
+    pt_entry.put("bo_sync_count", entry.bo_sync_count);
+
+    partition.first->second.push_back(std::make_pair("", pt_entry));
+  }
+
+  boost::property_tree::ptree pt_data;
+  for (const auto entry : pt_map) {
+    boost::property_tree::ptree pt_entry;
+    pt_entry.put("start_col", std::get<0>(entry.first));
+    pt_entry.put("num_cols", std::get<1>(entry.first));
+    pt_entry.add_child("hw_contexts", entry.second);
+    pt_data.push_back(std::make_pair("", pt_entry));
+  }
+  pt.add_child("aie_partitions", pt_data);
+  return pt;
+}
+
 /*
  * Sample AIE Core output
 {
@@ -947,6 +980,13 @@ ptree_type
 aie_mem(const xrt_core::device* device)
 {
   return populate_aie_mem(device, "Aie_Mem_Status");
+}
+
+// Get AIE partition information for this device
+ptree_type
+aie_partition(const xrt_core::device* device)
+{
+  return populate_aie_partition(device, "Aie_Partitions");
 }
 
 }} // aie, xrt

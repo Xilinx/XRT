@@ -47,7 +47,7 @@ R"(
         "name": "aie",
         "contents": [{
             "name": "examine",
-            "contents": ["aie", "aiemem", "aieshim"]
+            "contents": ["aie", "aiemem", "aieshim", "aie-partitions"]
         }]
     }]
 }]
