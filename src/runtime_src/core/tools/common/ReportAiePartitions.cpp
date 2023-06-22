@@ -48,6 +48,9 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
   for (const auto& pt_partition : pt_partitions) {
     const auto& partition = pt_partition.second;
+
+    _output << boost::str(boost::format("  Partition Index: %d\n") % partition.get<uint64_t>("partition_index"));
+
     const auto start_col = partition.get<uint64_t>("start_col");
     const auto num_cols = partition.get<uint64_t>("num_cols");
     std::string column_string;
@@ -56,14 +59,14 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       if (i < num_cols - 1)
         column_string += ", ";
     }
-    _output << "  Columns: [" << column_string << "]\n";
+    _output << boost::str(boost::format("    Columns: [%s]\n") % column_string);
 
     const std::vector<Table2D::HeaderData> table_headers = {
       {"Slot ID", Table2D::Justification::left},
       {"Xclbin UUID", Table2D::Justification::left},
       {"Usage Count", Table2D::Justification::left},
       {"Migration Count", Table2D::Justification::left},
-      {"BO Sync Count", Table2D::Justification::left}
+      {"Device BO Sync Count", Table2D::Justification::left}
     };
     Table2D context_table(table_headers);
 
@@ -75,11 +78,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("xclbin_uuid"),
         hw_context.get<std::string>("usage_count"),
         hw_context.get<std::string>("migration_count"),
-        hw_context.get<std::string>("bo_sync_count")
+        hw_context.get<std::string>("device_bo_sync_count")
       };
       context_table.addEntry(entry_data);
     }
-    _output << context_table.toString("      ") << "\n";
+    _output << boost::str(boost::format("%s\n") % context_table.toString("      "));
   }
   _output << "\n";
 }

@@ -439,16 +439,18 @@ populate_aie_partition(const xrt_core::device* device, const std::string& desc)
     pt_entry.put("slot_id", entry.slot_id);
     pt_entry.put("usage_count", entry.usage_count);
     pt_entry.put("migration_count", entry.migration_count);
-    pt_entry.put("bo_sync_count", entry.bo_sync_count);
+    pt_entry.put("device_bo_sync_count", entry.bo_sync_count);
 
     partition.first->second.push_back(std::make_pair("", pt_entry));
   }
 
+  uint32_t partition_index = 0;
   boost::property_tree::ptree pt_data;
   for (const auto entry : pt_map) {
     boost::property_tree::ptree pt_entry;
     pt_entry.put("start_col", std::get<0>(entry.first));
     pt_entry.put("num_cols", std::get<1>(entry.first));
+    pt_entry.put("partition_index", partition_index++);
     pt_entry.add_child("hw_contexts", entry.second);
     pt_data.push_back(std::make_pair("", pt_entry));
   }
