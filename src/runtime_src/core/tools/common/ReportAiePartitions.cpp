@@ -7,6 +7,7 @@
 
 #include "core/common/info_aie.h"
 #include "Table2D.h"
+#include "XBUtilitiesCore.h"
 
 #include <vector>
 
@@ -84,6 +85,37 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     }
     _output << boost::str(boost::format("%s\n") % context_table.toString("      "));
   }
+
+  if (XBUtilities::getVerbose()) {
+    _output << "AIE Columns\n";
+
+    const std::vector<Table2D::HeaderData> table_headers = {
+      {"Column", Table2D::Justification::left},
+      {"HW Context Slot", Table2D::Justification::left}
+    };
+    Table2D verbose_table(table_headers);
+
+    for (const auto& pt_partition : pt_partitions) {
+      const auto& partition = pt_partition.second;
+
+      const auto start_col = partition.get<uint64_t>("start_col");
+      const auto num_cols = partition.get<uint64_t>("num_cols");
+      for (uint64_t i = 0; i < num_cols; i++) {
+        uint64_t col = start_col + i;
+        std::string context_string;
+        for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree))
+          context_string += pt_hw_context.second.get<std::string>("slot_id") + ", ";
+        context_string.erase(context_string.end() - 2, context_string.end());
+        const std::vector<std::string> entry_data = {
+          std::to_string(col),
+          boost::str(boost::format("[%s]") % context_string)
+        };
+        verbose_table.addEntry(entry_data);
+      }
+    }
+    _output << boost::str(boost::format("%s\n") % verbose_table.toString("  "));
+  }
+
   _output << "\n";
 }
 
