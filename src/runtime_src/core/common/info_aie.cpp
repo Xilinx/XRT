@@ -431,7 +431,7 @@ populate_aie_partition(const xrt_core::device* device, const std::string& desc)
   const auto data = xrt_core::device_query_default<qr::aie_partition_info>(device, {});
   // Group the hw contexts based on their which AIE partitions they use
   std::map<std::tuple<uint64_t, uint64_t>, boost::property_tree::ptree> pt_map;
-  for (const auto entry : data) {
+  for (const auto& entry : data) {
     auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
 
     boost::property_tree::ptree pt_entry;
@@ -446,7 +446,7 @@ populate_aie_partition(const xrt_core::device* device, const std::string& desc)
 
   uint32_t partition_index = 0;
   boost::property_tree::ptree pt_data;
-  for (const auto entry : pt_map) {
+  for (const auto& entry : pt_map) {
     boost::property_tree::ptree pt_entry;
     pt_entry.put("start_col", std::get<0>(entry.first));
     pt_entry.put("num_cols", std::get<1>(entry.first));
