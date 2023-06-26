@@ -18,31 +18,11 @@
 #define __SubCmdConfigure_h_
 
 #include "tools/common/SubCmd.h"
+#include "tools/common/SubCmdConfigureInternal.h"
 
-class SubCmdConfigure : public SubCmd {
+class SubCmdConfigure : public SubCmdConfigureInternal {
  public:
-  virtual void execute(const SubCmdOptions &_options) const;
-
- public:
-  SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-  virtual ~SubCmdConfigure() {};
-
- private:
-  // Common options
-  std::string m_device;
-  std::string m_path;
-  std::string m_retention;
-  bool        m_help;
-  // Hidden options
-  bool        m_daemon;
-  bool        m_purge;
-  std::string m_host;
-  std::string m_security;
-  std::string m_clk_throttle;
-  std::string m_power_override;
-  std::string m_temp_override;
-  std::string m_ct_reset;
-  bool        m_showx;
+  SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree configurations);
 };
 
 #endif

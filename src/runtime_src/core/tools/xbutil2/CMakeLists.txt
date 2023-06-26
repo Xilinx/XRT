@@ -10,6 +10,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBUtilities.cpp"
   "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdConfigureInternal.cpp"
   "../common/SubCmdExamineInternal.cpp"
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenusCore.cpp"
