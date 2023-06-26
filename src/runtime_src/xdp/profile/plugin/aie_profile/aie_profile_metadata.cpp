@@ -35,6 +35,19 @@ namespace xdp {
 
   AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle) : deviceID(deviceID), handle(handle)
   {
+
+    std::cout << "Reached XDP minimal build" << std::endl;
+    #ifdef XDP_MINIMAL_BUILD
+      pt::read_json("aie_control_config.json", aie_meta);
+      std::cout << "Finished Reading JSOn" << std::endl;
+      invalidXclbinMetadata = false;
+    #else
+      auto device = xrt_core::get_userpf_device(handle);
+      auto data = device->get_axlf_section(AIE_METADATA);
+      invalidXclbinMetadata = (!data.first || !data.second);
+      read_aie_metadata(data.first, data.second, aie_meta);
+    #endif
+
     // Verify settings from xrt.ini
     checkSettings();
 
@@ -74,18 +87,6 @@ namespace xdp {
       else
         getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
     }
-
-    std::cout << "Reached XDP minimal build" << std::endl;
-    #ifdef XDP_MINIMAL_BUILD
-      pt::read_json("aie_control_config.json", aie_meta);
-      std::cout << "Finished Reading JSOn" << std::endl;
-
-    #else
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-      invalidXclbinMetadata = (!data.first || !data.second);
-      read_aie_metadata(data.first, data.second, aie_meta);
-    #endif
 
   }
 
@@ -139,9 +140,11 @@ namespace xdp {
 
   int AieProfileMetadata::getHardwareGen()
   {
+    std::cout << "getting hw gen" << std::endl;
     static int hwGen = 1;
     static bool gotValue = false;
     if (!gotValue) {
+      std::cout << "Invalid Xclbin Metadata: " << int(invalidXclbinMetadata) << std::endl;
       if (invalidXclbinMetadata) {
         hwGen = 1;
       } else {

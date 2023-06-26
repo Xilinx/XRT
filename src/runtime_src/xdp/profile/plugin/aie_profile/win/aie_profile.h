@@ -20,6 +20,7 @@
 #include <cstdint>
 
 #include "core/include/xrt/xrt_kernel.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 
 extern "C" {
@@ -38,9 +39,34 @@ namespace xdp {
     void poll(uint32_t index, void* handle);
     void freeResources();
     bool setMetricsSettings(uint64_t deviceId, void* handle);
+    xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
+    bool isValidType(module_type type, XAie_ModuleType mod);
+    void configEventSelections(const XAie_LocType loc,
+                                const xdp::module_type type,
+                                const std::string metricSet,
+                                const uint8_t channel0);
+    void configGroupEvents(const XAie_LocType loc,
+                           const XAie_ModuleType mod,
+                           const XAie_Events event);
 
+    uint32_t getCounterPayload( const tile_type& tile, 
+                                         const xdp::module_type type, 
+                                         uint16_t column, 
+                                         uint16_t row, 
+                                         XAie_Events startEvent, 
+                                         const std::string metricSet,
+                                         const uint8_t channel);
    private:
       XAie_DevInst aieDevInst = { 0 };
+      std::map<xdp::module_type, uint16_t> mCounterBases;
+      std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
      
   };
 
