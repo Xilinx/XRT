@@ -74,7 +74,8 @@ struct xcl_bo_flags
 
       // extension
       uint32_t access : 2;  // [33-32]
-      uint32_t unused : 30; // [63-34]
+      uint32_t dir    : 2;  // [35-34]
+      uint32_t unused : 28; // [63-36]
     };
   };
 };
@@ -101,6 +102,14 @@ struct xcl_bo_flags
  */
 #define XRT_BO_ACCESS_SHARED 1
 #define XRT_BO_ACCESS_EXPORTED 2
+
+/**
+ * Shim level BO Flags for direction of data transfer
+ * as seen from device.
+ */
+#define XRT_BO_ACCESS_READ    (1U << 0)
+#define XRT_BO_ACCESS_WRITE   (1U << 1)
+#define XRT_BO_ACCESS_READ_WRITE (XRT_BO_ACCESS_READ | XRT_BO_ACCESS_WRITE)
 
 /**
  * XRT Native BO flags
