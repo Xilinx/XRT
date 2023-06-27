@@ -9,6 +9,14 @@
 
 #include "xrt/xrt_kernel.h"
 
+constexpr unsigned long long int operator "" _Kb(unsigned long long int n) {
+  return n * 1024;
+}
+
+constexpr unsigned long long int operator "" _Mb(unsigned long long int n) {
+  return n * 1024 * 1024;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,7 +48,7 @@ int bandwidth_kernel(int reps, double *max_throughput, xrtHandles *xrtHandle)
   double max_throughput_int = 0;
 
   // Starting at 4K and going up to 16M with increments of power of 2
-  for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+  for (uint32_t i = 4_Kb; i <= 16_Mb; i *= 2) {
     unsigned int data_size = i;
     
     // These commands will allocate memory on the FPGA. The xrt::bo objects
