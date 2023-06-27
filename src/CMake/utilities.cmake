@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 # xrt_add_subdirectory subdir [bindir] [exclude_from_all] [system]
 # See CMake: add_subdirectory
@@ -21,9 +21,11 @@ function(xrt_add_subdirectory subdir)
   file(RELATIVE_PATH relpath ${xrtroot} ${path})
   if (${relpath} IN_LIST XRT_EXCLUDE_SUB_DIRECTORY)
     message("-- xrt_add_subdirectory excludes ${subdir}")
-  else()
+  elseif (EXISTS ${path})                     
     message("-- add_subdirectory(${ARGV})")
     add_subdirectory(${ARGV})
+  else ()
+    message("-- xrt_add_subdirectory ${subdir} does not exist")
   endif()
 endfunction()
 
