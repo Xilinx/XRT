@@ -41,14 +41,16 @@ namespace xdp {
     bool setMetricsSettings(uint64_t deviceId, void* handle);
     xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
     bool isValidType(module_type type, XAie_ModuleType mod);
+    bool isStreamSwitchPortEvent(const XAie_Events event);
     void configEventSelections(const XAie_LocType loc,
                                 const xdp::module_type type,
                                 const std::string metricSet,
                                 const uint8_t channel0);
     void configGroupEvents(const XAie_LocType loc,
                            const XAie_ModuleType mod,
-                           const XAie_Events event);
-
+                           const XAie_Events event, 
+                           std::string metricSet, 
+                           uint8_t channel);
     uint32_t getCounterPayload( const tile_type& tile, 
                                          const xdp::module_type type, 
                                          uint16_t column, 
@@ -56,6 +58,12 @@ namespace xdp {
                                          XAie_Events startEvent, 
                                          const std::string metricSet,
                                          const uint8_t channel);
+
+    void configStreamSwitchPorts(const tile_type& tile,
+                                  const XAie_LocType loc,
+                                  const module_type type,
+                                  const std::string metricSet,
+                                  const uint8_t channel);
    private:
       XAie_DevInst aieDevInst = { 0 };
       std::map<xdp::module_type, uint16_t> mCounterBases;

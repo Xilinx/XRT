@@ -87,7 +87,7 @@ namespace xdp {
       return itr->second.deviceID;
 
 #ifdef XDP_MINIMAL_BUILD
-    return 0;
+    return db->addDevice("win_device");
 #else
     constexpr uint32_t PATH_LENGTH = 512;
     
@@ -96,8 +96,7 @@ namespace xdp {
 
     xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
     std::string sysfspath(pathBuf);
-    uint64_t deviceID = db->addDevice(sysfspath);  // Get the unique device Id
-    return deviceID;
+    return db->addDevice(sysfspath);  // Get the unique device Id
 #endif
   }
 

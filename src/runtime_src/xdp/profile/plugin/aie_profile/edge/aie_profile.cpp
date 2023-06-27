@@ -280,7 +280,7 @@ namespace xdp {
     if (type == module_type::core) {
       // Define stream switch port to monitor core or memory trace
       uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, channel);
       return;
     }
 
