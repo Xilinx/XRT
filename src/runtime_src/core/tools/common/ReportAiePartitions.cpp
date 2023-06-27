@@ -5,15 +5,55 @@
 // Local - Include Files
 #include "ReportAiePartitions.h"
 
-#include "core/common/info_aie.h"
+#include "core/common/query_requests.h"
 #include "Table2D.h"
 #include "XBUtilitiesCore.h"
 
+#include <map>
 #include <vector>
+
+// Populate the AIE Mem tile information from the input XRT device
+boost::property_tree::ptree
+populate_aie_partition(const xrt_core::device* device)
+{
+  boost::property_tree::ptree pt;
+  auto data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
+  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587a", 0, 0, 2, 0, 0, 0});
+  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587b", 1, 0, 2, 0, 0, 0});
+  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587c", 2, 0, 2, 0, 0, 0});
+  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587d", 3, 2, 1, 0, 0, 0});
+  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587e", 4, 3, 2, 0, 0, 0});
+  // Group the hw contexts based on their which AIE partitions they use
+  std::map<std::tuple<uint64_t, uint64_t>, boost::property_tree::ptree> pt_map;
+  for (const auto& entry : data) {
+    auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
+
+    boost::property_tree::ptree pt_entry;
+    pt_entry.put("xclbin_uuid", entry.xclbin_uuid);
+    pt_entry.put("slot_id", entry.slot_id);
+    pt_entry.put("usage_count", entry.usage_count);
+    pt_entry.put("migration_count", entry.migration_count);
+    pt_entry.put("device_bo_sync_count", entry.bo_sync_count);
+
+    partition.first->second.push_back(std::make_pair("", pt_entry));
+  }
+
+  uint32_t partition_index = 0;
+  boost::property_tree::ptree pt_data;
+  for (const auto& entry : pt_map) {
+    boost::property_tree::ptree pt_entry;
+    pt_entry.put("start_col", std::get<0>(entry.first));
+    pt_entry.put("num_cols", std::get<1>(entry.first));
+    pt_entry.put("partition_index", partition_index++);
+    pt_entry.add_child("hw_contexts", entry.second);
+    pt.push_back(std::make_pair("", pt_entry));
+  }
+  return pt;
+}
 
 void
 ReportAiePartitions::
-getPropertyTreeInternal(const xrt_core::device * _pDevice, 
+getPropertyTreeInternal(const xrt_core::device* _pDevice, 
                         boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
@@ -23,13 +63,11 @@ getPropertyTreeInternal(const xrt_core::device * _pDevice,
 
 void 
 ReportAiePartitions::
-getPropertyTree20202(const xrt_core::device * _pDevice, 
+getPropertyTree20202(const xrt_core::device* _pDevice, 
                      boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::aie_partitions>();
-  boost::property_tree::read_json(ss, _pt);
+  _pt.put("description", "AIE Partition Information");
+  _pt.add_child("aie_partitions", populate_aie_partition(_pDevice));
 }
 
 void 

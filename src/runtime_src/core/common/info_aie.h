@@ -38,9 +38,6 @@ aie_shim(const xrt_core::device * device);
 boost::property_tree::ptree
 aie_mem(const xrt_core::device * device);
 
-boost::property_tree::ptree
-aie_partition(const xrt_core::device* device);
-
 }} // aie, xrt_core
 
 #endif

@@ -101,8 +101,7 @@ enum class device : unsigned int {
   aie_shim,
   dynamic_regions,
   vmr,
-  aie_mem,
-  aie_partitions
+  aie_mem
 };
 
 /// @cond
@@ -127,7 +126,6 @@ XRT_INFO_PARAM_TRAITS(device::host, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie_shim, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie_mem, std::string);
-XRT_INFO_PARAM_TRAITS(device::aie_partitions, std::string);
 XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
 XRT_INFO_PARAM_TRAITS(device::vmr, std::string);
 /// @endcond
