@@ -296,6 +296,9 @@ xclAllocBO(size_t size, unsigned flags)
 {
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
+ 
+  if (result)
+    throw std::bad_alloc();
 
   xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
@@ -310,6 +313,9 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   flags |= DRM_ZOCL_BO_FLAGS_USERPTR;
   drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
+
+  if (result)
+    throw std::bad_alloc();
 
   xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
