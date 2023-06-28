@@ -18,11 +18,6 @@ populate_aie_partition(const xrt_core::device* device)
 {
   boost::property_tree::ptree pt;
   auto data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
-  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587a", 0, 0, 2, 0, 0, 0});
-  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587b", 1, 0, 2, 0, 0, 0});
-  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587c", 2, 0, 2, 0, 0, 0});
-  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587d", 3, 2, 1, 0, 0, 0});
-  data.push_back({"2E98AE1C-7416-5E1D-E571-D7878E29587e", 4, 3, 2, 0, 0, 0});
   // Group the hw contexts based on their which AIE partitions they use
   std::map<std::tuple<uint64_t, uint64_t>, boost::property_tree::ptree> pt_map;
   for (const auto& entry : data) {
