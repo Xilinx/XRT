@@ -1477,7 +1477,11 @@ struct aie_tiles_status_info : request
   get(const device* device, const boost::any& param) const = 0;
 };
 
-// Used to retrive aie tiles status info
+// Retrieves the aie partition info.
+// An aie partition consists of a starting column and a number of columns.
+// The information is returned via hardware contexts as the driver keeps
+// track of the data this way.
+// Hardware contexts may share the same aie partition.
 struct aie_partition_info : request
 {
   struct data
