@@ -54,8 +54,8 @@ def main():
 
   step = "1a) Create shared ps kernel library (compile objects)"
 
-  # Note: This hex image was created from the pskernel.cpp file and converted
-  # to hex via the command
+  # Note: This hex image was created by first compiling the pskernel.cpp file
+  # into pskernel.so, then converting the so to hex via the command
   # xxd -p pskernel.so | tr -d ' \n' > pskernel.hex
 
   psKernelSharedLibraryHex = os.path.join(args.resource_dir, "pskernel.hex")
@@ -71,7 +71,6 @@ def main():
       file.write(binImage)
 
   # ---------------------------------------------------------------------------
-
   step = "2a) Read in a PS kernel, updated and validate the sections"
 
   inputPSKernelLib = psKernelSharedLibrary
@@ -96,7 +95,7 @@ def main():
                      "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
                      "--dump-section", "MEM_TOPOLOGY:JSON:" + outputMemTopology,
                      "--output", outputXCLBIN, 
-                     "--force"
+                     "--force", "--trace"
                      ]
   execCmd(step, cmd)
 
@@ -123,7 +122,46 @@ def main():
   jsonFileCompare(expectedKernelJSON, outputKernelJSON)
 
   # ---------------------------------------------------------------------------
-  step = "3) Validate adding just a soft kernel"
+  step = "3a) Read in a PS kernel with specified mem banks, updated and validate the sections"
+
+  inputPSKernelLib = psKernelSharedLibrary
+  # mb: mem-bank
+  outputEmbeddedMetadata = "embedded_metadata_mb_updated.xml"
+  expectedEmbeddedMetadata = os.path.join(args.resource_dir, "embedded_metadata_expected.xml")
+
+  outputIpLayout = "ip_layout_mb_updated.json"
+  expectedIpLayout = os.path.join(args.resource_dir, "ip_layout_expected.json")
+
+  # this should be different
+  outputConnectivity = "connectivity_mb_updated.json"
+  expectedConnectivity = os.path.join(args.resource_dir, "connectivity_mb_expected.json")
+
+  # this should be different
+  outputMemTopology = "mem_topology_mb_updated.json"
+  expectedMemTopology = os.path.join(args.resource_dir, "mem_topology_mb_expected.json")
+
+  outputXCLBIN = "pskernel_output_mb.xclbin"
+
+  # connect the PS kernel to mem banks 0 and 1
+  cmd = [xclbinutil, "--input", workingXCLBIN,
+                     "--add-pskernel", "0,1:::" + inputPSKernelLib,
+                     "--dump-section", "EMBEDDED_METADATA:RAW:" + outputEmbeddedMetadata,
+                     "--dump-section", "IP_LAYOUT:JSON:" + outputIpLayout,
+                     "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
+                     "--dump-section", "MEM_TOPOLOGY:JSON:" + outputMemTopology,
+                     "--output", outputXCLBIN, 
+                     "--force"
+                     ]
+  execCmd(step, cmd)
+
+  # Validate the contents of the various sections
+  textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
+  jsonFileCompare(outputIpLayout, expectedIpLayout)
+  jsonFileCompare(outputConnectivity, expectedConnectivity)
+  jsonFileCompare(outputMemTopology, expectedMemTopology)
+
+  # ---------------------------------------------------------------------------
+  step = "4) Validate adding just a soft kernel"
 
   outputOnlyPSKernelXclbin = "only_pskernel.xclbin"
   outputPSKEmbeddedMetadata = "embedded_metadata_psk.xml"

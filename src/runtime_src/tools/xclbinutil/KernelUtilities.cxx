@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -288,15 +289,30 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
     const auto& ptArg = arg.second;
 
     // Determine if there should be a memory connection, if so add it
+    //
     static const std::string NOT_DEFINED = "<not defined>";
     auto memoryConnection = ptArg.get<std::string>("memory-connection", NOT_DEFINED);
 
-    // An empty memory connection indicates that we should connect it to a yet to be define PS kernel memory entry
+    // if memory-connection is not defined, skip this arg
+    // if memory-connection is empty we should connect the arg to a yet to be define PS kernel memory entry
+    // if memory-connection is not empty
+    //   1. for --add-pskernel, user can specify the memory bank indices in
+    //      the value
+    //   2. for --add-kernel, user can specify the memory bank tag in the 
+    //      input file
+    if (memoryConnection == NOT_DEFINED) {
+      ++argIndexID;
+      continue;
+    }
+
+    std::vector<std::string> vMemBanks;
+
     if (memoryConnection.empty()) {
       // Look for entry.  If it doesn't exist create one
       auto iter = std::find_if(memTopology.begin(), memTopology.end(),
                                [](const boost::property_tree::ptree& pt)
       {return pt.get<std::string>("m_type", "") == "MEM_PS_KERNEL";});
+
       if (iter == memTopology.end()) {
         XUtil::TRACE("MEM Entry of PS Kernel memory not found, creating one.");
         boost::property_tree::ptree ptMemData;
@@ -306,26 +322,67 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
         ptMemData.put("m_base_address", "0x0");
         memTopology.push_back(ptMemData);
       }
+      // memoryConnection = "MEM_PS_KERNEL";
 
-      memoryConnection = "MEM_PS_KERNEL";
+      // the newly added mem bank is always at the last of memTopology
+      const unsigned int memIndex = static_cast<unsigned int>(memTopology.size()) - 1;
+      vMemBanks.push_back(std::to_string(memIndex));
+    } else {
+      // memory-connection could be
+      //   a comma separated memory bank indices, for --add-pskernel
+      //   a string which matches to m_tag, for --add-kernel
+      std::vector<int> viMemBanks;
+      auto isNumeric = [&viMemBanks](const std::string& str) {
+        std::istringstream ss(str);
+        std::string token;
+        while(std::getline(ss, token, ',')) {
+          int index;
+          try {
+            index = std::stoi(token);
+          } catch (const std::exception&) {
+            return false;
+          }
+          viMemBanks.push_back(index);
+        }
+        return true;
+      };
+
+      if (isNumeric(memoryConnection)) {
+        // make sure the specified index exists
+        for (const auto& memBankIndex : viMemBanks) {
+          if (memBankIndex >= 0 && memBankIndex < static_cast<int>(memTopology.size())) {
+            vMemBanks.push_back(std::to_string(memBankIndex));
+            std::cout << "\tconnecting arg " << std::to_string(argIndexID) << " to mem bank " << std::to_string(memBankIndex) << std::endl;
+          }
+          else
+            throw std::runtime_error("Specifїed mem_banks is not valid");
+        }
+      } else {
+        auto iter = std::find_if(memTopology.begin(), memTopology.end(),
+                               [memoryConnection](const boost::property_tree::ptree& pt)
+        {return pt.get<std::string>("m_tag", "") == memoryConnection;});
+
+        if (iter == memTopology.end())
+          throw std::runtime_error("Error: Memory tag '" + memoryConnection + "' not found in the MEM_TOPOLOGY section.");
+
+        // We have a match
+        uint64_t memIndex = std::distance(memTopology.begin(), iter);
+        vMemBanks.push_back(std::to_string(memIndex));
+      }
     }
 
-    // Do we have a connection to perform?
-    if (memoryConnection != NOT_DEFINED) {
-      auto iter = std::find_if(memTopology.begin(), memTopology.end(),
-                               [memoryConnection](const boost::property_tree::ptree& pt)
-      {return pt.get<std::string>("m_tag", "") == memoryConnection;});
-
-      if (iter == memTopology.end())
-        throw std::runtime_error("Error: Memory tag '" + memoryConnection + "' not found in the MEM_TOPOLOGY section.");
-
-      // We have a match
-      uint64_t memIndex = std::distance(memTopology.begin(), iter);
+    for (const auto& memBank : vMemBanks) {
       boost::property_tree::ptree ptEntry;
       ptEntry.put("arg_index", std::to_string(argIndexID));
       ptEntry.put("m_ip_layout_index", std::to_string(ipLayoutIndexID));
-      ptEntry.put("mem_data_index", std::to_string(memIndex));
+      ptEntry.put("mem_data_index", memBank);
       connectivity.push_back(ptEntry);
+
+      // update the corresponding memtopology
+      int index = std::stoi(memBank);
+      boost::property_tree::ptree& ptMemData = memTopology[index];
+      if (ptMemData.get<int>("m_used", 0) != 1)
+        ptMemData.put("m_used", "1");
     }
     ++argIndexID;
   }
@@ -561,7 +618,8 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
 
 
 void
-XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
+XclBinUtilities::createPSKernelMetadata(const std::string& memBanks,
+                                        unsigned long numInstances,
                                         const boost::property_tree::ptree& ptFunctions,
                                         const std::string& kernelLibrary,
                                         boost::property_tree::ptree& ptPSKernels)
@@ -605,7 +663,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
       if (addrQualifier == "GLOBAL") {
         byteSize = 16;
         if (entry.get<int>("use-id", 1))
-          ptArg.put("memory-connection", "");
+          ptArg.put("memory-connection", memBanks);
       }
 
       ptArg.put("byte-size", byteSize);

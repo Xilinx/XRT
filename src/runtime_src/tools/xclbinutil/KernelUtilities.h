@@ -26,6 +26,6 @@ namespace XclBinUtilities {
 void addKernel(const boost::property_tree::ptree& ptKernel, bool isFixedPS, boost::property_tree::ptree& ptEmbeddedData);
 void addKernel(const boost::property_tree::ptree& ptKernel, boost::property_tree::ptree& ptMemTopology, boost::property_tree::ptree& ptIPLayout, boost::property_tree::ptree& ptConnectivity);
 void validateFunctions(const std::string& kernelLibrary, const boost::property_tree::ptree& ptFunctions);
-void createPSKernelMetadata(unsigned long numInstances, const boost::property_tree::ptree& ptFunctions, const std::string& kernelLibrary, boost::property_tree::ptree& ptPSKernels);
+void createPSKernelMetadata(const std::string& memBank, unsigned long numInstances, const boost::property_tree::ptree& ptFunctions, const std::string& kernelLibrary, boost::property_tree::ptree& ptPSKernels);
 };
 #endif
