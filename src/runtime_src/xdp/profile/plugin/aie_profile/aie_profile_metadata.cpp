@@ -350,11 +350,15 @@ namespace xdp {
     }
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto data = device->get_axlf_section(AIE_METADATA);
+    pt::ptree aie_meta;
+    read_aie_metadata(data.first, data.second, aie_meta);
+    
     uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
     auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
-    auto allValidGraphs = getValidGraphs(device.get());
-    auto allValidKernels = getValidKernels(device.get());
+    auto allValidGraphs = aie::getValidGraphs(aie_meta);
+    auto allValidKernels = aie::getValidKernels(aie_meta);
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = get_tiles(device.get(), "all", mod);
@@ -693,9 +697,12 @@ namespace xdp {
       return;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto data = device->get_axlf_section(AIE_METADATA);
+    pt::ptree aie_meta;
+    read_aie_metadata(data.first, data.second, aie_meta);
 
-    auto allValidGraphs = getValidGraphs(device.get());
-    auto allValidPorts = getValidPorts(device.get());
+    auto allValidGraphs = aie::getValidGraphs(aie_meta);
+    auto allValidPorts = aie::getValidPorts(aie_meta);
 
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -725,8 +732,8 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = getInterfaceTiles(device.get(), graphMetrics[i][0], graphMetrics[i][1], 
-                                     graphMetrics[i][2]);
+      auto tiles = aie::getInterfaceTiles(aie_meta, graphMetrics[i][0], graphMetrics[i][1], 
+                                          graphMetrics[i][2]);
       for (auto &e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -774,8 +781,8 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = getInterfaceTiles(device.get(), graphMetrics[i][0], graphMetrics[i][1],
-                                     graphMetrics[i][2]);
+      auto tiles = aie::getInterfaceTiles(aie_meta, graphMetrics[i][0], graphMetrics[i][1],
+                                          graphMetrics[i][2]);
       for (auto &e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -818,7 +825,7 @@ namespace xdp {
         continue;
 
       int16_t channelId = (metrics[i].size() < 3) ? -1 : static_cast<uint16_t>(std::stoul(metrics[i][2]));
-      auto tiles = getInterfaceTiles(device.get(), "all", "all", metrics[i][1], channelId);
+      auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], channelId);
 
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
@@ -866,8 +873,8 @@ namespace xdp {
         }
       }
 
-      auto tiles = getInterfaceTiles(device.get(), "all", "all", metrics[i][2],
-                                     channelId, true, minCol, maxCol);
+      auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][2],
+                                          channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
@@ -913,8 +920,8 @@ namespace xdp {
           }
         }
 
-        auto tiles = getInterfaceTiles(device.get(), "all", "all", metrics[i][1], 
-                                       channelId, true, col, col);
+        auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], 
+                                            channelId, true, col, col);
 
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];

@@ -925,6 +925,13 @@ get_aie_trace_settings_poll_timers_interval_us()
   return value;
 }
 
+inline bool
+get_aie_trace_settings_enable_system_timeline()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", false);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif

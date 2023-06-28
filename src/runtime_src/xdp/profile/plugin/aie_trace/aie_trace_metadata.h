@@ -49,16 +49,14 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      auto device = xrt_core::get_userpf_device(handle);
-      return getHardwareGeneration(device.get());
+      return aie::getHardwareGeneration(aieMeta);
     }
     uint16_t getRowOffset() {
-      auto device = xrt_core::get_userpf_device(handle);
-      return getAIETileRowOffset(device.get());
+      return aie::getAIETileRowOffset(aieMeta);
     }
     std::unordered_map<std::string, io_config> 
-    get_trace_gmios(const xrt_core::device* device) {
-      return getTraceGMIOs(device);
+    get_trace_gmios() {
+      return aie::getTraceGMIOs(aieMeta);
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -102,6 +100,7 @@ class AieTraceMetadata {
     bool isValidMetrics = true;   
     bool runtimeMetrics;
     bool continuousTrace;
+    bool invalidXclbinMetadata;
 
     uint32_t pollingInterval;
     uint32_t iterationCount = 0;
@@ -110,9 +109,10 @@ class AieTraceMetadata {
     uint64_t numAIETraceOutput = 0;
     uint64_t offloadIntervalUs = 0;
     unsigned int aie_trace_file_dump_int_s;
-
+    
     std::string counterScheme;
     std::string metricSet;
+    boost::property_tree::ptree aieMeta;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;

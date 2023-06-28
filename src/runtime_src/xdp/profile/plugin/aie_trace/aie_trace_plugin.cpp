@@ -136,7 +136,7 @@ namespace xdp {
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
       if (device != nullptr) {
-        for (auto& gmioEntry : AIEData.metadata->get_trace_gmios(device.get())) {
+        for (auto& gmioEntry : AIEData.metadata->get_trace_gmios()) {
           auto gmio = gmioEntry.second;
           (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, 
               gmio.channelNum, gmio.streamId, gmio.burstLength);
@@ -247,25 +247,31 @@ namespace xdp {
         AIEData.valid = false;
     }
     
+    // Support system timeline
+    if (xrt_core::config::get_aie_trace_settings_enable_system_timeline()) {
 #ifdef _WIN32
-    std::string deviceName = "win_device";
+      std::string deviceName = "win_device";
 #else
-    struct xclDeviceInfo2 info;
-    xclGetDeviceInfo2(handle, &info);
-    std::string deviceName = std::string(info.mName);
+      struct xclDeviceInfo2 info;
+      xclGetDeviceInfo2(handle, &info);
+      std::string deviceName = std::string(info.mName);
 #endif
 
-    // Writer for timestamp file
-    std::string outputFile = "aie_event_timestamps.csv";
-    auto tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
-    writers.push_back(tsWriter);
-    db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
+      // Writer for timestamp file
+      std::string outputFile = "aie_event_timestamps.csv";
+      auto tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
+      writers.push_back(tsWriter);
+      db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
 
-    // Start the AIE trace timestamps thread
-    // NOTE: we purposely start polling before configuring trace events
-    AIEData.threadCtrlBool = true;
-    auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers, this, deviceID, handle);
-    AIEData.thread = std::move(device_thread);
+      // Start the AIE trace timestamps thread
+      // NOTE: we purposely start polling before configuring trace events
+      AIEData.threadCtrlBool = true;
+      auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers, this, deviceID, handle);
+      AIEData.thread = std::move(device_thread);
+    }
+    else {
+      AIEData.threadCtrlBool = false;
+    }
 
     //Sets up and calls the PS kernel on x86 implementation
     //Sets up and the hardware on the edge implementation
@@ -371,7 +377,7 @@ namespace xdp {
     if (itr == handleToAIEData.end())
       return;
     auto& AIEData = itr->second;
-    if (!AIEData.valid)
+    if (!AIEData.valid || !AIEData.threadCtrlBool)
       return;
 
     AIEData.threadCtrlBool = false;
@@ -383,10 +389,12 @@ namespace xdp {
   void AieTracePluginUnified::endPoll()
   {
     // Ask all threads to end
-    for (auto& p : handleToAIEData) { 
-      p.second.threadCtrlBool = false;
-      if (p.second.thread.joinable())
-        p.second.thread.join();
+    for (auto& p : handleToAIEData) {
+      if (p.second.threadCtrlBool) {
+        p.second.threadCtrlBool = false;
+        if (p.second.thread.joinable())
+          p.second.thread.join();
+      }
     }
   }
 } // end namespace xdp
