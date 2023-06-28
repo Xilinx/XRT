@@ -314,8 +314,37 @@ namespace xdp {
 
     } // modules
     
-	  // uint8_t *Ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-  
+	  uint8_t *Ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    XAie_TxnHeader *Hdr = (XAie_TxnHeader *)Ptr;
+    printf("Header version %d.%d\n", Hdr->Major, Hdr->Minor);
+    printf("Device Generation: %d\n", Hdr->DevGen);
+    printf("Cols, Rows, NumMemRows : (%d, %d, %d)\n", Hdr->NumCols,
+        Hdr->NumRows, Hdr->NumMemTileRows);
+    printf("TransactionSize: %u\n", Hdr->TxnSize);
+    printf("NumOps: %u\n", Hdr->NumOps);
+    
+    // // Create the dpu kernel
+    // std::cout << "Profiling is creating xclbin object..." << std::endl;
+    // auto xclbin = xrt::xclbin("1x4_dpu.xclbin");
+
+    // // Determine The DPU Kernel Name
+    // auto xkernels = xclbin.get_kernels();
+    // auto xkernel = *std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
+    //   auto name = k.get_name();
+    //   return name.rfind("DPU",0) == 0; // Starts with "DPU"
+    // });
+    // auto kernelName = xkernel.get_name();
+
+    // std::cout << "Profiling found kernel: " << kernelName << std::endl;
+
+    // std::cout << "Profiling is loading xclbin to device..." << std::endl;
+    // auto uuid = device.load_xclbin(xclbin);
+
+    // std::cout << "Profiling is creating kernel object..." << std::endl;
+    // auto kernel = xrt::kernel(device, uuid, kernelName);
+
+
+    
     //Schedule PS kernel
     return runtimeCounters;
   }
