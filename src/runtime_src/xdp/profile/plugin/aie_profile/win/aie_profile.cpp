@@ -30,10 +30,23 @@
 #include "core/common/time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/xrt/xrt_kernel.h"
+
+#include "op_types.h"
+#include "op_buf.hpp"
+#include "op_init.hpp"
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+
+// XRT headers
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+#include "xrt/xrt_bo.h"
+
+constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
+
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -314,18 +327,32 @@ namespace xdp {
 
     } // modules
     
-	  uint8_t *Ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    XAie_TxnHeader *Hdr = (XAie_TxnHeader *)Ptr;
-    printf("Header version %d.%d\n", Hdr->Major, Hdr->Minor);
-    printf("Device Generation: %d\n", Hdr->DevGen);
-    printf("Cols, Rows, NumMemRows : (%d, %d, %d)\n", Hdr->NumCols,
-        Hdr->NumRows, Hdr->NumMemTileRows);
-    printf("TransactionSize: %u\n", Hdr->TxnSize);
-    printf("NumOps: %u\n", Hdr->NumOps);
-    
-    // // Create the dpu kernel
-    // std::cout << "Profiling is creating xclbin object..." << std::endl;
-    // auto xclbin = xrt::xclbin("1x4_dpu.xclbin");
+	  uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
+    std::cout << "Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
+
+    // Create the DPU kernel
+    std::cout << "Profiling is creating xclbin object..." << std::endl;
+    unsigned int device_index = 0;
+    auto device = xrt::device(device_index);
+    auto xclbin = xrt::xclbin("1x4_dpu.xclbin");
+  
+    device.register_xclbin(xclbin);
+    xrt::hw_context context(device, xclbin.get_uuid());
+    auto kernel = xrt::kernel(context, "DPU");
+
+    std::cout << "finished creating DPU kernel!" << std::endl;
+
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+    auto instr_bo = xrt::bo(device, instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+    auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
+    run.wait();
+    std::cout << "Finished running the kernel!" << std::endl;
+
 
     // // Determine The DPU Kernel Name
     // auto xkernels = xclbin.get_kernels();
