@@ -1480,6 +1480,43 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 ////////////////////////////////////////////////////////////////
 namespace xrt::ext {
 
+static bool
+operator!(xrt::ext::bo::access_mode am)
+{
+  return am == xrt::ext::bo::access_mode::none;
+}
+
+static uint32_t
+mode_to_access(xrt::ext::bo::access_mode am)
+{
+  if (!!(am & xrt::ext::bo::access_mode::shared) && !!(am & xrt::ext::bo::access_mode::process))
+    throw xrt_core::error("xrt::ext::bo: invalid access mode");
+
+  // Return access mode per xrt_mem.h
+  if (!!(am & xrt::ext::bo::access_mode::shared))
+    return XRT_BO_ACCESS_SHARED;
+
+  if (!!(am & xrt::ext::bo::access_mode::process))
+    return XRT_BO_ACCESS_EXPORTED;
+
+  return 0;
+}
+
+static uint32_t
+mode_to_dir(xrt::ext::bo::access_mode am)
+{
+  if (!am)
+    return XRT_BO_ACCESS_READ_WRITE;
+
+  uint32_t access = 0;
+  if (!!(am & xrt::ext::bo::access_mode::read))
+    access |= XRT_BO_ACCESS_READ;
+  if (!!(am & xrt::ext::bo::access_mode::write))
+    access |= XRT_BO_ACCESS_WRITE;
+
+  return access;
+}
+  
 static xrtBufferFlags
 adjust_buffer_flags(xrt::ext::bo::access_mode access)
 {
@@ -1488,7 +1525,8 @@ adjust_buffer_flags(xrt::ext::bo::access_mode access)
   // or to-be new first-class instruction buffer
   xcl_bo_flags flags {0};
   flags.flags = XRT_BO_FLAGS_HOST_ONLY;
-  flags.access = static_cast<uint32_t>(access);
+  flags.access = mode_to_access(access);
+  flags.dir = mode_to_dir(access);
   return flags.all;
 }
 
