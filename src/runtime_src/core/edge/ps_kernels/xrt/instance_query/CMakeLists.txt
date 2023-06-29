@@ -3,13 +3,18 @@
 #
 set(PS_KERNEL_INSTALL_DIR "${XRT_INSTALL_LIB_DIR}/ps_kernels_lib")
 
-add_library(instance_query OBJECT
-  instance_query.cpp
+add_library(instance_query SHARED
+  "instance_query.cpp"
   )
 
 set_target_properties(instance_query PROPERTIES 
   VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION}
+  )
+
+target_link_libraries(instance_query
+  PRIVATE
+  ${Boost_FILESYSTEM_LIBRARY}
   )
 
 install (TARGETS instance_query 

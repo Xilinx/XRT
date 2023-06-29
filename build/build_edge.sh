@@ -45,6 +45,7 @@ install_recipes()
     if [ $? != 0 ]; then
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
+        echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
@@ -280,7 +281,10 @@ fi
 if [ -f $SETTINGS_FILE ]; then
     source $SETTINGS_FILE
 fi
-source $PETALINUX/settings.sh 
+source $PETALINUX/settings.sh
+
+VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
+source $VITIS_FILE
 
 if [[ $AARCH = $aarch64_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then
