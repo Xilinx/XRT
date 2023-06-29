@@ -238,6 +238,36 @@ findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
   return xclbin_path;
 }
 
+static std::vector<std::string>
+findDependencies( const std::string& test_path,
+                  const std::string& ps_kernel_name)
+{
+    const std::string dependency_json = "/lib/firmware/xilinx/ps_kernels/test_dependencies.json";
+    std::vector<std::string> dependencies;
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(dependency_json, pt);
+
+        // Find the ps kernel in the dependency JSON and generate paths to the required xclbins
+        auto ps_kernels = pt.get_child("ps_kernel_mappings");
+        for (const auto& ps_kernel : ps_kernels) {
+            boost::property_tree::ptree ps_kernel_pt = ps_kernel.second;
+            if (!boost::equals(ps_kernel_name, ps_kernel_pt.get<std::string>("name")))
+                continue;
+
+            auto ps_kernel_dep = ps_kernel_pt.get_child("dependencies");
+            for (const auto& dependency : ps_kernel_dep) {
+                const std::string dependency_name = dependency.second.get_value<std::string>();
+                const std::string dependency_path = test_path + dependency_name;
+                dependencies.push_back(dependency_path);
+            }
+        }
+    } catch (const std::exception& e) {
+        throw xrt_core::error(boost::str(boost::format("Bad JSON format while marshaling dependency metadata (%s)") % e.what()));
+    }
+    return dependencies;
+}
+
 /*
  * helper funtion for kernel and bandwidth test cases
  * Steps:
@@ -276,6 +306,12 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev,
     return boost::filesystem::exists(platform_json_path) ? true : false;
   };
 
+  // Some testcases require additional binaries to be present on the device
+  std::string dependency_args;
+  const auto dependencies = findDependencies(platform_path, xclbin);
+  for (const auto& dependency : dependencies)
+    dependency_args += dependency + " ";
+
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
   static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
@@ -313,6 +349,12 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev,
 
     std::vector<std::string> args = { "-p", platform_path,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+
+    if (!dependency_args.empty()) {
+      args.push_back("-i");
+      args.push_back(dependency_args);
+    }
+
     try {
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
       if (exit_code == EOPNOTSUPP) {
