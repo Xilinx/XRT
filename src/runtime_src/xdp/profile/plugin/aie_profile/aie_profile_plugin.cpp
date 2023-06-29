@@ -100,13 +100,13 @@ namespace xdp {
 #endif
   }
 
-  void AieProfilePlugin::updateHwContext(void* handle, void* hwContext) {
+  void AieProfilePlugin::updateHwContext(void* hwContext) {
       std::cout << "Hardware Context" << std::endl;
       std::cout << "HW context value: " << hwContext << std::endl;
-      auto& AIEData = handleToAIEData[handle];
+      auto& AIEData = handleToAIEData.begin()->second;
       AIEData.metadata->setHwContext(hwContext);
 
-      auto deviceID = getDeviceIDFromHandle(handle);
+      auto deviceID = getDeviceIDFromHandle(handleToAIEData.begin()->first);
 
       auto& implementation = AIEData.implementation;
         // Ensure we only read/configure once per xclbin
@@ -119,12 +119,12 @@ namespace xdp {
         (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
       }
 
-      // Start the AIE profiling thread
-      AIEData.threadCtrlBool = true;
-      auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
-      // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
-      // implementation.get(), mIndex, handle);
-      AIEData.thread = std::move(device_thread);
+      // // Start the AIE profiling thread
+      // AIEData.threadCtrlBool = true;
+      // auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
+      // // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
+      // // implementation.get(), mIndex, handle);
+      // AIEData.thread = std::move(device_thread);
 
       ++mIndex;
 

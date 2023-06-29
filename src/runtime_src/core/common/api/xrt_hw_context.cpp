@@ -11,10 +11,12 @@
 
 #include "core/common/device.h"
 #include "core/common/shim/hwctx_handle.h"
-
 #include <limits>
 #include <memory>
 
+namespace xdp::aie::profile {
+  __declspec(dllexport) std::function<void (void*)> update_hw_context_cb;
+}
 namespace xrt {
 
 // class hw_context_impl - insulated implemention of an xrt::hw_context
@@ -127,13 +129,19 @@ namespace xrt {
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
-{}
+{     
+  if (xdp::aie::profile::update_hw_context_cb != nullptr) 
+    xdp::aie::profile::update_hw_context_cb(this);
+}
 
 
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
-{}
+{
+  if (xdp::aie::profile::update_hw_context_cb != nullptr) 
+    xdp::aie::profile::update_hw_context_cb(this);
+}
 
 void
 hw_context::

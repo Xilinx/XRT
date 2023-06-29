@@ -44,6 +44,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
+#include "core/common/shim/hwctx_handle.h"
 
 constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
@@ -332,16 +333,17 @@ namespace xdp {
     std::cout << "Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
 
     std::cout << "Reached Context creation!" << std::endl;
-    xrt::hw_context* context = reinterpret_cast<xrt::hw_context*>(metadata->getHwContext());
+    xrt::hw_context* context = static_cast<xrt::hw_context*>(metadata->getHwContext());
+    std::cout << "Context Ptr Value: " << context << std::endl;
     std::cout << "Creating kernel!" << std::endl;
-    try {
-      std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
-      std::cout << "Break!" << std::endl;
-      auto kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
-    } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
-    } 
-    std::cout << "Reached kernel creation!" << std::endl;
+    // try {
+    //   // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
+    //   std::cout << "Break!" << std::endl;
+    //   auto kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
+    // } catch (std::exception &e){
+    //   std::cout << "caught exception: " << e.what() << std::endl;
+    // } 
+    // std::cout << "Reached kernel creation!" << std::endl;
 
     // // Create the DPU kernel
     // std::cout << "Profiling is creating xclbin object..." << std::endl;

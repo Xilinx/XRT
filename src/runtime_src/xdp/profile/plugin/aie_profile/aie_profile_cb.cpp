@@ -34,9 +34,9 @@ namespace xdp {
       aieProfilePluginInstance.endPollforDevice(handle);
   }
 
-  static void updateAIEHwContext(void* handle, void* hwContext) 
+  static void updateAIEHwContext(void* hwContext) 
   {
-    aieProfilePluginInstance.updateHwContext(handle, hwContext);
+    aieProfilePluginInstance.updateHwContext(hwContext);
   }
 
 } // end namespace xdp
@@ -54,7 +54,7 @@ void endAIECtrPoll(void* handle)
 }
 
 extern "C"
-void updateAIEHwContext(void* handle, void* hwContext)
+void updateAIEHwContext( void* hwContext)
 {
-  xdp::updateAIEHwContext(handle, hwContext);
+  xdp::updateAIEHwContext(hwContext);
 }
