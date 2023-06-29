@@ -100,6 +100,37 @@ namespace xdp {
 #endif
   }
 
+  void AieProfilePlugin::updateHwContext(void* handle, void* hwContext) {
+      std::cout << "Hardware Context" << std::endl;
+      std::cout << "HW context value: " << hwContext << std::endl;
+      auto& AIEData = handleToAIEData[handle];
+      AIEData.metadata->setHwContext(hwContext);
+
+      auto deviceID = getDeviceIDFromHandle(handle);
+
+      auto& implementation = AIEData.implementation;
+        // Ensure we only read/configure once per xclbin
+      if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
+        // Sets up and calls the PS kernel on x86 implementation
+        // Sets up and the hardware on the edge implementation
+
+        implementation->updateDevice();
+
+        (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
+      }
+
+      // Start the AIE profiling thread
+      AIEData.threadCtrlBool = true;
+      auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
+      // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
+      // implementation.get(), mIndex, handle);
+      AIEData.thread = std::move(device_thread);
+
+      ++mIndex;
+
+  }
+
+
   void AieProfilePlugin::updateAIEDevice(void* handle)
   {
     // Don't update if no profiling is requested
@@ -139,16 +170,17 @@ namespace xdp {
 #else
     AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
 #endif
-    auto& implementation = AIEData.implementation;
+    // auto& implementation = AIEData.implementation;
 
-    // Ensure we only read/configure once per xclbin
-    if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
-      // Sets up and calls the PS kernel on x86 implementation
-      // Sets up and the hardware on the edge implementation
-      implementation->updateDevice();
 
-      (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
-    }
+    // // Ensure we only read/configure once per xclbin
+    // if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
+    //   // Sets up and calls the PS kernel on x86 implementation
+    //   // Sets up and the hardware on the edge implementation
+    //   implementation->updateDevice();
+
+    //   (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
+    // }
 
     // Open the writer for this device
     auto time = std::time(nullptr);
@@ -174,14 +206,14 @@ namespace xdp {
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
-    // Start the AIE profiling thread
-    AIEData.threadCtrlBool = true;
-    auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
-    // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
-    // implementation.get(), mIndex, handle);
-    AIEData.thread = std::move(device_thread);
+    // // Start the AIE profiling thread
+    // AIEData.threadCtrlBool = true;
+    // auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
+    // // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
+    // // implementation.get(), mIndex, handle);
+    // AIEData.thread = std::move(device_thread);
 
-    ++mIndex;
+    // ++mIndex;
   }
 
   void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)

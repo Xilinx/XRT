@@ -49,6 +49,7 @@ class AieProfileMetadata{
     uint64_t deviceID;
     double clockFreqMhz;
     void* handle;
+    void* hwContext = nullptr;
 
     std::map <module_type, std::vector<std::string>> metricStrings {
       { module_type::core,     {"heat_map", "stalls", "execution",           
@@ -118,6 +119,10 @@ class AieProfileMetadata{
     int getNumCountersMod(int module){return numCountersMod[module];}
     module_type getModuleType(int module){return moduleTypes[module];}
     int getNumModules(){return NUM_MODULES;}
+    void* getHwContext(){return hwContext;}
+    void setHwContext(void* newHwContext) {
+      hwContext = newHwContext;
+    }
   };
 }
 
