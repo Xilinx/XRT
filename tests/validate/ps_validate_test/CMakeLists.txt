@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 set(TESTNAME "ps_validate.exe")
 
@@ -17,7 +18,7 @@ add_executable(${TESTNAME}
   ../common/includes/logger/logger.cpp src/host.cpp
   )
 
-target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
+target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
 if (NOT WIN32)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY}  pthread ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
