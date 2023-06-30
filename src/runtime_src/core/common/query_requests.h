@@ -1489,8 +1489,7 @@ struct aie_partition_info : request
 {
   struct data
   {
-    std::string xclbin_uuid;
-    uint64_t    slot_id;
+    hw_context_info::metadata metadata;
     uint64_t    start_col;
     uint64_t    num_cols;
     uint64_t    usage_count;
