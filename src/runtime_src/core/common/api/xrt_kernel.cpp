@@ -2014,6 +2014,7 @@ class run_impl
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
   uint32_t* data;                         // command argument data payload @0x0
+  uint32_t m_header;                      // cached intialized command header
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
@@ -2059,6 +2060,7 @@ public:
     , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
     , data(initialize_command(cmd.get()))
+    , m_header(cmd->get_ert_packet()->header)
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
@@ -2076,6 +2078,7 @@ public:
     , core_device(rhs->core_device)
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
     , data(clone_command_data(rhs))
+    , m_header(rhs->m_header)
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
   {
@@ -2252,6 +2255,7 @@ public:
     encode_compute_units();
 
     auto pkt = cmd->get_ert_packet();
+    pkt->header = m_header;
     pkt->state = ERT_CMD_STATE_NEW;
 
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
