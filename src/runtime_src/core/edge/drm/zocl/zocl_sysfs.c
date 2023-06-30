@@ -12,7 +12,6 @@
 
 #include "zocl_drv.h"
 #include "zocl_aie.h"
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "xclbin.h"
 #include "zocl_sk.h"

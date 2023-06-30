@@ -18,7 +18,6 @@
 
 #include "zocl_drv.h"
 #include "xrt_drv.h"
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_ospi_versal.h"
 

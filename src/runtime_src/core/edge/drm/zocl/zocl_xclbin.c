@@ -13,7 +13,7 @@
 
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/of.h>
-#include "sched_exec.h"
+#include "zocl_drv.h"
 #include "zocl_xclbin.h"
 #include "zocl_aie.h"
 #include "zocl_sk.h"
@@ -983,7 +983,7 @@ out:
 
 static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin, struct sched_client_ctx *client)
+			char __user *xclbin, struct kds_client *client)
 {
 	uint64_t size = 0;
 	char *pdi_buf = NULL;
@@ -1333,7 +1333,7 @@ done:
  */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
-	struct sched_client_ctx *client)
+	struct kds_client *client)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;

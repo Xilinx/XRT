@@ -32,7 +32,6 @@
 #include "zocl_sk.h"
 #include "zocl_aie.h"
 #include "zocl_bo.h"
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 #include "zocl_ert_intc.h"

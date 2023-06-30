@@ -120,8 +120,6 @@
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
 
-struct sched_client_ctx;
-
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;
@@ -274,16 +272,6 @@ void zocl_destroy_aie(struct drm_zocl_dev *zdev);
 int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_reset(struct drm_zocl_dev *zdev);
 int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data);
-int zocl_aie_graph_alloc_context(struct drm_zocl_dev *dev, u32 gid,
-		u32 ctx_code, struct sched_client_ctx *client);
-int zocl_aie_graph_free_context(struct drm_zocl_dev *dev, u32 gid,
-		struct sched_client_ctx *client);
-void zocl_aie_graph_free_context_all(struct drm_zocl_dev *zdev,
-		struct sched_client_ctx *client);
-int zocl_aie_alloc_context(struct drm_zocl_dev *zdev, u32 ctx_code,
-		struct sched_client_ctx *client);
-int zocl_aie_free_context(struct drm_zocl_dev *zdev,
-		struct sched_client_ctx *client);
 int zocl_aie_kds_add_graph_context(struct drm_zocl_dev *zdev, u32 gid,
 	        u32 ctx_code, struct kds_client *client);
 int zocl_aie_kds_del_graph_context(struct drm_zocl_dev *zdev, u32 gid,
