@@ -399,7 +399,7 @@ public:
   {}
 
   std::cv_status
-  wait(size_t timeout_ms) override
+  wait(size_t /*timeout_ms*/) override
   {
     // OpenCL uses this function, but it is not implemented for
     // platforms that implement hwqueue_handle.  Rework this if OpenCL
