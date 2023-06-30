@@ -347,7 +347,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev,
     // log testcase path for debugging purposes
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
-    std::vector<std::string> args = { "-p", platform_path,
+    std::vector<std::string> args = { "-x", xclbinPath,
+                                      "-p", platform_path,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
 
     if (!dependency_args.empty()) {

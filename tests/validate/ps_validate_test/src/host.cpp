@@ -15,16 +15,6 @@
 #include "xrt/xrt_bo.h"
 static const int COUNT = 1024;
 
-static std::string ps_kernel_path = "/lib/firmware/xilinx/ps_kernels/";
-
-static void printHelp() {
-    std::cout << "usage: %s <options>\n";
-    std::cout << "  -p <path>\n";
-    std::cout << "  -d <device> \n";
-    std::cout << "  -s <supported>\n";
-    std::cout << "  -h <help>\n";
-}
-
 static int
 validate_binary_file(const std::string& binaryfile, bool print = false)
 {
@@ -40,56 +30,17 @@ validate_binary_file(const std::string& binaryfile, bool print = false)
     }
 }
 
-// static int
-// load_dependencies(  xrt::device& device,
-//                     const std::string& test_path,
-//                     const std::string& ps_kernel_name,
-//                     std::map<std::string, xrt::uuid>& uuid_map)
-// {
-//     std::string dependency_name = "test_dependencies.json";
-//     std::string dependency_json = ps_kernel_path + dependency_name;
-
-//     try {
-//         boost::property_tree::ptree load_ptree_root;
-//         boost::property_tree::read_json(dependency_json, load_ptree_root);
-
-//         auto ps_kernels = load_ptree_root.get_child("ps_kernel_mappings");
-//         for (const auto& ps_kernel : ps_kernels) {
-//             boost::property_tree::ptree ps_kernel_pt = ps_kernel.second;
-//             if (!boost::equals(ps_kernel_name, ps_kernel_pt.get<std::string>("name")))
-//                 continue;
-
-//             auto dependencies = ps_kernel_pt.get_child("dependencies");
-//             for (const auto& dependency : dependencies) {
-//                 std::string dependency_name = dependency.second.get_value<std::string>();
-//                 std::string binaryfile = test_path + dependency_name;
-//                 auto retVal = validate_binary_file(binaryfile);
-//                 if (retVal != EXIT_SUCCESS)
-//                     return retVal;
-//                 auto uuid = device.load_xclbin(binaryfile);
-//                 uuid_map.emplace(dependency_name, uuid);
-//             }
-//         }
-//     } catch (const std::exception& e) {
-//         std::string msg("ERROR: Bad JSON format detected while marshaling dependency metadata (");
-//         msg += e.what();
-//         msg += ").";
-//         std::cerr << msg << std::endl;
-//         return EXIT_FAILURE;
-//     }
-//     return EXIT_SUCCESS;
-// }
-
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string b_file = "ps_validate.xclbin";
+    std::string b_file;
     std::vector<std::string> depedency_paths;
     bool flag_s = false;
 
     boost::program_options::options_description options;
     options.add_options()
         ("help,h", "Print help messages")
+        ("xclbin,x", boost::program_options::value<decltype(b_file)>(&b_file)->implicit_value("/lib/firmware/xilinx/ps_kernels/ps_validate.xclbin"), "Path to the xclbin file for the test")
         ("path,p", boost::program_options::value<decltype(test_path)>(&test_path)->required(), "Path to the platform resources")
         ("device,d", boost::program_options::value<decltype(dev_id)>(&dev_id)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
         ("supported,s", boost::program_options::bool_switch(&flag_s), "Print supported or not")
@@ -114,13 +65,20 @@ int main(int argc, char** argv) {
 
     auto device = xrt::device {dev_id};
 
+    // Load dependency xclbins onto device if any
+    for (const auto& path : depedency_paths) {
+        auto retVal = validate_binary_file(path);
+        if (retVal != EXIT_SUCCESS)
+            return retVal;
+        auto uuid = device.load_xclbin(path);
+    }
+
     // Load ps kernel onto device
-    std::string binaryfile = ps_kernel_path + b_file;
-    auto retVal = validate_binary_file(binaryfile, flag_s);
+    auto retVal = validate_binary_file(b_file, flag_s);
     if (flag_s || retVal != EXIT_SUCCESS)
         return retVal;
 
-    auto uuid = device.load_xclbin(binaryfile);
+    auto uuid = device.load_xclbin(b_file);
     auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
     const size_t DATA_SIZE = COUNT * sizeof(int);
     auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
