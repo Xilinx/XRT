@@ -24,8 +24,8 @@ populate_aie_partition(const xrt_core::device* device)
     auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
 
     boost::property_tree::ptree pt_entry;
-    pt_entry.put("xclbin_uuid", entry.xclbin_uuid);
-    pt_entry.put("slot_id", entry.slot_id);
+    pt_entry.put("xclbin_uuid", entry.metadata.xclbin_uuid);
+    pt_entry.put("slot_id", entry.metadata.id);
     pt_entry.put("usage_count", entry.usage_count);
     pt_entry.put("migration_count", entry.migration_count);
     pt_entry.put("device_bo_sync_count", entry.bo_sync_count);
