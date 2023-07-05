@@ -147,17 +147,6 @@ namespace xdp {
     };
     mMemTileEndEvents = mMemTileStartEvents;
 
-    // auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
-    // device = xrt::device(spdevice);
-
-    // auto uuid = device.get_xclbin_uuid();
-
-    // if (metadata->getHardwareGen() == 1)
-    //   aie_profile_kernel = xrt::kernel(device, uuid.get(),
-    //   "aie_profile_config");
-    // else
-    //   aie_profile_kernel = xrt::kernel(device, uuid.get(),
-    //   "aie2_profile_config");
   }
 
   void AieProfile_WinImpl::updateDevice()
@@ -170,12 +159,6 @@ namespace xdp {
   bool AieProfile_WinImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     std::cout << "reached setmetricssettings: " << deviceId  << handle << std::endl;
-
-    // uint16_t num_rows = metadata->getAIEConfigMetadata("num_rows").get_value<uint16_t>();
-    // uint16_t num_cols = metadata->getAIEConfigMetadata("num_columns").get_value<uint16_t>();
-    // std::cout << "NumRows: " << num_rows << std::endl;
-    // std::cout << "NumCols: " << num_cols << std::endl;
-    // return true;
 
     int RC = XAIE_OK;
     XAie_Config config { 
@@ -336,91 +319,52 @@ namespace xdp {
     xrt::hw_context* context = static_cast<xrt::hw_context*>(metadata->getHwContext());
     std::cout << "Context Ptr Value: " << context << std::endl;
     std::cout << "Creating kernel!" << std::endl;
-    // try {
-    //   // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
-    //   std::cout << "Break!" << std::endl;
-    //   auto kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
-    // } catch (std::exception &e){
-    //   std::cout << "caught exception: " << e.what() << std::endl;
-    // } 
-    // std::cout << "Reached kernel creation!" << std::endl;
+
+    xrt::kernel kernel;
+    try {
+      // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
+      std::cout << "Break!" << std::endl;
+      kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
+    } catch (std::exception &e){
+      std::cout << "caught exception: " << e.what() << std::endl;
+      return false;
+    } 
+    std::cout << "Reached kernel creation!" << std::endl;
 
     // // Create the DPU kernel
-    // std::cout << "Profiling is creating xclbin object..." << std::endl;
-    // // unsigned int device_index = 0;
+ 
     // std::cout << "About to create device:" << std::endl;
+    // std::cout << "Getting Handle:" << std::endl;
+    // std::cout << "handle: " << metadata->getHandle() << std::endl;
     // auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
     // auto device = xrt::device(spdevice);
+    // std::cout << "failed to continue:" << std::endl;
     // auto uuid = device.get_xclbin_uuid();
 
-    // auto device = xrt::device(device_index);
-    // std::cout << "Created device!" << std::endl;
-    // xrt::xclbin xclbin;
-    // try { 
-    //   xclbin = xrt::xclbin("../data/1x4_dpu.xclbin");
-    // } catch (...) {
-    //   std::cout << "Caught error" << std::endl;
-    //   return false;
-    // }
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+    std::cout << "Added Op" << std::endl;
+    xrt::bo instr_bo;
 
+    try {
+      instr_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+      std::cout << "Created instruction bo" << std::endl;  
+    } catch (std::exception &e){
+      std::cout << "caught exception: " << e.what() << std::endl;
+      return false;
+    } 
 
-    // std::cout << "Created xclbin object" << std::endl;
-  
-    // // device.register_xclbin(xclbin);
-    // std::cout << "Registered Xclbin" << std::endl;
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-
-    // // xrt::hw_context context(device, xclbin.get_uuid());
-    // std::cout << "Creating Kernel" << std::endl;
-    // std::cout << "uuid: " << uuid.to_string() << std::endl;
-    // xrt::kernel kernel;
-    // try {
-    //   kernel = xrt::kernel(device, uuid.get(), "DPU_1x4_NEW");
-    // } catch (std::exception &e){
-    //   std::cout << "caught exception: " << e.what() << std::endl;
-    // } 
-    // std::cout << "Created Kernel" << std::endl;
-
-    // auto uuid = device.get_xclbin_uuid();
-
-    // if (metadata->getHardwareGen() == 1)
-    //   aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
-    // else
-    //   aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie2_profile_config");
-    // """
-
-
-    // std::cout << "finished creating DPU kernel!" << std::endl;
-
-    // op_buf instr_buf;
-    // instr_buf.addOP(transaction_op(txn_ptr));
-    // auto instr_bo = xrt::bo(device, instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
-    // instr_bo.write(instr_buf.ibuf_.data());
-    // instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    std::cout << "About to run the kernel!" << std::endl;
 
     // auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
-    // run.wait();
-    // std::cout << "Finished running the kernel!" << std::endl;
+    auto run = kernel(CONFIGURE_OPCODE, 0, 0, 0, 0, instr_bo, instr_bo.size()/sizeof(int), 0);
+    run.wait();
 
+    std::cout << "Finished running the kernel!" << std::endl;
 
-    // // Determine The DPU Kernel Name
-    // auto xkernels = xclbin.get_kernels();
-    // auto xkernel = *std::find_if(xkernels.begin(), xkernels.end(), [](xrt::xclbin::kernel& k) {
-    //   auto name = k.get_name();
-    //   return name.rfind("DPU",0) == 0; // Starts with "DPU"
-    // });
-    // auto kernelName = xkernel.get_name();
-
-    // std::cout << "Profiling found kernel: " << kernelName << std::endl;
-
-    // std::cout << "Profiling is loading xclbin to device..." << std::endl;
-    // auto uuid = device.load_xclbin(xclbin);
-
-    // std::cout << "Profiling is creating kernel object..." << std::endl;
-    // auto kernel = xrt::kernel(device, uuid, kernelName);
-
-
-    
     //Schedule PS kernel
     return runtimeCounters;
   }
