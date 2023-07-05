@@ -35,12 +35,15 @@ namespace xdp {
     void flushAIEDevice(void* handle);
     void finishFlushAIEDevice(void* handle);
     virtual void writeAll(bool openNewFiles) override;
+    void endPollforDevice(void* handle);
     static bool alive();
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
+    void pollAIETimers(uint32_t index, void* handle);
     void flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn);
-
+    void endPoll();
+    
   private:
     static bool live;
     struct AIEData {
@@ -51,6 +54,8 @@ namespace xdp {
       std::unique_ptr<AIETraceLogger> logger;
       std::unique_ptr<AieTraceImpl> implementation;
       std::shared_ptr<AieTraceMetadata> metadata;
+      std::atomic<bool> threadCtrlBool;
+      std::thread thread;
     };
     std::map<void*, AIEData>  handleToAIEData;
   };

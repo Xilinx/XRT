@@ -31,6 +31,7 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
+#include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 
 #ifdef XRT_X86_BUILD
   #include "x86/aie_trace.h"
@@ -58,12 +59,16 @@ namespace xdp {
 
   AieTracePluginUnified::~AieTracePluginUnified()
   {
+    // Stop thread to write timestamps
+    endPoll();
+
     if (VPDatabase::alive()) {
       try {
         writeAll(false);
       }
       catch(...) {
       }
+      
       db->unregisterPlugin(this);
     }
     // If the database is dead, then we must have already forced a 
@@ -84,8 +89,6 @@ namespace xdp {
     return deviceID;
   }
   
-  
-
   void AieTracePluginUnified::updateAIEDevice(void* handle)
   {
     if (!handle)
@@ -93,7 +96,7 @@ namespace xdp {
 
     // Clean out old data every time xclbin gets updated
     if (handleToAIEData.find(handle) != handleToAIEData.end())
-        handleToAIEData.erase(handle);
+      handleToAIEData.erase(handle);
 
     //Setting up struct 
     auto& AIEData = handleToAIEData[handle];
@@ -133,8 +136,11 @@ namespace xdp {
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
       if (device != nullptr) {
-        for (auto& gmio : AIEData.metadata->get_trace_gmios(device.get()))
-          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength);
+        for (auto& gmioEntry : AIEData.metadata->get_trace_gmios()) {
+          auto gmio = gmioEntry.second;
+          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, 
+              gmio.channelNum, gmio.streamId, gmio.burstLength);
+        }
       }
       (db->getStaticInfo()).setIsGMIORead(deviceID, true);
     }
@@ -240,6 +246,32 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         AIEData.valid = false;
     }
+    
+    // Support system timeline
+    if (xrt_core::config::get_aie_trace_settings_enable_system_timeline()) {
+#ifdef _WIN32
+      std::string deviceName = "win_device";
+#else
+      struct xclDeviceInfo2 info;
+      xclGetDeviceInfo2(handle, &info);
+      std::string deviceName = std::string(info.mName);
+#endif
+
+      // Writer for timestamp file
+      std::string outputFile = "aie_event_timestamps.csv";
+      auto tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(), deviceName.c_str(), deviceID);
+      writers.push_back(tsWriter);
+      db->getStaticInfo().addOpenedFile(tsWriter->getcurrentFileName(), "AIE_EVENT_TRACE_TIMESTAMPS");
+
+      // Start the AIE trace timestamps thread
+      // NOTE: we purposely start polling before configuring trace events
+      AIEData.threadCtrlBool = true;
+      auto device_thread = std::thread(&AieTracePluginUnified::pollAIETimers, this, deviceID, handle);
+      AIEData.thread = std::move(device_thread);
+    }
+    else {
+      AIEData.threadCtrlBool = false;
+    }
 
     //Sets up and calls the PS kernel on x86 implementation
     //Sets up and the hardware on the edge implementation
@@ -248,6 +280,20 @@ namespace xdp {
     // Continuous Trace Offload is supported only for PLIO flow
     if (AIEData.metadata->getContinuousTrace())
       offloader->startOffload();
+  }
+
+  void AieTracePluginUnified::pollAIETimers(uint32_t index, void* handle)
+  {
+    auto it = handleToAIEData.find(handle);
+    if (it == handleToAIEData.end())
+      return;
+
+    auto& should_continue = it->second.threadCtrlBool;
+
+    while (should_continue) {
+      handleToAIEData[handle].implementation->pollTimers(index, handle);
+      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
+    }
   }
 
   void AieTracePluginUnified::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn)
@@ -268,11 +314,9 @@ namespace xdp {
   {
     if (!handle)
       return;
-
     auto itr = handleToAIEData.find(handle);
     if (itr == handleToAIEData.end())
       return;
-
     auto& AIEData = itr->second;
     if (!AIEData.valid)
       return;
@@ -286,14 +330,15 @@ namespace xdp {
   {
     if (!handle)
       return;
-
     auto itr = handleToAIEData.find(handle);
     if (itr == handleToAIEData.end())
       return;
-
     auto& AIEData = itr->second;
     if (!AIEData.valid)
       return;
+
+    // End polling thread
+    endPollforDevice(handle);
 
     // Flush AIE then datamovers
     AIEData.implementation->flushAieTileTraceModule();
@@ -307,6 +352,9 @@ namespace xdp {
   void AieTracePluginUnified::writeAll(bool openNewFiles)
   {
     for (const auto& kv : handleToAIEData) {
+      // End polling thread
+      endPollforDevice(kv.first);
+
       auto& AIEData = kv.second;
       if (AIEData.valid) {
         AIEData.implementation->flushAieTileTraceModule();
@@ -316,7 +364,6 @@ namespace xdp {
 
     XDPPlugin::endWrite();
     handleToAIEData.clear();
-	
   }
 
   bool AieTracePluginUnified::alive()
@@ -324,4 +371,30 @@ namespace xdp {
     return AieTracePluginUnified::live;
   }
 
+  void AieTracePluginUnified::endPollforDevice(void* handle)
+  {
+    auto itr = handleToAIEData.find(handle);
+    if (itr == handleToAIEData.end())
+      return;
+    auto& AIEData = itr->second;
+    if (!AIEData.valid || !AIEData.threadCtrlBool)
+      return;
+
+    AIEData.threadCtrlBool = false;
+    if (AIEData.thread.joinable())
+      AIEData.thread.join();
+    AIEData.implementation->freeResources();
+  }
+
+  void AieTracePluginUnified::endPoll()
+  {
+    // Ask all threads to end
+    for (auto& p : handleToAIEData) {
+      if (p.second.threadCtrlBool) {
+        p.second.threadCtrlBool = false;
+        if (p.second.thread.joinable())
+          p.second.thread.join();
+      }
+    }
+  }
 } // end namespace xdp

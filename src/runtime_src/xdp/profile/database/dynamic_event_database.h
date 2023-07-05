@@ -175,6 +175,9 @@ namespace xdp {
     XDP_EXPORT void addAIESample(uint64_t deviceId, double timestamp,
 				   const std::vector<uint64_t>& values) ;
     XDP_EXPORT std::vector<counters::Sample> getAIESamples(uint64_t deviceId) ;
+    XDP_EXPORT void addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,
+				   unsigned long timestamp2, const std::vector<uint64_t>& values) ;
+    XDP_EXPORT std::vector<counters::DoubleSample> getAIETimerSamples(uint64_t deviceId) ;
 
     // Device Trace Buffer Fullness Status - PL
     XDP_EXPORT void setPLTraceBufferFull(uint64_t deviceId, bool val);

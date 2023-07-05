@@ -139,8 +139,7 @@ shim::
   xclLog(XRT_INFO, "%s", __func__);
 
 #ifndef __HWEM__
-//  xdphal::finish_flush_device(handle) ;
-  xdp::aie::finish_flush_device(this) ;
+  xdp::aie::finish_flush_device(this);
 #endif
   xdp::aie::ctr::end_poll(this);
   xdp::aie::sts::end_poll(this);

@@ -36,6 +36,7 @@ namespace xdp {
     aie::TraceDataVector traceData;
 
     SampleContainer samples;
+    DoubleSampleContainer timerSamples;
 
     std::mutex traceLock; // Protects "traceData" vector
 
@@ -52,8 +53,17 @@ namespace xdp {
     { samples.addSample({timestamp, values}); }
 
     inline
+    void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2, 
+                           const std::vector<uint64_t>& values)
+    { timerSamples.addSample({timestamp1, timestamp2, values}); }
+
+    inline
     std::vector<counters::Sample> getAIESamples()
     { return std::move(samples.getSamples());  }
+
+    inline
+    std::vector<counters::DoubleSample> getAIETimerSamples()
+    { return std::move(timerSamples.getSamples());  }
   };
 
 } // end namespace xdp

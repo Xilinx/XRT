@@ -54,6 +54,29 @@ namespace xdp {
 
   };
 
+  class DoubleSampleContainer
+  {
+  private:
+    std::vector<counters::DoubleSample> samples;
+
+    std::mutex containerLock; // Protects the "samples" vector
+
+  public:
+    DoubleSampleContainer() = default;
+    ~DoubleSampleContainer() = default;
+
+    inline void addSample(const counters::DoubleSample& s)
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      samples.push_back(s);
+    }
+    inline std::vector<counters::DoubleSample> getSamples()
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      return samples;
+    }
+
+  };
 } // end namespace xdp
 
 #endif

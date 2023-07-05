@@ -136,7 +136,7 @@ namespace xdp {
     };
     mShimEndEvents = mShimStartEvents;
 
-    // **** MEM Tile Counters ****
+    // **** Memory Tile Counters ****
     mMemTileStartEvents = {
       {"input_channels",          {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
@@ -242,7 +242,7 @@ namespace xdp {
     if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
         && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
       return true;
-    // MEM tiles
+    // Memory tiles
     if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
         && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
       return true;
@@ -251,7 +251,7 @@ namespace xdp {
   }
 
   // Configure stream switch ports for monitoring purposes
-  // NOTE: Used to monitor streams: trace, interfaces, and MEM tiles
+  // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
   void AieProfile_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst,
                                                     const tile_type& tile,
                                                     xaiefal::XAieTile& xaieTile,
@@ -296,7 +296,7 @@ namespace xdp {
       return;
     }
 
-    // MEM tiles
+    // Memory tiles
     if (metricSet.find("trace") != std::string::npos) {
       XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, 0);
     }
@@ -343,7 +343,7 @@ namespace xdp {
       return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
     }
 
-    // 2. Channel IDs for MEM tiles
+    // 2. Channel IDs for memory tiles
     if (type == module_type::mem_tile) {
       // NOTE: value = ((master or slave) << 8) & (channel ID)
       uint8_t isMaster = (metricSet.find("input") != std::string::npos) ? 1 : 0;
@@ -503,7 +503,7 @@ namespace xdp {
         int numCounters  = 0;
         auto numFreeCtr  = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
 
-        // Specify Sel0/Sel1 for MEM tile events 21-44
+        // Specify Sel0/Sel1 for memory tile events 21-44
         auto iter0 = configChannel0.find(tile);
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;

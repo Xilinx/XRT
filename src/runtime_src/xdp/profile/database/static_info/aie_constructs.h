@@ -35,7 +35,8 @@ enum class module_type {
     core = 0,
     dma,
     shim,
-    mem_tile
+    mem_tile,
+    num_types
   };
 
   struct tile_type
@@ -55,32 +56,27 @@ enum class module_type {
     }
   };
 
-  struct plio_config
+  struct io_config
   { 
-    /// PLIO object id
+    // Object id
     int id;
-    /// PLIO variable name
+    // Variable name
     std::string name;
-    /// PLIO loginal name
+    // Loginal name
     std::string logicalName;
-    /// Shim tile column to where the GMIO is mapped
+    // Column where I/O is mapped
     short shimColumn;
-    /// slave or master. 0:slave, 1:master
+    // slave or master - 0:slave, 1:master
     short slaveOrMaster;
-    /// Shim stream switch port id
+    // Shim stream switch port id
     short streamId;
+    // Channel number
+    short channelNum;
+    // Burst length
+    short burstLength;
+    // I/O type - 0:PLIO, 1:GMIO
+    short type;
   };  
-
-  struct gmio_type
-  {
-    std::string     name;
-    uint32_t        id;
-    uint16_t        type;
-    uint16_t        shimColumn;
-    uint16_t        channelNum;
-    uint16_t        streamId;
-    uint16_t        burstLength;
-  };
 
   /*
    * Represents AIE counter configuration for a single counter
@@ -238,16 +234,17 @@ enum class module_type {
   };
 
   /*
-   * MEM tiles have 4 Performance counters
+   * Interface or memory tiles
+   * Uses up to 2 channel selections and 8 stream switch monitor ports
    */
-  class aie_cfg_mem_tile : public aie_cfg_base
+  class aie_cfg_peripheral_tile : public aie_cfg_base
   {
   public:
-    bool port_trace_is_master[NUM_MEM_TILE_PORTS] = {};
-    uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
-    int8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {-1, -1};
-    int8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {-1, -1};
-    aie_cfg_mem_tile() : aie_cfg_base(4) {}
+    bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS] = {};
+    uint8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS] = {};
+    int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+    int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+    aie_cfg_peripheral_tile() : aie_cfg_base(4) {}
   };
 
   /*
@@ -262,7 +259,8 @@ enum class module_type {
     std::string trace_metric_set;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
-    aie_cfg_mem_tile mem_tile_trace_config;
+    aie_cfg_peripheral_tile memory_tile_trace_config;
+    aie_cfg_peripheral_tile interface_tile_trace_config;
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 

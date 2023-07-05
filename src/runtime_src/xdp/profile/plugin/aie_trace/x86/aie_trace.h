@@ -33,8 +33,11 @@ namespace xdp {
       virtual void flushAieTileTraceModule();
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
+      void pollTimers(uint32_t index, void* handle);
       void parseMessages(uint8_t* messages);
       module_type getTileType(uint16_t absRow);
+      void freeResources();
+      
     private:
       xrt::device device;
       xrt::kernel aie_trace_kernel;
