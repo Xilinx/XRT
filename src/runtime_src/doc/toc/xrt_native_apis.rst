@@ -254,7 +254,18 @@ XRT provides ``xrt::bo::copy()`` API for deep copy between the two buffer object
            
            dst_buffer.copy(src_buffer, copy_size_in_bytes);
 
-The API ``xrt::bo::copy()`` also has overloaded versions to provide a different offset than 0 for both the source and the destination buffer. 
+The API ``xrt::bo::copy()`` also has overloaded versions to provide a different offset than 0 for both the source and the destination buffer.
+
+IV. Data trasfer from/to device only buffer using read/write API's
+******************************************************************
+
+To avoid of host memcpy with the usage of ``xrt::bo::sync()``, Vitis AI runtime (VART) currently leverages ``xclUnmgdPwrite()`` and ``xclUnmgdPread()`` to perform PCIe DMA data transfer between host and device so as to achieve better performance.
+
+Here is how xrt::bo::read and xrt::bo::write API's to read/write directly from/to device buffer if buffer object has not host backing storage.
+
+- ``xrt::bo::write(const void* src, size_t size, size_t seek)``: Copies data from src to device buffer directly.
+- ``xrt::bo::read(void* dst, size_t size, size_t skip)``: Copies data from device buffer to dst.
+
 
 3. Miscellaneous other Buffer APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
