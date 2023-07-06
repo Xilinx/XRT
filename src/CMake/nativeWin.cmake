@@ -10,7 +10,7 @@
 # XRT_VERSION_PATCH
 
 # install under c:/xrt
-set (CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/xilinx")
+set (CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/xilinx/xrt")
 
 # pdb install dir
 set (CMAKE_PDB_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/symbols")
@@ -70,7 +70,7 @@ endif()
 INCLUDE (FindGTest)
 
 # --- XRT Variables ---
-set (XRT_INSTALL_DIR "xrt")
+set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}")
 set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
