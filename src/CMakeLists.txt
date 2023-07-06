@@ -69,7 +69,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
+set (CMAKE_INSTALL_PREFIX "/opt/xilinx/xrt")
 if (${XRT_NATIVE_BUILD} STREQUAL "no")
   set (CMAKE_INSTALL_PREFIX "/usr")
 endif()
