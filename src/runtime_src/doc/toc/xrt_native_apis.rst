@@ -223,6 +223,21 @@ Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has ov
 
 Also note that if the buffer is created through the user-pointer, the ``xrt::bo::write`` or ``xrt::bo::read`` is not required before or after the ``xrt::bo::sync`` call. 
 
+For the device only buffers (created with ``xrt::bo::flags::device_only`` flag) the ``xrt::bo::sync()`` operation is not required, only ``xrt::bo::write()`` (or ``xrt::bo::read()``) is sufficient for DMA operation. As for the device only buffer there is no host backing storage, the ``xrt::bo::write()`` (or ``xrt::bo::read()``) directly performs DMA operation to (or from) the device memory.
+
+Below is the example for creation of device only buffers.
+
+.. code:: c++
+      :number-lines: 18
+
+           xrt::bo::flags device_flags = xrt::bo::flags::device_only;
+           auto device_only_buffer = xrt::bo(device, size_in_bytes, device_flags, bank_grp_arg0);
+
+Here is how ``xrt::bo::read()`` and ``xrt::bo::write()`` API's to read/write directly from/to device only buffer there is no host backing storage.
+
+- ``xrt::bo::write(const void* src, size_t size, size_t seek)``: Copies data from src to device buffer directly.
+- ``xrt::bo::read(void* dst, size_t size, size_t skip)``: Copies data from device buffer to dst.
+
 II. Data transfer between host and device by Buffer map API
 ***********************************************************
 
