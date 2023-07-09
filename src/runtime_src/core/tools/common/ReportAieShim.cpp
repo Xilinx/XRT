@@ -35,7 +35,6 @@ populate_aie_shim(const xrt_core::device * _pDevice, const std::string& desc)
   std::stringstream ss;
   ss << device.get_info<xrt::info::device::aie_shim>();
   boost::property_tree::read_json(ss, pt_shim);
-
   return pt_shim;
 }
 
@@ -76,7 +75,7 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
         boost::split(aieTileList, *tile_list, boost::is_any_of(","));
     }
   }
-
+  
   try {
     int count = 0;
     const boost::property_tree::ptree ptShimTiles = _pt.get_child("aie_shim_status.tiles", empty_ptree);
@@ -95,8 +94,12 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
         continue;
 
       _output << boost::format("Tile[%2d]\n") % curr_tile;
-      _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
-      _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
+      
+      if (tile.second.find("column") != tile.second.not_found()) {
+        _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
+        _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
+      }
+
       if(tile.second.find("dma") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "DMA";
 
@@ -159,6 +162,16 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
                                  % node.second.get<std::string>("value");
         }
         _output << std::endl;
+      }
+
+      if (tile.second.find("bd_info") != tile.second.not_found()) {
+	_output << boost::format("    %s:\n") % "BDs";
+	for (const auto& bd_info : tile.second.get_child("bd_info")) {
+          _output << fmt8("%s") %  "bd_num: " % bd_info.second.get<std::string>("bd_num");
+          for (const auto& bd_detail : bd_info.second.get_child("bd_details")) 
+            _output<< fmt8("%s") % bd_detail.second.get<std::string>("name") % bd_detail.second.get<std::string>("value");
+          _output << std::endl;
+	}
       }
     }
   } catch(std::exception const& e) {

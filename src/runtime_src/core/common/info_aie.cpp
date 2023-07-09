@@ -63,6 +63,223 @@ addnodelist(const std::string& search_str, const std::string& node_str,
   output_pt.add_child(node_str, pt_array);
 }
 
+void 
+populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd,
+	          std::vector<std::string>& bd_info) {
+  try {
+    boost::property_tree::ptree bd_info_array;
+    const boost::property_tree::ptree& bd_node = input_pt.get_child("bd");
+    
+    for (const auto& pair : bd_node) {
+      const std::string& key = pair.first;
+      const boost::property_tree::ptree& value_tree = pair.second;
+      boost::property_tree::ptree bd_info_entry;
+      bd_info_entry.put("bd_num", key);
+
+      boost::property_tree::ptree bd_details_array;
+      int i = 0;
+      for (const auto& value : value_tree) {
+	if (i == static_cast<int>(bd_info.size())) i = 0;
+	std::string val = value.second.data();
+        boost::property_tree::ptree bd_details_entry;
+	bd_details_entry.put("name", bd_info[i]);
+        bd_details_entry.put("value", val);
+        bd_details_array.push_back(std::make_pair("", bd_details_entry));
+	i++;
+      }
+
+      bd_info_entry.add_child("bd_details", bd_details_array);
+      bd_info_array.push_back(std::make_pair("", bd_info_entry));
+    }
+    pt_bd.add_child("bd_info", bd_info_array);
+  }
+  catch (const std::exception& ex) {
+    pt_bd.put("error_msg", ex.what());
+    return;
+  }
+}
+
+// This function extract BD information for core tiles of 1st generation aie architecture
+void 
+populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
+  std::vector<std::string> bd_info;
+
+  bd_info.push_back("base_address_a");
+  bd_info.push_back("base_address_b");
+  bd_info.push_back("length");
+  bd_info.push_back("lock_id_a");
+  bd_info.push_back("lock_acq_val_a");
+  bd_info.push_back("lock_acq_enable_a");
+  bd_info.push_back("lock_acq_val_enable_a");
+  bd_info.push_back("lock_rel_val_a");
+  bd_info.push_back("lock_rel_enable_a");
+  bd_info.push_back("lock_rel_val_enable_a");
+  bd_info.push_back("lock_id_b");
+  bd_info.push_back("lock_acq_val_b");
+  bd_info.push_back("lock_acq_enable_b");
+  bd_info.push_back("lock_acq_val_enable_b");
+  bd_info.push_back("lock_rel_val_b");
+  bd_info.push_back("lock_rel_enable_b");
+  bd_info.push_back("lock_rel_val_enable_b");
+  bd_info.push_back("pkt_enable");
+  bd_info.push_back("pkt_id");
+  bd_info.push_back("pkt_type");
+  bd_info.push_back("valid_bd");
+  bd_info.push_back("use_next_bd");
+  bd_info.push_back("next_bd_id");
+  bd_info.push_back("A_B_buffer_select");
+  bd_info.push_back("current_pointer");
+  bd_info.push_back("double_buffer_enable");
+  bd_info.push_back("interleave_enable");
+  bd_info.push_back("interleave_count");
+  bd_info.push_back("fifo_mode");
+  bd_info.push_back("x_increment");
+  bd_info.push_back("x_wrap");
+  bd_info.push_back("x_offset");
+  bd_info.push_back("y_increment");
+  bd_info.push_back("y_wrap");
+  bd_info.push_back("y_offset");
+
+  return populate_bd_info(input_pt, pt_bd, bd_info);
+}
+
+// This function extract BD information for shim tiles of 1st generation aie architecture
+void 
+populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
+  std::vector<std::string> bd_info;
+
+  bd_info.push_back("base_address");
+  bd_info.push_back("length");
+  bd_info.push_back("lock_id");
+  bd_info.push_back("lock_acq_val");
+  bd_info.push_back("lock_acq_enable");
+  bd_info.push_back("lock_acq_val_enable");
+  bd_info.push_back("lock_rel_val");
+  bd_info.push_back("lock_rel_enable");
+  bd_info.push_back("lock_rel_val_enable");
+  bd_info.push_back("pkt_enable");
+  bd_info.push_back("pkt_id");
+  bd_info.push_back("pkt_type");
+  bd_info.push_back("valid_bd");
+  bd_info.push_back("use_next_bd");
+  bd_info.push_back("next_bd_id");
+  bd_info.push_back("smid");
+  bd_info.push_back("cache");
+  bd_info.push_back("qos");
+  bd_info.push_back("secure_access");
+  bd_info.push_back("burst_length");
+
+  return populate_bd_info(input_pt, pt_bd, bd_info);
+}
+
+// This function extract BD information for core tiles of 2nd generation aie architecture
+void 
+populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
+  std::vector<std::string> bd_info;
+
+  bd_info.push_back("base_address");
+  bd_info.push_back("length");
+  bd_info.push_back("lock_acq_id");
+  bd_info.push_back("lock_acq_val");
+  bd_info.push_back("lock_acq_enable");
+  bd_info.push_back("lock_rel_id");
+  bd_info.push_back("lock_rel_val");
+  bd_info.push_back("pkt_enable");
+  bd_info.push_back("pkt_id");
+  bd_info.push_back("pkt_type");
+  bd_info.push_back("valid_bd");
+  bd_info.push_back("use_next_bd");
+  bd_info.push_back("next_bd_id");
+  bd_info.push_back("tlast_suppress");
+  bd_info.push_back("out_of_order_bd_id");
+  bd_info.push_back("compression_enable");
+  bd_info.push_back("iteration_current");
+  bd_info.push_back("iteration_step_size");
+  bd_info.push_back("iteration_wrap");
+  bd_info.push_back("d0_step_size");
+  bd_info.push_back("d0_wrap");
+  bd_info.push_back("d1_step_size");
+  bd_info.push_back("d1_wrap");
+  bd_info.push_back("d2_step_size");
+
+  return populate_bd_info(input_pt, pt_bd, bd_info);
+}
+
+// This function extract BD information for shim tiles of 2nd generation aie architecture
+void 
+populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
+  std::vector<std::string> bd_info;
+
+  bd_info.push_back("base_address");
+  bd_info.push_back("length");
+  bd_info.push_back("lock_acq_id");
+  bd_info.push_back("lock_acq_val");
+  bd_info.push_back("lock_acq_enable");
+  bd_info.push_back("lock_rel_id");
+  bd_info.push_back("lock_rel_val");
+  bd_info.push_back("pkt_enable");
+  bd_info.push_back("pkt_id");
+  bd_info.push_back("pkt_type");
+  bd_info.push_back("valid_bd");
+  bd_info.push_back("use_next_bd");
+  bd_info.push_back("next_bd_id");
+  bd_info.push_back("tlast_suppress");
+  bd_info.push_back("iteration_step_size");
+  bd_info.push_back("iteration_wrap");
+  bd_info.push_back("d0_step_size");
+  bd_info.push_back("d0_wrap");
+  bd_info.push_back("iteration_wrap");
+  bd_info.push_back("d0_step_size");
+  bd_info.push_back("d0_wrap");
+  bd_info.push_back("d1_after");
+  bd_info.push_back("d2_step_size");
+  bd_info.push_back("smid");
+  bd_info.push_back("cache");
+  bd_info.push_back("secure_access");
+  bd_info.push_back("burst_length");
+
+  return populate_bd_info(input_pt, pt_bd, bd_info);
+}
+
+// This function extract BD information for mem tiles of 2nd generation aie architecture
+void 
+populate_mem_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
+  std::vector<std::string> bd_info;
+
+  bd_info.push_back("base_address");
+  bd_info.push_back("length");
+  bd_info.push_back("lock_acq_id");
+  bd_info.push_back("lock_acq_val");
+  bd_info.push_back("lock_acq_enable");
+  bd_info.push_back("lock_rel_id");
+  bd_info.push_back("lock_rel_val");
+  bd_info.push_back("pkt_enable");
+  bd_info.push_back("pkt_id");
+  bd_info.push_back("pkt_type");
+  bd_info.push_back("valid_bd");
+  bd_info.push_back("use_next_bd");
+  bd_info.push_back("next_bd_id");
+  bd_info.push_back("tlast_suppress");
+  bd_info.push_back("out_of_order_bd_id");
+  bd_info.push_back("compression_enable");
+  bd_info.push_back("iteration_current");
+  bd_info.push_back("iteration_step_size");
+  bd_info.push_back("iteration_wrap");
+  bd_info.push_back("d0_step_size");
+  bd_info.push_back("d0_wrap");
+  bd_info.push_back("d1_step_size");
+  bd_info.push_back("d1_wrap");
+  bd_info.push_back("d1_before");
+  bd_info.push_back("d1_after");
+  bd_info.push_back("d2_step_size");
+  bd_info.push_back("d2_wrap");
+  bd_info.push_back("d2_before");
+  bd_info.push_back("d2_after");
+  bd_info.push_back("d3_step_size");
+
+  return populate_bd_info(input_pt, pt_bd, bd_info);
+}
+
 // This function extract DMA information for both AIE core and tiles
 static void
 populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_dma)
@@ -277,10 +494,11 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
     pt.put("error_msg", ex.what());
     return pt;
   }
-
   try {
     // On Pcie platforms use driver calls to get AIE Shim info
-    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
+
+    if (pt_shim.empty()) 
+      pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Not Pcie device
@@ -301,14 +519,16 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 
     // Populate the shim information such as dma, lock, error, events
     // for each tiles.
+    auto hw_gen = pt_shim.get<uint8_t>("aie_shim.hw_gen");
     for (const auto& as: pt_shim.get_child("aie_shim")) {
       const boost::property_tree::ptree& oshim = as.second;
       boost::property_tree::ptree ishim;
-      int col = oshim.get<uint32_t>("col");
-      int row = oshim.get<uint32_t>("row");
-
-      ishim.put("column", col);
-      ishim.put("row", row);
+      if (oshim.find("col") != oshim.not_found()) {
+        int col = oshim.get<int>("col");
+        int row = oshim.get<int>("row");
+        ishim.put("column", col);
+        ishim.put("row", row);
+      }
 
       // Populate DMA information
       if (oshim.find("dma") != oshim.not_found())
@@ -326,7 +546,14 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
       if (oshim.find("event") != oshim.not_found())
         addnodelist("event", "events", oshim, ishim);
 
-      tile_array.push_back({"tile" + std::to_string(col), ishim});
+      if (oshim.find("bd") != oshim.not_found()){
+        if (hw_gen == 1)
+          populate_shim_bd_info_aie(oshim, ishim);
+        else
+	  populate_shim_bd_info_aieml(oshim, ishim);
+      }
+
+      tile_array.push_back({"", ishim});
     }
 
     pt.add_child("tiles", tile_array);
@@ -363,8 +590,9 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
   }
 
   try {
+    if (pt_mem.empty())
     // On Pcie platforms use driver calls to get AIE mem info
-    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
+      pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Not Pcie device
@@ -388,11 +616,13 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     for (const auto& am: pt_mem.get_child("aie_mem")) {
       const boost::property_tree::ptree& imem = am.second;
       boost::property_tree::ptree omem;
-      int col = imem.get<uint32_t>("col");
-      int row = imem.get<uint32_t>("row");
+      if (imem.find("col") != imem.not_found()) {
+        int col = imem.get<uint32_t>("col");
+        int row = imem.get<uint32_t>("row");
 
-      omem.put("column", col);
-      omem.put("row", row);
+        omem.put("column", col);
+        omem.put("row", row);
+      }
 
       // Populate DMA information
       if (imem.find("dma") != imem.not_found())
@@ -410,7 +640,10 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
       if (imem.find("event") != imem.not_found())
         addnodelist("event", "events", imem, omem);
 
-      tile_array.push_back({"tile" + std::to_string(col), omem});
+      if (imem.find("bd") != imem.not_found())
+	  populate_mem_bd_info_aieml(imem, omem);
+
+      tile_array.push_back({"", omem});
     }
 
     pt.add_child("tiles", tile_array);
@@ -532,7 +765,8 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
   try {
     boost::property_tree::ptree pt;
     boost::property_tree::ptree empty_pt;
-
+    auto hw_gen = pt_core.get<uint8_t>("aie_core.hw_gen");
+    
     auto row = tile.get<int>("row");
     auto col = tile.get<int>("column");
     pt = pt_core.get_child("aie_core." + std::to_string(col) + "_" + std::to_string(row));
@@ -571,6 +805,13 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
     if (pt.find("event") != pt.not_found())
       addnodelist("event", "events", pt, tile);
 
+    // Add BD information to the tiles
+    if (pt.find("bd") != pt.not_found()){
+      if (hw_gen == 1)
+        populate_core_bd_info_aie(pt, tile);
+      else
+	populate_core_bd_info_aieml(pt, tile);
+    }
   }
   catch (const std::exception& ex) {
     tile.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE core"));

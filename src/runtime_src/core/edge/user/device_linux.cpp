@@ -150,6 +150,7 @@ struct aie_metadata_info{
   uint32_t core_row;
   uint32_t mem_row;
   uint32_t num_mem_row;
+  uint8_t hw_gen;
 };
 
 // Function to get aie max rows and cols by parsing aie_metadata sysfs node
@@ -195,7 +196,7 @@ get_aie_metadata_info(const xrt_core::device* device)
        aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.mem_row_start");
        aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.mem_num_rows");
   }
-
+  aie_meta.hw_gen = pt.get<uint8_t>("aie_metadata.driver_config.hw_gen");
   return aie_meta;
 }
 
@@ -209,6 +210,8 @@ struct aie_core_info_sysfs
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
+    ptarray.put("hw_gen",std::to_string(aie_meta.hw_gen));
+
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
     for (int i = 0; i < aie_meta.num_cols; ++i)
       for (int j = 0; j < (aie_meta.num_rows-1); ++j)
@@ -219,7 +222,6 @@ struct aie_core_info_sysfs
     pt.add_child("aie_core",ptarray);
     std::ostringstream oss;
     boost::property_tree::write_json(oss, pt);
-
     std::string inifile_text = oss.str();
     return inifile_text;
   }
@@ -236,9 +238,12 @@ struct aie_shim_info_sysfs
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
+    ptarray.put("hw_gen",std::to_string(aie_meta.hw_gen));
+
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for (int i=0; i < aie_meta.num_cols; ++i) {
-      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser(aiepart)->aie_sys_read(i, aie_meta.shim_row)));
+      ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(aie_meta.shim_row),
+			aie_sys_parser::get_parser(aiepart)->aie_sys_read(i, aie_meta.shim_row)));
     }
 
     boost::property_tree::ptree pt;
@@ -260,6 +265,8 @@ struct aie_mem_info_sysfs
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+
+    ptarray.put("hw_gen",std::to_string(aie_meta.hw_gen));
 
     /* Loop all mem tiles and collect all dma, events, errors, locks status */
     for (int i = 0; i < aie_meta.num_cols; ++i)
