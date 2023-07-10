@@ -533,8 +533,10 @@ namespace xdp {
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 
-    // Event is DMA_S2MM_Sel0_stalled_lock or DMA_MM2S_Sel0_stalled_lock
-    uint16_t eventNum = (metricSet.find("input") != std::string::npos) ? 33 : 35;
+    // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
+    uint16_t eventNum = (metricSet.find("input") != std::string::npos)
+        ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
+        : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
 
     // Register Edge_Detection_event_control
     // 26    Event 1 triggered on falling edge
