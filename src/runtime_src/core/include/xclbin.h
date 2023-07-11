@@ -81,6 +81,8 @@ typedef uuid_le xuid_t;
 # else
 typedef uuid_le xuid_t;
 # endif
+#elif defined(__linux__) && !defined(__KERNEL__)
+typedef uuid_t xuid_t;
 #elif defined(_WIN32) && defined(_KERNEL_MODE)
 typedef GUID xuid_t;
 #endif
