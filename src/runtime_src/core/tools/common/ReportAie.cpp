@@ -206,7 +206,6 @@ writeReport(const xrt_core::device* /*_pDevice*/,
           _output << std::endl;
         }
 	
-	
         if (tile.second.find("bd_info") != tile.second.not_found()) {
 	  _output << boost::format("    %s:\n") % "BDs";
 	  for (const auto& bd_info : tile.second.get_child("bd_info")) {

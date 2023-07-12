@@ -75,7 +75,7 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
         boost::split(aieTileList, *tile_list, boost::is_any_of(","));
     }
   }
-  
+
   try {
     int count = 0;
     const boost::property_tree::ptree ptShimTiles = _pt.get_child("aie_shim_status.tiles", empty_ptree);
@@ -94,11 +94,8 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
         continue;
 
       _output << boost::format("Tile[%2d]\n") % curr_tile;
-      
-      if (tile.second.find("column") != tile.second.not_found()) {
-        _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
-        _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
-      }
+      _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
+      _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
 
       if(tile.second.find("dma") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "DMA";

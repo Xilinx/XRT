@@ -79,7 +79,6 @@ populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tr
       boost::property_tree::ptree bd_details_array;
       int i = 0;
       for (const auto& value : value_tree) {
-	if (i == static_cast<int>(bd_info.size())) i = 0;
 	std::string val = value.second.data();
         boost::property_tree::ptree bd_details_entry;
 	bd_details_entry.put("name", bd_info[i]);
@@ -102,43 +101,43 @@ populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tr
 // This function extract BD information for core tiles of 1st generation aie architecture
 void 
 populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info;
+  std::vector<std::string> bd_info(35);
 
-  bd_info.push_back("base_address_a");
-  bd_info.push_back("base_address_b");
-  bd_info.push_back("length");
-  bd_info.push_back("lock_id_a");
-  bd_info.push_back("lock_acq_val_a");
-  bd_info.push_back("lock_acq_enable_a");
-  bd_info.push_back("lock_acq_val_enable_a");
-  bd_info.push_back("lock_rel_val_a");
-  bd_info.push_back("lock_rel_enable_a");
-  bd_info.push_back("lock_rel_val_enable_a");
-  bd_info.push_back("lock_id_b");
-  bd_info.push_back("lock_acq_val_b");
-  bd_info.push_back("lock_acq_enable_b");
-  bd_info.push_back("lock_acq_val_enable_b");
-  bd_info.push_back("lock_rel_val_b");
-  bd_info.push_back("lock_rel_enable_b");
-  bd_info.push_back("lock_rel_val_enable_b");
-  bd_info.push_back("pkt_enable");
-  bd_info.push_back("pkt_id");
-  bd_info.push_back("pkt_type");
-  bd_info.push_back("valid_bd");
-  bd_info.push_back("use_next_bd");
-  bd_info.push_back("next_bd_id");
-  bd_info.push_back("A_B_buffer_select");
-  bd_info.push_back("current_pointer");
-  bd_info.push_back("double_buffer_enable");
-  bd_info.push_back("interleave_enable");
-  bd_info.push_back("interleave_count");
-  bd_info.push_back("fifo_mode");
-  bd_info.push_back("x_increment");
-  bd_info.push_back("x_wrap");
-  bd_info.push_back("x_offset");
-  bd_info.push_back("y_increment");
-  bd_info.push_back("y_wrap");
-  bd_info.push_back("y_offset");
+  bd_info[0] = "base_address_a";
+  bd_info[1] = "base_address_b";
+  bd_info[2] = "length";
+  bd_info[3] = "lock_id_a";
+  bd_info[4] = "lock_acq_val_a";
+  bd_info[5] = "lock_acq_enable_a";
+  bd_info[6] = "lock_acq_val_enable_a";
+  bd_info[7] = "lock_rel_val_a";
+  bd_info[8] = "lock_rel_enable_a";
+  bd_info[9] = "lock_rel_val_enable_a";
+  bd_info[10] = "lock_id_b";
+  bd_info[11] = "lock_acq_val_b";
+  bd_info[12] = "lock_acq_enable_b";
+  bd_info[13] = "lock_acq_val_enable_b";
+  bd_info[14] = "lock_rel_val_b";
+  bd_info[15] = "lock_rel_enable_b";
+  bd_info[16] = "lock_rel_val_enable_b";
+  bd_info[17] = "pkt_enable";
+  bd_info[18] = "pkt_id";
+  bd_info[19] = "pkt_type";
+  bd_info[20] = "valid_bd";
+  bd_info[21] = "use_next_bd";
+  bd_info[22] = "next_bd_id";
+  bd_info[23] = "A_B_buffer_select";
+  bd_info[24] = "current_pointer";
+  bd_info[25] = "double_buffer_enable";
+  bd_info[26] = "interleave_enable";
+  bd_info[27] = "interleave_count";
+  bd_info[28] = "fifo_mode";
+  bd_info[29] = "x_increment";
+  bd_info[30] = "x_wrap";
+  bd_info[31] = "x_offset";
+  bd_info[32] = "y_increment";
+  bd_info[33] = "y_wrap";
+  bd_info[34] = "y_offset";
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -146,28 +145,28 @@ populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::pr
 // This function extract BD information for shim tiles of 1st generation aie architecture
 void 
 populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info;
+  std::vector<std::string> bd_info(20);
 
-  bd_info.push_back("base_address");
-  bd_info.push_back("length");
-  bd_info.push_back("lock_id");
-  bd_info.push_back("lock_acq_val");
-  bd_info.push_back("lock_acq_enable");
-  bd_info.push_back("lock_acq_val_enable");
-  bd_info.push_back("lock_rel_val");
-  bd_info.push_back("lock_rel_enable");
-  bd_info.push_back("lock_rel_val_enable");
-  bd_info.push_back("pkt_enable");
-  bd_info.push_back("pkt_id");
-  bd_info.push_back("pkt_type");
-  bd_info.push_back("valid_bd");
-  bd_info.push_back("use_next_bd");
-  bd_info.push_back("next_bd_id");
-  bd_info.push_back("smid");
-  bd_info.push_back("cache");
-  bd_info.push_back("qos");
-  bd_info.push_back("secure_access");
-  bd_info.push_back("burst_length");
+  bd_info[0] = "base_address";
+  bd_info[1] = "length";
+  bd_info[2] = "lock_id";
+  bd_info[3] = "lock_acq_val";
+  bd_info[4] = "lock_acq_enable";
+  bd_info[5] = "lock_acq_val_enable";
+  bd_info[6] = "lock_rel_val";
+  bd_info[7] = "lock_rel_enable";
+  bd_info[8] = "lock_rel_val_enable";
+  bd_info[9] = "pkt_enable";
+  bd_info[10] = "pkt_id";
+  bd_info[11] = "pkt_type";
+  bd_info[12] = "valid_bd";
+  bd_info[13] = "use_next_bd";
+  bd_info[14] = "next_bd_id";
+  bd_info[15] = "smid";
+  bd_info[16] = "cache";
+  bd_info[17] = "qos";
+  bd_info[18] = "secure_access";
+  bd_info[19] = "burst_length";
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -175,32 +174,32 @@ populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::pr
 // This function extract BD information for core tiles of 2nd generation aie architecture
 void 
 populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info;
+  std::vector<std::string> bd_info(24);
 
-  bd_info.push_back("base_address");
-  bd_info.push_back("length");
-  bd_info.push_back("lock_acq_id");
-  bd_info.push_back("lock_acq_val");
-  bd_info.push_back("lock_acq_enable");
-  bd_info.push_back("lock_rel_id");
-  bd_info.push_back("lock_rel_val");
-  bd_info.push_back("pkt_enable");
-  bd_info.push_back("pkt_id");
-  bd_info.push_back("pkt_type");
-  bd_info.push_back("valid_bd");
-  bd_info.push_back("use_next_bd");
-  bd_info.push_back("next_bd_id");
-  bd_info.push_back("tlast_suppress");
-  bd_info.push_back("out_of_order_bd_id");
-  bd_info.push_back("compression_enable");
-  bd_info.push_back("iteration_current");
-  bd_info.push_back("iteration_step_size");
-  bd_info.push_back("iteration_wrap");
-  bd_info.push_back("d0_step_size");
-  bd_info.push_back("d0_wrap");
-  bd_info.push_back("d1_step_size");
-  bd_info.push_back("d1_wrap");
-  bd_info.push_back("d2_step_size");
+  bd_info[0] = "base_address";
+  bd_info[1] = "length";
+  bd_info[2] = "lock_acq_id";
+  bd_info[3] = "lock_acq_val";
+  bd_info[4] = "lock_acq_enable";
+  bd_info[5] = "lock_rel_id";
+  bd_info[6] = "lock_rel_val";
+  bd_info[7] = "pkt_enable";
+  bd_info[8] = "pkt_id";
+  bd_info[9] = "pkt_type";
+  bd_info[10] = "valid_bd";
+  bd_info[11] = "use_next_bd";
+  bd_info[12] = "next_bd_id";
+  bd_info[13] = "tlast_suppress";
+  bd_info[14] = "out_of_order_bd_id";
+  bd_info[15] = "compression_enable";
+  bd_info[16] = "iteration_current";
+  bd_info[17] = "iteration_step_size";
+  bd_info[18] = "iteration_wrap";
+  bd_info[19] = "d0_step_size";
+  bd_info[20] = "d0_wrap";
+  bd_info[21] = "d1_step_size";
+  bd_info[22] = "d1_wrap";
+  bd_info[23] = "d2_step_size";
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -208,35 +207,35 @@ populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::
 // This function extract BD information for shim tiles of 2nd generation aie architecture
 void 
 populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info;
+  std::vector<std::string> bd_info(27);
 
-  bd_info.push_back("base_address");
-  bd_info.push_back("length");
-  bd_info.push_back("lock_acq_id");
-  bd_info.push_back("lock_acq_val");
-  bd_info.push_back("lock_acq_enable");
-  bd_info.push_back("lock_rel_id");
-  bd_info.push_back("lock_rel_val");
-  bd_info.push_back("pkt_enable");
-  bd_info.push_back("pkt_id");
-  bd_info.push_back("pkt_type");
-  bd_info.push_back("valid_bd");
-  bd_info.push_back("use_next_bd");
-  bd_info.push_back("next_bd_id");
-  bd_info.push_back("tlast_suppress");
-  bd_info.push_back("iteration_step_size");
-  bd_info.push_back("iteration_wrap");
-  bd_info.push_back("d0_step_size");
-  bd_info.push_back("d0_wrap");
-  bd_info.push_back("iteration_wrap");
-  bd_info.push_back("d0_step_size");
-  bd_info.push_back("d0_wrap");
-  bd_info.push_back("d1_after");
-  bd_info.push_back("d2_step_size");
-  bd_info.push_back("smid");
-  bd_info.push_back("cache");
-  bd_info.push_back("secure_access");
-  bd_info.push_back("burst_length");
+  bd_info[0] = "base_address";
+  bd_info[1] = "length";
+  bd_info[2] = "lock_acq_id";
+  bd_info[3] = "lock_acq_val";
+  bd_info[4] = "lock_acq_enable";
+  bd_info[5] = "lock_rel_id";
+  bd_info[6] = "lock_rel_val";
+  bd_info[7] = "pkt_enable";
+  bd_info[8] = "pkt_id";
+  bd_info[9] = "pkt_type";
+  bd_info[10] = "valid_bd";
+  bd_info[11] = "use_next_bd";
+  bd_info[12] = "next_bd_id";
+  bd_info[13] = "tlast_suppress";
+  bd_info[14] = "iteration_step_size";
+  bd_info[15] = "iteration_wrap";
+  bd_info[16] = "d0_step_size";
+  bd_info[17] = "d0_wrap";
+  bd_info[18] = "iteration_wrap";
+  bd_info[19] = "d0_step_size";
+  bd_info[20] = "d0_wrap";
+  bd_info[21] = "d1_after";
+  bd_info[22] = "d2_step_size";
+  bd_info[23] = "smid";
+  bd_info[24] = "cache";
+  bd_info[25] = "secure_access";
+  bd_info[26] = "burst_length";
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -244,38 +243,38 @@ populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::
 // This function extract BD information for mem tiles of 2nd generation aie architecture
 void 
 populate_mem_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info;
+  std::vector<std::string> bd_info(30);
 
-  bd_info.push_back("base_address");
-  bd_info.push_back("length");
-  bd_info.push_back("lock_acq_id");
-  bd_info.push_back("lock_acq_val");
-  bd_info.push_back("lock_acq_enable");
-  bd_info.push_back("lock_rel_id");
-  bd_info.push_back("lock_rel_val");
-  bd_info.push_back("pkt_enable");
-  bd_info.push_back("pkt_id");
-  bd_info.push_back("pkt_type");
-  bd_info.push_back("valid_bd");
-  bd_info.push_back("use_next_bd");
-  bd_info.push_back("next_bd_id");
-  bd_info.push_back("tlast_suppress");
-  bd_info.push_back("out_of_order_bd_id");
-  bd_info.push_back("compression_enable");
-  bd_info.push_back("iteration_current");
-  bd_info.push_back("iteration_step_size");
-  bd_info.push_back("iteration_wrap");
-  bd_info.push_back("d0_step_size");
-  bd_info.push_back("d0_wrap");
-  bd_info.push_back("d1_step_size");
-  bd_info.push_back("d1_wrap");
-  bd_info.push_back("d1_before");
-  bd_info.push_back("d1_after");
-  bd_info.push_back("d2_step_size");
-  bd_info.push_back("d2_wrap");
-  bd_info.push_back("d2_before");
-  bd_info.push_back("d2_after");
-  bd_info.push_back("d3_step_size");
+  bd_info[0] = "base_address";
+  bd_info[1] = "length";
+  bd_info[2] = "lock_acq_id";
+  bd_info[3] = "lock_acq_val";
+  bd_info[4] = "lock_acq_enable";
+  bd_info[5] = "lock_rel_id";
+  bd_info[6] = "lock_rel_val";
+  bd_info[7] = "pkt_enable";
+  bd_info[8] = "pkt_id";
+  bd_info[9] = "pkt_type";
+  bd_info[10] = "valid_bd";
+  bd_info[11] = "use_next_bd";
+  bd_info[12] = "next_bd_id";
+  bd_info[13] = "tlast_suppress";
+  bd_info[14] = "out_of_order_bd_id";
+  bd_info[15] = "compression_enable";
+  bd_info[16] = "iteration_current";
+  bd_info[17] = "iteration_step_size";
+  bd_info[18] = "iteration_wrap";
+  bd_info[19] = "d0_step_size";
+  bd_info[20] = "d0_wrap";
+  bd_info[21] = "d1_step_size";
+  bd_info[22] = "d1_wrap";
+  bd_info[23] = "d1_before";
+  bd_info[24] = "d1_after";
+  bd_info[25] = "d2_step_size";
+  bd_info[26] = "d2_wrap";
+  bd_info[27] = "d2_before";
+  bd_info[28] = "d2_after";
+  bd_info[29] = "d3_step_size";
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -489,19 +488,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
   }
   catch (const qr::no_such_key&) {
     // Not Edge device
-  }
-  catch (const std::exception& ex) {
-    pt.put("error_msg", ex.what());
-    return pt;
-  }
-  try {
-    // On Pcie platforms use driver calls to get AIE Shim info
-
-    if (pt_shim.empty()) 
-      pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    // Not Pcie device
+    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
@@ -517,18 +504,18 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
   try {
     boost::property_tree::ptree tile_array;
 
+    auto hw_gen = pt_shim.get<uint8_t>("hw_gen");
+
     // Populate the shim information such as dma, lock, error, events
     // for each tiles.
-    auto hw_gen = pt_shim.get<uint8_t>("aie_shim.hw_gen");
     for (const auto& as: pt_shim.get_child("aie_shim")) {
       const boost::property_tree::ptree& oshim = as.second;
       boost::property_tree::ptree ishim;
-      if (oshim.find("col") != oshim.not_found()) {
-        int col = oshim.get<int>("col");
-        int row = oshim.get<int>("row");
-        ishim.put("column", col);
-        ishim.put("row", row);
-      }
+      int col = oshim.get<uint32_t>("col");
+      int row = oshim.get<uint32_t>("row");
+
+      ishim.put("column", col);
+      ishim.put("row", row);
 
       // Populate DMA information
       if (oshim.find("dma") != oshim.not_found())
@@ -553,7 +540,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 	  populate_shim_bd_info_aieml(oshim, ishim);
       }
 
-      tile_array.push_back({"", ishim});
+      tile_array.push_back({"tile" + std::to_string(col), ishim});
     }
 
     pt.add_child("tiles", tile_array);
@@ -583,19 +570,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
   }
   catch (const xrt_core::query::no_such_key&) {
     // Not Edge device
-  }
-  catch (const std::exception& ex) {
-    pt.put("error_msg", ex.what());
-    return pt;
-  }
-
-  try {
-    if (pt_mem.empty())
-    // On Pcie platforms use driver calls to get AIE mem info
-      pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    // Not Pcie device
+    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
@@ -616,13 +591,11 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     for (const auto& am: pt_mem.get_child("aie_mem")) {
       const boost::property_tree::ptree& imem = am.second;
       boost::property_tree::ptree omem;
-      if (imem.find("col") != imem.not_found()) {
-        int col = imem.get<uint32_t>("col");
-        int row = imem.get<uint32_t>("row");
+      int col = imem.get<uint32_t>("col");
+      int row = imem.get<uint32_t>("row");
 
-        omem.put("column", col);
-        omem.put("row", row);
-      }
+      omem.put("column", col);
+      omem.put("row", row);
 
       // Populate DMA information
       if (imem.find("dma") != imem.not_found())
@@ -643,7 +616,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
       if (imem.find("bd") != imem.not_found())
 	  populate_mem_bd_info_aieml(imem, omem);
 
-      tile_array.push_back({"", omem});
+      tile_array.push_back({"tile" + std::to_string(col), omem});
     }
 
     pt.add_child("tiles", tile_array);
@@ -765,7 +738,7 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
   try {
     boost::property_tree::ptree pt;
     boost::property_tree::ptree empty_pt;
-    auto hw_gen = pt_core.get<uint8_t>("aie_core.hw_gen");
+    auto hw_gen = pt_core.get<uint8_t>("hw_gen");
     
     auto row = tile.get<int>("row");
     auto col = tile.get<int>("column");
