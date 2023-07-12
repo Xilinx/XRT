@@ -1,24 +1,10 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
 #include "ReportElectrical.h"
+#include "Table2D.h"
 
-// 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
 
 void
@@ -57,20 +43,34 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
   _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
   _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
-  _output << boost::format("  %-23s: %6s   %6s\n") % "Power Rails" % "Voltage" % "Current";
+  
+  const std::vector<Table2D::HeaderData> table_headers = {
+    {"Power Rails", Table2D::Justification::left},
+    {":", Table2D::Justification::left},
+    {"Voltage", Table2D::Justification::right},
+    {"Current", Table2D::Justification::right}
+  };
+  Table2D elec_table(table_headers);
+
   for(auto& kv : electricals) {
     const boost::property_tree::ptree& pt_sensor = kv.second;
-    std::string name = pt_sensor.get<std::string>("description");
-    auto volts_is_present = pt_sensor.get<bool>("voltage.is_present");
-    auto amps_is_present = pt_sensor.get<bool>("current.is_present");
+    const auto voltage = pt_sensor.get<std::string>("voltage.volts", "N/A");
+    const auto amps = pt_sensor.get<std::string>("current.amps", "N/A");
 
-    if(volts_is_present && amps_is_present)
-      _output << boost::format("  %-23s: %6s V, %6s A\n") % name % pt_sensor.get<std::string>("voltage.volts") % pt_sensor.get<std::string>("current.amps");
-    else if(volts_is_present)
-      _output << boost::format("  %-23s: %6s V\n") % name % pt_sensor.get<std::string>("voltage.volts");
-    else if(amps_is_present)
-      _output << boost::format("  %-23s: %16s A\n") % name % pt_sensor.get<std::string>("current.amps");
+    const std::vector<std::string> entry_data = {
+      pt_sensor.get<std::string>("description"),
+      ":",
+      (voltage == "N/A") ? voltage : voltage + " V",
+      (amps == "N/A") ? amps : amps + " A",
+    };
+    elec_table.addEntry(entry_data);
   }
+
+  if (elec_table.empty())
+    _output << "  No electrical sensors found\n";
+  else
+    _output << elec_table.toString("  ");
+
   _output << std::endl;
 
 }
