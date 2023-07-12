@@ -477,7 +477,7 @@ read_thermals(const xrt_core::device * device)
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::thermal);
     if (output.empty()) {
-      thermal_array.put("error_msg", "Information unavailable");
+      thermal_array.put("msg", "No sensors present");
       root.add_child("thermals", thermal_array);
       return root;
     }
@@ -512,7 +512,7 @@ read_mechanical(const xrt_core::device * device)
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::mechanical);
     if (output.empty()) {
-      fan_array.put("error_msg", "Information unavailable");
+      fan_array.put("msg", "No sensors present");
       root.add_child("fans", fan_array);
       return root;
     }
