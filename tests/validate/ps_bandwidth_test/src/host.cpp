@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
     std::string test_path;
     std::string iter_cnt;
     std::string b_file;
+    std::vector<std::string> depedency_paths;
     bool flag_s;
 
     boost::program_options::options_description options;
@@ -74,6 +75,19 @@ int main(int argc, char** argv) {
     auto num_devices = xrt::system::enumerate_devices();
 
     auto device = xrt::device {dev_id};
+
+    // Load dependency xclbins onto device if any
+    for (const auto& path : depedency_paths) {
+        auto retVal = validate_binary_file(path);
+        if (retVal != EXIT_SUCCESS)
+            return retVal;
+        auto uuid = device.load_xclbin(path);
+    }
+
+    // Load ps kernel onto device
+    auto retVal = validate_binary_file(b_file, flag_s);
+    if (flag_s || retVal != EXIT_SUCCESS)
+        return retVal;
 
     auto uuid = device.load_xclbin(b_file);
     auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
