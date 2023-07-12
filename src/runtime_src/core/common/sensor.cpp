@@ -445,8 +445,10 @@ read_electrical(const xrt_core::device * device)
     //Check for any of these data is available
     if (!current.empty() || !voltage.empty() || !power.empty())
       return read_data_driven_electrical(current, voltage, power);
-    else
+    else {
+      sensor_array.put("msg", "No sensors present");
       return sensor_array;
+    }
   }
   catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
