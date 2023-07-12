@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     std::string test_path;
     std::string iter_cnt;
     std::string b_file;
-    std::vector<std::string> depedency_paths;
+    std::vector<std::string> dependency_paths;
     bool flag_s;
 
     boost::program_options::options_description options;
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         ("path,p", boost::program_options::value<decltype(test_path)>(&test_path)->required(), "Path to the platform resources")
         ("device,d", boost::program_options::value<decltype(dev_id)>(&dev_id)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
         ("supported,s", boost::program_options::bool_switch(&flag_s), "Print supported or not")
-        ("include,i" , boost::program_options::value<decltype(depedency_paths)>(&depedency_paths)->multitoken(), "Paths to xclbins required for this test")
+        ("include,i" , boost::program_options::value<decltype(dependency_paths)>(&dependency_paths)->multitoken(), "Paths to xclbins required for this test")
         ("loop_iter_cnt,l", boost::program_options::value<decltype(iter_cnt)>(&iter_cnt)->implicit_value("10000"), "The number of iterations the test will sample over")
     ;
 
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
     auto device = xrt::device {dev_id};
 
     // Load dependency xclbins onto device if any
-    for (const auto& path : depedency_paths) {
+    for (const auto& path : dependency_paths) {
         auto retVal = validate_binary_file(path);
         if (retVal != EXIT_SUCCESS)
             return retVal;
