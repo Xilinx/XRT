@@ -164,14 +164,6 @@ namespace xdp {
     if (settingsString.empty())
       return {};
 
-    // For 2023.1 only: support both *_bandwidths and *_throughputs
-    if (settingsString.find("bandwidths") != std::string::npos) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-                              "All metric sets named *_bandwidths will be renamed *_throughputs "
-                              "in 2023.2. Please use the new settings.");
-      boost::replace_all(settingsString, "bandwidths", "throughputs");
-    }
-
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> settingsVector;
     boost::replace_all(settingsString, " ", "");

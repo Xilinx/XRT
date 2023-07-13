@@ -163,12 +163,7 @@ namespace xdp {
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
 
     // **** Interface Tile Trace ****
-    mInterfaceTileEventSets = {{"ports",
-                                {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL,
-                                 XAIE_EVENT_PORT_TLAST_2_PL,   XAIE_EVENT_PORT_TLAST_3_PL, 
-                                 XAIE_EVENT_PORT_TLAST_4_PL,   XAIE_EVENT_PORT_TLAST_5_PL,
-                                 XAIE_EVENT_PORT_TLAST_6_PL,   XAIE_EVENT_PORT_TLAST_7_PL}},
-                               {"input_ports",
+    mInterfaceTileEventSets = {{"input_ports",
                                 {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_1_PL,
                                  XAIE_EVENT_PORT_RUNNING_2_PL, XAIE_EVENT_PORT_RUNNING_3_PL}},
                                {"output_ports",
@@ -184,14 +179,14 @@ namespace xdp {
     if (metadata->getHardwareGen() == 1) {
       mInterfaceTileEventSets["input_ports_details"] = {
           XAIE_EVENT_DMA_MM2S_0_START_BD_PL,   XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_0_GO_TO_IDLE_PL, XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_PL,
+          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_PL,
           XAIE_EVENT_DMA_MM2S_1_START_BD_PL,   XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_1_GO_TO_IDLE_PL, XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_PL};
+          XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_PL};
       mInterfaceTileEventSets["output_ports_details"] = {
           XAIE_EVENT_DMA_S2MM_0_START_BD_PL,   XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_0_GO_TO_IDLE_PL, XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_PL,
+          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_PL,
           XAIE_EVENT_DMA_S2MM_1_START_BD_PL,   XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_1_GO_TO_IDLE_PL, XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
+          XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
     } else {
       mInterfaceTileEventSets["input_ports_details"] = {
           XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
