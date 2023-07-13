@@ -233,7 +233,6 @@ findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
     const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_path;
     logger(_ptTest, "Details", boost::str(fmt));
     _ptTest.put("status", test_token_skipped);
-    XBUtilities::throw_cancel(fmt);
   }
   return xclbin_path;
 }
@@ -243,6 +242,10 @@ findDependencies( const std::string& test_path,
                   const std::string& ps_kernel_name)
 {
     const std::string dependency_json = "/lib/firmware/xilinx/ps_kernels/test_dependencies.json";
+    boost::filesystem::path dep_path(dependency_json);
+    if (!boost::filesystem::exists(dep_path))
+      return {};
+
     std::vector<std::string> dependencies;
     try {
         boost::property_tree::ptree pt;
@@ -335,7 +338,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev,
       test_name = test_map.find(py)->second;
 
     // Parse if the file exists here
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
+    std::string  xrtTestCasePath = "/proj/rdi/staff/dbenusov/XRT/build/Debug/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -716,7 +719,7 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   uuid_parse(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev).c_str(), uuid);
   std::string xclbin = ptTest.get<std::string>("xclbin", "");
 
-  std::string xclbinPath = findXclbinPath(dev, xclbin, ptTest) + xclbin;
+  std::string xclbinPath = findXclbinPath(dev, xclbin, ptTest);
 
   try {
     program_xclbin(dev, xclbinPath);
