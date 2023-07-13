@@ -95,7 +95,7 @@ def main():
                      "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
                      "--dump-section", "MEM_TOPOLOGY:JSON:" + outputMemTopology,
                      "--output", outputXCLBIN, 
-                     "--force", "--trace"
+                     "--force"
                      ]
   execCmd(step, cmd)
 
@@ -144,7 +144,7 @@ def main():
 
   # connect the PS kernel to mem banks 0 and 1
   cmd = [xclbinutil, "--input", workingXCLBIN,
-                     "--add-pskernel", "0,1:::" + inputPSKernelLib,
+                     "--add-pskernel", "0,-1:::" + inputPSKernelLib,
                      "--dump-section", "EMBEDDED_METADATA:RAW:" + outputEmbeddedMetadata,
                      "--dump-section", "IP_LAYOUT:JSON:" + outputIpLayout,
                      "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,

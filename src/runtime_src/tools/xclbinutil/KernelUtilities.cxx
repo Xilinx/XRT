@@ -355,7 +355,10 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
             std::cout << "\tconnecting arg " << std::to_string(argIndexID) << " to mem bank " << std::to_string(memBankIndex) << std::endl;
           }
           else
-            throw std::runtime_error("Specifїed mem_banks is not valid");
+          {
+            const auto errMsg = boost::format("Specified memory bank (%d) is invalid.  Valid ranges are from 0 to %d.") % memBankIndex % memTopology.size(); 
+            throw std::runtime_error(errMsg.str());
+          }
         }
       } else {
         auto iter = std::find_if(memTopology.begin(), memTopology.end(),

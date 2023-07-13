@@ -1732,7 +1732,8 @@ parsePSKernelString(const std::string& encodedString,
     if (mem_banks.front() == ',' || mem_banks.back() == ',' )
       throw std::runtime_error("Specifїed mem_banks is not valid");
     
-    std::cout << "Specifying memory banks in --add-pskernel is an adanced feature" << std::endl;
+    std::cout << "Attention: Specifying memory banks in --add-pskernel is an advanced feature." << std::endl;
+    std::cout << "           Be sure to validate connections after performing this operation." << std::endl;
   }
 
   XUtil::TRACE(boost::format("PSKernel command arguments: mem_banks='%s', symbol_name='%s'; num_instances=%d; library='%s'") % mem_banks % symbol_name % num_instances % path_to_library);
