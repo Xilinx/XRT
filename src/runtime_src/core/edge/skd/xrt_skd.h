@@ -47,7 +47,7 @@
 #include "core/common/xclbin_parser.h"
 #include "ffi.h"
 #include "ps_kernel.h"
-#include "sk_types.h"
+#include "experimental/xrt_pscontext.h"
 #include "xclbin.h"
 #include "xclhal2_mpsoc.h"
 #include "xrt/xrt_device.h"
@@ -152,6 +152,9 @@ class skd
     int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
     ffi_type* convert_to_ffitype(const xrt_core::xclbin::kernel_argument &arg) const;
 };
+
+typedef xrt::pscontext* (* kernel_init_t)(xclDeviceHandle device, const uuid_t &uuid);
+typedef int (* kernel_fini_t)(xrt::pscontext *xrtHandles);
 
 }
 

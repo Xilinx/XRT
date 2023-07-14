@@ -19,6 +19,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_mailbox.h
   xrt_message.h
   xrt_module.h
+  xrt_pscontext.h
   xrt_profile.h
   xrt_queue.h
   xrt_system.h
