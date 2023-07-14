@@ -437,6 +437,14 @@ public:
   class kernel : public detail::pimpl<kernel_impl>
   {
   public:
+    /**
+     * @enum kernel_type
+     *
+     * The kernel type is extracted from the XML kernel meta data section
+     */
+    enum class kernel_type : uint8_t { none = 0, pl = 1, ps = 2, dpu = 3};
+    
+  public:
     kernel() = default;
 
     explicit
@@ -453,6 +461,16 @@ public:
     XCL_DRIVER_DLLESPEC
     std::string
     get_name() const;
+
+    /**
+     * get_type() - Get kernel type
+     *
+     * @return
+     *  The type of the kernel
+     */
+    XCL_DRIVER_DLLESPEC
+    kernel_type
+    get_type() const;
 
     /**
      * get_cus() - Get list of cu from kernel.

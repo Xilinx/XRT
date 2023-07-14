@@ -101,9 +101,34 @@ operator << (std::ostream& ostr, const xrt::xclbin::ip& cu)
 }
 
 std::ostream&
+operator << (std::ostream& ostr, xrt::xclbin::kernel::kernel_type kernel_type)
+{
+  switch (kernel_type) {
+  case xrt::xclbin::kernel::kernel_type::none :
+    ostr << "none";
+    return ostr;
+  case xrt::xclbin::kernel::kernel_type::pl :
+    ostr << "pl";
+    return ostr;
+  case xrt::xclbin::kernel::kernel_type::ps :
+    ostr << "ps";
+    return ostr;
+  case xrt::xclbin::kernel::kernel_type::dpu :
+    ostr << "dpu";
+    return ostr;
+  default:
+    ostr << "not defined";
+    return ostr;
+  }
+
+  return ostr;
+}
+
+std::ostream&
 operator << (std::ostream& ostr, const xrt::xclbin::kernel& kernel)
 {
   // kernel function
+  ostr << "kernel type: " << kernel.get_type() << "\n";
   ostr << kernel.get_name() << "(\n";
   size_t argidx = 0;
   for (const auto& arg : kernel.get_args()) {

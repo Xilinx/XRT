@@ -142,8 +142,8 @@ struct ert_start_kernel_cmd {
   };
 
   /* payload */
-  uint32_t cu_mask;          /* mandatory cu mask */
-  uint32_t data[1];            /* count-1 number of words */
+  uint32_t cu_mask;              /* mandatory cu mask */
+  uint32_t data[1];              /* count-1 number of words */
 };
 
 /**
@@ -864,6 +864,11 @@ ert_valid_opcode(struct ert_packet *pkt)
     skcmd = to_start_krnl_pkg(pkt);
     /* 1 cu mask + 4 registers */
     valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
+    break;
+  case ERT_START_DPU:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 3 bytes for ert_dpu_data */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 3);
     break;
   case ERT_START_KEY_VAL:
     skcmd = to_start_krnl_pkg(pkt);

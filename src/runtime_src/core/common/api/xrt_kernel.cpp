@@ -1361,6 +1361,10 @@ private:
     regmap_size = (sizeof(ert_fa_descriptor) + desc_offset) / sizeof(uint32_t);
   }
 
+  // Amend for AP kernels.  If the kernel has no arguments, then
+  // amend the regmap size to be at least 4 (control registers).
+  // For kernel with arguments, the regmap size is already adjusted
+  // for the max offset of all arguments.
   void
   amend_ap_args()
   {
@@ -1369,13 +1373,37 @@ private:
     regmap_size = std::max<size_t>(regmap_size, 4);
   }
 
+  // Amend for DPU kernels.  The regmap size is already adjusted
+  // for the max offset of all arguments.  But since the register
+  // map will be prepended with the ert_dpu_data structure, we
+  // must adjust here.
+  void
+  amend_dpu_args()
+  {
+    // adjust regmap size to account for prepending of ert_dpu_data
+    regmap_size += sizeof(ert_dpu_data) / sizeof(uint32_t);
+  }
+
   void
   amend_args()
   {
-    if (protocol == control_type::fa)
-      amend_fa_args();
-    else if (protocol == control_type::hs || protocol == control_type::chain)
-      amend_ap_args();
+    switch (get_kernel_type()) {
+    case kernel_type::dpu :
+      if (module)
+        amend_dpu_args();
+      else
+        amend_ap_args();
+      break;
+    case kernel_type::pl :
+    case kernel_type::ps :
+      if (protocol == control_type::fa)
+        amend_fa_args();
+      else if (protocol == control_type::hs || protocol == control_type::chain)
+        amend_ap_args();
+      break;
+    case kernel_type::none:
+      throw std::runtime_error("Internal error: wrong kernel type can't set cmd opcode");
+    }
   }
 
   unsigned int
