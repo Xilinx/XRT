@@ -165,7 +165,7 @@ int main_(int argc, const char** argv) {
   po::options_description desc("Options");
   desc.add_options()
       ("add-merge-section", boost::program_options::value<decltype(sectionsToAddMerge)>(&sectionsToAddMerge)->multitoken(), "Section name to add or merge.  Format: <section>:<format>:<file>")
-      ("add-pskernel", boost::program_options::value<decltype(addPsKernels)>(&addPsKernels)->multitoken(), "Helper option to add PS kernels.  Format: <symbol_name>:<instances>:<path_to_shared_library>")
+      ("add-pskernel", boost::program_options::value<decltype(addPsKernels)>(&addPsKernels)->multitoken(), "Helper option to add PS kernels.  Format: [<mem_banks>]:[<symbol_name>]:[<instances>]:<path_to_shared_library>")
       ("add-replace-section", boost::program_options::value<decltype(sectionsToAddReplace)>(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
       ("add-section", boost::program_options::value<decltype(sectionsToAdd)>(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
       ("add-signature", boost::program_options::value<decltype(sSignature)>(&sSignature), "Adds a user defined signature to the given xclbin image.")
@@ -502,11 +502,11 @@ int main_(int argc, const char** argv) {
   }
 
   // -- Add PS Kernels
-  for (const auto &psKernel : addPsKernels) 
+  for (const auto &psKernel : addPsKernels)
     xclBin.addPsKernel(psKernel);
   
   // -- Add Fixed Kernels files
-  for (const auto &kernel : addKernels) 
+  for (const auto &kernel : addKernels)
     xclBin.addKernels(kernel);
 
   // -- Post Section Processing --
