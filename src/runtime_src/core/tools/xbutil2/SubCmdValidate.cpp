@@ -338,7 +338,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev,
       test_name = test_map.find(py)->second;
 
     // Parse if the file exists here
-    std::string  xrtTestCasePath = "/proj/rdi/staff/dbenusov/XRT/build/Debug/opt/xilinx/xrt/test/" + test_name;
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
