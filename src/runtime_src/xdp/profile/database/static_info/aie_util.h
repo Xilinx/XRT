@@ -36,9 +36,10 @@ namespace aie {
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta);
   uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta);
   aiecompiler_options getAIECompilerOptions(const boost::property_tree::ptree& aie_meta);
-  std::vector<std::string> getValidGraphs(const boost::property_tree::ptree& aie_meta);
-  std::vector<std::string> getValidKernels(const boost::property_tree::ptree& aie_meta);
-  std::vector<std::string> getValidPorts(const boost::property_tree::ptree& aie_meta);
+
+  XDP_EXPORT std::vector<std::string> getValidGraphs(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT std::vector<std::string> getValidKernels(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT std::vector<std::string> getValidPorts(const boost::property_tree::ptree& aie_meta);
 
   std::unordered_map<std::string, io_config> getPLIOs(const boost::property_tree::ptree& aie_meta);
   std::unordered_map<std::string, io_config> getGMIOs(const boost::property_tree::ptree& aie_meta);
@@ -46,7 +47,7 @@ namespace aie {
   std::unordered_map<std::string, io_config> getChildGMIOs(const boost::property_tree::ptree& aie_meta,
                                                            const std::string& childStr);
   std::unordered_map<std::string, io_config> getAllIOs(const boost::property_tree::ptree& aie_meta);
-  std::vector<tile_type> getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
+  XDP_EXPORT std::vector<tile_type> getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
                                            const std::string& graphName,
                                            const std::string& portName = "all",
                                            const std::string& metricStr = "channels",
