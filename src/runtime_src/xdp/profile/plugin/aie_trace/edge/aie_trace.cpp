@@ -1093,8 +1093,15 @@ namespace xdp {
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
         std::stringstream msg;
-        msg << "Reserved " << numCoreTraceEvents << " core and " << numMemoryTraceEvents
-            << " memory trace events for AIE tile (" << col << "," << row << "). Adding tile to static database.";
+        msg << "Reserved ";
+        if (type == module_type::core)
+          msg << numCoreTraceEvents << " core and " << numMemoryTraceEvents << " memory";
+        else if (type == module_type::mem_tile)
+          msg << numMemoryTraceEvents << " memory tile";
+        else if (type == module_type::shim)
+          msg << numInterfaceTraceEvents << " interface tile";
+        msg << " trace events for tile (" << col << "," << row 
+            << "). Adding tile to static database.";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
 
