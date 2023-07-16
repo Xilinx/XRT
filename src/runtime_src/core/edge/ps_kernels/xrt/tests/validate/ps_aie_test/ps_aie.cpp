@@ -2,7 +2,7 @@
 // Copyright (C) 2022 Xilinx, Inc
 // Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
 
-#include "core/edge/include/sk_types.h"
+#include "experimental/xrt_pscontext.h"
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 
-class xrtHandles : public pscontext {
+class xrtHandles : public xrt::pscontext {
    public:
     xrt::device dhdl;
     xrt::graph graphhdl;

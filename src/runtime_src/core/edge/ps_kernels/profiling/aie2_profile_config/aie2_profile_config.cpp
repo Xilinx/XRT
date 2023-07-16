@@ -19,7 +19,7 @@
 #include "xaiengine.h"
 
 #include "core/common/time.h"
-#include "core/edge/include/sk_types.h"
+#include "experimental/xrt_pscontext.h"
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/shim.h"
 #include "xaiefal/xaiefal.hpp"
@@ -32,7 +32,7 @@ extern "C"{
 }
 
 // User private data structure container (context object) definition
-class xrtHandles : public pscontext
+class xrtHandles : public xrt::pscontext
 {
   public:
     XAie_DevInst* aieDevInst = nullptr;

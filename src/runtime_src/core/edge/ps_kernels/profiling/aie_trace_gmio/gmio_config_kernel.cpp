@@ -20,7 +20,7 @@
 #include "core/edge/user/shim.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
-#include "core/edge/include/sk_types.h"
+#include "experimental/xrt_pscontext.h"
 
 struct AIETraceGmioDMAInst{
   XAie_DmaDesc shimDmaInst;
@@ -28,7 +28,7 @@ struct AIETraceGmioDMAInst{
 };
 
 // User private data structure container (context object) definition
-class xrtHandles : public pscontext
+class xrtHandles : public xrt::pscontext
 {
   public:
     XAie_DevInst* aieDevInst = nullptr;

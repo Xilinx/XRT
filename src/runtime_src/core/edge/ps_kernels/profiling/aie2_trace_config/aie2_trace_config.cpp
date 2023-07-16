@@ -16,7 +16,7 @@
 #include <cstring>
 #include <vector>
 
-#include "core/edge/include/sk_types.h"
+#include "experimental/xrt_pscontext.h"
 #include "core/edge/user/shim.h"
 #include "event_configuration.h"
 #include "xaiefal/xaiefal.hpp"
@@ -25,7 +25,7 @@
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
 
 // User private data structure container (context object) definition
-class xrtHandles : public pscontext {
+class xrtHandles : public xrt::pscontext {
  public:
   XAie_DevInst* aieDevInst = nullptr;
   xaiefal::XAieDev* aieDev = nullptr;

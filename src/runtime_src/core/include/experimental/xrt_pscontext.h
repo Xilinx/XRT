@@ -11,7 +11,29 @@
 #include <memory>
 
 /*
- * PS Context Data Structure included by user PS kernel code
+ * PS Context Data Structure to be derived from for user's xrtHandle class
+ * User will need to declare an xrtHandles class derived from xrt::pscontext class
+ * Example:
+ * class xrtHandles : public xrt::pscontext
+ * {
+ * public:
+ *   xrt::device dhdl;
+ *   xrt::kernel kernel;
+ *   xrtHandles(xclDeviceHandle dhdl_in, const xuid_t xclbin_uuid)
+ *     : dhdl(dhdl_in)
+ *     , kernel(dhdl,xclbin_uuid,"kernel name")
+ *   {
+ *   }
+ * };
+ *
+ * This xrtHandles is the return type for kernel_ini function.
+ * xrt::pscontext *kernel_init(xclDeviceHandle dhdl, const xuid_t xclbin_uuid) {
+ *   xrtHandles *handles = new xrtHandles(dhdl, xclbin_uuid);
+ *
+ *   return(handles);
+ * }
+ *
+ * 
  */
 
 namespace xrt {
@@ -20,6 +42,7 @@ class pscontext_impl;
 class pscontext : public detail::pimpl<pscontext_impl> {
 public:
   pscontext() = default;
+  virtual ~pscontext() {}
 };
 
 }

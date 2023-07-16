@@ -17,6 +17,6 @@
 #ifndef __SK_TYPES_H_
 #define __SK_TYPES_H_
 
-#include "xrt_pscontext.h"
+#include "experimental/xrt_pscontext.h"
 
 #endif

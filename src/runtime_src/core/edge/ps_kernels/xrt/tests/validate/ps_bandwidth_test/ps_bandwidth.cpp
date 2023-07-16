@@ -20,10 +20,10 @@ constexpr unsigned long long int operator "" _Mi(unsigned long long int n) {
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "core/edge/include/sk_types.h"
+#include "experimental/xrt_pscontext.h"
 
 // User private data structure container (context object) definition
-class xrtHandles : public pscontext
+class xrtHandles : public xrt::pscontext
 {
 public:
   xrt::device dhdl;
@@ -36,7 +36,7 @@ public:
 };
 
   __attribute__((visibility("default")))
-  pscontext *bandwidth_kernel_init(xclDeviceHandle dhdl, const xuid_t xclbin_uuid) {
+  xrt::pscontext *bandwidth_kernel_init(xclDeviceHandle dhdl, const xuid_t xclbin_uuid) {
     xrtHandles *handles = new xrtHandles(dhdl, xclbin_uuid);
 
     return(handles);

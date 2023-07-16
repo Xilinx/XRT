@@ -2,10 +2,10 @@
 
 #include <cstring>
 
-#include "core/edge/include/sk_types.h"
+#include "experimental/xrt_pscontext.h"
 
 // User private data structure container (context object) definition
-class xrtHandles : public pscontext
+class xrtHandles : public xrt::pscontext
 {
 public:
 };
