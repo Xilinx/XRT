@@ -108,16 +108,18 @@ namespace xdp {
 
       auto deviceID = getDeviceIDFromHandle(handleToAIEData.begin()->first);
 
-      auto& implementation = AIEData.implementation;
+      // auto& implementation = AIEData.implementation;
         // Ensure we only read/configure once per xclbin
       if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
         // Sets up and calls the PS kernel on x86 implementation
         // Sets up and the hardware on the edge implementation
 
-        implementation->updateDevice();
+        // implementation->updateDevice();
 
         (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
       }
+      
+      handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, handleToAIEData.begin()->first);
 
       // Start the AIE profiling thread
       AIEData.threadCtrlBool = true;
@@ -223,13 +225,13 @@ namespace xdp {
       return;
 
     auto& should_continue = it->second.threadCtrlBool;
-
-    while (should_continue) {
-      handleToAIEData[handle].implementation->poll(index, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
-    }
+    std::cout << index << should_continue << std::endl;
+    // while (should_continue) {
+    //   handleToAIEData[handle].implementation->poll(index, handle);
+    //   std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
+    // }
     // Final Polling Operation
-    handleToAIEData[handle].implementation->poll(index, handle);
+    // handleToAIEData[handle].implementation->poll(index, handle);
   }
 
   void AieProfilePlugin::endPollforDevice(void* handle)
@@ -239,6 +241,9 @@ namespace xdp {
     AIEData.threadCtrlBool = false;
 
     AIEData.thread.join();
+
+    // std::cout << "About to Poll!" << std::endl;
+    // handleToAIEData[handle].implementation->poll(0, handle);
 
     AIEData.implementation->freeResources();
     handleToAIEData.erase(handle);

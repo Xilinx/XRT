@@ -45,14 +45,21 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "core/common/shim/hwctx_handle.h"
+#include <windows.h> 
 
 constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
+constexpr std::uint64_t PROFILE_OPCODE = std::uint64_t{3};
 
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using tile_type = xdp::tile_type;
   using module_type = xdp::module_type;
+
+  typedef struct {
+    uint64_t perf_counters[3];
+    char msg[512];
+  } aie_read_op_t;
 
   AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
       : AieProfileImpl(database, metadata)
@@ -315,15 +322,13 @@ namespace xdp {
     XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
     std::cout << "Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
 
+    xrt::hw_context* context;
     std::cout << "Reached Context creation!" << std::endl;
-    xrt::hw_context* context = static_cast<xrt::hw_context*>(metadata->getHwContext());
+    context = static_cast<xrt::hw_context*>(metadata->getHwContext());
     std::cout << "Context Ptr Value: " << context << std::endl;
     std::cout << "Creating kernel!" << std::endl;
-
     xrt::kernel kernel;
     try {
-      // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
-      std::cout << "Break!" << std::endl;
       kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
@@ -358,10 +363,12 @@ namespace xdp {
     instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
     std::cout << "About to run the kernel!" << std::endl;
-
+    // Sleep(20000);
     // auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
     auto run = kernel(CONFIGURE_OPCODE, 0, 0, 0, 0, instr_bo, instr_bo.size()/sizeof(int), 0);
-    run.wait();
+    std::cout << "Finished Running Kernel!" << std::endl;
+    // Sleep(20000);
+    run.wait2();
 
     std::cout << "Finished running the kernel!" << std::endl;
 
@@ -496,6 +503,8 @@ namespace xdp {
     return false;
   }
 
+
+
   uint32_t 
   AieProfile_WinImpl::getCounterPayload( const tile_type& tile, 
                                          const module_type type, 
@@ -567,6 +576,111 @@ namespace xdp {
     std::cout << "Polling! " << index << handle << std::endl;
     // For now, we are waiting for a way to retreive polling information from
     // the AIE.
+
+    xrt::hw_context* context;
+    std::cout << "Reached Context creation!" << std::endl;
+    context = static_cast<xrt::hw_context*>(metadata->getHwContext());
+    std::cout << "Context Ptr Value: " << context << std::endl;
+    std::cout << "Creating kernel!" << std::endl;
+    xrt::kernel kernel;
+    try {
+      // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
+      std::cout << "Break!" << std::endl;
+      kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
+    } catch (std::exception &e){
+      std::cout << "caught exception: " << e.what() << std::endl;
+      return;
+    } 
+    std::cout << "Reached kernel creation!" << std::endl;
+
+    xrt::bo input_bo;
+
+    try {
+      input_bo = xrt::bo(context->get_device(), 4096, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+      std::cout << "Created instruction bo" << std::endl;  
+    } catch (std::exception &e){
+      std::cout << "caught exception: " << e.what() << std::endl;
+      return;
+    }
+
+    XAie_Config config { 
+        XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
+        metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
+        metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
+        metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
+        metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows, 
+        metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols, 
+        metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
+        metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start, 
+        metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
+        metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start, 
+        metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
+        {0}                                                   // PartProp
+    };
+
+    auto RC = XAie_CfgInitialize(&aieDevInst, &config);
+    if(RC != XAIE_OK) {
+       xrt_core::message::send(severity_level::warning, "XRT", "Driver Initialization Failed.");
+       return;
+    }
+
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+    std::string msg = "hello profile!";
+    uint8_t col = 2;
+    uint8_t row = 2;
+        aie_read_op_t op; 
+        auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst) + 2;
+        std::cout << "got custom op code :" << read_op_code_ << std::endl;
+        std::vector<uint64_t> Regs;
+        Regs.push_back(0x31520);
+        Regs.push_back(0x31524);
+        Regs.push_back(0x31528);
+
+        // Support only three performance counters for now.
+        // 1. 1st performance counters counts the number of cycles to execute from start to end
+        // 2. Num of times start PC was executed
+        // 3. Num of times end PC was executed
+        for (int i = 0; i < 3; i++) {
+            // 25 is column offset and 20 is row offset for IPU
+          op.perf_counters[i] = Regs[i] + (col << 25) + (row << 20);
+        }
+        if (msg.length() > 512) {
+          msg = msg.substr(0, 512);
+        }
+        msg.copy(op.msg, msg.length());
+    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
+    std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+    input_bo.write(instr_buf.ibuf_.data());
+
+    //auto inbo_map = input_bo.map<uint32_t*>();
+    //memset(inbo_map, 0, 4096);
+    input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+    std::cout << "About to run the kernel!" << std::endl;
+    // auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
+    auto run = kernel(CONFIGURE_OPCODE, 0, 0, 0, 0, input_bo, 4096, 0);
+    std::cout << "Finished Running Kernel!" << std::endl;
+
+    try {
+      run.wait2();
+    } catch (std::exception &e) {
+      std::cout << "Caught exception: " << e.what() << std::endl;
+    }
+    
+    //std::cout << "Not About to Sync" << std::endl;
+
+    //input_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    //std::cout << "Synced Finished" << std::endl;
+    //for (int i = 0; i < 32; i++) {
+    //  std::cout << "Output Value: " << inbo_map[i] << std::endl;
+    //}
+    
+    std::cout << "Finished running the kernel!" << std::endl;
+
     return;
   }
 
