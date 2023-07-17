@@ -73,13 +73,14 @@ populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tr
     for (const auto& pair : bd_node) {
       const std::string& key = pair.first;
       const boost::property_tree::ptree& value_tree = pair.second;
+      if (value_tree.size() != bd_info.size()) return;
       boost::property_tree::ptree bd_info_entry;
       bd_info_entry.put("bd_num", key);
 
       boost::property_tree::ptree bd_details_array;
       int i = 0;
       for (const auto& value : value_tree) {
-	std::string val = value.second.data();
+	const std::string val = value.second.data();
         boost::property_tree::ptree bd_details_entry;
 	bd_details_entry.put("name", bd_info[i]);
         bd_details_entry.put("value", val);
@@ -101,43 +102,7 @@ populate_bd_info(const boost::property_tree::ptree& input_pt, boost::property_tr
 // This function extract BD information for core tiles of 1st generation aie architecture
 void 
 populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info(35);
-
-  bd_info[0] = "base_address_a";
-  bd_info[1] = "base_address_b";
-  bd_info[2] = "length";
-  bd_info[3] = "lock_id_a";
-  bd_info[4] = "lock_acq_val_a";
-  bd_info[5] = "lock_acq_enable_a";
-  bd_info[6] = "lock_acq_val_enable_a";
-  bd_info[7] = "lock_rel_val_a";
-  bd_info[8] = "lock_rel_enable_a";
-  bd_info[9] = "lock_rel_val_enable_a";
-  bd_info[10] = "lock_id_b";
-  bd_info[11] = "lock_acq_val_b";
-  bd_info[12] = "lock_acq_enable_b";
-  bd_info[13] = "lock_acq_val_enable_b";
-  bd_info[14] = "lock_rel_val_b";
-  bd_info[15] = "lock_rel_enable_b";
-  bd_info[16] = "lock_rel_val_enable_b";
-  bd_info[17] = "pkt_enable";
-  bd_info[18] = "pkt_id";
-  bd_info[19] = "pkt_type";
-  bd_info[20] = "valid_bd";
-  bd_info[21] = "use_next_bd";
-  bd_info[22] = "next_bd_id";
-  bd_info[23] = "A_B_buffer_select";
-  bd_info[24] = "current_pointer";
-  bd_info[25] = "double_buffer_enable";
-  bd_info[26] = "interleave_enable";
-  bd_info[27] = "interleave_count";
-  bd_info[28] = "fifo_mode";
-  bd_info[29] = "x_increment";
-  bd_info[30] = "x_wrap";
-  bd_info[31] = "x_offset";
-  bd_info[32] = "y_increment";
-  bd_info[33] = "y_wrap";
-  bd_info[34] = "y_offset";
+  std::vector<std::string> bd_info = {"base_address_a", "base_address_b", "length","lock_id", "lock_acq_val_a", "lock_acq_enable_a",  "lock_acq_val_enable_a", "lock_rel_val_a", "lock_rel_enable_a", "lock_rel_val_enable_a", "lock_id_b", "lock_acq_val_b", "lock_acq_enable_b", "lock_acq_val_enable_b", "lock_rel_val_b", "lock_rel_enable_b", "lock_rel_val_enable_b", "pkt_enable", "pkt_id", "pkt_type", "valid_bd", "use_next_bd", "next_bd_id", "A_B_buffer_select", "current_pointer", "double_buffer_enable", "interleave_enable", "interleave_count", "fifo_mode", "x_increment", "x_wrap", "x_offset", "y_increment", "y_wrap", "y_offset"};
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -145,28 +110,7 @@ populate_core_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::pr
 // This function extract BD information for shim tiles of 1st generation aie architecture
 void 
 populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info(20);
-
-  bd_info[0] = "base_address";
-  bd_info[1] = "length";
-  bd_info[2] = "lock_id";
-  bd_info[3] = "lock_acq_val";
-  bd_info[4] = "lock_acq_enable";
-  bd_info[5] = "lock_acq_val_enable";
-  bd_info[6] = "lock_rel_val";
-  bd_info[7] = "lock_rel_enable";
-  bd_info[8] = "lock_rel_val_enable";
-  bd_info[9] = "pkt_enable";
-  bd_info[10] = "pkt_id";
-  bd_info[11] = "pkt_type";
-  bd_info[12] = "valid_bd";
-  bd_info[13] = "use_next_bd";
-  bd_info[14] = "next_bd_id";
-  bd_info[15] = "smid";
-  bd_info[16] = "cache";
-  bd_info[17] = "qos";
-  bd_info[18] = "secure_access";
-  bd_info[19] = "burst_length";
+  std::vector<std::string> bd_info = {"base_address", "length", "lock_id", "lock_acq_val", "lock_acq_enable", "lock_acq_val_enable", "lock_rel_val", "lock_rel_enable", "lock_rel_val_enable","pkt_enable", "pkt_id", "pkt_type", "valid_bd", "use_next_bd", "next_bd_id", "smid", "cache", "qos", "secure_access", "burst_length"};
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -174,32 +118,7 @@ populate_shim_bd_info_aie(const boost::property_tree::ptree& input_pt, boost::pr
 // This function extract BD information for core tiles of 2nd generation aie architecture
 void 
 populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info(24);
-
-  bd_info[0] = "base_address";
-  bd_info[1] = "length";
-  bd_info[2] = "lock_acq_id";
-  bd_info[3] = "lock_acq_val";
-  bd_info[4] = "lock_acq_enable";
-  bd_info[5] = "lock_rel_id";
-  bd_info[6] = "lock_rel_val";
-  bd_info[7] = "pkt_enable";
-  bd_info[8] = "pkt_id";
-  bd_info[9] = "pkt_type";
-  bd_info[10] = "valid_bd";
-  bd_info[11] = "use_next_bd";
-  bd_info[12] = "next_bd_id";
-  bd_info[13] = "tlast_suppress";
-  bd_info[14] = "out_of_order_bd_id";
-  bd_info[15] = "compression_enable";
-  bd_info[16] = "iteration_current";
-  bd_info[17] = "iteration_step_size";
-  bd_info[18] = "iteration_wrap";
-  bd_info[19] = "d0_step_size";
-  bd_info[20] = "d0_wrap";
-  bd_info[21] = "d1_step_size";
-  bd_info[22] = "d1_wrap";
-  bd_info[23] = "d2_step_size";
+  std::vector<std::string> bd_info = {"base_address", "length", "lock_id", "lock_acq_val", "lock_acq_enable", "lock_rel_id", "lock_rel_val", "pkt_enable", "pkt_id", "pkt_type", "valid_bd", "use_next_bd", "next_bd_id", "tlast_suppress", "out_of_order_bd_id", "compression_enable", "iteration_current", "iteration_step_size", "iteration_wrap", "d0_stepsize", "d0_wrap", "d1_stepsize", "d1_wrap", "d2_stepsize"};
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -207,35 +126,7 @@ populate_core_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::
 // This function extract BD information for shim tiles of 2nd generation aie architecture
 void 
 populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info(27);
-
-  bd_info[0] = "base_address";
-  bd_info[1] = "length";
-  bd_info[2] = "lock_acq_id";
-  bd_info[3] = "lock_acq_val";
-  bd_info[4] = "lock_acq_enable";
-  bd_info[5] = "lock_rel_id";
-  bd_info[6] = "lock_rel_val";
-  bd_info[7] = "pkt_enable";
-  bd_info[8] = "pkt_id";
-  bd_info[9] = "pkt_type";
-  bd_info[10] = "valid_bd";
-  bd_info[11] = "use_next_bd";
-  bd_info[12] = "next_bd_id";
-  bd_info[13] = "tlast_suppress";
-  bd_info[14] = "iteration_step_size";
-  bd_info[15] = "iteration_wrap";
-  bd_info[16] = "d0_step_size";
-  bd_info[17] = "d0_wrap";
-  bd_info[18] = "iteration_wrap";
-  bd_info[19] = "d0_step_size";
-  bd_info[20] = "d0_wrap";
-  bd_info[21] = "d1_after";
-  bd_info[22] = "d2_step_size";
-  bd_info[23] = "smid";
-  bd_info[24] = "cache";
-  bd_info[25] = "secure_access";
-  bd_info[26] = "burst_length";
+  std::vector<std::string> bd_info = {"base_address", "length", "lock_id", "lock_acq_val", "lock_acq_enable", "lock_rel_id", "lock_rel_val", "pkt_enable", "pkt_id", "pkt_type", "valid_bd", "use_next_bd", "next_bd_id", "tlast_suppress", "out_of_order_bd_id", "compression_enable", "iteration_current", "iteration_stepsize", "iteration_wrap", "d0_stepsize", "d0_wrap", "d1_stepsize", "d1_wrap", "d2_stepsize", "smid", "cache", "qos", "secure_access", "burst_length"};
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
@@ -243,38 +134,7 @@ populate_shim_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::
 // This function extract BD information for mem tiles of 2nd generation aie architecture
 void 
 populate_mem_bd_info_aieml(const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& pt_bd){
-  std::vector<std::string> bd_info(30);
-
-  bd_info[0] = "base_address";
-  bd_info[1] = "length";
-  bd_info[2] = "lock_acq_id";
-  bd_info[3] = "lock_acq_val";
-  bd_info[4] = "lock_acq_enable";
-  bd_info[5] = "lock_rel_id";
-  bd_info[6] = "lock_rel_val";
-  bd_info[7] = "pkt_enable";
-  bd_info[8] = "pkt_id";
-  bd_info[9] = "pkt_type";
-  bd_info[10] = "valid_bd";
-  bd_info[11] = "use_next_bd";
-  bd_info[12] = "next_bd_id";
-  bd_info[13] = "tlast_suppress";
-  bd_info[14] = "out_of_order_bd_id";
-  bd_info[15] = "compression_enable";
-  bd_info[16] = "iteration_current";
-  bd_info[17] = "iteration_step_size";
-  bd_info[18] = "iteration_wrap";
-  bd_info[19] = "d0_step_size";
-  bd_info[20] = "d0_wrap";
-  bd_info[21] = "d1_step_size";
-  bd_info[22] = "d1_wrap";
-  bd_info[23] = "d1_before";
-  bd_info[24] = "d1_after";
-  bd_info[25] = "d2_step_size";
-  bd_info[26] = "d2_wrap";
-  bd_info[27] = "d2_before";
-  bd_info[28] = "d2_after";
-  bd_info[29] = "d3_step_size";
+  std::vector<std::string> bd_info = {"base_address", "length", "lock_id", "lock_acq_val", "lock_acq_enable", "lock_rel_id", "lock_rel_val", "pkt_enable", "pkt_id", "pkt_type", "valid_bd", "use_next_bd", "next_bd_id", "tlast_suppress", "out_of_order_bd_id", "compression_enable", "iteration_current", "iteration_stepsize", "iteration_wrap", "d0_stepsize", "d0_wrap", "d0_before", "d0_after", "d1_stepsize", "d1_wrap", "d1_before", "d1_after", "d2_stepsize", "d2_wrap", "d2_before", "d2_after", "d3_stepsize"};
 
   return populate_bd_info(input_pt, pt_bd, bd_info);
 }
