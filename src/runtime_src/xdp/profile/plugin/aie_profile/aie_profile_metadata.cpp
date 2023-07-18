@@ -734,8 +734,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -783,8 +783,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
