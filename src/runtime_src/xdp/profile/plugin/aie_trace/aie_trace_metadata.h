@@ -120,7 +120,7 @@ class AieTraceMetadata {
     std::map<module_type, std::string> defaultSets {
       { module_type::core,     "functions"},
       { module_type::mem_tile, "input_channels"},
-      { module_type::shim,     "ports"}
+      { module_type::shim,     "input_ports"}
     };
 
     std::map <module_type, std::vector<std::string>> metricSets {
@@ -128,7 +128,7 @@ class AieTraceMetadata {
                                 "functions_all_stalls", "all"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
                                 "output_channels", "output_channels_stalls"} },
-      { module_type::shim,     {"ports", "input_ports", "output_ports",
+      { module_type::shim,     {"input_ports", "output_ports",
                                 "input_ports_stalls", "output_ports_stalls", 
                                 "input_ports_details", "output_ports_details"} }
     };

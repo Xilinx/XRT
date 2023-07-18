@@ -25,6 +25,7 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "core/common/device.h"
+#include "xaiefal/xaiefal.hpp"
 
 namespace xdp {
 namespace aie {
@@ -32,6 +33,9 @@ namespace aie {
   inline void throwIfError(bool err, const char* msg);
   void readAIEMetadata(const char* data, size_t size, 
                        boost::property_tree::ptree& aie_project);
+
+  bool isStreamSwitchPortEvent(const XAie_Events event);
+  bool isPortRunningEvent(const XAie_Events event);
 
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta);
   uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta);
