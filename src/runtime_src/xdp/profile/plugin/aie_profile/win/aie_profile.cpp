@@ -57,7 +57,8 @@ namespace xdp {
   using module_type = xdp::module_type;
 
   typedef struct {
-    uint64_t perf_counters[3];
+    uint64_t perf_counters[512];
+    uint64_t perf_values[512];
     char msg[512];
   } aie_read_op_t;
 
@@ -365,7 +366,7 @@ namespace xdp {
     std::cout << "About to run the kernel!" << std::endl;
     // Sleep(20000);
     // auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
-    auto run = kernel(CONFIGURE_OPCODE, 0, 0, 0, 0, instr_bo, instr_bo.size()/sizeof(int), 0);
+    auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
     std::cout << "Finished Running Kernel!" << std::endl;
     // Sleep(20000);
     run.wait2();
@@ -593,15 +594,6 @@ namespace xdp {
     } 
     std::cout << "Reached kernel creation!" << std::endl;
 
-    xrt::bo input_bo;
-
-    try {
-      input_bo = xrt::bo(context->get_device(), 4096, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-      std::cout << "Created instruction bo" << std::endl;  
-    } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
-      return;
-    }
 
     XAie_Config config { 
         XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
@@ -624,36 +616,75 @@ namespace xdp {
        return;
     }
 
+
+
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-    std::string msg = "hello profile!";
-    uint8_t col = 2;
-    uint8_t row = 2;
-        aie_read_op_t op; 
-        auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst) + 2;
-        std::cout << "got custom op code :" << read_op_code_ << std::endl;
-        std::vector<uint64_t> Regs;
-        Regs.push_back(0x31520);
-        Regs.push_back(0x31524);
-        Regs.push_back(0x31528);
+    std::string msg = "hello profile plugin poll!";
+
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
+    std::cout << "got custom op code :" << read_op_code_ << std::endl;
+
+    std::vector<XAie_ModuleType> falModuleTypes = {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
+
+    auto configChannel0 = metadata->getConfigChannel0();
+    //auto configChannel1 = metadata->getConfigChannel1();
+
+    aie_read_op_t op; 
+    int numCounters = 0;
+    for (int module = 0; module < metadata->getNumModules(); ++module) {
+      // int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
+      XAie_ModuleType mod = falModuleTypes[module];
+      std::cout << "Module: " << module << std::endl;
+      // Iterate over tiles and metrics to configure all desired counters
+      for (auto& tileMetric : metadata->getConfigMetrics(module)) {
+      
+        auto tile        = tileMetric.first;
+        auto col         = tile.col;
+        auto row         = tile.row;
+        std::cout << "Col, Row: " << col << " " << row << std::endl;
+        auto type        = getModuleType(row, mod);
+      
+        uint8_t numFreeCtr  = (type == module_type::dma || type == module_type::shim) ? 2 : 4;
+        
+        std::map<module_type, std::vector<uint64_t>> regValues {
+          {module_type::core,, {0x31520,0x31524,0x31528,0x3152C}}, 
+          {module_type::dma, {0x11020,0x11024}}, 
+          {module_type::shim, {0x31020, 0x31024}}, 
+          {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
+        };
+
+        std::vector<uint64_t> Regs = regValues[type];
 
         // Support only three performance counters for now.
         // 1. 1st performance counters counts the number of cycles to execute from start to end
         // 2. Num of times start PC was executed
         // 3. Num of times end PC was executed
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < numFreeCtr; i++) {
             // 25 is column offset and 20 is row offset for IPU
-          op.perf_counters[i] = Regs[i] + (col << 25) + (row << 20);
+          op.perf_counters[numCounters] = Regs[i] + (col << 25) + (row << 20);
+          numCounters++;
         }
-        if (msg.length() > 512) {
-          msg = msg.substr(0, 512);
-        }
-        msg.copy(op.msg, msg.length());
-    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+        XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+      }
+    }
+
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
     XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
     std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
+
+    xrt::bo input_bo;
+    try {
+      input_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
+      std::cout << "Created instruction bo" << std::endl;  
+    } catch (std::exception &e){
+      std::cout << "caught exception: " << e.what() << std::endl;
+      return;
+    }
+
     input_bo.write(instr_buf.ibuf_.data());
 
     //auto inbo_map = input_bo.map<uint32_t*>();
@@ -661,8 +692,7 @@ namespace xdp {
     input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
     std::cout << "About to run the kernel!" << std::endl;
-    // auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
-    auto run = kernel(CONFIGURE_OPCODE, 0, 0, 0, 0, input_bo, 4096, 0);
+    auto run = kernel(CONFIGURE_OPCODE, input_bo, input_bo.size()/sizeof(int), 0, 0, 0, 0);
     std::cout << "Finished Running Kernel!" << std::endl;
 
     try {
