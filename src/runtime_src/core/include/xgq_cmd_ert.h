@@ -282,6 +282,22 @@ struct xgq_cmd_query_cu {
 };
 
 /**
+ * struct xgq_cmd_query_mem: query MEM command
+ */
+enum xgq_cmd_query_mem_type {
+	XGQ_CMD_QUERY_MEM_ADDR =	0x0,
+	XGQ_CMD_QUERY_MEM_SIZE =	0x1,
+};
+
+struct xgq_cmd_query_mem {
+	struct xgq_cmd_sq_hdr hdr;
+
+	/* word 2 */
+	uint32_t type:1;
+	uint32_t rsvd1:31;
+};
+
+/**
  * struct xgq_cmd_resp_query_cu: query CU command response
  *
  * @status: status of the CU
@@ -314,6 +330,25 @@ struct xgq_cmd_resp_query_cu {
 		};
 	};
 	uint32_t rcode;
+};
+
+/**
+ * struct xgq_cmd_resp_query_mem: query Memory command response
+ *
+ * @status: status of the MEM
+ *
+ * @mem_start_addr: Start address of the memory
+ * @mem_size: memory size
+ *
+ */
+struct xgq_cmd_resp_query_mem {
+       struct xgq_cmd_cq_hdr hdr;
+
+       struct {
+	       uint32_t l_mem_info;
+	       uint32_t h_mem_info;
+       };
+       uint32_t rcode;
 };
 
 /**

@@ -1943,6 +1943,7 @@ xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		cfg_cu->payload_size = max_off + max_off_arg_size + sizeof(struct xgq_cmd_sq_hdr);
 		if(cfg_cu->payload_size > MAX_CQ_SLOT_SIZE) {
 			userpf_err(xdev, "CU Argument Size %x > MAX_CQ_SLOT_SIZE!", cfg_cu->payload_size);
+			kfree(xcmd);
 			return -ENOMEM;
 		}
 		/*
@@ -2148,6 +2149,75 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 	userpf_info(xdev, "xgq_id %d\n", resp->xgq_id);
 	userpf_info(xdev, "size %d\n", resp->size);
 	userpf_info(xdev, "offset 0x%x\n", resp->offset);
+	return 0;
+}
+
+static int __xocl_kds_xgq_query_mem(struct xocl_dev *xdev,
+				  enum xgq_cmd_query_mem_type type,
+				  struct xgq_cmd_resp_query_mem *resp)
+{
+	struct xgq_cmd_query_mem *query_mem = NULL;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_query_mem));
+	if (!xcmd)
+		return -ENOMEM;
+
+	query_mem = xcmd->info;
+
+	query_mem->hdr.opcode = XGQ_CMD_OP_QUERY_MEM;
+	query_mem->hdr.count = sizeof(*query_mem) - sizeof(query_mem->hdr);
+	query_mem->hdr.state = 1;
+	query_mem->type = type;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = resp;
+	xcmd->response_size = sizeof(*resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Query MEM type %d failed cstate(%d) rcode(%d)",
+				type, resp->hdr.cstate, resp->rcode);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int xocl_kds_xgq_query_mem(struct xocl_dev *xdev, struct mem_data *mem_data)
+{
+	struct xgq_cmd_resp_query_mem resp;
+	int ret = 0;
+
+	ret = __xocl_kds_xgq_query_mem(xdev, XGQ_CMD_QUERY_MEM_ADDR, &resp);
+	if (ret)
+		return ret;
+
+	mem_data->m_base_address = (uint64_t) resp.h_mem_info << 32 | resp.l_mem_info;
+
+	memset(&resp, 0, sizeof(struct xgq_cmd_resp_query_mem));
+	ret = __xocl_kds_xgq_query_mem(xdev, XGQ_CMD_QUERY_MEM_SIZE, &resp);
+	if (ret)
+		return ret;
+
+	mem_data->m_size = (uint64_t) resp.h_mem_info << 32 | resp.l_mem_info;
+	mem_data->m_used = true;
+
+	userpf_info(xdev, "Query MEM completed\n");
+	userpf_info(xdev, "Memory Start address %llx\n", mem_data->m_base_address);
+	userpf_info(xdev, "Memory size %llx\n", mem_data->m_size);
+
 	return 0;
 }
 
@@ -2392,6 +2462,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	int i = 0;
 	struct xrt_cu *xcu = NULL;
 	struct kds_cu_mgmt *cu_mgmt = NULL;
+	struct xgq_cmd_resp_query_cu resp = {};
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
@@ -2426,7 +2497,11 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 			ret = xocl_kds_xgq_uncfg_cu(xdev, 0, DOMAIN_PL, true);
 			if (ret)
 				goto out;
-			
+
+			ret = xocl_kds_xgq_query_mem(xdev, &XOCL_DRM(xdev)->ps_mem_data); 
+			if (ret) 
+				userpf_info(xdev, "WARN ! Device doesn't configure for PS Kernel memory\n");
+
 			xdev->reset_ert_cus = false;
 		}
 	}
