@@ -145,7 +145,7 @@ aie_sys_parser::addrecursive(const int col, const int row, const std::string& ta
 boost::property_tree::ptree
 aie_sys_parser::aie_sys_read(const int col, const int row)
 {
-    const static std::vector<std::string> tags{"core","dma","lock","errors","event"};
+    const static std::vector<std::string> tags{"core","dma","lock","errors","event","bd"};
     std::vector<std::string> data;
     boost::property_tree::ptree pt;
     for(auto& tag:tags) {
