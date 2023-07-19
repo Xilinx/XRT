@@ -327,37 +327,36 @@ namespace xdp {
     context = static_cast<xrt::hw_context*>(metadata->getHwContext());
     std::cout << "Context Ptr Value: " << context << std::endl;
     std::cout << "Creating kernel!" << std::endl;
-    xrt::kernel kernel;
     try {
-      kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
+      mKernel = xrt::kernel(*context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
       return false;
     } 
     std::cout << "Reached kernel creation!" << std::endl;
 
-    // // Create the DPU kernel
- 
-    // std::cout << "About to create device:" << std::endl;
-    // std::cout << "Getting Handle:" << std::endl;
-    // std::cout << "handle: " << metadata->getHandle() << std::endl;
-    // auto spdevice = xrt_core::get_userpf_device(metadata->getHandle());
-    // auto device = xrt::device(spdevice);
-    // std::cout << "failed to continue:" << std::endl;
-    // auto uuid = device.get_xclbin_uuid();
-
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
     std::cout << "Added Op" << std::endl;
     xrt::bo instr_bo;
 
+    // Configuration bo
     try {
-      instr_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
+      instr_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
       std::cout << "Created instruction bo" << std::endl;  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
       return false;
-    } 
+    }
+
+    // Create polling bo
+    try {
+      input_bo = xrt::bo(context->get_device(), 8192, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+      std::cout << "Created instruction bo" << std::endl;  
+    } catch (std::exception &e){
+      std::cout << "caught exception: " << e.what() << std::endl;
+      return false;
+    }
 
     instr_bo.write(instr_buf.ibuf_.data());
     instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -365,7 +364,7 @@ namespace xdp {
     std::cout << "About to run the kernel!" << std::endl;
     // Sleep(20000);
     // auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0, 0);
-    auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
     std::cout << "Finished Running Kernel!" << std::endl;
     // Sleep(20000);
     run.wait2();
@@ -577,42 +576,6 @@ namespace xdp {
     // For now, we are waiting for a way to retreive polling information from
     // the AIE.
 
-    xrt::hw_context* context;
-    std::cout << "Reached Context creation!" << std::endl;
-    context = static_cast<xrt::hw_context*>(metadata->getHwContext());
-    std::cout << "Context Ptr Value: " << context << std::endl;
-    std::cout << "Creating kernel!" << std::endl;
-    xrt::kernel kernel;
-    try {
-      // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
-      kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
-    } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
-      return;
-    } 
-    std::cout << "kernel Created!" << std::endl;
-
-    // XAie_Config config { 
-    //     XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
-    //     metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
-    //     metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
-    //     metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
-    //     metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows, 
-    //     metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols, 
-    //     metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
-    //     metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start, 
-    //     metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
-    //     metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start, 
-    //     metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-    //     {0}                                                   // PartProp
-    // };
-
-    // auto RC = XAie_CfgInitialize(&aieDevInst, &config);
-    // if(RC != XAIE_OK) {
-    //    xrt_core::message::send(severity_level::warning, "XRT", "Driver Initialization Failed.");
-    //    return;
-    // }
-
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     // Profiling is 3rd custom OP
     XAie_RequestCustomTxnOp(&aieDevInst);
@@ -663,16 +626,6 @@ namespace xdp {
     std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
-
-    xrt::bo input_bo;
-    try {
-      input_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
-      std::cout << "Created instruction bo" << std::endl;  
-    } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
-      return;
-    }
-
     input_bo.write(instr_buf.ibuf_.data());
 
     //auto inbo_map = input_bo.map<uint32_t*>();
@@ -680,7 +633,7 @@ namespace xdp {
     input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
     std::cout << "About to run the kernel!" << std::endl;
-    auto run = kernel(CONFIGURE_OPCODE, input_bo, input_bo.size()/sizeof(int), 0, 0, 0, 0);
+    auto run = mKernel(CONFIGURE_OPCODE, input_bo, instr_buf.ibuf_.size()/sizeof(int), 0, 0, 0, 0);
     std::cout << "Finished Running Kernel!" << std::endl;
 
     try {
@@ -689,10 +642,10 @@ namespace xdp {
       std::cout << "Caught exception: " << e.what() << std::endl;
     }
     
-    std::cout << "About to Sync" << std::endl;
+    //std::cout << "About to Sync" << std::endl;
 
-    input_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    std::cout << "Synced Finished" << std::endl;
+    //input_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    //std::cout << "Synced Finished" << std::endl;
     //for (int i = 0; i < 32; i++) {
     //  std::cout << "Output Value: " << inbo_map[i] << std::endl;
     //}

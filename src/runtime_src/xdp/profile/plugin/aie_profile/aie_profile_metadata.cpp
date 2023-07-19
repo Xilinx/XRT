@@ -342,11 +342,6 @@ namespace xdp {
                               "settings will be ignored.");
       return;
     }
-
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
     
     uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
     auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
@@ -689,11 +684,6 @@ namespace xdp {
   {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
-
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
 
     auto allValidGraphs = aie::getValidGraphs(aie_meta);
     auto allValidPorts = aie::getValidPorts(aie_meta);

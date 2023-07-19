@@ -119,7 +119,7 @@ namespace xdp {
         (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
       }
       
-      handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, handleToAIEData.begin()->first);
+      //handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, handleToAIEData.begin()->first);
 
       // Start the AIE profiling thread
       AIEData.threadCtrlBool = true;
@@ -208,14 +208,6 @@ namespace xdp {
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
-    // // Start the AIE profiling thread
-    // AIEData.threadCtrlBool = true;
-    // auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
-    // // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
-    // // implementation.get(), mIndex, handle);
-    // AIEData.thread = std::move(device_thread);
-
-    // ++mIndex;
   }
 
   void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
@@ -236,14 +228,23 @@ namespace xdp {
 
   void AieProfilePlugin::endPollforDevice(void* handle)
   {
+    auto& AIEData = handleToAIEData.begin()->second;
+
+    std::cout << "in end poll for device" << std::endl;
+    std::cout << "Looking for Hw context: " << AIEData.metadata->getHwContext() << std::endl;
+    std::cout << "Handle: " << handle << std::endl; 
+    if (handle != AIEData.metadata->getHwContext()) {
+      std::cout << "Was not the correct xrt Context!" << std::endl;
+      return;
+    }
     // Ask thread to stop
-    auto& AIEData = handleToAIEData[handle];
+    // auto& AIEData = handleToAIEData[handle];
     AIEData.threadCtrlBool = false;
 
     AIEData.thread.join();
 
-    // std::cout << "About to Poll!" << std::endl;
-    // handleToAIEData[handle].implementation->poll(0, handle);
+    std::cout << "About to Poll!" << std::endl;
+    handleToAIEData[handle].implementation->poll(0, handle);
 
     AIEData.implementation->freeResources();
     handleToAIEData.erase(handle);

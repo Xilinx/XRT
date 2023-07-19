@@ -91,8 +91,7 @@ class AieProfileMetadata{
     uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
-    std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name,
+    std::vector<tile_type> get_mem_tiles(const std::string& graph_name,
                                          const std::string& kernel_name = "all");
     std::vector<tile_type> get_event_tiles(const std::string& graph_name, 
                                            module_type type);

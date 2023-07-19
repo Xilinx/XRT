@@ -74,7 +74,10 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
+      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents;
+
+      xrt::kernel mKernel;
+      xrt::bo input_bo;
      
   };
 

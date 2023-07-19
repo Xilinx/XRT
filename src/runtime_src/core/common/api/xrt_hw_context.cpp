@@ -133,6 +133,8 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
 {     
+  std::cout << "Creating HW Context!" << std::endl;
+  std::cout << "This value in HW_CONTEXT: " << (this) << std::endl;
   if (xdp::aie::profile::update_hw_context_cb != nullptr) 
     xdp::aie::profile::update_hw_context_cb(this);
 }
@@ -142,6 +144,8 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
+  std::cout << "Creating HW Context!2" << std::endl;
+  std::cout << "This value in HW_CONTEXT: " << (this) << std::endl;
   if (xdp::aie::profile::update_hw_context_cb != nullptr) 
     xdp::aie::profile::update_hw_context_cb(this);
 }
@@ -149,8 +153,8 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mo
 hw_context::~hw_context() 
 {
   std::cout << "Deleting the HW CONTEXT" << std::endl;
-  // if (xdp::aie::profile::end_poll_cb != nullptr) 
-  //   xdp::aie::profile::end_poll_cb(this);
+   if (xdp::aie::profile::end_poll_cb != nullptr) 
+    xdp::aie::profile::end_poll_cb(this);
 }
 
 void

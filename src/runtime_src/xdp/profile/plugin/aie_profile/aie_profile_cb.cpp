@@ -30,6 +30,7 @@ namespace xdp {
 
   static void endAIECtrPoll(void* handle)
   {
+    std::cout << "in ctr poll" << std::endl;
     if (AieProfilePlugin::alive())
       aieProfilePluginInstance.endPollforDevice(handle);
   }
