@@ -585,14 +585,12 @@ namespace xdp {
     xrt::kernel kernel;
     try {
       // std::cout << "UUID: " << context->get_xclbin_uuid().to_string() << std::endl;
-      std::cout << "Break!" << std::endl;
       kernel = xrt::kernel(*context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
       return;
     } 
-    std::cout << "Reached kernel creation!" << std::endl;
-
+    std::cout << "kernel Created!" << std::endl;
 
     // XAie_Config config { 
     //     XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
@@ -616,12 +614,10 @@ namespace xdp {
     // }
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-    std::string msg = "hello profile plugin poll!";
-
+    // Profiling is 3rd custom OP
     XAie_RequestCustomTxnOp(&aieDevInst);
     XAie_RequestCustomTxnOp(&aieDevInst);
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
-    std::cout << "got custom op code :" << read_op_code_ << std::endl;
 
     std::vector<XAie_ModuleType> falModuleTypes = {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
 
@@ -653,26 +649,15 @@ namespace xdp {
         };
 
         std::vector<uint64_t> Regs = regValues[type];
-
-        // Support only three performance counters for now.
-        // 1. 1st performance counters counts the number of cycles to execute from start to end
-        // 2. Num of times start PC was executed
-        // 3. Num of times end PC was executed
         for (int i = 0; i < numFreeCtr; i++) {
-            // 25 is column offset and 20 is row offset for IPU
-          op.perf_address[numCounters] = Regs[i] + (col << 25) + (row << 20);
-          op.perf_value[numCounters] = 0;
-          std::cout << "Tile Addr: " << op.perf_address[numCounters]  << std::endl;
-          numCounters++;
+          // 25 is column offset and 20 is row offset for IPU
+          op.perf_address[numCounters++] = Regs[i] + (col << 25) + (row << 20);
+          std::cout << "Tile Addr: 0x" << std::hex << op.perf_address[numCounters - 1] << std::dec  << std::endl;
         }
         std::cout << "Finished Iteration!" << std::endl;
       }
     }
-    std::cout << "reached transaction op!" << std::endl;
-
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
-
-    std::cout << "About to serialize!" << std::endl;
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
     XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
     std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
@@ -704,10 +689,10 @@ namespace xdp {
       std::cout << "Caught exception: " << e.what() << std::endl;
     }
     
-    //std::cout << "Not About to Sync" << std::endl;
+    std::cout << "About to Sync" << std::endl;
 
-    //input_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    //std::cout << "Synced Finished" << std::endl;
+    input_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    std::cout << "Synced Finished" << std::endl;
     //for (int i = 0; i < 32; i++) {
     //  std::cout << "Output Value: " << inbo_map[i] << std::endl;
     //}
