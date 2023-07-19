@@ -1955,6 +1955,10 @@ xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		 * approach.
 		 */
 		cfg_cu->payload_size = cfg_cu->payload_size * 2;
+		if(cfg_cu->payload_size > MAX_CQ_SLOT_SIZE) {
+			userpf_err(xdev, "CU Argument Size for Key-Valye Pair of %x > MAX_CQ_SLOT_SIZE, setting it to MAX_CQ_SLOT_SIZE!  Key-Value pair will not be supported!", cfg_cu->payload_size);
+			cfg_cu->payload_size = MAX_CQ_SLOT_SIZE;
+		}
 
 		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
 			  cu_info[i].kname, cu_info[i].iname);
