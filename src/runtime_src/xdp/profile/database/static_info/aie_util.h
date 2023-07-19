@@ -32,7 +32,7 @@ namespace aie {
   inline void throwIfError(bool err, const char* msg);
   void readAIEMetadata(const char* data, size_t size, 
                        boost::property_tree::ptree& aie_project);
-  
+
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta);
   uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta);
   aiecompiler_options getAIECompilerOptions(const boost::property_tree::ptree& aie_meta);

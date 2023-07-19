@@ -1078,7 +1078,7 @@ namespace xdp {
 
           // Update config file
           // Get Trace slot
-          uint32_t S = 0;          
+          uint32_t S = 0;
           XAie_LocType L;
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
