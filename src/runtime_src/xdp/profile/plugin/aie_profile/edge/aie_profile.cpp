@@ -16,12 +16,13 @@
 
 #define XDP_SOURCE 
 
+#include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+
 #include <boost/algorithm/string.hpp>
 #include <cmath>
 #include <memory>
 #include <cstring>
-
-#include "aie_profile.h"
 
 #include "core/common/message.h"
 #include "core/common/time.h"
@@ -250,63 +251,80 @@ namespace xdp {
     return false;
   }
 
+  bool AieProfile_EdgeImpl::isPortRunningEvent(const XAie_Events event)
+  {
+    std::set<XAie_Events> runningEvents = {
+      XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
+      XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
+      XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
+      XAIE_EVENT_PORT_RUNNING_6_CORE,     XAIE_EVENT_PORT_RUNNING_7_CORE,
+      XAIE_EVENT_PORT_RUNNING_0_PL,       XAIE_EVENT_PORT_RUNNING_1_PL,
+      XAIE_EVENT_PORT_RUNNING_2_PL,       XAIE_EVENT_PORT_RUNNING_3_PL,
+      XAIE_EVENT_PORT_RUNNING_4_PL,       XAIE_EVENT_PORT_RUNNING_5_PL,
+      XAIE_EVENT_PORT_RUNNING_6_PL,       XAIE_EVENT_PORT_RUNNING_7_PL,
+      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, XAIE_EVENT_PORT_RUNNING_5_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_6_MEM_TILE, XAIE_EVENT_PORT_RUNNING_7_MEM_TILE
+    };
+
+    return (runningEvents.find(event) != runningEvents.end());
+  }
+
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
-  void AieProfile_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                                    const tile_type& tile,
-                                                    xaiefal::XAieTile& xaieTile,
-                                                    const XAie_LocType loc,
-                                                    const module_type type,
-                                                    const XAie_Events event,
-                                                    const int countnum,
-                                                    const std::string metricSet,
-                                                    const uint8_t channel)
+  XAie_Events
+  AieProfile_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                               xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
+                                               const module_type type, const XAie_Events event,
+                                               const std::string metricSet, const uint8_t channel)
   {
     // Only configure as needed: must be applicable event and only need at most two
-    if (!isStreamSwitchPortEvent(event) || (countnum > 1))
-      return;
+    if (!isStreamSwitchPortEvent(event))
+      return event;
 
     auto switchPortRsc = xaieTile.sswitchPort();
     auto ret = switchPortRsc->reserve();
     if (ret != AieRC::XAIE_OK)
-      return;
+      return event;
 
-    uint32_t rscId = 0;
-    XAie_LocType tmpLoc;
-    XAie_ModuleType tmpMod;
-    switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
-
-    // AIE Tiles (e.g., trace streams)
     if (type == module_type::core) {
+      // AIE Tiles (e.g., trace streams)
       // Define stream switch port to monitor core or memory trace
       uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
-      return;
+      switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
     }
-
-    // Interface tiles (e.g., PLIO, GMIO)
-    if (type == module_type::shim) {
+    else if (type == module_type::shim) {
+      // Interface tiles (e.g., PLIO, GMIO)
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
       auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
-
-      // Define stream switch port to monitor interface 
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
-      return;
-    }
-
-    // Memory tiles
-    if (metricSet.find("trace") != std::string::npos) {
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, 0);
+      switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
     }
     else {
-      auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
-        XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
+      // Memory tiles
+      if (metricSet.find("trace") != std::string::npos) {
+        switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+      }
+      else {
+        auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
+          XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+        switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+      }
     }
 
+    // Event options:
+    //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
+    XAie_Events ssEvent;
+    if (isPortRunningEvent(event))
+      switchPortRsc->getSSRunningEvent(ssEvent);
+    else
+	    switchPortRsc->getSSStalledEvent(ssEvent);
+
+    switchPortRsc->start();
     mStreamPorts.push_back(switchPortRsc);
+    return ssEvent;
   }
 
   void 
@@ -472,11 +490,15 @@ namespace xdp {
     auto configChannel1 = metadata->getConfigChannel1();
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
+      auto configMetrics = metadata->getConfigMetrics(module);
+      if (configMetrics.empty())
+        continue;
+      
       int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
       XAie_ModuleType mod = falModuleTypes[module];
-
+      
       // Iterate over tiles and metrics to configure all desired counters
-      for (auto& tileMetric : metadata->getConfigMetrics(module)) {
+      for (auto& tileMetric : configMetrics) {
         auto tile        = tileMetric.first;
         auto col         = tile.col;
         auto row         = tile.row;
@@ -516,20 +538,24 @@ namespace xdp {
           auto endEvent      = endEvents.at(i);
           uint8_t resetEvent = 0;
 
+          // Channel number is based on monitoring port 0 or 1
+          auto channel = (startEvent <= XAIE_EVENT_PORT_TLAST_0_MEM_TILE) ? channel0 : channel1;
+
+          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
+          auto event = configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
+                                               startEvent, metricSet, channel);
+          if (event != startEvent) {
+            endEvent = (endEvent == startEvent) ? event : endEvent;
+            startEvent = event;
+          }
+
           // Request counter from resource manager
           auto perfCounter = xaieModule.perfCounter();
           auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-        
-          // Channel number is based on monitoring port 0 or 1
-          auto channel = (startEvent <= XAIE_EVENT_PORT_TLAST_0_MEM_TILE) ? channel0 : channel1;
 
-          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
-          configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
-                                  startEvent, i, metricSet, channel);
-        
           // Start the counters after group events have been configured
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
@@ -566,13 +592,12 @@ namespace xdp {
         std::stringstream msg;
         msg << "AIE profile counters reserved in " << metadata->getModuleName(module) << " - ";
         for (int n=0; n <= metadata->getNumCountersMod(module); ++n) {
-          if (numTileCounters[n] == 0) continue;
-          msg << n << ": " << numTileCounters[n] << " tiles";
-          if (n != metadata->getNumCountersMod(module)) msg << ", ";
-
+          if (numTileCounters[n] == 0)
+            continue;
+          msg << n << ": " << numTileCounters[n] << " tiles, ";
           (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
         }
-        xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        xrt_core::message::send(severity_level::info, "XRT", msg.str().substr(0, msg.str().size()-2));
       }
 
       runtimeCounters = true;
