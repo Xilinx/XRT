@@ -233,6 +233,44 @@ namespace xdp {
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
   }
 
+  bool AieProfile_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
+  {
+    // AIE tiles
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) 
+        && (event < XAIE_EVENT_GROUP_BROADCAST_CORE))
+      return true;
+    // Interface tiles
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
+        && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
+      return true;
+    // Memory tiles
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
+        && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
+      return true;
+
+    return false;
+  }
+
+  bool AieProfile_EdgeImpl::isPortRunningEvent(const XAie_Events event)
+  {
+    std::set<XAie_Events> runningEvents = {
+      XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
+      XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
+      XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
+      XAIE_EVENT_PORT_RUNNING_6_CORE,     XAIE_EVENT_PORT_RUNNING_7_CORE,
+      XAIE_EVENT_PORT_RUNNING_0_PL,       XAIE_EVENT_PORT_RUNNING_1_PL,
+      XAIE_EVENT_PORT_RUNNING_2_PL,       XAIE_EVENT_PORT_RUNNING_3_PL,
+      XAIE_EVENT_PORT_RUNNING_4_PL,       XAIE_EVENT_PORT_RUNNING_5_PL,
+      XAIE_EVENT_PORT_RUNNING_6_PL,       XAIE_EVENT_PORT_RUNNING_7_PL,
+      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, XAIE_EVENT_PORT_RUNNING_5_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_6_MEM_TILE, XAIE_EVENT_PORT_RUNNING_7_MEM_TILE
+    };
+
+    return (runningEvents.find(event) != runningEvents.end());
+  }
+
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
   XAie_Events
@@ -242,7 +280,7 @@ namespace xdp {
                                                const std::string metricSet, const uint8_t channel)
   {
     // Only configure as needed: must be applicable event and only need at most two
-    if (!aie::isStreamSwitchPortEvent(event))
+    if (!isStreamSwitchPortEvent(event))
       return event;
 
     auto switchPortRsc = xaieTile.sswitchPort();
@@ -279,7 +317,7 @@ namespace xdp {
     // Event options:
     //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
     XAie_Events ssEvent;
-    if (aie::isPortRunningEvent(event))
+    if (isPortRunningEvent(event))
       switchPortRsc->getSSRunningEvent(ssEvent);
     else
 	    switchPortRsc->getSSStalledEvent(ssEvent);
