@@ -75,6 +75,7 @@ public:
    * hw_context() - Constructor for empty context
    */
   hw_context() = default;
+  ~hw_context();
 
   /**
    * hw_context() - Constructor with QoS control

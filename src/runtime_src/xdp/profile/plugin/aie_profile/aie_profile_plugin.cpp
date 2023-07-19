@@ -108,13 +108,13 @@ namespace xdp {
 
       auto deviceID = getDeviceIDFromHandle(handleToAIEData.begin()->first);
 
-      // auto& implementation = AIEData.implementation;
+      auto& implementation = AIEData.implementation;
         // Ensure we only read/configure once per xclbin
       if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
         // Sets up and calls the PS kernel on x86 implementation
         // Sets up and the hardware on the edge implementation
 
-        // implementation->updateDevice();
+        implementation->updateDevice();
 
         (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
       }

@@ -57,10 +57,9 @@ namespace xdp {
   using module_type = xdp::module_type;
 
   typedef struct {
-    uint64_t perf_counters[512];
-    uint64_t perf_values[512];
-    char msg[512];
-  } aie_read_op_t;
+    uint64_t perf_address[256];
+    uint32_t perf_value[256];
+  } aie_profile_op_t;
 
   AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
       : AieProfileImpl(database, metadata)
@@ -353,7 +352,7 @@ namespace xdp {
     xrt::bo instr_bo;
 
     try {
-      instr_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+      instr_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
       std::cout << "Created instruction bo" << std::endl;  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
@@ -595,28 +594,26 @@ namespace xdp {
     std::cout << "Reached kernel creation!" << std::endl;
 
 
-    XAie_Config config { 
-        XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
-        metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
-        metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
-        metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
-        metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows, 
-        metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols, 
-        metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
-        metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start, 
-        metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
-        metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start, 
-        metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-        {0}                                                   // PartProp
-    };
+    // XAie_Config config { 
+    //     XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
+    //     metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
+    //     metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
+    //     metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
+    //     metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows, 
+    //     metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols, 
+    //     metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
+    //     metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start, 
+    //     metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
+    //     metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start, 
+    //     metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
+    //     {0}                                                   // PartProp
+    // };
 
-    auto RC = XAie_CfgInitialize(&aieDevInst, &config);
-    if(RC != XAIE_OK) {
-       xrt_core::message::send(severity_level::warning, "XRT", "Driver Initialization Failed.");
-       return;
-    }
-
-
+    // auto RC = XAie_CfgInitialize(&aieDevInst, &config);
+    // if(RC != XAIE_OK) {
+    //    xrt_core::message::send(severity_level::warning, "XRT", "Driver Initialization Failed.");
+    //    return;
+    // }
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     std::string msg = "hello profile plugin poll!";
@@ -631,7 +628,7 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     //auto configChannel1 = metadata->getConfigChannel1();
 
-    aie_read_op_t op; 
+    aie_profile_op_t op = {}; 
     int numCounters = 0;
     for (int module = 0; module < metadata->getNumModules(); ++module) {
       // int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
@@ -640,16 +637,16 @@ namespace xdp {
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
       
-        auto tile        = tileMetric.first;
-        auto col         = tile.col;
-        auto row         = tile.row;
-        std::cout << "Col, Row: " << col << " " << row << std::endl;
+        auto tile = tileMetric.first;
+        uint8_t col         = static_cast<uint8_t>(tile.col);
+        uint8_t row         = static_cast<uint8_t>(tile.row);
+        std::cout << "Col, Row: " << (int)col << " " << (int)row << std::endl;
         auto type        = getModuleType(row, mod);
       
         uint8_t numFreeCtr  = (type == module_type::dma || type == module_type::shim) ? 2 : 4;
         
         std::map<module_type, std::vector<uint64_t>> regValues {
-          {module_type::core,, {0x31520,0x31524,0x31528,0x3152C}}, 
+          {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
           {module_type::dma, {0x11020,0x11024}}, 
           {module_type::shim, {0x31020, 0x31024}}, 
           {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
@@ -663,13 +660,19 @@ namespace xdp {
         // 3. Num of times end PC was executed
         for (int i = 0; i < numFreeCtr; i++) {
             // 25 is column offset and 20 is row offset for IPU
-          op.perf_counters[numCounters] = Regs[i] + (col << 25) + (row << 20);
+          op.perf_address[numCounters] = Regs[i] + (col << 25) + (row << 20);
+          op.perf_value[numCounters] = 0;
+          std::cout << "Tile Addr: " << op.perf_address[numCounters]  << std::endl;
           numCounters++;
         }
-        XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+        std::cout << "Finished Iteration!" << std::endl;
       }
     }
+    std::cout << "reached transaction op!" << std::endl;
 
+    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+
+    std::cout << "About to serialize!" << std::endl;
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
     XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
     std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;

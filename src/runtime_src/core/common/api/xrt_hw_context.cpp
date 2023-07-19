@@ -16,7 +16,10 @@
 
 namespace xdp::aie::profile {
   __declspec(dllexport) std::function<void (void*)> update_hw_context_cb;
+  __declspec(dllexport) std::function<void (void*)> end_poll_cb;
 }
+
+
 namespace xrt {
 
 // class hw_context_impl - insulated implemention of an xrt::hw_context
@@ -141,6 +144,13 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mo
 {
   if (xdp::aie::profile::update_hw_context_cb != nullptr) 
     xdp::aie::profile::update_hw_context_cb(this);
+}
+
+hw_context::~hw_context() 
+{
+  std::cout << "Deleting the HW CONTEXT" << std::endl;
+  // if (xdp::aie::profile::end_poll_cb != nullptr) 
+  //   xdp::aie::profile::end_poll_cb(this);
 }
 
 void
