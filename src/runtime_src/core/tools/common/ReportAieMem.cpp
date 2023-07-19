@@ -86,6 +86,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     _output << boost::format("Tile[%2d]\n") % curr_tile;
     _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
     _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
+
     if (tile.second.find("dma") != tile.second.not_found()) {
       _output << boost::format("    %s:\n") % "DMA";
     
@@ -148,6 +149,16 @@ writeReport(const xrt_core::device* /*_pDevice*/,
                                % node.second.get<std::string>("value");
       }
       _output << std::endl;
+    }
+
+    if (tile.second.find("bd_info") != tile.second.not_found()) {
+      _output << boost::format("    %s:\n") % "BDs";
+      for (const auto& bd_info : tile.second.get_child("bd_info")) {
+        _output << fmt8("%s") %  "bd_num: " % bd_info.second.get<std::string>("bd_num");
+        for (const auto& bd_detail : bd_info.second.get_child("bd_details")) 
+          _output<< fmt8("%s") % bd_detail.second.get<std::string>("name") % bd_detail.second.get<std::string>("value");
+        _output << std::endl;
+      }
     }
   }
   _output << std::endl;

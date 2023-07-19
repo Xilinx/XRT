@@ -1072,6 +1072,15 @@ get_cus(const std::string& kname) const
   return handle ? handle->get_cus(kname) : std::vector<xclbin::ip>{};
 }
 
+xrt::xclbin::kernel::kernel_type
+xclbin::kernel::
+get_type() const
+{
+  return handle
+    ? static_cast<xrt::xclbin::kernel::kernel_type>(handle->m_properties.type)
+    : xrt::xclbin::kernel::kernel_type::none;
+}
+
 std::vector<xclbin::ip>
 xclbin::kernel::
 get_cus() const

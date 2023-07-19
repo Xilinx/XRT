@@ -770,6 +770,13 @@ get_aie_profile_settings_graph_based_memory_tile_metrics()
 }
 
 inline std::string
+get_aie_profile_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
 get_aie_profile_settings_tile_based_aie_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_metrics", "");
@@ -856,6 +863,20 @@ get_aie_trace_settings_tile_based_memory_tile_metrics()
 }
 
 inline std::string
+get_aie_trace_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
 get_aie_trace_settings_buffer_size()
 {
   static std::string value = detail::get_string_value("AIE_trace_settings.buffer_size", "8M");
@@ -897,6 +918,19 @@ get_aie_trace_settings_file_dump_interval_s()
   return value;
 }
 
+inline unsigned int
+get_aie_trace_settings_poll_timers_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.poll_timers_interval_us", 100);
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_enable_system_timeline()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.enable_system_timeline", false);
+  return value;
+}
 
 }} // config,xrt_core
 

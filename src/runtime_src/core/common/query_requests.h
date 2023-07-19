@@ -126,6 +126,7 @@ enum class key_type
   aie_status_version,
   aie_tiles_stats,
   aie_tiles_status_info,
+  aie_partition_info,
 
   idcode,
   data_retention,
@@ -955,6 +956,11 @@ struct kds_scu_info : request
  */
 struct hw_context_info : request
 {
+  struct metadata {
+    std::string id;
+    std::string xclbin_uuid;
+  };
+
   /**
    * A structure to represent a single hardware context on any device type. This
    * structure must contain all data that makes up a hardware context across
@@ -969,8 +975,7 @@ struct hw_context_info : request
    *  Versal -> populate PL and PS compute units
    */
   struct data {
-    std::string id;
-    std::string xclbin_uuid;
+    struct metadata metadata;
     kds_cu_info::result_type pl_compute_units;
     kds_scu_info::result_type ps_compute_units;
   };
@@ -994,8 +999,7 @@ struct hw_context_memory_info : request
    * hardware context memory structure across all device types.
    */
   struct data {
-    std::string id;
-    std::string xclbin_uuid;
+    hw_context_info::metadata metadata;
     mem_topology_raw::result_type topology;
     group_topology::result_type grp_topology;
     memstat_raw::result_type statistics;
@@ -1474,6 +1478,31 @@ struct aie_tiles_status_info : request
 
   virtual boost::any
   get(const device* device, const boost::any& param) const = 0;
+};
+
+// Retrieves the aie partition info.
+// An aie partition consists of a starting column and a number of columns.
+// The information is returned via hardware contexts as the driver keeps
+// track of the data this way.
+// Hardware contexts may share the same aie partition.
+struct aie_partition_info : request
+{
+  struct data
+  {
+    hw_context_info::metadata metadata;
+    uint64_t    start_col;
+    uint64_t    num_cols;
+    uint64_t    usage_count;
+    uint64_t    migration_count;
+    uint64_t    bo_sync_count;
+
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::aie_partition_info;
+
+  virtual boost::any
+  get(const device* device) const = 0;
 };
 
 struct clock_freqs_mhz : request

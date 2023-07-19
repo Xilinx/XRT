@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // Sub Commands
 #include "SubCmdAdvanced.h"
@@ -36,6 +36,9 @@ R"(
         "contents": [{
             "name": "examine",
             "contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
+        },{
+            "name": "configure",
+            "contents": ["host-mem", "p2p"]
         }]
     },{
         "name": "alveo",
@@ -47,7 +50,7 @@ R"(
         "name": "aie",
         "contents": [{
             "name": "examine",
-            "contents": ["aie", "aiemem", "aieshim"]
+            "contents": ["aie", "aiemem", "aieshim", "aie-partitions"]
         }]
     }]
 }]
@@ -69,7 +72,7 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdExamine  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false, false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false, false, false, configTree));
 
     // Parse sub commands from json files
     populateSubCommandsFromJSON(subCommands, executable);

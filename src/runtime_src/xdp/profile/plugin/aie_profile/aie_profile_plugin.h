@@ -39,7 +39,6 @@ namespace xdp {
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
 
-
   private:
     uint32_t mIndex = 0;
 
