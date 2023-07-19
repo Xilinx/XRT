@@ -778,6 +778,7 @@ namespace xdp {
       db->getStats().getHostReads();
     if (hostReads.size() == 0)
       return;
+    bool printAverageBWUtilization = db->infoAvailable(info::device_offload);
 
     fout << "TITLE:Host Reads from Global Memory\n";
     fout << "SECTION:Host Data Transfers,Host Reads from Global Memory\n";
@@ -796,9 +797,11 @@ namespace xdp {
       fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
            << "Rate of host reads (in MB/s): "
            << "Transfer Rate = (Total Bytes) / (Total Time in us),\n";
-      fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
-           << "float,Average bandwidth of host reads: "
-           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n";
+      if (printAverageBWUtilization) {
+        fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
+             << "float,Average bandwidth of host reads: "
+             << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n";
+      }
       fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
            << "Maximum time of a single host read,\n";
       fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
@@ -834,7 +837,8 @@ namespace xdp {
           aveBWUtil = one_hundred;
 
         fout << transferRate << ",";
-        fout << aveBWUtil << ",";
+        if (printAverageBWUtilization)
+          fout << aveBWUtil << ",";
         fout << (stats.maxTime / one_million) << ",";
         fout << (stats.minTime / one_million) << ",";
         fout << (stats.totalTime / one_million) << ",";
@@ -850,6 +854,7 @@ namespace xdp {
       db->getStats().getHostWrites();
     if (hostWrites.size() == 0)
       return;
+    bool printAverageBWUtilization = db->infoAvailable(info::device_offload);
 
     fout << "TITLE:Host Writes to Global Memory\n";
     fout << "SECTION:Host Data Transfers,Host Writes to Global Memory\n";
@@ -867,9 +872,11 @@ namespace xdp {
       fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
            << "Rate of host writes (in MB/s): "
            << "Transfer Rate = (Total Bytes) / (Total Time in us),\n";
-      fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
-           << "float,Average bandwidth of host writes: "
-           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n";
+      if (printAverageBWUtilization) {
+        fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
+             << "float,Average bandwidth of host writes: "
+             << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n";
+      }
       fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
            << "Maximum time of a single host write,\n";
       fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
@@ -904,7 +911,8 @@ namespace xdp {
           aveBWUtil = one_hundred;
 
         fout << transferRate << ",";
-        fout << aveBWUtil << ",";
+        if (printAverageBWUtilization)
+          fout << aveBWUtil << ",";
         fout << (stats.maxTime / one_million) << ",";
         fout << (stats.minTime / one_million) << ",";
         fout << (stats.totalTime / one_million) << ",";
