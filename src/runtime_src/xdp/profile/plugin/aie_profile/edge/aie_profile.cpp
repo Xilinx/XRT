@@ -452,11 +452,15 @@ namespace xdp {
     auto configChannel1 = metadata->getConfigChannel1();
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
+      auto configMetrics = metadata->getConfigMetrics(module);
+      if (configMetrics.empty())
+        continue;
+      
       int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
       XAie_ModuleType mod = falModuleTypes[module];
-
+      
       // Iterate over tiles and metrics to configure all desired counters
-      for (auto& tileMetric : metadata->getConfigMetrics(module)) {
+      for (auto& tileMetric : configMetrics) {
         auto tile        = tileMetric.first;
         auto col         = tile.col;
         auto row         = tile.row;
@@ -550,13 +554,12 @@ namespace xdp {
         std::stringstream msg;
         msg << "AIE profile counters reserved in " << metadata->getModuleName(module) << " - ";
         for (int n=0; n <= metadata->getNumCountersMod(module); ++n) {
-          if (numTileCounters[n] == 0) continue;
-          msg << n << ": " << numTileCounters[n] << " tiles";
-          if (n != metadata->getNumCountersMod(module)) msg << ", ";
-
+          if (numTileCounters[n] == 0)
+            continue;
+          msg << n << ": " << numTileCounters[n] << " tiles, ";
           (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
         }
-        xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        xrt_core::message::send(severity_level::info, "XRT", msg.str().substr(0, msg.str().size()-2));
       }
 
       runtimeCounters = true;
