@@ -258,14 +258,12 @@ main(int argc, char* argv[])
                      boost::program_options::bool_switch(&bSupported),
                      "Supported")("help,h", "Prints this help menu.");
 
-    po::positional_options_description positionals;
-
     // Parse sub-command ...
     po::variables_map vm;
     try {
         po::store(po::command_line_parser(argc, argv)
                       .options(desc)
-                      .positional(positionals)
+                      .allow_unregistered()
                       .run(),
                   vm);
         // Print out the help menu
