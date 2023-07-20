@@ -75,7 +75,6 @@ public:
    * hw_context() - Constructor for empty context
    */
   hw_context() = default;
-  ~hw_context();
 
   /**
    * hw_context() - Constructor with QoS control
@@ -111,6 +110,14 @@ public:
   // Subject to change in default qos value
   hw_context(const xrt::device& device, const xrt::uuid& xclbin_id)
     : hw_context{device, xclbin_id, access_mode::shared}
+  {}
+  /// @endcond
+
+  ///@cond
+  // Undocumented construction using impl only
+  // Used for aie profiling
+  hw_context(std::shared_ptr<hw_context_impl> impl)
+    : detail::pimpl<hw_context_impl>(std::move(impl))
   {}
   /// @endcond
 

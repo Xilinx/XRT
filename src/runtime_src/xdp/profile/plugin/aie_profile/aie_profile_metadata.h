@@ -18,9 +18,12 @@
 #define AIE_PROFILE_METADATA_H
 
 #include <boost/property_tree/ptree.hpp>
+#include <memory>
 #include <vector>
 
 #include "core/common/device.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/common/api/xrt_hw_context_impl.h"
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
@@ -49,7 +52,7 @@ class AieProfileMetadata{
     uint64_t deviceID;
     double clockFreqMhz;
     void* handle;
-    void* hwContext = nullptr;
+    xrt::hw_context hwContext;
 
     std::map <module_type, std::vector<std::string>> metricStrings {
       { module_type::core,     {"heat_map", "stalls", "execution",           
@@ -111,9 +114,9 @@ class AieProfileMetadata{
     int getNumCountersMod(int module){return numCountersMod[module];}
     module_type getModuleType(int module){return moduleTypes[module];}
     int getNumModules(){return NUM_MODULES;}
-    void* getHwContext(){return hwContext;}
-    void setHwContext(void* newHwContext) {
-      hwContext = newHwContext;
+    xrt::hw_context getHwContext(){return hwContext;}
+    void setHwContext(xrt::hw_context c) {
+      hwContext = c;
     }
   };
 }

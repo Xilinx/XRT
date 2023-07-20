@@ -322,13 +322,11 @@ namespace xdp {
     XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
     std::cout << "Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
 
-    xrt::hw_context* context;
     std::cout << "Reached Context creation!" << std::endl;
-    context = static_cast<xrt::hw_context*>(metadata->getHwContext());
-    std::cout << "Context Ptr Value: " << context << std::endl;
+    auto context = metadata->getHwContext();
     std::cout << "Creating kernel!" << std::endl;
     try {
-      mKernel = xrt::kernel(*context, "DPU_1x4_NEW");  
+      mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
       return false;
@@ -342,7 +340,7 @@ namespace xdp {
 
     // Configuration bo
     try {
-      instr_bo = xrt::bo(context->get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
       std::cout << "Created instruction bo" << std::endl;  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;
@@ -351,7 +349,7 @@ namespace xdp {
 
     // Create polling bo
     try {
-      input_bo = xrt::bo(context->get_device(), 8192, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+      input_bo = xrt::bo(context.get_device(), 8192, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
       std::cout << "Created instruction bo" << std::endl;  
     } catch (std::exception &e){
       std::cout << "caught exception: " << e.what() << std::endl;

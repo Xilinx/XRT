@@ -100,11 +100,15 @@ namespace xdp {
 #endif
   }
 
+
   void AieProfilePlugin::updateHwContext(void* hwContext) {
       std::cout << "Hardware Context" << std::endl;
       std::cout << "HW context value: " << hwContext << std::endl;
+      xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(hwContext);
+      auto impl_shared_ptr = impl_ptr->get_shared_ptr();
+      xrt::hw_context profile_ctx(impl_shared_ptr);
       auto& AIEData = handleToAIEData.begin()->second;
-      AIEData.metadata->setHwContext(hwContext);
+      AIEData.metadata->setHwContext(std::move(profile_ctx));
 
       auto deviceID = getDeviceIDFromHandle(handleToAIEData.begin()->first);
 
@@ -228,30 +232,24 @@ namespace xdp {
 
   void AieProfilePlugin::endPollforDevice(void* handle)
   {
+    if (handleToAIEData.empty())
+      return;
+
     auto& AIEData = handleToAIEData.begin()->second;
 
-    std::cout << "in end poll for device" << std::endl;
-    std::cout << "Looking for Hw context: " << AIEData.metadata->getHwContext() << std::endl;
-    std::cout << "Handle: " << handle << std::endl; 
-    if (handle != AIEData.metadata->getHwContext()) {
-      std::cout << "Was not the correct xrt Context!" << std::endl;
-      return;
-    }
     // Ask thread to stop
-    // auto& AIEData = handleToAIEData[handle];
-    AIEData.threadCtrlBool = false;
-
-    AIEData.thread.join();
-
+    //AIEData.threadCtrlBool = false;
+    //AIEData.thread.join();
     std::cout << "About to Poll!" << std::endl;
-    handleToAIEData[handle].implementation->poll(0, handle);
-
-    AIEData.implementation->freeResources();
-    handleToAIEData.erase(handle);
+    AIEData.implementation->poll(0, handle);
+    //AIEData.implementation->freeResources();
   }
 
   void AieProfilePlugin::endPoll()
   {
+    auto& AIEData = handleToAIEData.begin()->second;
+    std::cout << "About to Poll! in destructor" << std::endl;
+    AIEData.implementation->poll(0, nullptr);
     // Ask all threads to end
     for (auto& p : handleToAIEData) p.second.threadCtrlBool = false;
 
