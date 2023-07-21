@@ -1669,12 +1669,13 @@ XclBin::reportInfo(std::ostream& _ostream, const std::string& _sInputFile, bool 
 
 static void
 parsePSKernelString(const std::string& encodedString,
+                    std::string& mem_banks,
                     std::string& symbol_name,
                     unsigned long& num_instances,
                     std::string& path_to_library)
 // Line being parsed:
-//   Syntax: <symbol_name>:<instances>:<path_to_shared_library>
-//   Example: myKernel:3:./data/mylib.so
+//   Syntax: <mem_banks>:<symbol_name>:<instances>:<path_to_shared_library>
+//   Example: 0,1:myKernel:3:./data/mylib.so
 //
 // Note: A file name can contain a colen (e.g., C:\test)
 {
@@ -1687,7 +1688,7 @@ parsePSKernelString(const std::string& encodedString,
   std::vector<std::string> tokens;
 
   // Parse the string until the entire string has been parsed or MAX_TOKENS tokens have been found
-  constexpr size_t maxTokens = 3;
+  constexpr size_t maxTokens = 4;
   while ((lastPos < encodedString.length() + 1) &&
          (tokens.size() < maxTokens)) {
     pos = encodedString.find_first_of(delimiters, lastPos);
@@ -1723,7 +1724,19 @@ parsePSKernelString(const std::string& encodedString,
   // -- [2]: Symbolic name --
   symbol_name = (tokens.size() > 2) ? tokens[2] : "";
 
-  XUtil::TRACE(boost::format("PSKernel command arguments: symbol_name='%s'; num_instances=%d; library='%s'") % symbol_name % num_instances % path_to_library);
+  // -- [3]: Mem banks --
+  mem_banks = (tokens.size() > 3) ? tokens[3] : "";
+
+  // add check for leading and trailing ;
+  if (!mem_banks.empty()) {
+    if (mem_banks.front() == ',' || mem_banks.back() == ',' )
+      throw std::runtime_error("Specifїed mem_banks is not valid");
+    
+    std::cout << "Attention: Specifying memory banks in --add-pskernel is an advanced feature." << std::endl;
+    std::cout << "           Be sure to validate connections after performing this operation." << std::endl;
+  }
+
+  XUtil::TRACE(boost::format("PSKernel command arguments: mem_banks='%s', symbol_name='%s'; num_instances=%d; library='%s'") % mem_banks % symbol_name % num_instances % path_to_library);
 }
 
 void getSectionPayload(const XclBin* pXclBin,
@@ -1786,15 +1799,17 @@ updateKernelSections(const std::vector<boost::property_tree::ptree> &kernels,
   }
 }
 
+// --add-pskernel
 void
 XclBin::addPsKernel(const std::string& encodedString)
 {
   XUtil::TRACE("Adding PSKernel");
   // Get the PS Kernel metadata from the encoded string
+  std::string memBanks;
   std::string symbolicName;
   std::string kernelLibrary;
   unsigned long numInstances = 0;
-  parsePSKernelString(encodedString, symbolicName, numInstances, kernelLibrary);
+  parsePSKernelString(encodedString, memBanks, symbolicName, numInstances, kernelLibrary);
 
   // Examine the PS library data mining the function and its arguments
   // Convert the function signatures into something useful.
@@ -1804,7 +1819,7 @@ XclBin::addPsKernel(const std::string& encodedString)
 
   // Create the same schema that is used for kernels
   boost::property_tree::ptree ptPSKernels;
-  XUtil::createPSKernelMetadata(numInstances, ptFunctions, kernelLibrary, ptPSKernels);
+  XUtil::createPSKernelMetadata(memBanks, numInstances, ptFunctions, kernelLibrary, ptPSKernels);
 
   // Update the EMBEDDED_METADATA, MEM_TOPOLOGY, IP_LAYOUT, and CONNECTIVITY sections
   const boost::property_tree::ptree ptEmpty;  
@@ -1870,7 +1885,7 @@ XclBin::addPsKernel(const std::string& encodedString)
   }
 }
 
-
+// --add-kernel
 void
 XclBin::addKernels(const std::string& jsonFile)
 {

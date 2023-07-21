@@ -80,6 +80,6 @@ namespace trace {
     if (trace::finish_flush_device_cb != nullptr)
       trace::finish_flush_device_cb(handle);
   }
-
+  
 } // end namespace aie
 } // end namespace xdp

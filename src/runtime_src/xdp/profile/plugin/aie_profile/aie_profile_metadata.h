@@ -88,15 +88,6 @@ class AieProfileMetadata{
     uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
-    std::vector<std::string> get_graphs(const xrt_core::device* device);
-    std::vector<std::string> get_kernels(const xrt_core::device* device);
-    std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
-    std::vector<tile_type> get_interface_tiles(const xrt_core::device* device, 
-                                               const std::string &metricStr,
-                                               int16_t channelId = -1,
-                                               bool useColumn = false, 
-                                               uint32_t minCol = 0, 
-                                               uint32_t maxCol = 0);
     std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
                                          const std::string& graph_name,
                                          const std::string& kernel_name = "all");

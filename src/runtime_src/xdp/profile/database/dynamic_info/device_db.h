@@ -107,8 +107,15 @@ namespace xdp {
     void addAIESample(double timestamp, const std::vector<uint64_t>& values)
     { aie_db.addAIESample(timestamp, values);  }
 
+    void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2, 
+                           const std::vector<uint64_t>& values)
+    { aie_db.addAIETimerSample(timestamp1, timestamp2, values);  }
+
     inline std::vector<counters::Sample> getAIESamples()
     { return std::move(aie_db.getAIESamples());  }
+
+    inline std::vector<counters::DoubleSample> getAIETimerSamples()
+    { return std::move(aie_db.getAIETimerSamples());  }
 
     inline void setPLDeadlockInfo(const std::string& info)
     { pl_db.setDeadlockInfo(info); }

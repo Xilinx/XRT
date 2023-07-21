@@ -956,6 +956,11 @@ struct kds_scu_info : request
  */
 struct hw_context_info : request
 {
+  struct metadata {
+    std::string id;
+    std::string xclbin_uuid;
+  };
+
   /**
    * A structure to represent a single hardware context on any device type. This
    * structure must contain all data that makes up a hardware context across
@@ -970,8 +975,7 @@ struct hw_context_info : request
    *  Versal -> populate PL and PS compute units
    */
   struct data {
-    std::string id;
-    std::string xclbin_uuid;
+    struct metadata metadata;
     kds_cu_info::result_type pl_compute_units;
     kds_scu_info::result_type ps_compute_units;
   };
@@ -995,8 +999,7 @@ struct hw_context_memory_info : request
    * hardware context memory structure across all device types.
    */
   struct data {
-    std::string id;
-    std::string xclbin_uuid;
+    hw_context_info::metadata metadata;
     mem_topology_raw::result_type topology;
     group_topology::result_type grp_topology;
     memstat_raw::result_type statistics;
@@ -1486,8 +1489,7 @@ struct aie_partition_info : request
 {
   struct data
   {
-    std::string xclbin_uuid;
-    uint64_t    slot_id;
+    hw_context_info::metadata metadata;
     uint64_t    start_col;
     uint64_t    num_cols;
     uint64_t    usage_count;

@@ -38,41 +38,53 @@
 #ifndef _XCLBIN_H_
 #define _XCLBIN_H_
 
-#ifdef _WIN32
-  #include <cstdint>
-  #include <algorithm>
-  #include "windows/uuid.h"
-#else
-  #if defined(__KERNEL__)
-    #include <linux/types.h>
-    #include <linux/uuid.h>
-    #include <linux/version.h>
-  #elif defined(__cplusplus)
-    #include <cstdlib>
-    #include <cstdint>
-    #include <algorithm>
-    #include <uuid/uuid.h>
-  #else
-    #include <stdlib.h>
-    #include <stdint.h>
-    #include <uuid/uuid.h>
-  #endif
+#if defined(__linux__)
+# if defined(__KERNEL__)
+#  include <linux/types.h>
+#  include <linux/uuid.h>
+#  include <linux/version.h>
+# elif defined(__cplusplus)
+#  include <cstdlib>
+#  include <cstdint>
+#  include <algorithm>
+#  include <uuid/uuid.h>
+# else
+#  include <stdlib.h>
+#  include <stdint.h>
+#  include <uuid/uuid.h>
+# endif
+#elif defined(_WIN32)
+# if defined(_KERNEL_MODE)
+#  include <guiddef.h>
+#  include <stdlib.h>
+# elif defined(__cplusplus)
+#  include <cstdlib>
+#  include <cstdint>
+#  include <algorithm>
+#  include <windows/uuid.h>
+# else
+#  include <stdlib.h>
+#  include <stdint.h>
+#  include <windows/uuid.h>
+# endif
+#endif
 
-  #if !defined(__KERNEL__)
-    typedef uuid_t xuid_t;
-  #else //(__KERNEL__)
-    #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-      typedef uuid_t xuid_t;
-    #elif defined(RHEL_RELEASE_CODE)
-      #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
-        typedef uuid_t xuid_t;
-      #else
-        typedef uuid_le xuid_t;
-      #endif
-    #else
-      typedef uuid_le xuid_t;
-    #endif
-  #endif
+#if defined(__linux__) && defined(__KERNEL__)
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+typedef uuid_t xuid_t;
+# elif defined(RHEL_RELEASE_CODE)
+#  if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+typedef uuid_t xuid_t;
+#  else
+typedef uuid_le xuid_t;
+#  endif
+# else
+typedef uuid_le xuid_t;
+# endif
+#elif defined(__linux__) && !defined(__KERNEL__)
+typedef uuid_t xuid_t;
+#elif defined(_WIN32) && defined(_KERNEL_MODE)
+typedef GUID xuid_t;
 #endif
 
 // ----------------- Custom Assert Macro -------------------------
@@ -603,7 +615,7 @@ extern "C" {
 
     /**** END : Xilinx internal section *****/
 
-# ifdef __cplusplus
+# if defined(__cplusplus) && !defined(__KERNEL__) && !defined(_KERNEL_MODE) 
     namespace xclbin {
       inline const axlf_section_header*
       get_axlf_section(const axlf* top, axlf_section_kind kind)
