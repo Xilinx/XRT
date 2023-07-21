@@ -934,6 +934,13 @@ ert_valid_opcode(struct ert_packet *pkt)
   return valid;
 }
 
+static inline uint64_t
+get_ert_packet_size_bytes(struct ert_packet *pkt)
+{
+  // header plus payload
+  return sizeof(pkt->header) + pkt->count * sizeof(uint32_t);
+}
+
 static inline struct ert_dpu_data*
 get_ert_dpu_data(struct ert_start_kernel_cmd* pkt)
 {
@@ -960,6 +967,12 @@ get_ert_regmap_end(struct ert_start_kernel_cmd* pkt)
 {
   // pkt->count includes the mandatory cumask which precededs data array
   return &pkt->cu_mask + pkt->count;
+}
+
+static inline uint64_t
+get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
+{
+  return (get_ert_regmap_end(pkt) - get_ert_regmap_begin(pkt)) * sizeof(uint32_t);
 }
 
 #ifdef __linux__
