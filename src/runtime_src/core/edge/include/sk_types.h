@@ -52,6 +52,10 @@ typedef int (* kernel_t)(void *args, struct sk_operations *ops);
 
 #pragma message ("sk_types.h is deprecated and will be removed from the distribution directory in a future release.  Please use pscontext.h instead.")
 
+/*
+ * Including pscontext.h for backward compatibility with 
+ * PS kernels that were using sk_types.h
+ */
 #include "pscontext.h"
 
 #endif
