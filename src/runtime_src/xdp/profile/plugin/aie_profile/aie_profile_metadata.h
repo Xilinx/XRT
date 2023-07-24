@@ -42,7 +42,7 @@ class AieProfileMetadata{
     const std::vector<std::string> moduleNames = 
         {"aie", "aie_memory", "interface_tile", "memory_tile"};
     const std::string defaultSets[NUM_MODULES] = 
-        {"write_throughputs", "write_throughputs", "input_throughputs", "input_throughputs"};
+        {"write_throughputs", "write_throughputs", "s2mm_throughputs", "s2mm_throughputs"};
     const int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, NUM_MEM_TILE_COUNTERS};
     const module_type moduleTypes[NUM_MODULES] = 
@@ -57,13 +57,13 @@ class AieProfileMetadata{
     std::map <module_type, std::vector<std::string>> metricStrings {
       { module_type::core,     {"heat_map", "stalls", "execution",           
                                 "floating_point", "stream_put_get", "write_throughputs",     
-                                "read_throughputs", "aie_trace", "events", "input_throughputs", "output_throughputs"} },
+                                "read_throughputs", "aie_trace", "events", "s2mm_throughputs", "mm2s_throughputs"} },
       { module_type::dma,      {"conflicts", "dma_locks", "dma_stalls_s2mm",
-                                "dma_stalls_mm2s", "write_throughputs", "read_throughputs", "input_throughputs", "output_throughputs"} },
-      { module_type::shim,     {"input_throughputs", "output_throughputs", "packets"} },
+                                "dma_stalls_mm2s", "write_throughputs", "read_throughputs", "s2mm_throughputs", "mm2s_throughputs"} },
+      { module_type::shim,     {"s2mm_throughputs", "mm2s_throughputs", "packets"} },
       { module_type::mem_tile, {"input_channels", "input_channels_details",
                                 "output_channels", "output_channels_details",
-                                "memory_stats", "mem_trace", "input_throughputs", "output_throughputs"} }
+                                "memory_stats", "mem_trace", "s2mm_throughputs", "mm2s_throughputs"} }
     };
 
     std::vector<std::map<tile_type, std::string>> configMetrics;

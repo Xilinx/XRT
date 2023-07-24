@@ -63,6 +63,7 @@ namespace xdp {
   AieProfilePlugin::~AieProfilePlugin()
   {
     // Stop the polling thread
+    AieProfilePlugin::live = false;
     endPoll();
 
     if (VPDatabase::alive()) {
@@ -72,7 +73,6 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
-    AieProfilePlugin::live = false;
   }
 
   bool AieProfilePlugin::alive()

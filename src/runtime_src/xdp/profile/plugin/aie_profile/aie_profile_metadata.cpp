@@ -696,6 +696,7 @@ namespace xdp {
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
 
+    std::cout << "REACEHD CONFIG METRICS INTERFACE TILES" << std::endl;
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
       // Split done only in Pass 1
@@ -726,6 +727,7 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
+            std::cout << "GRPAHMETRICS CHANNELS: " << graphMetrics[i][3] << std::endl;
             configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
             configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
@@ -792,10 +794,10 @@ namespace xdp {
     /* AIE_profile_settings config format ; Multiple values can be specified for
      * a metric separated with ';' Single or all tiles
      * tile_based_interface_tile_metrics =
-     * [[<column|all>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]
+     * [[<column|all>:<off|s2mm_throughputs|mm2s_throughputs|packets>[:<channel>]]
      * Range of tiles
      * tile_based_interface_tile_metrics =
-     * [<mincolumn>:<maxcolumn>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]]
+     * [<mincolumn>:<maxcolumn>:<off|s2mm_throughputs|mm2s_throughputs|packets>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
@@ -809,10 +811,12 @@ namespace xdp {
         continue;
 
       int16_t channelId = (metrics[i].size() < 3) ? -1 : static_cast<uint16_t>(std::stoul(metrics[i][2]));
+      std::cout << "THE CHANNEL ID IS: " << channelId << std::endl;
       auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], channelId);
-
+      std::cout << "Tiles size: " << tiles.size() << std::endl;
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
+        configChannel0[e] = static_cast<uint8_t>(channelId);
       }
     }  // Pass 1
 

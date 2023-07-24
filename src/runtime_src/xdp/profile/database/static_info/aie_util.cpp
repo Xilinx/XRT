@@ -234,13 +234,22 @@ namespace aie {
       auto logicalName = io.second.logicalName;
       auto name        = io.second.name;
 
+      std::cout << "In Get Interface Tiles" << std::endl;
+      std::cout << isMaster << std::endl;
+      std::cout << logicalName<< std::endl;
+      std::cout << streamId<< std::endl;
+      std::cout << channelId << std::endl;
+      std::cout << metricStr << std::endl;
+
       auto namePos     = name.find_last_of(".");
       auto currGraph   = name.substr(0, namePos);
       auto currPort    = name.substr(namePos+1);
 
       // Make sure this matches what we're looking for
-      if ((channelId >= 0) && (channelId != streamId))
-        continue;
+      // if ((channelId >= 0) && (channelId != streamId))
+      //   continue;
+     
+
       if ((portName.compare("all") != 0)
            && (portName.compare(currPort) != 0)
            && (portName.compare(logicalName) != 0))
@@ -253,11 +262,14 @@ namespace aie {
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
       if ((metricStr != "ports")
-          && ((isMaster && (metricStr.find("input") != std::string::npos))
-          || (!isMaster && (metricStr.find("output") != std::string::npos))))
+          && ((isMaster && (metricStr.find("mm2s") != std::string::npos))
+          || (!isMaster && (metricStr.find("s2mm") != std::string::npos))))
         continue;
       // Make sure column is within specified range (if specified)
       if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
+        continue;
+
+      if (channelId != io.second.channelNum) 
         continue;
 
       tile_type tile = {0};
@@ -266,6 +278,8 @@ namespace aie {
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
       tile.itr_mem_col = isMaster;
       tile.itr_mem_row = streamId;
+      std::cout << "Setting Stream " << std::endl;
+  
       tiles.emplace_back(std::move(tile));
     }
 
