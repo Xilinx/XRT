@@ -30,6 +30,8 @@ ifneq ($(cflags_zocl),)
 	ccflags-y += $(cflags_zocl)
 endif
 
+ccflags-y += -Wall
+
 # Version is specific to release
 XRT_DRIVER_VERSION ?= 2.15.0
 
@@ -58,8 +60,12 @@ zocl-y := \
 	zocl_ov_sysfs.o \
 	zocl_ospi_versal.o \
 	zocl_xclbin.o \
+	zocl_ps_xclbin.o \
+	zocl_edge_xclbin.o \
 	zocl_sk.o \
 	zocl_kds.o \
+	zocl_ps_kds.o \
+	zocl_edge_kds.o \
 	cu.o \
 	cu_scu.o \
 	scu.o \

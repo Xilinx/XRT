@@ -259,7 +259,6 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 		total_count = 0;
 	}
 
-done:
 	init_resp(resp, cmd->cid, ret);
 	cq->cq_log_payload.count = total_count;
 	return;
