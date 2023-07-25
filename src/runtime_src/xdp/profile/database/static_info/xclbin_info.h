@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -95,10 +95,12 @@ namespace xdp {
     void addArgToPort(const std::string& kernelName,
                       const std::string& argName,
                       const std::string& portName);
-    void connectArgToMemory(const std::string& kernelName,
+    void connectArgToMemory(const std::string& cuName,
                             const std::string& portName,
                             const std::string& argName,
                             int32_t memId);
+    // Collect all compute units of a kernel
+    std::vector<ComputeUnitInstance*> collectCUs(const std::string& kernelName);
   } ;
 
   // The AIEInfo struct keeps track of all of the information associated
