@@ -59,15 +59,15 @@ struct aligned_ptr_deleter
 };
 
 template <typename MyType>
-using aligned_ptr_type = std::unique_ptr<MyType, aligned_ptr_deleter<MyType>>;
+using aligned_ptr_t = std::unique_ptr<MyType, aligned_ptr_deleter<MyType>>;
 
 // aligned_alloc - Allocated managed aligned memory
 //
 // Allocates size bytes of uninitialized storage whose alignment is
 // specified by align.  The allocated memory is managed by a
 // unique_ptr to ensure proper freeing of the memory upon destruction.
-template <typename MyType = void>
-inline aligned_ptr_type<MyType>
+template <typename MyType>
+inline aligned_ptr_t<MyType>
 aligned_alloc(size_t align, size_t size)
 {
   // power of 2
@@ -75,19 +75,23 @@ aligned_alloc(size_t align, size_t size)
     throw std::runtime_error("xrt_core::aligned_alloc requires power of 2 for alignment");
 
 #if defined(_WINDOWS)
-  return aligned_ptr_type<MyType>(reinterpret_cast<MyType*>(_aligned_malloc(size, align)));
+  return aligned_ptr_t<MyType>(reinterpret_cast<MyType*>(_aligned_malloc(size, align)));
 #else
-  return aligned_ptr_type<MyType>(reinterpret_cast<MyType*>(::aligned_alloc(align, size)));
+  return aligned_ptr_t<MyType>(reinterpret_cast<MyType*>(::aligned_alloc(align, size)));
 #endif
 }
 
 } // detail
 
-// This type is used in interfaces
-using aligned_ptr_type = detail::aligned_ptr_type<void>;
+// This type is used in legacy interfaces
+using aligned_ptr_type = detail::aligned_ptr_t<void>;
+
+// Expose templated detail type for convenience in use as data member
+template <typename MyType>
+using aligned_ptr_t = detail::aligned_ptr_t<MyType>;
 
 // Untyped aligned memory allocation  
-inline aligned_ptr_type
+inline aligned_ptr_t<void>
 aligned_alloc(size_t align, size_t size)
 {
   return detail::aligned_alloc<void>(align, size);
@@ -95,7 +99,7 @@ aligned_alloc(size_t align, size_t size)
 
 // Typed aligned memory allocation  
 template <typename MyType>
-inline detail::aligned_ptr_type<MyType>
+inline aligned_ptr_t<MyType>
 aligned_alloc(size_t align)
 {
   return detail::aligned_alloc<MyType>(align, sizeof(MyType));
