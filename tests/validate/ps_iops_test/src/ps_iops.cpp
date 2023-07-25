@@ -223,8 +223,6 @@ _main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    return EOPNOTSUPP;
-
     /* Sanity check */
     // Validate dependency xclbins if any
     for (const auto& path : dependency_paths) {
@@ -258,6 +256,7 @@ _main(int argc, char* argv[])
 int
 main(int argc, char* argv[])
 {
+    return EOPNOTSUPP;
     try {
         _main(argc, argv);
         std::cout << "TEST PASSED" << std::endl;
