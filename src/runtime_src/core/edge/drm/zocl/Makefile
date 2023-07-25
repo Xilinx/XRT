@@ -47,37 +47,46 @@ drv_common-y   := $(common_dir)/kds_hwctx.o \
                   $(common_dir)/xrt_cu.o \
                   $(common_dir)/xrt_xclbin.o
 
+zocl_common_dir := $(make_dir)/common
+zocl_common-y := $(zocl_common_dir)/zocl_sysfs.o \
+	$(zocl_common_dir)/zocl_ioctl.o \
+	$(zocl_common_dir)/zocl_drv.o \
+	$(zocl_common_dir)/zocl_bo.o \
+	$(zocl_common_dir)/zocl_xclbin.o \
+	$(zocl_common_dir)/zocl_kds.o \
+	$(zocl_common_dir)/cu.o 
+
+zocl_edge_dir := $(make_dir)/edge
+zocl_edge-y := $(zocl_edge_dir)/zocl_dma.o \
+	$(zocl_edge_dir)/zocl_cu.o \
+	$(zocl_edge_dir)/zocl_mailbox.o \
+	$(zocl_edge_dir)/zocl_edge_xclbin.o \
+	$(zocl_edge_dir)/zocl_edge_kds.o \
+	$(zocl_edge_dir)/zocl_error.o \
+	$(zocl_edge_dir)/zocl_aie.o
+
+zocl_zert_dir := $(make_dir)/zert
+zocl_zert-y := $(zocl_zert_dir)/zocl_ert.o \
+	$(zocl_zert_dir)/zocl_ov_sysfs.o \
+	$(zocl_zert_dir)/zocl_ospi_versal.o \
+	$(zocl_zert_dir)/zocl_ps_xclbin.o \
+	$(zocl_zert_dir)/zocl_sk.o \
+	$(zocl_zert_dir)/zocl_ps_kds.o \
+	$(zocl_zert_dir)/cu_scu.o \
+	$(zocl_zert_dir)/scu.o \
+	$(zocl_zert_dir)/zocl_ctrl_ert.o \
+	$(zocl_zert_dir)/zocl_xgq.o \
+	$(zocl_zert_dir)/zocl_lib.o \
+	$(zocl_zert_dir)/zocl_cu_xgq.o \
+	$(zocl_zert_dir)/zocl_rpu_channel.o \
+	$(zocl_zert_dir)/zocl_csr_intc.o \
+	$(zocl_zert_dir)/zocl_xgq_intc.o
+
 zocl-y := \
 	$(drv_common-y) \
-	zocl_sysfs.o \
-	zocl_ioctl.o \
-	zocl_ert.o \
-	zocl_drv.o \
-	zocl_bo.o \
-	zocl_dma.o \
-	zocl_cu.o \
-	zocl_mailbox.o \
-	zocl_ov_sysfs.o \
-	zocl_ospi_versal.o \
-	zocl_xclbin.o \
-	zocl_ps_xclbin.o \
-	zocl_edge_xclbin.o \
-	zocl_sk.o \
-	zocl_kds.o \
-	zocl_ps_kds.o \
-	zocl_edge_kds.o \
-	cu.o \
-	cu_scu.o \
-	scu.o \
-	zocl_error.o \
-	zocl_aie.o \
-	zocl_ctrl_ert.o \
-	zocl_xgq.o \
-	zocl_lib.o \
-	zocl_cu_xgq.o \
-	zocl_rpu_channel.o \
-	zocl_csr_intc.o \
-	zocl_xgq_intc.o
+	$(zocl_common-y) \
+	$(zocl_edge-y) \
+	$(zocl_zert-y)
 
 obj-m	+= zocl.o
 
@@ -102,7 +111,8 @@ modules_install:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) modules_install
 
 clean:
-	rm -f *.o *~ core .depend .*.cmd *.ko *.mod.c
+	rm -f *.o *~ core .depend .*.cmd *.ko *.mod.c *.mod
+	rm -f $(zocl_common_dir)/*.o $(zocl_edge_dir)/*.o $(zocl_zert_dir)/*.o
 	rm -f Module.markers Module.symvers modules.order
 	rm -rf .tmp_versions Modules.symvers
 	$(MAKE) -C $(common_dir) clean
