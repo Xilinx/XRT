@@ -10,10 +10,12 @@
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
 
+#include "elf_int.h"
 #include "module_int.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
 
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -48,7 +50,8 @@ public:
     return m_cfg_uuid;
   }
 
-  virtual std::pair<const char*, size_t>
+  // Get raw instruction buffer data
+  virtual std::pair<const uint8_t*, size_t>
   get_data() const
   {
     return {nullptr, 0};
@@ -71,24 +74,27 @@ public:
 class module_elf : public module_impl
 {
   xrt::elf m_elf;
+  std::vector<uint8_t> m_buffer; // instruction buffer data
 
 public:
   module_elf(xrt::elf elf)
     : module_impl{elf.get_cfg_uuid()}
     , m_elf(std::move(elf))
+    , m_buffer(xrt_core::elf_int::get_section(m_elf, ".ctrltext"))
   {}
 
-  virtual std::pair<const char*, size_t>
+  
+  std::pair<const uint8_t*, size_t>
   get_data() const override
   {
-    return {nullptr, 0}; // TBD
+    return {m_buffer.data(), m_buffer.size()};
   }
 };
 
 // class module_userptr - Opaque userptr provided by application
 class module_userptr : public module_impl
 {
-  std::vector<char> m_buffer; // userptr copy
+  std::vector<uint8_t> m_buffer; // userptr copy
 
 public:
   module_userptr(char* userptr, size_t sz, const xrt::uuid& uuid)
@@ -100,7 +106,7 @@ public:
     : module_userptr(static_cast<char*>(userptr), sz, uuid)
   {}
 
-  virtual std::pair<const char*, size_t>
+  std::pair<const uint8_t*, size_t>
   get_data() const override
   {
     return {m_buffer.data(), m_buffer.size()};
