@@ -45,13 +45,17 @@
 #ifndef _ERT_H_
 #define _ERT_H_
 
-#if defined(__KERNEL__)
+#if defined(__linux__) && defined(__KERNEL__)
 # include <linux/types.h>
-#elif defined(__cplusplus)
+#elif defined(__windows__) && defined(_KERNEL_MODE)
+# include <stdlib.h>
+#elif defined(__cplusplus) && !defined(_KERNEL_MODE)
 # include <cstdint>
+# include <cstdio>
 #else
-# include <stdint.h>
 # include <stdbool.h>
+# include <stdint.h>
+# include <stdio.h>
 #endif
 
 #ifdef _WIN32
@@ -142,8 +146,27 @@ struct ert_start_kernel_cmd {
   };
 
   /* payload */
-  uint32_t cu_mask;          /* mandatory cu mask */
-  uint32_t data[1];            /* count-1 number of words */
+  uint32_t cu_mask;              /* mandatory cu mask */
+  uint32_t data[1];              /* count-1 number of words */
+};
+
+/**
+ * struct ert_dpu_data - interpretation of data payload for ERT_START_DPU
+ *
+ * @instruction_buffer:       address of instruction buffer
+ * @instruction_buffer_size:  size of instruction buffer in bytes
+ *
+ * The ert_dpu_data is prepended to data payload of ert_start_kernel_cmd
+ * after any extra cu masks.  The payload count is incremented with the
+ * size (words) of ert_dpu_data.
+ *
+ * The data payload for ERT_START_DPU is interpreted as fixed instruction
+ * buffer address along with instruction count, followed by regular kernel
+ * arguments.
+ */
+struct ert_dpu_data {
+  uint64_t instruction_buffer;       /* buffer address 2 words */
+  uint32_t instruction_buffer_size;  /* size of buffer in bytes */
 };
 
 #ifndef U30_DEBUG
@@ -474,7 +497,7 @@ struct ert_access_valid_cmd {
  * @ERT_CMD_STATE_QUEUED:      Internal scheduler state
  * @ERT_CMD_STATE_SUBMITTED:   Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:     Internal scheduler state
- * @ERT_CMD_STATE_COMPLETED:   Set by scheduler when command completes 
+ * @ERT_CMD_STATE_COMPLETED:   Set by scheduler when command completes
  * @ERT_CMD_STATE_ERROR:       Set by scheduler if command failed
  * @ERT_CMD_STATE_ABORT:       Set by scheduler if command abort
  * @ERT_CMD_STATE_TIMEOUT:     Set by scheduler if command timeout and reset
@@ -514,6 +537,7 @@ struct cu_cmd_state_timestamps {
  * @ERT_SK_START:       start a soft kernel
  * @ERT_SK_UNCONFIG:    unconfigure a soft kernel
  * @ERT_START_KEY_VAL:  same as ERT_START_CU but with key-value pair flavor
+ * @ERT_START_DPU:      instruction buffer command format
  */
 enum ert_cmd_opcode {
   ERT_START_CU      = 0,
@@ -534,6 +558,7 @@ enum ert_cmd_opcode {
   ERT_START_KEY_VAL = 15,
   ERT_ACCESS_TEST_C = 16,
   ERT_ACCESS_TEST   = 17,
+  ERT_START_DPU     = 18,
 };
 
 /**
@@ -850,6 +875,11 @@ ert_valid_opcode(struct ert_packet *pkt)
     /* 1 cu mask + 4 registers */
     valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
     break;
+  case ERT_START_DPU:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 mandatory cumask + extra_cu_masks + size (in words) of ert_dpu_data */
+    valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_dpu_data) / sizeof(uint32_t));
+    break;
   case ERT_START_KEY_VAL:
     skcmd = to_start_krnl_pkg(pkt);
     /* 1 cu mask */
@@ -902,6 +932,47 @@ ert_valid_opcode(struct ert_packet *pkt)
   }
 
   return valid;
+}
+
+static inline uint64_t
+get_ert_packet_size_bytes(struct ert_packet *pkt)
+{
+  // header plus payload
+  return sizeof(pkt->header) + pkt->count * sizeof(uint32_t);
+}
+
+static inline struct ert_dpu_data*
+get_ert_dpu_data(struct ert_start_kernel_cmd* pkt)
+{
+  if (pkt->opcode != ERT_START_DPU)
+    return NULL;
+
+  // past extra cu_masks embedded in the packet data
+  return (struct ert_dpu_data*) (pkt->data + pkt->extra_cu_masks);
+}
+
+static inline uint32_t*
+get_ert_regmap_begin(struct ert_start_kernel_cmd* pkt)
+{
+  if (pkt->opcode == ERT_START_DPU)
+    // skip past ert_dpu_data and any extra cu masks
+    return pkt->data + sizeof(struct ert_dpu_data) / sizeof(uint32_t) + pkt->extra_cu_masks;
+  else
+    // skip past embedded extra cu_masks
+    return pkt->data + pkt->extra_cu_masks;
+}
+
+static inline uint32_t*
+get_ert_regmap_end(struct ert_start_kernel_cmd* pkt)
+{
+  // pkt->count includes the mandatory cumask which precededs data array
+  return &pkt->cu_mask + pkt->count;
+}
+
+static inline uint64_t
+get_ert_regmap_size_bytes(struct ert_start_kernel_cmd* pkt)
+{
+  return (get_ert_regmap_end(pkt) - get_ert_regmap_begin(pkt)) * sizeof(uint32_t);
 }
 
 #ifdef __linux__

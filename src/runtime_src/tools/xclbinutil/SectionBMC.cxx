@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020-2022 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2023 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -134,7 +134,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   XUtil::TRACE("SectionBMC::CopyBufferUpdateMetadata");
 
   // Copy the buffer
-  std::unique_ptr<unsigned char> copyBuffer(new unsigned char[_origSectionSize]);
+  std::unique_ptr<unsigned char[]> copyBuffer(new unsigned char[_origSectionSize]);
   memcpy(copyBuffer.get(), _pOrigDataSection, _origSectionSize);
 
   // ----------------------
@@ -172,7 +172,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   _istream.seekg(0, _istream.end);
   std::streamsize fileSize = _istream.tellg();
 
-  std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+  std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[fileSize]);
   _istream.clear();
   _istream.seekg(0);
   _istream.read((char*)memBuffer.get(), fileSize);
@@ -275,7 +275,7 @@ SectionBMC::createDefaultFWImage(std::istream& _istream, std::ostringstream& _bu
   {
 
 
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[bmcHdr.m_size]);
+    std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[bmcHdr.m_size]);
     _istream.seekg(0);
     _istream.clear();
     _istream.read((char*)memBuffer.get(), bmcHdr.m_size);

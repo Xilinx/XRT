@@ -52,7 +52,6 @@ namespace xdp {
     if (tiles != nullptr) {
       for (auto& tile: *tiles) {  
         if (tile->type == module_type::core) {
-
           bpt::ptree AieTileTraceConfig_C;
           bpt::ptree core_trace_config;
           bpt::ptree memory_trace_config;
@@ -243,25 +242,28 @@ namespace xdp {
           AieTileTraceConfig_C.add_child("memory_trace_config", memory_trace_config);
           AieTileTraceConfig.push_back(std::make_pair("", AieTileTraceConfig_C));
         }
-        else if (tile->type == module_type::mem_tile) {
-          bpt::ptree MemTileTraceConfig_C;
-          MemTileTraceConfig_C.put("column", tile->column);
-          MemTileTraceConfig_C.put("row", tile->row);
-          MemTileTraceConfig_C.put("event_trace_name", tile->trace_metric_set);
+        else if ((tile->type == module_type::mem_tile) || (tile->type == module_type::shim)) {
+          aie_cfg_peripheral_tile tile_trace_config = (tile->type == module_type::mem_tile) ? 
+              tile->memory_tile_trace_config : tile->interface_tile_trace_config;
 
-          MemTileTraceConfig_C.put("packet_type", tile->mem_tile_trace_config.packet_type);
-          MemTileTraceConfig_C.put("packet_id",   tile->mem_tile_trace_config.packet_id);
-          MemTileTraceConfig_C.put("start_event", tile->mem_tile_trace_config.start_event);
-          MemTileTraceConfig_C.put("stop_event", tile->mem_tile_trace_config.stop_event);
+          bpt::ptree TileTraceConfig_C;
+          TileTraceConfig_C.put("column", tile->column);
+          TileTraceConfig_C.put("row", tile->row);
+          TileTraceConfig_C.put("event_trace_name", tile->trace_metric_set);
+
+          TileTraceConfig_C.put("packet_type", tile_trace_config.packet_type);
+          TileTraceConfig_C.put("packet_id",   tile_trace_config.packet_id);
+          TileTraceConfig_C.put("start_event", tile_trace_config.start_event);
+          TileTraceConfig_C.put("stop_event", tile_trace_config.stop_event);
 
           {
             bpt::ptree traced_events;
-            for (auto& e : tile->mem_tile_trace_config.traced_events) {
+            for (auto& e : tile_trace_config.traced_events) {
               bpt::ptree event;
               event.put("", e);
               traced_events.push_back(std::make_pair("", event));
             }
-            MemTileTraceConfig_C.add_child("traced_events", traced_events);
+            TileTraceConfig_C.add_child("traced_events", traced_events);
           }
 
           {
@@ -269,18 +271,18 @@ namespace xdp {
             bpt::ptree port_trace_ids;
             bpt::ptree port_trace_is_master;
 
-            for (uint32_t i=0; i < NUM_MEM_TILE_PORTS; ++i) {
+            for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
               bpt::ptree port1;
               bpt::ptree port2;
-              port1.put("", tile->mem_tile_trace_config.port_trace_ids[i]);
-              port2.put("", tile->mem_tile_trace_config.port_trace_is_master[i]);
+              port1.put("", tile_trace_config.port_trace_ids[i]);
+              port2.put("", tile_trace_config.port_trace_is_master[i]);
               port_trace_ids.push_back(std::make_pair("", port1));
               port_trace_is_master.push_back(std::make_pair("", port2));
             }
 
             port_trace_config.add_child("traced_port_ids", port_trace_ids);
             port_trace_config.add_child("master_str", port_trace_is_master);
-            MemTileTraceConfig_C.add_child("PortTraceConfig", port_trace_config);
+            TileTraceConfig_C.add_child("PortTraceConfig", port_trace_config);
           }
 
           {
@@ -288,21 +290,24 @@ namespace xdp {
             bpt::ptree s2mm_channels;
             bpt::ptree mm2s_channels;
 
-            for (uint32_t i=0; i < NUM_MEM_TILE_CHAN_SEL; ++i) {
+            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
               bpt::ptree chan1;
               bpt::ptree chan2;
-              chan1.put("", tile->mem_tile_trace_config.s2mm_channels[i]);
-              chan2.put("", tile->mem_tile_trace_config.mm2s_channels[i]);
+              chan1.put("", tile_trace_config.s2mm_channels[i]);
+              chan2.put("", tile_trace_config.mm2s_channels[i]);
               s2mm_channels.push_back(std::make_pair("", chan1));
               mm2s_channels.push_back(std::make_pair("", chan2));
             }
             
             sel_trace_config.add_child("s2mm_channels", s2mm_channels);
             sel_trace_config.add_child("mm2s_channels", mm2s_channels);
-            MemTileTraceConfig_C.add_child("SelTraceConfig", sel_trace_config);
+            TileTraceConfig_C.add_child("SelTraceConfig", sel_trace_config);
           }
 
-          MemTileTraceConfig.push_back(std::make_pair("", MemTileTraceConfig_C));
+          if (tile->type == module_type::mem_tile)
+            MemTileTraceConfig.push_back(std::make_pair("", TileTraceConfig_C));
+          else
+            ShimTileTraceConfig.push_back(std::make_pair("", TileTraceConfig_C));
         }
       }
     }
@@ -322,14 +327,13 @@ namespace xdp {
       bpt::ptree dummy;
       ShimTileTraceConfig.push_back(std::make_pair("", dummy));
     }
-    TraceConfig.add_child("ShimTraceConfig", ShimTileTraceConfig);
+    TraceConfig.add_child("InterfaceTileTraceConfig", ShimTileTraceConfig);
     EventTraceConfigs_C.add_child("TraceConfig", TraceConfig);
 
     EventTraceConfigs.push_back(std::make_pair("", EventTraceConfigs_C));
     pt.add_child("EventTraceConfigs", EventTraceConfigs);
-    //bpt::write_json(std::cout, pt);
+    
     write_jsonEx(getcurrentFileName(), pt);
     return true;
   }
-
 }

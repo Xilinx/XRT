@@ -119,13 +119,19 @@ constexpr uint32_t NUM_OUTPUT_TRACE_EVENTS = 9;
 constexpr uint32_t NUM_BROADCAST_EVENTS = 16;
 constexpr uint32_t EVENT_CORE_ACTIVE = 28;
 constexpr uint32_t EVENT_CORE_DISABLED = 29;
+constexpr uint16_t EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK = 35;
+constexpr uint16_t EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION = 37;
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t NUM_TRACE_PCS = 4;
 constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
-constexpr uint32_t NUM_MEM_TILE_PORTS = 8;
-constexpr uint32_t NUM_MEM_TILE_CHAN_SEL = 2;
+constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
+constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
+
+constexpr uint32_t CORE_BROADCAST_EVENT_BASE = 107;
+constexpr uint32_t ES1_TRACE_COUNTER = 1020;
+constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
 
 }
 

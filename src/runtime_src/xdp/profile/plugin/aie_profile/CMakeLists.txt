@@ -28,6 +28,7 @@ if (XDP_MINIMAL_BUILD STREQUAL "yes")
   add_library(xdp_aie_profile_plugin MODULE ${AIE_PROFILE_PLUGIN_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_coreutil)
+  target_compile_definitions(xdp_aie_profile_plugin PRIVATE XDP_MINIMAL_BUILD=1)
 
   set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 

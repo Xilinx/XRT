@@ -14,6 +14,7 @@
 * under the License.
 */
 #include <algorithm>
+#include <boost/program_options.hpp>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -28,63 +29,77 @@
 #define HEIGHT 8 
 #define SIZE (WIDTH * HEIGHT)
 
-static void printHelp() {
-    std::cout << "usage: %s <options>\n";
-    std::cout << "  -p <path>\n";
-    std::cout << "  -d <device> \n";
-    std::cout << "  -s <supported>\n";
-    std::cout << "  -h <help>\n";
+static int
+validate_binary_file(const std::string& binaryfile, bool print = false)
+{
+    std::ifstream infile(binaryfile);
+    if (!infile.good()) {
+        if (print)
+            std::cout << "\nNOT SUPPORTED" << std::endl;
+        return EOPNOTSUPP;
+    } else {
+        if (print)
+            std::cout << "\nSUPPORTED" << std::endl;
+        return EXIT_SUCCESS;
+    }
 }
 
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string b_file = "/ps_aie.xclbin";
-    bool flag_s = false;
-    for (int i = 1; i < argc; i++) {
-        if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
-            test_path = argv[i + 1];
-        } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
-            dev_id = argv[i + 1];
-        } else if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--supported") == 0)) {
-            flag_s = true;
-        } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
-            printHelp();
-            return 1;
-        }
-    }
+    std::string b_file;
+    std::vector<std::string> dependency_paths;
+    bool flag_s;
 
-    if (test_path.empty()) {
-        std::cout << "ERROR : please provide the platform test path to -p option\n";
-        return EXIT_FAILURE;
-    }
-    std::string binaryfile = test_path + b_file;
-    std::ifstream infile(binaryfile);
-    if (flag_s) {
-        if (!infile.good()) {
-            std::cout << "\nNOT SUPPORTED" << std::endl;
-            return EOPNOTSUPP;
-        } else {
-            std::cout << "\nSUPPORTED" << std::endl;
+    boost::program_options::options_description options;
+    options.add_options()
+        ("help,h", "Print help messages")
+        ("xclbin,x", boost::program_options::value<decltype(b_file)>(&b_file)->implicit_value("/lib/firmware/xilinx/ps_kernels/ps_aie.xclbin"), "Path to the xclbin file for the test")
+        ("path,p", boost::program_options::value<decltype(test_path)>(&test_path)->required(), "Path to the platform resources")
+        ("device,d", boost::program_options::value<decltype(dev_id)>(&dev_id)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+        ("supported,s", boost::program_options::bool_switch(&flag_s), "Print supported or not")
+        ("include,i" , boost::program_options::value<decltype(dependency_paths)>(&dependency_paths)->multitoken(), "Paths to xclbins required for this test")
+    ;
+
+    boost::program_options::variables_map vm;
+    try {
+        boost::program_options::store(boost::program_options::parse_command_line(argc, argv, options), vm);
+        if (vm.count("help")) {
+            std::cout << options << std::endl;
             return EXIT_SUCCESS;
         }
+        boost::program_options::notify(vm);
+    } catch (boost::program_options::error& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        std::cout << options << std::endl;
+        return EXIT_FAILURE;
     }
 
-    if (!infile.good()) {
-        std::cout << "\nNOT SUPPORTED" << std::endl;
-        return EOPNOTSUPP;
-    }
+    return EOPNOTSUPP;
 
     auto num_devices = xrt::system::enumerate_devices();
 
     auto device = xrt::device {dev_id};
+
+    // Load dependency xclbins onto device if any
+    for (const auto& path : dependency_paths) {
+        auto retVal = validate_binary_file(path);
+        if (retVal != EXIT_SUCCESS)
+            return retVal;
+        auto uuid = device.load_xclbin(path);
+    }
+
+    // Load ps kernel onto device
+    auto retVal = validate_binary_file(b_file, flag_s);
+    if (flag_s || retVal != EXIT_SUCCESS)
+        return retVal;
 
     const int input_size_in_bytes = SIZE * sizeof(float);
     const int output_size_in_bytes = SIZE * sizeof(float);
     const int input_size_allocated = ((input_size_in_bytes / 4096) + ((input_size_in_bytes % 4096) > 0)) * 4096;
     const int output_size_allocated = ((output_size_in_bytes / 4096) + ((output_size_in_bytes % 4096) > 0)) * 4096;
 
-    auto uuid = device.load_xclbin(binaryfile);
+    auto uuid = device.load_xclbin(b_file);
     auto aie_kernel = xrt::kernel(device,uuid, "aie_kernel");
     auto out_bo= xrt::bo(device, output_size_allocated, aie_kernel.group_id(2));
     auto out_bomapped = out_bo.map<float*>();

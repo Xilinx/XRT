@@ -315,9 +315,17 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	 * and prevent the pages from being swapped out
 	 */
 #ifndef VM_RESERVED
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #else
+	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#endif
+#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO | VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
 #endif
 
 	/* make MMIO accessible to user space */
@@ -657,7 +665,7 @@ static void xclmgmt_multislot_version(struct xclmgmt_dev *lro, void *buf)
 	struct xcl_multislot_info *slot_info = (struct xcl_multislot_info *)buf;
 
 	/* Fill the icap version here */
-	slot_info->multislot_version = MULTISLOT_VERSION; 	
+	slot_info->multislot_version = MULTISLOT_VERSION;
 	mgmt_info(lro, "Multislot Version : %x\n", slot_info->multislot_version);
 }
 
@@ -761,8 +769,8 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, void *data_ptr, void
 		xclmgmt_multislot_version(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
-		/* when allocating response buffer, 
-		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries), 
+		/* when allocating response buffer,
+		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries),
 		 * and check the final total buffer size.
 		 * when filling up each entry, we should use min(local_entry_size, remote_entry_size)
 		 * when moving to next entry, we should use remote_entry_size as step size.
@@ -1046,7 +1054,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
 		}
-	
+
 		/*
 		 * User may transfer a fake xclbin which doesn't have bitstream
 		 * In this case, 'config_xclbin_change' has to be set, and we
@@ -1751,7 +1759,13 @@ static int __init xclmgmt_init(void)
 	int res, i;
 
 	pr_info(DRV_NAME " init()\n");
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
+#else
+	xrt_class = class_create("xrt_mgmt");
+#endif
+
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 

@@ -47,5 +47,6 @@ int xocl_xgq_abort(struct xocl_xgq *xgq_handle, int client_id, void *cond,
 irqreturn_t xgq_isr(int irq, void *arg);
 struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info);
 void xocl_xgq_fini(struct xocl_xgq *xgq_handle);
+int xocl_get_xgq_id(struct xocl_xgq *xgq);
 
 #endif /* _XOCL_XGQ_H_ */

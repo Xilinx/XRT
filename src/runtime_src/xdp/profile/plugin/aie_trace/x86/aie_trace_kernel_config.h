@@ -118,10 +118,10 @@ namespace xdp {
     };
 
     struct MemTileTraceData {
-      uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
-      bool port_trace_is_master[NUM_MEM_TILE_PORTS];
-      uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
-      uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+      uint8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS] = {};
+      bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
+      uint8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {};
+      uint8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {};
 
       uint32_t packet_type = 0;
       uint32_t start_event = EVENT_CORE_ACTIVE;
@@ -141,7 +141,7 @@ namespace xdp {
       uint32_t row;
       TileTraceData core_trace_config;
       TileTraceData memory_trace_config;
-      MemTileTraceData mem_tile_trace_config;
+      MemTileTraceData memory_tile_trace_config;
       TileData(uint32_t c, uint32_t r) : column(c), row(r)
       {}
     };

@@ -45,6 +45,7 @@ install_recipes()
     if [ $? != 0 ]; then
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
+        echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
@@ -67,7 +68,7 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
-enable_vdu()
+enable_vdu_init()
 {
     VERSAL_PROJECT_DIR=$1
     APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
@@ -88,35 +89,8 @@ enable_vdu()
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
     
     # Generate vdu modules and add them to apu package
-    
-    # Enable VDU kernel module 
-    VDU_MOD_BB_FILE=$APU_RECIPES_DIR/kernel-module-vdu.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n kernel-module-vdu --enable
-    fi
-    cp -rf $VDU_MOD_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu/
-    
-    # Enable VDU firmware 
-    VDU_FIRMWARE_BB_FILE=$APU_RECIPES_DIR/vdu-firmware.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n vdu-firmware --enable
-    fi
-    cp -rf $VDU_FIRMWARE_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware/
-    
-    # Enable VDU control software library 
-    # This is not required as PS Kernels statically linking with control software, Enabling this to debug standalone control software 
-    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-ctrlsw.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-ctrlsw --enable
-    fi
-    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw/
-
     echo "IMAGE_INSTALL:append = \" libvdu-ctrlsw kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
     echo "MACHINE_FEATURES = \"vdu\""  >> build/conf/local.conf
-    #sed -i '1iMACHINE = \" versal-ai-core-generic \"' build/conf/local.conf
 
 }
 
@@ -307,7 +281,10 @@ fi
 if [ -f $SETTINGS_FILE ]; then
     source $SETTINGS_FILE
 fi
-source $PETALINUX/settings.sh 
+source $PETALINUX/settings.sh
+
+VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
+source $VITIS_FILE
 
 if [[ $AARCH = $aarch64_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then
@@ -384,7 +361,7 @@ if [[ $apu_package == 1 ]]; then
   if [[ $AARCH = $versal_dir ]]; then
     # configure the project with appropriate options
     config_versal_project .
-    enable_vdu .
+    enable_vdu_init .
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
@@ -403,6 +380,7 @@ if [[ $apu_package == 1 ]]; then
   export PATH=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin:$PATH
   $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x14ca8093" -package-name xrt-apu-vck5000
   $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x04cd7093" -package-name xrt-apu
+  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x14cd7093" -package-name xrt-apu-v70pq2
   
   # Generate archiver for petalinux project
   if [[ $archiver == 1 ]]; then

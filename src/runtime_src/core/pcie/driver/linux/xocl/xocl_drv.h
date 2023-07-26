@@ -169,14 +169,14 @@
 #endif
 
 #if defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 1)
-#define RHEL_9_1_GE
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 2)
+#define RHEL_9_2_GE
 #endif
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)
 #define RHEL_9_0_GE
 #endif
-#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 7)
-#define RHEL_8_7
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 7)
+#define RHEL_8_7_GE
 #endif
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 5)
 #define RHEL_8_5_GE
@@ -2028,7 +2028,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
-	       void (* unset_xgq)(struct platform_device *pdev);
+	       void (* unset_xgq)(struct platform_device *pdev, void *xgq);
 	       void (* dump_xgq)(struct platform_device *pdev); /** TODO: Remove this line before 2022.2 release **/
 	};
 
@@ -2059,9 +2059,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
-#define xocl_ert_ctrl_unset_xgq(xdev) \
+#define xocl_ert_ctrl_unset_xgq(xdev, xgq) \
 	(ERT_CTRL_CB(xdev, unset_xgq) ? \
-	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev), xgq) : NULL)
 /** TODO: Remove below debug function before 2022.2 release **/
 #define xocl_ert_ctrl_dump(xdev) \
 	(ERT_CTRL_CB(xdev, dump_xgq) ? \

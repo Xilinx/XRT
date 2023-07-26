@@ -40,13 +40,16 @@ namespace trace {
   {
     typedef void (*ftype)(void*) ;
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
+    if (xrt_core::dlerror() != NULL) 
+      update_device_cb = nullptr ;
 
     flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL) flush_device_cb = nullptr ;
+    if (xrt_core::dlerror() != NULL) 
+      flush_device_cb = nullptr ;
 
     finish_flush_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
-    if (xrt_core::dlerror() != NULL) finish_flush_device_cb = nullptr ;
+    if (xrt_core::dlerror() != NULL) 
+      finish_flush_device_cb = nullptr ;
   }
 
   void warning_function()
@@ -80,6 +83,6 @@ namespace trace {
       trace::finish_flush_device_cb(handle) ;
     }
   }
-
+  
 } // end namespace aie
 } // end namespace xdp

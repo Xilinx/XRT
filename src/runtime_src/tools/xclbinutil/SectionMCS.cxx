@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2022 Xilinx, Inc
+ * Copyright (C) 2018-2023 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -372,7 +372,7 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
     std::streamsize mcsSize = _istream.tellg();
 
     // -- Read contents into memory buffer --
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[mcsSize]);
+    std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[mcsSize]);
     _istream.clear();
     _istream.seekg(0, _istream.beg);
     _istream.read((char*)memBuffer.get(), mcsSize);

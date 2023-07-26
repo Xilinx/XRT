@@ -14,16 +14,16 @@
  * under the License.
  */
 
-#ifdef  XDP_PLUGIN_AIE_TRACE_CB_H
+#ifndef XDP_PLUGIN_AIE_TRACE_CB_H
 #define XDP_PLUGIN_AIE_TRACE_CB_H
 
 #include "xdp/config.h"
 
 extern "C" {
 
-XDP_EXPORT void updateAIEDevice(void* handle) ;
-XDP_EXPORT void flushAIEDevice(void* handle) ;
-XDP_EXPORT void finishFlushAIEDevice(void* handle) ;
+  XDP_EXPORT void updateAIEDevice(void* handle);
+  XDP_EXPORT void flushAIEDevice(void* handle);
+  XDP_EXPORT void finishFlushAIEDevice(void* handle);
 
 }
 #endif

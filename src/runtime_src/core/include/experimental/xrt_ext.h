@@ -7,8 +7,11 @@
 // These extensions are experimental
 
 #include "xrt/detail/config.h"
+#include "xrt/detail/bitmask.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_hw_context.h"
+#include "xrt/xrt_kernel.h"
+#include "experimental/xrt_module.h"
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -17,7 +20,24 @@
 #ifdef __cplusplus
 namespace xrt::ext {
 
-///
+/*!
+ * @class bo
+ *
+ * @brief Buffer object extension
+ * xrt::ext::bo is an extension of xrt::bo with additional functionality
+ *
+ * @details
+ * An extension buffer amends the contruction of an xrt::bo with
+ * additional simplified constructors for specifying access mode of
+ * host only buffers.
+ *
+ * Once constructed, the object must be assigned to an xrt::bo object
+ * before use.  This is becayse XRT relies on templated kernel
+ * argument assignment and the templated assignment operator is not
+ * specialized for xrt::ext::bo.
+ *
+ * Ultimately the extension will be merged into class xrt::bo.
+ */
 class bo : public xrt::bo
 {
 public:
@@ -25,14 +45,64 @@ public:
   /**
    * @enum access_mode - buffer object accessibility
    *
+   * @var none
+   *   No access is specified, same as read|write|local
+   * @var read
+   *   The buffer is read by device, the cpu writes to the buffer
+   * @var write
+   *   The buffer is written by device, the host reads from the buffer
    * @var local
    *   Access is local to process and device on which it is allocated
    * @var shared
    *   Access is shared between devices within process
    * @var process
    *   Access is shared between processes and devices
+   *
+   * The access mode is used to specify how the buffer is used by
+   * device and process.
+   *
+   * A buffer can be specified as local, meaning it is only used by
+   * the process and device on which it is allocated.  A buffer can
+   * also be specified as shared, meaning it is shared between devices
+   * within the process.  Finally a buffer can be specified as
+   * process, meaning it is shared between processes and devices. If
+   * neither local, shared, or process is specified, the default is
+   * local.  Only one of local, shared, or process can be specified.
+   *
+   * A buffer can be opened for read, meaning the device will read the
+   * content written by host, or it can be opened for write, meaning
+   * the device will write to the buffer and the host will read. To
+   * specify that a buffer is used for both read and write, the access
+   * flags can be ORed.  If neither read or write is specified, the
+   * default is read|write.
+   *
+   * The default access mode is read|write|local when no access mode
+   * is specified.
+   *
+   * Friend operators are provided for bitwise operations on access
+   * mode.
    */
-  enum class access_mode : uint8_t { local, shared, process };
+  enum class access_mode : uint64_t
+  {
+    none    = 0,
+
+    read  = 1 << 0, 
+    write = 1 << 1,
+
+    local   = 0,
+    shared  = 1 << 2,
+    process = 1 << 3,
+  };
+
+  friend constexpr access_mode operator&(access_mode lhs, access_mode rhs)
+  {
+    return xrt::detail::operator&(lhs, rhs);
+  }
+
+  friend constexpr access_mode operator|(access_mode lhs, access_mode rhs)
+  {
+    return xrt::detail::operator|(lhs, rhs);
+  }
 
   /**
    * bo() - Constructor for buffer object with specific access
@@ -59,7 +129,7 @@ public:
    *  Size of buffer
 
    * This constructor creates a host_only buffer object with local
-   * access.
+   * access and in|out direction.
    */
   XRT_API_EXPORT
   bo(const xrt::device& device, size_t sz);
@@ -93,7 +163,7 @@ public:
    *  Size of buffer
    *
    * This constructor creates a host_only buffer object with local
-   * access.
+   * access and in|out direction.
    */
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, size_t sz);
@@ -114,6 +184,31 @@ public:
    */
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, pid_type pid, xclBufferExportHandle ehdl);
+};
+
+
+class kernel : public xrt::kernel
+{
+public:
+  /**
+   * kernel() - Constructor from module
+   *
+   * @param hwctx
+   *   The hardware context that this kernel is created in.
+   * @param module
+   *   A module with elf binary instruction code which the
+   *   kernel function will execute.
+   * @param name
+   *  Name of kernel function to construct.
+   *
+   * The module contains an elf binary with instructions for maybe
+   * multiple functions.  When the kernel is constructed, the
+   * corresponding function is located in the module.  The
+   * instructions for the function are sent to the kernel mode driver
+   * in an ERT packet along with the kernel function arguments.
+   */
+  XRT_API_EXPORT
+  kernel(const xrt::hw_context& ctx, const xrt::module& mod, const std::string& name);
 };
 
 } // xrt::ext

@@ -556,29 +556,28 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 	return;
 }
 
-static void ert_ctrl_unset_xgq(struct platform_device *pdev)
+static void ert_ctrl_unset_xgq(struct platform_device *pdev, void *xgq_handle)
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int i = 0;
+	struct ert_ctrl_xgq_cu  *xgq_ips = NULL;
+	int xgq_id = xocl_get_xgq_id(xgq_handle);
 
-	for (i = 0; i < ec->ec_num_xgq_ips; i++) {
-		struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[i];
+	BUG_ON(xgq_id == -EINVAL);
 
+	xgq_ips = &ec->ec_xgq_ips[xgq_id];
+	if ((xgq_id < ec->ec_num_xgq_ips) && xgq_ips) {
 		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
-		xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
+		xocl_user_interrupt_reg(xdev, xgq_ips->ecxc_xgq_irq, NULL, NULL);
 	}
 
-	for (i = 0; i < ec->ec_exgq_capacity; i++) {
-		if (ec->ec_exgq[i] == NULL)
-			continue;
-
+	if (ec->ec_exgq[xgq_id]) {
 		if (!ec->ec_xgq_ips) {
-			xocl_intc_ert_config(xdev, i, false);
-			xocl_intc_ert_request(xdev, i, NULL, NULL);
+			xocl_intc_ert_config(xdev, xgq_id, false);
+			xocl_intc_ert_request(xdev, xgq_id, NULL, NULL);
 		}
-		xocl_xgq_fini(ec->ec_exgq[i]);
-		ec->ec_exgq[i] = NULL;
+		xocl_xgq_fini(ec->ec_exgq[xgq_id]);
+		ec->ec_exgq[xgq_id] = NULL;
 	}
 }
 
@@ -877,11 +876,21 @@ static int ert_ctrl_cq_init(struct platform_device *pdev)
 static int ert_ctrl_remove(struct platform_device *pdev)
 {
 	struct ert_ctrl	*ec = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct ert_ctrl_xgq_cu  *xgq_ips = NULL;
 	void *hdl = NULL;
+	int i = 0;
 
 	ec = platform_get_drvdata(pdev);
 	if (!ec)
 		return -EINVAL;
+
+	for (i = 0; i < ec->ec_num_xgq_ips; i++) {
+		xgq_ips = &ec->ec_xgq_ips[i];
+
+		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
+		xocl_user_interrupt_reg(xdev, xgq_ips->ecxc_xgq_irq, NULL, NULL);
+	}
 
 	if (ec->ec_connected)
 		ert_ctrl_disconnect(pdev);

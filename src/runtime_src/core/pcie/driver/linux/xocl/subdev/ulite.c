@@ -338,12 +338,12 @@ static void ulite_shutdown(struct uart_port *port)
 	mutex_unlock(&pdata->lock);
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
-static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
-			      struct ktermios *old)
-#else
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 1, 0)) || defined(RHEL_9_2_GE)
 static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
 			      const struct ktermios *old)
+#else
+static void ulite_set_termios(struct uart_port *port, struct ktermios *termios,
+			      struct ktermios *old)
 #endif
 {
 	unsigned long flags;

@@ -47,26 +47,35 @@ ReportDynamicRegion::writeReport( const xrt_core::device* _pDevice,
 
   //check if a valid CU report is generated
   const boost::property_tree::ptree& pt_dfx = _pt.get_child("dynamic_regions", empty_ptree);
-  if(pt_dfx.empty())
-    return;
 
   const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(_pDevice, 2);
   _output << boost::format("  Device Status: %s\n") % xrt_core::query::device_status::parse_status(device_status);
+  if(pt_dfx.empty()) {
+    _output << boost::format("  No hardware contexts running on device\n\n");
+    return;
+  }
+
 
   for(auto& k_dfx : pt_dfx) {
     const boost::property_tree::ptree& dfx = k_dfx.second;
     _output << boost::format("  Hardware Context ID: %s\n") % dfx.get<std::string>("id", "N/A");
     
     _output << boost::format("    Xclbin UUID: %s\n") % dfx.get<std::string>("xclbin_uuid", "N/A");
-    const std::vector<Table2D::HeaderData> table_headers = {
+    const std::vector<Table2D::HeaderData> pl_table_headers = {
       {"Index", Table2D::Justification::left},
       {"Name", Table2D::Justification::left},
       {"Base Address", Table2D::Justification::left},
       {"Usage", Table2D::Justification::left},
       {"Status", Table2D::Justification::left}
     };
-    Table2D pl_table(table_headers);
-    Table2D ps_table(table_headers);
+    Table2D pl_table(pl_table_headers);
+    const std::vector<Table2D::HeaderData> ps_table_headers = {
+      {"Index", Table2D::Justification::left},
+      {"Name", Table2D::Justification::left},
+      {"Usage", Table2D::Justification::left},
+      {"Status", Table2D::Justification::left}
+    };
+    Table2D ps_table(ps_table_headers);
 
     const boost::property_tree::ptree& pt_cu = dfx.get_child("compute_units", empty_ptree);
     // Sort compute units into PL and PS groups
@@ -76,12 +85,15 @@ ReportDynamicRegion::writeReport( const xrt_core::device* _pDevice,
         const boost::property_tree::ptree& cu = kv.second;
         const std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
         const uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-        const std::vector<std::string> entry_data = {std::to_string(index++), cu.get<std::string>("name"), cu.get<std::string>("base_address") , cu.get<std::string>("usage"), xrt_core::utils::parse_cu_status(status_val)};
-        
-        if(boost::iequals(cu.get<std::string>("type"), "PL"))
+
+        if(boost::iequals(cu.get<std::string>("type"), "PL")) {
+          const std::vector<std::string> entry_data = {std::to_string(index++), cu.get<std::string>("name"), cu.get<std::string>("base_address") , cu.get<std::string>("usage"), xrt_core::utils::parse_cu_status(status_val)};
           pl_table.addEntry(entry_data);
-        else if(boost::iequals(cu.get<std::string>("type"), "PS"))
+        }
+        else if(boost::iequals(cu.get<std::string>("type"), "PS")) {
+          const std::vector<std::string> entry_data = {std::to_string(index++), cu.get<std::string>("name"), cu.get<std::string>("usage"), xrt_core::utils::parse_cu_status(status_val)};
           ps_table.addEntry(entry_data);
+        }
       }
     }
     catch( std::exception const& e) {

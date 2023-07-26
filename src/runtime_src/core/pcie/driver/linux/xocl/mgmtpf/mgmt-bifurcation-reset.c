@@ -84,7 +84,8 @@ static void xclmgmt_reset_pci_post(struct xclmgmt_dev *lro)
 	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL,
 					   (lro->devctl | PCI_EXP_DEVCTL_FERE));
 
-	pci_enable_device(pdev);
+	if (pci_enable_device(pdev))
+		mgmt_err(lro, "failed to enable pci device");
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
@@ -229,7 +230,7 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
  * 3. restore both after SBR
  *
  * Also, during reset, the pcie linkdown will last, in worst case, 3-5s
- * for the u30 card with PS/PL   
+ * for the u30 card with PS/PL
  */
 long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,
 	struct xclmgmt_dev *buddy_lro, bool force)

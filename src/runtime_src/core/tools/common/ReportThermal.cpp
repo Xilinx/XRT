@@ -1,24 +1,11 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
 #include "ReportThermal.h"
 #include "core/common/device.h"
 #include "core/common/sensor.h"
+#include "Table2D.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -49,22 +36,28 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
 {
   boost::property_tree::ptree empty_ptree;
 
-  bool thermals_present = false;
   _output << "Thermals\n";
   const boost::property_tree::ptree& thermals = _pt.get_child("thermals", empty_ptree);
 
-  _output << boost::format("  %-23s: %6s\n") % "Temperature" % "Celcius";
+  const std::vector<Table2D::HeaderData> table_headers = {
+    {"Temperature", Table2D::Justification::left},
+    {"Celcius", Table2D::Justification::left}
+  };
+  Table2D temp_table(table_headers);
+
   for(auto& kv : thermals) {
     const boost::property_tree::ptree& pt_temp = kv.second;
     if(!pt_temp.get<bool>("is_present", false))
       continue;
 
-    thermals_present = true;
-    _output << boost::format("  %-23s: %6s C\n") % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C");
+    const std::vector<std::string> entry_data = {pt_temp.get<std::string>("description"), pt_temp.get<std::string>("temp_C")};
+    temp_table.addEntry(entry_data);
   }
 
-  if(!thermals_present)
+  if(temp_table.empty())
     _output << "  No temperature sensors are present" << std::endl;
+  else
+    _output << temp_table.toString("  ") << std::endl;
 
   _output << std::endl;
 }

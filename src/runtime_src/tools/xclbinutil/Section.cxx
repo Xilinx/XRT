@@ -510,7 +510,7 @@ Section::readPayload(std::istream& _istream, FormatType _eFormatType)
         _istream.seekg(0, _istream.end);
         std::streamsize fileSize =  _istream.tellg();
 
-        std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+        std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[fileSize]);
         _istream.clear();
         _istream.seekg(0);
         _istream.read((char*)memBuffer.get(), fileSize);

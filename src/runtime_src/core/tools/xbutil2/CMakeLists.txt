@@ -10,6 +10,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBUtilities.cpp"
   "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdConfigureInternal.cpp"
   "../common/SubCmdExamineInternal.cpp"
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenusCore.cpp"
@@ -21,6 +22,8 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/Table2D.cpp"
   "../common/PsKernelUtilities.cpp"
   "../common/SubCmdJSON.cpp"
+  "../common/TestRunner.cpp"
+  "../common/Test*.cpp"
 )
 
 # Collect local directory files

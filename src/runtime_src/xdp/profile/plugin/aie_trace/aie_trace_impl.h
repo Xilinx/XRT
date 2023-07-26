@@ -45,6 +45,8 @@ namespace xdp {
     virtual ~AieTraceImpl() {};
 
     virtual void updateDevice() = 0;
+    virtual void freeResources() = 0;
+    virtual void pollTimers(uint32_t index, void* handle) = 0;
     virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
     /*
      * If trace module is running, it might buffer partial trace.

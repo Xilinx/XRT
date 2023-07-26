@@ -271,6 +271,11 @@ irqreturn_t xgq_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+int xocl_get_xgq_id(struct xocl_xgq *xgq)
+{
+	return xgq ? xgq->xx_id : -EINVAL;
+}
+
 struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info)
 {
 	struct xocl_xgq *xgq = NULL;

@@ -198,8 +198,8 @@ struct memory_info_collector
     const mem_data* mem,
     ptree_type& pt_mem)
   {
-    pt_mem.put("xclbin_uuid", topology.xclbin_uuid);
-    pt_mem.put("hw_context_slot", boost::format("%u") % topology.id);
+    pt_mem.put("xclbin_uuid", topology.metadata.xclbin_uuid);
+    pt_mem.put("hw_context_slot", boost::format("%u") % topology.metadata.id);
     pt_mem.put("type", memtype2str(mem->m_type));
     pt_mem.put("tag", mem->m_tag);
     pt_mem.put("enabled", mem->m_used ? true : false);
@@ -244,7 +244,10 @@ struct memory_info_collector
 
     for (const auto& topology : hw_context_memories) {
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
-      
+
+      if (!mem_topo)
+        continue;
+
       for (int i = 0; i < mem_topo->m_count; ++i) {
         const auto& mem = mem_topo->m_mem_data[i];
         
@@ -275,7 +278,7 @@ struct memory_info_collector
       const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
       const auto grp_topo = reinterpret_cast<const mem_topology*>(topology.grp_topology.data());
 
-      if (!grp_topo)
+      if (!mem_topo || !grp_topo)
         continue;
 
       // group_topology prepends all mem_topology entries so groups
@@ -301,32 +304,15 @@ public:
       hw_context_memories = xrt_core::device_query<xq::hw_context_memory_info>(device);
     }
     catch (const xq::exception&) {
-      //ignore if not defined. Try legacy method
-    }
-
-    // If the mem_topo is empty attempt the legacy method
-    if (hw_context_memories.empty()) {
-      xq::hw_context_memory_info::data_type memory_topology;
-      memory_topology.id = "0";
-      memory_topology.topology = xrt_core::device_query<xq::mem_topology_raw>(device);
-      memory_topology.grp_topology = xrt_core::device_query<xq::group_topology>(device);
-      memory_topology.statistics = xrt_core::device_query<xq::memstat_raw>(device);
-
-      try {
-        memory_topology.temperature = xrt_core::device_query<xq::temp_by_mem_topology>(dev);
-      }
-      catch (const xq::exception&) {
-        //ignore if not defined. Try legacy method
-      }
-
-      try {
-        memory_topology.xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
-      }
-      catch (const xq::exception&) {
-        // Support noop devices
-      }
-
-      hw_context_memories.push_back(memory_topology);
+      // Try legacy method
+      xq::hw_context_memory_info::data_type hw_context_mem;
+      hw_context_mem.metadata.id = "0";
+      hw_context_mem.metadata.xclbin_uuid = xrt_core::device_query_default<xq::xclbin_uuid>(device, "");
+      hw_context_mem.topology = xrt_core::device_query<xq::mem_topology_raw>(device);
+      hw_context_mem.grp_topology = xrt_core::device_query<xq::group_topology>(device);
+      hw_context_mem.statistics = xrt_core::device_query<xq::memstat_raw>(device);
+      hw_context_mem.temperature = xrt_core::device_query_default<xq::temp_by_mem_topology>(dev, {});
+      hw_context_memories.push_back(hw_context_mem);
     }
 
     // validate the memory topologies for each hardware context
@@ -570,46 +556,27 @@ populate_hardware_context(const xrt_core::device* device)
     hw_context_stats = xrt_core::device_query<xq::hw_context_info>(device);
   }
   catch (const xq::no_such_key&) {
-    // Ignoring if not available: Edge Case
+    // Legacy Case
+    xq::hw_context_info::data_type hw_context;
+
+    hw_context.metadata.id = "0";
+    hw_context.metadata.xclbin_uuid = xrt_core::device_query_default<xq::xclbin_uuid>(device, "");
+    hw_context.pl_compute_units = xrt_core::device_query_default<xq::kds_cu_info>(device, {});
+    hw_context.ps_compute_units = xrt_core::device_query_default<xq::kds_scu_info>(device, {});
+
+    // Account for devices that do not have an xclbin uuid but have compute units
+    if (!hw_context.metadata.xclbin_uuid.empty() || !hw_context.pl_compute_units.empty() || !hw_context.ps_compute_units.empty())
+      hw_context_stats.push_back(hw_context);
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
   }
 
-  // If hw context info gave nothing try legacy path
-  // Legacy path will only give one hw context
-  if (hw_context_stats.empty()) {
-    xq::hw_context_info::data_type hw_context;
-
-    hw_context.id = "0";
-
-    try {
-      hw_context.xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
-    }
-    catch (const xq::exception&) {
-      // Support noop devices
-    }
-
-    try {
-      hw_context.pl_compute_units = xrt_core::device_query<xq::kds_cu_info>(device);
-      hw_context.ps_compute_units = xrt_core::device_query<xq::kds_scu_info>(device);
-    }
-    catch (const xq::no_such_key&) {
-      // Ignoring if not available
-    }
-    catch (const std::exception& ex) {
-      pt.put("error_msg", ex.what());
-      return pt;
-    }
-
-    hw_context_stats.push_back(hw_context);
-  }
-
   for (const auto& hw : hw_context_stats) {
     ptree_type pt_hw;
-    pt_hw.put("id", boost::algorithm::to_upper_copy(hw.id));
-    pt_hw.put("xclbin_uuid", boost::algorithm::to_upper_copy(hw.xclbin_uuid));
+    pt_hw.put("id", boost::algorithm::to_upper_copy(hw.metadata.id));
+    pt_hw.put("xclbin_uuid", boost::algorithm::to_upper_copy(hw.metadata.xclbin_uuid));
     pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
     pt.push_back(std::make_pair("", pt_hw));
   }
