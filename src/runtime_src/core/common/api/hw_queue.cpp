@@ -399,11 +399,14 @@ public:
   {}
 
   std::cv_status
-  wait(size_t timeout_ms) override
+  wait(size_t /*timeout_ms*/) override
   {
-    return m_qhdl->wait_command(nullptr, static_cast<int>(timeout_ms))
-      ? std::cv_status::no_timeout
-      : std::cv_status::timeout;
+    // OpenCL uses this function, but it is not implemented for
+    // platforms that implement hwqueue_handle.  Rework this if OpenCL
+    // needs to support shim hw queues.  Probably use a combination of
+    // counters or cached commands, or change command monitor to track
+    // order of submitted commands.
+    throw std::runtime_error("qds_device::wait() not implemented");
   }
 
   std::cv_status

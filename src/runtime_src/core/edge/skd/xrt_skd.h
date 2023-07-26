@@ -47,10 +47,13 @@
 #include "core/common/xclbin_parser.h"
 #include "ffi.h"
 #include "ps_kernel.h"
-#include "sk_types.h"
+#include "pscontext.h"
 #include "xclbin.h"
 #include "xclhal2_mpsoc.h"
 #include "xrt/xrt_device.h"
+
+typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, const uuid_t &uuid);
+typedef int (* kernel_fini_t)(pscontext *xrtHandles);
 
 namespace xrt {
 
