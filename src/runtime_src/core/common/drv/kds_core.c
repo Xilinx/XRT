@@ -1659,7 +1659,10 @@ static int kds_cfg_legacy_update(struct kds_sched *kds)
 	}
 
 run_polling:
-	if ((!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) || kds->scu_mgmt.num_cus) {
+	if (kds->polling_thread)
+		return ret;
+
+	if (!KDS_SETTING(kds->cu_intr) || kds->scu_mgmt.num_cus) {
 		kds->polling_stop = 0;
 		kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
 		if (IS_ERR(kds->polling_thread)) {
