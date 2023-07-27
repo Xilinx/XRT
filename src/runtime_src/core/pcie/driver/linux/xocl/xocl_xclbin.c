@@ -137,7 +137,7 @@ static int xgq_xclbin_download(xdev_handle_t xdev, void *args)
 	struct xclbin_arg *arg = (struct xclbin_arg *)args;
 	int ret;
 
-	ret = xocl_xgq_download_axlf(xdev, arg->xclbin);
+	ret = xocl_xgq_download_axlf_slot(xdev, arg->xclbin, arg->slot_id);
 
 	return ret;
 }
