@@ -122,8 +122,8 @@ namespace xdp {
 
         (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
       }
-      
-      //handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, handleToAIEData.begin()->first);
+      //std::cout << "poll immediate" << std::endl;
+      //handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, nullptr);
 
       // Start the AIE profiling thread
       AIEData.threadCtrlBool = true;
