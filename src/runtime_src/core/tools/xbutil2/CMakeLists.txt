@@ -23,7 +23,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/PsKernelUtilities.cpp"
   "../common/SubCmdJSON.cpp"
   "../common/TestRunner.cpp"
-  "../common/Test*.cpp"
+  "../common/tests/*.cpp"
 )
 
 # Collect local directory files
