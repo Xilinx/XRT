@@ -288,8 +288,6 @@ namespace xdp {
   {
     if (type == module_type::mem_tile)
       return get_mem_tiles(device, graph_name, kernel_name);
-    if (kernel_name.compare("all") == 0)
-      return get_aie_tiles(device, graph_name, type);
 
     // Now search by graph-kernel pairs
     auto data = device->get_axlf_section(AIE_METADATA);
@@ -416,16 +414,6 @@ namespace xdp {
       // Check if already processed or if invalid
       if (graphMetrics[i][0].compare("all") == 0)
         continue;
-      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
-        std::stringstream msg;
-        msg << "Could not find graph " << graphMetrics[i][0] 
-            << " as specified in graph_based_" << modName << "_metrics setting."
-            << " The following graphs are valid : " << allValidGraphs[0];
-        for (size_t j = 1; j < allValidGraphs.size(); j++)
-          msg << ", " << allValidGraphs[j];
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        continue;
-      }
       if ((graphMetrics[i][1].compare("all") != 0) &&
           (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
@@ -816,11 +804,12 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
-      int16_t channelId = (metrics[i].size() < 3) ? -1 : static_cast<uint16_t>(std::stoul(metrics[i][2]));
+      uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
       auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], channelId);
 
-      for (auto& e : tiles) {
-        configMetrics[moduleIdx][e] = metrics[i][1];
+      for (auto& t : tiles) {
+        configMetrics[moduleIdx][t] = metrics[i][1];
+        configChannel0[t] = channelId;
       }
     }  // Pass 1
 
@@ -850,18 +839,17 @@ namespace xdp {
         continue;
       }
 
-      int16_t channelId = 0;
+      uint8_t channelId = 0;
       if (metrics[i].size() == 4) {
         try {
-          channelId = static_cast<uint16_t>(std::stoul(metrics[i][3]));
+          channelId = static_cast<uint8_t>(std::stoul(metrics[i][3]));
         }
         catch (std::invalid_argument const&) {
-          // Expected channel Id is not an integer, give warning and ignore channelId
+          // Expected channel Id is not an integer, give warning and ignore
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Channel ID specification in "
                                   "tile_based_interface_tile_metrics is "
                                   "not an integer and hence ignored.");
-          channelId = -1;
         }
       }
 
@@ -870,6 +858,7 @@ namespace xdp {
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
+        configChannel0[t] = channelId;
       }
     }  // Pass 2
 
@@ -896,19 +885,17 @@ namespace xdp {
           continue;
         }
 
-        int16_t channelId = -1;
+        uint8_t channelId = 0;
         if (metrics[i].size() == 3) {
           try {
-            channelId = static_cast<uint16_t>(std::stoul(metrics[i][2]));
+            channelId = static_cast<uint8_t>(std::stoul(metrics[i][2]));
           }
           catch (std::invalid_argument const&) {
-            // Expected channel Id is not an integer, give warning and
-            // ignore channelId
+            // Expected channel Id is not an integer, give warning and ignore
             xrt_core::message::send(severity_level::warning, "XRT",
                                     "Channel ID specification in "
                                     "tile_based_interface_tile_metrics is not an integer "
                                     "and hence ignored.");
-            channelId = -1;
           }
         }
 
@@ -917,6 +904,7 @@ namespace xdp {
 
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
+          configChannel0[t] = channelId;
         }
       }
     }  // Pass 3

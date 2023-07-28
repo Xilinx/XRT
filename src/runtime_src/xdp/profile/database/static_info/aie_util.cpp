@@ -239,8 +239,8 @@ namespace aie {
       auto currPort    = name.substr(namePos+1);
 
       // Make sure this matches what we're looking for
-      if ((channelId >= 0) && (channelId != streamId))
-        continue;
+      //if ((channelId >= 0) && (channelId != streamId))
+      //  continue;
       if ((portName.compare("all") != 0)
            && (portName.compare(currPort) != 0)
            && (portName.compare(logicalName) != 0))
@@ -253,11 +253,16 @@ namespace aie {
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
       if ((metricStr != "ports")
-          && ((isMaster && (metricStr.find("input") != std::string::npos))
-          || (!isMaster && (metricStr.find("output") != std::string::npos))))
+          && ((isMaster && (metricStr.find("input") != std::string::npos)
+              && (metricStr.find("mm2s") != std::string::npos))
+          || (!isMaster && (metricStr.find("output") != std::string::npos)
+              && (metricStr.find("s2mm") != std::string::npos))))
         continue;
       // Make sure column is within specified range (if specified)
       if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
+        continue;
+
+      if ((channelId >= 0) && (channelId != io.second.channelNum)) 
         continue;
 
       tile_type tile = {0};
@@ -419,8 +424,6 @@ namespace aie {
   {
     if (type == module_type::mem_tile)
       return getMemoryTiles(aie_meta, graph_name, kernel_name);
-    if (kernel_name.compare("all") == 0)
-      return getAIETiles(aie_meta, graph_name);
 
     // Now search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
