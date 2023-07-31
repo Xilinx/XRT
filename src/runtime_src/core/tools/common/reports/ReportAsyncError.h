@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,21 +14,21 @@
  * under the License.
  */
 
-#ifndef __ReportCmcStatus_h_
-#define __ReportCmcStatus_h_
+#ifndef __ReportAsyncError_h_
+#define __ReportAsyncError_h_
 
 // Please keep external include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
-class ReportCmcStatus : public Report {
+class ReportAsyncError : public Report {
  public:
-  ReportCmcStatus() : Report("cmc", "CMC status of the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportAsyncError() : Report("error", "Asyncronus Error present on the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
   virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
   virtual void getPropertyTree20202(const xrt_core::device * _pDevicee, boost::property_tree::ptree &_pt) const;
-  virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
+  virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const;
 };
 
 #endif

@@ -5,7 +5,7 @@
 #define __ReportAiePartitions_h_
 
 // Please keep external include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
 class ReportAiePartitions : public Report {
  public:

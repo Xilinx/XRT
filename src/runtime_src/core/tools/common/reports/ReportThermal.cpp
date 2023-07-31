@@ -5,7 +5,7 @@
 #include "ReportThermal.h"
 #include "core/common/device.h"
 #include "core/common/sensor.h"
-#include "Table2D.h"
+#include "tools/common/Table2D.h"
 
 #include <boost/property_tree/json_parser.hpp>
 

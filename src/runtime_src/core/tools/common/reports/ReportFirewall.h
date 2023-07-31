@@ -14,20 +14,20 @@
  * under the License.
  */
 
-#ifndef __ReportThermal_h_
-#define __ReportThermal_h_
+#ifndef __ReportFirewall_h_
+#define __ReportFirewall_h_
 
-// Please keep external include file dependencies to a minimum
-#include "Report.h"
+// Please keep eternal include file dependencies to a minimum
+#include "tools/common/Report.h"
 
-class ReportThermal : public Report {
+class ReportFirewall: public Report {
  public:
-  ReportThermal() : Report("thermal", "Thermal sensors present on the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportFirewall() : Report("firewall", "Firewall status", true /*device required*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
   virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device * _pDevicee, boost::property_tree::ptree &_pt) const;
+  virtual void getPropertyTree20202(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
 };
 

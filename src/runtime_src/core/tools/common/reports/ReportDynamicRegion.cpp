@@ -6,7 +6,7 @@
 // Local - Include Files
 #include <boost/algorithm/string.hpp>
 #include "ReportDynamicRegion.h"
-#include "Table2D.h"
+#include "tools/common/Table2D.h"
 
 #include "core/common/query_requests.h"
 #include "core/common/device.h"

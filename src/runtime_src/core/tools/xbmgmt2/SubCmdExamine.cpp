@@ -10,12 +10,12 @@
 
 // ---- Reports ------
 #include "tools/common/Report.h"
-#include "tools/common/ReportHost.h"
-#include "tools/common/ReportFirewall.h"
-#include "tools/common/ReportMechanical.h"
-#include "tools/common/ReportMailbox.h"
-#include "tools/common/ReportCmcStatus.h"
-#include "tools/common/ReportVmrStatus.h"
+#include "tools/common/reports/ReportHost.h"
+#include "tools/common/reports/ReportFirewall.h"
+#include "tools/common/reports/ReportMechanical.h"
+#include "tools/common/reports/ReportMailbox.h"
+#include "tools/common/reports/ReportCmcStatus.h"
+#include "tools/common/reports/ReportVmrStatus.h"
 #include "ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)

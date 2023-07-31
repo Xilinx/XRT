@@ -17,8 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportBOStats.h"
-#include "Table2D.h"
-#include "XBUtilities.h"
+#include "tools/common/Table2D.h"
+#include "tools/common/XBUtilities.h"
 
 // 3rd Party Library - Include Files
 #include <string>
