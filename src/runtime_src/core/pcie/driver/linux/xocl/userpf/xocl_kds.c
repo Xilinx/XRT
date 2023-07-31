@@ -926,14 +926,18 @@ out:
 int xocl_create_client(struct xocl_dev *xdev, void **priv)
 {
 	struct	kds_client	*client;
-	struct  kds_sched	*kds;
+	struct  kds_sched	*kds = &XDEV(xdev)->kds;;
 	int	ret = 0;
+
+	/* Check for existing client */
+	list_for_each_entry(client, &kds->clients, link)
+		if (pid_nr(client->pid) == pid_nr(get_pid(task_pid(current))))
+			goto client_exists;
 
 	client = kzalloc(sizeof(*client), GFP_KERNEL);
 	if (!client)
 		return -ENOMEM;
 
-	kds = &XDEV(xdev)->kds;
 	client->dev = XDEV2DEV(xdev);
 	ret = kds_init_client(kds, client);
 	if (ret) {
@@ -949,6 +953,8 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
          * in place. This is used by the ZOCL. */
         INIT_LIST_HEAD(&client->ctx_list);
 
+client_exists:
+	++client->client_refcnt;
 	*priv = client;
 
 out:
@@ -959,13 +965,24 @@ out:
 
 void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 {
-	struct kds_client *client = *priv;
-	struct kds_sched  *kds;
-	int pid = pid_nr(client->pid);
+	struct kds_client *client = NULL;
+	struct kds_sched  *kds = &XDEV(xdev)->kds;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_hw_ctx *next = NULL;
 
-	kds = &XDEV(xdev)->kds;
+	/* Check for existing client */
+	list_for_each_entry(client, &kds->clients, link) {
+		if (pid_nr(client->pid) == pid_nr(get_pid(task_pid(current)))) {
+			/* If reference count is not 0, then return from here */
+			if (--client->client_refcnt)
+				return;
+
+			/* Reference count is 0, Cleanup this client */
+			break;
+		}
+	}
+
+	client = *priv;
 	kds_fini_client(kds, client);
 
 	mutex_lock(&client->lock);
@@ -986,8 +1003,8 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 	mutex_unlock(&client->lock);
 
 	mutex_destroy(&client->lock);
+	userpf_info(xdev, "Client exits pid(%d)\n", pid_nr(client->pid));
 	kfree(client);
-	userpf_info(xdev, "client exits pid(%d)\n", pid);
 }
 
 int xocl_poll_client(struct file *filp, poll_table *wait, void *priv)

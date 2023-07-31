@@ -1102,6 +1102,8 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	}
 
 	client->pid = get_pid(task_pid(current));
+	/* Initialize the Client reference count */
+	client->client_refcnt = 0;
 	mutex_init(&client->lock);
 	mutex_init(&client->refcnt->lock);
 	init_waitqueue_head(&client->waitq);
