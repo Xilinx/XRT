@@ -58,7 +58,7 @@ namespace aie {
 
   std::vector<tile_type> getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
                                         const std::string& graph_name,
-                                        const std::string& kernel_name = "all");
+                                        const std::string& buffer_name = "all");
 
   std::vector<tile_type> getAIETiles(const boost::property_tree::ptree& aie_meta,
                                      const std::string& graph_name);

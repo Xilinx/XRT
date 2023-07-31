@@ -286,11 +286,11 @@ namespace aie {
   // Memory Tiles
   // **************************************************************************
 
-  // Find all memory tiles associated with a graph and kernel
-  //   kernel_name = all      : all tiles in graph
-  //   kernel_name = <kernel> : only tiles used by that specific kernel
+  // Find all memory tiles associated with a graph and buffer
+  //   buffer_name = all      : all tiles in graph
+  //   buffer_name = <buffer> : only tiles used by that specific buffer
   std::vector<tile_type> getMemoryTiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name,
-                                        const std::string& kernel_name)
+                                        const std::string& buffer_name)
   {
     if (getHardwareGeneration(aie_meta) == 1) 
       return {};
@@ -311,13 +311,10 @@ namespace aie {
       if ((currGraph.find(graph_name) == std::string::npos)
            && (graph_name.compare("all") != 0))
         continue;
-      if (kernel_name.compare("all") != 0) {
-        std::vector<std::string> names;
-        std::string functionStr = shared_buffer.second.get<std::string>("function");
-        boost::split(names, functionStr, boost::is_any_of("."));
-        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
-          continue;
-      }
+      auto currBuffer = shared_buffer.second.get<std::string>("bufferName");
+      if ((currBuffer.find(buffer_name) == std::string::npos)
+           && (buffer_name.compare("all") != 0))
+        continue;
 
       tile_type tile;
       tile.col = shared_buffer.second.get<uint16_t>("column");
@@ -416,7 +413,7 @@ namespace aie {
     return tiles;
   }
   
-  // Find all AIE or memory tiles associated with a graph and kernel
+  // Find all AIE or memory tiles associated with a graph and kernel/buffer
   //   kernel_name = all      : all tiles in graph
   //   kernel_name = <kernel> : only tiles used by that specific kernel
   std::vector<tile_type> getTiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name,

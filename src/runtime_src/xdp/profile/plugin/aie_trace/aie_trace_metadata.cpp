@@ -671,16 +671,6 @@ namespace xdp {
       // Check if already processed or if invalid
       if (graphMetrics[i][0].compare("all") == 0)
         continue;
-      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
-        std::stringstream msg;
-        msg << "Could not find graph " << graphMetrics[i][0] 
-            << ", as specified in graph_based_interface_tile_metrics setting."
-            << " The following graphs are valid : " << allValidGraphs[0];
-        for (size_t j = 1; j < allValidGraphs.size(); j++)
-          msg << ", " + allValidGraphs[j];
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        continue;
-      }
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
         std::stringstream msg;
