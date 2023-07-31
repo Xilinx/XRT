@@ -324,6 +324,14 @@ echo "** START [${BASH_SOURCE[0]}] **"
 echo " PETALINUX: $PETALINUX"
 echo ""
 
+GIT_MODULES=$XRT_REPO_DIR/.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd $XRT_REPO_DIR
+    echo "Updating Git XRT submodules"
+    git submodule update --init
+    cd $ORIGINAL_DIR
+fi
+
 PETALINUX_NAME=$AARCH
 echo " * Create PetaLinux from BSP (-s $PETA_BSP)"
 PETA_CREATE_OPT="-s $PETA_BSP"
