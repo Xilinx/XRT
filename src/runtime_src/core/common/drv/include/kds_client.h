@@ -73,6 +73,7 @@ struct kds_client_cu_refcnt {
  */
 struct kds_client {
 	struct list_head	  link;
+	u32                       client_refcnt;
 	struct device	         *dev;
 	struct pid	         *pid;
 	struct mutex		  lock;
