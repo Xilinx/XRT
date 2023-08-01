@@ -293,12 +293,17 @@ namespace xdp {
                      xdp::aie::tileCompare);
 
     // STEP 1 : Parse per-graph or per-kernel settings
-    /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
+
+    /* AIE_trace_settings config format
+     * Multiple values can be specified separated with ';'
+     *
      * AI Engine Tiles
-     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
+     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>
+     *   :<off|functions|functions_partial_stalls|functions_all_stalls>
+     *
      * Memory Tiles (AIE2 and beyond)
-     * graph_based_memory_tile_metrics = 
-     *     <graph name|all>:<kernel name|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>
+     *   :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
@@ -387,17 +392,19 @@ namespace xdp {
     /*
      * AI Engine Tiles
      * Single or all tiles
-     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
+     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>
+     *     :<off|functions|functions_partial_stalls|functions_all_stalls>
      * Range of tiles
-     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>
+     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|functions|functions_partial_stalls|functions_all_stalls>
      *  
      * Memory Tiles (AIE2 and beyond)
      * Single or all tiles
-     * tile_based_memory_tile_metrics = 
-     *     <{<column>,<row>}|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_memory_tile_metrics = <{<column>,<row>}|all>
+     *     :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      * Range of tiles
-     * tile_based_memory_tile_metrics = 
-     *     {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_memory_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());

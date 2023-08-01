@@ -357,13 +357,18 @@ namespace xdp {
 
     // STEP 1 : Parse per-graph or per-kernel settings
 
-    /* AIE_profile_settings config format ; Multiple values can be specified for
-     * a metric separated with ';' AI Engine Tiles graph_based_aie_metrics = <graph name|all>:<kernel
-     * name|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
-     * graph_based_aie_memory_metrics = <graph name|all>:<kernel
-     * name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs> MEM Tiles
-     * graph_based_memory_tile_metrics = <graph name|all>:<kernel
-     * name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
+    /* AIE_profile_settings config format 
+     * Multiple values can be specified separated with ';' 
+     *
+     * AI Engine Tiles 
+     * graph_based_aie_metrics = <graph name|all>:<kernel name|all>
+     *   :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
+     * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>
+     *   :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs> MEM Tiles
+     * 
+     * Memory tiles (AIE2 and beyond)
+     * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>
+     *   :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
@@ -450,25 +455,28 @@ namespace xdp {
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
-    /* AIE_profile_settings config format ; Multiple values can be specified for
-     * a metric separated with ';' AI Engine Tiles Single or all tiles
-     * tile_based_aie_metrics =
-     * [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]
-     * tile_based_aie_memory_metrics =
-     * [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]
-     * Range of tiles
-     * tile_based_aie_metrics =
-     * [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]]
-     * tile_based_aie_memory_metrics =
-     * [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]]
+    /* AIE_profile_settings config format
+     * Multiple values can be specified separated with ';' 
      *
-     * MEM Tiles (AIE2 and beyond)
+     * AI Engine Tiles 
      * Single or all tiles
-     * tile_based_memory_tile_metrics =
-     * [[<{<column>,<row>}|all>:<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats>[:<channel>]]
+     * tile_based_aie_metrics = [[{<column>,<row>}|all>
+     *     :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]
+     * tile_based_aie_memory_metrics = [[<{<column>,<row>}|all>
+     *     :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]
      * Range of tiles
-     * tile_based_memory_tile_metrics =
-     * [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
+     * tile_based_aie_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]]
+     * tile_based_aie_memory_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]]
+     *
+     * Memory Tiles (AIE2 and beyond)
+     * Single or all tiles
+     * tile_based_memory_tile_metrics = [[<{<column>,<row>}|all>
+     *     :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]]
+     * Range of tiles
+     * tile_based_memory_tile_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
