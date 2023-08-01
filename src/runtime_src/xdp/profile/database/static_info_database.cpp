@@ -1409,6 +1409,18 @@ namespace xdp {
       // Temp data structures to hold mappings of each CU's argument to memory
       typedef std::pair<std::string, std::string> fullName;
       std::map<fullName, int32_t> argumentToMemoryIndex;
+      std::map<int, std::string> computeUnitIdToName;
+
+      // Keep track of all the compute unit names associated with the id
+      // number so we can make the connection later.
+      for (auto& region : user_regions) {
+        for (auto& compute_unit : region.second.get_child("compute_units")) {
+          auto id = compute_unit.second.get<std::string>("id");
+          auto cuName = compute_unit.second.get<std::string>("cu_name");
+          auto idAsInt = std::stoi(id);
+          computeUnitIdToName[idAsInt] = cuName;
+        }
+      }
 
       // We also need to know which argument goes to which memory
       for (auto& region : user_regions) {
@@ -1422,8 +1434,8 @@ namespace xdp {
           std::string cuName = "";
 
           if (cuId != "") {
-            int cuIdInt = std::stoi(cuId);
-            cuName = currentXclbin->pl.cus[cuIdInt]->getName();
+            int cuIdAsInt = std::stoi(cuId);
+            cuName = computeUnitIdToName[cuIdAsInt];
           }
 
           if (id != "" && arg != "")
