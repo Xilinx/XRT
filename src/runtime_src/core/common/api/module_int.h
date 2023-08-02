@@ -16,8 +16,8 @@ namespace xrt_core::module_int {
 
 // Provide access to underlying xrt::bo representing the instruction
 // buffer
-xrt::bo
-get_instruction_buffer(const xrt::module& module, const std::string& nm);
+const std::vector<std::pair<uint64_t, uint64_t>>&
+get_ctrlcode_addr_and_size(const xrt::module& module);
 
 } // xrt_core::module_int
 

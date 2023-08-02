@@ -155,10 +155,12 @@ struct ert_start_kernel_cmd {
  *
  * @instruction_buffer:       address of instruction buffer
  * @instruction_buffer_size:  size of instruction buffer in bytes
+ * @chained:                  number of following ert_dpu_data elements
  *
  * The ert_dpu_data is prepended to data payload of ert_start_kernel_cmd
- * after any extra cu masks.  The payload count is incremented with the
- * size (words) of ert_dpu_data.
+ * after any extra cu masks.  The payload count of the ert packet is
+ * incremented with the size (words) of ert_dpu_data elements
+ * preprended to the data payload.
  *
  * The data payload for ERT_START_DPU is interpreted as fixed instruction
  * buffer address along with instruction count, followed by regular kernel
@@ -167,6 +169,7 @@ struct ert_start_kernel_cmd {
 struct ert_dpu_data {
   uint64_t instruction_buffer;       /* buffer address 2 words */
   uint32_t instruction_buffer_size;  /* size of buffer in bytes */
+  uint32_t chained;                  /* number of following ert_dpu_data elements */
 };
 
 #ifndef U30_DEBUG
@@ -951,12 +954,22 @@ get_ert_dpu_data(struct ert_start_kernel_cmd* pkt)
   return (struct ert_dpu_data*) (pkt->data + pkt->extra_cu_masks);
 }
 
+static inline struct ert_dpu_data*
+get_ert_dpu_data_next(struct ert_dpu_data* dpu_data)
+{
+  if (dpu_data->chained == 0)
+    return NULL;
+  
+  return dpu_data + 1;
+}
+
 static inline uint32_t*
 get_ert_regmap_begin(struct ert_start_kernel_cmd* pkt)
 {
   if (pkt->opcode == ERT_START_DPU)
-    // skip past ert_dpu_data and any extra cu masks
-    return pkt->data + sizeof(struct ert_dpu_data) / sizeof(uint32_t) + pkt->extra_cu_masks;
+    // skip past extra cu masks and ert_dpu_data
+    return pkt->data + pkt->extra_cu_masks
+      + (get_ert_dpu_data(pkt)->chained + 1) * sizeof(struct ert_dpu_data) / sizeof(uint32_t);
   else
     // skip past embedded extra cu_masks
     return pkt->data + pkt->extra_cu_masks;

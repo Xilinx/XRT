@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+namespace ELFIO { class elfio; }
+
 // Provide access to xrt::elf data that is not directly exposed
 // to end users via xrt::elf.   These functions are used by
 // XRT core implementation.
@@ -17,6 +19,10 @@ namespace xrt_core { namespace elf_int {
 // Extract section data from ELF file
 std::vector<uint8_t>
 get_section(const xrt::elf& elf, const std::string& sname);
+
+const ELFIO::elfio&
+get_elfio(const xrt::elf& elf);
+    
 
 }} // xclbin_int, xrt_core
 

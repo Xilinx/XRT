@@ -1381,7 +1381,9 @@ private:
   amend_dpu_args()
   {
     // adjust regmap size to account for prepending of ert_dpu_data
-    regmap_size += sizeof(ert_dpu_data) / sizeof(uint32_t);
+    // deferred to run object initialization because we don't know
+    // how mant instances of ert_dpu_data will be needed until then.
+    // regmap_size += sizeof(ert_dpu_data) / sizeof(uint32_t);
   }
 
   void
@@ -1764,7 +1766,7 @@ public:
   size_t
   get_regmap_size()
   {
-      return regmap_size;
+    return regmap_size;
   }
 };
 
@@ -2007,21 +2009,32 @@ class run_impl
     return pkt->data + (rhs->data - rhs_pkt->data);
   }
 
-  // For DPU kernels, initialize the instruction buffer and count in
-  // the command packet, both of which are before regular kernel
-  // arguments.  The function returns the data payload after the
-  // preceeding instruction buffer and count; this data payload is
-  // where regular kernel arguments are placed.
+  // For DPU kernels, initialize the instruction buffer(s) in the
+  // command packet.  The instruction buffers are before regular
+  // kernel arguments.  The function returns the data payload after
+  // the preceeding instruction buffer(s); this data payload is where
+  // regular kernel arguments are placed.
+  //
+  // For multiple instruction buffers, the ert_dpu_data::chained has
+  // the number of words remaining in the payload after the current
+  // instruction buffer.  The ert_dpu_data::chained of the last buffer
+  // is zero.
   uint32_t*
   initialize_dpu(uint32_t* payload)
   {
-    auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
-    auto bo = xrt_core::module_int::get_instruction_buffer(m_module, kernel->get_name());
-    dpu->instruction_buffer = bo.address();
-    dpu->instruction_buffer_size = bo.size();
+    auto addr_and_size = xrt_core::module_int::get_ctrlcode_addr_and_size(m_module);
 
-    // Return payload past the ert_dpu_data structure
-    return payload + sizeof(ert_dpu_data) / sizeof(uint32_t); // skip past ert_dpu_data
+    size_t ert_dpu_data_count = addr_and_size.size();
+    for (auto [addr, size] : addr_and_size) {
+      auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+      dpu->instruction_buffer = addr;
+      dpu->instruction_buffer_size = size;
+      dpu->chained = --ert_dpu_data_count;
+      payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
+    }
+
+    // Return payload past the ert_dpu_data structures
+    return payload;
   }
 
   // Initialize the command packet with special case for DPU kernels
@@ -2031,8 +2044,13 @@ class run_impl
     auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
     auto payload = kernel->initialize_command(pkt);
 
-    if (kcmd->opcode == ERT_START_DPU)
-      payload = initialize_dpu(payload);
+    if (kcmd->opcode == ERT_START_DPU) {
+      auto payload_past_dpu = initialize_dpu(payload);
+
+      // adjust count to include the prepended ert_dpu_data structures
+      kcmd->count += payload_past_dpu - payload;
+      payload = payload_past_dpu;
+    }
 
     return payload;
   }
