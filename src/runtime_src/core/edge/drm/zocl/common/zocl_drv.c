@@ -32,7 +32,6 @@
 #include "zocl_sk.h"
 #include "zocl_aie.h"
 #include "zocl_bo.h"
-#include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 #include "zocl_ert_intc.h"
@@ -1180,18 +1179,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		//Dont enable new kds for those devices
 	}
 
-	subdev = zocl_find_pdev("reset_ps");
-	if (subdev) {
-		DRM_INFO("reset_ps found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
-		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (!res) {
-			DRM_ERROR("The base address of reset_ps is not found or 0\n");
-			return -EINVAL;
-		}
-
-		zdev->watchdog = platform_get_drvdata(subdev);
-	}
-
 	/* Work around for CR-1119382 issue.
 	 * ZOCL driver is crashing if it accessing the device tree node */
 	if (ZOCL_PLATFORM_ARM64) {
@@ -1356,7 +1343,6 @@ static struct platform_driver zocl_drm_private_driver = {
 };
 
 static struct platform_driver *drivers[] = {
-	&zocl_watchdog_driver,
 	&zocl_ospi_versal_driver,
 	&cu_driver,
 	&scu_driver,
