@@ -37,10 +37,8 @@ namespace xdp {
   AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle) : deviceID(deviceID), handle(handle)
   {
 
-    std::cout << "Reached XDP minimal build" << std::endl;
     #ifdef XDP_MINIMAL_BUILD
       pt::read_json("aie_control_config.json", aie_meta);
-      std::cout << "Finished Reading JSOn" << std::endl;
       invalidXclbinMetadata = false;
     #else
       auto device = xrt_core::get_userpf_device(handle);
@@ -137,11 +135,9 @@ namespace xdp {
 
   int AieProfileMetadata::getHardwareGen()
   {
-    std::cout << "getting hw gen" << std::endl;
     static int hwGen = 1;
     static bool gotValue = false;
     if (!gotValue) {
-      std::cout << "Invalid Xclbin Metadata: " << int(invalidXclbinMetadata) << std::endl;
       if (invalidXclbinMetadata) {
         hwGen = 1;
       } else {
@@ -696,7 +692,6 @@ namespace xdp {
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
 
-    std::cout << "REACEHD CONFIG METRICS INTERFACE TILES" << std::endl;
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
       // Split done only in Pass 1
@@ -727,7 +722,6 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            std::cout << "GRPAHMETRICS CHANNELS: " << graphMetrics[i][3] << std::endl;
             configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
             configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
@@ -811,9 +805,7 @@ namespace xdp {
         continue;
 
       int16_t channelId = (metrics[i].size() < 3) ? -1 : static_cast<uint16_t>(std::stoul(metrics[i][2]));
-      std::cout << "THE CHANNEL ID IS: " << channelId << std::endl;
       auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], channelId);
-      std::cout << "Tiles size: " << tiles.size() << std::endl;
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
         configChannel0[e] = static_cast<uint8_t>(channelId);

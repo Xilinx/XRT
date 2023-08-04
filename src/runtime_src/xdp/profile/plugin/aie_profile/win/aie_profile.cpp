@@ -170,8 +170,6 @@ namespace xdp {
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
   }
 
-
-
   bool AieProfile_WinImpl::
   setMetricsSettings(uint64_t deviceId, void* handle)
   {
@@ -182,10 +180,18 @@ namespace xdp {
       {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
     };
 
+    std::map<module_type, std::vector<uint64_t>> debugRegisters {
+      {module_type::core, {0x31500, 0x31504, 0x31508, 0x3FF00}}, 
+      {module_type::dma, {0x11000, 0x11008}}, 
+      {module_type::shim, {0x31000, 0x31008, 0x3FF00, 0x3FF04, 0x34504, 0x1D220, 0x1D224, 0x1D228, 0x1D22C}}, 
+      {module_type::mem_tile, {0x91000,0x91004,0x91008,0xB0F00, 0xB0F04, 0xA06A0, 0x000A0660,
+      // Status registers S2MM[0-5], MM2S[0-5]
+      0x000A0664, 0x000A0668, 0x000A066C, 0x000A0670, 0x000A0674, 0x000A0680, 0x000A0684, 0x000A0688,
+      0x000A068C, 0x000A0690, 0x000A0694}}, 
+    };
+
     std::size_t opSize = sizeof(aie_profile_op_t);
     aie_profile_op_t op = {0};
-
-    std::cout << "reached setmetricssettings: " << deviceId  << handle << std::endl;
 
     int RC = XAIE_OK;
     XAie_Config config { 
@@ -220,16 +226,10 @@ namespace xdp {
       XAIE_MEM_MOD
     };
     auto configChannel0 = metadata->getConfigChannel0();
-    std::cout << "PRINTING CHANNEL INFO" << std::endl;
-    for (auto& t: configChannel0) { 
-      std::cout << "Col, Row:  " << t.first.col << " " << t.first.row << std::endl;
-      std::cout << "Channel: " << (int)t.second << std::endl;
-    }
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
       // int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
       XAie_ModuleType mod = falModuleTypes[module];
-      std::cout << "Module: " << module << std::endl;
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         auto tile = tileMetric.first;
@@ -238,7 +238,6 @@ namespace xdp {
         auto col  = tile.col;
         if (type == module_type::mem_tile)
           col = 0;
-        std::cout << "Col, Row: " << col << " " << row << std::endl;
 
         if (!isValidType(type, mod))
           continue;
@@ -256,12 +255,12 @@ namespace xdp {
 
         int numCounters  = 0;
         uint8_t numFreeCtr = static_cast<uint8_t>(startEvents.size());
-        std::cout << "Number of free Counters: " << (int)numFreeCtr << std::endl;
+        if (type == module_type::dma)
+          numFreeCtr = 2;
 
         // // Specify Sel0/Sel1 for MEM tile events 21-44
         auto iter0 = configChannel0.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
-        std::cout << "Channel was specified: Channel: " << (int) channel0 << std::endl;
         configEventSelections(loc, type, metricSet, channel0);
 
         // Request and configure all available counters for this tile
@@ -271,12 +270,11 @@ namespace xdp {
           uint8_t resetEvent = 0;
 
           //Check if we're the memory module: Then set the correct Events based on channel
-          if (type == module_type::dma) {
-            if (channel0 != 0 && (metricSet.find("s2mm") != std::string::npos
-                              ||  metricSet.find("mm2s") != std::string::npos)) {
-              startEvent = startEvents.at(i+2);
-              endEvent   = endEvents.at(i+2);;
-            }
+          if (type == module_type::dma && channel0 != 0 
+            && (metricSet.find("s2mm") != std::string::npos
+                ||  metricSet.find("mm2s") != std::string::npos)) {
+            startEvent = startEvents.at(i+2);
+            endEvent   = endEvents.at(i+2);
           }
 
           // No resource manager - manually manage the counters:
@@ -316,58 +314,44 @@ namespace xdp {
             << row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         // numTileCounters[numCounters]++;
+
+        for (auto& reg: debugRegisters[type]) {
+          op.perf_address[counterId] = reg + (col << 25) + (row << 20);
+          counterId++;
+        }
       }
-
-       // // Report counters reserved per tile
-      // {
-      //   std::stringstream msg;
-      //   msg << "AIE profile counters reserved in " << metadata->getModuleName(module) << " - ";
-      //   for (int n=0; n <= metadata->getNumCountersMod(module); ++n) {
-      //     if (numTileCounters[n] == 0) continue;
-      //     msg << n << ": " << numTileCounters[n] << " tiles";
-      //     if (n != metadata->getNumCountersMod(module)) msg << ", ";
-
-      //     (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
-      //   }
-      //   xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      // }
       runtimeCounters = true;
-  
 
     } // modules
+
     
 	  uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
 
     auto context = metadata->getHwContext();
-    std::cout << "Creating kernel!" << std::endl;
     try {
       mKernel = xrt::kernel(context, "DPU_1x4_PROFILE");  
     } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
+      std::cout << "Caught exception in profile kernel " << e.what() << std::endl;
       return false;
     }
 
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
-    std::cout << "Added Op" << std::endl;
     xrt::bo instr_bo;
 
     // Configuration bo
     try {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-      std::cout << "Created instruction bo" << std::endl;  
     } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
+      std::cout << "Caught exception in xdp instr bo: " << e.what() << std::endl;
       return false;
     }
 
     // Create polling bo
     try {
-      input_bo = xrt::bo(context.get_device(), 8192, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(3));
-      std::cout << "Created input bo" << std::endl;  
+      input_bo = xrt::bo(context.get_device(), opSize, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(3));
     } catch (std::exception &e){
-      std::cout << "caught exception: " << e.what() << std::endl;
+      std::cout << "Caught exception in polling BO " << e.what() << std::endl;
       return false;
     }
 
@@ -378,13 +362,9 @@ namespace xdp {
     instr_bo.write(instr_buf.ibuf_.data());
     instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, opSize, 0);
-
-    std::cout << "About to run the kernel!" << std::endl;
     auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int),
       input_bo, opSize, 0, 0, 0, 0);
     run.wait2();
-
-    std::cout << "Finished running the kernel!" << std::endl;
     return runtimeCounters;
   }
 
@@ -400,7 +380,6 @@ namespace xdp {
   {
     // Set masks for group events
     // NOTE: Group error enable register is blocked, so ignoring
-    std::cout << "Got to config Group Events! " << std::endl; 
     if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
       XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_DMA_MASK);
     else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL)
@@ -433,7 +412,6 @@ namespace xdp {
   {
     // Hardcoded
     uint8_t rscId = 0;
-    std::cout << "configStreamSwitchPorts :" << rscId << std::endl;
     // AIE Tiles (e.g., trace streams)
     if (type == module_type::core) {
       auto slaveOrMaster = (metricSet.find("mm2s") != std::string::npos) ?
@@ -448,7 +426,6 @@ namespace xdp {
       // NOTE: stored in getTilesForProfiling() above
       auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
-      std::cout << "Configuring Stream Port ID: " << (int)streamPortId << std::endl; 
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       return;
@@ -507,7 +484,6 @@ namespace xdp {
                                          const std::string metricSet,
                                          const uint8_t channel)
   {
-    std::cout << "row, col" << row << " " << column << std::endl; 
     // 1. Stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (stream ID)
@@ -578,7 +554,7 @@ namespace xdp {
         break;
 
       std::cout << std::hex << "0x" << output->perf_address[i]
-        << std::dec << " : " <<output->perf_value[i] << std::endl;
+        <<  "0x"  << " : " <<output->perf_value[i] << std::endl;
     }
   }
 

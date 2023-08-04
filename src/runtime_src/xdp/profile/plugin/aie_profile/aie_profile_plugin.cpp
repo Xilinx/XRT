@@ -146,6 +146,12 @@ namespace xdp {
     if (!handle)
       return;
 
+    xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
+    auto impl_shared_ptr = impl_ptr->get_shared_ptr();
+    xrt::hw_context profile_ctx(impl_shared_ptr);
+    auto& AIEData = handleToAIEData.begin()->second;
+    AIEData.metadata->setHwContext(std::move(profile_ctx));
+
     auto deviceID = getDeviceIDFromHandle(handle);
 
     // Update the static database with information from xclbin

@@ -226,20 +226,13 @@ namespace aie {
   {
     std::vector<tile_type> tiles;
 
-    auto ios = getAllIOs(aie_meta);
+    auto ios = getGMIOs(aie_meta);
     for (auto& io : ios) {
       auto isMaster    = io.second.slaveOrMaster;
       auto streamId    = io.second.streamId;
       auto shimCol     = io.second.shimColumn;
       auto logicalName = io.second.logicalName;
       auto name        = io.second.name;
-
-      std::cout << "In Get Interface Tiles" << std::endl;
-      std::cout << isMaster << std::endl;
-      std::cout << logicalName<< std::endl;
-      std::cout << streamId<< std::endl;
-      std::cout << channelId << std::endl;
-      std::cout << metricStr << std::endl;
 
       auto namePos     = name.find_last_of(".");
       auto currGraph   = name.substr(0, namePos);
@@ -278,7 +271,6 @@ namespace aie {
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
       tile.itr_mem_col = isMaster;
       tile.itr_mem_row = streamId;
-      std::cout << "Setting Stream " << std::endl;
   
       tiles.emplace_back(std::move(tile));
     }
@@ -288,6 +280,7 @@ namespace aie {
           "No tiles used channel ID " + std::to_string(channelId) + ". Please specify a valid channel ID.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
+
     return tiles;
   }
 
