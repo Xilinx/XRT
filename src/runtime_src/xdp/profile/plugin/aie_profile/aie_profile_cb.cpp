@@ -24,6 +24,7 @@ namespace xdp {
 
   static void updateAIECtrDevice(void* handle)
   {
+    std::cout << "In update AIE Device callback" << std::endl;
     if (AieProfilePlugin::alive())
       aieProfilePluginInstance.updateAIEDevice(handle);
   }
@@ -35,10 +36,10 @@ namespace xdp {
       aieProfilePluginInstance.endPollforDevice(handle);
   }
 
-  static void updateAIEHwContext(void* hwContext) 
-  {
-    aieProfilePluginInstance.updateHwContext(hwContext);
-  }
+  // static void updateAIEHwContext(void* hwContext) 
+  // {
+  //   aieProfilePluginInstance.updateHwContext(hwContext);
+  // }
 
 } // end namespace xdp
 
@@ -54,8 +55,8 @@ void endAIECtrPoll(void* handle)
   xdp::endAIECtrPoll(handle);
 }
 
-extern "C"
-void updateAIEHwContext( void* hwContext)
-{
-  xdp::updateAIEHwContext(hwContext);
-}
+// extern "C"
+// void updateAIEHwContext( void* hwContext)
+// {
+//   xdp::updateAIEHwContext(hwContext);
+// }

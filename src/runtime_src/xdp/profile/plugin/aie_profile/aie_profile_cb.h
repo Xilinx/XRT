@@ -27,8 +27,8 @@ extern "C"
 XDP_EXPORT
 void endAIECtrPoll(void* handle);
 
-extern "C"
-XDP_EXPORT
-void updateAIEHwContext(void* hwContext);
+// extern "C"
+// XDP_EXPORT
+// void updateAIEHwContext(void* hwContext);
 
 #endif

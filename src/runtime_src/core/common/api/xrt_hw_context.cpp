@@ -16,7 +16,7 @@
 #include <memory>
 
 namespace xdp::aie::profile {
-  __declspec(dllexport) std::function<void (void*)> update_hw_context_cb;
+  __declspec(dllexport) std::function<void (void*)> update_device_cb;
   __declspec(dllexport) std::function<void (void*)> end_poll_cb;
 }
 
@@ -94,8 +94,10 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mo
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
   std::cout << "Creating HW Context impl!" << std::endl;
-    if (xdp::aie::profile::update_hw_context_cb != nullptr) 
-      xdp::aie::profile::update_hw_context_cb(get_handle().get());
+  std::cout << "Update Device CB: " << (xdp::aie::profile::update_device_cb != nullptr) << std::endl;
+
+    if (xdp::aie::profile::update_device_cb != nullptr) 
+      xdp::aie::profile::update_device_cb(get_handle().get());
 }
 
 void

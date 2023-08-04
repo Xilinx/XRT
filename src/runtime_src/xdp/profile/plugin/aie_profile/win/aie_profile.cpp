@@ -173,6 +173,7 @@ namespace xdp {
   bool AieProfile_WinImpl::
   setMetricsSettings(uint64_t deviceId, void* handle)
   {
+    std::cout << "Handle: " << handle << std::endl;
     std::map<module_type, std::vector<uint64_t>> regValues {
       {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
       {module_type::dma, {0x11020,0x11024}}, 
@@ -484,6 +485,7 @@ namespace xdp {
                                          const std::string metricSet,
                                          const uint8_t channel)
   {
+    std::cout << "Row, col: " << column << row << std::endl;
     // 1. Stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (stream ID)

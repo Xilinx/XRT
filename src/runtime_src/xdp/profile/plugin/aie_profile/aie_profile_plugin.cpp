@@ -101,44 +101,45 @@ namespace xdp {
   }
 
 
-  void AieProfilePlugin::updateHwContext(void* hwContext) {
-      std::cout << "Hardware Context" << std::endl;
-      std::cout << "HW context value: " << hwContext << std::endl;
-      xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(hwContext);
-      auto impl_shared_ptr = impl_ptr->get_shared_ptr();
-      xrt::hw_context profile_ctx(impl_shared_ptr);
-      auto& AIEData = handleToAIEData.begin()->second;
-      AIEData.metadata->setHwContext(std::move(profile_ctx));
+  // void AieProfilePlugin::updateHwContext(void* hwContext) {
+  //     std::cout << "Hardware Context" << std::endl;
+  //     std::cout << "HW context value: " << hwContext << std::endl;
+  //     xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(hwContext);
+  //     auto impl_shared_ptr = impl_ptr->get_shared_ptr();
+  //     xrt::hw_context profile_ctx(impl_shared_ptr);
+  //     auto& AIEData = handleToAIEData.begin()->second;
+  //     AIEData.metadata->setHwContext(std::move(profile_ctx));
 
-      auto deviceID = getDeviceIDFromHandle(handleToAIEData.begin()->first);
+  //     auto deviceID = getDeviceIDFromHandle(handleToAIEData.begin()->first);
 
-      auto& implementation = AIEData.implementation;
-        // Ensure we only read/configure once per xclbin
-      if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
-        // Sets up and calls the PS kernel on x86 implementation
-        // Sets up and the hardware on the edge implementation
+  //     auto& implementation = AIEData.implementation;
+  //       // Ensure we only read/configure once per xclbin
+  //     if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
+  //       // Sets up and calls the PS kernel on x86 implementation
+  //       // Sets up and the hardware on the edge implementation
 
-        implementation->updateDevice();
+  //       implementation->updateDevice();
 
-        (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
-      }
-      //std::cout << "poll immediate" << std::endl;
-      //handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, nullptr);
+  //       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
+  //     }
+  //     //std::cout << "poll immediate" << std::endl;
+  //     //handleToAIEData[handleToAIEData.begin()->first].implementation->poll(0, nullptr);
 
-      // Start the AIE profiling thread
-      AIEData.threadCtrlBool = true;
-      auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
-      // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
-      // implementation.get(), mIndex, handle);
-      AIEData.thread = std::move(device_thread);
+  //     // Start the AIE profiling thread
+  //     AIEData.threadCtrlBool = true;
+  //     auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
+  //     // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
+  //     // implementation.get(), mIndex, handle);
+  //     AIEData.thread = std::move(device_thread);
 
-      ++mIndex;
+  //     ++mIndex;
 
-  }
+  // }
 
 
   void AieProfilePlugin::updateAIEDevice(void* handle)
   {
+    std::cout << "In update AIE Device" << std::endl;
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;
@@ -149,8 +150,6 @@ namespace xdp {
     xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
     auto impl_shared_ptr = impl_ptr->get_shared_ptr();
     xrt::hw_context profile_ctx(impl_shared_ptr);
-    auto& AIEData = handleToAIEData.begin()->second;
-    AIEData.metadata->setHwContext(std::move(profile_ctx));
 
     auto deviceID = getDeviceIDFromHandle(handle);
 
@@ -174,6 +173,8 @@ namespace xdp {
 
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
+    AIEData.metadata->setHwContext(std::move(profile_ctx));
+
 
 #ifdef XDP_MINIMAL_BUILD
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
@@ -182,17 +183,26 @@ namespace xdp {
 #else
     AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
 #endif
-    // auto& implementation = AIEData.implementation;
+    auto& implementation = AIEData.implementation;
 
 
-    // // Ensure we only read/configure once per xclbin
-    // if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
-    //   // Sets up and calls the PS kernel on x86 implementation
-    //   // Sets up and the hardware on the edge implementation
-    //   implementation->updateDevice();
+    // Ensure we only read/configure once per xclbin
+    if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
+      // Sets up and calls the PS kernel on x86 implementation
+      // Sets up and the hardware on the edge implementation
+      implementation->updateDevice();
 
-    //   (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
-    // }
+      (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
+    }
+
+    // Start the AIE profiling thread
+    AIEData.threadCtrlBool = true;
+    auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
+    // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters,
+    // implementation.get(), mIndex, handle);
+    AIEData.thread = std::move(device_thread);
+
+    ++mIndex;
 
     // Open the writer for this device
     auto time = std::time(nullptr);
