@@ -48,21 +48,17 @@
 #include <windows.h> 
 
 constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
-constexpr std::uint64_t PROFILE_OPCODE = std::uint64_t{3};
-
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using tile_type = xdp::tile_type;
   using module_type = xdp::module_type;
 
-  typedef struct {
-    uint64_t perf_address[256];
-    uint32_t perf_value[256];
-  } aie_profile_op_t;
-
-  AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      : AieProfileImpl(database, metadata)
+  AieProfile_WinImpl::
+  AieProfile_WinImpl(VPDatabase* database,
+    std::shared_ptr<AieProfileMetadata> metadata
+  )
+    : AieProfileImpl(database, metadata)
   {
 
     mCounterBases = {
@@ -162,15 +158,17 @@ namespace xdp {
                                    XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
     };
     mMemTileEndEvents = mMemTileStartEvents;
-
   }
 
-  void AieProfile_WinImpl::updateDevice()
+  void
+  AieProfile_WinImpl::
+  updateDevice()
   {
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
   }
 
-  bool AieProfile_WinImpl::
+  bool
+  AieProfile_WinImpl::
   setMetricsSettings(uint64_t deviceId, void* handle)
   {
     std::cout << "Handle: " << handle << std::endl;
@@ -191,11 +189,7 @@ namespace xdp {
       0x000A068C, 0x000A0690, 0x000A0694}}, 
     };
 
-    std::size_t opSize = sizeof(aie_profile_op_t);
-    aie_profile_op_t op = {0};
-
-    int RC = XAIE_OK;
-    XAie_Config config { 
+    XAie_Config cfg { 
       XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
       metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
       metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
@@ -209,8 +203,7 @@ namespace xdp {
       metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
       {0}                                                   // PartProp
     };
-
-    RC = XAie_CfgInitialize(&aieDevInst, &config);
+    auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK) {
       xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
       return false;
@@ -316,26 +309,24 @@ namespace xdp {
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         // numTileCounters[numCounters]++;
 
-        for (auto& reg: debugRegisters[type]) {
-          op.perf_address[counterId] = reg + (col << 25) + (row << 20);
-          counterId++;
-        }
+        // for (auto& reg: debugRegisters[type]) {
+        //   op.perf_address[counterId] = reg + (col << 25) + (row << 20);
+        //   counterId++;
+        // }
       }
       runtimeCounters = true;
 
     } // modules
 
-    
-	  uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-
     auto context = metadata->getHwContext();
     try {
-      mKernel = xrt::kernel(context, "DPU_1x4_PROFILE");  
+      mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::cout << "Caught exception in profile kernel " << e.what() << std::endl;
       return false;
     }
 
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
     xrt::bo instr_bo;
@@ -348,35 +339,27 @@ namespace xdp {
       return false;
     }
 
-    // Create polling bo
-    try {
-      input_bo = xrt::bo(context.get_device(), opSize, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(3));
-    } catch (std::exception &e){
-      std::cout << "Caught exception in polling BO " << e.what() << std::endl;
-      return false;
-    }
-
-    uint8_t* input = reinterpret_cast<uint8_t*>(&op);
-    auto input_bo_map = input_bo.map<uint8_t*>();
-    std::memcpy(input_bo_map, input, opSize);
-
     instr_bo.write(instr_buf.ibuf_.data());
     instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, opSize, 0);
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int),
-      input_bo, opSize, 0, 0, 0, 0);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
     run.wait2();
+
+    // Must clear aie state
+    XAie_ClearTransaction(&aieDevInst);
     return runtimeCounters;
   }
 
-  bool AieProfile_WinImpl::
+  bool
+  AieProfile_WinImpl::
   isStreamSwitchPortEvent(const XAie_Events event)
   {
     return (std::find(mSSEventList.begin(), mSSEventList.end(), event) != mSSEventList.end());
   }
 
-  void AieProfile_WinImpl::
-  configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod,
+  void
+  AieProfile_WinImpl::
+  configGroupEvents(
+    const XAie_LocType loc, const XAie_ModuleType mod,
     const XAie_Events event, const std::string& metricSet, uint8_t channel)
   {
     // Set masks for group events
@@ -407,8 +390,10 @@ namespace xdp {
 
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and MEM tiles
-  void AieProfile_WinImpl::
-  configStreamSwitchPorts(const tile_type& tile, const XAie_LocType& loc,
+  void
+  AieProfile_WinImpl::
+  configStreamSwitchPorts( 
+    const tile_type& tile, const XAie_LocType& loc,
     const module_type& type, const std::string& metricSet, uint8_t channel)
   {
     // Hardcoded
@@ -439,8 +424,10 @@ namespace xdp {
     }
   }
 
-  void AieProfile_WinImpl::
-  configEventSelections(const XAie_LocType loc, const module_type type,
+  void
+  AieProfile_WinImpl::
+  configEventSelections(
+    const XAie_LocType loc, const module_type type,
     const std::string metricSet, const uint8_t channel0) 
   {
     if (type != module_type::mem_tile)
@@ -452,7 +439,8 @@ namespace xdp {
   }
 
   module_type 
-  AieProfile_WinImpl::getModuleType(uint16_t absRow, XAie_ModuleType mod)
+  AieProfile_WinImpl::
+  getModuleType(uint16_t absRow, XAie_ModuleType mod)
   {
     if (absRow == 0)
       return module_type::shim;
@@ -461,7 +449,9 @@ namespace xdp {
     return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
   }
 
-  bool AieProfile_WinImpl::isValidType(module_type type, XAie_ModuleType mod)
+  bool
+  AieProfile_WinImpl::
+  isValidType(module_type type, XAie_ModuleType mod)
   {
     if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
         || (type == module_type::dma)))
@@ -477,13 +467,11 @@ namespace xdp {
 
 
   uint32_t 
-  AieProfile_WinImpl::getCounterPayload( const tile_type& tile, 
-                                         const module_type type, 
-                                         uint16_t column, 
-                                         uint16_t row, 
-                                         XAie_Events startEvent, 
-                                         const std::string metricSet,
-                                         const uint8_t channel)
+  AieProfile_WinImpl::
+  getCounterPayload( const tile_type& tile, 
+    const module_type type, uint16_t column, uint16_t row, 
+    XAie_Events startEvent, const std::string metricSet,
+    const uint8_t channel)
   {
     std::cout << "Row, col: " << column << row << std::endl;
     // 1. Stream IDs for interface tiles
@@ -541,26 +529,64 @@ namespace xdp {
 
     return payloadValue;
   }
-  
 
-  void AieProfile_WinImpl::poll(uint32_t index, void* handle)
+  void
+  AieProfile_WinImpl::
+  poll(uint32_t index, void* handle)
   {
     std::cout << "Polling! " << index << handle << std::endl;
+    auto context = metadata->getHwContext();
 
-    auto inbo_map = input_bo.map<uint8_t*>();
-    input_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE,sizeof(aie_profile_op_t),0);
-    aie_profile_op_t* output = reinterpret_cast<aie_profile_op_t*>(inbo_map);
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+    // Profiling is 3rd custom OP
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
+
+    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
+    std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+
+    // this BO stores polling data and custom instructions
+    xrt::bo instr_bo;
+    try {
+      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    } catch (std::exception &e){
+      std::cout << "Exception in Poll BO: " << e.what() << std::endl;
+      return;
+    }
+
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    try {
+      run.wait2();
+    } catch (std::exception &e) {
+      std::cout << "Exception in polling kernel: " << e.what() << std::endl;
+    }
+
+    XAie_ClearTransaction(&aieDevInst);
+
+    auto instrbo_map = instr_bo.map<uint8_t*>();
+    instr_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    // Seek to profiling struct
+    // TODO: figure out where the 8 comes from
+    instrbo_map += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
+    auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
 
     for (int i = 0; i < 256; i++) {
       if (output->perf_address[i] == 0)
         break;
-
-      std::cout << std::hex << "0x" << output->perf_address[i]
-        <<  "0x"  << " : " <<output->perf_value[i] << std::endl;
+      std::cout << std::hex << "0x" << output->perf_address[i] << " : 0x" <<output->perf_value[i] << std::endl;
     }
   }
 
-  void AieProfile_WinImpl::freeResources()
+  void
+  AieProfile_WinImpl::
+  freeResources()
   {
     // TODO - if there are any resources we need to free after the application
     // is complete, it must be done here.

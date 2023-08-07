@@ -29,6 +29,11 @@ extern "C" {
 }
 
 namespace xdp {
+  typedef struct {
+    uint64_t perf_address[256];
+    uint32_t perf_value[256];
+  } aie_profile_op_t;
+
 
   class AieProfile_WinImpl : public AieProfileImpl {
    public:
@@ -42,30 +47,26 @@ namespace xdp {
     xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
     bool isValidType(module_type type, XAie_ModuleType mod);
     bool isStreamSwitchPortEvent(const XAie_Events event);
-    void configEventSelections(const XAie_LocType loc,
-                                const xdp::module_type type,
-                                const std::string metricSet,
-                                const uint8_t channel0);
-    void configGroupEvents(const XAie_LocType loc,
-                           const XAie_ModuleType mod,
-                           const XAie_Events event, 
-                           const std::string& metricSet, 
-                           uint8_t channel);
+    void configEventSelections(
+      const XAie_LocType loc, const xdp::module_type type,
+      const std::string metricSet, const uint8_t channel0
+    );
+    void configGroupEvents(
+      const XAie_LocType loc, const XAie_ModuleType mod,
+      const XAie_Events event, const std::string& metricSet, 
+      uint8_t channel
+    );
     uint32_t getCounterPayload(const tile_type& tile, 
-                               const xdp::module_type type, 
-                               uint16_t column, 
-                               uint16_t row, 
-                               XAie_Events startEvent, 
-                               const std::string metricSet,
-                               const uint8_t channel);
-
-    void configStreamSwitchPorts(const tile_type& tile,
-                                 const XAie_LocType& loc,
-                                 const module_type& type,
-                                 const std::string& metricSet,
-                                 uint8_t channel);
+      const xdp::module_type type, uint16_t column, 
+      uint16_t row, XAie_Events startEvent, 
+      const std::string metricSet, const uint8_t channel
+    );
+    void configStreamSwitchPorts(
+      const tile_type& tile, const XAie_LocType& loc,
+      const module_type& type, const std::string& metricSet,
+      uint8_t channel
+    );
    private:
-      XAie_DevInst aieDevInst = { 0 };
       std::map<xdp::module_type, uint16_t> mCounterBases;
       std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
@@ -78,8 +79,9 @@ namespace xdp {
 
       xrt::kernel mKernel;
       xrt::bo input_bo;
-
+      aie_profile_op_t op = {0};
       std::vector<XAie_Events> mSSEventList;
+      XAie_DevInst aieDevInst = {0};
      
   };
 
