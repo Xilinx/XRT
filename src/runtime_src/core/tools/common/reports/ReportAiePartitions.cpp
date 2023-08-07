@@ -6,8 +6,8 @@
 #include "ReportAiePartitions.h"
 
 #include "core/common/query_requests.h"
-#include "Table2D.h"
-#include "XBUtilitiesCore.h"
+#include "tools/common/Table2D.h"
+#include "tools/common/XBUtilitiesCore.h"
 
 #include <map>
 #include <vector>

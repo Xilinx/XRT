@@ -5,8 +5,8 @@
 // Local - Include Files
 #include "ReportPsKernels.h"
 
-#include "PsKernelUtilities.h"
-#include "Table2D.h"
+#include "tools/common/PsKernelUtilities.h"
+#include "tools/common/Table2D.h"
 
 #include "core/common/query_requests.h"
 

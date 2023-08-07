@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportMemory.h"
-#include "Table2D.h"
+#include "tools/common/Table2D.h"
 #include "core/common/utils.h"
 
 #include <map>

@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportAie_h_
-#define __ReportAie_h_
+#ifndef __ReportMemory_h_
+#define __ReportMemory_h_
 
 // Please keep external include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
-class ReportAie : public Report {
+class ReportMemory : public Report {
  public:
-  ReportAie() : Report("aie", "AIE metadata in xclbin", true /*deviceRequired*/) { /*empty*/ };
+  ReportMemory() : Report("memory", "Memory information present on the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,20 @@
  * under the License.
  */
 
-#ifndef __ReportFirewall_h_
-#define __ReportFirewall_h_
+#ifndef __ReportPlatforms_h_
+#define __ReportPlatforms_h_
 
-// Please keep eternal include file dependencies to a minimum
-#include "Report.h"
+// Please keep external include file dependencies to a minimum
+#include "tools/common/Report.h"
 
-class ReportFirewall: public Report {
+class ReportPlatforms : public Report {
  public:
-  ReportFirewall() : Report("firewall", "Firewall status", true /*device required*/) { /*empty*/ };
+  ReportPlatforms() : Report("platform", "Platforms flashed on the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
-  virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
+  virtual void getPropertyTreeInternal(const xrt_core::device * dev, boost::property_tree::ptree &pt) const;
+  virtual void getPropertyTree20202(const xrt_core::device * deve, boost::property_tree::ptree &pt) const;
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
 };
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportAieShim_h_
-#define __ReportAieShim_h_
+#ifndef __ReportDebugIpStatus_h_
+#define __ReportDebugIpStatus_h_
 
 // Please keep external include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
-class ReportAieShim : public Report {
+class ReportDebugIpStatus : public Report {
  public:
-  ReportAieShim() : Report("aieshim", "AIE shim tile status", true /*deviceRequired*/) { /*empty*/ };
+  ReportDebugIpStatus() : Report("debug-ip-status", "Status of Debug IPs present in xclbin loaded on device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

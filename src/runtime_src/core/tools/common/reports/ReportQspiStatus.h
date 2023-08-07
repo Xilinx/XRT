@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,20 @@
  * under the License.
  */
 
-#ifndef __ReportDynamicRegion_h_
-#define __ReportDynamicRegion_h_
+#ifndef __ReportQspiStatus_h_
+#define __ReportQspiStatus_h_
 
 // Please keep external include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
-class ReportDynamicRegion : public Report {
+class ReportQspiStatus : public Report {
  public:
-  ReportDynamicRegion() : Report("dynamic-regions", "Information about the xclbin and the compute units", true /*deviceRequired*/) { /*empty*/ };
+  ReportQspiStatus() : Report("qspi-status", "QSPI write protection status", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
-  virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device * _pDevicee, boost::property_tree::ptree &_pt) const;
+  virtual void getPropertyTreeInternal(const xrt_core::device * device, boost::property_tree::ptree &pt) const;
+  virtual void getPropertyTree20202(const xrt_core::device * devicee, boost::property_tree::ptree &pt) const;
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
 };
 

@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportMemory_h_
-#define __ReportMemory_h_
+#ifndef __ReportMechanical_h_
+#define __ReportMechanical_h_
 
 // Please keep external include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
-class ReportMemory : public Report {
+class ReportMechanical : public Report {
  public:
-  ReportMemory() : Report("memory", "Memory information present on the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportMechanical() : Report("mechanical", "Mechanical sensors on and surrounding the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

@@ -18,7 +18,7 @@
 #define __ReportBOStats_h_
 
 // Please keep eternal include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
 class ReportBOStats: public Report {
  public:

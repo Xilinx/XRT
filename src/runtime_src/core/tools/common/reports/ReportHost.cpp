@@ -17,9 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportHost.h"
-#include "XBUtilitiesCore.h"
-#include "XBUtilities.h"
-#include "Table2D.h"
+#include "tools/common/XBUtilitiesCore.h"
+#include "tools/common/XBUtilities.h"
+#include "tools/common/Table2D.h"
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files

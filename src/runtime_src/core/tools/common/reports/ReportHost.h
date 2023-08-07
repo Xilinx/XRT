@@ -14,20 +14,22 @@
  * under the License.
  */
 
-#ifndef __ReportElectrical_h_
-#define __ReportElectrical_h_
+#ifndef __ReportHost_h_
+#define __ReportHost_h_
 
-// Please keep external include file dependencies to a minimum
-#include "Report.h"
+// Please keep eternal include file dependencies to a minimum
+#include "tools/common/Report.h"
 
-class ReportElectrical : public Report {
+class ReportHost: public Report {
+ private:
+  bool m_is_user;
  public:
-  ReportElectrical() : Report("electrical", "Electrical and power sensors present on the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportHost(bool is_user = true) : Report("host", "Host information", false /*device required*/) { /*empty*/ m_is_user = is_user;};
 
  // Child methods that need to be implemented
  public:
   virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device * _pDevicee, boost::property_tree::ptree &_pt) const;
+  virtual void getPropertyTree20202(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
 };
 

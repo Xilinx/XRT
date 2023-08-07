@@ -19,7 +19,7 @@
 
 // Please keep external include file dependencies to a minimum
 #include <map>
-#include "Report.h"
+#include "tools/common/Report.h"
 
 class ReportMailbox : public Report {
  public:

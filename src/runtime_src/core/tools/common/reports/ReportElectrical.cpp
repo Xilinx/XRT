@@ -3,7 +3,7 @@
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "ReportElectrical.h"
-#include "Table2D.h"
+#include "tools/common/Table2D.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
