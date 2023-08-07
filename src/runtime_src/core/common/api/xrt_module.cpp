@@ -15,21 +15,27 @@
 #include "core/common/debug.h"
 #include "core/common/error.h"
 
+#include <boost/format.hpp>
 #include <elfio/elfio.hpp>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
+#include <map>
+#include <set>
 #include <string>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
 # define AIE_COLUMN_PAGE_SIZE 8192
 #endif
 
-static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
-
 namespace {
+
+// Control code is padded to page size, where page size is
+// 0 if no padding is required.   The page size should be
+// embedded as ELF metadata in the future.
+static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 
 // struct ctrlcode - represent control code for column or partition
 //
@@ -77,6 +83,71 @@ struct ctrlcode
   data() const
   {
     return m_data.data();
+  }
+};
+
+// struct patcher - patcher for a symbol
+//
+// Manage patching of a symbol in the control code.  The symbol
+// type is used to determine the patching method.
+//
+// The patcher is created with an offset into a buffer object
+// representing the contigous control code for all columns
+// and pages. The base address of the buffer object is passed
+// in as a parameter to patch().
+struct patcher
+{
+  enum class symbol_type {
+    uc_dma_remote_ptr_symbol_kind = 1,
+    shim_dma_base_addr_symbol_kind = 2,
+    scalar_32bit_kind = 3,
+    unknown_symbol_kind = 4
+  };
+
+  symbol_type m_symbol_type;
+
+  // Offset from base address of control code buffer object
+  // The base address is passed in as a parameter to patch()
+  uint64_t m_ctrlcode_offset;
+
+  patcher(symbol_type type, uint64_t ctrlcode_offset)
+    : m_symbol_type(type)
+    , m_ctrlcode_offset(ctrlcode_offset)
+  {}
+
+  void patch32(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    uint64_t base_address = bd_data_ptr[0];
+    base_address += patch;
+    bd_data_ptr[0] = (uint32_t)(base_address & 0xFFFFFFFF);
+  }
+
+  void patch57(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    uint64_t base_address =
+      ((static_cast<uint64_t>(bd_data_ptr[8]) & 0x1FF) << 48) |
+      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFFF) << 32) |
+      bd_data_ptr[1];
+
+    base_address += patch;
+    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);
+    bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | ((base_address >> 32) & 0xFFFF);
+    bd_data_ptr[8] = (bd_data_ptr[8] & 0xFFFFFE00) | ((base_address >> 48) & 0x1FF);
+  }
+
+  void patch(uint8_t* base, uint64_t patch)
+  {
+    auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + m_ctrlcode_offset);
+    switch (m_symbol_type) {
+    case symbol_type::scalar_32bit_kind:
+      patch32(bd_data_ptr, patch);
+      break;
+    case symbol_type::shim_dma_base_addr_symbol_kind:
+      patch57(bd_data_ptr, patch);
+      break;
+    default:
+      throw std::runtime_error("Unsupported symbol type");
+    };
   }
 };
 
@@ -133,19 +204,76 @@ public:
   {
     throw std::runtime_error("Not supported");
   }
+
+  // Patch ctrlcode buffer object for global argument
+  //
+  // @param symbol - symbol name
+  // @param bo - global argument to patch into ctrlcode
+  virtual void
+  patch(const std::string&, const xrt::bo&)
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  // Patch ctrlcode buffer object for scalar argument
+  //
+  // @param symbol - symbol name
+  // @param value - patch value
+  // @param size - size of patch value
+  virtual void
+  patch(const std::string&, const void*, size_t)
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  // Patch symbol in control code with patch value
+  //
+  // @param base - base address of control code buffer object
+  // @param symbol - symbol name
+  // @param patch - patch value
+  // @Return true if symbol was patched, false otherwise  //
+  virtual bool
+  patch(uint8_t*, const std::string&, uint64_t)
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  // Get the number of patchers for arguments.  The returned
+  // value is the number of arguments that must be patched before
+  // the control code can be executed.
+  virtual size_t
+  number_of_arg_patchers() const
+  {
+    return 0;
+  }
+
+  // Check that all arguments have been patched and sync control code
+  // buffer if necessary.  Throw if not all arguments have been patched.
+  virtual void
+  sync_if_dirty()
+  {
+    throw std::runtime_error("Not supported");
+  }
 };
 
 // class module_elf - Elf provided by application
 //
 // Construct a module from a ELF file provided by the application.
+//
 // The ELF is mined for control code sections which are extracted
 // into a vector of ctrlcode objects.  The ctrlcode objects are
 // binary blobs that are used to populate the ert_dpu_data elements
 // of an ert_packet.
+//
+// The ELF is also mined for relocation sections which are used to to
+// patch the control code with the address of a buffer object or value
+// of a scalar object used as an argument. The relocations are used to
+// construct patcher objects for each argument.
 class module_elf : public module_impl
 {
   xrt::elf m_elf;
   std::vector<ctrlcode> m_ctrlcodes;
+  std::map<std::string, patcher> m_arg2patcher;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -189,7 +317,7 @@ class module_elf : public module_impl
     // Elf ctrl code for a partition spanning multiple columns, where
     // each column has its own control code.  For architectures where
     // a partition is not divided into columns, there will be just one
-    // entry in associative map.
+    // entry in the associative map.
     // col -> [page -> [ctrltext, ctrldata]]
     using column_index = uint32_t;
     std::map<column_index, column_sections> col_secs; 
@@ -229,19 +357,98 @@ class module_elf : public module_impl
 
     return ctrlcodes;
   }
+
+  static std::map<std::string, patcher>
+  initialize_arg_patchers(const ELFIO::elfio& elf, const std::vector<ctrlcode>& ctrlcodes)
+  {
+    auto dynsym = elf.sections[".dynsym"];
+    auto dynstr = elf.sections[".dynstr"];
+
+    std::map<std::string, patcher> arg2patcher;
+
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(".rela.dyn") == std::string::npos)
+        continue;
+
+      // Iterate over all relocations and construct a patcher for each
+      // relocation that refers to a symbol in the .dynsym section.
+      auto begin = reinterpret_cast<const ELFIO::Elf32_Rela*>(sec->get_data());
+      auto end = begin + sec->get_size() / sizeof(const ELFIO::Elf32_Rela);
+      for (auto rela = begin; rela != end; ++rela) {
+        auto symidx = ELFIO::get_sym_and_type<ELFIO::Elf32_Rela>::get_r_sym(rela->r_info);
+
+        auto dynsym_offset = symidx * sizeof(ELFIO::Elf32_Sym);
+        if (dynsym_offset >= dynsym->get_size())
+          throw std::runtime_error("Invalid symbol index " + std::to_string(symidx));
+        auto sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(dynsym->get_data() + dynsym_offset);
+
+        auto dynstr_offset = sym->st_name;
+        if (dynstr_offset >= dynstr->get_size())
+          throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
+        auto symname = dynstr->get_data() + dynstr_offset;
+
+        // Get control code section referenced by the symbol, col, and page
+        auto ctrl_sec = elf.sections[sym->st_shndx];
+        if (!ctrl_sec)
+          throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
+        auto [col, page] = get_column_and_page(ctrl_sec->get_name());
+
+        auto column_ctrlcode_size = ctrlcodes.at(col).size();
+        auto column_ctrlcode_offset = page * column_page_size + rela->r_offset + 16; // magic number 16??
+        if (column_ctrlcode_offset >= column_ctrlcode_size)
+          throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(column_ctrlcode_offset));
+
+        // The control code for all columns will be represented as one
+        // contiguous buffer object.  The patcher will need to know
+        // the offset into the buffer object for the particular column
+        // and page being patched.  Past first [0, col) columns plus
+        // page offset within column and the relocation offset within
+        // the page.
+        uint64_t ctrlcode_offset = 0;
+        for (uint32_t i = 0; i < col; ++i)
+          ctrlcode_offset += ctrlcodes.at(i).size();
+        ctrlcode_offset += column_ctrlcode_offset;
+
+        // Construct the patcher for the argument with the symbol name
+        std::string argnm{symname, symname + std::min(strlen(symname), dynstr->get_size())};
+        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+        arg2patcher.emplace(std::move(argnm), patcher{symbol_type, ctrlcode_offset});
+      }
+    }
+
+    return arg2patcher;
+  }
   
+  bool
+  patch(uint8_t* base, const std::string& argnm, uint64_t patch) override
+  {
+    auto it = m_arg2patcher.find(argnm);
+    if (it == m_arg2patcher.end())
+      return false;
+
+    it->second.patch(base, patch);
+    return true;
+  }
 
 public:
   module_elf(xrt::elf elf)
     : module_impl{elf.get_cfg_uuid()}
     , m_elf(std::move(elf))
     , m_ctrlcodes{initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf))}
+    , m_arg2patcher{initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes)}
   {}
 
   const std::vector<ctrlcode>&
   get_data() const override
   {
     return m_ctrlcodes;
+  }
+
+  size_t
+  number_of_arg_patchers() const override
+  {
+    return m_arg2patcher.size();
   }
 };
 
@@ -299,6 +506,14 @@ class module_sram : public module_impl
   // each column.
   std::vector<std::pair<uint64_t, uint64_t>> m_column_bo_address;
 
+  // Arguments patched in the ctrlcode buffer object
+  // Must match number of argument patchers in parent module
+  std::set<std::string> m_patched_args;
+
+  // Dirty bit to indicate that patching was done prior to last
+  // buffer sync to device.
+  bool m_dirty {false};
+
   // For separated multi-column control code, compute the ctrlcode
   // buffer object address of each column (used in ert_dpu_data).
   void
@@ -345,6 +560,49 @@ class module_sram : public module_impl
     XRT_PRINTF("<- module_sram::create_instruction_buffer()\n");
   }
 
+  void
+  patch_value(const std::string& argnm, uint64_t value)
+  {
+    if (!m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value))
+      return;
+    
+    m_patched_args.insert(argnm);
+    m_dirty = true;
+  }
+
+  void
+  patch(const std::string& argnm, const xrt::bo& bo) override
+  {
+    patch_value(argnm, bo.address());
+  }
+
+  void
+  patch(const std::string& argnm, const void* value, size_t size) override
+  {
+    if (size > 8)
+      throw std::runtime_error{"patch_value() only supports 64-bit values or less"};
+
+    patch_value(argnm, *static_cast<const uint64_t*>(value));
+  }
+
+  // Check that all arguments have been patched and sync the buffer
+  // to device if it is dirty.
+  void
+  sync_if_dirty() override
+  {
+    if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
+      auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
+        % m_parent->number_of_arg_patchers() % m_patched_args.size();
+      throw std::runtime_error{fmt.str()};
+    }
+
+    if (!m_dirty)
+      return;
+    
+    m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    m_dirty = false;
+  }
+  
 public:
   module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx)
     : module_impl{parent->get_cfg_uuid()}
@@ -373,6 +631,24 @@ const std::vector<std::pair<uint64_t, uint64_t>>&
 get_ctrlcode_addr_and_size(const xrt::module& module)
 {
   return module.get_handle()->get_ctrlcode_addr_and_size();
+}
+
+void
+patch(const xrt::module& module, const std::string& argnm, const xrt::bo& bo)
+{
+  module.get_handle()->patch(argnm, bo);
+}
+
+void
+patch(const xrt::module& module, const std::string& argnm, const void* value, size_t size)
+{
+  module.get_handle()->patch(argnm, value, size);
+}
+
+void
+sync(const xrt::module& module)
+{
+  module.get_handle()->sync_if_dirty();
 }
 
 } // xrt_core::module_int

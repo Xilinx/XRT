@@ -2206,12 +2206,18 @@ public:
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
+
+    if (m_module)
+      xrt_core::module_int::patch(m_module, arg.name(), bo);
   }
 
   void
   set_arg_value(const argument& arg, const void* value, size_t bytes)
   {
     set_arg_value(arg, arg_range<uint8_t>{value, bytes});
+
+    if (m_module)
+      xrt_core::module_int::patch(m_module, arg.name(), value, bytes);
   }
 
   void
@@ -2238,10 +2244,6 @@ public:
     auto bo = validate_bo_at_index(index, argbo);
     auto& arg = kernel->get_arg(index);
     set_arg_value(arg, bo);
-
-    if (auto module = kernel->get_module()) {
-      XRT_PRINTF("run_impl::set_arg_at_index(%lu) patch bo\n", index);
-    }
   }
 
   void
@@ -2315,6 +2317,11 @@ public:
   virtual void
   start()
   {
+    if (m_module)
+      // Sync the module to device to ensure any patches are applied,
+      // noop if module patching hasn't changed since last sync.
+      xrt_core::module_int::sync(m_module);
+
     prep_start();
     cmd->run();
   }
