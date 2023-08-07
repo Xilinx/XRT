@@ -490,8 +490,14 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
 				// We come here if user sets force_xclbin_program
 				// option "true" in xrt.ini under [Runtime] section
-				DRM_WARN("%s Force xclbin download", __func__);
-				*slot_id = s_id;
+				// and we check if current xclbin is in-use or not
+                                if (xocl_icap_bitstream_is_locked(xdev, s_id)) {
+                                        DRM_WARN("%s current xclbin in-use" __func__);
+                                        ret = -EEXIST;
+                                } else {
+                                        DRM_WARN("%s Force xclbin download", __func__);
+				        *slot_id = s_id;
+                                } 
 			} else {
 				*slot_id = s_id;
 				ret = -EEXIST;
