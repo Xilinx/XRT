@@ -16,6 +16,7 @@
 #ifndef _ZOCL_SK_H_
 #define _ZOCL_SK_H_
 
+#include <drm/drm_file.h>
 #include "ps_kernel.h"
 
 #define	MAX_SOFT_KERNEL		128
