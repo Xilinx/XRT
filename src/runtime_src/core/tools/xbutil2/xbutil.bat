@@ -28,9 +28,20 @@ set XRTWRAP_PROG_ARGS=
   :argsParsed
 
 
-REM -- Find and call the loader
-set XRT_LOADER=%~dp0unwrapped/loader.bat
+REM -- Find the loader from the current directory. If it exists.
+set XRT_LOADER=%~dp0unwrapped\loader.bat
 
+REM -- Find loader from the PATH. If it exists.
+FOR /F "tokens=* USEBACKQ" %%F IN (`where xbutil`) DO (
+set XBUTIL_PATH=%%~dpF
+)
+
+REM -- If the loader is not found in the current directory use the PATH.
+if not exist %XRT_LOADER%  (
+  set XRT_LOADER=%XBUTIL_PATH%unwrapped\loader.bat
+)
+
+REM -- Loader is not within the current directory or PATH. All hope is lost.
 if not exist %XRT_LOADER%  (
   echo ERROR: Could not find 64-bit loader executable.
   echo ERROR: %XRT_LOADER% does not exist.
