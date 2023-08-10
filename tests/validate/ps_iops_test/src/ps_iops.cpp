@@ -256,6 +256,7 @@ _main(int argc, char* argv[])
 int
 main(int argc, char* argv[])
 {
+    std::cout << "\nNOT SUPPORTED" << std::endl;
     return EOPNOTSUPP;
     try {
         _main(argc, argv);
