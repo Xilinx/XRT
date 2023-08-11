@@ -61,22 +61,6 @@ namespace xdp {
     : AieProfileImpl(database, metadata)
   {
 
-    mCounterBases = {
-      {module_type::core,     static_cast<uint16_t>(0)},
-      {module_type::dma,      BASE_MEMORY_COUNTER},
-      {module_type::shim,     BASE_SHIM_COUNTER},
-      {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
-    };
-
-    mSSEventList = {
-      XAIE_EVENT_PORT_RUNNING_0_CORE,
-      XAIE_EVENT_PORT_STALLED_0_CORE,
-      XAIE_EVENT_PORT_RUNNING_0_PL,
-      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-      XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-      XAIE_EVENT_PORT_TLAST_0_MEM_TILE
-    };
-
     // **** Core Module Counters ****
     mCoreStartEvents = {
       {"heat_map",          {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
@@ -171,24 +155,6 @@ namespace xdp {
   AieProfile_WinImpl::
   setMetricsSettings(uint64_t deviceId, void* handle)
   {
-    std::cout << "Handle: " << handle << std::endl;
-    std::map<module_type, std::vector<uint64_t>> regValues {
-      {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
-      {module_type::dma, {0x11020,0x11024}}, 
-      {module_type::shim, {0x31020, 0x31024}}, 
-      {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
-    };
-
-    std::map<module_type, std::vector<uint64_t>> debugRegisters {
-      {module_type::core, {0x31500, 0x31504, 0x31508, 0x3FF00}}, 
-      {module_type::dma, {0x11000, 0x11008}}, 
-      {module_type::shim, {0x31000, 0x31008, 0x3FF00, 0x3FF04, 0x34504, 0x1D220, 0x1D224, 0x1D228, 0x1D22C}}, 
-      {module_type::mem_tile, {0x91000,0x91004,0x91008,0xB0F00, 0xB0F04, 0xA06A0, 0x000A0660,
-      // Status registers S2MM[0-5], MM2S[0-5]
-      0x000A0664, 0x000A0668, 0x000A066C, 0x000A0670, 0x000A0674, 0x000A0680, 0x000A0684, 0x000A0688,
-      0x000A068C, 0x000A0690, 0x000A0694}}, 
-    };
-
     XAie_Config cfg { 
       XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
       metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
@@ -210,15 +176,18 @@ namespace xdp {
     }
 
     //Start recording the transaction
+
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     int counterId = 0;
     bool runtimeCounters = false;
+
     std::vector<XAie_ModuleType> falModuleTypes = {
       XAIE_CORE_MOD,
       XAIE_MEM_MOD,
       XAIE_PL_MOD,
       XAIE_MEM_MOD
     };
+
     auto configChannel0 = metadata->getConfigChannel0();
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
@@ -230,8 +199,6 @@ namespace xdp {
         auto row  = tile.row;
         auto type = getModuleType(row, mod);
         auto col  = tile.col;
-        if (type == module_type::mem_tile)
-          col = 0;
 
         if (!isValidType(type, mod))
           continue;
@@ -296,16 +263,11 @@ namespace xdp {
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName);
-        // (db->getStaticInfo())
-        //     .addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
-        //                    counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload,
-        //                    metadata->getClockFreqMhz(), metadata->getModuleName(counter.moduleName), counterName);
 
           std::vector<uint64_t> Regs = regValues[type];
           // 25 is column offset and 20 is row offset for IPU
           op.perf_address[counterId] = Regs[i] + (col << 25) + (row << 20);
 
-          std::cout << "Start Event: " << startEvent << std::endl;
           std::vector<uint64_t> values;
           values.push_back(col);
           values.push_back(row);
@@ -326,11 +288,6 @@ namespace xdp {
             << row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         // numTileCounters[numCounters]++;
-        // std::cout << "REGISTERING DEBUG REGISTERS" << std::endl;
-        // for (auto& reg: debugRegisters[type]) {
-        //   op.perf_address[counterId] = reg + (col << 25) + (row << 20);
-        //   counterId++;
-        // }
       }
       runtimeCounters = true;
 
@@ -338,9 +295,11 @@ namespace xdp {
 
     auto context = metadata->getHwContext();
     try {
-      mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
+      mKernel = xrt::kernel(context, "DPU_1x4");  
     } catch (std::exception &e){
-      std::cout << "Caught exception in profile kernel " << e.what() << std::endl;
+      std::stringstream msg;
+      msg << "Could not find DPU kernel from hardware context." ;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
 
@@ -353,7 +312,9 @@ namespace xdp {
     try {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e){
-      std::cout << "Caught exception in xdp instr bo: " << e.what() << std::endl;
+      std::stringstream msg;
+      msg << "Could not create Instruction Buffer for Profiling transaction." << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
 
@@ -483,7 +444,6 @@ namespace xdp {
   }
 
 
-
   uint32_t 
   AieProfile_WinImpl::
   getCounterPayload( const tile_type& tile, 
@@ -491,7 +451,6 @@ namespace xdp {
     XAie_Events startEvent, const std::string metricSet,
     const uint8_t channel)
   {
-    std::cout << "Row, col: " << column << row << std::endl;
     // 1. Stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (stream ID)
@@ -553,8 +512,6 @@ namespace xdp {
   poll(uint32_t index, void* handle)
   {
     double timestamp = xrt_core::time_ns() / 1.0e6;
- 
-    std::cout << "Polling! " << index << handle << std::endl;
     auto context = metadata->getHwContext();
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -566,7 +523,6 @@ namespace xdp {
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
     XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
-    std::cout << "Poll Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
 
@@ -575,7 +531,9 @@ namespace xdp {
     try {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e){
-      std::cout << "Exception in Poll BO: " << e.what() << std::endl;
+      std::stringstream msg;
+      msg << "Could not create Instruction Buffer for Polling" << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
 
@@ -585,7 +543,9 @@ namespace xdp {
     try {
       run.wait2();
     } catch (std::exception &e) {
-      std::cout << "Exception in polling kernel: " << e.what() << std::endl;
+      std::stringstream msg;
+      msg << "Could not execute polling kernel successfully." << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
     }
 
     XAie_ClearTransaction(&aieDevInst);
@@ -598,37 +558,14 @@ namespace xdp {
     auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
 
     for (int i = 0; i < 256; i++) {
-      if (output->perf_address[i] == 0)
-        break;
-      std::cout << std::hex << "0x" << output->perf_address[i] << " : 0x" <<output->perf_value[i] << std::endl;
-    }
-
-    for (int i = 0; i < 256; i++) {
         if (output->perf_address[i] == 0)
           break;
 
         std::vector<uint64_t> values = outputValues[i];
-        // values.push_back(output->perf_value[i]);
-        // values.push_back(1000); //timervalue
-        // values.push_back(0); //payload
         values[5] = static_cast<uint64_t>(output->perf_value[i]);
 
         db->getDynamicInfo().addAIESample(index, timestamp, values);
       }
-
-    
-    std::cout << "Finished Adding AIE Samples: " << std::endl;
-    std::cout << "Device Index: " << metadata->getDeviceID() << std::endl;
-
-    auto result = db->getDynamicInfo().getAIESamples(metadata->getDeviceID());
-
-    for (auto& sample : result) {
-      std::cout << "Timestamp: " << sample.timestamp << std::endl;
-      for (auto& val : sample.values) {
-        std::cout << std::dec << "Value: " << val << std::endl;
-      }
-    }
-   
   }
 
   void
