@@ -28,6 +28,12 @@ public:
       throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
   }
 
+  const ELFIO::elfio&
+  get_elfio() const
+  {
+    return m_elf;
+  }
+
   xrt::uuid
   get_cfg_uuid() const
   {
@@ -59,6 +65,12 @@ std::vector<uint8_t>
 get_section(const xrt::elf& elf, const std::string& sname)
 {
   return elf.get_handle()->get_section(sname);
+}
+
+const ELFIO::elfio&
+get_elfio(const xrt::elf& elf)
+{
+  return elf.get_handle()->get_elfio();
 }
 
 } // xrt_core::elf_int

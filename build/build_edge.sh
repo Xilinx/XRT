@@ -123,6 +123,8 @@ config_versal_project()
     sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-gstreamer.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_dosfstools.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
     # Add necessary rootfs config
     sed -i 's/.*CONFIG_openssh-sftp-server is.*/CONFIG_openssh-sftp-server=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
