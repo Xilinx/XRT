@@ -21,6 +21,7 @@
 
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 
 extern "C" {
@@ -43,7 +44,7 @@ namespace xdp {
     void updateDevice();
     void poll(uint32_t index, void* handle);
     void freeResources();
-    bool setMetricsSettings(uint64_t deviceId, void* handle);
+    bool setMetricsSettings(uint64_t deviceId);
     xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
     bool isValidType(module_type type, XAie_ModuleType mod);
     bool isStreamSwitchPortEvent(const XAie_Events event);
@@ -67,14 +68,14 @@ namespace xdp {
       uint8_t channel
     );
    private:
-      const std::map<xdp::module_type, uint16_t> mCounterBases = {
+       std::map<xdp::module_type, uint16_t> mCounterBases = {
         {module_type::core,     static_cast<uint16_t>(0)},
         {module_type::dma,      BASE_MEMORY_COUNTER},
         {module_type::shim,     BASE_SHIM_COUNTER},
         {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
       };
 
-      const std::vector<XAie_Events> mSSEventList = {
+      std::vector<XAie_Events> mSSEventList = {
         XAIE_EVENT_PORT_RUNNING_0_CORE,
         XAIE_EVENT_PORT_STALLED_0_CORE,
         XAIE_EVENT_PORT_RUNNING_0_PL,
@@ -83,7 +84,7 @@ namespace xdp {
         XAIE_EVENT_PORT_TLAST_0_MEM_TILE
       };
 
-      const std::map<module_type, std::vector<uint64_t>> regValues {
+      std::map<module_type, std::vector<uint64_t>> regValues {
         {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
         {module_type::dma, {0x11020,0x11024}}, 
         {module_type::shim, {0x31020, 0x31024}}, 

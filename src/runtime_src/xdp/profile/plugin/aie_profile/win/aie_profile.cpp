@@ -148,12 +148,12 @@ namespace xdp {
   AieProfile_WinImpl::
   updateDevice()
   {
-    setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
+    setMetricsSettings(metadata->getDeviceID());
   }
 
   bool
   AieProfile_WinImpl::
-  setMetricsSettings(uint64_t deviceId, void* handle)
+  setMetricsSettings(uint64_t deviceId)
   {
     XAie_Config cfg { 
       XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
@@ -255,8 +255,9 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod,   endEvent, &tmpEnd);
           uint16_t phyStartEvent = tmpStart + mCounterBases[type];
           uint16_t phyEndEvent   = tmpEnd   + mCounterBases[type];
-          auto payload = getCounterPayload(tileMetric.first, type, col, row, 
-                                           startEvent, metricSet, channel0);
+          // auto payload = getCounterPayload(tileMetric.first, type, col, row, 
+          //                                  startEvent, metricSet, channel0);
+          auto payload = channel0;
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
@@ -276,7 +277,7 @@ namespace xdp {
           values.push_back(resetEvent);
           values.push_back(0);
           values.push_back(1000);
-          values.push_back(channel0);
+          values.push_back(payload);
           
           outputValues.push_back(values);
           counterId++;
@@ -295,10 +296,10 @@ namespace xdp {
 
     auto context = metadata->getHwContext();
     try {
-      mKernel = xrt::kernel(context, "DPU_1x4");  
+      mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Could not find DPU kernel from hardware context." ;
+      msg << "Could not find DPU kernel from hardware context." <<e.what() ;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
@@ -444,73 +445,74 @@ namespace xdp {
   }
 
 
-  uint32_t 
-  AieProfile_WinImpl::
-  getCounterPayload( const tile_type& tile, 
-    const module_type type, uint16_t column, uint16_t row, 
-    XAie_Events startEvent, const std::string metricSet,
-    const uint8_t channel)
-  {
-    // 1. Stream IDs for interface tiles
-    if (type == module_type::shim) {
-      // NOTE: value = ((master or slave) << 8) & (stream ID)
-      return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
-    }
+  // uint32_t 
+  // AieProfile_WinImpl::
+  // getCounterPayload( const tile_type& tile, 
+  //   const module_type type, uint16_t column, uint16_t row, 
+  //   XAie_Events startEvent, const std::string metricSet,
+  //   const uint8_t channel)
+  // {
+  //   // 1. Stream IDs for interface tiles
+  //   if (type == module_type::shim) {
+  //     // NOTE: value = ((master or slave) << 8) & (stream ID)
+  //     return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
+  //   }
 
-    // 2. Channel IDs for MEM tiles
-    if (type == module_type::mem_tile) {
-      // NOTE: value = ((master or slave) << 8) & (channel ID)
-      uint8_t isMaster = (metricSet.find("s2mm") != std::string::npos) ? 1 : 0;
-      return ((isMaster << 8) | channel);
-    }
+  //   // 2. Channel IDs for MEM tiles
+  //   if (type == module_type::mem_tile) {
+  //     // NOTE: value = ((master or slave) << 8) & (channel ID)
+  //     uint8_t isMaster = (metricSet.find("s2mm") != std::string::npos) ? 1 : 0;
+  //     return ((isMaster << 8) | channel);
+  //   }
 
-    // 3. DMA BD sizes for AIE tiles
-    if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
-        && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
-        && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
-        && (startEvent != XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM))
-      return 0;
+  //   // 3. DMA BD sizes for AIE tiles
+  //   if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
+  //       && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
+  //       && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
+  //       && (startEvent != XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM))
+  //     return 0;
 
-    uint32_t payloadValue = 0;
+  //   uint32_t payloadValue = 0;
 
-    // constexpr int NUM_BDS = 8;
-    // constexpr uint32_t BYTES_PER_WORD_PROFILE = 4;
-    // constexpr uint32_t ACTUAL_OFFSET = 1;
-    // uint64_t offsets[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL,            XAIEGBL_MEM_DMABD1CTRL,
-    //                              XAIEGBL_MEM_DMABD2CTRL,            XAIEGBL_MEM_DMABD3CTRL,
-    //                              XAIEGBL_MEM_DMABD4CTRL,            XAIEGBL_MEM_DMABD5CTRL,
-    //                              XAIEGBL_MEM_DMABD6CTRL,            XAIEGBL_MEM_DMABD7CTRL};
-    // uint32_t lsbs[NUM_BDS]    = {XAIEGBL_MEM_DMABD0CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD1CTRL_LEN_LSB,
-    //                              XAIEGBL_MEM_DMABD2CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD3CTRL_LEN_LSB,
-    //                              XAIEGBL_MEM_DMABD4CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD5CTRL_LEN_LSB,
-    //                              XAIEGBL_MEM_DMABD6CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD7CTRL_LEN_LSB};
-    // uint32_t masks[NUM_BDS]   = {XAIEGBL_MEM_DMABD0CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD1CTRL_LEN_MASK,
-    //                              XAIEGBL_MEM_DMABD2CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD3CTRL_LEN_MASK,
-    //                              XAIEGBL_MEM_DMABD4CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD5CTRL_LEN_MASK,
-    //                              XAIEGBL_MEM_DMABD6CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD7CTRL_LEN_MASK};
-    // uint32_t valids[NUM_BDS]  = {XAIEGBL_MEM_DMABD0CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD1CTRL_VALBD_MASK,
-    //                              XAIEGBL_MEM_DMABD2CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD3CTRL_VALBD_MASK,
-    //                              XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
-    //                              XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
+  //   // constexpr int NUM_BDS = 8;
+  //   // constexpr uint32_t BYTES_PER_WORD_PROFILE = 4;
+  //   // constexpr uint32_t ACTUAL_OFFSET = 1;
+  //   // uint64_t offsets[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL,            XAIEGBL_MEM_DMABD1CTRL,
+  //   //                              XAIEGBL_MEM_DMABD2CTRL,            XAIEGBL_MEM_DMABD3CTRL,
+  //   //                              XAIEGBL_MEM_DMABD4CTRL,            XAIEGBL_MEM_DMABD5CTRL,
+  //   //                              XAIEGBL_MEM_DMABD6CTRL,            XAIEGBL_MEM_DMABD7CTRL};
+  //   // uint32_t lsbs[NUM_BDS]    = {XAIEGBL_MEM_DMABD0CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD1CTRL_LEN_LSB,
+  //   //                              XAIEGBL_MEM_DMABD2CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD3CTRL_LEN_LSB,
+  //   //                              XAIEGBL_MEM_DMABD4CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD5CTRL_LEN_LSB,
+  //   //                              XAIEGBL_MEM_DMABD6CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD7CTRL_LEN_LSB};
+  //   // uint32_t masks[NUM_BDS]   = {XAIEGBL_MEM_DMABD0CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD1CTRL_LEN_MASK,
+  //   //                              XAIEGBL_MEM_DMABD2CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD3CTRL_LEN_MASK,
+  //   //                              XAIEGBL_MEM_DMABD4CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD5CTRL_LEN_MASK,
+  //   //                              XAIEGBL_MEM_DMABD6CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD7CTRL_LEN_MASK};
+  //   // uint32_t valids[NUM_BDS]  = {XAIEGBL_MEM_DMABD0CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD1CTRL_VALBD_MASK,
+  //   //                              XAIEGBL_MEM_DMABD2CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD3CTRL_VALBD_MASK,
+  //   //                              XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
+  //   //                              XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
 
-    // auto tileOffset = _XAie_GetTileAddr(&aieDevInst, static_cast<uint8_t>(row), static_cast<uint8_t>(column));
-    // for (int bd = 0; bd < NUM_BDS; ++bd) {
-    //   uint32_t regValue = 0;
-    //   XAie_Read32(&aieDevInst, tileOffset + offsets[bd], &regValue);
+  //   // auto tileOffset = _XAie_GetTileAddr(&aieDevInst, static_cast<uint8_t>(row), static_cast<uint8_t>(column));
+  //   // for (int bd = 0; bd < NUM_BDS; ++bd) {
+  //   //   uint32_t regValue = 0;
+  //   //   XAie_Read32(&aieDevInst, tileOffset + offsets[bd], &regValue);
       
-    //   if (regValue & valids[bd]) {
-    //     uint32_t bdBytes = BYTES_PER_WORD_PROFILE * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);
-    //     payloadValue = std::max(bdBytes, payloadValue);
-    //   }
-    // }
+  //   //   if (regValue & valids[bd]) {
+  //   //     uint32_t bdBytes = BYTES_PER_WORD_PROFILE * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);
+  //   //     payloadValue = std::max(bdBytes, payloadValue);
+  //   //   }
+  //   // }
 
-    return payloadValue;
-  }
+  //   return payloadValue;
+  // }
 
   void
   AieProfile_WinImpl::
   poll(uint32_t index, void* handle)
   {
+    std::cout << "handle; " << handle << std::endl;
     double timestamp = xrt_core::time_ns() / 1.0e6;
     auto context = metadata->getHwContext();
 
@@ -522,7 +524,6 @@ namespace xdp {
 
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
 
