@@ -82,7 +82,8 @@ namespace xdp {
       aie_profile_op_t op = {0};
       std::vector<XAie_Events> mSSEventList;
       XAie_DevInst aieDevInst = {0};
-     
+      std::vector<std::vector<uint64_t>> outputValues;
+
   };
 
 }  // namespace xdp

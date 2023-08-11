@@ -296,9 +296,27 @@ namespace xdp {
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName);
+        // (db->getStaticInfo())
+        //     .addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
+        //                    counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload,
+        //                    metadata->getClockFreqMhz(), metadata->getModuleName(counter.moduleName), counterName);
+
           std::vector<uint64_t> Regs = regValues[type];
           // 25 is column offset and 20 is row offset for IPU
           op.perf_address[counterId] = Regs[i] + (col << 25) + (row << 20);
+
+          std::cout << "Start Event: " << startEvent << std::endl;
+          std::vector<uint64_t> values;
+          values.push_back(col);
+          values.push_back(row);
+          values.push_back(phyStartEvent);
+          values.push_back(phyEndEvent);
+          values.push_back(resetEvent);
+          values.push_back(0);
+          values.push_back(1000);
+          values.push_back(channel0);
+          
+          outputValues.push_back(values);
           counterId++;
           numCounters++;
         }
@@ -308,7 +326,7 @@ namespace xdp {
             << row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         // numTileCounters[numCounters]++;
-
+        // std::cout << "REGISTERING DEBUG REGISTERS" << std::endl;
         // for (auto& reg: debugRegisters[type]) {
         //   op.perf_address[counterId] = reg + (col << 25) + (row << 20);
         //   counterId++;
@@ -534,6 +552,8 @@ namespace xdp {
   AieProfile_WinImpl::
   poll(uint32_t index, void* handle)
   {
+    double timestamp = xrt_core::time_ns() / 1.0e6;
+ 
     std::cout << "Polling! " << index << handle << std::endl;
     auto context = metadata->getHwContext();
 
@@ -582,6 +602,33 @@ namespace xdp {
         break;
       std::cout << std::hex << "0x" << output->perf_address[i] << " : 0x" <<output->perf_value[i] << std::endl;
     }
+
+    for (int i = 0; i < 256; i++) {
+        if (output->perf_address[i] == 0)
+          break;
+
+        std::vector<uint64_t> values = outputValues[i];
+        // values.push_back(output->perf_value[i]);
+        // values.push_back(1000); //timervalue
+        // values.push_back(0); //payload
+        values[5] = static_cast<uint64_t>(output->perf_value[i]);
+
+        db->getDynamicInfo().addAIESample(index, timestamp, values);
+      }
+
+    
+    std::cout << "Finished Adding AIE Samples: " << std::endl;
+    std::cout << "Device Index: " << metadata->getDeviceID() << std::endl;
+
+    auto result = db->getDynamicInfo().getAIESamples(metadata->getDeviceID());
+
+    for (auto& sample : result) {
+      std::cout << "Timestamp: " << sample.timestamp << std::endl;
+      for (auto& val : sample.values) {
+        std::cout << std::dec << "Value: " << val << std::endl;
+      }
+    }
+   
   }
 
   void

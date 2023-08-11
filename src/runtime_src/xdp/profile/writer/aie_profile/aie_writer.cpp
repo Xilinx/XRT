@@ -45,6 +45,7 @@ namespace xdp {
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
 
+    std::cout << "Writing header! " << std::endl;
     // Write header
     fout << "Target device: " << mDeviceName << "\n";
     fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
@@ -62,6 +63,17 @@ namespace xdp {
     // Write all data elements
     std::vector<counters::Sample> samples =
       db->getDynamicInfo().getAIESamples(mDeviceIndex);
+
+    std::cout << "_________Getting Samples! __________" << std::endl;
+    std::cout << "Device Index: " << (int) mDeviceIndex << std::endl;
+
+    std::cout << "Getting Samples! " << std::endl;
+     for (auto& sample : samples) {
+      std::cout << "Timestamp: " << sample.timestamp << std::endl;
+      for (auto& val : sample.values) {
+        std::cout << std::dec << "Value: " << val << std::endl;
+      }
+    }
 
     for (auto& sample : samples) {
       fout << sample.timestamp << ",";
