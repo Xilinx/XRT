@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2016-2020, 2023 Xilinx, Inc
+// Copyright (C) 2016-2020 Xilinx, Inc
 // Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _XCL_PCIDEV_H_
 #define _XCL_PCIDEV_H_
