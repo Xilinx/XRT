@@ -226,7 +226,12 @@ namespace aie {
   {
     std::vector<tile_type> tiles;
 
-    auto ios = getGMIOs(aie_meta);
+    #ifdef XDP_MINIMAL_BUILD
+      auto ios = getGMIOs(aie_meta);
+    #else
+      auto ios = getAllIOs(ait_meta);
+    #endif
+
     for (auto& io : ios) {
       auto isMaster    = io.second.slaveOrMaster;
       auto streamId    = io.second.streamId;

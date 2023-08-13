@@ -102,7 +102,6 @@ namespace xdp {
 
   void AieProfilePlugin::updateAIEDevice(void* handle)
   {
-    std::cout << "In update AIE Device" << std::endl;
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;
@@ -118,6 +117,7 @@ namespace xdp {
 
     // Update the static database with information from xclbin
     (db->getStaticInfo()).updateDevice(deviceID, handle);
+
     {
 #ifdef XDP_MINIMAL_BUILD
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
@@ -137,7 +137,6 @@ namespace xdp {
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     AIEData.metadata->setHwContext(std::move(profile_ctx));
-
 
 #ifdef XDP_MINIMAL_BUILD
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
@@ -201,7 +200,6 @@ namespace xdp {
       return;
 
     auto& should_continue = it->second.threadCtrlBool;
-    std::cout << index << should_continue << std::endl;
     // while (should_continue) {
     //   handleToAIEData[handle].implementation->poll(index, handle);
     //   std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
@@ -215,20 +213,18 @@ namespace xdp {
     if (handleToAIEData.empty())
       return;
 
-    auto& AIEData = handleToAIEData.begin()->second;
+    auto& AIEData = handleToAIEData[handle];
 
     // Ask thread to stop
     //AIEData.threadCtrlBool = false;
     //AIEData.thread.join();
-    std::cout << "About to Poll!" << std::endl;
     AIEData.implementation->poll(0, handle);
     //AIEData.implementation->freeResources();
   }
 
   void AieProfilePlugin::endPoll()
   {
-    auto& AIEData = handleToAIEData.begin()->second;
-    std::cout << "About to Poll! in destructor" << std::endl;
+    auto& AIEData = handleToAIEData[handle];
     AIEData.implementation->poll(0, nullptr);
     // Ask all threads to end
     for (auto& p : handleToAIEData) p.second.threadCtrlBool = false;
