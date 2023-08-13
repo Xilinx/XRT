@@ -229,7 +229,7 @@ namespace aie {
     #ifdef XDP_MINIMAL_BUILD
       auto ios = getGMIOs(aie_meta);
     #else
-      auto ios = getAllIOs(ait_meta);
+      auto ios = getAllIOs(aie_meta);
     #endif
 
     for (auto& io : ios) {

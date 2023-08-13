@@ -195,11 +195,12 @@ namespace xdp {
 
   void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
   {
+    std::cout << "Index: " << index << std::endl;
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())
       return;
 
-    auto& should_continue = it->second.threadCtrlBool;
+    // auto& should_continue = it->second.threadCtrlBool;
     // while (should_continue) {
     //   handleToAIEData[handle].implementation->poll(index, handle);
     //   std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
@@ -224,7 +225,7 @@ namespace xdp {
 
   void AieProfilePlugin::endPoll()
   {
-    auto& AIEData = handleToAIEData[handle];
+    auto& AIEData = handleToAIEData.begin()->second;
     AIEData.implementation->poll(0, nullptr);
     // Ask all threads to end
     for (auto& p : handleToAIEData) p.second.threadCtrlBool = false;
