@@ -175,6 +175,9 @@ namespace xdp {
       return false;
     }
 
+    //Create vector of op inputs
+    std::vector<profile_data_t> op_profile_data;
+
     //Start recording the transaction
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -267,7 +270,8 @@ namespace xdp {
 
           std::vector<uint64_t> Regs = regValues[type];
           // 25 is column offset and 20 is row offset for IPU
-          op.perf_address[counterId] = Regs[i] + (col << 25) + (row << 20);
+          op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20), 0});
+          // op.perf_address[counterId] = Regs[i] + (col << 25) + (row << 20);
 
           std::vector<uint64_t> values;
           values.push_back(col);
@@ -294,6 +298,14 @@ namespace xdp {
 
     } // modules
 
+    std::cout << "Total Number of Counters Configured: " << counterId << std::endl;
+    op_size = sizeof(aie_profile_op_t) + sizeof(aie_profile_op_t) * (counterId - 1);
+    op = (aie_profile_op_t*)malloc(op_size);
+    op->count = counterId;
+    for (int i = 0; i < op_profile_data.size(); i++) {
+      op->profile_data[i] = op_profile_data[i];
+    }
+    
     auto context = metadata->getHwContext();
     try {
       mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
@@ -522,7 +534,7 @@ namespace xdp {
     XAie_RequestCustomTxnOp(&aieDevInst);
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
-    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)&op, sizeof(op));
+    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
@@ -558,15 +570,24 @@ namespace xdp {
     instrbo_map += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
     auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
 
-    for (int i = 0; i < 256; i++) {
-        if (output->perf_address[i] == 0)
-          break;
+    for (uint32_t i = 0; i < output->count; i++) {
+      std::cout << "Address, value: " << std::hex << output->profile_data[i].perf_address << " : " << output->profile_data[i].perf_value << std::endl; 
+      std::vector<uint64_t> values = outputValues[i];
+      values[5] = static_cast<uint64_t>(output->profile_data[i].perf_value); //write pc value
+      db->getDynamicInfo().addAIESample(index, timestamp, values);
 
-        std::vector<uint64_t> values = outputValues[i];
-        values[5] = static_cast<uint64_t>(output->perf_value[i]);
+    }
 
-        db->getDynamicInfo().addAIESample(index, timestamp, values);
-      }
+    // for (int i = 0; i < 256; i++) {
+    //     // if (output->perf_address[i] == 0)
+    //     //   break;
+
+    //     std::vector<uint64_t> values = outputValues[i];
+    //     values[5] = static_cast<uint64_t>(output->perf_value[i]); //write pc value
+
+    //     db->getDynamicInfo().addAIESample(index, timestamp, values);
+    //   }
+    free(op);
   }
 
   void

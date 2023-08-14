@@ -30,11 +30,19 @@ extern "C" {
 }
 
 namespace xdp {
+  // typedef struct {
+  //   uint64_t perf_address[256];
+  //   uint32_t perf_value[256];
+  // } aie_profile_op_t;
   typedef struct {
-    uint64_t perf_address[256];
-    uint32_t perf_value[256];
-  } aie_profile_op_t;
+    uint64_t perf_address;
+    uint32_t perf_value;
+  } profile_data_t;
 
+  typedef struct {
+    uint32_t count;
+    profile_data_t profile_data[1];
+  } aie_profile_op_t;
 
   class AieProfile_WinImpl : public AieProfileImpl {
    public:
@@ -102,7 +110,8 @@ namespace xdp {
 
       xrt::kernel mKernel;
       xrt::bo input_bo;
-      aie_profile_op_t op = {0};   
+      aie_profile_op_t* op;
+      std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
       std::vector<std::vector<uint64_t>> outputValues;
 
