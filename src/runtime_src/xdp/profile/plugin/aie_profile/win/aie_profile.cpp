@@ -578,15 +578,6 @@ namespace xdp {
 
     }
 
-    // for (int i = 0; i < 256; i++) {
-    //     // if (output->perf_address[i] == 0)
-    //     //   break;
-
-    //     std::vector<uint64_t> values = outputValues[i];
-    //     values[5] = static_cast<uint64_t>(output->perf_value[i]); //write pc value
-
-    //     db->getDynamicInfo().addAIESample(index, timestamp, values);
-    //   }
     free(op);
   }
 
