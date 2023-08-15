@@ -116,9 +116,6 @@ namespace xdp {
 
     {
 #ifdef XDP_MINIMAL_BUILD
-      xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
-      auto impl_shared_ptr = impl_ptr->get_shared_ptr();
-      xrt::hw_context profile_ctx(impl_shared_ptr);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
       struct xclDeviceInfo2 info;
@@ -137,6 +134,9 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
 #ifdef XDP_MINIMAL_BUILD
+    xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
+    auto impl_shared_ptr = impl_ptr->get_shared_ptr();
+    xrt::hw_context profile_ctx(impl_shared_ptr);
     AIEData.metadata->setHwContext(std::move(profile_ctx));
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
@@ -207,7 +207,7 @@ namespace xdp {
       std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
     }
     //Final Polling Operation
-    handleToAIEData[handle].implementation->poll(index, handle);
+    // handleToAIEData[handle].implementation->poll(index, handle);
   }
 
   void AieProfilePlugin::endPollforDevice(void* handle)
