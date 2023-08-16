@@ -298,7 +298,6 @@ namespace xdp {
 
     } // modules
 
-    std::cout << "Total Number of Counters Configured: " << counterId << std::endl;
     op_size = sizeof(aie_profile_op_t) + sizeof(aie_profile_op_t) * (counterId - 1);
     op = (aie_profile_op_t*)malloc(op_size);
     op->count = counterId;
@@ -571,7 +570,6 @@ namespace xdp {
     auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
 
     for (uint32_t i = 0; i < output->count; i++) {
-      std::cout << "Address, value: " << std::hex << output->profile_data[i].perf_address << " : " << output->profile_data[i].perf_value << std::endl; 
       std::vector<uint64_t> values = outputValues[i];
       values[5] = static_cast<uint64_t>(output->profile_data[i].perf_value); //write pc value
       db->getDynamicInfo().addAIESample(index, timestamp, values);
