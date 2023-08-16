@@ -196,7 +196,6 @@ namespace xdp {
 
   void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
   {
-    std::cout << "Index: " << index << std::endl;
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())
       return;
