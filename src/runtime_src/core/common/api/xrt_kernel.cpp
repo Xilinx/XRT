@@ -2110,7 +2110,7 @@ public:
     , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
     , data(initialize_command(cmd.get()))
-    , m_header(cmd->get_ert_packet()->header)
+    , m_header(0)
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
@@ -2307,6 +2307,12 @@ public:
     encode_compute_units();
 
     auto pkt = cmd->get_ert_packet();
+
+    // Very first start() of this run object caches the command header
+    if (!m_header)
+      m_header = pkt->header;
+
+    // The cached command header is used for all subsequent starts
     pkt->header = m_header;
     pkt->state = ERT_CMD_STATE_NEW;
 
