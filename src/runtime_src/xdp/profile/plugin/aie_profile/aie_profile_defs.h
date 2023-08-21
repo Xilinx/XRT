@@ -32,4 +32,9 @@ constexpr uint32_t GROUP_STREAM_SWITCH_TLAST_MASK   = 0x88888888;
 constexpr uint32_t GROUP_CORE_PROGRAM_FLOW_MASK     = 0x00001FE0;
 constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
 
+constexpr uint32_t GROUP_SHIM_S2MM0_STALL_MASK      = 0x00041000; 
+constexpr uint32_t GROUP_SHIM_S2MM1_STALL_MASK      = 0x00082000;
+constexpr uint32_t GROUP_SHIM_MM2S0_STALL_MASK      = 0x00500000;
+constexpr uint32_t GROUP_SHIM_MM2S1_STALL_MASK      = 0x00A00000;
+
 #endif

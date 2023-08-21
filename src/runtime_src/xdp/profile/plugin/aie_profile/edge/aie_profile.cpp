@@ -97,12 +97,16 @@ namespace xdp {
                                    XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
     if (metadata->getHardwareGen() == 1) {
-      mCoreStartEvents["floating_point"] = {XAIE_EVENT_FP_OVERFLOW_CORE, XAIE_EVENT_FP_UNDERFLOW_CORE,
-                                            XAIE_EVENT_FP_INVALID_CORE,  XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
+      mCoreStartEvents["floating_point"]   = {XAIE_EVENT_FP_OVERFLOW_CORE,    XAIE_EVENT_FP_UNDERFLOW_CORE,
+                                              XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
     }
     else {
-      mCoreStartEvents["floating_point"] = {XAIE_EVENT_FP_HUGE_CORE,     XAIE_EVENT_INT_FP_0_CORE, 
-                                            XAIE_EVENT_FP_INVALID_CORE,  XAIE_EVENT_FP_INF_CORE};
+      mCoreStartEvents["floating_point"]   = {XAIE_EVENT_FP_HUGE_CORE,        XAIE_EVENT_INT_FP_0_CORE, 
+                                              XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
+      mCoreStartEvents["s2mm_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE,
+                                              XAIE_EVENT_PORT_RUNNING_1_CORE, XAIE_EVENT_PORT_STALLED_1_CORE};
+      mCoreStartEvents["mm2s_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE,
+                                              XAIE_EVENT_PORT_RUNNING_1_CORE, XAIE_EVENT_PORT_STALLED_1_CORE};
     }
     mCoreEndEvents = mCoreStartEvents;
 
@@ -122,39 +126,47 @@ namespace xdp {
                                                XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM};
     }
     else {
-      mMemoryStartEvents["dma_stalls_s2mm"] = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-                                               XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM};
-      mMemoryStartEvents["dma_stalls_mm2s"] = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM,
-                                               XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
+      mMemoryStartEvents["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
+                                                XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM};
+      mMemoryStartEvents["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM,
+                                                XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
+      mMemoryStartEvents["s2mm_throughputs"] = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
+                                                XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM,
+                                                XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM,
+                                                XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM};
+      mMemoryStartEvents["mm2s_throughputs"] = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
+                                                XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM,
+                                                XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM,
+                                                XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM};
     }
     mMemoryEndEvents = mMemoryStartEvents;
 
     // **** Interface Tile Counters ****
     mShimStartEvents = {
-      {"input_throughputs",       {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
-      {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"input_throughputs",       {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_GROUP_DMA_ACTIVITY_PL}},
+      {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_GROUP_DMA_ACTIVITY_PL}},
       {"packets",                 {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
     };
     mShimEndEvents = mShimStartEvents;
 
     // **** Memory Tile Counters ****
     mMemTileStartEvents = {
-      {"input_channels",          {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+      {"s2mm_channels",           {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
                                    XAIE_EVENT_PORT_TLAST_0_MEM_TILE,   
                                    XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE}},
-      {"input_channels_details",  {XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE, 
-                                   XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
-                                   XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE}},
-      {"output_channels",         {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+      {"s2mm_channels_details",   {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                   XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,  
+                                   XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
+                                   XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE}},
+      {"mm2s_channels",           {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
                                    XAIE_EVENT_PORT_TLAST_0_MEM_TILE,   
                                    XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE}},
-      {"output_channels_details", {XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE, 
+      {"mm2s_channels_details",   {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
                                    XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
                                    XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE}},
+                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
       {"memory_stats",            {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE,
                                    XAIE_EVENT_GROUP_ERRORS_MEM_TILE,
                                    XAIE_EVENT_GROUP_LOCK_MEM_TILE,
@@ -217,7 +229,8 @@ namespace xdp {
                                              const XAie_LocType loc,
                                              const XAie_ModuleType mod,
                                              const XAie_Events event,
-                                             const std::string metricSet)
+                                             const std::string metricSet,
+                                             const uint8_t channel)
   {
     // Set masks for group events
     // NOTE: Group error enable register is blocked, so ignoring
@@ -231,6 +244,21 @@ namespace xdp {
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
+      // Pass channel and set correct mask 
+      if ((metricSet.find("input") != std::string::npos) || (metricSet.find("s2mm") != std::string::npos)) {
+        if (channel == 0)
+          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_S2MM0_STALL_MASK);
+        else 
+          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_S2MM1_STALL_MASK);
+      }
+      else { 
+        if (channel == 2)
+          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_MM2S0_STALL_MASK);
+        else 
+          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_MM2S1_STALL_MASK);
+      }
+    }
   }
 
   bool AieProfile_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
@@ -541,7 +569,7 @@ namespace xdp {
           // Channel number is based on monitoring port 0 or 1
           auto channel = (startEvent <= XAIE_EVENT_PORT_TLAST_0_MEM_TILE) ? channel0 : channel1;
 
-          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
+          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet, channel);
           auto event = configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
                                                startEvent, metricSet, channel);
           if (event != startEvent) {

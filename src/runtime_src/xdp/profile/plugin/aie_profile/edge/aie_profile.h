@@ -57,7 +57,8 @@ namespace xdp {
                              const XAie_LocType loc,
                              const XAie_ModuleType mod,
                              const XAie_Events event,
-                             const std::string metricSet);
+                             const std::string metricSet,
+                             const uint8_t channel = 0);
       XAie_Events configStreamSwitchPorts(XAie_DevInst* aieDevInst,
                                           const tile_type& tile,
                                           xaiefal::XAieTile& xaieTile,
