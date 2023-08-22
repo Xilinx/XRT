@@ -100,16 +100,13 @@ namespace xdp {
   }
 
   // Get tiles to status
-  void AIEStatusPlugin::getTilesForStatus(void* handle)
+  void AIEStatusPlugin::getTilesForStatus()
   {
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+    auto graphs = aie::getValidGraphs(aieMeta);
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-          xrt_core::edge::aie::module_type::core);
+      mGraphCoreTilesMap[graph] = aie::getEventTiles(aieMeta, graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -189,7 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = getAIETileRowOffset(handle);
+    auto offset = aie::getAIETileRowOffset(aieMeta);
+    auto hwGen = aie::getHardwareGeneration(aieMeta);
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -220,6 +218,11 @@ namespace xdp {
     // Reset values
     constexpr uint32_t CORE_RESET_STATUS  = 0x2;
     constexpr uint32_t CORE_ENABLE_MASK  = 0x1;
+    // Group error masks
+    constexpr uint64_t AIE_OFFSET_GROUP_ERRORS0_ENABLE = 0x34510;
+    constexpr uint64_t AIE_OFFSET_GROUP_ERRORS1_ENABLE = 0x34514;
+    constexpr uint32_t CORE_GROUP_ERROR_INSTR_EVENT_2_MASK = (1 << 20);
+
     // Tiles already reported with error(s)
     std::set<tile_type> errorTileSet;
     // Graph -> total stuck core cycles
@@ -233,6 +236,15 @@ namespace xdp {
       for (const auto& tile : kv.second) {
         coreStuckCountMap[tile] = 0;
         coreStatusMap[tile] = CORE_RESET_STATUS;
+
+        
+        //if (hwGen == 1) {
+        //  auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + offset, tile.col);
+        //  XAie_MaskWrite32(aieDevInst, tileOffset + AIE_OFFSET_GROUP_ERRORS0_ENABLE, 
+        //                   CORE_GROUP_ERROR_INSTR_EVENT_2_MASK, 0);
+        //  XAie_MaskWrite32(aieDevInst, tileOffset + AIE_OFFSET_GROUP_ERRORS1_ENABLE, 
+        //                   CORE_GROUP_ERROR_INSTR_EVENT_2_MASK, 0);
+        //}
       }
     }
 
@@ -298,18 +310,26 @@ namespace xdp {
           // Check for errors in tile
           // NOTE: warning is only issued once per tile
           if (errorTileSet.find(tile) == errorTileSet.end()) {
+            auto loc = XAie_TileLoc(tile.col, tile.row + offset);
+
+            // Memory module
+            uint8_t memErrors = 0;
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
+                XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
+            
+            // Core module
+            // NOTE: Per CR-1167717, ignore group errors on AIE1 devices 
+            //       since instruction event 2 is used as DONE bit.
             uint8_t coreErrors0 = 0;
             uint8_t coreErrors1 = 0;
-            uint8_t memErrors = 0;
-            auto loc = XAie_TileLoc(tile.col, tile.row + offset);
-            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
-              XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
-            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
-              XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
-            XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
-              XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
-            
-            if (coreErrors0 || coreErrors1 || memErrors) {
+            if (hwGen > 1) {
+              XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+                  XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
+              XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+                  XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
+            }
+
+            if (memErrors || coreErrors0 || coreErrors1) {
               std::stringstream errorMessage;
               errorMessage << "Error(s) found in tile (" << tile.col << "," << tile.row 
                           << "). Please view status in Vitis Analyzer for specifics.";
@@ -402,8 +422,13 @@ namespace xdp {
       }
     }
 
+    // Grab AIE metadata
+    auto device = xrt_core::get_userpf_device(handle);
+    auto data = device->get_axlf_section(AIE_METADATA);
+    aie::readAIEMetadata(data.first, data.second, aieMeta);
+
     // Update list of tiles to debug
-    getTilesForStatus(handle);
+    getTilesForStatus();
 
     // Open the writer for this device
     struct xclDeviceInfo2 info;
@@ -475,32 +500,6 @@ namespace xdp {
     mThreadCtrlMap.clear();
     mDeadlockThreadMap.clear();
     mStatusThreadMap.clear();
-  }
-
-  uint16_t AIEStatusPlugin::getAIETileRowOffset(void* handle)
-  {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-      if (!data.first || !data.second) {
-        rowOffset = 1;
-      } else {
-        boost::property_tree::ptree aie_meta;
-        read_aie_metadata(data.first, data.second, aie_meta);
-        rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
-      }
-      gotValue = true;
-    }
-    return rowOffset;
-  }
-
-  void AIEStatusPlugin::read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data,size);
-    boost::property_tree::read_json(aie_stream,aie_project);
   }
 
 } // end namespace xdp
