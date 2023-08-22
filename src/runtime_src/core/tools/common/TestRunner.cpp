@@ -32,6 +32,10 @@ namespace XBU = XBUtilities;
 // System - Include Files
 #include <iostream>
 #include <regex>
+#ifdef _WIN32
+#include <cfgmgr32.h> // CM_Get_Device_ID_List_Size
+#endif
+
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
@@ -68,6 +72,85 @@ program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::strin
     XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
   }
 }
+
+#ifdef _WIN32
+// looking for driver store by device ID
+void 
+find_driver_store_by_device_id(char* device_id, char* sub_key, char* val_name, 
+                              DWORD data_type_flag, std::string& value) 
+{
+  ULONG len = 0;
+  CONFIGRET ret = ::CM_Get_Device_ID_List_SizeA(&len, device_id, CM_GETIDLIST_FILTER_ENUMERATOR | CM_GETIDLIST_FILTER_PRESENT);  // len is in character
+  if (ret != CR_SUCCESS) 
+    throw std::runtime_error("Unable to get device ID list size");
+  
+  char* buffer = new char[len];
+  ret = ::CM_Get_Device_ID_ListA(device_id, buffer, len, CM_GETIDLIST_FILTER_ENUMERATOR | CM_GETIDLIST_FILTER_PRESENT);
+  if (ret != CR_SUCCESS) {
+    throw std::runtime_error("Unable to get device ID list");
+
+  std::vector<std::string> vec_dev{};
+  ULONG vec_len = 0;
+  std::smatch sm;
+  ULONG dev_len_start = 0;
+  ULONG dev_len = 0;
+  char dev_buffer[MAX_DEVICE_ID_LEN] = { 0 };
+  do {
+    std::string ms(&buffer[vec_len]);
+    if (std::regex_search(ms, sm, std::regex(R"(PCI\\VEN_1022&DEV_1502)")) || std::regex_search(ms, sm, std::regex(R"(PCI\\VEN_1022&DEV_17F0)"))) {
+      vec_dev.push_back(std::string(&buffer[vec_len]));
+      dev_len_start = vec_len;
+      dev_len = vec_dev.back().size() + 1;
+      std::copy(buffer + dev_len_start, buffer + dev_len_start + dev_len, dev_buffer);
+    }
+    vec_len += ms.size() + 1;
+  } while (vec_len < len);
+  delete[] buffer;
+
+  if (vec_dev.size() > 1) {
+    throw std::runtime_error("Found more than one device instance ID");
+  }
+
+  DEVINST dnDevInst = 0;
+  ret = ::CM_Locate_DevNodeA(&dnDevInst, dev_buffer, CM_LOCATE_DEVNODE_NORMAL);
+  if (ret != CR_SUCCESS)
+    throw std::runtime_error("Unable to locate device node");
+
+  HKEY key = 0;
+  ret = ::CM_Open_DevNode_Key(dnDevInst, KEY_QUERY_VALUE, 0, RegDisposition_OpenExisting, &key, CM_REGISTRY_HARDWARE);
+  if (ret != CR_SUCCESS)
+    throw std::runtime_error("Unable to open device");
+
+  if (key) {
+    char get_data[MAX_PATH] = { 0 }; // for getting driver store path
+    DWORD get_data_len = MAX_PATH * sizeof(char);
+    ret = RegGetValueA(key, sub_key, val_name, data_type_flag, NULL, get_data, &get_data_len);
+    if (ERROR_MORE_DATA == ret) { // resize to get_data_len/sizeof(char) 
+      char* get_data = new char[get_data_len];
+      ret = RegGetValueA(key, sub_key, val_name, data_type_flag, NULL, get_data, &get_data_len);
+      if (ERROR_SUCCESS != ret) {
+        delete[] get_data;
+        throw std::runtime_error(boost::str(boost::format("RegGetValueA() returns: %s") % ret));
+      }
+      delete[] get_data;
+    }
+    else if (ERROR_SUCCESS != ret) {
+      throw std::runtime_error(boost::str(boost::format("RegGetValueA() returns: %s") % ret));
+
+    }
+    ret = ::RegCloseKey(key);
+    value = std::string(get_data);
+  }
+}
+
+std::string 
+find_ipu_driver_store() 
+{
+  std::string driver_store_path{};
+  find_driver_store_by_device_id(TEXT("PCI"), TEXT("IPU-DLL-PATH"), TEXT("ipu-drvier-store"), RRF_RT_REG_SZ, driver_store_path);
+  return driver_store_path;
+}
+#endif // #ifdef _WIN32
 
 } //end anonymous namespace
 
@@ -460,4 +543,28 @@ TestRunner::get_test_header()
     ptree.put("xclbin", m_xclbin);
     ptree.put("explicit", m_explicit);
     return ptree;
+}
+
+xrt::xclbin 
+TestRunner::search_drv_store_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest)
+{
+  auto xclbin_name = ptTest.get<std::string>("xclbin");
+  std::string xclbin_location;
+#ifdef _WIN32
+  std::string xclbin_dir = get_env_var("XILINX_XRT");
+  if (xclbin_dir.empty()) {
+    xclbin_dir = find_ipu_driver_store();
+  }
+  xclbin_location += xclbin_name
+#else
+  logger(ptTest, "Details", "Xclbin not found. Skipping validation");
+  ptTest.put("status", test_token_skipped);
+  return xrt::xclbin();
+#endif
+  boost::filesystem::path xclbin(xclbin_location);
+  if(boost::filesystem::is_regular_file(xclbin) && boost::filesystem::extension(xclbin).compare(".xclbin") != 0) {
+    return xrt::xclbin(xclbin_location);
+  }
+  throw std::runtime_error(boost::str(boost::format("Failed to find '%s'") % xclbin_location));
+  return xrt::xclbin();
 }

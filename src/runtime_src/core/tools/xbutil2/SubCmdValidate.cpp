@@ -34,6 +34,7 @@
 #include "tools/common/tests/TestPsPlVerify.h"
 #include "tools/common/tests/TestPsVerify.h"
 #include "tools/common/tests/TestPsIops.h"
+#include "tools/common/tests/TestIPU.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -97,7 +98,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestAiePs>(),
   std::make_shared<TestPsPlVerify>(),
   std::make_shared<TestPsVerify>(),
-  std::make_shared<TestPsIops>()
+  std::make_shared<TestPsIops>(),
+  std::make_shared<TestIPU>()
 };
 
 /*
