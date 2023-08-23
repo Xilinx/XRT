@@ -179,7 +179,7 @@ add_host_mem_info(const xrt_core::device* device, ptree_type& pt)
     data_retention_string = (value > 0 ? "enabled" : "disabled");
   }
   catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for vck5000 
+    // Device does not support host memory features
   }
   pt.add("host_memory_status", data_retention_string);
 }
