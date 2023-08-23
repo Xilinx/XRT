@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _XCL_PCIDEV_H_
 #define _XCL_PCIDEV_H_
 
@@ -189,6 +189,8 @@ private:
 
   std::mutex m_lock;
   char *m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
+
+  const drv& m_driver;
 };
 
 size_t
