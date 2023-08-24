@@ -69,12 +69,6 @@ program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::strin
     XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
   }
 }
-
-#ifdef _WIN32
-// looking for driver store by device ID
-
-#endif // #ifdef _WIN32
-
 } //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------

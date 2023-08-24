@@ -5,7 +5,7 @@
 #define __TestIPU_h_
 
 #include "tools/common/TestRunner.h"
-#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
 
 class TestIPU : public TestRunner {
   public:

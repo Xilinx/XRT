@@ -59,7 +59,6 @@ class TestRunner {
                       boost::property_tree::ptree& _ptTest);
     std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
                       boost::property_tree::ptree& _ptTest);
-
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
   
