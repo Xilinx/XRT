@@ -62,16 +62,20 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
 			mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
 			slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
-			mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
-			if(uuid_equal(slot_uuid,(xuid_t *)cmd->sk_uuid)) {
-				slot_id = i;
-				break;
+			if(slot_uuid) {
+				mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
+				if(uuid_equal(slot_uuid,(xuid_t *)cmd->sk_uuid)) {
+					slot_id = i;
+					break;
+				}
 			}
 		}
 
 		if (slot_id == MAX_PR_SLOT_NUM) {
-			DRM_ERROR("PS Kernel UUID %s not found!",cmd->sk_uuid);
+			DRM_ERROR("PS Kernel UUID %lx not found!",cmd->sk_uuid);
 			return -EINVAL;
+		} else {
+			DRM_INFO("PS Kernel UUID %lx found at slot %d\n",cmd->sk_uuid, slot_id);
 		}
 
 		if (sk->sk_meta_bohdl[slot_id] >= 0) {

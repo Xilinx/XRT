@@ -247,6 +247,7 @@ int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin, uint32_t slot_i
 {
 	int rval = 0;
 
+	xocl_info(&XDEV(xdev)->pdev->dev,"slot_id = %d", slot_id);
 	if (XOCL_DSA_IS_VERSAL(xdev)) {
 		rval = xocl_xclbin_download_impl(xdev, xclbin, slot_id, &xgq_ops);
 		/* Legacy shell doesn't have xgq resources */
