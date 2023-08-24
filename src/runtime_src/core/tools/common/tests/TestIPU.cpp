@@ -15,8 +15,8 @@ static constexpr size_t buffer_size = 128;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
-  : TestRunner("ipu", 
-                "Run no-op test on IPU",
+  : TestRunner("ipu-verify", 
+                "Run 'Hello World' test on IPU",
                 "1x4.xclbin"){}
 
 boost::property_tree::ptree
@@ -24,9 +24,9 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  xrt::xclbin xclbin;  
+  std::string xclbin_path;  
   try {
-    xclbin = search_drv_store_xclbin(dev, ptree);
+    xclbin_path = findXclbinPath(dev, ptree);
   }
   catch (const std::runtime_error& ex) {
     logger(ptree, "Error", ex.what());
@@ -34,6 +34,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
+  xrt::xclbin xclbin{xclbin_path};
   if(!xclbin) { // if xclbin not found
     return ptree;
   }
@@ -48,17 +49,18 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   auto kernelName = xkernel.get_name();
   logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
-  dev->register_xclbin(xclbin);
-  xrt::hw_context hwctx{xrt::device{dev->get_device_id()}, xclbin.get_uuid()};
+  auto working_dev = xrt::device{dev->get_device_id()};
+  working_dev.register_xclbin(xclbin);
+  xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel kernel{hwctx, kernelName};
 
   //Create BOs
-  auto bo_ifm = xrt::bo(xrt::device{dev->get_device_id()}, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1));
-  auto bo_param = xrt::bo(xrt::device{dev->get_device_id()}, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2));
-  auto bo_ofm = xrt::bo(xrt::device{dev->get_device_id()}, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
-  auto bo_inter = xrt::bo(xrt::device{dev->get_device_id()}, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4));
-  auto bo_instr = xrt::bo(xrt::device{dev->get_device_id()}, buffer_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  auto bo_mc = xrt::bo(xrt::device{dev->get_device_id()}, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7));
+  auto bo_ifm = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1));
+  auto bo_param = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(2));
+  auto bo_ofm = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
+  auto bo_inter = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(4));
+  auto bo_instr = xrt::bo(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+  auto bo_mc = xrt::bo(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(7));
   std::memset(bo_instr.map<char*>(), buffer_size, '0');
 
   //Sync BOs

@@ -36,6 +36,8 @@ class TestRunner {
     const std::string & get_name() const { return m_name; };
     boost::property_tree::ptree get_test_header();
     const std::string & getConfigName() const { return get_name(); };
+    std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
+                      boost::property_tree::ptree& _ptTest);
 
   // Child class helper methods
   protected:
@@ -45,7 +47,6 @@ class TestRunner {
              boost::property_tree::ptree& _ptTest);
     void logger(boost::property_tree::ptree& ptree, const std::string& tag, const std::string& msg);
     bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
-    xrt::xclbin search_drv_store_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
 
     const std::string test_token_skipped = "SKIPPED";
     const std::string test_token_failed = "FAILED";
@@ -58,8 +59,7 @@ class TestRunner {
                       boost::property_tree::ptree& _ptTest);
     std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
                       boost::property_tree::ptree& _ptTest);
-    std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
-                      boost::property_tree::ptree& _ptTest);
+
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
   
