@@ -50,6 +50,7 @@ namespace xdp {
       bool isValidType(module_type type, XAie_ModuleType mod);
       bool isStreamSwitchPortEvent(const XAie_Events event);
       bool isPortRunningEvent(const XAie_Events event);
+      uint8_t getPortNumberFromEvent(XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
@@ -58,14 +59,17 @@ namespace xdp {
                              const XAie_ModuleType mod,
                              const XAie_Events event,
                              const std::string metricSet);
-      XAie_Events configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                          const tile_type& tile,
-                                          xaiefal::XAieTile& xaieTile,
-                                          const XAie_LocType loc,
-                                          const module_type type,
-                                          const XAie_Events event,
-                                          const std::string metricSet,
-                                          const uint8_t channel);
+      void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
+                                   const tile_type& tile,
+                                   xaiefal::XAieTile& xaieTile,
+                                   const XAie_LocType loc,
+                                   const module_type type,
+                                   const uint32_t numCounters,
+                                   const std::string metricSet,
+                                   const uint8_t channel0,
+                                   const uint8_t channel1,
+                                   std::vector<XAie_Events>& startEvents,
+                                   std::vector<XAie_Events>& endEvents);
       void configEventSelections(XAie_DevInst* aieDevInst,
                                  const XAie_LocType loc,
                                  const XAie_ModuleType mod,
@@ -81,6 +85,7 @@ namespace xdp {
                                  uint16_t startEvent,
                                  const std::string metricSet,
                                  const uint8_t channel);
+
     private:
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
