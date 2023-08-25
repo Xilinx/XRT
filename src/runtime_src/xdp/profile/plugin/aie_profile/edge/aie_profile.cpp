@@ -23,6 +23,7 @@
 #include <cmath>
 #include <memory>
 #include <cstring>
+#include <map>
 
 #include "core/common/message.h"
 #include "core/common/time.h"
@@ -293,7 +294,7 @@ namespace xdp {
                                                const uint8_t channel1, std::vector<XAie_Events>& startEvents, 
                                                std::vector<XAie_Events>& endEvents)
   {
-    std::map<uint8_t, XAieStreamPortSelect> switchPortMap;
+    std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
 
     // Traverse all counters and request monitor ports as needed
     for (int i=0; i < numCounters; ++i) {
@@ -305,24 +306,20 @@ namespace xdp {
 
       bool newPort = false;
       auto portnum = getPortNumberFromEvent(startEvent);
-      auto portIter = switchPortMap.find(portnum);
-      XAieStreamPortSelect switchPortRsc;
-      if (iter == switchPortMap.end()) {
-        switchPortRsc = xaieTile.sswitchPort();
-        auto ret = switchPortRsc->reserve();
-        if (ret != AieRC::XAIE_OK)
+      
+      if (switchPortMap.find(portnum) == switchPortMap.end()) {
+        auto newSwitchPortRsc = xaieTile.sswitchPort();
+        if (newSwitchPortRsc->reserve() != AieRC::XAIE_OK)
           continue;
         newPort = true;
-        switchPortMap.at(portnum) = switchPortRsc;
+        switchPortMap.at(portnum) = newSwitchPortRsc;
       } 
-      else {
-        switchPortRsc = (*portIter).second;
-      }
+      auto switchPortRsc = switchPortMap.at(portnum);
 
       if (type == module_type::core) {
         // AIE Tiles (e.g., trace streams)
         // Define stream switch port to monitor core or memory trace
-        uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
+        uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
         switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
       }
       else if (type == module_type::shim) {
@@ -349,7 +346,7 @@ namespace xdp {
       // Event options:
       //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
       XAie_Events ssEvent;
-      if (isPortRunningEvent(event))
+      if (isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
       else
         switchPortRsc->getSSStalledEvent(ssEvent);

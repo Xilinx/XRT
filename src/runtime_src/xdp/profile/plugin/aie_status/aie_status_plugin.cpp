@@ -104,9 +104,9 @@ namespace xdp {
   {
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = aie::getValidGraphs(aieMeta);
+    auto graphs = aie::getValidGraphs(mAieMeta);
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = aie::getEventTiles(aieMeta, graph, module_type::core);
+      mGraphCoreTilesMap[graph] = aie::getEventTiles(mAieMeta, graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -186,8 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = aie::getAIETileRowOffset(aieMeta);
-    auto hwGen = aie::getHardwareGeneration(aieMeta);
+    auto offset = aie::getAIETileRowOffset(mAieMeta);
+    auto hwGen = aie::getHardwareGeneration(mAieMeta);
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -218,10 +218,6 @@ namespace xdp {
     // Reset values
     constexpr uint32_t CORE_RESET_STATUS  = 0x2;
     constexpr uint32_t CORE_ENABLE_MASK  = 0x1;
-    // Group error masks
-    constexpr uint64_t AIE_OFFSET_GROUP_ERRORS0_ENABLE = 0x34510;
-    constexpr uint64_t AIE_OFFSET_GROUP_ERRORS1_ENABLE = 0x34514;
-    constexpr uint32_t CORE_GROUP_ERROR_INSTR_EVENT_2_MASK = (1 << 20);
 
     // Tiles already reported with error(s)
     std::set<tile_type> errorTileSet;
@@ -236,15 +232,6 @@ namespace xdp {
       for (const auto& tile : kv.second) {
         coreStuckCountMap[tile] = 0;
         coreStatusMap[tile] = CORE_RESET_STATUS;
-
-        
-        //if (hwGen == 1) {
-        //  auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + offset, tile.col);
-        //  XAie_MaskWrite32(aieDevInst, tileOffset + AIE_OFFSET_GROUP_ERRORS0_ENABLE, 
-        //                   CORE_GROUP_ERROR_INSTR_EVENT_2_MASK, 0);
-        //  XAie_MaskWrite32(aieDevInst, tileOffset + AIE_OFFSET_GROUP_ERRORS1_ENABLE, 
-        //                   CORE_GROUP_ERROR_INSTR_EVENT_2_MASK, 0);
-        //}
       }
     }
 
@@ -425,7 +412,7 @@ namespace xdp {
     // Grab AIE metadata
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
-    aie::readAIEMetadata(data.first, data.second, aieMeta);
+    aie::readAIEMetadata(data.first, data.second, mAieMeta);
 
     // Update list of tiles to debug
     getTilesForStatus();
