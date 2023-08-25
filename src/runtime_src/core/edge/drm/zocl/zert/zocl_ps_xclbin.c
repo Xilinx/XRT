@@ -355,16 +355,15 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	zocl_create_aie(zdev, axlf, aie_res, hw_gen);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
-	if (count > 0) {
-		ret = zocl_kernel_cache_xclbin(zdev, slot, axlf, xclbin);
-		if (ret) {
-			DRM_ERROR("%s cannot cache xclbin",__func__);
-			goto out;
-		}
-		ret = zocl_load_pskernel(zdev, slot->axlf, slot_id);
-		if (ret)
-			goto out;
+
+	ret = zocl_kernel_cache_xclbin(zdev, slot, axlf, xclbin);
+	if (ret) {
+		DRM_ERROR("%s cannot cache xclbin",__func__);
+		goto out;
 	}
+	ret = zocl_load_pskernel(zdev, slot->axlf, slot_id);
+	if (ret)
+		goto out;
 
 	/* preserve uuid, avoid double download */
 	zocl_xclbin_set_uuid(zdev, slot, &axlf_head->m_header.uuid);

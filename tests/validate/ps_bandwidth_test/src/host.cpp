@@ -72,8 +72,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    std::cout << "\nNOT SUPPORTED" << std::endl;
-    return EOPNOTSUPP;
 
     auto num_devices = xrt::system::enumerate_devices();
 
@@ -81,10 +79,11 @@ int main(int argc, char** argv) {
 
     // Load dependency xclbins onto device if any
     for (const auto& path : dependency_paths) {
-        auto retVal = validate_binary_file(path);
+        auto x_file = test_path + "/" + path;
+        auto retVal = validate_binary_file(x_file);
         if (retVal != EXIT_SUCCESS)
             return retVal;
-        auto uuid = device.load_xclbin(path);
+        auto uuid = device.load_xclbin(x_file);
     }
 
     // Load ps kernel onto device
