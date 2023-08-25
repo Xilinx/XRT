@@ -18,11 +18,11 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
+#include "detail/xilinx_xrt.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <iostream>
-
 
 #ifdef _WIN32
 # pragma warning (disable : 4996)
@@ -99,17 +99,10 @@ static bfs::path
 xilinx_xrt()
 {
   bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
-  if (xrt.empty()){
-#if defined (__aarch64__) || defined (__arm__)
-    xrt = bfs::path("/usr");
-#elif defined (_WIN32)
-    xrt = bfs::path(xrt_core::dlpath("xrt_coreutil.dll")).parent_path();
-#else
-    throw std::runtime_error("XILINX_XRT not set");
-#endif
-  }
+  if (!xrt.empty())
+    return xrt;
 
-  return xrt;
+  return detail::xilinx_xrt();
 }
 
 static bfs::path
@@ -223,5 +216,15 @@ driver_loader()
   for (const auto& p : paths)
     load_library(p);
 }
+
+namespace environment {
+
+std::string
+xilinx_xrt()
+{
+  return ::xilinx_xrt().string();
+}
+
+} // environment
 
 } // xrt_core
