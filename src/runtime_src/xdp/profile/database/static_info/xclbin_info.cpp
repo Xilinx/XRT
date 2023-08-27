@@ -43,6 +43,19 @@ namespace xdp {
     }
   }
 
+  std::vector<ComputeUnitInstance*>
+  PLInfo::collectCUs(const std::string& kernelName)
+  {
+    std::vector<ComputeUnitInstance*> collected;
+
+    for (auto& iter : cus) {
+      auto instance = iter.second;
+      if (instance->getKernelName() == kernelName)
+        collected.push_back(instance);
+    }
+    return collected;
+  }
+
   void PLInfo::addComputeUnitPorts(const std::string& kernelName,
                                    const std::string& portName,
                                    int32_t portWidth)
@@ -65,7 +78,7 @@ namespace xdp {
     }
   }
 
-  void PLInfo::connectArgToMemory(const std::string& kernelName,
+  void PLInfo::connectArgToMemory(const std::string& cuName,
                                   const std::string& portName,
                                   const std::string& argName,
                                   int32_t memId)
@@ -76,7 +89,7 @@ namespace xdp {
     Memory* mem = memoryInfo[memId];
     for (const auto& iter : cus) {
       auto cu = iter.second;
-      if (cu->getKernelName() == kernelName)
+      if (cu->getName() == cuName)
         cu->connectArgToMemory(portName, argName, mem);
     }
   }

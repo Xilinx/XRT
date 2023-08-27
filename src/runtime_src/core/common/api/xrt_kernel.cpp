@@ -1381,7 +1381,9 @@ private:
   amend_dpu_args()
   {
     // adjust regmap size to account for prepending of ert_dpu_data
-    regmap_size += sizeof(ert_dpu_data) / sizeof(uint32_t);
+    // deferred to run object initialization because we don't know
+    // how mant instances of ert_dpu_data will be needed until then.
+    // regmap_size += sizeof(ert_dpu_data) / sizeof(uint32_t);
   }
 
   void
@@ -1479,23 +1481,6 @@ private:
     return data;  // no skipping
   }
 
-  // For DPU kernels, initialize the instruction buffer and count in
-  // the command packet, both of which are before regular kernel
-  // arguments.  The function returns the data payload after the
-  // preceeding instruction buffer and count; this data payload is
-  // where regular kernel arguments are placed.
-  uint32_t*
-  initialize_dpu(uint32_t* payload)
-  {
-    auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
-    auto bo = xrt_core::module_int::get_instruction_buffer(m_module, name);
-    dpu->instruction_buffer = bo.address();
-    dpu->instruction_buffer_size = bo.size();
-
-    // Return payload past the ert_dpu_data structure
-    return payload + sizeof(ert_dpu_data) / sizeof(uint32_t); // skip past ert_dpu_data
-  }
-
   static uint32_t
   create_uid()
   {
@@ -1510,17 +1495,6 @@ private:
       return krnl;
 
     throw xrt_core::error("No such kernel '" + nm + "'");
-  }
-
-  // This function copies the module into a hw_context.  The module
-  // will be associated with hwctx specific memory.
-  static xrt::module
-  copy_module(const xrt::module& module, const xrt::hw_context& hwctx)
-  {
-    if (!module)
-      return {};
-
-    return {module, hwctx};
   }
 
 public:
@@ -1539,7 +1513,7 @@ public:
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(std::move(ctx))                                    // hw context
     , hwqueue(hwctx)                                           // hw queue
-    , m_module{copy_module(mod, hwctx)}                        // module if any copy to hwctx specific module
+    , m_module{std::move(mod)}                                 // module if any
     , xclbin(hwctx.get_xclbin())                               // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
@@ -1629,16 +1603,8 @@ public:
     cmd->encode_compute_units(cumask, num_cumasks);
     auto data = kcmd->data + kcmd->extra_cu_masks;
 
-    switch (kcmd->opcode) {
-    case ERT_START_FA:
+    if (kcmd->opcode == ERT_START_FA)
       data = initialize_fadesc(data);
-      break;
-     case ERT_START_DPU:
-      data = initialize_dpu(data);
-      break;
-    default:
-      break;
-    }
 
     return data;
   }
@@ -1800,7 +1766,7 @@ public:
   size_t
   get_regmap_size()
   {
-      return regmap_size;
+    return regmap_size;
   }
 };
 
@@ -1943,6 +1909,17 @@ class run_impl
     return count++;
   }
 
+  // This function copies the module into a hw_context.  The module
+  // will be associated with hwctx specific memory.
+  static xrt::module
+  copy_module(const xrt::module& module, const xrt::hw_context& hwctx)
+  {
+    if (!module)
+      return {};
+
+    return {module, hwctx};
+  }
+
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
@@ -2032,8 +2009,55 @@ class run_impl
     return pkt->data + (rhs->data - rhs_pkt->data);
   }
 
+  // For DPU kernels, initialize the instruction buffer(s) in the
+  // command packet.  The instruction buffers are before regular
+  // kernel arguments.  The function returns the data payload after
+  // the preceeding instruction buffer(s); this data payload is where
+  // regular kernel arguments are placed.
+  //
+  // For multiple instruction buffers, the ert_dpu_data::chained has
+  // the number of words remaining in the payload after the current
+  // instruction buffer.  The ert_dpu_data::chained of the last buffer
+  // is zero.
+  uint32_t*
+  initialize_dpu(uint32_t* payload)
+  {
+    auto addr_and_size = xrt_core::module_int::get_ctrlcode_addr_and_size(m_module);
+
+    size_t ert_dpu_data_count = addr_and_size.size();
+    for (auto [addr, size] : addr_and_size) {
+      auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+      dpu->instruction_buffer = addr;
+      dpu->instruction_buffer_size = size;
+      dpu->chained = --ert_dpu_data_count;
+      payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
+    }
+
+    // Return payload past the ert_dpu_data structures
+    return payload;
+  }
+
+  // Initialize the command packet with special case for DPU kernels
+  uint32_t*
+  initialize_command(kernel_command* pkt)
+  {
+    auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
+    auto payload = kernel->initialize_command(pkt);
+
+    if (kcmd->opcode == ERT_START_DPU) {
+      auto payload_past_dpu = initialize_dpu(payload);
+
+      // adjust count to include the prepended ert_dpu_data structures
+      kcmd->count += payload_past_dpu - payload;
+      payload = payload_past_dpu;
+    }
+
+    return payload;
+  }
+
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
+  xrt::module m_module;                   // instruction module (optional)
   xrt_core::hw_queue m_hwqueue;           // hw queue for command submission
   std::vector<ipctx> ips;                 // ips controlled by this run object
   std::bitset<max_cus> cumask;            // cumask for command execution
@@ -2079,13 +2103,14 @@ public:
   explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))
+    , m_module{copy_module(kernel->get_module(), kernel->get_hw_context())}
     , m_hwqueue(kernel->get_hw_queue())
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
     , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
-    , data(kernel->initialize_command(cmd.get()))
-    , m_header(cmd->get_ert_packet()->header)
+    , data(initialize_command(cmd.get()))
+    , m_header(0)
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
@@ -2096,6 +2121,7 @@ public:
   explicit
   run_impl(const run_impl* rhs)
     : kernel(rhs->kernel)
+    , m_module{rhs->m_module}
     , m_hwqueue(rhs->m_hwqueue)
     , ips(rhs->ips)
     , cumask(rhs->cumask)
@@ -2180,12 +2206,18 @@ public:
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
+
+    if (m_module)
+      xrt_core::module_int::patch(m_module, arg.name(), bo);
   }
 
   void
   set_arg_value(const argument& arg, const void* value, size_t bytes)
   {
     set_arg_value(arg, arg_range<uint8_t>{value, bytes});
+
+    if (m_module)
+      xrt_core::module_int::patch(m_module, arg.name(), value, bytes);
   }
 
   void
@@ -2212,10 +2244,6 @@ public:
     auto bo = validate_bo_at_index(index, argbo);
     auto& arg = kernel->get_arg(index);
     set_arg_value(arg, bo);
-
-    if (auto module = kernel->get_module()) {
-      XRT_PRINTF("run_impl::set_arg_at_index(%lu) patch bo\n", index);
-    }
   }
 
   void
@@ -2279,6 +2307,12 @@ public:
     encode_compute_units();
 
     auto pkt = cmd->get_ert_packet();
+
+    // Very first start() of this run object caches the command header
+    if (!m_header)
+      m_header = pkt->header;
+
+    // The cached command header is used for all subsequent starts
     pkt->header = m_header;
     pkt->state = ERT_CMD_STATE_NEW;
 
@@ -2289,6 +2323,11 @@ public:
   virtual void
   start()
   {
+    if (m_module)
+      // Sync the module to device to ensure any patches are applied,
+      // noop if module patching hasn't changed since last sync.
+      xrt_core::module_int::sync(m_module);
+
     prep_start();
     cmd->run();
   }

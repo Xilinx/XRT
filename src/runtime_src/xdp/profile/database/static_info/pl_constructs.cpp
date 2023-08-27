@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,6 +45,12 @@ namespace {
   static bool compare(const std::string& spTag, const std::string& memory)
   {
     if (spTag == memory)
+      return true;
+
+    // On platforms that have HOST bridge enabled, the spTag and memory
+    // are hardcoded to specific values that don't match the rest of the
+    // algorithm.
+    if (spTag == "HOST[0]" && memory == "HOST")
       return true;
 
     // On some platforms, the memory name is still formatted as "bank0"

@@ -244,10 +244,8 @@ namespace aie {
       auto currPort    = name.substr(namePos+1);
 
       // Make sure this matches what we're looking for
-      // if ((channelId >= 0) && (channelId != streamId))
-      //   continue;
-     
-
+      //if ((channelId >= 0) && (channelId != streamId))
+      //  continue;
       if ((portName.compare("all") != 0)
            && (portName.compare(currPort) != 0)
            && (portName.compare(logicalName) != 0))
@@ -260,14 +258,16 @@ namespace aie {
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
       if ((metricStr != "ports")
-          && ((isMaster && (metricStr.find("mm2s") != std::string::npos))
-          || (!isMaster && (metricStr.find("s2mm") != std::string::npos))))
+          && ((isMaster && (metricStr.find("input") != std::string::npos)
+              || (metricStr.find("mm2s") != std::string::npos))
+          || (!isMaster && (metricStr.find("output") != std::string::npos)
+              || (metricStr.find("s2mm") != std::string::npos))))
         continue;
       // Make sure column is within specified range (if specified)
       if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
         continue;
 
-      if (channelId != io.second.channelNum) 
+      if ((channelId >= 0) && (channelId != io.second.channelNum)) 
         continue;
 
       tile_type tile = {0};
@@ -293,11 +293,11 @@ namespace aie {
   // Memory Tiles
   // **************************************************************************
 
-  // Find all memory tiles associated with a graph and kernel
-  //   kernel_name = all      : all tiles in graph
-  //   kernel_name = <kernel> : only tiles used by that specific kernel
+  // Find all memory tiles associated with a graph and buffer
+  //   buffer_name = all      : all tiles in graph
+  //   buffer_name = <buffer> : only tiles used by that specific buffer
   std::vector<tile_type> getMemoryTiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name,
-                                        const std::string& kernel_name)
+                                        const std::string& buffer_name)
   {
     if (getHardwareGeneration(aie_meta) == 1) 
       return {};
@@ -318,13 +318,10 @@ namespace aie {
       if ((currGraph.find(graph_name) == std::string::npos)
            && (graph_name.compare("all") != 0))
         continue;
-      if (kernel_name.compare("all") != 0) {
-        std::vector<std::string> names;
-        std::string functionStr = shared_buffer.second.get<std::string>("function");
-        boost::split(names, functionStr, boost::is_any_of("."));
-        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
-          continue;
-      }
+      auto currBuffer = shared_buffer.second.get<std::string>("bufferName");
+      if ((currBuffer.find(buffer_name) == std::string::npos)
+           && (buffer_name.compare("all") != 0))
+        continue;
 
       tile_type tile;
       tile.col = shared_buffer.second.get<uint16_t>("column");
@@ -423,7 +420,7 @@ namespace aie {
     return tiles;
   }
   
-  // Find all AIE or memory tiles associated with a graph and kernel
+  // Find all AIE or memory tiles associated with a graph and kernel/buffer
   //   kernel_name = all      : all tiles in graph
   //   kernel_name = <kernel> : only tiles used by that specific kernel
   std::vector<tile_type> getTiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name,
@@ -431,8 +428,6 @@ namespace aie {
   {
     if (type == module_type::mem_tile)
       return getMemoryTiles(aie_meta, graph_name, kernel_name);
-    if (kernel_name.compare("all") == 0)
-      return getAIETiles(aie_meta, graph_name);
 
     // Now search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");

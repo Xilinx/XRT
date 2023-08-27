@@ -191,10 +191,8 @@ struct drm_zocl_dev {
 	struct dma_chan		*zdev_dma_chan;
 	struct mailbox		*zdev_mailbox;
 	const struct zdev_data	*zdev_data_info;
-	struct generic_cu	*generic_cu;
 	struct zocl_error	 zdev_error;
 	struct zocl_aie		*aie;
-	struct zocl_watchdog_dev *watchdog;
 
 	int			 num_pr_slot;
 	int			 full_overlay_id;

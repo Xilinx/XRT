@@ -49,7 +49,7 @@ install_recipes()
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
-        echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
+        echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=de2c993ac479f02575bcbfb14ef9b485 \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
     fi
 
@@ -123,6 +123,8 @@ config_versal_project()
     sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-gstreamer.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_dosfstools.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
     # Add necessary rootfs config
     sed -i 's/.*CONFIG_openssh-sftp-server is.*/CONFIG_openssh-sftp-server=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
@@ -323,6 +325,14 @@ PETA_BIN="$PETALINUX/tools/common/petalinux/bin"
 echo "** START [${BASH_SOURCE[0]}] **"
 echo " PETALINUX: $PETALINUX"
 echo ""
+
+GIT_MODULES=$XRT_REPO_DIR/.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd $XRT_REPO_DIR
+    echo "Updating Git XRT submodules"
+    git submodule update --init
+    cd $ORIGINAL_DIR
+fi
 
 PETALINUX_NAME=$AARCH
 echo " * Create PetaLinux from BSP (-s $PETA_BSP)"

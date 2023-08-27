@@ -4,24 +4,52 @@
 #define XRT_API_SOURCE         // exporting xrt_elf.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "experimental/xrt_elf.h"
-
 #include "xrt/xrt_uuid.h"
 
+#include "elf_int.h"
 #include "core/common/error.h"
+
+#include <elfio/elfio.hpp>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace xrt {
 
 // class elf_impl - Implementation
 class elf_impl
 {
+  ELFIO::elfio m_elf;
 public:
-  elf_impl(const std::string&)
-  {}
+  elf_impl(const std::string& fnm)
+  {
+    if (!m_elf.load(fnm))
+      throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
+  }
+
+  const ELFIO::elfio&
+  get_elfio() const
+  {
+    return m_elf;
+  }
 
   xrt::uuid
   get_cfg_uuid() const
   {
     return {}; // tbd
+  }
+
+  std::vector<uint8_t>
+  get_section(const std::string& sname)
+  {
+    auto sec = m_elf.sections[sname];
+    if (!sec)
+      throw std::runtime_error("Failed to find section: " + sname);
+
+    auto data = sec->get_data();
+    std::vector<uint8_t> vec(data, data + sec->get_size());
+    return vec;
   }
 };
 
@@ -31,6 +59,19 @@ public:
 // XRT implmentation access to internal elf APIs
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::elf_int {
+
+// Extract section data from ELF file
+std::vector<uint8_t>
+get_section(const xrt::elf& elf, const std::string& sname)
+{
+  return elf.get_handle()->get_section(sname);
+}
+
+const ELFIO::elfio&
+get_elfio(const xrt::elf& elf)
+{
+  return elf.get_handle()->get_elfio();
+}
 
 } // xrt_core::elf_int
 

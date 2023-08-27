@@ -46,11 +46,11 @@ namespace xdp {
     uint16_t getRelativeRow(uint16_t absRow);
     module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
     bool isStreamSwitchPortEvent(const XAie_Events event);
-    void configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
-                                 xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
-                                 const module_type type, const XAie_Events event,
-                                 const int countnum, const std::string metricSet,
-                                 const uint8_t channel);
+    bool isPortRunningEvent(const XAie_Events event);
+    XAie_Events configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                        xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
+                                        const module_type type, const XAie_Events event,
+                                        const std::string metricSet, const uint8_t channel);
     void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, 
                                const XAie_ModuleType mod, const module_type type, 
                                const std::string metricSet, const uint8_t channel0,

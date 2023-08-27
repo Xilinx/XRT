@@ -33,9 +33,6 @@ public:
   // @cmd        Handle to command to wait for
   // @timeout_ms Timout in ms, 0 implies infinite wait.
   // @return     0 indicates timeout, anything else indicates completion
-  //
-  // If cmd buffer handle is nullptr, then this function is supposed to wait
-  // until any command completes execution.
   virtual int
   wait_command(buffer_handle* cmd, uint32_t timeout_ms) const = 0;
 

@@ -168,14 +168,6 @@ namespace xdp {
     if (settingsString.empty())
       return {};
 
-    // For 2023.1 only: support both *_bandwidths and *_throughputs
-    if (settingsString.find("bandwidths") != std::string::npos) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-                              "All metric sets named *_bandwidths will be renamed *_throughputs "
-                              "in 2023.2. Please use the new settings.");
-      boost::replace_all(settingsString, "bandwidths", "throughputs");
-    }
-
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> settingsVector;
     boost::replace_all(settingsString, " ", "");
@@ -352,13 +344,18 @@ namespace xdp {
 
     // STEP 1 : Parse per-graph or per-kernel settings
 
-    /* AIE_profile_settings config format ; Multiple values can be specified for
-     * a metric separated with ';' AI Engine Tiles graph_based_aie_metrics = <graph name|all>:<kernel
-     * name|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
-     * graph_based_aie_memory_metrics = <graph name|all>:<kernel
-     * name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs> MEM Tiles
-     * graph_based_memory_tile_metrics = <graph name|all>:<kernel
-     * name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
+    /* AIE_profile_settings config format 
+     * Multiple values can be specified separated with ';' 
+     *
+     * AI Engine Tiles 
+     * graph_based_aie_metrics = <graph name|all>:<kernel name|all>
+     *   :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
+     * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>
+     *   :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs> MEM Tiles
+     * 
+     * Memory tiles (AIE2 and beyond)
+     * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>
+     *   :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
@@ -409,16 +406,6 @@ namespace xdp {
       // Check if already processed or if invalid
       if (graphMetrics[i][0].compare("all") == 0)
         continue;
-      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
-        std::stringstream msg;
-        msg << "Could not find graph " << graphMetrics[i][0] 
-            << " as specified in graph_based_" << modName << "_metrics setting."
-            << " The following graphs are valid : " << allValidGraphs[0];
-        for (size_t j = 1; j < allValidGraphs.size(); j++)
-          msg << ", " << allValidGraphs[j];
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        continue;
-      }
       if ((graphMetrics[i][1].compare("all") != 0) &&
           (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
@@ -455,25 +442,28 @@ namespace xdp {
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
-    /* AIE_profile_settings config format ; Multiple values can be specified for
-     * a metric separated with ';' AI Engine Tiles Single or all tiles
-     * tile_based_aie_metrics =
-     * [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]
-     * tile_based_aie_memory_metrics =
-     * [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]
-     * Range of tiles
-     * tile_based_aie_metrics =
-     * [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]]
-     * tile_based_aie_memory_metrics =
-     * [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]]
+    /* AIE_profile_settings config format
+     * Multiple values can be specified separated with ';' 
      *
-     * MEM Tiles (AIE2 and beyond)
+     * AI Engine Tiles 
      * Single or all tiles
-     * tile_based_memory_tile_metrics =
-     * [[<{<column>,<row>}|all>:<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats>[:<channel>]]
+     * tile_based_aie_metrics = [[{<column>,<row>}|all>
+     *     :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]
+     * tile_based_aie_memory_metrics = [[<{<column>,<row>}|all>
+     *     :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]
      * Range of tiles
-     * tile_based_memory_tile_metrics =
-     * [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
+     * tile_based_aie_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]]
+     * tile_based_aie_memory_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]]
+     *
+     * Memory Tiles (AIE2 and beyond)
+     * Single or all tiles
+     * tile_based_memory_tile_metrics = [[<{<column>,<row>}|all>
+     *     :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]]
+     * Range of tiles
+     * tile_based_memory_tile_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
+     *     :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
@@ -804,11 +794,12 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
-      int16_t channelId = (metrics[i].size() < 3) ? -1 : static_cast<uint16_t>(std::stoul(metrics[i][2]));
+      uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
       auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], channelId);
-      for (auto& e : tiles) {
-        configMetrics[moduleIdx][e] = metrics[i][1];
-        configChannel0[e] = static_cast<uint8_t>(channelId);
+
+      for (auto& t : tiles) {
+        configMetrics[moduleIdx][t] = metrics[i][1];
+        configChannel0[t] = static_cast<uint8_t>(channelId);;
       }
     }  // Pass 1
 
@@ -838,18 +829,17 @@ namespace xdp {
         continue;
       }
 
-      int16_t channelId = 0;
+      uint8_t channelId = 0;
       if (metrics[i].size() == 4) {
         try {
-          channelId = static_cast<uint16_t>(std::stoul(metrics[i][3]));
+          channelId = static_cast<uint8_t>(std::stoul(metrics[i][3]));
         }
         catch (std::invalid_argument const&) {
-          // Expected channel Id is not an integer, give warning and ignore channelId
+          // Expected channel Id is not an integer, give warning and ignore
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Channel ID specification in "
                                   "tile_based_interface_tile_metrics is "
                                   "not an integer and hence ignored.");
-          channelId = -1;
         }
       }
 
@@ -858,6 +848,7 @@ namespace xdp {
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
+        configChannel0[t] = channelId;
       }
     }  // Pass 2
 
@@ -884,19 +875,17 @@ namespace xdp {
           continue;
         }
 
-        int16_t channelId = -1;
+        uint8_t channelId = 0;
         if (metrics[i].size() == 3) {
           try {
-            channelId = static_cast<uint16_t>(std::stoul(metrics[i][2]));
+            channelId = static_cast<uint8_t>(std::stoul(metrics[i][2]));
           }
           catch (std::invalid_argument const&) {
-            // Expected channel Id is not an integer, give warning and
-            // ignore channelId
+            // Expected channel Id is not an integer, give warning and ignore
             xrt_core::message::send(severity_level::warning, "XRT",
                                     "Channel ID specification in "
                                     "tile_based_interface_tile_metrics is not an integer "
                                     "and hence ignored.");
-            channelId = -1;
           }
         }
 
@@ -905,6 +894,7 @@ namespace xdp {
 
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
+          configChannel0[t] = channelId;
         }
       }
     }  // Pass 3

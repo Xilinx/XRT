@@ -1406,8 +1406,21 @@ namespace xdp {
       auto xclbin = top.get_child("xclbin");
       auto user_regions = xclbin.get_child("user_regions");
 
-      // Temp data structure to hold mappings
-      std::map<std::string, int32_t> argumentToMemoryIndex;
+      // Temp data structures to hold mappings of each CU's argument to memory
+      typedef std::pair<std::string, std::string> fullName;
+      std::map<fullName, int32_t> argumentToMemoryIndex;
+      std::map<int, std::string> computeUnitIdToName;
+
+      // Keep track of all the compute unit names associated with the id
+      // number so we can make the connection later.
+      for (auto& region : user_regions) {
+        for (auto& compute_unit : region.second.get_child("compute_units")) {
+          auto id = compute_unit.second.get<std::string>("id");
+          auto cuName = compute_unit.second.get<std::string>("cu_name");
+          auto idAsInt = std::stoi(id);
+          computeUnitIdToName[idAsInt] = cuName;
+        }
+      }
 
       // We also need to know which argument goes to which memory
       for (auto& region : user_regions) {
@@ -1416,10 +1429,17 @@ namespace xdp {
           auto node2 = connection.second.get_child("node2");
 
           auto arg = node1.get<std::string>("arg_name");
+          auto cuId = node1.get<std::string>("id");
           auto id = node2.get<std::string>("id");
+          std::string cuName = "";
+
+          if (cuId != "") {
+            int cuIdAsInt = std::stoi(cuId);
+            cuName = computeUnitIdToName[cuIdAsInt];
+          }
 
           if (id != "" && arg != "")
-            argumentToMemoryIndex[arg] = std::stoi(id);
+            argumentToMemoryIndex[{cuName, arg}] = std::stoi(id);
         }
       }
 
@@ -1452,13 +1472,22 @@ namespace xdp {
             std::transform(portName.begin(), portName.end(), portName.begin(),
                            tolower);
             auto argName = arg.second.get<std::string>("name");
-            if (argumentToMemoryIndex.find(argName) == argumentToMemoryIndex.end())
-              continue; // Skip streams not connected to memory
-            auto memId = argumentToMemoryIndex[argName];
 
+            // All of the compute units have the same mapping of arguments
+            // to ports.
             currentXclbin->pl.addArgToPort(kernelName, argName, portName);
-            currentXclbin->pl.connectArgToMemory(kernelName, portName,
-                                                 argName, memId);
+
+            // Go through all of the compute units for this kernel
+            auto cus = currentXclbin->pl.collectCUs(kernelName);
+            for (auto cu : cus) {
+	      std::string cuName = cu->getName();
+              if (argumentToMemoryIndex.find({cuName, argName}) == argumentToMemoryIndex.end())
+                continue; // Skip streams not connected to memory
+              auto memId = argumentToMemoryIndex[{cuName, argName}];
+
+              currentXclbin->pl.connectArgToMemory(cuName, portName,
+                                                   argName, memId);
+            }
           }
         }
       }

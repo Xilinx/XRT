@@ -163,12 +163,8 @@ namespace xdp {
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
 
     // **** Interface Tile Trace ****
-    mInterfaceTileEventSets = {{"ports",
-                                {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL,
-                                 XAIE_EVENT_PORT_TLAST_2_PL,   XAIE_EVENT_PORT_TLAST_3_PL, 
-                                 XAIE_EVENT_PORT_TLAST_4_PL,   XAIE_EVENT_PORT_TLAST_5_PL,
-                                 XAIE_EVENT_PORT_TLAST_6_PL,   XAIE_EVENT_PORT_TLAST_7_PL}},
-                               {"input_ports",
+    // NOTE: these are placeholders to be replaced by actual port resource event
+    mInterfaceTileEventSets = {{"input_ports",
                                 {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_1_PL,
                                  XAIE_EVENT_PORT_RUNNING_2_PL, XAIE_EVENT_PORT_RUNNING_3_PL}},
                                {"output_ports",
@@ -184,14 +180,14 @@ namespace xdp {
     if (metadata->getHardwareGen() == 1) {
       mInterfaceTileEventSets["input_ports_details"] = {
           XAIE_EVENT_DMA_MM2S_0_START_BD_PL,   XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_0_GO_TO_IDLE_PL, XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_PL,
+          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_PL,
           XAIE_EVENT_DMA_MM2S_1_START_BD_PL,   XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_1_GO_TO_IDLE_PL, XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_PL};
+          XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_PL};
       mInterfaceTileEventSets["output_ports_details"] = {
           XAIE_EVENT_DMA_S2MM_0_START_BD_PL,   XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_0_GO_TO_IDLE_PL, XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_PL,
+          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_PL,
           XAIE_EVENT_DMA_S2MM_1_START_BD_PL,   XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_1_GO_TO_IDLE_PL, XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
+          XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
     } else {
       mInterfaceTileEventSets["input_ports_details"] = {
           XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
@@ -454,59 +450,80 @@ namespace xdp {
     return false;
   }
 
+  bool AieTrace_EdgeImpl::isPortRunningEvent(const XAie_Events event)
+  {
+    std::set<XAie_Events> runningEvents = {
+      XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
+      XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
+      XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
+      XAIE_EVENT_PORT_RUNNING_6_CORE,     XAIE_EVENT_PORT_RUNNING_7_CORE,
+      XAIE_EVENT_PORT_RUNNING_0_PL,       XAIE_EVENT_PORT_RUNNING_1_PL,
+      XAIE_EVENT_PORT_RUNNING_2_PL,       XAIE_EVENT_PORT_RUNNING_3_PL,
+      XAIE_EVENT_PORT_RUNNING_4_PL,       XAIE_EVENT_PORT_RUNNING_5_PL,
+      XAIE_EVENT_PORT_RUNNING_6_PL,       XAIE_EVENT_PORT_RUNNING_7_PL,
+      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, XAIE_EVENT_PORT_RUNNING_5_MEM_TILE,
+      XAIE_EVENT_PORT_RUNNING_6_MEM_TILE, XAIE_EVENT_PORT_RUNNING_7_MEM_TILE
+    };
+
+    return (runningEvents.find(event) != runningEvents.end());
+  }
+
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
-  void AieTrace_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
-                                                  xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
-                                                  const module_type type, const XAie_Events event,
-                                                  const int countnum, const std::string metricSet,
-                                                  const uint8_t channel)
+  XAie_Events
+  AieTrace_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                             xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
+                                             const module_type type, const XAie_Events event,
+                                             const std::string metricSet, const uint8_t channel)
   {
     // Only configure as needed: must be applicable event and only need at most two
-    if (!isStreamSwitchPortEvent(event) || (countnum > 1))
-      return;
+    if (!isStreamSwitchPortEvent(event))
+      return event;
 
     auto switchPortRsc = xaieTile.sswitchPort();
     auto ret = switchPortRsc->reserve();
     if (ret != AieRC::XAIE_OK)
-      return;
+      return event;
 
-    uint32_t rscId = 0;
-    XAie_LocType tmpLoc;
-    XAie_ModuleType tmpMod;
-    switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
-
-    // AIE Tiles (e.g., trace streams)
     if (type == module_type::core) {
+      // AIE Tiles (e.g., trace streams)
       // Define stream switch port to monitor core or memory trace
       uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
-      return;
+      switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
     }
-
-    // Interface tiles (e.g., PLIO, GMIO)
-    if (type == module_type::shim) {
+    else if (type == module_type::shim) {
+      // Interface tiles (e.g., PLIO, GMIO)
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
       auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
-
-      // Define stream switch port to monitor interface 
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
-      return;
-    }
-
-    // MEM tiles
-    if (metricSet.find("trace") != std::string::npos) {
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, 0);
+      switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
     }
     else {
-      auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
-        XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
+      // Memory tiles
+      if (metricSet.find("trace") != std::string::npos) {
+        switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+      }
+      else {
+        auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
+          XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+        switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+      }
     }
 
+    // Event options:
+    //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
+    XAie_Events ssEvent;
+    if (isPortRunningEvent(event))
+      switchPortRsc->getSSRunningEvent(ssEvent);
+    else
+	    switchPortRsc->getSSStalledEvent(ssEvent);
+
+    switchPortRsc->start();
     mStreamPorts.push_back(switchPortRsc);
+    return ssEvent;
   }
 
   void AieTrace_EdgeImpl::configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
@@ -1046,18 +1063,18 @@ namespace xdp {
 
         // Configure interface tile trace events
         for (int i = 0; i < interfaceEvents.size(); i++) {
+          // Channel number is based on monitoring port 0 or 1
+          auto channel = (interfaceEvents[i] <= XAIE_EVENT_PORT_TLAST_0_PL) ? channel0 : channel1;
+          auto ssEvent = configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, type,
+                                                 interfaceEvents[i], metricSet, channel);
+
           auto TraceE = shim.traceEvent();
-          TraceE->setEvent(XAIE_PL_MOD, interfaceEvents[i]);
+          TraceE->setEvent(XAIE_PL_MOD, ssEvent);
           if (TraceE->reserve() != XAIE_OK)
             break;
           if (TraceE->start() != XAIE_OK)
             break;
           numInterfaceTraceEvents++;
-
-          // Channel number is based on monitoring port 0 or 1
-          auto channel = (interfaceEvents[i] <= XAIE_EVENT_PORT_TLAST_0_PL) ? channel0 : channel1;
-          configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, type,
-                                  interfaceEvents[i], i, metricSet, channel);
 
           // Update config file
           // Get Trace slot
@@ -1067,7 +1084,7 @@ namespace xdp {
           TraceE->getRscId(L, M, S);
           // Get Physical event
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, interfaceEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, ssEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.traced_events[S] = phyEvent;
         }
 
@@ -1098,8 +1115,15 @@ namespace xdp {
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
         std::stringstream msg;
-        msg << "Reserved " << numCoreTraceEvents << " core and " << numMemoryTraceEvents
-            << " memory trace events for AIE tile (" << col << "," << row << "). Adding tile to static database.";
+        msg << "Reserved ";
+        if (type == module_type::core)
+          msg << numCoreTraceEvents << " core and " << numMemoryTraceEvents << " memory";
+        else if (type == module_type::mem_tile)
+          msg << numMemoryTraceEvents << " memory tile";
+        else if (type == module_type::shim)
+          msg << numInterfaceTraceEvents << " interface tile";
+        msg << " trace events for tile (" << col << "," << row 
+            << "). Adding tile to static database.";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
 
