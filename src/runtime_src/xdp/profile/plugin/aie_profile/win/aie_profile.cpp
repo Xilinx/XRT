@@ -200,14 +200,6 @@ namespace xdp {
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     int counterId = 0;
     bool runtimeCounters = false;
-
-    std::vector<XAie_ModuleType> falModuleTypes = {
-      XAIE_CORE_MOD,
-      XAIE_MEM_MOD,
-      XAIE_PL_MOD,
-      XAIE_MEM_MOD
-    };
-
     auto configChannel0 = metadata->getConfigChannel0();
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
@@ -283,7 +275,7 @@ namespace xdp {
           auto payload = channel0;
 
           // Store counter info in database
-          std::string counterName = "AIE Counter " + std::to_string(counterId);
+          std::string counterName = "AIE Counter" + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName);
@@ -294,15 +286,7 @@ namespace xdp {
           // op.perf_address[counterId] = Regs[i] + (col << 25) + (row << 20);
 
           std::vector<uint64_t> values;
-          values.push_back(col);
-          values.push_back(row);
-          values.push_back(phyStartEvent);
-          values.push_back(phyEndEvent);
-          values.push_back(resetEvent);
-          values.push_back(0);
-          values.push_back(1000);
-          values.push_back(payload);
-          
+          values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 1000, payload});
           outputValues.push_back(values);
           counterId++;
           numCounters++;
@@ -326,13 +310,12 @@ namespace xdp {
     }
     
     auto context = metadata->getHwContext();
-    auto clk_freq = context.get_device().get_info<xrt::info::device::max_clock_frequency_mhz>();
-    std::cout << "AIE Clock Frequency when configuring is: " << clk_freq << std::endl;
+
     try {
       mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Could not find DPU kernel from hardware context." <<e.what() ;
+      msg << "Unable to find DPU kernel from hardware context. Not configuring AIE Profile. " << e.what() ;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
@@ -347,7 +330,7 @@ namespace xdp {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Could not create Instruction Buffer for Profiling transaction." << e.what() << std::endl;
+      msg << "Unable to create instruction buffer for AIE Profile transaction. Not configuring AIE Profile. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
@@ -477,70 +460,6 @@ namespace xdp {
     return false;
   }
 
-
-  // uint32_t 
-  // AieProfile_WinImpl::
-  // getCounterPayload( const tile_type& tile, 
-  //   const module_type type, uint16_t column, uint16_t row, 
-  //   XAie_Events startEvent, const std::string metricSet,
-  //   const uint8_t channel)
-  // {
-  //   // 1. Stream IDs for interface tiles
-  //   if (type == module_type::shim) {
-  //     // NOTE: value = ((master or slave) << 8) & (stream ID)
-  //     return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
-  //   }
-
-  //   // 2. Channel IDs for MEM tiles
-  //   if (type == module_type::mem_tile) {
-  //     // NOTE: value = ((master or slave) << 8) & (channel ID)
-  //     uint8_t isMaster = (metricSet.find("s2mm") != std::string::npos) ? 1 : 0;
-  //     return ((isMaster << 8) | channel);
-  //   }
-
-  //   // 3. DMA BD sizes for AIE tiles
-  //   if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
-  //       && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
-  //       && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
-  //       && (startEvent != XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM))
-  //     return 0;
-
-  //   uint32_t payloadValue = 0;
-
-  //   // constexpr int NUM_BDS = 8;
-  //   // constexpr uint32_t BYTES_PER_WORD_PROFILE = 4;
-  //   // constexpr uint32_t ACTUAL_OFFSET = 1;
-  //   // uint64_t offsets[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL,            XAIEGBL_MEM_DMABD1CTRL,
-  //   //                              XAIEGBL_MEM_DMABD2CTRL,            XAIEGBL_MEM_DMABD3CTRL,
-  //   //                              XAIEGBL_MEM_DMABD4CTRL,            XAIEGBL_MEM_DMABD5CTRL,
-  //   //                              XAIEGBL_MEM_DMABD6CTRL,            XAIEGBL_MEM_DMABD7CTRL};
-  //   // uint32_t lsbs[NUM_BDS]    = {XAIEGBL_MEM_DMABD0CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD1CTRL_LEN_LSB,
-  //   //                              XAIEGBL_MEM_DMABD2CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD3CTRL_LEN_LSB,
-  //   //                              XAIEGBL_MEM_DMABD4CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD5CTRL_LEN_LSB,
-  //   //                              XAIEGBL_MEM_DMABD6CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD7CTRL_LEN_LSB};
-  //   // uint32_t masks[NUM_BDS]   = {XAIEGBL_MEM_DMABD0CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD1CTRL_LEN_MASK,
-  //   //                              XAIEGBL_MEM_DMABD2CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD3CTRL_LEN_MASK,
-  //   //                              XAIEGBL_MEM_DMABD4CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD5CTRL_LEN_MASK,
-  //   //                              XAIEGBL_MEM_DMABD6CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD7CTRL_LEN_MASK};
-  //   // uint32_t valids[NUM_BDS]  = {XAIEGBL_MEM_DMABD0CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD1CTRL_VALBD_MASK,
-  //   //                              XAIEGBL_MEM_DMABD2CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD3CTRL_VALBD_MASK,
-  //   //                              XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
-  //   //                              XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
-
-  //   // auto tileOffset = _XAie_GetTileAddr(&aieDevInst, static_cast<uint8_t>(row), static_cast<uint8_t>(column));
-  //   // for (int bd = 0; bd < NUM_BDS; ++bd) {
-  //   //   uint32_t regValue = 0;
-  //   //   XAie_Read32(&aieDevInst, tileOffset + offsets[bd], &regValue);
-      
-  //   //   if (regValue & valids[bd]) {
-  //   //     uint32_t bdBytes = BYTES_PER_WORD_PROFILE * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);
-  //   //     payloadValue = std::max(bdBytes, payloadValue);
-  //   //   }
-  //   // }
-
-  //   return payloadValue;
-  // }
-
   void
   AieProfile_WinImpl::
   poll(uint32_t index, void* handle)
@@ -548,8 +467,6 @@ namespace xdp {
     std::cout << "handle; " << handle << std::endl;
     double timestamp = xrt_core::time_ns() / 1.0e6;
     auto context = metadata->getHwContext();
-    auto clk_freq = context.get_device().get_info<xrt::info::device::max_clock_frequency_mhz>();
-    std::cout << "AIE Clock Frequency when polling is: " << clk_freq << std::endl;
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     // Profiling is 3rd custom OP
@@ -568,7 +485,7 @@ namespace xdp {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Could not create Instruction Buffer for Polling" << e.what() << std::endl;
+      msg << "Unable to create the instruction buffer for polling during AIE Profile. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -580,7 +497,7 @@ namespace xdp {
       run.wait2();
     } catch (std::exception &e) {
       std::stringstream msg;
-      msg << "Could not execute polling kernel successfully." << e.what() << std::endl;
+      msg << "Unable to successfully execute AIE Profile polling kernel. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
     }
 
@@ -588,7 +505,7 @@ namespace xdp {
 
     auto instrbo_map = instr_bo.map<uint8_t*>();
     instr_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    // Seek to profiling struct
+    
     // TODO: figure out where the 8 comes from
     instrbo_map += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
     auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);

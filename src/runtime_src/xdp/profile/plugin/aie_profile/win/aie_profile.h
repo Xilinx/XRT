@@ -76,7 +76,14 @@ namespace xdp {
       uint8_t channel
     );
    private:
-       std::map<xdp::module_type, uint16_t> mCounterBases = {
+      std::vector<XAie_ModuleType> falModuleTypes = {
+        XAIE_CORE_MOD,
+        XAIE_MEM_MOD,
+        XAIE_PL_MOD,
+        XAIE_MEM_MOD
+      };
+
+      std::map<xdp::module_type, uint16_t> mCounterBases = {
         {module_type::core,     static_cast<uint16_t>(0)},
         {module_type::dma,      BASE_MEMORY_COUNTER},
         {module_type::shim,     BASE_SHIM_COUNTER},
