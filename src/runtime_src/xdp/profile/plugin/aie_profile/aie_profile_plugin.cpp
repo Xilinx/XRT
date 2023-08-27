@@ -62,6 +62,8 @@ namespace xdp {
 
   AieProfilePlugin::~AieProfilePlugin()
   {
+    std::cout << "In Destructor!" << std::endl;
+
     // Stop the polling thread
     AieProfilePlugin::live = false;
     endPoll();
@@ -191,6 +193,7 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
     ++mIndex;
+    std::cout << "Finished Settup of Writers!!!" << std::endl;
 
   }
 
@@ -209,8 +212,21 @@ namespace xdp {
     // handleToAIEData[handle].implementation->poll(index, handle);
   }
 
+  void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
+  {
+    std::cout << "In Writeall!" << std::endl;
+    for (const auto& kv : handleToAIEData) {
+      // End polling thread
+      endPollforDevice(kv.first);
+    }
+
+    XDPPlugin::endWrite();
+    handleToAIEData.clear();
+  }
+
   void AieProfilePlugin::endPollforDevice(void* handle)
   {
+    std::cout << "In End poll for device" << std::endl;
     if (handleToAIEData.empty())
       return;
 
@@ -225,6 +241,7 @@ namespace xdp {
 
   void AieProfilePlugin::endPoll()
   {
+    std::cout << "In End poll" << std::endl;
     auto& AIEData = handleToAIEData.begin()->second;
     AIEData.implementation->poll(0, nullptr);
     // Ask all threads to end

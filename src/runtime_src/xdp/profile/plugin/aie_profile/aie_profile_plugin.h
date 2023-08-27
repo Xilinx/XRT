@@ -35,6 +35,7 @@ namespace xdp {
     XDP_EXPORT static bool alive();
 
   private:
+    virtual void writeAll(bool openNewFiles) override;
     uint64_t getDeviceIDFromHandle(void* handle);
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();

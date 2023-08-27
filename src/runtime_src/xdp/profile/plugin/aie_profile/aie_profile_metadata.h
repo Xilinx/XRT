@@ -63,7 +63,7 @@ class AieProfileMetadata{
       { module_type::shim,     {"s2mm_throughputs", "mm2s_throughputs", "packets"} },
       { module_type::mem_tile, {"input_channels", "input_channels_details",
                                 "output_channels", "output_channels_details",
-                                "memory_stats", "mem_trace", "s2mm_throughputs", "mm2s_throughputs"} }
+                                "memory_stats", "mem_trace", "s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"} }
     };
 
     std::vector<std::map<tile_type, std::string>> configMetrics;

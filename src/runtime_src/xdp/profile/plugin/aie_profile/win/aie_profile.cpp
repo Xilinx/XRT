@@ -139,7 +139,24 @@ namespace xdp {
       {"mm2s_throughputs",        {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
                                    XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}}
+                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
+      {"conflict_stats1",         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE}}, 
+      {"conflict_stats2",         {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
+      {"conflict_stats3",         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
+                                  XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+                                  XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
+                                  XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE}} ,
+      {"conflict_stats4",         {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
+                                  XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+                                  XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
+                                  XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}} ,
+                                                             
     };
     mMemTileEndEvents = mMemTileStartEvents;
   }
@@ -202,6 +219,9 @@ namespace xdp {
         auto row  = tile.row;
         auto type = getModuleType(row, mod);
         auto col  = tile.col;
+
+        // if (type == module_type::mem_tile)
+        //   col = 0;
 
         if (!isValidType(type, mod))
           continue;
@@ -298,7 +318,7 @@ namespace xdp {
 
     } // modules
 
-    op_size = sizeof(aie_profile_op_t) + sizeof(aie_profile_op_t) * (counterId - 1);
+    op_size = sizeof(aie_profile_op_t) + sizeof(profile_data_t) * (counterId - 1);
     op = (aie_profile_op_t*)malloc(op_size);
     op->count = counterId;
     for (int i = 0; i < op_profile_data.size(); i++) {
@@ -306,6 +326,8 @@ namespace xdp {
     }
     
     auto context = metadata->getHwContext();
+    auto clk_freq = context.get_device().get_info<xrt::info::device::max_clock_frequency_mhz>();
+    std::cout << "AIE Clock Frequency when configuring is: " << clk_freq << std::endl;
     try {
       mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
     } catch (std::exception &e){
@@ -526,6 +548,8 @@ namespace xdp {
     std::cout << "handle; " << handle << std::endl;
     double timestamp = xrt_core::time_ns() / 1.0e6;
     auto context = metadata->getHwContext();
+    auto clk_freq = context.get_device().get_info<xrt::info::device::max_clock_frequency_mhz>();
+    std::cout << "AIE Clock Frequency when polling is: " << clk_freq << std::endl;
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     // Profiling is 3rd custom OP
@@ -570,6 +594,7 @@ namespace xdp {
     auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
 
     for (uint32_t i = 0; i < output->count; i++) {
+      std::cout << "Values: " << output->profile_data[i].perf_value << std::endl;
       std::vector<uint64_t> values = outputValues[i];
       values[5] = static_cast<uint64_t>(output->profile_data[i].perf_value); //write pc value
       db->getDynamicInfo().addAIESample(index, timestamp, values);

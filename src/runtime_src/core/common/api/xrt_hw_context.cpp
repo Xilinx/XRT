@@ -45,6 +45,8 @@ namespace xrt {
   hw_context_impl::
   ~hw_context_impl()
   {
+    std::cout << "In End Poll CB" << std::endl;
+    std::cout << "end_poll_cb: " << (xdp::aie::profile::end_poll_cb != nullptr) << std::endl;
     if (xdp::aie::profile::end_poll_cb != nullptr) 
       xdp::aie::profile::end_poll_cb(this);
   }
@@ -92,6 +94,8 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
+    std::cout << "In Update Device CB" << std::endl;
+    std::cout << "In Update Device: " << (xdp::aie::profile::end_poll_cb != nullptr) << std::endl;
     if (xdp::aie::profile::update_device_cb != nullptr) 
       xdp::aie::profile::update_device_cb(get_handle().get());
 }
