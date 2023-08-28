@@ -19,6 +19,7 @@
 #include "TestRunner.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
+#include "core/common/module_loader.h"
 #include "core/common/system.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/XBUtilities.h"
@@ -391,11 +392,6 @@ std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
                  boost::property_tree::ptree& _ptTest)
 {
-#ifdef _WIN32
-  boost::ignore_unused(_dev);
-  boost::ignore_unused(_ptTest);
-  return xrt_core::find_platform_path();
-#else
   //check if a 2RP platform
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
 
@@ -406,20 +402,33 @@ TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
     auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
     return searchLegacyXclbin(vendor, name, _ptTest);
   }
-#endif
 }
 
 std::string
 TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
                 boost::property_tree::ptree& _ptTest)
 {
+  auto xclbin_name = _ptTest.get<std::string>("xclbin", "");
+  std::string xclbin_path;
+#ifdef _WIN32
+  boost::ignore_unused(_dev);
+  try {
+    xclbin_path = xrt_core::environment::xclbin_path(xclbin_name);
+  }
+  catch(const std::exception) {
+    const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_name;
+    logger(_ptTest, "Details", boost::str(fmt));
+    _ptTest.put("status", test_token_skipped);
+  }
+#else
   const auto platform_path = findPlatformPath(_dev, _ptTest);
-  const auto xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + _ptTest.get<std::string>("xclbin", "");
+  xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + xclbin_name;
   if (!boost::filesystem::exists(xclbin_path)) {
     const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_path;
     logger(_ptTest, "Details", boost::str(fmt));
     _ptTest.put("status", test_token_skipped);
   }
+#endif
   return xclbin_path;
 }
 
