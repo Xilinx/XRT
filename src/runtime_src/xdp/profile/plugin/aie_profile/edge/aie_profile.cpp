@@ -306,42 +306,44 @@ namespace xdp {
 
       bool newPort = false;
       auto portnum = getPortNumberFromEvent(startEvent);
-      
+
+      // New port needed: reserver, configure, and store
       if (switchPortMap.find(portnum) == switchPortMap.end()) {
-        auto newSwitchPortRsc = xaieTile.sswitchPort();
-        if (newSwitchPortRsc->reserve() != AieRC::XAIE_OK)
+        auto switchPortRsc = xaieTile.sswitchPort();
+        if (switchPortRsc->reserve() != AieRC::XAIE_OK)
           continue;
         newPort = true;
-        switchPortMap.at(portnum) = newSwitchPortRsc;
-      } 
-      auto switchPortRsc = switchPortMap.at(portnum);
+        switchPortMap[portnum] = switchPortRsc;
 
-      if (type == module_type::core) {
-        // AIE Tiles (e.g., trace streams)
-        // Define stream switch port to monitor core or memory trace
-        uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-        switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
-      }
-      else if (type == module_type::shim) {
-        // Interface tiles (e.g., PLIO, GMIO)
-        // Grab slave/master and stream ID
-        // NOTE: stored in getTilesForProfiling() above
-        auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-        auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
-        switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
-      }
-      else {
-        // Memory tiles
-        if (metricSet.find("trace") != std::string::npos) {
-          switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+        if (type == module_type::core) {
+          // AIE Tiles (e.g., trace streams)
+          // Define stream switch port to monitor core or memory trace
+          uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
+          switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+        }
+        else if (type == module_type::shim) {
+          // Interface tiles (e.g., PLIO, GMIO)
+          // Grab slave/master and stream ID
+          // NOTE: stored in getTilesForProfiling() above
+          auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+          switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
         }
         else {
-          uint8_t channel = (portnum == 0) ? channel0 : channel1;
-          auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
-            XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+          // Memory tiles
+          if (metricSet.find("trace") != std::string::npos) {
+            switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+          }
+          else {
+            uint8_t channel = (portnum == 0) ? channel0 : channel1;
+            auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
+              XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+          }
         }
       }
+
+      auto switchPortRsc = switchPortMap[portnum];
 
       // Event options:
       //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
