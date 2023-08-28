@@ -93,6 +93,24 @@ XRT_CORE_COMMON_EXPORT
 std::string
 xilinx_xrt();
 
+/**
+ * xclbin_path() - Get path to xclbin directory
+ *
+ * @xclbin_name : A path relative or absolute to an xclbin file
+ * Return: Full path the xclbin file
+ *
+ * If the specified path is an absolute path then the function returns
+ * this path or throws if file does not exist.  If the path is
+ * relative, or just a plain file name, then the function prepends the
+ * absolute path of a platform specific xclbin repository that
+ * contains the specified file.
+ *
+ * The function throws if the file does not exist.
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+xclbin_path(const std::string& xclbin_name);
+
 } // environment
 
 } // end namespace xrt_core
