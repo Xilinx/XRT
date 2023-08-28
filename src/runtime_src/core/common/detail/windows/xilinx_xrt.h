@@ -4,11 +4,14 @@
 #include "core/common/debug.h"
 #include "core/common/dlfcn.h"
 
-#define NOMINMAX
-#include <windows.h>
-#include <d3dkmthk.h>
 #pragma warning(disable : 4005)
+#include <windows.h>
 #include <ntstatus.h>
+
+#if (NTDDI_VERSION >= NTDDI_LONGHORN) && (DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WDDM2_7)
+# define XRT_WINDOWS_HAS_XILINX_XRT
+# include <d3dkmthk.h>
+#endif
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -16,6 +19,7 @@
 #include <cstring>
 #include <cstdlib>
 
+#if defined(XRT_WINDOWS_HAS_XILINX_XRT)
 namespace xrt_core::detail::windows {
 
 // D3DKMTQueryAdapterInfo returns path rooted in \SystemRoot\, but no
@@ -219,6 +223,7 @@ struct adapter_list
 };
 
 } // xrt_core::detail::windows
+#endif // XRT_WINDOWS_HAS_XILINX_XRT
 
 namespace xrt_core::detail {
 
@@ -227,6 +232,7 @@ namespace bfs = boost::filesystem;
 bfs::path
 xilinx_xrt()
 {
+#if defined(XRT_WINDOWS_HAS_XILINX_XRT)
   // For wdf make sure to continue loading from same location as coreutil
   windows::adapter_list adapters;
 
@@ -238,6 +244,9 @@ xilinx_xrt()
     return bfs::path(xrt_core::dlpath("xrt_coreutil.dll")).parent_path();
 
   return adapter->driver_store_path();
+#else
+  return bfs::path(xrt_core::dlpath("xrt_coreutil.dll")).parent_path();
+#endif
 }
 
 bfs::path
