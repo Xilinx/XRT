@@ -172,6 +172,12 @@ namespace xdp {
   AieProfile_WinImpl::
   setMetricsSettings(uint64_t deviceId)
   {
+    int counterId = 0;
+    bool runtimeCounters = false;
+    // inputs to the DPU kernel
+    std::vector<profile_data_t> op_profile_data;
+
+
     XAie_Config cfg { 
       XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
       metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
@@ -192,28 +198,23 @@ namespace xdp {
       return false;
     }
 
-    //Create vector of op inputs
-    std::vector<profile_data_t> op_profile_data;
 
     //Start recording the transaction
-
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-    int counterId = 0;
-    bool runtimeCounters = false;
-    auto configChannel0 = metadata->getConfigChannel0();
 
+    auto configChannel0 = metadata->getConfigChannel0();
     for (int module = 0; module < metadata->getNumModules(); ++module) {
+
       // int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
       XAie_ModuleType mod = falModuleTypes[module];
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
+        int numCounters  = 0;
+
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto type = getModuleType(row, mod);
         auto col  = tile.col;
-
-        // if (type == module_type::mem_tile)
-        //   col = 0;
 
         if (!isValidType(type, mod))
           continue;
@@ -229,18 +230,14 @@ namespace xdp {
                          : ((type == module_type::shim) ? mShimEndEvents[metricSet]
                          : mMemTileEndEvents[metricSet]));
 
-        int numCounters  = 0;
-        uint8_t numFreeCtr = static_cast<uint8_t>(startEvents.size());
-        if (type == module_type::dma)
-          numFreeCtr = 2;
+        uint8_t numFreeCtr = (type == module_type::dma) ? 2 : static_cast<uint8_t>(startEvents.size());
 
-        // // Specify Sel0/Sel1 for MEM tile events 21-44
         auto iter0 = configChannel0.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         configEventSelections(loc, type, metricSet, channel0);
 
         // Request and configure all available counters for this tile
-        for (uint8_t i=0; i < numFreeCtr; ++i) {
+        for (uint8_t i = 0; i < numFreeCtr; i++) {
           auto startEvent    = startEvents.at(i);
           auto endEvent      = endEvents.at(i);
           uint8_t resetEvent = 0;
@@ -283,18 +280,18 @@ namespace xdp {
           std::vector<uint64_t> Regs = regValues[type];
           // 25 is column offset and 20 is row offset for IPU
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20), 0});
-          // op.perf_address[counterId] = Regs[i] + (col << 25) + (row << 20);
 
           std::vector<uint64_t> values;
           values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 1000, payload});
           outputValues.push_back(values);
+
           counterId++;
           numCounters++;
         }
 
         std::stringstream msg;
         msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," 
-            << row << ") using metric set " << metricSet << ".";
+            << row << ") using metric set " << metricSet << " and channel " << (int)channel0 << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         // numTileCounters[numCounters]++;
       }
@@ -399,6 +396,9 @@ namespace xdp {
       auto slaveOrMaster = (metricSet.find("mm2s") != std::string::npos) ?
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
+      std::stringstream msg;
+      msg << "Configured core tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
 
@@ -410,6 +410,9 @@ namespace xdp {
       auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
+      std::stringstream msg;
+      msg << "Configured shim tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and stream port id " << (int)streamPortId << ".";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
 
@@ -417,6 +420,9 @@ namespace xdp {
       auto slaveOrMaster = (metricSet.find("mm2s") != std::string::npos) ?
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
+      std::stringstream msg;
+      msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
   }
 
@@ -431,7 +437,10 @@ namespace xdp {
 
     XAie_DmaDirection dmaDir = (metricSet.find("s2mm") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(&aieDevInst, loc, 0, dmaDir, channel0);
-    // XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
+
+    std::stringstream msg;
+    msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << "DMA  for metricset " << metricSet << " and channel " << (int)channel0 << ".";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
   module_type 
@@ -511,11 +520,12 @@ namespace xdp {
     auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
 
     for (uint32_t i = 0; i < output->count; i++) {
-      std::cout << "Values: " << output->profile_data[i].perf_value << std::endl;
+      std::stringstream msg;
+      msg << "Counter address/values: 0x" << std::hex << output->profile_data[i].perf_address << ": " << std::dec << output->profile_data[i].perf_value;
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       std::vector<uint64_t> values = outputValues[i];
       values[5] = static_cast<uint64_t>(output->profile_data[i].perf_value); //write pc value
       db->getDynamicInfo().addAIESample(index, timestamp, values);
-
     }
 
     free(op);
@@ -525,7 +535,6 @@ namespace xdp {
   AieProfile_WinImpl::
   freeResources()
   {
-    // TODO - if there are any resources we need to free after the application
-    // is complete, it must be done here.
+    
   }
 }  // namespace xdp
