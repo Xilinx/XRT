@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_CORE_SYSTEM_H
 #define XRT_CORE_SYSTEM_H
 
@@ -122,12 +122,6 @@ public:
   program_plp(const device*, const std::vector<char>&, bool) const
   {
     throw std::runtime_error("plp program is not supported");
-  }
-
-  virtual std::string 
-  find_platform_path() const
-  {
-    throw std::runtime_error("find_platform_path is not supported");
   }
 }; // system
 
@@ -263,9 +257,6 @@ get_monitor_access_type();
 XRT_CORE_COMMON_EXPORT
 void
 program_plp(const device* dev, const std::vector<char> &buffer, bool force);
-
-XRT_CORE_COMMON_EXPORT
-std::string find_platform_path();
 } //xrt_core
 
 #endif /* CORE_SYSTEM_H */

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "system.h"
 #include "device.h"
@@ -210,12 +210,6 @@ void
 program_plp(const device* dev, const std::vector<char> &buffer, bool force)
 {
   instance().program_plp(dev, buffer, force);
-}
-
-std::string 
-find_platform_path()
-{
-  return instance().find_platform_path();
 }
 
 } // xrt_core

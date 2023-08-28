@@ -20,7 +20,6 @@
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
-#include "core/common/system.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
