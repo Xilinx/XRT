@@ -219,8 +219,8 @@ namespace xdp {
     } else if (startType == "iteration") {
       // Verify AIE was compiled with the proper setting
       if (!graphIteratorEvent) {
-        std::string msg("Unable to use graph iteration as trace start type.\
-            Please re-compile AI Engine with --graph-iterator-event true.");
+        std::string msg = "Unable to use graph iteration as trace start type. ";
+        msg.append("Please re-compile AI Engine with --graph-iterator-event=true.");
         xrt_core::message::send(severity_level::warning, "XRT", msg);
       }
       else {
