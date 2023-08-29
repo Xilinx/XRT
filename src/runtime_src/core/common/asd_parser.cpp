@@ -727,6 +727,11 @@ boost::property_tree::ptree
 get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info,
                         uint32_t& cols_filled)
 {
+  boost::property_tree::ptree pt;
+  // This check is added as AIE information is currently not available for versal DC platforms
+  if (xrt_core::device_query<xrt_core::query::is_versal>(device))
+    return pt; 
+
   // Get Aie status version and check compatibility
   auto version = xrt_core::device_query<xrt_core::query::aie_status_version>(device);
   aie_status_version_check(version.major, version.minor);
@@ -751,7 +756,6 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
   if (cols_filled == 0)
     throw std::runtime_error("No open HW-Context\n");
 
-  boost::property_tree::ptree pt;
   std::vector<asd_parser::aie_tiles_status> aie_status;
   // convert buffer into respective structure and format
   switch (tile_type) {
