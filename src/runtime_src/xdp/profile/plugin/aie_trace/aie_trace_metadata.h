@@ -37,7 +37,7 @@ class AieTraceMetadata {
     AieTraceMetadata(uint64_t deviceID, void* handle);
 
     void checkSettings();
-    void setTraceStartControl();
+    void setTraceStartControl(bool graphIteratorEvent);
     std::vector<std::string> getSettingsVector(std::string settingsString);
     uint8_t getMetricSetIndex(std::string metricString);
     

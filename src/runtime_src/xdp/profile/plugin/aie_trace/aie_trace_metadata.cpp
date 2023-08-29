@@ -103,7 +103,7 @@ namespace xdp {
       getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::core);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
       getConfigMetricsForInterfaceTiles(shimTileMetricsSettings, shimGraphMetricsSettings);
-      setTraceStartControl();
+      setTraceStartControl(compilerOptions.graph_iterator_event);
     }
   }
 
@@ -158,7 +158,7 @@ namespace xdp {
   }
 
   // Parse trace start time or events
-  void AieTraceMetadata::setTraceStartControl()
+  void AieTraceMetadata::setTraceStartControl(bool graphIteratorEvent)
   {
     useDelay = false;
     useGraphIterator = false;
@@ -217,9 +217,17 @@ namespace xdp {
       useDelay = (cycles != 0);
       delayCycles = cycles;
     } else if (startType == "iteration") {
-      // Start trace when graph iterator reaches a threshold
-      iterationCount = xrt_core::config::get_aie_trace_settings_start_iteration();
-      useGraphIterator = (iterationCount != 0);
+      // Verify AIE was compiled with the proper setting
+      if (!graphIteratorEvent) {
+        std::string msg = "Unable to use graph iteration as trace start type. ";
+        msg.append("Please re-compile AI Engine with --graph-iterator-event=true.");
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+      }
+      else {
+        // Start trace when graph iterator reaches a threshold
+        iterationCount = xrt_core::config::get_aie_trace_settings_start_iteration();
+        useGraphIterator = (iterationCount != 0);
+      }
     } else if (startType == "kernel_event0") {
       // Start trace using user events
       useUserControl = true;

@@ -28,6 +28,7 @@ namespace xdp {
   struct aiecompiler_options
   {
     bool broadcast_enable_core;
+    bool graph_iterator_event;
     std::string event_trace;
   };
 
