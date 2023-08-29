@@ -424,6 +424,8 @@ namespace aie {
 
     // Now search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
+    if (!kernelToTileMapping && kernel_name.compare("all") == 0)
+      return getAIETiles(aie_meta, graph_name);
     if (!kernelToTileMapping)
       return {};
 

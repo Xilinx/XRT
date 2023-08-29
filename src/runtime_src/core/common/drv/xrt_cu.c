@@ -665,6 +665,10 @@ void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 {
 	unsigned long flags;
 
+	/* For CTRL_NONE hpq doesn't exists. Hence return from here */
+	if (xcu->info.protocol == CTRL_NONE)
+		return;
+
 	/* This high priority queue is designed to handle those hight priority
 	 * but low frequency commands. Like abort command.
 	 */

@@ -37,6 +37,7 @@ namespace xdp {
     private:
       xrt::device device;
       xrt::kernel aie_profile_kernel;
+      uint32_t numCountersConfigured = 0;
   };
 
 }   

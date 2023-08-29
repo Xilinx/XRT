@@ -18,11 +18,11 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
+#include "detail/xilinx_xrt.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <iostream>
-
 
 #ifdef _WIN32
 # pragma warning (disable : 4996)
@@ -96,20 +96,33 @@ shim_name()
 }
 
 static bfs::path
-xilinx_xrt()
+get_xilinx_xrt()
 {
   bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
-  if (xrt.empty()){
-#if defined (__aarch64__) || defined (__arm__)
-    xrt = bfs::path("/usr");
-#elif defined (_WIN32)
-    xrt = bfs::path(xrt_core::dlpath("xrt_coreutil.dll")).parent_path();
-#else
-    throw std::runtime_error("XILINX_XRT not set");
-#endif
-  }
+  if (!xrt.empty())
+    return xrt;
 
+  return xrt_core::detail::xilinx_xrt();
+}
+
+static bfs::path
+xilinx_xrt()
+{
+  static bfs::path xrt = get_xilinx_xrt();
   return xrt;
+}
+
+static bfs::path
+xclbin_path(const std::string& xclbin)
+{
+  bfs::path xpath(xclbin);
+  if (!xpath.is_absolute())
+    xpath = xrt_core::detail::xclbin_path(xclbin);
+  
+  if (bfs::exists(xpath) && bfs::is_regular_file(xpath))
+    return xpath;
+
+  throw std::runtime_error("No such xclbin '" + xpath.string() + "'");
 }
 
 static bfs::path
@@ -133,7 +146,9 @@ static bfs::path
 shim_path()
 {
   auto path = xilinx_xrt();
+  std::cout << "xilinx_xrt: " << path << '\n';
   auto name = shim_name();
+  std::cout << "shim_name: " << name << '\n';
 
 #ifdef _WIN32
   path /= name + ".dll";
@@ -223,5 +238,21 @@ driver_loader()
   for (const auto& p : paths)
     load_library(p);
 }
+
+namespace environment {
+
+std::string
+xilinx_xrt()
+{
+  return ::xilinx_xrt().string();
+}
+
+std::string
+xclbin_path(const std::string& xclbin_name)
+{
+  return ::xclbin_path(xclbin_name).string();
+}
+
+} // environment
 
 } // xrt_core
