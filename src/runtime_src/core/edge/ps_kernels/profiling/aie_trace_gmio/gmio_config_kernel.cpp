@@ -17,10 +17,10 @@
 #include <sys/mman.h>
 
 #include "xaiefal/xaiefal.hpp"
+#include "core/edge/include/pscontext.h"
 #include "core/edge/user/shim.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
-#include "core/edge/include/sk_types.h"
 
 struct AIETraceGmioDMAInst{
   XAie_DmaDesc shimDmaInst;

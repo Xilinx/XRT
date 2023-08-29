@@ -112,6 +112,12 @@ namespace xdp {
       }
     }
 
+    if (tile_idx == 0) {
+      std::string msg = "No tiles were found in the AIE_METADATA section. Profiling is not enabled.";
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      return false;
+    }
+
     uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
 
     try {
@@ -134,6 +140,7 @@ namespace xdp {
       outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
       ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
 
+      numCountersConfigured = cfg->numCounters;
       for (uint32_t i = 0; i < cfg->numCounters; i++) {
         // Store counter info in database
         auto& counter = cfg->counters[i];
@@ -143,6 +150,7 @@ namespace xdp {
                            counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload,
                            metadata->getClockFreqMhz(), metadata->getModuleName(counter.moduleName), counterName);
       }
+    
     }
     catch (...) {
       std::string msg = "The aie_profile_config PS kernel was not found.";
@@ -165,6 +173,9 @@ namespace xdp {
       // input bo
       //  We Don't need to pass data from the db for polling since
       //  the counters are stored locally in PS memory after setup
+
+      if (numCountersConfigured == 0) return;
+
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
       auto inbo_map = inbo.map<uint8_t*>();
       memset(inbo_map, 0, INPUT_SIZE);
@@ -179,7 +190,7 @@ namespace xdp {
       outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
       ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
 
-      for (uint32_t i = 0; i < cfg->numCounters; i++) {
+      for (uint32_t i = 0; i < numCountersConfigured; i++) {
         std::vector<uint64_t> values;
         auto& counter = cfg->counters[i];
         values.push_back(counter.col);
