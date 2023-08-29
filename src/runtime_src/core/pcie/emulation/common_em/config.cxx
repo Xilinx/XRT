@@ -392,6 +392,13 @@ namespace xclemulation{
     {
       std::cout<<"unable to findout the host binary path in emulation driver "<<std::endl;
     }
+
+    if (hostBinaryPath.find("python") != std::string::npos) 
+    {
+      auto fullpath = boost::filesystem::current_path();
+      auto fullpathstr = fullpath.c_str();
+      return fullpathstr;
+    }
     std::string directory;
     const size_t last_slash_idx = hostBinaryPath.rfind("/");
     if (std::string::npos != last_slash_idx)
