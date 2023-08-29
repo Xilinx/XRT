@@ -8,8 +8,7 @@
 #include <windows.h>
 #include <ntstatus.h>
 
-#if (NTDDI_VERSION >= NTDDI_LONGHORN) && (DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WDDM2_7)
-# define XRT_WINDOWS_HAS_XILINX_XRT
+#if defined(XRT_WINDOWS_HAS_WDK)
 # include <d3dkmthk.h>
 #endif
 
@@ -19,7 +18,7 @@
 #include <cstring>
 #include <cstdlib>
 
-#if defined(XRT_WINDOWS_HAS_XILINX_XRT)
+#if defined(XRT_WINDOWS_HAS_WDK)
 namespace xrt_core::detail::windows {
 
 // D3DKMTQueryAdapterInfo returns path rooted in \SystemRoot\, but no
@@ -223,7 +222,7 @@ struct adapter_list
 };
 
 } // xrt_core::detail::windows
-#endif // XRT_WINDOWS_HAS_XILINX_XRT
+#endif // XRT_WINDOWS_HAS_WDK
 
 namespace xrt_core::detail {
 
@@ -232,7 +231,7 @@ namespace bfs = boost::filesystem;
 bfs::path
 xilinx_xrt()
 {
-#if defined(XRT_WINDOWS_HAS_XILINX_XRT)
+#if defined(XRT_WINDOWS_HAS_WDK)
   // For wdf make sure to continue loading from same location as coreutil
   windows::adapter_list adapters;
 
@@ -245,6 +244,7 @@ xilinx_xrt()
 
   return adapter->driver_store_path();
 #else
+  // Without WDK we can't query the driver store path, so return coreutil path
   return bfs::path(xrt_core::dlpath("xrt_coreutil.dll")).parent_path();
 #endif
 }
