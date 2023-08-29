@@ -43,6 +43,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_AieRegRead.cpp"
   "OO_AieClockFreq.cpp"
   "OO_HostMem.cpp"
+  "OO_Performance.cpp"
 )
 
 # Merge the files into one collection
