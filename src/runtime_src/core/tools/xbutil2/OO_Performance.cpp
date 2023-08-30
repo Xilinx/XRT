@@ -76,16 +76,16 @@ OO_Performance::execute(const SubCmdOptions& _options) const
   }
 
   try {
-    if(boost::iequals(m_action, "LOW")) {
+    if(boost::iequals(m_action, "DEFAULT")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), 0);
     }
-    else if(boost::iequals(m_action, "MEDIUM")) {
+    else if(boost::iequals(m_action, "LOW")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), 1);
     }
-    else if(boost::iequals(m_action, "HIGH")) {
+    else if(boost::iequals(m_action, "MEDIUM")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), 2);
     }
-    else if(boost::iequals(m_action, "DEFAULT")) {
+    else if(boost::iequals(m_action, "HIGH")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), 3);
     }
     else {
