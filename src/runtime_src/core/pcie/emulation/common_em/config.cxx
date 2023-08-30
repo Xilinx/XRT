@@ -392,13 +392,6 @@ namespace xclemulation{
     {
       std::cout<<"unable to findout the host binary path in emulation driver "<<std::endl;
     }
-
-    if (hostBinaryPath.find("python") != std::string::npos) 
-    {
-      auto fullpath = boost::filesystem::current_path();
-      auto fullpathstr = fullpath.c_str();
-      return fullpathstr;
-    }
     std::string directory;
     const size_t last_slash_idx = hostBinaryPath.rfind("/");
     if (std::string::npos != last_slash_idx)
@@ -408,6 +401,22 @@ namespace xclemulation{
     return directory;
   }
 
+  static std::string verifi_emconfig_json(std::string& executablePath) {
+
+    std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
+    if (boost::filesystem::exists(xclEmConfigfile) == false) {
+      std::cerr << "\n file does not exists at "<< xclEmConfigfile << ".\n";
+    }
+
+    executablePath = boost::filesystem::current_path().string() + "/emconfig.json";
+    if (boost::filesystem::exists(executablePath) == false) {
+      std::cerr << "\n file does not exists at "<< executablePath << " as well!\n";
+      return "";
+    }
+
+    return executablePath;
+  }
+
   static std::string getEmConfigFilePath()
   {
     std::string executablePath = getExecutablePath();
@@ -415,8 +424,7 @@ namespace xclemulation{
     if (!emConfigPath.empty()) {
       executablePath = emConfigPath;
     }
-    std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
-    return xclEmConfigfile;
+    return verifi_emconfig_json(executablePath);
   }
 
   bool isXclEmulationModeHwEmuOrSwEmu()
