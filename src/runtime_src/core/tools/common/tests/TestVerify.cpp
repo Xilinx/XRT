@@ -19,9 +19,10 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
 {
   auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(dev, "");
   boost::property_tree::ptree ptree;
-  if(device_name.find("IPU") != std::string::npos) {
+  //to-do: Do it in a cleaner way
+  if (device_name.find("IPU") != std::string::npos) {
     //run ipu verify
-    ptree = std::make_shared<TestIPU>()->run(dev);
+    ptree = TestIPU{}.run(dev);
   }
   else {
     ptree = get_test_header();

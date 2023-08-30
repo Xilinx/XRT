@@ -17,7 +17,7 @@ static constexpr size_t buffer_size = 128;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
-  : TestRunner("ipu-verify", 
+  : TestRunner("verify", 
                 "Run 'Hello World' test on IPU",
                 "1x4.xclbin"){}
 
