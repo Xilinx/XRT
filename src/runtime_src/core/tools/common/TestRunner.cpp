@@ -410,7 +410,7 @@ TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
   auto xclbin_name = _ptTest.get<std::string>("xclbin", "");
   std::string xclbin_path;
 #ifdef _WIN32
-  std::ignore(_dev);
+  boost::ignore_unused(_dev);
   try {
     xclbin_path = xrt_core::environment::xclbin_path(xclbin_name);
   }
