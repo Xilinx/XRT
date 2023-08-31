@@ -36,6 +36,8 @@ class TestRunner {
     const std::string & get_name() const { return m_name; };
     boost::property_tree::ptree get_test_header();
     const std::string & getConfigName() const { return get_name(); };
+    std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
+                      boost::property_tree::ptree& _ptTest);
 
   // Child class helper methods
   protected:
@@ -56,8 +58,6 @@ class TestRunner {
     std::string searchSSV2Xclbin(const std::string& logic_uuid,
                       boost::property_tree::ptree& _ptTest);
     std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
-                      boost::property_tree::ptree& _ptTest);
-    std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
                       boost::property_tree::ptree& _ptTest);
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
