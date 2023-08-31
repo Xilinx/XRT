@@ -76,6 +76,7 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Mig Calibrated" % pt_status.get<std::string>("mig_calibrated");
     _output << boost::format("  %-23s: %s \n") % "P2P Status" % pt_status.get<std::string>("p2p_status");
+    _output << boost::format("  %-23s: %s \n") % "Performance Mode" % pt_status.get<std::string>("performance_mode");
 
     const boost::property_tree::ptree ptEmpty; 
     const boost::property_tree::ptree& pt_config = pt_platform.get_child("config.p2p", ptEmpty); 
