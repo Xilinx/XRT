@@ -601,8 +601,10 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 
 	// Only read slot 0's xclbin - TODO: extend to multi-slot 
 	zocl_slot = zdev->pr_slot[0];
-	if (!zocl_slot || !zocl_slot->axlf)
-		continue;
+	if (!zocl_slot || !zocl_slot->axlf) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
 
 	size = zocl_slot->axlf_size;
 	if (off >= size) {
