@@ -2472,6 +2472,9 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		return ret;
 	}
 
+	if (XDEV(xdev)->kds.ert_disable == true)
+		return ret;
+
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return ret;
 
