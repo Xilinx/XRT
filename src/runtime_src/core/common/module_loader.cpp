@@ -22,7 +22,6 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
-#include <iostream>
 
 #ifdef _WIN32
 # pragma warning (disable : 4996)
@@ -146,9 +145,7 @@ static bfs::path
 shim_path()
 {
   auto path = xilinx_xrt();
-  std::cout << "xilinx_xrt: " << path << '\n';
   auto name = shim_name();
-  std::cout << "shim_name: " << name << '\n';
 
 #ifdef _WIN32
   path /= name + ".dll";
