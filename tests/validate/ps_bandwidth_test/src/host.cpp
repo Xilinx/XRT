@@ -42,8 +42,8 @@ validate_binary_file(const std::string& binaryfile, bool print = false)
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string iter_cnt;
-    std::string b_file;
+    std::string iter_cnt = "10000";
+    std::string b_file = "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin";
     std::vector<std::string> dependency_paths;
     bool flag_s;
 
@@ -79,11 +79,10 @@ int main(int argc, char** argv) {
 
     // Load dependency xclbins onto device if any
     for (const auto& path : dependency_paths) {
-        auto x_file = test_path + "/" + path;
-        auto retVal = validate_binary_file(x_file);
+        auto retVal = validate_binary_file(path);
         if (retVal != EXIT_SUCCESS)
-            return retVal;
-        auto uuid = device.load_xclbin(x_file);
+	    return retVal;
+        auto uuid = device.load_xclbin(path);
     }
 
     // Load ps kernel onto device
