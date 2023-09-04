@@ -392,6 +392,15 @@ namespace xclemulation{
     {
       std::cout<<"unable to findout the host binary path in emulation driver "<<std::endl;
     }
+    // Get the process binary name
+    // If hostBinaryPath is starting with /usr/ then it is very likely that
+    // the host code might be python script.
+    auto substrvalue = hostBinaryPath.substr(0,5);
+    if (substrvalue == "/usr/") {
+      //if (hostBinaryPath.find("pthon") != std::string::npos )
+        hostBinaryPath = boost::filesystem::current_path().string();
+    }
+    
     std::string directory;
     const size_t last_slash_idx = hostBinaryPath.rfind("/");
     if (std::string::npos != last_slash_idx)
@@ -405,16 +414,11 @@ namespace xclemulation{
 
     std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
     if (boost::filesystem::exists(xclEmConfigfile) == false) {
-      std::cout << "\n INFO: [EMU 01-01] emconfig json is not present at "<< xclEmConfigfile << ".\n";
-    }
-
-    executablePath = boost::filesystem::current_path().string() + "/emconfig.json";
-    if (boost::filesystem::exists(executablePath) == false) {
-      std::cout << "\n INFO: [EMU 01-02] emconfig json is not present at "<< executablePath << " as well!\n";
+      std::cout << "\n CRITICAL WARNING: [EMU 01-01] emconfig json is not present at "<< executablePath << ". Please ensure EMCONFIG_PATH is set.\n";
       return "";
     }
 
-    return executablePath;
+    return xclEmConfigfile;
   }
 
   static std::string getEmConfigFilePath()
