@@ -397,8 +397,11 @@ namespace xclemulation{
     // the host code might be python script.
     auto substrvalue = hostBinaryPath.substr(0,5);
     if (substrvalue == "/usr/") {
-      //if (hostBinaryPath.find("pthon") != std::string::npos )
+      // Try if the argv[0] is python only
+      if (hostBinaryPath.find("python") != std::string::npos ) {
         hostBinaryPath = boost::filesystem::current_path().string();
+        return hostBinaryPath;
+      }
     }
     
     std::string directory;
