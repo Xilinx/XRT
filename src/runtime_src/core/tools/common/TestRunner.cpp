@@ -77,9 +77,9 @@ TestRunner::TestRunner (const std::string & test_name,
                         const std::string & description,
                         const std::string & xclbin,
                         bool is_explicit)
-    : m_name(test_name)
+    : m_xclbin(xclbin)
+    , m_name(test_name)
     , m_description(description) 
-    , m_xclbin(xclbin)
     , m_explicit(is_explicit)
 {
   //Empty
@@ -365,6 +365,16 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
   }
+}
+
+int
+TestRunner::validate_binary_file(const std::string& binaryfile)
+{
+  std::ifstream infile(binaryfile);
+  if (!infile.good()) 
+    return EOPNOTSUPP;
+  else
+    return EXIT_SUCCESS;
 }
 
 bool
