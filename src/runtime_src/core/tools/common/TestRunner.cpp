@@ -19,6 +19,7 @@
 #include "TestRunner.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
+#include "core/common/module_loader.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -68,7 +69,6 @@ program_xclbin(const std::shared_ptr<xrt_core::device>& device, const std::strin
     XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
   }
 }
-
 } //end anonymous namespace
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -417,13 +417,27 @@ std::string
 TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
                 boost::property_tree::ptree& _ptTest)
 {
+  auto xclbin_name = _ptTest.get<std::string>("xclbin", "");
+  std::string xclbin_path;
+#ifdef _WIN32
+  boost::ignore_unused(_dev);
+  try {
+    xclbin_path = xrt_core::environment::xclbin_path(xclbin_name);
+  }
+  catch(const std::exception) {
+    const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_name;
+    logger(_ptTest, "Details", boost::str(fmt));
+    _ptTest.put("status", test_token_skipped);
+  }
+#else
   const auto platform_path = findPlatformPath(_dev, _ptTest);
-  const auto xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + _ptTest.get<std::string>("xclbin", "");
+  xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + xclbin_name;
   if (!boost::filesystem::exists(xclbin_path)) {
     const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_path;
     logger(_ptTest, "Details", boost::str(fmt));
     _ptTest.put("status", test_token_skipped);
   }
+#endif
   return xclbin_path;
 }
 
