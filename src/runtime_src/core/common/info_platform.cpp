@@ -149,12 +149,35 @@ add_p2p_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_performance_info(const xrt_core::device* device, ptree_type& pt)
+{
+  const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 3);
+  pt.add("performance_mode", xq::performance_mode::parse_status(mode));
+}
+
+void
+add_host_mem_info(const xrt_core::device* device, ptree_type& pt)
+{
+  std::string data_retention_string = "not supported";
+  try {
+    auto value = xrt_core::device_query<xrt_core::query::enabled_host_mem>(device);
+    data_retention_string = (value > 0 ? "enabled" : "disabled");
+  }
+  catch (xrt_core::query::exception&) {
+    // Device does not support host memory features
+  }
+  pt.add("host_memory_status", data_retention_string);
+}
+
+void
 add_status_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_status;
 
   add_mig_info(device, pt_status);
   add_p2p_info(device, pt_status);
+  add_performance_info(device, pt_status);
+  add_host_mem_info(device, pt_status);
 
   pt.put_child("status", pt_status);
 }

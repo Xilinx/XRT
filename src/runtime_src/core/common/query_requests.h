@@ -297,6 +297,7 @@ enum class key_type
   xgq_scaling_enabled,
   xgq_scaling_power_override,
   xgq_scaling_temp_override,
+  performance_mode,
   noop
 };
 
@@ -3342,6 +3343,37 @@ struct xgq_scaling_temp_override : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct performance_mode : request
+{
+  using result_type = uint32_t;  // get value type
+  using value_type = uint32_t;   // put value type
+
+  static const key_type key = key_type::performance_mode;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+  static std::string
+  parse_status(const result_type status)
+  {
+    switch(status) {
+      case 0:
+        return "Default";
+      case 1:
+        return "Low";
+      case 2:
+        return "Medium";
+      case 3:
+        return "High";
+      default:
+        throw xrt_core::system_error(EINVAL, "Invalid performance status: " + status);
+    }
+  }
 };
 
 } // query
