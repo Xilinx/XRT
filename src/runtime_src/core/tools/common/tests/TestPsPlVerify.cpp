@@ -51,7 +51,7 @@ TestPsPlVerify::run(std::shared_ptr<xrt_core::device> dev)
     std::this_thread::sleep_for(std::chrono::seconds(1));
     try {
       busy_bar.check_timeout(MAX_TEST_DURATION);
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
       test_thread.detach();
       throw;
     }
