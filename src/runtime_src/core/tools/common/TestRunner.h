@@ -51,8 +51,6 @@ class TestRunner {
                   boost::property_tree::ptree& _ptTest);
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
-    std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
-                      boost::property_tree::ptree& _ptTest);
     int validate_binary_file(const std::string& binaryfile);
 
     const std::string test_token_skipped = "SKIPPED";
@@ -65,10 +63,6 @@ class TestRunner {
                       boost::property_tree::ptree& _ptTest);
     std::string searchSSV2Xclbin(const std::string& logic_uuid,
                       boost::property_tree::ptree& _ptTest);
-    std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
-                      boost::property_tree::ptree& _ptTest);
-    std::vector<std::string> findDependencies( const std::string& test_path,
-                      const std::string& ps_kernel_name);
   
   //variables
   private:
