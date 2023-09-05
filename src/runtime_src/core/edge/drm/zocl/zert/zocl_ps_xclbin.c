@@ -366,13 +366,13 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	DRM_INFO("AIE Device set to gen %d", hw_gen);
 	zocl_create_aie(zdev, axlf, aie_res, hw_gen);
 
-	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 
 	ret = zocl_kernel_cache_xclbin(zdev, slot, axlf);
 	if (ret) {
 		DRM_ERROR("%s cannot cache xclbin",__func__);
 		goto out;
 	}
+        count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
 		ret = zocl_load_pskernel(zdev, slot->axlf, slot_id);
 		if (ret)
