@@ -396,12 +396,8 @@ namespace xclemulation{
     // If hostBinaryPath is starting with /usr/ then it is very likely that
     // the host code might be python script.
     auto substrvalue = hostBinaryPath.substr(0,5);
-    if (substrvalue == "/usr/") {
-      // Try if the argv[0] is python only
-      if (hostBinaryPath.find("python") != std::string::npos ) {
-        hostBinaryPath = boost::filesystem::current_path().string();
-        return hostBinaryPath;
-      }
+    if ((substrvalue == "/usr/") && (hostBinaryPath.find("python") != std::string::npos )) {
+      return boost::filesystem::current_path().string();
     }
     
     std::string directory;
