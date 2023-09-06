@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html class="writer-html4" lang="en" >
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
 <!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
@@ -18,19 +19,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-5RHQV7');</script>
 <!-- End Google Tag Manager -->
-  <title>XRT Setup for Embedded Flow &mdash; XRT 2023.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>XRT Setup for Embedded Flow &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
       <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -47,10 +49,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
-            <a href="index.html" class="icon icon-home"> XRT<img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                2023.1
+                Master
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -60,7 +63,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Introduction</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
@@ -68,7 +71,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
@@ -78,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
@@ -87,14 +90,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
 </ul>
-<p class="caption"><span class="caption-text">User API Library</span></p>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -104,7 +107,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
@@ -115,7 +118,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Setup for Embedded Flow</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#install-xrt-from-package-feed">Install XRT from Package Feed</a><ul>
@@ -135,7 +138,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
@@ -143,15 +146,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Security</span></p>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Python binding</span></p>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -180,11 +183,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <span class="target" id="yocto-rst"></span><div class="section" id="xrt-setup-for-embedded-flow">
+  <span class="target" id="yocto-rst"></span><section id="xrt-setup-for-embedded-flow">
 <h1>XRT Setup for Embedded Flow<a class="headerlink" href="#xrt-setup-for-embedded-flow" title="Permalink to this headline">¶</a></h1>
 <p>To use XRT on embedded designs, xrt and zocl two components need to be installed in the root file system.
 Xrt package contains user space libraries and zocl is a driver space module, which requires a device tree node.</p>
-<div class="section" id="install-xrt-from-package-feed">
+<section id="install-xrt-from-package-feed">
 <h2>Install XRT from Package Feed<a class="headerlink" href="#install-xrt-from-package-feed" title="Permalink to this headline">¶</a></h2>
 <p>Xilinx hosts pre-compiled packages on <a class="reference external" href="https://petalinux.xilinx.com">https://petalinux.xilinx.com</a>.
 If the embedded system enabled dnf package manager, user can use dnf tool to install any packages in package feed.</p>
@@ -220,7 +223,7 @@ ls *.rpm &gt; rpm.txt
 ./sysroots_overlay.sh -s &lt;platform_sysroot&gt;/aarch64-xilinx-linux/ -r ./rpm.txt
 </pre></div>
 </div>
-<div class="section" id="sysroot-overlay-sh">
+<section id="sysroot-overlay-sh">
 <h3>sysroot_overlay.sh<a class="headerlink" href="#sysroot-overlay-sh" title="Permalink to this headline">¶</a></h3>
 <p>A <cite>sysroot_overlay.sh</cite> script is provided in XRT to extract RPM and update sysroot. This script will extract rpm libraries and include a file update in sysroot.
 Besides XRT, this script supports all RPMs for various software packages.</p>
@@ -231,17 +234,17 @@ If not, user can download this script without cloning the whole XRT repository.<
 </div>
 <p><cite>sysroot_overlay.sh</cite> arguments description:</p>
 <ul class="simple">
-<li><cite>-s / –sysroot</cite> is the sysroot to be overlaid.</li>
-<li><cite>-r / –rpms-file</cite> is the rpms file that contains the RPM file paths to be overlaid.</li>
+<li><p><cite>-s / –sysroot</cite> is the sysroot to be overlaid.</p></li>
+<li><p><cite>-r / –rpms-file</cite> is the rpms file that contains the RPM file paths to be overlaid.</p></li>
 </ul>
 <p>This command depends on the following tools in the system. If the tools are not available, please install them.</p>
 <ul class="simple">
-<li>rpm2cpio</li>
-<li>cpio</li>
+<li><p>rpm2cpio</p></li>
+<li><p>cpio</p></li>
 </ul>
-</div>
-</div>
-<div class="section" id="build-xrt-from-yocto-recipes">
+</section>
+</section>
+<section id="build-xrt-from-yocto-recipes">
 <h2>Build XRT from Yocto Recipes<a class="headerlink" href="#build-xrt-from-yocto-recipes" title="Permalink to this headline">¶</a></h2>
 <p>XRT provide Yocto recipes to build libraries and driver for embedded platforms.
 This section explains how to build Linux image by PetaLinux Tool.
@@ -250,16 +253,16 @@ Please read PetaLinux document before you read the rest of this page.</p>
 <p><em>NOTE</em> The purpose of this page is only for easy to get started.
 If you are interested in details about creating software images for embedded platform.
 Please read the Software Platform section of Xilinx® Document <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2020_1/vitis_doc/tsf1596051751964.html">UG1393</a>.</p>
-<div class="section" id="prerequisite">
+<section id="prerequisite">
 <h3>Prerequisite<a class="headerlink" href="#prerequisite" title="Permalink to this headline">¶</a></h3>
 <p>Before start to build Linux image, make sure your have:</p>
 <ol class="arabic simple">
-<li>PetaLinux tool installed and setup;</li>
-<li>Vivado exported expandable XSA for your platform;</li>
+<li><p>PetaLinux tool installed and setup;</p></li>
+<li><p>Vivado exported expandable XSA for your platform;</p></li>
 </ol>
 <p>The PetaLinux tool can be downloaded from <a class="reference external" href="https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-design-tools.html">Xilinx Download Center</a>.</p>
-</div>
-<div class="section" id="create-petalinux-project-with-xrt">
+</section>
+<section id="create-petalinux-project-with-xrt">
 <h3>Create PetaLinux Project with XRT<a class="headerlink" href="#create-petalinux-project-with-xrt" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Replace &lt;name&gt; in below commands</span>
 $ petalinux-create -t project -n &lt;name&gt; --template zynqMP
@@ -293,27 +296,26 @@ $ petalinux-build
 <p>You can find all output files from images/linux directory in your PetaLinux project.
 These files can be used when creating an embedded platform.</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></p></li>
 </ul>
-<div class="section" id="use-an-asynchronous-version-of-xrt-for-petalinux-project">
+<section id="use-an-asynchronous-version-of-xrt-for-petalinux-project">
 <h4>Use an Asynchronous Version of XRT for PetaLinux Project<a class="headerlink" href="#use-an-asynchronous-version-of-xrt-for-petalinux-project" title="Permalink to this headline">¶</a></h4>
 <p>The PetaLinux built-in XRT version is verified by Xilinx. If in any case user would like to use a different version of XRT in PetaLinux project, here’s the procedure.</p>
 <p>Please note the intermediate versions of XRT are not tested by Xilinx.</p>
 <ol class="arabic">
-<li><p class="first">Create the following files in <cite>project-spec/meta-user</cite> directory.</p>
+<li><p>Create the following files in <cite>project-spec/meta-user</cite> directory.</p>
 <blockquote>
 <div><ul class="simple">
-<li>recipes-xrt/xrt/xrt_git.bbappend</li>
-<li>recipes-xrt/zocl/zocl_git.bbappend</li>
+<li><p>recipes-xrt/xrt/xrt_git.bbappend</p></li>
+<li><p>recipes-xrt/zocl/zocl_git.bbappend</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p class="first">Add the following contents to the above two files.</p>
-</li>
+<li><p>Add the following contents to the above two files.</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">BRANCH</span> <span class="o">=</span> <span class="s2">&quot;master&quot;</span>
 <span class="n">SRCREV</span> <span class="o">=</span> <span class="s2">&quot;&lt;commit ID&gt;&quot;</span>
@@ -321,11 +323,11 @@ These files can be used when creating an embedded platform.</p>
 </div>
 <p>The <cite>BRANCH</cite> parameter should match XRT branch name and <cite>SRCREV</cite> should match the commit ID of XRT git history in <a class="reference external" href="https://github.com/Xilinx/XRT/commits/master">XRT github repo</a>.</p>
 <ol class="arabic simple" start="3">
-<li>Build PetaLinux with <cite>petalinux-build</cite> command.</li>
+<li><p>Build PetaLinux with <cite>petalinux-build</cite> command.</p></li>
 </ol>
-</div>
-</div>
-<div class="section" id="build-xrt-c-c-applications-through-petalinux-tool-flow">
+</section>
+</section>
+<section id="build-xrt-c-c-applications-through-petalinux-tool-flow">
 <h3>Build XRT C/C++ applications through PetaLinux tool flow<a class="headerlink" href="#build-xrt-c-c-applications-through-petalinux-tool-flow" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ petalinux-create -t apps <span class="o">[</span>--template TYPE<span class="o">]</span> --name &lt;user-applicationname&gt; --enable
 <span class="c1">#The new application sources can be found in the &lt;plnx-proj-root&gt;/project-spec/meta-user/recipes-apps/myapp directory.</span>
@@ -339,9 +341,9 @@ $ petalinux-build
 <span class="c1"># This will rebuild the system image including the selected user application myapp.</span>
 </pre></div>
 </div>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
            </div>

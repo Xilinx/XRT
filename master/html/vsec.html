@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html class="writer-html4" lang="en" >
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
 <!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
@@ -18,19 +19,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-5RHQV7');</script>
 <!-- End Google Tag Manager -->
-  <title>Accessing vsec within VM &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>Accessing vsec within VM &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
       <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -47,7 +49,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
-            <a href="index.html" class="icon icon-home"> XRT<img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
                 Master
@@ -60,7 +63,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Introduction</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
@@ -68,7 +71,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
@@ -78,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
@@ -87,14 +90,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
 </ul>
-<p class="caption"><span class="caption-text">User API Library</span></p>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -104,7 +107,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
@@ -115,12 +118,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
@@ -136,15 +139,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </ul>
 </li>
 </ul>
-<p class="caption"><span class="caption-text">Security</span></p>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Python binding</span></p>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -173,35 +176,35 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <span class="target" id="vsec-rst"></span><div class="section" id="accessing-vsec-within-vm">
+  <span class="target" id="vsec-rst"></span><section id="accessing-vsec-within-vm">
 <h1>Accessing vsec within VM<a class="headerlink" href="#accessing-vsec-within-vm" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="background">
+<section id="background">
 <h2>Background<a class="headerlink" href="#background" title="Permalink to this headline">¶</a></h2>
 <p>vsec is introduced to support raptor based shell design. It is in the extended config space of the pcie node.</p>
 <p>In cloud environment where the pcie device is passed-through to the VM, if the emulated chipset doesn’t support pcie, then the extended config space can’t be accessed. Those cards with raptor based shell will not working then.</p>
 <p>By default, the kvm will choose chipset ‘i440’, which doesn’t have pcie support. This post will show on Linux how to choose a newer type of chipset – ‘q35’, which has pcie support.</p>
-</div>
-<div class="section" id="creating-vm-with-virt-manager">
+</section>
+<section id="creating-vm-with-virt-manager">
 <h2>Creating VM with virt-manager<a class="headerlink" href="#creating-vm-with-virt-manager" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ul class="simple">
-<li>run <code class="docutils literal notranslate"><span class="pre">qemu-system-x86_64</span> <span class="pre">-machine</span> <span class="pre">help</span></code>, and see q35 is supported. otherwise, it means the qemu version is too old. Please upgrade qemu to newer version</li>
-<li>start virt-manager, during VM creation, make sure choose ‘Customize configuration before install’</li>
+<li><p>run <code class="docutils literal notranslate"><span class="pre">qemu-system-x86_64</span> <span class="pre">-machine</span> <span class="pre">help</span></code>, and see q35 is supported. otherwise, it means the qemu version is too old. Please upgrade qemu to newer version</p></li>
+<li><p>start virt-manager, during VM creation, make sure choose ‘Customize configuration before install’</p></li>
 </ul>
 <img alt="_images/q35-0_LI.jpg" class="align-center" src="_images/q35-0_LI.jpg" />
 <ul class="simple">
-<li>Before ‘Begin installation’, make sure the chipset is ‘q35’</li>
+<li><p>Before ‘Begin installation’, make sure the chipset is ‘q35’</p></li>
 </ul>
 <img alt="_images/q35-1_LI.jpg" class="align-center" src="_images/q35-1_LI.jpg" />
 </div></blockquote>
 <p>Note: If you already created the VM with chipset ‘i440’, you can manually edit the XML config file of the VM to change the chipset to ‘q35’, there are quite several parts need to change.</p>
-</div>
-<div class="section" id="pass-through-fpga-user-pf-to-vm">
+</section>
+<section id="pass-through-fpga-user-pf-to-vm">
 <h2>Pass through FPGA user PF to VM<a class="headerlink" href="#pass-through-fpga-user-pf-to-vm" title="Permalink to this headline">¶</a></h2>
 <p>You can pass-through the FPGA do vm during vm creation. In the ‘Customize configuration’ window, add FPGA user PF</p>
 <img alt="_images/pass-through.PNG" class="align-center" src="_images/pass-through.PNG" />
 <p>You can also do it after the vm is created.</p>
-<div class="section" id="pci-path-through-user-pf-to-kvm-guest">
+<section id="pci-path-through-user-pf-to-kvm-guest">
 <h3>pci path through user PF to kvm guest<a class="headerlink" href="#pci-path-through-user-pf-to-kvm-guest" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Host&gt;# virsh edit name_of_vm
 <span class="c1">#add following to the definition xml file of the vm</span>
@@ -218,9 +221,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p>If want to do hot-plug, we should not set <code class="docutils literal notranslate"><span class="pre">manage</span> <span class="pre">=</span> <span class="pre">'yes'</span></code></p>
 <p>More details, pls refer</p>
 <p><a class="reference external" href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/5/html/virtualization/chap-virtualization-pci_passthrough">https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/5/html/virtualization/chap-virtualization-pci_passthrough</a></p>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
            </div>
@@ -243,7 +246,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
       <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>

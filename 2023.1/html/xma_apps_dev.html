@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html class="writer-html4" lang="en" >
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
 <!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
@@ -18,19 +19,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-5RHQV7');</script>
 <!-- End Google Tag Manager -->
-  <title>Application Development Guide &mdash; XRT 2023.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>Application Development Guide &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
       <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -47,10 +49,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
-            <a href="index.html" class="icon icon-home"> XRT<img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                2023.1
+                Master
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -60,7 +63,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Introduction</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
@@ -68,7 +71,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
@@ -78,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Application Development Guide</a><ul>
@@ -94,14 +97,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
 </ul>
-<p class="caption"><span class="caption-text">User API Library</span></p>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -111,7 +114,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
@@ -122,12 +125,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
@@ -135,15 +138,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Security</span></p>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Python binding</span></p>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -172,41 +175,41 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="application-development-guide">
+  <section id="application-development-guide">
 <h1>Application Development Guide<a class="headerlink" href="#application-development-guide" title="Permalink to this headline">¶</a></h1>
 <p>The XMA application interface is used to provide an API that can
 be used to control video accelerators.  The XMA API operations
 fall into four categories:</p>
 <ol class="arabic simple">
-<li>Initialization</li>
-<li>Create session</li>
-<li>Runtime frame/data processing</li>
-<li>Cleanup</li>
+<li><p>Initialization</p></li>
+<li><p>Create session</p></li>
+<li><p>Runtime frame/data processing</p></li>
+<li><p>Cleanup</p></li>
 </ol>
-<div class="section" id="initialization">
+<section id="initialization">
 <h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h2>
 <p>The first act an application must perform is that of initialization of the
 system environment.  This is accomplished by calling xma_initialize() and
 passing in device and xclbin info.</p>
-</div>
-<div class="section" id="create-session">
+</section>
+<section id="create-session">
 <h2>Create Session<a class="headerlink" href="#create-session" title="Permalink to this headline">¶</a></h2>
 <p>Each kernel class (i.e. encoder, filter, decoder, scaler, filter, kernel)
 requires different properties to be specified before a session can be created.</p>
 <ol class="arabic simple">
-<li>xmadec</li>
-<li>xmaenc</li>
-<li>xmafilter</li>
-<li>xmascaler</li>
-<li>xmakernel</li>
+<li><p>xmadec</p></li>
+<li><p>xmaenc</p></li>
+<li><p>xmafilter</p></li>
+<li><p>xmascaler</p></li>
+<li><p>xmakernel</p></li>
 </ol>
 <p>The general initialization sequence that is common to all kernel classes is as follows:</p>
 <ol class="arabic simple">
-<li>define key type-specific properties of the kernel to be initialized</li>
-<li>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</li>
+<li><p>define key type-specific properties of the kernel to be initialized</p></li>
+<li><p>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</p></li>
 </ol>
-</div>
-<div class="section" id="runtime-frame-and-data-processing">
+</section>
+<section id="runtime-frame-and-data-processing">
 <h2>Runtime Frame and Data Processing<a class="headerlink" href="#runtime-frame-and-data-processing" title="Permalink to this headline">¶</a></h2>
 <p>Most kernel types include routines to consume data and then produce data from
 host memory buffers.  Depending on the nature of the kernel, you may be
@@ -226,26 +229,26 @@ more frames must be sent before any output data can be received.</p>
 type and not necessarily video-specific. It is used to represent kernels that
 perform control functions and/or other functions not easily represented by
 any of the other kernel classes.</p>
-</div>
-<div class="section" id="cleanup">
+</section>
+<section id="cleanup">
 <h2>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this headline">¶</a></h2>
 <p>When runtime video processing has concluded, the application should destroy
 each session.  Doing so will free the session to be used by another thread or
 process and ensure that the kernel plugin has the opportunity to perform
 proper cleanup/closing procedures.</p>
 <ol class="arabic simple">
-<li>xma_enc_session_destroy()</li>
-<li>xma_dec_session_destroy()</li>
-<li>xma_scaler_session_destroy()</li>
-<li>xma_filter_session_destroy()</li>
-<li>xma_kernel_session_destroy()</li>
+<li><p>xma_enc_session_destroy()</p></li>
+<li><p>xma_dec_session_destroy()</p></li>
+<li><p>xma_scaler_session_destroy()</p></li>
+<li><p>xma_filter_session_destroy()</p></li>
+<li><p>xma_kernel_session_destroy()</p></li>
 </ol>
-</div>
-<div class="section" id="standalone-example">
+</section>
+<section id="standalone-example">
 <h2>Standalone Example<a class="headerlink" href="#standalone-example" title="Permalink to this headline">¶</a></h2>
 <p>See XMA <a class="reference external" href="https://github.com/Xilinx/xma-samples">copy_encoder</a> example for an standalone working example of encoder kernel type.</p>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>

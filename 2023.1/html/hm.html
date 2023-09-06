@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html class="writer-html4" lang="en" >
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
 <!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
@@ -18,19 +19,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-5RHQV7');</script>
 <!-- End Google Tag Manager -->
-  <title>Host Memory Access &mdash; XRT 2023.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>Host Memory Access &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
       <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -47,10 +49,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
-            <a href="index.html" class="icon icon-home"> XRT<img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                2023.1
+                Master
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -60,7 +63,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Introduction</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
@@ -68,7 +71,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
@@ -88,7 +91,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
@@ -97,14 +100,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
 </ul>
-<p class="caption"><span class="caption-text">User API Library</span></p>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -114,7 +117,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
@@ -125,12 +128,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
@@ -138,15 +141,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Security</span></p>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Python binding</span></p>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -175,10 +178,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <span class="target" id="hm-rst"></span><div class="section" id="host-memory-access">
+  <span class="target" id="hm-rst"></span><section id="host-memory-access">
 <h1>Host Memory Access<a class="headerlink" href="#host-memory-access" title="Permalink to this headline">¶</a></h1>
 <p>Some of the recent Alveo cards support direct host memory access by the kernel(s) to read/write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utilize global memories (DDR, HBM, PLRAM, etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.</p>
-<div class="section" id="kernel-compilation">
+<section id="kernel-compilation">
 <h2>Kernel Compilation<a class="headerlink" href="#kernel-compilation" title="Permalink to this headline">¶</a></h2>
 <p>Use the following V++ configuration option to configure kernel port’s connectivity to allow drive data through the AXI bridge to the host memory.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>connectivity<span class="o">]</span>
@@ -186,27 +189,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <span class="nv">sp</span><span class="o">=</span>my_kernel_1.m_axi_gmem:HOST<span class="o">[</span><span class="m">0</span><span class="o">]</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="host-server-setup">
+</section>
+<section id="host-server-setup">
 <h2>Host Server Setup<a class="headerlink" href="#host-server-setup" title="Permalink to this headline">¶</a></h2>
 <p>To enable host memory access functionality the following settings are required from the host</p>
-<div class="section" id="hugepage-requirement">
+<section id="hugepage-requirement">
 <h3>Hugepage Requirement<a class="headerlink" href="#hugepage-requirement" title="Permalink to this headline">¶</a></h3>
 <p>If the kernel requirement of the host memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank-like memory.</p>
 <p><strong>Steps required to enable Hugepages (Linux)</strong></p>
 <blockquote>
 <div><ol class="arabic">
-<li><p class="first">Modify grub setup by changing the following line of the file <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code></p>
+<li><p>Modify grub setup by changing the following line of the file <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code></p>
 <blockquote>
 <div><p><cite>GRUB_CMDLINE_LINUX_DEFAULT=”splash quiet noresume hugepagesz=1G hugepages=4”</cite></p>
 </div></blockquote>
 </li>
-<li><p class="first">shell&gt;update-grub</p>
-</li>
-<li><p class="first">Reboot the server</p>
-</li>
-<li><p class="first">Verify the HugePage setting</p>
-</li>
+<li><p>shell&gt;update-grub</p></li>
+<li><p>Reboot the server</p></li>
+<li><p>Verify the HugePage setting</p></li>
 </ol>
 </div></blockquote>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>shell&gt;hugeadm --pool-list
@@ -217,36 +217,36 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </pre></div>
 </div>
 <p>The following table can be used to determine the number of Hugepages required based on the host memory requirement</p>
-<table border="1" class="docutils">
+<table class="docutils align-default">
 <colgroup>
-<col width="46%" />
-<col width="54%" />
+<col style="width: 46%" />
+<col style="width: 54%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Host Mem Requirement</th>
-<th class="head">Huge Page Setting</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Host Mem Requirement</p></th>
+<th class="head"><p>Huge Page Setting</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>M &lt;= 1GB</td>
-<td>Not Required</td>
+<tbody>
+<tr class="row-even"><td><p>M &lt;= 1GB</p></td>
+<td><p>Not Required</p></td>
 </tr>
-<tr class="row-odd"><td>M&gt;1GB and M&lt;=2GB</td>
-<td>No of 1G HugePages = 2</td>
+<tr class="row-odd"><td><p>M&gt;1GB and M&lt;=2GB</p></td>
+<td><p>No of 1G HugePages = 2</p></td>
 </tr>
-<tr class="row-even"><td>M&gt;2GB and M&lt;=4GB</td>
-<td>No of 1G HugePages = 4</td>
+<tr class="row-even"><td><p>M&gt;2GB and M&lt;=4GB</p></td>
+<td><p>No of 1G HugePages = 4</p></td>
 </tr>
-<tr class="row-odd"><td>M&gt;4GB and M&lt;=8GB</td>
-<td>No of 1G HugePages = 8</td>
+<tr class="row-odd"><td><p>M&gt;4GB and M&lt;=8GB</p></td>
+<td><p>No of 1G HugePages = 8</p></td>
 </tr>
-<tr class="row-even"><td>M&gt;8GB and M&lt;=16GB</td>
-<td>No of 1G HugePages = 16</td>
+<tr class="row-even"><td><p>M&gt;8GB and M&lt;=16GB</p></td>
+<td><p>No of 1G HugePages = 16</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="enabling-the-host-memory-by-xrt">
+</section>
+<section id="enabling-the-host-memory-by-xrt">
 <h3>Enabling the Host Memory by XRT<a class="headerlink" href="#enabling-the-host-memory-by-xrt" title="Permalink to this headline">¶</a></h3>
 <p>Irrespective of the Hugepages settings, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span></code> command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span> <span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code> command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo xbutil configure --host-mem -d <span class="m">0000</span>:a6:00.1 --size 1G <span class="nb">enable</span>
@@ -254,14 +254,14 @@ sudo xbutil configure --host-mem -d <span class="m">0000</span>:73:00.1 --size 4
 sudo xbutil configure --host-mem -d <span class="m">0000</span>:17:00.1 --size 16G <span class="nb">enable</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="maximum-host-memory-supported-by-the-platform">
+</section>
+<section id="maximum-host-memory-supported-by-the-platform">
 <h3>Maximum Host memory supported by the platform<a class="headerlink" href="#maximum-host-memory-supported-by-the-platform" title="Permalink to this headline">¶</a></h3>
 <p>For the platform supporting the host memory access feature, we can observe the following two data from the <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">-r</span> <span class="pre">pcie-info</span> <span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code> output</p>
 <blockquote>
 <div><ul class="simple">
-<li><strong>Max Shared Host Memory</strong>: The maximum host memory supported by the platform.</li>
-<li><strong>Shared Host Memory</strong>: The host memory specified for this card (by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span></code>)</li>
+<li><p><strong>Max Shared Host Memory</strong>: The maximum host memory supported by the platform.</p></li>
+<li><p><strong>Shared Host Memory</strong>: The host memory specified for this card (by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span></code>)</p></li>
 </ul>
 </div></blockquote>
 <p>Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 1GB host memory, no xclbin loaded.</p>
@@ -324,34 +324,34 @@ Pcie Info
   Enabled Host Memory    : <span class="m">1</span> GB
 </pre></div>
 </div>
-</div>
-</div>
-<div class="section" id="host-code-guideline">
+</section>
+</section>
+<section id="host-code-guideline">
 <h2>Host code Guideline<a class="headerlink" href="#host-code-guideline" title="Permalink to this headline">¶</a></h2>
 <p>XRT OpenCL introduces a new buffer extension Flag <code class="docutils literal notranslate"><span class="pre">XCL_MEM_EXT_HOST_ONLY</span></code> that should be used to denote a Host-only buffer</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_mem_ext_ptr_t</span> <span class="n">host_buffer_ext</span><span class="p">;</span>
-<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_HOST_ONLY</span><span class="p">;</span>
-<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">obj</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">param</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_mem_ext_ptr_t</span><span class="w"> </span><span class="n">host_buffer_ext</span><span class="p">;</span><span class="w"></span>
+<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">flags</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">XCL_MEM_EXT_HOST_ONLY</span><span class="p">;</span><span class="w"></span>
+<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">obj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">param</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">cl</span><span class="o">::</span><span class="n">Buffer</span> <span class="n">buffer_in</span> <span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">host_buffer_ext</span><span class="p">);</span>
-<span class="n">cl</span><span class="o">::</span><span class="n">Buffer</span> <span class="n">buffer_out</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_WRITE_ONLY</span> <span class="o">|</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">host_buffer_ext</span><span class="p">);</span>
+<span class="n">cl</span><span class="o">::</span><span class="n">Buffer</span><span class="w"> </span><span class="nf">buffer_in</span><span class="w"> </span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_READ_ONLY</span><span class="w"> </span><span class="o">|</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">host_buffer_ext</span><span class="p">);</span><span class="w"></span>
+<span class="n">cl</span><span class="o">::</span><span class="n">Buffer</span><span class="w"> </span><span class="nf">buffer_out</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_WRITE_ONLY</span><span class="w"> </span><span class="o">|</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">host_buffer_ext</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>In XRT Native APIs the <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> object should be created with the flag <code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::host_only</span></code> as shown in the example below</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span> <span class="n">buffer_in</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
-<span class="n">xrt</span><span class="o">::</span><span class="n">bo</span> <span class="n">buffer_out</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="w"> </span><span class="nf">buffer_in</span><span class="w"> </span><span class="p">(</span><span class="n">device</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span><span class="w"> </span><span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span><span class="w"></span>
+<span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="w"> </span><span class="nf">buffer_out</span><span class="p">(</span><span class="n">device</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span><span class="w"> </span><span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Also ensure to follow coding guideline as stated below</p>
 <blockquote>
 <div><ul class="simple">
-<li>Let XRT allocate the buffer as shown in the above code examples. Do not create a buffer from an already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.</li>
-<li>Regular data transfer APIs (OpenCL: <code class="docutils literal notranslate"><span class="pre">clEnqueueMigramemObjects</span></code>/<code class="docutils literal notranslate"><span class="pre">clEnqueueWriteBuffer</span></code>, XRT Native API: <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync()</span></code>) should be used. Though these API will not do any DMA operation, they are used for Cache Invalidate/Flush as the application works on the Cache memory.</li>
+<li><p>Let XRT allocate the buffer as shown in the above code examples. Do not create a buffer from an already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.</p></li>
+<li><p>Regular data transfer APIs (OpenCL: <code class="docutils literal notranslate"><span class="pre">clEnqueueMigramemObjects</span></code>/<code class="docutils literal notranslate"><span class="pre">clEnqueueWriteBuffer</span></code>, XRT Native API: <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync()</span></code>) should be used. Though these API will not do any DMA operation, they are used for Cache Invalidate/Flush as the application works on the Cache memory.</p></li>
 </ul>
 </div></blockquote>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
