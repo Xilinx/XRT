@@ -1115,6 +1115,7 @@ static int icap_download_hw(struct icap *icap, const struct axlf *axlf)
                 ICAP_ERR(icap,"invalied xclbin failed to read bitstream");
                 err = -ENODATA;
                 goto done;
+	}
 
 	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
 		ICAP_ERR(icap, "Invalid BITSTREAM size");
