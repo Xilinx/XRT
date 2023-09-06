@@ -102,6 +102,26 @@ namespace xclemulation{
     return defaultValue;
   }
 
+  static std::string get_file_absolutepath(std::string& filename, std::string& cwd) {
+    std::string executablePath = getExecutablePath();
+    std::string fullpath;
+    if (!executablePath.empty()) {
+      fullpath = executablePath + "/" + filename;
+      cwd = executablePath + "/";
+      if (boost::filesystem::exists(fullpath))
+        return fullpath;
+    }
+
+    auto self_path = boost::filesystem::current_path();
+    auto file_path = self_path / filename;
+    cwd = self_path.string() + "/";
+    if (boost::filesystem::exists(file_path))
+      return file_path.string();
+    
+    // The file path is not found.
+    return "";
+  }
+
   void config::populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap)
   {
     setenv("HW_EM_DISABLE_LATENCY", "true", true);
@@ -162,12 +182,16 @@ namespace xclemulation{
         setXgqMode(getBoolValue(value,false));
       }
       else if (name == "user_pre_sim_script") {
-        std::string absolutePath = getAbsolutePath(value, getExecutablePath());
+        std::string cwd;
+        get_file_absolutepath(value, cwd);
+        std::string absolutePath = getAbsolutePath(value, cwd);
         setUserPreSimScript(absolutePath);
         setenv("USER_PRE_SIM_SCRIPT", absolutePath.c_str(), true);
       }
       else if (name == "user_post_sim_script") {
-        std::string absolutePath = getAbsolutePath(value, getExecutablePath());
+        std::string cwd;
+        get_file_absolutepath(value, cwd);
+        std::string absolutePath = getAbsolutePath(value, cwd);
         setUserPostSimScript(absolutePath);
         setenv("USER_POST_SIM_SCRIPT", absolutePath.c_str(), true);
       } 
@@ -205,7 +229,9 @@ namespace xclemulation{
         }
       }
       else if (name == "wcfg_file_path") {
-        std::string path = getAbsolutePath(value, getExecutablePath());
+        std::string cwd;
+        get_file_absolutepath(value, cwd);
+        std::string path = getAbsolutePath(value, cwd);
         setWcfgFilePath(path);
       }
       else if(name == "enable_shared_memory")
@@ -392,14 +418,6 @@ namespace xclemulation{
     {
       std::cout<<"unable to findout the host binary path in emulation driver "<<std::endl;
     }
-    // Get the process binary name
-    // If hostBinaryPath is starting with /usr/ then it is very likely that
-    // the host code might be python script.
-    auto substrvalue = hostBinaryPath.substr(0,5);
-    if ((substrvalue == "/usr/") && (hostBinaryPath.find("python") != std::string::npos )) {
-      return boost::filesystem::current_path().string();
-    }
-    
     std::string directory;
     const size_t last_slash_idx = hostBinaryPath.rfind("/");
     if (std::string::npos != last_slash_idx)
@@ -409,17 +427,6 @@ namespace xclemulation{
     return directory;
   }
 
-  static std::string verify_emconfig_json(std::string& executablePath) {
-
-    std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
-    if (boost::filesystem::exists(xclEmConfigfile) == false) {
-      std::cout << "\n CRITICAL WARNING: [EMU 01-01] emconfig json is not present at "<< executablePath << ". Please ensure EMCONFIG_PATH is set.\n";
-      return "";
-    }
-
-    return xclEmConfigfile;
-  }
-
   static std::string getEmConfigFilePath()
   {
     std::string executablePath = getExecutablePath();
@@ -427,7 +434,18 @@ namespace xclemulation{
     if (!emConfigPath.empty()) {
       executablePath = emConfigPath;
     }
-    return verify_emconfig_json(executablePath);
+    std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
+    if (boost::filesystem::exists(xclEmConfigfile))
+      return xclEmConfigfile;
+    // Probably executablePath pointing to invalid absolute path. 
+    auto self_path = boost::filesystem::current_path();
+    auto EmConfigfile = self_path / "emconfig.json";
+
+    if (boost::filesystem::exists(EmConfigfile))
+      return EmConfigfile.string();
+
+    // Cannont find the emconfig.json path
+    return "";
   }
 
   bool isXclEmulationModeHwEmuOrSwEmu()
@@ -458,9 +476,9 @@ namespace xclemulation{
 
   std::string getEmDebugLogFile()
   {
-    std::string executablePath = getExecutablePath();
-    std::string xclEmConfigfile = executablePath.empty()? "emulation_debug.log" :executablePath+ "/emulation_debug.log";
-    return xclEmConfigfile;
+    auto self_path = boost::filesystem::current_path();
+    auto em_debug_file_path = self_path / "emulation_debug.log";
+    return em_debug_file_path.string();
   }
 
   static std::string getCurrenWorkingDir()
