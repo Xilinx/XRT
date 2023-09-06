@@ -9,12 +9,19 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-
 # Get the latest abbreviated commit hash of the working branch
 execute_process(
   COMMAND ${GIT_EXECUTABLE} rev-parse --verify HEAD
   WORKING_DIRECTORY ${XRT_SOURCE_DIR}
   OUTPUT_VARIABLE XRT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get number of commits for HEAD
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+  WORKING_DIRECTORY ${XRT_SOURCE_DIR}
+  OUTPUT_VARIABLE XRT_COMMITS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 

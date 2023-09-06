@@ -18,6 +18,7 @@ add_library(core_common_api_library_objects OBJECT
   xrt_profile.cpp
   xrt_queue.cpp
   xrt_system.cpp
+  xrt_version.cpp
   xrt_xclbin.cpp
   )
 
