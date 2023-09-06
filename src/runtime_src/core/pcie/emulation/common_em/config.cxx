@@ -102,7 +102,7 @@ namespace xclemulation{
     return defaultValue;
   }
 
-  static boost::filesystem::path get_file_absolutepath(std::string& filename) {
+  static boost::filesystem::path get_file_absolutepath(const std::string& filename) {
     
     boost::filesystem::path exe_parent_path {getExecutablePath()};
     auto filepath = exe_parent_path / filename;
@@ -421,23 +421,16 @@ namespace xclemulation{
 
   static std::string getEmConfigFilePath()
   {
-    std::string executablePath = getExecutablePath();
-    std::string emConfigPath = valueOrEmpty(std::getenv("EMCONFIG_PATH"));
-    if (!emConfigPath.empty()) {
-      executablePath = emConfigPath;
+    auto filename{"emconfig.json"};
+    auto filepath = get_file_absolutepath(filename);
+    boost::filesystem::path emconfig_env {valueOrEmpty(std::getenv("EMCONFIG_PATH"))};
+    if (emconfig_env.empty() == false) {
+      auto filepath_env_value = emconfig_env / "emconfig.json";
+      if (boost::filesystem::exists(filepath_env_value)) {
+        filepath = filepath_env_value;
+      }
     }
-    std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
-    if (boost::filesystem::exists(xclEmConfigfile))
-      return xclEmConfigfile;
-    // Probably executablePath pointing to invalid absolute path. 
-    auto self_path = boost::filesystem::current_path();
-    auto EmConfigfile = self_path / "emconfig.json";
-
-    if (boost::filesystem::exists(EmConfigfile))
-      return EmConfigfile.string();
-
-    // Cannont find the emconfig.json path
-    return "";
+    return filepath.string();
   }
 
   bool isXclEmulationModeHwEmuOrSwEmu()
