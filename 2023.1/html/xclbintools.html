@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html class="writer-html4" lang="en" >
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
 <!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
@@ -18,19 +19,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-5RHQV7');</script>
 <!-- End Google Tag Manager -->
-  <title>xclbinutil &mdash; XRT 2023.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>xclbinutil &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
       <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -47,10 +49,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search">
-            <a href="index.html" class="icon icon-home"> XRT<img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                2023.1
+                Master
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -60,7 +63,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Introduction</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
@@ -68,7 +71,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
@@ -78,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
@@ -87,14 +90,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
 </ul>
-<p class="caption"><span class="caption-text">User API Library</span></p>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -104,7 +107,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">xclbinutil</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#common-use-cases">Common Use Cases</a><ul>
@@ -123,12 +126,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
@@ -136,15 +139,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Security</span></p>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Python binding</span></p>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -173,12 +176,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <span class="target" id="xclbintools-rst"></span><div class="section" id="xclbinutil">
+  <span class="target" id="xclbintools-rst"></span><section id="xclbinutil">
 <h1>xclbinutil<a class="headerlink" href="#xclbinutil" title="Permalink to this headline">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> can create, modify and report xclbin content information.</p>
-<div class="section" id="common-use-cases">
+<section id="common-use-cases">
 <h2>Common Use Cases<a class="headerlink" href="#common-use-cases" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="get-information-from-xclbin-file">
+<section id="get-information-from-xclbin-file">
 <h3>Get information from xclbin file<a class="headerlink" href="#get-information-from-xclbin-file" title="Permalink to this headline">¶</a></h3>
 <p>Various information can be obtained through the –info option, including information on the creation date, hardware platform, clocks, memory configuration, kernel, tool generation options, and etc. Note that optionally an output file can be specified. If none is specified, then the output will go to the console.</p>
 <blockquote>
@@ -187,8 +190,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </pre></div>
 </div>
 </div></blockquote>
-</div>
-<div class="section" id="xclbin-sections-controlling">
+</section>
+<section id="xclbin-sections-controlling">
 <h3>Xclbin sections controlling<a class="headerlink" href="#xclbin-sections-controlling" title="Permalink to this headline">¶</a></h3>
 <p>This include various operations on xclbin sections, like extracting the bitstream image, extracting the build metadata, removing a section and so on.</p>
 <blockquote>
@@ -205,8 +208,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </pre></div>
 </div>
 </div></blockquote>
-</div>
-<div class="section" id="migrate-xclbin-file-forward-from-older-version">
+</section>
+<section id="migrate-xclbin-file-forward-from-older-version">
 <h3>Migrate xclbin file forward from older version<a class="headerlink" href="#migrate-xclbin-file-forward-from-older-version" title="Permalink to this headline">¶</a></h3>
 <p>This is to migrate an older xclbin binary format (via the mirror JSON data) forward to the current binary format (compatible with new xclbin.h).</p>
 <blockquote>
@@ -216,9 +219,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div>
 </div></blockquote>
 <p>For more details please refer <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2020_2/vitis_doc/xclbinutilutility.html#sug1542673073207">Vitis Application Acceleration Development Flow Documentation</a></p>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
            </div>
