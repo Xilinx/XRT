@@ -573,7 +573,7 @@ static int ulite_remove(struct platform_device *pdev)
 	if (pdata->thread)
 		kthread_stop(pdata->thread);
 
-	ret = uart_remove_one_port(pdata->xcl_ulite_driver, port);
+	uart_remove_one_port(pdata->xcl_ulite_driver, port);
 	platform_set_drvdata(pdev, NULL);
 	port->mapbase = 0;
 
