@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['memory_5ftype_318',['memory_type',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f',1,'xrt::xclbin::mem']]]
+  ['level_320',['level',['../namespacexrt_1_1message.html#a6f303f50c0aeef482a843e18a0f24f4c',1,'xrt::message']]]
 ];

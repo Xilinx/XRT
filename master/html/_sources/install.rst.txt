@@ -24,6 +24,10 @@ Steps for RHEL 8.x::
 	sudo subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
 	sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 
+Steps for RHEL 9.x::
+
+        sudo subscription-manager repos --enable "codeready-builder-for-rhel-9-x86_64-rpms"
+        sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 Steps for CENTOS 7.x::
 
 	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm

@@ -211,7 +211,7 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 
 .. code-block:: shell 
 
-    xbutil configure [--device| -d] <user bdf> [--host-mem|--p2p] <action> [--size <size>]
+    xbutil configure [ --host-mem | --p2p | --performance ] [--help]
 
 
 **The details of the supported options**
@@ -226,6 +226,12 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 - The ``--size`` is used in conjuction with ``xbutil configure --host-mem enable`` to specify the host-memory size to be enabled
     
     - ``<size>``: Size and unit specified as a combined string 
+- The ``--performance`` select specific configuration for benchmarking tests
+    
+    - ``low``: Set performance mode to low
+    - ``medium``: Set performance mode to medium
+    - ``high``: Set performance mode to high
+    - ``default``: Set performance mode to default
     
  
 

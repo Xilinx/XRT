@@ -1,3 +1,14 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$classxrt_1_1run.html" title="xrt::run represents one execution of a kernel" alt="" coords="5,5,75,32"/>
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,120,32"/>
+<area shape="rect" id="node2" href="$classxrt_1_1run_1_1command__error.html" title=" " alt="" coords="168,5,348,32"/>
+<area shape="rect" id="node3" title=" " alt="" coords="11,233,115,260"/>
+<area shape="rect" id="node4" href="$classxrt_1_1bo_1_1async__handle.html" title="xrt::bo::async_handle represents an asynchronously operation" alt="" coords="177,56,339,83"/>
+<area shape="rect" id="node5" href="$classxrt_1_1ip.html" title="xrt::ip represent the custom IP" alt="" coords="228,107,288,133"/>
+<area shape="rect" id="node6" href="$classxrt_1_1ip_1_1interrupt.html" title="xrt::ip::interrupt represents an IP interrupt event." alt="" coords="196,157,320,184"/>
+<area shape="rect" id="node7" href="$classxrt_1_1mailbox.html" title="xrt::mailbox provides access to the kernel mailbox if any" alt="" coords="207,208,309,235"/>
+<area shape="rect" id="node8" href="$classxrt_1_1xclbin.html" title="xrt::xclbin represents an xclbin and provides APIs to access meta data." alt="" coords="215,259,301,285"/>
+<area shape="rect" id="node9" href="$classxrt_1_1xclbin_1_1arg.html" title="class arg &#45; xrt::xclbin::arg represents a compute unit argument" alt="" coords="200,309,316,336"/>
+<area shape="rect" id="node10" href="$classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin." alt="" coords="205,360,311,387"/>
+<area shape="rect" id="node11" href="$classxrt_1_1xclbin_1_1kernel.html" title=" " alt="" coords="191,411,325,437"/>
+<area shape="rect" id="node12" href="$classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank" alt="" coords="193,461,323,488"/>
 </map>
