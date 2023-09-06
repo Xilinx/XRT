@@ -102,24 +102,19 @@ namespace xclemulation{
     return defaultValue;
   }
 
-  static std::string get_file_absolutepath(std::string& filename, std::string& cwd) {
-    std::string executablePath = getExecutablePath();
-    std::string fullpath;
-    if (!executablePath.empty()) {
-      fullpath = executablePath + "/" + filename;
-      cwd = executablePath + "/";
-      if (boost::filesystem::exists(fullpath))
-        return fullpath;
-    }
-
-    auto self_path = boost::filesystem::current_path();
-    auto file_path = self_path / filename;
-    cwd = self_path.string() + "/";
-    if (boost::filesystem::exists(file_path))
-      return file_path.string();
+  static boost::filesystem::path get_file_absolutepath(std::string& filename) {
     
-    // The file path is not found.
-    return "";
+    boost::filesystem::path exe_parent_path {getExecutablePath()};
+    auto filepath = exe_parent_path / filename;
+
+    if (boost::filesystem::exists(filepath) == false) {
+      auto current_path = boost::filesystem::current_path();
+      filepath = current_path / filename;
+      if (boost::filesystem::exists(filepath) == false)
+        return boost::filesystem::path{};
+    }
+    return filepath;
+
   }
 
   void config::populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap)
@@ -182,16 +177,14 @@ namespace xclemulation{
         setXgqMode(getBoolValue(value,false));
       }
       else if (name == "user_pre_sim_script") {
-        std::string cwd;
-        get_file_absolutepath(value, cwd);
-        std::string absolutePath = getAbsolutePath(value, cwd);
+        auto filepath = get_file_absolutepath(value);
+        std::string absolutePath = getAbsolutePath(value, filepath.parent_path().string());
         setUserPreSimScript(absolutePath);
         setenv("USER_PRE_SIM_SCRIPT", absolutePath.c_str(), true);
       }
       else if (name == "user_post_sim_script") {
-        std::string cwd;
-        get_file_absolutepath(value, cwd);
-        std::string absolutePath = getAbsolutePath(value, cwd);
+        auto filepath = get_file_absolutepath(value);
+        std::string absolutePath = getAbsolutePath(value, filepath.parent_path().string());
         setUserPostSimScript(absolutePath);
         setenv("USER_POST_SIM_SCRIPT", absolutePath.c_str(), true);
       } 
@@ -229,9 +222,8 @@ namespace xclemulation{
         }
       }
       else if (name == "wcfg_file_path") {
-        std::string cwd;
-        get_file_absolutepath(value, cwd);
-        std::string path = getAbsolutePath(value, cwd);
+        auto filepath = get_file_absolutepath(value);
+        std::string path = getAbsolutePath(value, filepath.parent_path().string());
         setWcfgFilePath(path);
       }
       else if(name == "enable_shared_memory")
