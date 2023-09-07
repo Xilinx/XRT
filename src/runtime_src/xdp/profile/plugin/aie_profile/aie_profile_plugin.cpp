@@ -210,7 +210,8 @@ namespace xdp {
     if (AIEData.thread.joinable())
       AIEData.thread.join();
 
-    AIEData.implementation->freeResources();
+    if (AIEData.implementation)
+      AIEData.implementation->freeResources();
     handleToAIEData.erase(handle);
   }
 
