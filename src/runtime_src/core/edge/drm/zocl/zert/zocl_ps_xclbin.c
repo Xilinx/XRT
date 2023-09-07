@@ -330,8 +330,6 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;
 	xclbin = (char *)axlf;
-	if (zocl_xclbin_get_uuid(slot) != NULL)
-		zocl_cleanup_aie(zdev);
 
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
@@ -360,6 +358,13 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 		aie_data.size = size;
 	}
 	slot->aie_data = aie_data;
+
+	/* Mark AIE out of reset state after load PDI */
+	if (zdev->aie) {
+		mutex_lock(&zdev->aie_lock);
+		zdev->aie->aie_reset = false;
+		mutex_unlock(&zdev->aie_lock);
+	}
 
 	// Cache full xclbin
 	//last argument represents aie generation. 1. aie, 2. aie-ml ...
