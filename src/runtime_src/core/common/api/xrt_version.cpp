@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-// This file implements XRT error APIs as declared in
+// This file implements XRT version APIs as declared in
 // core/include/experimental/xrt_version.h
 #define XRT_API_SOURCE         // exporting xrt_version.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
@@ -51,7 +51,7 @@ build()
 } // namespace xrt::version
 
 ////////////////////////////////////////////////////////////////
-// xrt_message C API implmentations (xrt_version.h)
+// C API implementations (xrt_version.h) with "C" linkage
 ////////////////////////////////////////////////////////////////
 unsigned int
 xrtVersionCode()
