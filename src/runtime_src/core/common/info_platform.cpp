@@ -155,18 +155,36 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
   pt.add("performance_mode", xq::performance_mode::parse_status(mode));
 }
 
+static std::string
+get_host_mem_status(const xrt_core::device* device)
+{
+  std::string host_mem_status;
+  try {
+    // Verify the user enabled host-mem
+    auto hostValue = xrt_core::device_query<xrt_core::query::shared_host_mem>(device);
+    host_mem_status = (hostValue > 0 ? "enabled" : "disabled");
+  }
+  catch (xrt_core::query::no_such_key&) {
+    // Device does not support host memory features
+    return "not supported";
+  }
+
+  try {
+    // Verify the address translator exists. Via the shell or an xclbin
+    xrt_core::device_query<xrt_core::query::enabled_host_mem>(device);
+  }
+  catch (xrt_core::query::exception&) {
+    // Device is missing an xclbin or shell with an address translator IP
+    return "disabled";
+  }
+
+  return host_mem_status;
+}
+
 void
 add_host_mem_info(const xrt_core::device* device, ptree_type& pt)
 {
-  std::string data_retention_string = "not supported";
-  try {
-    auto value = xrt_core::device_query<xrt_core::query::enabled_host_mem>(device);
-    data_retention_string = (value > 0 ? "enabled" : "disabled");
-  }
-  catch (xrt_core::query::exception&) {
-    // Device does not support host memory features
-  }
-  pt.add("host_memory_status", data_retention_string);
+  pt.add("host_memory_status", get_host_mem_status(device));
 }
 
 void
