@@ -8,6 +8,14 @@
 #include "core/include/experimental/xrt_version.h"
 #include "version.h"
 
+#ifdef major
+# undef major
+#endif
+
+#ifdef minor
+# undef minor
+#endif
+
 namespace xrt::version {
 
 unsigned int
