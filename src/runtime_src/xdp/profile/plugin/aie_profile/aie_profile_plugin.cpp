@@ -207,18 +207,25 @@ namespace xdp {
     auto& AIEData = handleToAIEData[handle];
     AIEData.threadCtrlBool = false;
 
-    AIEData.thread.join();
+    if (AIEData.thread.joinable())
+      AIEData.thread.join();
 
-    AIEData.implementation->freeResources();
+    if (AIEData.implementation)
+      AIEData.implementation->freeResources();
     handleToAIEData.erase(handle);
   }
 
   void AieProfilePlugin::endPoll()
   {
     // Ask all threads to end
-    for (auto& p : handleToAIEData) p.second.threadCtrlBool = false;
+    for (auto& p : handleToAIEData)
+      p.second.threadCtrlBool = false;
 
-    for (auto& p : handleToAIEData) p.second.thread.join();
+    for (auto& p : handleToAIEData) {
+      auto& data = p.second;
+      if (data.thread.joinable())
+        data.thread.join();
+    }
 
     handleToAIEData.clear();
   }
