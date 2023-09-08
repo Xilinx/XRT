@@ -808,6 +808,7 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	if (chan_disable & (1 << XCL_MAILBOX_REQ_HOT_RESET))
 		return -EOPNOTSUPP;
 
+	xdev->ps_slot_id = 0;  // Clear PS kernel xclbin slots after reset
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 	xocl_xdev_info(xdev, "Scheduled reset");
