@@ -1111,6 +1111,11 @@ static int icap_download_hw(struct icap *icap, const struct axlf *axlf)
 		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
 		primaryFirmwareLength = primaryHeader->m_sectionSize;
 	}
+        else {
+                ICAP_ERR(icap,"Invalid xclbin. Bitstream is not present in xclbin");
+                err = -ENODATA;
+                goto done;
+	}
 
 	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
 		ICAP_ERR(icap, "Invalid BITSTREAM size");
