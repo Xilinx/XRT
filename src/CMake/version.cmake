@@ -2,10 +2,6 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 # Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-# Work-around to ensure XRT_COMMITS always carries a value
-# even when execute_process doesn't run
-set (XRT_COMMITS 0)
-
 # Get the branch
 execute_process(
   COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
