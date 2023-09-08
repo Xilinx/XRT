@@ -64,10 +64,23 @@ patch();
  * build() - Returns the build number for the library.
  *
  * The build number is the total number of commits to XRT
+ * on current branch.
  */
 XRT_API_EXPORT
 unsigned int
 build();
+
+/**
+ * feature() - Returns the feature number for the library.
+ *
+ * The feature number is the total number of commits to XRT
+ * main branch.  For branches off of XRT's main branch, the
+ * feature number is the total number of commits at the time
+ * the branch diverged from XRT's main branch.
+ */ 
+XRT_API_EXPORT
+unsigned int
+feature();
  
 } // namespace xrt::version
 
@@ -110,6 +123,13 @@ XRT_API_EXPORT
 unsigned int
 xrtVersionBuild();
   
+/**
+ * See xrt::version::feature()
+ */
+XRT_API_EXPORT
+unsigned int
+xrtVersionFeature();
+
 /// @endcond
 #ifdef __cplusplus
 }

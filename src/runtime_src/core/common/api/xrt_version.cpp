@@ -45,7 +45,13 @@ patch()
 unsigned int
 build()
 {
-  return XRT_BUILD;
+  return XRT_HEAD_COMMITS;
+}
+
+unsigned int
+feature()
+{
+  return XRT_HEAD_COMMITS - XRT_BRANCH_COMMITS;
 }
 
 } // namespace xrt::version
@@ -81,4 +87,10 @@ unsigned int
 xrtVersionBuild()
 {
   return xrt::version::build();
+}
+
+unsigned int
+xrtVersionFeature()
+{
+  return xrt::version::feature();
 }

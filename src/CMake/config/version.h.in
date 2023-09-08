@@ -28,7 +28,8 @@ static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 #define XRT_MAJOR(code) ((code >> 16))
 #define XRT_MINOR(code) (code - ((code >> 16) << 16))
 #define XRT_PATCH @XRT_VERSION_PATCH@
-#define XRT_BUILD @XRT_COMMITS@
+#define XRT_HEAD_COMMITS @XRT_HEAD_COMMITS@
+#define XRT_BRANCH_COMMITS @XRT_BRANCH_COMMITS@
 
 #ifdef __cplusplus
 #include <iostream>
