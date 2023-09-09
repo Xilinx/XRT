@@ -23,6 +23,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_queue.h
   xrt_system.h
   xrt_uuid.h
+  xrt_version.h
   xrt_xclbin.h
   xclbin_util.h
   xclbin-util.h)
