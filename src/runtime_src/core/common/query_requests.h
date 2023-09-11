@@ -3347,9 +3347,10 @@ struct xgq_scaling_temp_override : request
 
 struct performance_mode : request
 {
+  // Get and set power mode of device
   enum class power_type
   {
-    basic, //deafult
+    basic, // deafult
     low,
     medium,
     high

@@ -76,16 +76,16 @@ OO_Performance::execute(const SubCmdOptions& _options) const
   }
 
   try {
-    if(boost::iequals(m_action, "DEFAULT")) {
-      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); //default
+    if (boost::iequals(m_action, "DEFAULT")) {
+      xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); // default
     }
-    else if(boost::iequals(m_action, "LOW")) {
+    else if (boost::iequals(m_action, "LOW")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::low);
     }
-    else if(boost::iequals(m_action, "MEDIUM")) {
+    else if (boost::iequals(m_action, "MEDIUM")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::medium);
     }
-    else if(boost::iequals(m_action, "HIGH")) {
+    else if (boost::iequals(m_action, "HIGH")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::high);
     }
     else {
