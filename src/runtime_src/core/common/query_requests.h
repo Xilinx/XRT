@@ -3347,8 +3347,15 @@ struct xgq_scaling_temp_override : request
 
 struct performance_mode : request
 {
+  enum class power_type
+  {
+    basic, //deafult
+    low,
+    medium,
+    high
+  };
   using result_type = uint32_t;  // get value type
-  using value_type = uint32_t;   // put value type
+  using value_type = power_type;   // put value type
 
   static const key_type key = key_type::performance_mode;
 

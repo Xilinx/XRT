@@ -151,7 +151,7 @@ add_p2p_info(const xrt_core::device* device, ptree_type& pt)
 void
 add_performance_info(const xrt_core::device* device, ptree_type& pt)
 {
-  const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 3);
+  const auto mode = xrt_core::device_query_default<xq::performance_mode>(device, 0);
   pt.add("performance_mode", xq::performance_mode::parse_status(mode));
 }
 
