@@ -776,8 +776,7 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
         throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
     }
   }
-  catch (const std::exception& ex) {
-    pt.put("error_msg", ex.what());
+  catch (const std::exception&) {
     return pt;
   }
   return pt;

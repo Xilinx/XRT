@@ -148,7 +148,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
   // By default, enable status collection for all Debug IP types
   std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
 
-  map = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(device);
+  map = xrt_core::default_device_query<xrt_core::query::debug_ip_layout_raw>(device);
 
 }
 
