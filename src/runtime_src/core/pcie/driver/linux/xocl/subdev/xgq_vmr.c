@@ -177,6 +177,8 @@ struct xocl_xgq_vmr {
 	size_t			xgq_vmr_system_dtb_size;
 	char			*xgq_vmr_plm_log;
 	size_t			xgq_vmr_plm_log_size;
+	char			*xgq_vmr_shell_int_uuid;
+	size_t			xgq_vmr_shell_int_uuid_size;
 	u16			pwr_scaling_threshold_limit;
 	u8			temp_scaling_threshold_limit;
 	u16			pwr_scaling_limit;
@@ -1198,6 +1200,15 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_system_dtb,
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB, 0, 0);
+}
+
+static int xgq_refresh_shell_int_uuid(struct xocl_xgq_vmr *xgq)
+{
+	if (xgq->xgq_vmr_shell_int_uuid)
+		vfree(xgq->xgq_vmr_shell_init_uuid);
+
+	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_shell_int_uuid,
+		&xgq->xgq_vmr_shell_int_uuid_size, XGQ_CMD_LOG_SHELL_INTERFACE_UUID, 0, 0);
 }
 
 static int xgq_vmr_apu_log(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
@@ -3289,6 +3300,8 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 		vfree(xgq->xgq_vmr_system_dtb);
 	if (xgq->xgq_vmr_plm_log)
 		vfree(xgq->xgq_vmr_plm_log);
+	if (xgq->xgq_vmr_shell_int_uuid)
+		vfree(xgq->xgq_vmr_shell_int_uuid);
 
 	xgq_stop_services(xgq);
 	fini_worker(&xgq->xgq_complete_worker);
@@ -3418,6 +3431,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_vmr_system_dtb_size = 0;
 	xgq->xgq_vmr_plm_log = NULL;
 	xgq->xgq_vmr_plm_log_size = 0;
+	xgq->xgq_vmr_shell_int_uuid = NULL;
+	xgq->xgq_vmr_shell_int_uuid_size = 0;
 
 	mutex_init(&xgq->xgq_lock);
 	mutex_init(&xgq->clk_scaling_lock);
