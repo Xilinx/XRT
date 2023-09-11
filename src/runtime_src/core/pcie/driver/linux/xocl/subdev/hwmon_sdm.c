@@ -614,7 +614,7 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 	iter->index = repo_id | (field_id << 8) | (buf_index << 12) | (len << 24);
 
 	sysfs_attr_init(&iter->dev_attr.attr);
-	err = device_create_file(sdm->hwmon_dev, &iter->dev_attr);
+	err = device_create_file(&sdm->pdev->dev, &iter->dev_attr);
 	if (err) {
 		iter->dev_attr.attr.name = NULL;
 		xocl_err(&sdm->pdev->dev, "unabled to create sysfs file, err: 0x%x", err);
@@ -1213,7 +1213,7 @@ static int create_hwmon_sysfs(struct platform_device *pdev)
 
 	dev_set_drvdata(sdm->hwmon_dev, sdm);
 
-	err = device_create_file(sdm->hwmon_dev, &name_attr.dev_attr);
+	err = device_create_file(&sdm->pdev->dev, &name_attr.dev_attr);
 	if (err) {
 		xocl_err(&pdev->dev, "create attr name failed: 0x%x", err);
 		goto failed;
@@ -1410,7 +1410,7 @@ static void destroy_hwmon_sysfs(struct platform_device *pdev)
 		return;
 
 	if (sdm->hwmon_dev) {
-		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
+		device_remove_file(&sdm->pdev->dev, &name_attr.dev_attr);
 		hwmon_device_unregister(sdm->hwmon_dev);
 		sdm->hwmon_dev = NULL;
 	}
