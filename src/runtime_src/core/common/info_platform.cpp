@@ -88,7 +88,7 @@ add_board_info(const xrt_core::device* device, ptree_type& pt)
     bd_info.add("error_msg", ex.what());
   }
 
-  if (xrt_core::device_query<xq::is_versal>(device)) {
+  if (xrt_core::device_query_default<xq::is_versal>(device, false)) {
     bd_info.put("revision", xrt_core::device_query<xq::hwmon_sdm_revision>(device));
     bd_info.put("mfg_date", xrt_core::device_query<xq::hwmon_sdm_mfg_date>(device));
   }
@@ -384,7 +384,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_static_region_info(device, pt_platform);
   add_board_info(device, pt_platform);
   add_status_info(device, pt_platform);
-  if (xrt_core::device_query<xq::is_versal>(device))
+  if (xrt_core::device_query_default<xq::is_versal>(device, false))
     add_versal_controller_info(device, pt_platform);
   else
     add_controller_info(device, pt_platform);
