@@ -25,6 +25,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/module_loader.h"
 #include "core/common/query_requests.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
@@ -36,6 +37,8 @@
 #include "xclbin_int.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <array>
 #include <fstream>
@@ -75,15 +78,9 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   IP_METADATA
 };
 
-XRT_CORE_UNUSED
-
 static std::vector<char>
-read_xclbin(const std::string& fnm)
+read_file(const std::string& fnm)
 {
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin specified");
-
-  // load the file
   std::ifstream stream(fnm, std::ios::binary);
   if (!stream)
     throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
@@ -95,6 +92,27 @@ read_xclbin(const std::string& fnm)
   std::vector<char> header(size);
   stream.read(header.data(), size);
   return header;
+}
+
+static std::vector<char>
+read_xclbin(const std::string& fnm)
+{
+  if (fnm.empty())
+    throw std::runtime_error("No xclbin specified");
+
+  namespace bfs = boost::filesystem;
+  if (bfs::exists(fnm) && bfs::is_regular_file(fnm))
+    return read_file(fnm);
+
+  std::string path;
+  try {
+    path = xrt_core::environment::xclbin_path(fnm);
+  }
+  catch (const std::exception&) {
+    throw std::runtime_error("Failed to find xclbin '" + fnm);
+  }
+
+  return read_file(path);
 }
 
 static std::vector<char>
