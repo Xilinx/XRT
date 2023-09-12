@@ -3381,6 +3381,11 @@ static int vmr_services_probe(struct platform_device *pdev)
 		return 0;
 	}
 
+	/* try refresh shell interface uuid, only newer shell has this info */
+	ret = xgq_refresh_shell_int_uuid(struct xocl_xgq_vmr *xgq);
+	if (ret)
+		XGQ_WARN(xgq, "shell interface uuid is not available, ret: %d", ret);
+
 	/* try to download APU PDI, user can check APU status later */
 	ret = xgq_download_apu_firmware(pdev);
 	if (ret)
