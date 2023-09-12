@@ -38,8 +38,14 @@ namespace xdp {
   {
 
     #ifdef XDP_MINIMAL_BUILD
+    try {
       pt::read_json("aie_control_config.json", aie_meta);
       invalidXclbinMetadata = false;
+    } catch (...) {
+      std::stringstream msg;
+      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    }
     #else
       auto device = xrt_core::get_userpf_device(handle);
       auto data = device->get_axlf_section(AIE_METADATA);
