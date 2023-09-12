@@ -1205,7 +1205,7 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 static int xgq_refresh_shell_int_uuid(struct xocl_xgq_vmr *xgq)
 {
 	if (xgq->xgq_vmr_shell_int_uuid)
-		vfree(xgq->xgq_vmr_shell_init_uuid);
+		vfree(xgq->xgq_vmr_shell_int_uuid);
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_shell_int_uuid,
 		&xgq->xgq_vmr_shell_int_uuid_size, XGQ_CMD_LOG_SHELL_INTERFACE_UUID, 0, 0);
@@ -3382,7 +3382,7 @@ static int vmr_services_probe(struct platform_device *pdev)
 	}
 
 	/* try refresh shell interface uuid, only newer shell has this info */
-	ret = xgq_refresh_shell_int_uuid(struct xocl_xgq_vmr *xgq);
+	ret = xgq_refresh_shell_int_uuid(xgq);
 	if (ret)
 		XGQ_WARN(xgq, "shell interface uuid is not available, ret: %d", ret);
 
