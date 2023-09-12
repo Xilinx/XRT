@@ -213,8 +213,8 @@ namespace xdp {
 
         auto tile = tileMetric.first;
         auto row  = tile.row;
-        auto type = getModuleType(row, mod);
         auto col  = tile.col;
+        auto type = getModuleType(row, mod);
 
         if (!isValidType(type, mod))
           continue;
@@ -336,6 +336,8 @@ namespace xdp {
     instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
     run.wait2();
+
+    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Profiling Transaction Buffer.");
 
     // Must clear aie state
     XAie_ClearTransaction(&aieDevInst);
