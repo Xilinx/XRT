@@ -564,12 +564,18 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  return -ENOSYS;
+  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
+  if (!drv)
+    return -ENOSYS;
+  return drv->xclUnmgdPread(flags, buf, count, offset);
 }
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-  return -ENOSYS;
+  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
+  if (!drv)
+    return -ENOSYS;
+  return drv->xclUnmgdPwrite(flags, buf, count, offset);
 }
 
 /*
