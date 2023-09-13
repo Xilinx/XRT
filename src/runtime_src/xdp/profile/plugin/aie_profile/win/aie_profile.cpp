@@ -179,7 +179,7 @@ namespace xdp {
 
 
     XAie_Config cfg { 
-      XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
+      metadata->getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),        //xaie_base_addr
       metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
       metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
       metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
