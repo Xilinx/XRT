@@ -326,6 +326,8 @@ namespace xdp {
   {
     if (type == module_type::mem_tile)
       return get_mem_tiles(device, graph_name, kernel_name);
+    if (kernel_name.compare("all") == 0)
+      return get_aie_tiles(device, graph_name, type);
 
     // Now search by graph-kernel pairs
     auto data = device->get_axlf_section(AIE_METADATA);
@@ -334,19 +336,14 @@ namespace xdp {
       return {};
 
     pt::ptree aie_meta;
-
     read_aie_metadata(data.first, data.second, aie_meta);
 
     // Grab all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-
-    if (!kernelToTileMapping && kernel_name.compare("all") == 0)
-      return get_aie_tiles(device, graph_name, type);
-    else if (!kernelToTileMapping)
+    if (!kernelToTileMapping)
       return {};
 
     std::vector<tile_type> tiles;
-
     auto rowOffset = getAIETileRowOffset();
 
     for (auto const& mapping : kernelToTileMapping.get()) {
