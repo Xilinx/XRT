@@ -132,7 +132,7 @@ namespace xrt {
     if (kernel_init) {
 	ret = xrtDeviceLoadXclbinUUID(m_xrtdhdl, m_xclbin_uuid.get());
 	if (ret) {
-	    const auto errMsg = boost::format("Cannot load xclbin from UUID!  UUID = %s") % m_xclbin_uuid.get();
+	    const auto errMsg = boost::format("Cannot load xclbin from UUID!  UUID = %s") % m_xclbin_uuid.to_string();
 	    xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
 	    return ret;
 	}

@@ -348,6 +348,10 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  // If no OptionOption was selected reprocess the arguments, but, validate
+  // them to catch unwanted options
+  process_arguments(vm, _options);
+
   // Take care of executing hidden options for xbmgmt.
   if (!m_isUserDomain) {
     // -- process "help" option -----------------------------------------------

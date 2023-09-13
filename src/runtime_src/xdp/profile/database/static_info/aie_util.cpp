@@ -90,8 +90,12 @@ namespace aie {
   aiecompiler_options getAIECompilerOptions(const boost::property_tree::ptree& aie_meta)
   {
     aiecompiler_options aiecompiler_options;
-    aiecompiler_options.broadcast_enable_core = aie_meta.get("aie_metadata.aiecompiler_options.broadcast_enable_core", false);
-    aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
+    aiecompiler_options.broadcast_enable_core = 
+        aie_meta.get("aie_metadata.aiecompiler_options.broadcast_enable_core", false);
+    aiecompiler_options.graph_iterator_event = 
+        aie_meta.get("aie_metadata.aiecompiler_options.graph_iterator_event", false);
+    aiecompiler_options.event_trace = 
+        aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
     return aiecompiler_options;
   }
 
@@ -431,6 +435,8 @@ namespace aie {
 
     // Now search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
+    if (!kernelToTileMapping && kernel_name.compare("all") == 0)
+      return getAIETiles(aie_meta, graph_name);
     if (!kernelToTileMapping)
       return {};
 

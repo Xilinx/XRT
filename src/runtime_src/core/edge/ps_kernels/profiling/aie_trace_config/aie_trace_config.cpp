@@ -16,7 +16,7 @@
 #include <cstring>
 #include <vector>
 
-#include "core/edge/include/sk_types.h"
+#include "core/edge/include/pscontext.h"
 #include "core/edge/user/shim.h"
 #include "event_configuration.h"
 #include "xaiefal/xaiefal.hpp"

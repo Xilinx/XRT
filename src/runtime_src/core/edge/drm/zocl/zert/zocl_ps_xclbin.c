@@ -164,7 +164,7 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf, u32 slot_idx)
  */
 static int
 zocl_kernel_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
-			 struct axlf *axlf, char *xclbin_ptr)
+			 struct axlf *axlf)
 {
 	size_t size = axlf->m_header.m_length;
 	struct axlf *slot_axlf = NULL;
@@ -175,7 +175,7 @@ zocl_kernel_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 		return -ENOMEM;
 	}
 
-	memcpy(slot_axlf, xclbin_ptr, size);
+	memcpy(slot_axlf, axlf, size);
 
 	write_lock(&zdev->attr_rwlock);
 	slot->axlf = slot_axlf;
@@ -257,7 +257,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
 		/* SAIF TODO */
-		ret = zocl_kernel_cache_xclbin(zdev, slot, axlf, xclbin);
+		ret = zocl_kernel_cache_xclbin(zdev, slot, axlf);
 		if (ret) {
 			DRM_ERROR("%s cannot cache xclbin",__func__);
 			goto out;
@@ -304,6 +304,8 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	void *aie_res = 0;
 	struct device_node *aienode = NULL;
 	uint8_t hw_gen = 1;
+	struct aie_metadata      aie_data = { 0 };
+	uint64_t size = 0;
 
         if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
                 DRM_INFO("Invalid xclbin magic string");
@@ -328,8 +330,6 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;
 	xclbin = (char *)axlf;
-	if (zocl_xclbin_get_uuid(slot) != NULL)
-		zocl_cleanup_aie(zdev);
 
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
@@ -349,18 +349,36 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
 		aienode = NULL;
 	}
 
+	/*
+	 * Read AIE_METADATA section
+	 */
+	count = xrt_xclbin_get_section_num(axlf, AIE_METADATA);
+	if(count > 0) {
+		size = zocl_read_sect_kernel(AIE_METADATA, &aie_data.data, axlf, xclbin);
+		aie_data.size = size;
+	}
+	slot->aie_data = aie_data;
+
+	/* Mark AIE out of reset state after load PDI */
+	if (zdev->aie) {
+		mutex_lock(&zdev->aie_lock);
+		zdev->aie->aie_reset = false;
+		mutex_unlock(&zdev->aie_lock);
+	}
+
 	// Cache full xclbin
 	//last argument represents aie generation. 1. aie, 2. aie-ml ...
 	DRM_INFO("AIE Device set to gen %d", hw_gen);
 	zocl_create_aie(zdev, axlf, aie_res, hw_gen);
 
-	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
+
+	ret = zocl_kernel_cache_xclbin(zdev, slot, axlf);
+	if (ret) {
+		DRM_ERROR("%s cannot cache xclbin",__func__);
+		goto out;
+	}
+        count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
-		ret = zocl_kernel_cache_xclbin(zdev, slot, axlf, xclbin);
-		if (ret) {
-			DRM_ERROR("%s cannot cache xclbin",__func__);
-			goto out;
-		}
 		ret = zocl_load_pskernel(zdev, slot->axlf, slot_id);
 		if (ret)
 			goto out;

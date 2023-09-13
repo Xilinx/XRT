@@ -38,7 +38,7 @@ R"(
             "contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
         },{
             "name": "configure",
-            "contents": ["host-mem", "p2p"]
+            "contents": ["host-mem", "p2p", "performance"]
         }]
     },{
         "name": "alveo",

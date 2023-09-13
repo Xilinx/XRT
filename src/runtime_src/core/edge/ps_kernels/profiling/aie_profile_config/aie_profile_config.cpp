@@ -19,7 +19,7 @@
 #include "xaiengine.h"
 
 #include "core/common/time.h"
-#include "core/edge/include/sk_types.h"
+#include "core/edge/include/pscontext.h"
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/shim.h"
 #include "xaiefal/xaiefal.hpp"

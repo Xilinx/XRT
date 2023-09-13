@@ -142,6 +142,7 @@ config_versal_project()
 
     # Configure u-boot to pick dtb from address 0x40000
     UBOOT_USER_SCRIPT=$APU_RECIPES_DIR/u-boot_custom.cfg
+    echo "CONFIG_BOOTDELAY=0" >> $UBOOT_USER_SCRIPT
     cp $UBOOT_USER_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/files
     echo "SRC_URI += \"file://u-boot_custom.cfg\"" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
 

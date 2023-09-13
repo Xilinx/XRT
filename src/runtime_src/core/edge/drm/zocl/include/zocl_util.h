@@ -114,6 +114,7 @@ struct zocl_mem {
  */
 struct zdev_data {
 	char fpga_driver_name[64];
+	char fpga_driver_new_name[64];
 };
 
 struct aie_metadata {

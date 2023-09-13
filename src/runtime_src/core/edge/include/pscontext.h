@@ -4,6 +4,8 @@
 #ifndef __PSCONTEXT_H_
 #define __PSCONTEXT_H_
 
+#include <memory> 
+
 /*
  * PS Context Data Structure included by user PS kernel code
  */

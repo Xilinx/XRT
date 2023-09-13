@@ -6,7 +6,7 @@
     },
     {
       "name": "ps_bandwidth.xclbin",
-      "dependencies": ["ps_bandwidth.xclbin"]
+      "dependencies": ["bandwidth.xclbin"]
     },
     {
       "name": "ps_validate.xclbin",

@@ -27,6 +27,7 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_krnl_cmd *scmd;
 	struct drm_zocl_sk_getcmd *kdata = data;
+	xuid_t *phy_slot_uuid = NULL;
 
 	if (!sk)
 		return 0;
@@ -62,16 +63,20 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
 			mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
 			slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
-			mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
-			if(uuid_equal(slot_uuid,(xuid_t *)cmd->sk_uuid)) {
-				slot_id = i;
-				break;
+			if(slot_uuid) {
+				mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
+				if(uuid_equal(slot_uuid,(xuid_t *)cmd->sk_uuid)) {
+					slot_id = i;
+					break;
+				}
 			}
 		}
 
 		if (slot_id == MAX_PR_SLOT_NUM) {
-			DRM_ERROR("PS Kernel UUID %s not found!",cmd->sk_uuid);
+			DRM_ERROR("PS Kernel UUID %lx not found!",cmd->sk_uuid);
 			return -EINVAL;
+		} else {
+			DRM_INFO("PS Kernel UUID %lx found at slot %d\n",cmd->sk_uuid, slot_id);
 		}
 
 		if (sk->sk_meta_bohdl[slot_id] >= 0) {
@@ -124,7 +129,11 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		kdata->cu_nums = cmd->num_cus;
 		kdata->bohdl = bohdl;
 		kdata->meta_bohdl = meta_bohdl;
-		memcpy(kdata->uuid,cmd->sk_uuid,sizeof(kdata->uuid));
+		// Pass physical slot 0 UUID to SKD - Currently we only support 1 physical slot
+		mutex_lock(&zdev->pr_slot[0]->slot_xclbin_lock);
+		phy_slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[0]);
+		mutex_unlock(&zdev->pr_slot[0]->slot_xclbin_lock);
+		memcpy(kdata->uuid,phy_slot_uuid,sizeof(kdata->uuid));
 
 		snprintf(kdata->name, ZOCL_MAX_NAME_LENGTH, "%s",
 		    (char *)cmd->sk_name);
