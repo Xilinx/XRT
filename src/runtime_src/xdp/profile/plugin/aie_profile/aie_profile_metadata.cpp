@@ -36,16 +36,21 @@ namespace xdp {
 
   AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle) : deviceID(deviceID), handle(handle)
   {
-
+    xrt_core::message::send(severity_level::info, "XRT", "Parsing AIE Profile Metadata.");
     #ifdef XDP_MINIMAL_BUILD
-    try {
-      pt::read_json("aie_control_config.json", aie_meta);
-      invalidXclbinMetadata = false;
-    } catch (...) {
-      std::stringstream msg;
-      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-    }
+      try {
+        pt::read_json("aie_control_config.json", aie_meta);
+        invalidXclbinMetadata = false;
+      } catch (...) {
+        std::stringstream msg;
+        msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
+    metricStrings[module_type::dma].insert(metricStrings[module_type::dma].end(), {"s2mm_throughputs", "mm2s_throughputs"});          
+    metricStrings[module_type::shim].insert(metricStrings[module_type::shim].end(), {"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls", "mm2s_stalls"});           
+    metricStrings[module_type::mem_tile].insert(metricStrings[module_type::mem_tile].end(), {"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"});             
+
     #else
       auto device = xrt_core::get_userpf_device(handle);
       auto data = device->get_axlf_section(AIE_METADATA);
@@ -252,8 +257,7 @@ namespace xdp {
       throw std::runtime_error(msg);
   }
 
-  std::vector<tile_type> AieProfileMetadata::get_event_tiles(const xrt_core::device* device,
-                                                             const std::string& graph_name, module_type type)
+  std::vector<tile_type> AieProfileMetadata::get_event_tiles(const std::string& graph_name, module_type type)
   {
     if (invalidXclbinMetadata)
       return {};
@@ -328,7 +332,7 @@ namespace xdp {
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
 
     if (!kernelToTileMapping && kernel_name.compare("all") == 0)
-      return get_aie_tiles(device, graph_name, type);
+      return get_aie_tiles(graph_name, type);
     else if (!kernelToTileMapping)
       return {};
 

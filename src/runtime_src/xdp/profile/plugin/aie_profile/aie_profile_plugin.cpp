@@ -53,6 +53,7 @@ namespace xdp {
 
   AieProfilePlugin::AieProfilePlugin() : XDPPlugin()
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Instantiating AIE Profiling Plugin.");
     AieProfilePlugin::live = true;
 
     db->registerPlugin(this);
@@ -62,10 +63,8 @@ namespace xdp {
 
   AieProfilePlugin::~AieProfilePlugin()
   {
-    std::cout << "In Destructor!" << std::endl;
-
+    xrt_core::message::send(severity_level::info, "XRT", "Destroying AIE Profiling Plugin.");
     // Stop the polling thread
-    AieProfilePlugin::live = false;
     endPoll();
 
     if (VPDatabase::alive()) {
@@ -75,6 +74,8 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
+    AieProfilePlugin::live = false;
+
   }
 
   bool AieProfilePlugin::alive()
@@ -104,6 +105,7 @@ namespace xdp {
 
   void AieProfilePlugin::updateAIEDevice(void* handle)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile update AIE device.");
     // Don't update if no profiling is requested
     if (!xrt_core::config::get_aie_profile())
       return;
@@ -193,7 +195,6 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
     ++mIndex;
-    std::cout << "Finished Settup of Writers!!!" << std::endl;
 
   }
 
@@ -214,7 +215,8 @@ namespace xdp {
 
   void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
   {
-    std::cout << "In Writeall!" << std::endl;
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile writeall.");
+
     for (const auto& kv : handleToAIEData) {
       // End polling thread
       endPollforDevice(kv.first);
@@ -226,6 +228,7 @@ namespace xdp {
 
   void AieProfilePlugin::endPollforDevice(void* handle)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPollForDevice.");
     if (handleToAIEData.empty())
       return;
 
@@ -238,7 +241,7 @@ namespace xdp {
       AIEData.thread.join();
     
     #ifdef XDP_MINIMAL_BUILD
-      AIEData.implementation.poll(handle, 0);
+      AIEData.implementation->poll(0, handle);
     #endif
 
     if (AIEData.implementation)
@@ -248,7 +251,7 @@ namespace xdp {
 
   void AieProfilePlugin::endPoll()
   {
-    std::cout << "In End poll" << std::endl;
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPoll.");
     auto& AIEData = handleToAIEData.begin()->second;
     AIEData.implementation->poll(0, nullptr);
     // Ask all threads to end

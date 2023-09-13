@@ -59,40 +59,23 @@ namespace xdp {
           module_type::core, {
             "heat_map", "stalls", "execution",
             "floating_point", "stream_put_get", "write_throughputs",
-            "read_throughputs", "aie_trace", "events"
-          #ifdef XDP_MINIMAL_BUILD
-            }
-          #else 
-            ,"s2mm_throughputs", "mm2s_throughputs"}
-          #endif
+            "read_throughputs", "aie_trace", "events"}
         },
         {
           module_type::dma, {
             "conflicts", "dma_locks", "dma_stalls_s2mm",
-            "dma_stalls_mm2s", "write_throughputs", "read_throughputs"
-          #ifdef XDP_MINIMAL_BUILD
-            }
-          #else 
-            ,"s2mm_throughputs", "mm2s_throughputs"}
-          #endif
+            "dma_stalls_mm2s", "write_throughputs", "read_throughputs"}
         },
-        { module_type::shim, {"input_throughputs", "output_throughputs", "packets"
-        #ifdef XDP_MINIMAL_BUILD
-            }
-        #else 
-          ,"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls", "mm2s_stalls"}
-        #endif
-          },
+        { 
+          module_type::shim, {"input_throughputs", "output_throughputs", "packets"}
+
+        },
         {
           module_type::mem_tile, {
             "input_channels", "input_channels_details",
             "output_channels", "output_channels_details",
             "memory_stats", "mem_trace"
-            #ifdef XDP_MINIMAL_BUILD
-              }
-            #else 
-              ,"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"}
-            #endif
+          }
         }
       };
 
@@ -124,20 +107,20 @@ namespace xdp {
       uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
       static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
-    std::vector<tile_type> get_mem_tiles(const std::string& graph_name,
-                                         const std::string& kernel_name = "all");
-    std::vector<tile_type> get_event_tiles(const std::string& graph_name, 
-                                           module_type type);
-    std::vector<tile_type> get_aie_tiles(const std::string& graph_name,
-                                         module_type type);
-    std::vector<tile_type> get_tiles(const std::string& graph_name,
-                                     module_type type, 
-                                     const std::string& kernel_name = "all");
+      std::vector<tile_type> get_mem_tiles(const std::string& graph_name,
+                                            const std::string& kernel_name = "all");
+      std::vector<tile_type> get_event_tiles(const std::string& graph_name, 
+                                              module_type type);
+      std::vector<tile_type> get_aie_tiles(const std::string& graph_name,
+                                            module_type type);
+      std::vector<tile_type> get_tiles(const std::string& graph_name,
+                                        module_type type, 
+                                        const std::string& kernel_name = "all");
 
-    std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
-    std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
-    std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
-    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+      std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
+      std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
+      std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
+      boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
 
       bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
       double getClockFreqMhz() {return clockFreqMhz;}
@@ -171,5 +154,4 @@ namespace xdp {
   };
 }
 
-#endif
 #endif
