@@ -890,23 +890,6 @@ struct accel_deadlock_status
   }
 };
 
-// structure to get Aie tiles status version info
-// This version is used for handshake b/w userspace and driver
-struct aie_status_version
-{
-  using result_type = query::aie_status_version::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key)
-  {
-    result_type version{0};
-
-    // TODO : Add code to get the data
-
-    return version;
-  }
-};
-
 // Structure to get device specific Aie tiles information like
 // Total rows, cols and num of core, mem, shim rows and thier start row num
 // num of dma channels, locks, events etc
@@ -1382,7 +1365,6 @@ initialize_query_table()
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
 
-  emplace_func0_request<query::aie_status_version,             aie_status_version>();
   emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
   emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 }

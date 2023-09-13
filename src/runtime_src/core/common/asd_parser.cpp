@@ -728,55 +728,56 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
                         uint32_t& cols_filled)
 {
   boost::property_tree::ptree pt;
-  // This check is added as AIE information is currently not available for versal DC platforms
-  if (xrt_core::device_query<xrt_core::query::is_versal>(device))
-    return pt; 
+  try {
+    // Get Aie status version and check compatibility
+    auto version = xrt_core::device_query<xrt_core::query::aie_status_version>(device);
+    aie_status_version_check(version.major, version.minor);
 
-  // Get Aie status version and check compatibility
-  auto version = xrt_core::device_query<xrt_core::query::aie_status_version>(device);
-  aie_status_version_check(version.major, version.minor);
+    // Get Aie tiles metadata info from driver
+    info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
+    // verify version to check consistency of aie_tiles_info struct with firmware
+    if (!((info.major == asd_parser::aie_tiles_info_version_major) && (info.minor == asd_parser::aie_tiles_info_version_minor)))
+      throw std::runtime_error("version mismatch for aie_tiles_info structure");
 
-  // Get Aie tiles metadata info from driver
-  info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
-  // verify version to check consistency of aie_tiles_info struct with firmware
-  if (!((info.major == asd_parser::aie_tiles_info_version_major) && (info.minor == asd_parser::aie_tiles_info_version_minor)))
-    throw std::runtime_error("version mismatch for aie_tiles_info structure");
-
-  // sanity checks
-  aie_info_sanity_check(info);
+    // sanity checks
+    aie_info_sanity_check(info);
   
-  // Get Aie column status from driver
-  xrt_core::query::aie_tiles_status_info::parameters arg{0};
-  arg.num_cols = info.cols;
-  arg.col_size = info.col_size;
+    // Get Aie column status from driver
+    xrt_core::query::aie_tiles_status_info::parameters arg{0};
+    arg.num_cols = info.cols;
+    arg.col_size = info.col_size;
 
-  auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
-  cols_filled = tiles_status.cols_filled;
+    auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
+    cols_filled = tiles_status.cols_filled;
 
-  if (cols_filled == 0)
-    throw std::runtime_error("No open HW-Context\n");
+    if (cols_filled == 0)
+      throw std::runtime_error("No open HW-Context\n");
 
-  std::vector<asd_parser::aie_tiles_status> aie_status;
-  // convert buffer into respective structure and format
-  switch (tile_type) {
-    case aie_tile_type::core :
-      aie_status = parse_data_from_buf<aie_core_tile_status>(tiles_status.buf, info, cols_filled);
-      pt = format_aie_info<aie_core_tile_status>(aie_status, info.cols, info, cols_filled);
+    std::vector<asd_parser::aie_tiles_status> aie_status;
+    // convert buffer into respective structure and format
+    switch (tile_type) {
+      case aie_tile_type::core :
+        aie_status = parse_data_from_buf<aie_core_tile_status>(tiles_status.buf, info, cols_filled);
+        pt = format_aie_info<aie_core_tile_status>(aie_status, info.cols, info, cols_filled);
 
-      // fill version info for core tile which is used in top layer
-      pt.put("schema_version.major", version.major);
-      pt.put("schema_version.minor", version.minor);
-      break;
-    case aie_tile_type::shim :
-      aie_status = parse_data_from_buf<aie_shim_tile_status>(tiles_status.buf, info, cols_filled);
-      pt = format_aie_info<aie_shim_tile_status>(aie_status, info.cols, info, cols_filled);
-      break;
-    case aie_tile_type::mem :
-      aie_status = parse_data_from_buf<aie_mem_tile_status>(tiles_status.buf, info, cols_filled);
-      pt = format_aie_info<aie_mem_tile_status>(aie_status, info.cols, info, cols_filled);
-      break;
-    default :
-      throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
+        // fill version info for core tile which is used in top layer
+        pt.put("schema_version.major", version.major);
+        pt.put("schema_version.minor", version.minor);
+        break;
+      case aie_tile_type::shim :
+        aie_status = parse_data_from_buf<aie_shim_tile_status>(tiles_status.buf, info, cols_filled);
+        pt = format_aie_info<aie_shim_tile_status>(aie_status, info.cols, info, cols_filled);
+        break;
+      case aie_tile_type::mem :
+        aie_status = parse_data_from_buf<aie_mem_tile_status>(tiles_status.buf, info, cols_filled);
+        pt = format_aie_info<aie_mem_tile_status>(aie_status, info.cols, info, cols_filled);
+        break;
+      default :
+        throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
+    }
+  }
+  catch (const std::exception&) {
+    return pt;
   }
   return pt;
 }
