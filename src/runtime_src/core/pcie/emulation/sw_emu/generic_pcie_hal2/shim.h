@@ -324,6 +324,8 @@ namespace xclswemuhal2
     void xclFreeDeviceBuffer(uint64_t buf);
     size_t xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek);
     size_t xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip);
+    ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
+    ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
 
     // Performance monitoring
     // Control

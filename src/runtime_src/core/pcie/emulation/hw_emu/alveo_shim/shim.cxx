@@ -3462,14 +3462,18 @@ ssize_t HwEmShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, 
 {
   if (flags)
     return -EINVAL;
-  return xclCopyBufferHost2Device(offset, buf, count, 0 ,0);
+  // xclCopyBufferHost2Device returns the size of bytes transferred to device
+  size_t ret = xclCopyBufferHost2Device(offset, buf, count, 0 ,0);
+  return (ret == count) ? 0: -1;
 }
 
 ssize_t HwEmShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
   if (flags)
     return -EINVAL;
-  return xclCopyBufferDevice2Host(buf, offset, count, 0 , 0);
+  // xclCopyBufferDevice2Host returns the size of bytes transferred from device
+  size_t ret = xclCopyBufferDevice2Host(buf, offset, count, 0 , 0);
+  return (ret == count) ? 0: -1;
 }
 
 
