@@ -6,7 +6,7 @@
 // core/include/experimental/xrt_device.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_device.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-
+#define XRT_API_SOURCE         // in same dll as coreutil
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_aie.h"
 

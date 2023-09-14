@@ -8,6 +8,7 @@
 // This file contains a loader utility class for plugin modules
 //  that are loaded from either OpenCL or XRT level applications.
 
+#include <filesystem>
 #include <functional>
 #include <string>
 
@@ -90,7 +91,7 @@ namespace environment {
  * xilinx_xrt() - Get path to XRT installation
  */
 XRT_CORE_COMMON_EXPORT
-std::string
+const std::filesystem::path&
 xilinx_xrt();
 
 /**
@@ -99,18 +100,26 @@ xilinx_xrt();
  * @xclbin_name : A path relative or absolute to an xclbin file
  * Return: Full path the xclbin file
  *
- * If the specified path is an absolute path then the function returns
- * this path or throws if file does not exist.  If the path is
- * relative, or just a plain file name, then the function prepends the
- * absolute path of a platform specific xclbin repository that
- * contains the specified file.
+ * If the specified path is an absolute path then the function
+ * returns this path or throws if file does not exist.  If the path
+ * is relative, or just a plain file name, then the function checks
+ * first in current directory, then in the platform specific xclbin
+ * repository.
  *
  * The function throws if the file does not exist.
  */
 XRT_CORE_COMMON_EXPORT
-std::string
+std::filesystem::path
 xclbin_path(const std::string& xclbin_name);
 
+/**
+ * xclbin_repo_path() - Get path to xclbin repository
+ *
+ * Return: Full path to xclbin repository
+ */
+XRT_CORE_COMMON_EXPORT
+const std::vector<std::filesystem::path>&
+xclbin_repo_paths();
 } // environment
 
 } // end namespace xrt_core
