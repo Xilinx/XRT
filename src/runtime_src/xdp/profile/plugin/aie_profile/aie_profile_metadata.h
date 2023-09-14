@@ -23,7 +23,6 @@
 
 #include "core/common/device.h"
 #include "core/include/xrt/xrt_hw_context.h"
-#include "core/common/api/xrt_hw_context_impl.h"
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 

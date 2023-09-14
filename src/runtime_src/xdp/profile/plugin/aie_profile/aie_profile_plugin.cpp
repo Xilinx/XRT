@@ -23,11 +23,13 @@
 #include <iomanip>
 #include <sstream>
 
+#include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/device_intf.h"
@@ -138,10 +140,10 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
 #ifdef XDP_MINIMAL_BUILD
-    xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
-    auto impl_shared_ptr = impl_ptr->get_shared_ptr();
-    xrt::hw_context profile_ctx(impl_shared_ptr);
-    AIEData.metadata->setHwContext(std::move(profile_ctx));
+    // xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
+    // auto impl_shared_ptr = impl_ptr->get_shared_ptr();
+    // xrt::hw_context profile_ctx(impl_shared_ptr);
+    AIEData.metadata->setHwContext(std::move(xrt_core::hw_context_int::create_hw_context(handle)));
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);

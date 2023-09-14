@@ -31,7 +31,6 @@ namespace xdp {
     XDP_EXPORT ~AieProfilePlugin();
     XDP_EXPORT void updateAIEDevice(void* handle);
     XDP_EXPORT void endPollforDevice(void* handle);
-    XDP_EXPORT void updateHwContext(void* hwContext);
     XDP_EXPORT static bool alive();
 
   private:

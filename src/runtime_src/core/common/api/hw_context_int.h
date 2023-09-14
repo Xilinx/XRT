@@ -28,6 +28,9 @@ get_core_device_raw(const xrt::hw_context& ctx);
 void
 set_exclusive(xrt::hw_context& ctx);
 
+__declspec(dllexport) xrt::hw_context
+create_hw_context(void* hwctx_impl);
+
 }} // hw_context_int, xrt_core
 
 #endif
