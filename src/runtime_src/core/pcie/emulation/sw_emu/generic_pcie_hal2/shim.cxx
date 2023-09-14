@@ -923,6 +923,20 @@ namespace xclswemuhal2
     return;
   }
 
+  ssize_t SwEmuShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+     // xclCopyBufferDevice2Host returns number bytes read from device
+     size_t ret = xclCopyBufferDevice2Host(buf,offset,count,0);
+     return (ret == count) ? 0 : -1;
+  }
+
+  ssize_t SwEmuShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
+  {
+     // xclCopyBufferHost2Device returns number bytes written to device
+     size_t ret = xclCopyBufferHost2Device(offset,buf,count,0);
+     return (ret == count) ? 0 : -1;
+  }
+
   size_t SwEmuShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
   {
     std::lock_guard lk(mApiMtx);

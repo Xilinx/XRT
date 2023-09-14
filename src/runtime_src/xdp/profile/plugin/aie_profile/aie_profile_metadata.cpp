@@ -330,14 +330,10 @@ namespace xdp {
 
     // Grab all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-
-    if (!kernelToTileMapping && kernel_name.compare("all") == 0)
-      return get_aie_tiles(graph_name, type);
-    else if (!kernelToTileMapping)
+    if (!kernelToTileMapping)
       return {};
 
     std::vector<tile_type> tiles;
-
     auto rowOffset = getAIETileRowOffset();
 
     for (auto const& mapping : kernelToTileMapping.get()) {
