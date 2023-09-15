@@ -16,7 +16,7 @@
 #include <memory>
 
 // Exported Function objects for AIE Profiling Plugin
-namespace xdp::aie::profile {
+namespace xdp::aie::win::profile {
   __declspec(dllexport) std::function<void (void*)> update_device_cb;
   __declspec(dllexport) std::function<void (void*)> end_poll_cb;
 }
@@ -63,8 +63,8 @@ public:
   hw_context_impl::
   ~hw_context_impl()
   {
-    if (xdp::aie::profile::end_poll_cb != nullptr) 
-      xdp::aie::profile::end_poll_cb(this);
+    if (xdp::aie::win::profile::end_poll_cb != nullptr) 
+      xdp::aie::win::profile::end_poll_cb(this);
   }
 
   void
@@ -137,8 +137,11 @@ set_exclusive(xrt::hw_context& hwctx)
 }
 
 xrt::hw_context
-create_hw_context(void* hwctx_impl)
+create_hw_context_from_implementation(void* hwctx_impl)
 {
+  if (!hwctx_impl)
+    throw std::runtime_error("Invalid hardware context implementation."); 
+
   xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl*>(hwctx_impl);
   return xrt::hw_context(impl_ptr->get_shared_ptr());
 }
@@ -153,15 +156,18 @@ namespace xrt {
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
-{}
+{
+  if (xdp::aie::win::profile::update_device_cb != nullptr) 
+      xdp::aie::win::profile::update_device_cb(get_handle().get());
+}
 
 
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
-  if (xdp::aie::profile::update_device_cb != nullptr) 
-      xdp::aie::profile::update_device_cb(get_handle().get());
+  if (xdp::aie::win::profile::update_device_cb != nullptr) 
+      xdp::aie::win::profile::update_device_cb(get_handle().get());
 }
 
 void

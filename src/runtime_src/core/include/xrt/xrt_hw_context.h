@@ -115,7 +115,6 @@ public:
 
   ///@cond
   // Undocumented construction using impl only
-  // Used for aie profiling
   hw_context(std::shared_ptr<hw_context_impl> impl)
     : detail::pimpl<hw_context_impl>(std::move(impl))
   {}

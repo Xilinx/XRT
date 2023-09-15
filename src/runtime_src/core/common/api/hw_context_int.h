@@ -3,8 +3,10 @@
 #ifndef XRT_COMMON_API_HW_CONTEXT_INT_H
 #define XRT_COMMON_API_HW_CONTEXT_INT_H
 
+#include "core/common/config.h"
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/experimental/xrt_hw_context.h"
+
 #include <cstdint>
 
 // Provide access to xrt::xclbin data that is not directly exposed
@@ -28,8 +30,13 @@ get_core_device_raw(const xrt::hw_context& ctx);
 void
 set_exclusive(xrt::hw_context& ctx);
 
-__declspec(dllexport) xrt::hw_context
-create_hw_context(void* hwctx_impl);
+// Allows the creation of the hardware context from a void pointer
+// to the hardware context implementation. This is used by the
+// XDP plugins in order to initialize when the user creates
+// a hardware context in their host
+XRT_CORE_COMMON_EXPORT 
+xrt::hw_context
+create_hw_context_from_implementation(void* hwctx_impl);
 
 }} // hw_context_int, xrt_core
 

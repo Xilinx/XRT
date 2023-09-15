@@ -148,7 +148,7 @@ namespace xdp {
       int getNumModules() {return NUM_MODULES;}
     xrt::hw_context getHwContext(){return hwContext;}
     void setHwContext(xrt::hw_context c) {
-      hwContext = c;
+      hwContext = std::move(c);
     }
   };
 }

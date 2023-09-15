@@ -133,7 +133,11 @@ namespace xdp {
 
     // delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
+#ifdef XDP_MINIMAL_BUILD
+      return;
+#else
       handleToAIEData.erase(handle);
+#endif
     auto& AIEData = handleToAIEData[handle];
 
     AIEData.deviceID = deviceID;
@@ -143,7 +147,7 @@ namespace xdp {
     // xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
     // auto impl_shared_ptr = impl_ptr->get_shared_ptr();
     // xrt::hw_context profile_ctx(impl_shared_ptr);
-    AIEData.metadata->setHwContext(std::move(xrt_core::hw_context_int::create_hw_context(handle)));
+    AIEData.metadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
