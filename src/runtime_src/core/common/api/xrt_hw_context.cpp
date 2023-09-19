@@ -11,15 +11,10 @@
 
 #include "core/common/device.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/xdp/profile.h"
 
 #include <limits>
 #include <memory>
-
-// Exported Function objects for AIE Profiling Plugin
-namespace xdp::aie::win::profile {
-  __declspec(dllexport) std::function<void (void*)> update_device_cb;
-  __declspec(dllexport) std::function<void (void*)> end_poll_cb;
-}
 
 namespace xrt {
 
@@ -54,17 +49,15 @@ public:
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
   {}
 
-  public:
-  std::shared_ptr<hw_context_impl> get_shared_ptr()
+  std::shared_ptr<hw_context_impl>
+  get_shared_ptr()
   {
     return shared_from_this();
   }
 
-  hw_context_impl::
   ~hw_context_impl()
   {
-    if (xdp::aie::win::profile::end_poll_cb != nullptr) 
-      xdp::aie::win::profile::end_poll_cb(this);
+    xrt_core::xdp::end_poll(this);
   }
 
   void
@@ -157,8 +150,7 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
 {
-  if (xdp::aie::win::profile::update_device_cb != nullptr) 
-      xdp::aie::win::profile::update_device_cb(get_handle().get());
+  // xrt_core::xdp::update_device(get_handle().get());
 }
 
 
@@ -166,8 +158,7 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
-  if (xdp::aie::win::profile::update_device_cb != nullptr) 
-      xdp::aie::win::profile::update_device_cb(get_handle().get());
+  xrt_core::xdp::update_device(get_handle().get());
 }
 
 void
