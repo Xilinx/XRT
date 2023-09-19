@@ -105,7 +105,7 @@ parent(const std::string& device_id, const std::string& xclbin_fnm, xrt::bo::fla
   xrt::device device{device_id};
   auto uuid = device.load_xclbin(xclbin_fnm);
   xrt::kernel hello(device, uuid, "hello");
-  xrt::bo bo(device, 1024, flags, hello.group_id(0)); // 1K buffer is somewhat arbitrary
+  xrt::bo bo(device, 1024*4, flags, hello.group_id(0)); // 1K buffer is somewhat arbitrary
   auto bo_data = bo.map<char*>();
 
   // clear device data
