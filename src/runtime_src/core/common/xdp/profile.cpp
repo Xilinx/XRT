@@ -14,13 +14,6 @@
 
 namespace xrt_core::xdp::aie::profile {
 
-void 
-load()
-{
-  static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
-                                                register_callbacks,
-                                                warning_callbacks);
-}
 
 std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_poll_cb;
@@ -39,6 +32,14 @@ register_callbacks(void* handle)
 void 
 warning_callbacks()
 {
+}
+
+void 
+load()
+{
+  static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
 }
 
 // Make connections

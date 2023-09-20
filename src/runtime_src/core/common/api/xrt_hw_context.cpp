@@ -155,6 +155,10 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
 {
+  // Update device is called with a raw pointer to dyanamically
+  // link to callbacks that exist in XDP via a C-style interface
+  // The create_hw_context_from_implementation function is then 
+  // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(get_handle().get());
 }
 

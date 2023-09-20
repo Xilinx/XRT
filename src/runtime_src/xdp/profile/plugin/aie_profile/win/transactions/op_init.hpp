@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved#ifndef __OPINIT_HPP__
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+#ifndef __OPINIT_HPP__
 #define __OPINIT_HPP__
 
 #include <xaiengine.h>

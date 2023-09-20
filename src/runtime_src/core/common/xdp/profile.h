@@ -23,15 +23,4 @@ end_poll(void* handle);
 
 } // end namespace xrt_core::xdp
 
-namespace xrt_core::xdp::aie::profile {
-
-void load();
-void register_callbacks(void* handle);
-void warning_callbacks();
-
-void update_device(void* handle);
-void end_poll(void* handle);
-
-} // end namespace xrt_core::xdp::aie::profile
-
 #endif
