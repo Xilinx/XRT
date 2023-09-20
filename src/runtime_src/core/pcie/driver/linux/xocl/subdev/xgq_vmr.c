@@ -173,10 +173,6 @@ struct xocl_xgq_vmr {
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
 	u8			xgq_vmr_debug_type;
-	char			*xgq_vmr_system_dtb;
-	size_t			xgq_vmr_system_dtb_size;
-	char			*xgq_vmr_plm_log;
-	size_t			xgq_vmr_plm_log_size;
 	char			*xgq_vmr_shell_int_uuid;
 	size_t			xgq_vmr_shell_int_uuid_size;
 	u16			pwr_scaling_threshold_limit;
@@ -1184,22 +1180,28 @@ static int xgq_log_page_metadata(struct platform_device *pdev,
 	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW, 0, 0);
 }
 
-static int xgq_refresh_plm_log(struct xocl_xgq_vmr *xgq)
+static int xgq_vmr_default_fpt(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
+        loff_t off, size_t req_size)
 {
-	if (xgq->xgq_vmr_plm_log)
-		vfree(xgq->xgq_vmr_plm_log);
-
-	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_plm_log,
-		&xgq->xgq_vmr_plm_log_size, XGQ_CMD_LOG_PLM_LOG, 0, 0);
+	return xgq_log_page_fw(xgq->xgq_pdev, fw, fw_size, XGQ_CMD_LOG_DEFAULT_FPT, 0, 0);
 }
 
-static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
+static int xgq_vmr_backup_fpt(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
+        loff_t off, size_t req_size)
 {
-	if (xgq->xgq_vmr_system_dtb)
-		vfree(xgq->xgq_vmr_system_dtb);
+        return xgq_log_page_fw(xgq->xgq_pdev, fw, fw_size, XGQ_CMD_LOG_BACKUP_FPT, 0, 0);
+}
 
-	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_system_dtb,
-		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB, 0, 0);
+static int xgq_vmr_plm_log(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
+        loff_t off, size_t req_size)
+{
+	return xgq_log_page_fw(xgq->xgq_pdev, fw, fw_size, XGQ_CMD_LOG_PLM_LOG, 0, 0);
+}
+
+static int xgq_vmr_system_dtb(struct xocl_xgq_vmr *xgq, char **fw, size_t *fw_size,
+        loff_t off, size_t req_size)
+{
+	return xgq_log_page_fw(xgq->xgq_pdev, fw, fw_size, XGQ_CMD_LOG_SYSTEM_DTB, 0, 0);
 }
 
 static int xgq_refresh_shell_int_uuid(struct xocl_xgq_vmr *xgq)
@@ -3019,43 +3021,109 @@ static ssize_t program_vmr_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(program_vmr);
 
-static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+static ssize_t vmr_default_fpt_read(struct file *filp, struct kobject *kobj,
+        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
-	struct xocl_xgq_vmr *xgq =
-		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	char *blob = NULL;
-	size_t size = 0;
-	ssize_t ret = 0;
+        struct xocl_xgq_vmr *xgq =
+                dev_get_drvdata(container_of(kobj, struct device, kobj));
+        char *log_buf = NULL;
+        size_t log_size = 0;
+        ssize_t ret = 0;
 
-	/*
-	 * refresh cached data only if off is 0,
-	 * which indicates that there is a new request.
-	 */
-	if (off == 0)
-		ret = xgq_refresh_system_dtb(xgq);
+        /* return count should be less or equal to count */
+        ret = xgq_vmr_default_fpt(xgq, &log_buf, &log_size, off, count);
+        if (ret)
+		return -EINVAL;
 
-	if (ret)
-		return ret;
+        if (off >= log_size)
+                goto done;
 
-	mutex_lock(&xgq->xgq_lock);
+        if (off + count > log_size)
+                count = log_size - off;
 
-	blob = xgq->xgq_vmr_system_dtb;
-	size = xgq->xgq_vmr_system_dtb_size;
-
-	if (off >= size)
-		goto out;
-
-	if (off + count > size)
-		count = size - off;
-	memcpy(buf, blob + off, count);
-
-	ret = count;
-out:
-	mutex_unlock(&xgq->xgq_lock);
-	return ret;
+        memcpy(buf, log_buf + off, count);
+        ret = count;
+done:
+	vfree(log_buf);
+        XGQ_INFO(xgq,"Offset  = %ld, count = %ld, ret = %d\n",(long int)off,(long int)count,(int)ret);
+        return ret;
 }
 
+static struct bin_attribute bin_attr_vmr_default_fpt = {
+        .attr = {
+                .name = "vmr_default_fpt",
+                .mode = 0444
+        },
+        .read = vmr_default_fpt_read,
+        .write = NULL,
+        .size = 0
+};
+
+static ssize_t vmr_backup_fpt_read(struct file *filp, struct kobject *kobj,
+        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+        struct xocl_xgq_vmr *xgq =
+                dev_get_drvdata(container_of(kobj, struct device, kobj));
+        char *log_buf = NULL;
+        size_t log_size = 0;
+        ssize_t ret = 0;
+
+        /* return count should be less or equal to count */
+        ret = xgq_vmr_backup_fpt(xgq, &log_buf, &log_size, off, count);
+        if (ret)
+		return -EINVAL;
+
+        if (off >= log_size)
+                goto done;
+
+        if (off + count > log_size)
+                count = log_size - off;
+
+        memcpy(buf, log_buf + off, count);
+        ret = count;
+done:
+	vfree(log_buf);
+        XGQ_INFO(xgq,"Offset  = %ld, count = %ld, ret = %d\n",(long int)off,(long int)count,(int)ret);
+        return ret;
+}
+
+static struct bin_attribute bin_attr_vmr_backup_fpt = {
+        .attr = {
+                .name = "vmr_backup_fpt",
+                .mode = 0444
+        },
+        .read = vmr_backup_fpt_read,
+        .write = NULL,
+        .size = 0
+};
+
+static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
+        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+        struct xocl_xgq_vmr *xgq =
+                dev_get_drvdata(container_of(kobj, struct device, kobj));
+        char *log_buf = NULL;
+        size_t log_size = 0;
+        ssize_t ret = 0;
+
+        /* return count should be less or equal to count */
+        ret = xgq_vmr_system_dtb(xgq, &log_buf, &log_size, off, count);
+        if (ret)
+		return -EINVAL;
+
+        if (off >= log_size)
+                goto done;
+
+        if (off + count > log_size)
+                count = log_size - off;
+
+        memcpy(buf, log_buf + off, count);
+        ret = count;
+done:
+	vfree(log_buf);
+        XGQ_INFO(xgq,"Offset  = %ld, count = %ld, ret = %d\n",(long int)off,(long int)count,(int)ret);
+        return ret;
+}
 /* Some older linux kernel doesn't support
  * static BIN_ATTR_RO(vmr_system_dtb, 0);
  */
@@ -3070,37 +3138,31 @@ static struct bin_attribute bin_attr_vmr_system_dtb = {
 };
 
 static ssize_t vmr_plm_log_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+        struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
-	struct xocl_xgq_vmr *xgq =
-		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	char *blob = NULL;
-	size_t size = 0;
-	ssize_t ret = 0;
+        struct xocl_xgq_vmr *xgq =
+                dev_get_drvdata(container_of(kobj, struct device, kobj));
+        char *log_buf = NULL;
+        size_t log_size = 0;
+        ssize_t ret = 0;
 
-	/* refresh cached data if off is 0 */
-	if (off == 0)
-		ret = xgq_refresh_plm_log(xgq);
+        /* return count should be less or equal to count */
+        ret = xgq_vmr_plm_log(xgq, &log_buf, &log_size, off, count);
+        if (ret)
+		return -EINVAL;
 
-	if (ret)
-		return ret;
+        if (off >= log_size)
+                goto done;
 
-	mutex_lock(&xgq->xgq_lock);
+        if (off + count > log_size)
+                count = log_size - off;
 
-	blob = xgq->xgq_vmr_plm_log;
-	size = xgq->xgq_vmr_plm_log_size;
-
-	if (off >= size)
-		goto out;
-
-	if (off + count > size)
-		count = size - off;
-	memcpy(buf, blob + off, count);
-
-	ret = count;
-out:
-	mutex_unlock(&xgq->xgq_lock);
-	return ret;
+        memcpy(buf, log_buf + off, count);
+        ret = count;
+done:
+	vfree(log_buf);
+        XGQ_INFO(xgq,"Offset  = %ld, count = %ld, ret = %d\n",(long int)off,(long int)count,(int)ret);
+        return ret;
 }
 
 static struct bin_attribute bin_attr_vmr_plm_log = {
@@ -3174,6 +3236,8 @@ static struct bin_attribute *vmr_bin_attrs[] = {
 	&bin_attr_vmr_system_dtb,
 	&bin_attr_vmr_plm_log,
 	&bin_attr_vmr_apu_log,
+	&bin_attr_vmr_default_fpt,
+	&bin_attr_vmr_backup_fpt,
 	NULL,
 };
 static struct attribute_group xgq_attr_group = {
@@ -3296,10 +3360,6 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
 	/* free cached data */
-	if (xgq->xgq_vmr_system_dtb)
-		vfree(xgq->xgq_vmr_system_dtb);
-	if (xgq->xgq_vmr_plm_log)
-		vfree(xgq->xgq_vmr_plm_log);
 	if (xgq->xgq_vmr_shell_int_uuid)
 		vfree(xgq->xgq_vmr_shell_int_uuid);
 
@@ -3432,10 +3492,6 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_pdev = pdev;
 	xgq->xgq_cmd_id = 0;
 	xgq->xgq_halted = true;
-	xgq->xgq_vmr_system_dtb = NULL;
-	xgq->xgq_vmr_system_dtb_size = 0;
-	xgq->xgq_vmr_plm_log = NULL;
-	xgq->xgq_vmr_plm_log_size = 0;
 	xgq->xgq_vmr_shell_int_uuid = NULL;
 	xgq->xgq_vmr_shell_int_uuid_size = 0;
 
