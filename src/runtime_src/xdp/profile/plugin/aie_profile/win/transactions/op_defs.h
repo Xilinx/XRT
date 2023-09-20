@@ -1,4 +1,5 @@
-#ifndef __OP_DEFS_H__
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved#ifndef __OP_DEFS_H__
 #define __OP_DEFS_H__
 
 #define OP_LIST(OP) \
