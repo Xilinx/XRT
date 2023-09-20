@@ -31,7 +31,10 @@ void
 set_exclusive(xrt::hw_context& ctx);
 
 // Allows the creation of the hardware context from a void pointer
-// to the hardware context implementation. This is used by the
+// to the hardware context implementation. We use a void pointer
+// because we need to dynamically link to the callbacks that exist in 
+// XDP with a C-style interface. Additionally, we do not want to 
+// expose the hardware_context implementation class. This is used by
 // XDP plugins in order to initialize when the user creates
 // a hardware context in their host
 XRT_CORE_COMMON_EXPORT 
