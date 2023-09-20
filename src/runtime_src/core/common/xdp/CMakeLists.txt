@@ -7,7 +7,6 @@ add_library(core_common_xdp_profile_objects OBJECT
 target_include_directories(core_common_xdp_profile_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
-  ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
   )
 
 if (XDP_MINIMAL_BUILD STREQUAL "yes")

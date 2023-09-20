@@ -121,6 +121,7 @@ namespace xdp {
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
       std::vector<std::vector<uint64_t>> outputValues;
+      bool finishedPoll = false;
 
   };
 

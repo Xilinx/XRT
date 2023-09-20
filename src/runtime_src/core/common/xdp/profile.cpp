@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+#define XRT_CORE_COMMON_SOURCE
 #include "core/common/xdp/profile.h"
 
 #include "core/common/config_reader.h"
@@ -21,8 +22,8 @@ namespace xrt_core::xdp::aie::profile {
                                                   warning_callbacks);
   }
 
-  std::function<void (void*)> update_device_cb;
-  std::function<void (void*)> end_poll_cb;
+  std::function<void (void*)> update_device_cb = nullptr;
+  std::function<void (void*)> end_poll_cb = nullptr;
 
   void 
   register_callbacks(void* handle)
@@ -32,9 +33,6 @@ namespace xrt_core::xdp::aie::profile {
     #ifdef XDP_MINIMAL_BUILD
       update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
       end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-    #else
-      update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "IPUConfigProfile"));
-      end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "IPUReadProfile"));
     #endif
   }
 

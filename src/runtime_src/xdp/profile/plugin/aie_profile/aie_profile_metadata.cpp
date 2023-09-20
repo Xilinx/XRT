@@ -48,7 +48,7 @@ namespace xdp {
       }
     metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
     metricStrings[module_type::dma].insert(metricStrings[module_type::dma].end(), {"s2mm_throughputs", "mm2s_throughputs"});          
-    metricStrings[module_type::shim].insert(metricStrings[module_type::shim].end(), {"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls", "mm2s_stalls"});           
+    metricStrings[module_type::shim].insert(metricStrings[module_type::shim].end(), {"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls0", "mm2s_stalls0", "s2mm_stalls1", "mm2s_stalls1"});           
     metricStrings[module_type::mem_tile].insert(metricStrings[module_type::mem_tile].end(), {"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"});             
 
     #else

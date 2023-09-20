@@ -105,9 +105,11 @@ namespace xdp {
     // **** Interface Tile Counters ****
     mShimStartEvents = {
       {"s2mm_throughputs", {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"s2mm_stalls", {XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
+      {"s2mm_stalls0", {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL}},
+      {"s2mm_stalls1", {XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL}},
+      {"mm2s_stalls0", {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
+      {"mm2s_stalls1", {XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL}},
       {"mm2s_throughputs", {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"mm2s_stalls", {XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}},
       {"packets",          {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
     };
     
@@ -478,7 +480,10 @@ namespace xdp {
   AieProfile_WinImpl::
   poll(uint32_t index, void* handle)
   {
-    std::cout << "handle; " << handle << std::endl;
+    if (finishedPoll)
+      return;
+
+    (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;
     auto context = metadata->getHwContext();
 
@@ -533,6 +538,7 @@ namespace xdp {
       db->getDynamicInfo().addAIESample(index, timestamp, values);
     }
 
+    finishedPoll=true;
     free(op);
   }
 

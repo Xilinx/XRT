@@ -95,7 +95,7 @@ namespace xdp {
   {
     // Base functionality is just to have all writers write.  Derived
     //  classes might have to do more.
-    std::cout << "in writeall base class!" << std::endl;
+    
     endWrite();
   }
 

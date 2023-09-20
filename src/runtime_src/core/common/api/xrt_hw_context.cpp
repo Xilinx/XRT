@@ -150,7 +150,7 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
 {
-  // xrt_core::xdp::update_device(get_handle().get());
+  xrt_core::xdp::update_device(get_handle().get());
 }
 
 

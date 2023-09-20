@@ -171,11 +171,9 @@ namespace xdp {
     AIEData.threadCtrlBool = false;
 #else
     AIEData.threadCtrlBool = true;
-#endif
     auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
-    // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters, implementation.get(), mIndex, handle);
     AIEData.thread = std::move(device_thread);
-
+#endif
     // Open the writer for this device
     auto time = std::time(nullptr);
 
@@ -216,7 +214,7 @@ namespace xdp {
       std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));
     }
     //Final Polling Operation
-    // handleToAIEData[handle].implementation->poll(index, handle);
+    handleToAIEData[handle].implementation->poll(index, handle);
   }
 
   void AieProfilePlugin::writeAll(bool /*openNewFiles*/)
@@ -258,8 +256,11 @@ namespace xdp {
   void AieProfilePlugin::endPoll()
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPoll.");
-    auto& AIEData = handleToAIEData.begin()->second;
-    AIEData.implementation->poll(0, nullptr);
+    
+    #ifdef XDP_MINIMAL_BUILD
+      auto& AIEData = handleToAIEData.begin()->second;
+      AIEData.implementation->poll(0, nullptr);
+    #endif
     // Ask all threads to end
     for (auto& p : handleToAIEData)
       p.second.threadCtrlBool = false;
