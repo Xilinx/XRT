@@ -26,7 +26,11 @@ register_callbacks(void* handle)
   #ifdef XDP_MINIMAL_BUILD
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
+  #else 
+    (void)handle;
   #endif
+
+  
 }
 
 void 
