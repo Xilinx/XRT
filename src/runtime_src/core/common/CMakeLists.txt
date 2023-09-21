@@ -52,7 +52,6 @@ add_library(xrt_coreutil SHARED
   $<TARGET_OBJECTS:core_common_library_objects>
   $<TARGET_OBJECTS:core_common_api_library_objects>
   $<TARGET_OBJECTS:core_common_xdp_profile_objects>
-  
   )
 
 add_library(xrt_coreutil_static STATIC
