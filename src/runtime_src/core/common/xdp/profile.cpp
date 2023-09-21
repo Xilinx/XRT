@@ -20,10 +20,10 @@ std::function<void (void*)> end_poll_cb;
 
 void 
 register_callbacks(void* handle)
-{
-  using ftype = void (*)(void*);
-  
+{  
   #ifdef XDP_MINIMAL_BUILD
+    using ftype = void (*)(void*);
+
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
   #else 
