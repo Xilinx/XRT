@@ -36,6 +36,28 @@ namespace xdp {
 
   AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle) : deviceID(deviceID), handle(handle)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Parsing AIE Profile Metadata.");
+    #ifdef XDP_MINIMAL_BUILD
+      try {
+        pt::read_json("aie_control_config.json", aie_meta);
+        invalidXclbinMetadata = false;
+      } catch (...) {
+        std::stringstream msg;
+        msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }
+    metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
+    metricStrings[module_type::dma].insert(metricStrings[module_type::dma].end(), {"s2mm_throughputs", "mm2s_throughputs"});          
+    metricStrings[module_type::shim].insert(metricStrings[module_type::shim].end(), {"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls0", "mm2s_stalls0", "s2mm_stalls1", "mm2s_stalls1"});           
+    metricStrings[module_type::mem_tile].insert(metricStrings[module_type::mem_tile].end(), {"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"});             
+
+    #else
+      auto device = xrt_core::get_userpf_device(handle);
+      auto data = device->get_axlf_section(AIE_METADATA);
+      invalidXclbinMetadata = (!data.first || !data.second);
+      read_aie_metadata(data.first, data.second, aie_meta);
+    #endif
+
     // Verify settings from xrt.ini
     checkSettings();
 
@@ -73,6 +95,7 @@ namespace xdp {
       else
         getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
     }
+
   }
 
   bool tileCompare(tile_type tile1, tile_type tile2)
@@ -132,15 +155,9 @@ namespace xdp {
     static bool gotValue = false;
 
     if (!gotValue) {
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-
-      if (!data.first || !data.second) {
+      if (invalidXclbinMetadata) {
         hwGen = 1;
-      }
-      else {
-        pt::ptree aie_meta;
-        read_aie_metadata(data.first, data.second, aie_meta);
+      } else {
         hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<int>();
       }
 
@@ -156,15 +173,9 @@ namespace xdp {
     static bool gotValue = false;
 
     if (!gotValue) {
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-
-      if (!data.first || !data.second) {
+      if (invalidXclbinMetadata) {
         rowOffset = 1;
-      }
-      else {
-        pt::ptree aie_meta;
-        read_aie_metadata(data.first, data.second, aie_meta);
+      } else {
         rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
       }
 
@@ -190,23 +201,16 @@ namespace xdp {
   }
 
   // Find all MEM tiles associated with a graph and kernel
-  // kernel_name = all      : all tiles in graph
-  // kernel_name = <kernel> : only tiles used by that specific kernel
-  std::vector<tile_type> AieProfileMetadata::get_mem_tiles(const xrt_core::device* device,
-      const std::string& graph_name,
-      const std::string& kernel_name)
+  //   kernel_name = all      : all tiles in graph
+  //   kernel_name = <kernel> : only tiles used by that specific kernel
+  std::vector<tile_type> AieProfileMetadata::get_mem_tiles(const std::string& graph_name,
+                                                           const std::string& kernel_name)
   {
     if (getHardwareGen() == 1)
       return {};
 
-    auto data = device->get_axlf_section(AIE_METADATA);
-
-    if (!data.first || !data.second)
+    if (invalidXclbinMetadata)
       return {};
-
-    pt::ptree aie_meta;
-
-    read_aie_metadata(data.first, data.second, aie_meta);
 
     // Grab all shared buffers
     auto sharedBufferTree = aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
@@ -253,17 +257,10 @@ namespace xdp {
       throw std::runtime_error(msg);
   }
 
-  std::vector<tile_type> AieProfileMetadata::get_event_tiles(const xrt_core::device* device,
-      const std::string& graph_name, module_type type)
+  std::vector<tile_type> AieProfileMetadata::get_event_tiles(const std::string& graph_name, module_type type)
   {
-    auto data = device->get_axlf_section(AIE_METADATA);
-
-    if (!data.first || !data.second)
+    if (invalidXclbinMetadata)
       return {};
-
-    pt::ptree aie_meta;
-
-    read_aie_metadata(data.first, data.second, aie_meta);
 
     // Interface tiles use different method
     if (type == module_type::shim)
@@ -307,36 +304,29 @@ namespace xdp {
   }
 
   // Find all AIE tiles associated with a graph and module type (kernel_name = all)
-  std::vector<tile_type> AieProfileMetadata::get_aie_tiles(const xrt_core::device* device,
-      const std::string& graph_name, module_type type)
+  std::vector<tile_type> AieProfileMetadata::get_aie_tiles( const std::string& graph_name, module_type type)
   {
     std::vector<tile_type> tiles;
-    tiles = get_event_tiles(device, graph_name, module_type::core);
-
+    tiles = get_event_tiles(graph_name, module_type::core);
     if (type == module_type::dma) {
-      auto dmaTiles = get_event_tiles(device, graph_name, module_type::dma);
+      auto dmaTiles = get_event_tiles(graph_name, module_type::dma);
       std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), tileCompare);
     }
 
     return tiles;
   }
 
-  std::vector<tile_type> AieProfileMetadata::get_tiles(const xrt_core::device* device, const std::string& graph_name,
-      module_type type, const std::string& kernel_name)
+  std::vector<tile_type> AieProfileMetadata::get_tiles(const std::string& graph_name,
+                                                       module_type type, const std::string& kernel_name)
   {
     if (type == module_type::mem_tile)
-      return get_mem_tiles(device, graph_name, kernel_name);
+      return get_mem_tiles(graph_name, kernel_name);
     if (kernel_name.compare("all") == 0)
-      return get_aie_tiles(device, graph_name, type);
+      return get_aie_tiles(graph_name, type);
 
     // Now search by graph-kernel pairs
-    auto data = device->get_axlf_section(AIE_METADATA);
-
-    if (!data.first || !data.second)
+    if (invalidXclbinMetadata)
       return {};
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
 
     // Grab all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
@@ -384,12 +374,7 @@ namespace xdp {
                               "settings will be ignored.");
       return;
     }
-
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-
+    
     uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
     auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
@@ -397,7 +382,7 @@ namespace xdp {
     auto allValidKernels = aie::getValidKernels(aie_meta);
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = get_tiles(device.get(), "all", mod);
+    auto validTilesVec = get_tiles("all", mod);
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()),
                      tileCompare);
 
@@ -442,8 +427,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = get_tiles(device.get(), graphMetrics[i][0], mod, graphMetrics[i][1]);
-
+      auto tiles = get_tiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -485,8 +469,7 @@ namespace xdp {
       }
 
       // Capture all tiles in given graph
-      auto tiles = get_tiles(device.get(), graphMetrics[i][0], mod, graphMetrics[i][1]);
-
+      auto tiles = get_tiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -543,8 +526,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = get_tiles(device.get(), metrics[i][0], mod);
-
+      auto tiles = get_tiles(metrics[i][0], mod);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
       }
@@ -741,11 +723,6 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-
     auto allValidGraphs = aie::getValidGraphs(aie_meta);
     auto allValidPorts = aie::getValidPorts(aie_meta);
 
@@ -866,10 +843,10 @@ namespace xdp {
     /* AIE_profile_settings config format ; Multiple values can be specified for
      * a metric separated with ';' Single or all tiles
      * tile_based_interface_tile_metrics =
-     * [[<column|all>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]
+     * [[<column|all>:<off|s2mm_throughputs|mm2s_throughputs|packets>[:<channel>]]
      * Range of tiles
      * tile_based_interface_tile_metrics =
-     * [<mincolumn>:<maxcolumn>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]]
+     * [<mincolumn>:<maxcolumn>:<off|s2mm_throughputs|mm2s_throughputs|packets>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
@@ -887,7 +864,7 @@ namespace xdp {
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
-        configChannel0[t] = channelId;
+        configChannel0[t] = static_cast<uint8_t>(channelId);;
       }
     } // Pass 1
 
@@ -1046,4 +1023,10 @@ namespace xdp {
       return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
     }
   }
-} // namespace xdp
+
+  boost::property_tree::ptree AieProfileMetadata::getAIEConfigMetadata(std::string config_name) {
+    std::string query = "aie_metadata.driver_config." + config_name;
+    return aie_meta.get_child(query);
+  }
+
+}  // namespace xdp
