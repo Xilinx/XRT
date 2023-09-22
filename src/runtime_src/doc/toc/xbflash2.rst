@@ -15,9 +15,9 @@ This tool supported for all Alveo platforms.
 
 This tool doesn't require XRT Package and it doesn't come with XRT package, it comes as separate xbflash package.
 
-``xbflah2`` tool is available in the below Alveo cards wesite under respective card pages.
+``xbflah2`` tool is available in the Alveo card web page, getting started session, xbflash2 tab.
 
-https://www.xilinx.com/products/boards-and-kits/alveo.html
+For example: https://www.xilinx.com/products/boards-and-kits/alveo/u50.html#xbflash2
 
 This tool is verified and supported only on XDMA PCIe DMA designs.
 
