@@ -270,6 +270,17 @@ enum class module_type {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  // Used by by IPU profiling/debug on Windows
+  typedef struct {
+    uint64_t perf_address;
+    uint32_t perf_value;
+  } profile_data_t;
+
+  typedef struct {
+    uint32_t count;
+    profile_data_t profile_data[1];
+  } aie_profile_op_t;
+
 } // end namespace xdp
 
 #endif

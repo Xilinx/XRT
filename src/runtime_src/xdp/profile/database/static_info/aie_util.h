@@ -65,7 +65,7 @@ namespace aie {
   std::vector<tile_type> getEventTiles(const boost::property_tree::ptree& aie_meta, 
                                        const std::string& graph_name,
                                        module_type type);
-  std::vector<tile_type> getTiles(const boost::property_tree::ptree& aie_meta, 
+  XDP_EXPORT std::vector<tile_type> getTiles(const boost::property_tree::ptree& aie_meta, 
                                   const std::string& graph_name,
                                   module_type type, 
                                   const std::string& kernel_name = "all");

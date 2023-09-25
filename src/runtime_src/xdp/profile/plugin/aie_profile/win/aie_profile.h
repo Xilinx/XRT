@@ -30,20 +30,7 @@ extern "C" {
 }
 
 namespace xdp {
-  // typedef struct {
-  //   uint64_t perf_address[256];
-  //   uint32_t perf_value[256];
-  // } aie_profile_op_t;
-  typedef struct {
-    uint64_t perf_address;
-    uint32_t perf_value;
-  } profile_data_t;
-
-  typedef struct {
-    uint32_t count;
-    profile_data_t profile_data[1];
-  } aie_profile_op_t;
-
+  
   class AieProfile_WinImpl : public AieProfileImpl {
    public:
     AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);

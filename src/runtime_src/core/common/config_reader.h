@@ -179,6 +179,13 @@ get_aie_profile()
 }
 
 inline bool
+get_aie_debug()
+{
+  static bool value = detail::get_bool_value("Debug.aie_debug",false);
+  return value;
+}
+
+inline bool
 get_aie_status()
 {
   static bool value = detail::get_bool_value("Debug.aie_status", false);

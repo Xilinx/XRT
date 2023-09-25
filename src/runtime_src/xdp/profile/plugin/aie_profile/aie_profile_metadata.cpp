@@ -354,6 +354,8 @@ namespace xdp {
       tile_type tile;
       tile.col = mapping.second.get<uint16_t>("column");
       tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
+      std::cout << "tile col, row: " << tile.col << " " << tile.row << std::endl;
+
       tiles.emplace_back(std::move(tile));
     }
 

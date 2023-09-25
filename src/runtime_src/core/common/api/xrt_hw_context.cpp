@@ -12,6 +12,7 @@
 #include "core/common/device.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/xdp/profile.h"
+#include "core/common/xdp/debug.h"
 
 #include <limits>
 #include <memory>
@@ -62,7 +63,8 @@ public:
     // in the hw_context_impl constructor because an existing
     // shared pointer must already exist to call get_shared_ptr(),
     // which is not true at that time.
-    xrt_core::xdp::end_poll(this);
+    //xrt_core::xdp::end_poll(this);
+    xrt_core::xdp::end_debug(this);
   }
 
   void
@@ -159,7 +161,7 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_
   // link to callbacks that exist in XDP via a C-style interface
   // The create_hw_context_from_implementation function is then 
   // called in XDP create a hw_context to the underlying implementation
-  xrt_core::xdp::update_device(get_handle().get());
+  // xrt_core::xdp::update_device(get_handle().get());
 }
 
 
@@ -167,7 +169,8 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
-  xrt_core::xdp::update_device(get_handle().get());
+  // xrt_core::xdp::update_device(get_handle().get());
+  xrt_core::xdp::update_device_debug(get_handle().get());
 }
 
 void
