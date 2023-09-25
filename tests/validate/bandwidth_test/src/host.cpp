@@ -29,6 +29,13 @@ static void printHelp() {
     std::cout << "  -h <help>\n";
 }
 
+double bandwidth_cal (double dnsduration, int data_size) {
+        double dsduration = dnsduration / ((double)1000000000); // Convert the duration from nanoseconds to seconds
+        double bpersec = data_size / dsduration;
+        double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
+	return mbpersec;
+}	
+
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
@@ -262,11 +269,8 @@ int main(int argc, char** argv) {
             for (int i = 0; i < num_kernel_ddr; i++) {
                cl_ulong start_time = krnl_events[i].getProfilingInfo<CL_PROFILING_COMMAND_START>();
                cl_ulong end_time = krnl_events[i].getProfilingInfo<CL_PROFILING_COMMAND_END>();
-               double dnsduration = (double)(end_time - start_time) / reps; //nanoseconds to seconds
-               double dsduration = dnsduration / ((double)1000000000); // Convert the duration from nanoseconds to seconds
-               double bpersec = (data_size) / dsduration;
-               double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
-
+               double dnsduration = (double)(end_time - start_time) / reps; 
+               double mbpersec = bandwidth_cal(dnsduration, data_size);
                if (mbpersec > bank_throughput_values[i]) 
                    bank_throughput_values[i] = mbpersec;
             }
@@ -274,10 +278,7 @@ int main(int argc, char** argv) {
             double usduration =
                 (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
 
-            double dnsduration = (double)usduration;
-            double dsduration = dnsduration / ((double)1000000000); // Convert the duration from nanoseconds to seconds
-            double bpersec = (data_size * num_kernel_ddr) / dsduration;
-            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
+            double mbpersec = num_kernel_ddr * (bandwidth_cal(usduration, data_size)); 
 
             if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
@@ -351,10 +352,7 @@ int main(int argc, char** argv) {
             double usduration =
                 (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
 
-            double dnsduration = (double)usduration;
-            double dsduration = dnsduration / ((double)1000000000); // Convert duration from nanoseconds to seconds
-            double bpersec = data_size / dsduration;
-            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
+            double mbpersec = bandwidth_cal(usduration, data_size);
 
             if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
