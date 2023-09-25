@@ -60,14 +60,14 @@ get_driver_config(const pt::ptree& aie_meta)
   driver_config.num_columns = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_columns");
   driver_config.num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.num_rows");
   driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
-  if (!aie_meta.get_optional<uint8_t>("aie_metadata.driver_config.mem_row_start") ||
-      !aie_meta.get_optional<uint8_t>("aie_metadata.driver_config.mem_num_rows")) {
+  if (!aie_meta.get_optional<uint8_t>("aie_metadata.driver_config.mem_tile_row_start") ||
+      !aie_meta.get_optional<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows")) {
   	driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
 	driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
   }
   else {
-	driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_row_start");
-	driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_num_rows");
+	driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_tile_row_start");
+	driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows");
   }
   driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
   driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
