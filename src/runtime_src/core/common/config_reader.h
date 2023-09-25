@@ -747,6 +747,35 @@ get_device_offline_timer()
   return value;
 }
 
+// Configurations under AIE_debug_settings section
+inline std::string
+get_aie_debug_settings_core_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.core_registers", "");
+  return value;
+}
+
+inline std::string
+get_aie_debug_settings_memory_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.memory_registers", "");
+  return value;
+}
+
+inline std::string
+get_aie_debug_settings_interface_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.interface_registers", "");
+  return value;
+}
+
+inline std::string
+get_aie_debug_settings_memory_tile_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.memory_tile_registers", "");
+  return value;
+}
+
 // Configurations under AIE_profile_settings section
 inline unsigned int
 get_aie_profile_settings_interval_us()

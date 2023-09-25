@@ -139,12 +139,17 @@ namespace xdp {
       {0}                                                   // PartProp
     };
 
-    std::map<module_type, std::vector<uint64_t>> regValues {
-        {module_type::core, {0x34200}}, 
-        {module_type::dma, {0x14200}}, 
-        {module_type::shim, {0x34200}}, 
-        {module_type::mem_tile, {0x94200}}, 
-      };
+    auto regValues = parseMetrics();
+    // (void)result;
+
+    std::cout << "starting regular: " << std::endl;
+
+    // std::map<module_type, std::vector<uint64_t>> regValues {
+    //     {module_type::core, {0x34200}}, 
+    //     {module_type::dma, {0x14200}}, 
+    //     {module_type::shim, {0x34200}}, 
+    //     {module_type::mem_tile, {0x94200}}, 
+    //   };
 
     static constexpr int NUM_MODULES = 4;
     const module_type moduleTypes[NUM_MODULES] =
@@ -170,26 +175,23 @@ namespace xdp {
       std::vector<uint64_t> Regs = regValues[type];
 
       for (auto &tile : tiles) {
-        std::cout << "Tile: Col, Row: " << tile.col << " " << tile.row << std::endl;
-        std::cout << std::hex << Regs[0] +  (tile.col << 25) + (tile.row << 20) << std::endl;
-        op_profile_data.emplace_back(profile_data_t{Regs[0] + (tile.col << 25) + (tile.row << 20), 0});
-        counterId++;
+
+        for (int i = 0; i < Regs.size(); i++){
+          std::cout << "Tile: Col, Row: " << tile.col << " " << tile.row << std::endl;
+          std::cout << std::hex << Regs[0] +  (tile.col << 25) + (tile.row << 20) << std::endl;
+          op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20), 0});
+          counterId++;
+        }
       }
     }
 
-    std::cout << "created!" << std::endl;
-
     // std::vector<uint64_t> {0x31520,0x31524,0x31528,0x3152C};
-
-   
 
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK) {
       xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
       return;
     }
-    std::cout << "created2!" << std::endl;
-
 
     op_size = sizeof(aie_profile_op_t) + sizeof(profile_data_t) * (counterId - 1);
     op = (aie_profile_op_t*)malloc(op_size);
@@ -197,7 +199,6 @@ namespace xdp {
     for (int i = 0; i < op_profile_data.size(); i++) {
       op->profile_data[i] = op_profile_data[i];
     }
-    std::cout << "created3!" << std::endl;
   }
 
 
@@ -205,16 +206,64 @@ namespace xdp {
   {
     (void)handle;
     endPoll();
-
   }
 
+  std::map<module_type, std::vector<uint64_t>> AieDebugPlugin::parseMetrics() {
+
+    std::map<module_type, std::vector<uint64_t>> regValues {
+          {module_type::core, {}}, 
+          {module_type::dma, {}}, 
+          {module_type::shim, {}}, 
+          {module_type::mem_tile, {}}, 
+        };
+
+    std::vector<std::string> metricsConfig;
+
+    const module_type moduleTypes[4] =
+      {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
+
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_core_registers());
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_registers());
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_interface_registers());
+    metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
+
+    for (int module = 0; module < 4; ++module) {
+      auto type = moduleTypes[module];
+      std::vector<std::string> metricsSettings = getSettingsVector(metricsConfig[module]);
+
+      std::cout << "Module: " << module << std::endl;
+      for (auto& s : metricsSettings) {
+        try {
+          uint64_t val = stoul(s,nullptr,16);
+          regValues[type].push_back(val);
+        } catch (...) {
+          std::cout << "Error parsing string: " << s << std::endl;
+        }
+      }
+    }
+
+    return regValues;
   
-  
+  }
+
+  std::vector<std::string> AieDebugPlugin::getSettingsVector(std::string settingsString)
+  {
+    if (settingsString.empty())
+      return {};
+
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::string> settingsVector;
+
+    boost::replace_all(settingsString, " ", "");
+
+    boost::split(settingsVector, settingsString, boost::is_any_of(","));
+
+    return settingsVector;
+  }
 
   void AieDebugPlugin::endPoll()
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Debug endPoll.");
-    std::cout << "Reached end AIE Debug read!" << std::endl;
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     // Profiling is 3rd custom OP
     XAie_RequestCustomTxnOp(&aieDevInst);
