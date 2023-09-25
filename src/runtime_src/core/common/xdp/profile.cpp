@@ -6,7 +6,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
-
+#include <iostream>
 #include <functional>
 // This file makes the connections between all xrt_coreutil level hooks
 // to the corresponding xdp plugins.  It is responsible for loading all of
@@ -50,6 +50,8 @@ load()
 void 
 update_device(void* handle)
 {
+  std::cout << "inisde profile2 update_Device " << (update_device_cb != nullptr) << std::endl;
+
   if (update_device_cb)
     update_device_cb(handle);
 }
@@ -68,8 +70,11 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle)
 {
+
+  std::cout << "inisde profile update_Device" << std::endl;
   if (xrt_core::config::get_aie_profile()) {
     try {
+      std::cout << "Loading! profile update_Device" << std::endl;
       xrt_core::xdp::aie::profile::load();
     } 
     catch (...) {

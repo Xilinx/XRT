@@ -63,7 +63,7 @@ public:
     // in the hw_context_impl constructor because an existing
     // shared pointer must already exist to call get_shared_ptr(),
     // which is not true at that time.
-    //xrt_core::xdp::end_poll(this);
+    xrt_core::xdp::end_poll(this);
     xrt_core::xdp::end_debug(this);
   }
 
@@ -169,7 +169,7 @@ hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {
-  // xrt_core::xdp::update_device(get_handle().get());
+  xrt_core::xdp::update_device(get_handle().get());
   xrt_core::xdp::update_device_debug(get_handle().get());
 }
 
