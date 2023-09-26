@@ -57,12 +57,12 @@ public:
 
   ~hw_context_impl()
   {
-    // The end_poll plugin should only occur when the underlying 
+    // finish_flush_device should only be called when the underlying 
     // hw_context_impl is destroyed. The xdp::update_device cannot exist
     // in the hw_context_impl constructor because an existing
     // shared pointer must already exist to call get_shared_ptr(),
     // which is not true at that time.
-    xrt_core::xdp::end_poll(this);
+    xrt_core::xdp::finish_flush_device(this);
   }
 
   void
