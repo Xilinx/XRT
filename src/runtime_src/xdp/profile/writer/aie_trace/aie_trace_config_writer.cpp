@@ -34,7 +34,7 @@ namespace xdp {
   {    
   }
 
-  bool AieTraceConfigWriter::write(bool openNewFile)
+  bool AieTraceConfigWriter::write(bool)
   {
     bpt::ptree pt;
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;

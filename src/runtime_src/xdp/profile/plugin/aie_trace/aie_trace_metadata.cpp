@@ -22,7 +22,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <memory>
 #include <regex>
 
 #include "core/common/device.h"
@@ -178,7 +177,7 @@ namespace xdp {
 
       // Catch cases like "1Ms" "1NS"
       std::transform(start_str.begin(), start_str.end(), start_str.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+        [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
 
       // Default is 0 cycles
       uint64_t cycles = 0;
@@ -255,17 +254,17 @@ namespace xdp {
     auto aieIter = 
         std::find(metricSets[module_type::core].begin(), metricSets[module_type::core].end(), metricString);
     if (aieIter != metricSets[module_type::core].cend())
-      return std::distance(metricSets[module_type::core].begin(), aieIter);
+      return static_cast<uint8_t>(std::distance(metricSets[module_type::core].begin(), aieIter));
 
     auto memIter =
         std::find(metricSets[module_type::mem_tile].begin(), metricSets[module_type::mem_tile].end(), metricString);
     if (memIter != metricSets[module_type::mem_tile].cend())
-      return std::distance(metricSets[module_type::mem_tile].begin(), memIter);
+      return static_cast<uint8_t>(std::distance(metricSets[module_type::mem_tile].begin(), memIter));
 
     auto shimIter =
         std::find(metricSets[module_type::shim].begin(), metricSets[module_type::shim].end(), metricString);
     if (shimIter != metricSets[module_type::shim].cend())
-      return std::distance(metricSets[module_type::shim].begin(), shimIter);
+      return static_cast<uint8_t>(std::distance(metricSets[module_type::shim].begin(), shimIter));
 
     return 0;
   }
@@ -345,8 +344,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -383,8 +382,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -434,8 +433,8 @@ namespace xdp {
       if (metrics[i].size() > 2) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(metrics[i][2]);
-            configChannel1[e] = std::stoi(metrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(metrics[i][2]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(metrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -489,8 +488,8 @@ namespace xdp {
       uint8_t channel1 = 1;
       if (metrics[i].size() > 3) {
         try {
-          channel0 = std::stoi(metrics[i][3]);
-          channel1 = std::stoi(metrics[i].back());
+          channel0 = static_cast<uint8_t>(std::stoi(metrics[i][3]));
+          channel1 = static_cast<uint8_t>(std::stoi(metrics[i].back()));
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -502,8 +501,8 @@ namespace xdp {
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
           tile_type tile;
-          tile.col = col;
-          tile.row = row;
+          tile.col = static_cast<uint16_t>(col);
+          tile.row = static_cast<uint16_t>(row);
 
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -541,8 +540,8 @@ namespace xdp {
 
         std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
-        col = std::stoi(tilePos[0]);
-        row = std::stoi(tilePos[1]) + rowOffset;
+        col = static_cast<uint16_t>(std::stoi(tilePos[0]));
+        row = static_cast<uint16_t>(std::stoi(tilePos[1]) + rowOffset);
       } catch (...) {
         std::stringstream msg;
         msg << "Tile specification in tile_based_" << tileName
@@ -569,8 +568,8 @@ namespace xdp {
       // Grab channel numbers (if specified; memory tiles only)
       if (metrics[i].size() > 2) {
         try {
-          configChannel0[tile] = std::stoi(metrics[i][2]);
-          configChannel1[tile] = std::stoi(metrics[i].back());
+          configChannel0[tile] = static_cast<uint8_t>(std::stoi(metrics[i][2]));
+          configChannel1[tile] = static_cast<uint8_t>(std::stoi(metrics[i].back()));
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -669,8 +668,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -707,8 +706,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;

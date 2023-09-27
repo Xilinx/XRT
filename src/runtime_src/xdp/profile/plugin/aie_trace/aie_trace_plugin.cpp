@@ -16,15 +16,12 @@
 
 #define XDP_SOURCE
 
-#include <memory>
-
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
@@ -33,7 +30,9 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 
-#ifdef XRT_X86_BUILD
+#ifdef XDP_MINIMAL_BUILD
+  #include "win/aie_trace.h"
+#elif defined(XRT_X86_BUILD)
   #include "x86/aie_trace.h"
 #else
   #include "edge/aie_trace.h"
@@ -82,11 +81,16 @@ namespace xdp {
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
+#ifdef XDP_MINIMAL_BUILD
+  return 0;
+#else
+
     std::array<char, sysfs_max_path_length> pathBuf = {0};
     xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
     std::string sysfspath(pathBuf.data());
     uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
     return deviceID;
+#endif
   }
   
   void AieTracePluginUnified::updateAIEDevice(void* handle)
@@ -106,20 +110,28 @@ namespace xdp {
     AIEData.valid = true; // initialize struct
     AIEData.devIntf = nullptr;
 
-    // Get Device info // Investigate further (isDeviceReady should be always called??)
-    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
-      // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceID, handle);
-      {
-        struct xclDeviceInfo2 info;
-        if (xclGetDeviceInfo2(handle, &info) == 0)
-          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
-      }
+
+    // Update the static database with information from xclbin
+    (db->getStaticInfo()).updateDevice(deviceID, handle);
+    {
+#ifdef XDP_MINIMAL_BUILD
+        (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#else 
+      struct xclDeviceInfo2 info;
+      if (xclGetDeviceInfo2(handle, &info) == 0)
+        (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+#endif
+
     }
 
     // Metadata depends on static information from the database
+
+  
     AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
-#ifdef XRT_X86_BUILD
+
+#ifdef XDP_MINIMAL_BUILD
+    AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
+#elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
 #else
     AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
@@ -282,7 +294,7 @@ namespace xdp {
       offloader->startOffload();
   }
 
-  void AieTracePluginUnified::pollAIETimers(uint32_t index, void* handle)
+  void AieTracePluginUnified::pollAIETimers(uint64_t index, void* handle)
   {
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())
@@ -351,6 +363,7 @@ namespace xdp {
 
   void AieTracePluginUnified::writeAll(bool openNewFiles)
   {
+    (void)openNewFiles;
     for (const auto& kv : handleToAIEData) {
       // End polling thread
       endPollforDevice(kv.first);

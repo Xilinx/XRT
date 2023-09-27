@@ -21,9 +21,13 @@
 
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "aie_trace_metadata.h"
+
+#ifdef XDP_MINIMAL_BUILD
+#include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
+#endif
+
 
 namespace xdp {
 
@@ -40,7 +44,7 @@ namespace xdp {
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
-    void pollAIETimers(uint32_t index, void* handle);
+    void pollAIETimers(uint64_t index, void* handle);
     void flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn);
     void endPoll();
     
