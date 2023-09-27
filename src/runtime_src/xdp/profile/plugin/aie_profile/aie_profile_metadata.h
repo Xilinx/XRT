@@ -18,9 +18,11 @@
 #define AIE_PROFILE_METADATA_H
 
 #include <boost/property_tree/ptree.hpp>
+#include <memory>
 #include <vector>
 
 #include "core/common/device.h"
+#include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
@@ -45,26 +47,28 @@ namespace xdp {
       const module_type moduleTypes[NUM_MODULES] =
       {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
 
-      uint32_t pollingInterval;
-      uint64_t deviceID;
-      double clockFreqMhz;
-      void* handle;
+    uint32_t pollingInterval;
+    uint64_t deviceID;
+    double clockFreqMhz;
+    void* handle;
+    xrt::hw_context hwContext;
 
       std::map <module_type, std::vector<std::string>> metricStrings {
         {
           module_type::core, {
             "heat_map", "stalls", "execution",
             "floating_point", "stream_put_get", "write_throughputs",
-            "read_throughputs", "aie_trace", "events"
-          }
+            "read_throughputs", "aie_trace", "events"}
         },
         {
           module_type::dma, {
             "conflicts", "dma_locks", "dma_stalls_s2mm",
-            "dma_stalls_mm2s", "write_throughputs", "read_throughputs"
-          }
+            "dma_stalls_mm2s", "write_throughputs", "read_throughputs"}
         },
-        { module_type::shim, {"input_throughputs", "output_throughputs", "packets"} },
+        { 
+          module_type::shim, {"input_throughputs", "output_throughputs", "packets"}
+
+        },
         {
           module_type::mem_tile, {
             "input_channels", "input_channels_details",
@@ -74,9 +78,11 @@ namespace xdp {
         }
       };
 
-      std::vector<std::map<tile_type, std::string>> configMetrics;
-      std::map<tile_type, uint8_t> configChannel0;
-      std::map<tile_type, uint8_t> configChannel1;
+    std::vector<std::map<tile_type, std::string>> configMetrics;
+    std::map<tile_type, uint8_t> configChannel0;
+    std::map<tile_type, uint8_t> configChannel1;
+    boost::property_tree::ptree aie_meta; 
+    bool invalidXclbinMetadata;
 
     public:
       AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -100,23 +106,20 @@ namespace xdp {
       uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
       static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
-      std::vector<tile_type> get_mem_tiles(const xrt_core::device* device,
-                                           const std::string& graph_name,
-                                           const std::string& kernel_name = "all");
-      std::vector<tile_type> get_event_tiles(const xrt_core::device* device,
-                                             const std::string& graph_name,
-                                             module_type type);
-      std::vector<tile_type> get_aie_tiles(const xrt_core::device* device,
-                                           const std::string& graph_name,
-                                           module_type type);
-      std::vector<tile_type> get_tiles(const xrt_core::device* device,
-                                       const std::string& graph_name,
-                                       module_type type,
-                                       const std::string& kernel_name = "all");
+      std::vector<tile_type> get_mem_tiles(const std::string& graph_name,
+                                            const std::string& kernel_name = "all");
+      std::vector<tile_type> get_event_tiles(const std::string& graph_name, 
+                                              module_type type);
+      std::vector<tile_type> get_aie_tiles(const std::string& graph_name,
+                                            module_type type);
+      std::vector<tile_type> get_tiles(const std::string& graph_name,
+                                        module_type type, 
+                                        const std::string& kernel_name = "all");
 
-      std::map<tile_type, std::string> getConfigMetrics(int module) { return configMetrics[module];}
+      std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
       std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
       std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
+      boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
 
       bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
       double getClockFreqMhz() {return clockFreqMhz;}
@@ -143,6 +146,10 @@ namespace xdp {
           return moduleTypes[0];
       }
       int getNumModules() {return NUM_MODULES;}
+    xrt::hw_context getHwContext(){return hwContext;}
+    void setHwContext(xrt::hw_context c) {
+      hwContext = std::move(c);
+    }
   };
 }
 

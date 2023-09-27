@@ -593,10 +593,16 @@ public:
   /**
    * xclbin() - Constructor from an xclbin filename
    *
-   * @param filename
-   *  Path to the xclbin file
    *
-   * Throws if file not found.
+   * @param filename : A path relative or absolute to an xclbin file
+   *
+   * If the specified path is an absolute path then the function
+   * returns this path or throws if file does not exist.  If the path
+   * is relative, or just a plain file name, then the function check
+   * first in current directory, then in the platform specific xclbin
+   * repository. 
+   *
+   * Throws if file could not be found.
    */
   XCL_DRIVER_DLLESPEC
   explicit

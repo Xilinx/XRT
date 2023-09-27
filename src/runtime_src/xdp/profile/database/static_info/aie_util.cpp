@@ -230,7 +230,12 @@ namespace aie {
   {
     std::vector<tile_type> tiles;
 
-    auto ios = getAllIOs(aie_meta);
+    #ifdef XDP_MINIMAL_BUILD
+      auto ios = getGMIOs(aie_meta);
+    #else
+      auto ios = getAllIOs(aie_meta);
+    #endif
+
     for (auto& io : ios) {
       auto isMaster    = io.second.slaveOrMaster;
       auto streamId    = io.second.streamId;
@@ -257,10 +262,10 @@ namespace aie {
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
       if ((metricStr != "ports")
-          && ((isMaster && (metricStr.find("input") != std::string::npos)
-              && (metricStr.find("mm2s") != std::string::npos))
-          || (!isMaster && (metricStr.find("output") != std::string::npos)
-              && (metricStr.find("s2mm") != std::string::npos))))
+          && ((isMaster && (metricStr.find("input") != std::string::npos
+              || metricStr.find("mm2s") != std::string::npos))
+          || (!isMaster && (metricStr.find("output") != std::string::npos
+              || metricStr.find("s2mm") != std::string::npos))))
         continue;
       // Make sure column is within specified range (if specified)
       if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
@@ -275,6 +280,7 @@ namespace aie {
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
       tile.itr_mem_col = isMaster;
       tile.itr_mem_row = streamId;
+  
       tiles.emplace_back(std::move(tile));
     }
 
@@ -283,6 +289,7 @@ namespace aie {
           "No tiles used channel ID " + std::to_string(channelId) + ". Please specify a valid channel ID.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
+
     return tiles;
   }
 

@@ -95,6 +95,7 @@ namespace xdp {
   {
     // Base functionality is just to have all writers write.  Derived
     //  classes might have to do more.
+    
     endWrite();
   }
 

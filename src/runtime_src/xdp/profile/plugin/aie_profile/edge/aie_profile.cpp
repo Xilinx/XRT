@@ -272,6 +272,18 @@ namespace xdp {
     return (runningEvents.find(event) != runningEvents.end());
   }
 
+  bool AieProfile_EdgeImpl::isPortTlastEvent(const XAie_Events event)
+  {
+    switch (event) {
+    case XAIE_EVENT_PORT_TLAST_0_PL:
+    case XAIE_EVENT_PORT_TLAST_1_PL:
+    case XAIE_EVENT_PORT_TLAST_0_MEM_TILE:
+      return true;
+    default:
+      return false;
+    }
+  }
+
   uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(XAie_Events event)
   {
     switch (event) {
@@ -349,6 +361,8 @@ namespace xdp {
       XAie_Events ssEvent;
       if (isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
+      else if (isPortTlastEvent(startEvent))
+        switchPortRsc->getSSTlastEvent(ssEvent);
       else
         switchPortRsc->getSSStalledEvent(ssEvent);
       startEvents.at(i) = ssEvent;

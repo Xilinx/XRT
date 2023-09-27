@@ -50,6 +50,7 @@ namespace xdp {
       bool isValidType(module_type type, XAie_ModuleType mod);
       bool isStreamSwitchPortEvent(const XAie_Events event);
       bool isPortRunningEvent(const XAie_Events event);
+      bool isPortTlastEvent(const XAie_Events event);
       uint8_t getPortNumberFromEvent(XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 

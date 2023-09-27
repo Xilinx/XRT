@@ -6,9 +6,11 @@ if (XDP_MINIMAL_BUILD STREQUAL "yes")
 
   add_subdirectory(native)
   add_subdirectory(user)
-  add_subdirectory(aie_profile)
-  add_subdirectory(aie_trace)
-
+  
+  if (WIN32)
+    add_subdirectory(aie_profile)
+    add_subdirectory(aie_trace)
+  endif()
 else()
 
 # =========================================================
