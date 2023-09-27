@@ -35,12 +35,14 @@ struct xocl_xgq_client {
 	int			 xxc_num_complete;
 	u32			 xxc_prot;
 	struct semaphore	*xxc_notify_sem;
+	bool 			 is_used;
 };
 
 struct xocl_xgq {
 	struct xgq		 xx_xgq;
 	spinlock_t		 xx_lock;
 	int			 xx_id;
+	int			 xx_ref_cnt;
 	u64			 xx_addr;
 	struct xocl_xgq_client	 xx_clients[MAX_CLIENTS];
 	u32			 xx_num_client;
@@ -230,6 +232,38 @@ int xocl_xgq_abort(struct xocl_xgq *xgq_handle, int client_id, void *cond,
 	return ret;
 }
 
+void xocl_xgq_detach(struct xocl_xgq *xgq_handle, int client_id)
+{
+	struct xocl_xgq *xgq = xgq_handle;
+	unsigned long flags = 0;
+
+	/* Free this entry for further use. */
+        spin_lock_irqsave(&xgq->xx_lock, flags);
+	xgq->xx_clients[client_id].is_used = false;
+	spin_unlock_irqrestore(&xgq->xx_lock, flags);
+}
+
+static int xgq_get_next_available_entry(struct xocl_xgq *xgq)
+{
+	int i = 0;
+	int c_id = 0;
+
+	for (i = 0; i < xgq->xx_num_client; i++) {
+		if (!xgq->xx_clients[i].is_used) {
+			c_id = i;
+			break;
+		}
+	}
+
+	if (i == xgq->xx_num_client)
+		c_id = xgq->xx_num_client++;
+
+	if (xgq->xx_num_client >= MAX_CLIENTS)
+		c_id = -EINVAL;
+
+	return c_id;
+}
+
 int xocl_xgq_attach(struct xocl_xgq *xgq_handle, void *client, struct semaphore *sem,
 		    u32 prot, int *client_id)
 {
@@ -238,10 +272,17 @@ int xocl_xgq_attach(struct xocl_xgq *xgq_handle, void *client, struct semaphore 
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
 
-	if (xgq->xx_num_client >= MAX_CLIENTS)
+	if (xgq->xx_num_client >= MAX_CLIENTS) {
+		spin_unlock_irqrestore(&xgq->xx_lock, flags);
 		return -ENOMEM;
+	}
+		
+	*client_id = xgq_get_next_available_entry(xgq);
+	if (*client_id == -EINVAL) {
+		spin_unlock_irqrestore(&xgq->xx_lock, flags);
+		return -EINVAL;
+	}
 
-	*client_id = xgq->xx_num_client++;
 	xgq->xx_clients[*client_id].xxc_client = client;
 	xgq->xx_clients[*client_id].xxc_notify_sem = sem;
 	xgq->xx_clients[*client_id].xxc_prot = prot;
@@ -251,6 +292,7 @@ int xocl_xgq_attach(struct xocl_xgq *xgq_handle, void *client, struct semaphore 
 	INIT_LIST_HEAD(&xgq->xx_clients[*client_id].xxc_completed);
 	xgq->xx_clients[*client_id].xxc_num_submit = 0;
 	xgq->xx_clients[*client_id].xxc_num_complete = 0;
+	xgq->xx_clients[*client_id].is_used = true;
 
 	spin_unlock_irqrestore(&xgq->xx_lock, flags);
 	return 0;
@@ -264,8 +306,10 @@ irqreturn_t xgq_isr(int irq, void *arg)
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
 
-	for (i = 0; i < xgq->xx_num_client; i++)
-		up(xgq->xx_clients[i].xxc_notify_sem);
+	for (i = 0; i < xgq->xx_num_client; i++) {
+		if (xgq->xx_clients[i].is_used)
+			up(xgq->xx_clients[i].xxc_notify_sem);
+	}
 
 	spin_unlock_irqrestore(&xgq->xx_lock, flags);
 	return IRQ_HANDLED;
@@ -274,6 +318,16 @@ irqreturn_t xgq_isr(int irq, void *arg)
 int xocl_get_xgq_id(struct xocl_xgq *xgq)
 {
 	return xgq ? xgq->xx_id : -EINVAL;
+}
+
+int xocl_incr_xgq_ref_cnt(struct xocl_xgq *xgq)
+{
+	return xgq ? ++xgq->xx_ref_cnt : -EINVAL;
+}
+
+int xocl_decr_xgq_ref_cnt(struct xocl_xgq *xgq)
+{
+	return xgq ? --xgq->xx_ref_cnt : -EINVAL;
 }
 
 struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info)
@@ -288,6 +342,7 @@ struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info)
 	xgq->xx_addr = info->xi_addr;
 	xgq->xx_id = info->xi_id;
 	xgq->xx_sq_prod_int = info->xi_sq_prod_int;
+	xgq->xx_ref_cnt = 0;
 
 	spin_lock_init(&xgq->xx_lock);
 	ret = xgq_attach(&xgq->xx_xgq, 0, 0, (u64)xgq->xx_addr,

@@ -215,6 +215,7 @@ update_cu_info()
   std::lock_guard lk(m_mutex);
   m_cus.clear();
   m_cu2idx.clear();
+  m_scu2idx.clear();
   try {
     // Regular CUs
     auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
@@ -232,7 +233,7 @@ update_cu_info()
     try {
       auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
       for (const auto& d : scudata) {
-        auto& cu2idx = m_cu2idx[d.slot_index];
+        auto& cu2idx = m_scu2idx[d.slot_index];
         cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
       }
     }
@@ -364,8 +365,12 @@ get_cuidx(slot_id slot, const std::string& cuname) const
 {
   std::lock_guard lk(m_mutex);
   auto slot_itr = m_cu2idx.find(slot);
-  if (slot_itr == m_cu2idx.end())
-    throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  if (slot_itr == m_cu2idx.end()) {
+    // CU doesn't exists in cu mapping. Now check for scu mapping 
+    slot_itr = m_scu2idx.find(slot);
+    if (slot_itr == m_scu2idx.end())
+      throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  }
 
   const auto& cu2idx = (*slot_itr).second;
   auto cu_itr = cu2idx.find(cuname);
