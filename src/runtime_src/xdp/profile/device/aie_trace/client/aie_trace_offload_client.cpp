@@ -24,7 +24,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload_client.h"
+#include "aie_trace_offload_client.h"
 #include "xdp/profile/device/device_intf.h"
 
 
@@ -65,7 +65,7 @@ AIETraceOffload::~AIETraceOffload()
 
 bool AIETraceOffload::initReadTrace()
 {
-  
+  return false;
 }
 
 void AIETraceOffload::endReadTrace()
@@ -75,22 +75,22 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTraceGMIO(bool final)
 {
-  
+  (void)final;
 }
 
 void AIETraceOffload::readTracePLIO(bool final)
 {
-  
+  (void)final;
 }
 
 uint64_t AIETraceOffload::syncAndLog(uint64_t index)
 {
-  
+  return index;
 }
 
 bool AIETraceOffload::isTraceBufferFull()
 {
-  
+  return false;
 }
 
 void AIETraceOffload::checkCircularBufferSupport()
@@ -110,7 +110,7 @@ void AIETraceOffload::continuousOffload()
 
 bool AIETraceOffload::keepOffloading()
 {
-  
+  return false;
 }
 
 void AIETraceOffload::stopOffload()
@@ -125,7 +125,8 @@ void AIETraceOffload::offloadFinished()
 
 uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
 {
-  
+  (void)buf;
+  return bytes;
 }
 
 }

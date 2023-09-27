@@ -32,6 +32,7 @@
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 
 namespace xdp {
   namespace pt = boost::property_tree;

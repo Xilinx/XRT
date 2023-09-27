@@ -23,7 +23,6 @@
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
@@ -32,15 +31,19 @@
 
 #ifdef XDP_MINIMAL_BUILD
   #include "win/aie_trace.h"
+  #include "xdp/profile/device/client_device/xdp_client_device.h"
 #elif defined(XRT_X86_BUILD)
   #include "x86/aie_trace.h"
+  #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #else
   #include "edge/aie_trace.h"
   #include "core/edge/user/shim.h"
+  #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #endif
 
 #include "aie_trace_impl.h"
 #include "aie_trace_plugin.h"
+
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -139,8 +142,14 @@ namespace xdp {
 
     // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
+
+    #ifdef XDP_MINIMAL_BUILD
+    if (deviceIntf == nullptr) 
+      deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new ClientDevice(handle));
+    #else 
     if (deviceIntf == nullptr) 
       deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
+    #endif
 
     // Create gmio metadata
     if (!(db->getStaticInfo()).isGMIORead(deviceID)) {

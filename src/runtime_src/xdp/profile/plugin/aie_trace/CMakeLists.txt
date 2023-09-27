@@ -9,20 +9,23 @@
 # ====================================================================
 if (XDP_MINIMAL_BUILD STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/win")
-  set(OFFLOAD_DIR "${PROFILE_DIR}/device/client")
+  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
+  set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/x86")
-  set(OFFLOAD_DIR "${PROFILE_DIR}/device")
+  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace")
+  set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/edge")
-  set(OFFLOAD_DIR "${PROFILE_DIR}/device")
+  set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace")
+  set(DEVICE_DIR "${PROFILE_DIR}/device/hal_device")
 endif()
 
 file(GLOB AIE_TRACE_PLUGIN_FILES
   "${OFFLOAD_DIR}/*.h"
   "${OFFLOAD_DIR}/*.cpp"
-  "${PROFILE_DIR}/device/hal_device/*.h"
-  "${PROFILE_DIR}/device/hal_device/*.cpp"
+  "${DEVICE_DIR}/*.h"
+  "${DEVICE_DIR}/*.cpp"
   "${PROFILE_DIR}/plugin/aie_trace/*.h"
   "${PROFILE_DIR}/plugin/aie_trace/*.cpp"
   "${PROFILE_DIR}/writer/aie_trace/*.h"
