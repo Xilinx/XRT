@@ -236,11 +236,27 @@ void xocl_xgq_detach(struct xocl_xgq *xgq_handle, int client_id)
 {
 	struct xocl_xgq *xgq = xgq_handle;
 	unsigned long flags = 0;
+	int i = 0;
 
 	/* Free this entry for further use. */
         spin_lock_irqsave(&xgq->xx_lock, flags);
 	xgq->xx_clients[client_id].is_used = false;
+
+	/* Check whether any reference is still exists.
+	 * If not then free XGQ here.
+	 */
+        for (i = 0; i < xgq->xx_num_client; i++) {
+                if (xgq->xx_clients[i].is_used) {
+                        break;
+                }
+        }
 	spin_unlock_irqrestore(&xgq->xx_lock, flags);
+
+	/* XGQ still in use. Return from here */
+	if (i < xgq->xx_num_client)
+		return;
+
+	xocl_xgq_fini(xgq);
 }
 
 static int xgq_get_next_available_entry(struct xocl_xgq *xgq)
