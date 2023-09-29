@@ -49,6 +49,7 @@ namespace xdp {
     std::map<module_type, std::vector<uint64_t>> parseMetrics();
 
   private:
+    static constexpr int NUM_MODULES = 4;
     uint32_t mIndex = 0;
     xrt::kernel mKernel;
     xrt::bo input_bo; 

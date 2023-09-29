@@ -118,11 +118,7 @@ namespace xdp {
       return;
     }
 
-    std::cout << "About to create hw cont!x" << std::endl;
-
     context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-
-    std::cout << "created hw cont!x" << std::endl;
 
     XAie_Config cfg { 
       getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),        //xaie_base_addr
@@ -140,18 +136,7 @@ namespace xdp {
     };
 
     auto regValues = parseMetrics();
-    // (void)result;
-
-    std::cout << "starting regular: " << std::endl;
-
-    // std::map<module_type, std::vector<uint64_t>> regValues {
-    //     {module_type::core, {0x34200}}, 
-    //     {module_type::dma, {0x14200}}, 
-    //     {module_type::shim, {0x34200}}, 
-    //     {module_type::mem_tile, {0x94200}}, 
-    //   };
-
-    static constexpr int NUM_MODULES = 4;
+  
     const module_type moduleTypes[NUM_MODULES] =
       {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
     std::vector<profile_data_t> op_profile_data;
@@ -177,15 +162,13 @@ namespace xdp {
       for (auto &tile : tiles) {
 
         for (int i = 0; i < Regs.size(); i++){
-          std::cout << "Tile: Col, Row: " << tile.col << " " << tile.row << std::endl;
+          std::cout << "Setting up Tile: Col, Row: " << tile.col << " " << tile.row << std::endl;
           std::cout << std::hex << Regs[0] +  (tile.col << 25) + (tile.row << 20) << std::endl;
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20), 0});
           counterId++;
         }
       }
     }
-
-    // std::vector<uint64_t> {0x31520,0x31524,0x31528,0x3152C};
 
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK) {
@@ -219,7 +202,7 @@ namespace xdp {
 
     std::vector<std::string> metricsConfig;
 
-    const module_type moduleTypes[4] =
+    const module_type moduleTypes[NUM_MODULES] =
       {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
 
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_core_registers());
@@ -227,17 +210,16 @@ namespace xdp {
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_interface_registers());
     metricsConfig.push_back(xrt_core::config::get_aie_debug_settings_memory_tile_registers());
 
-    for (int module = 0; module < 4; ++module) {
+    for (int module = 0; module < NUM_MODULES; ++module) {
       auto type = moduleTypes[module];
       std::vector<std::string> metricsSettings = getSettingsVector(metricsConfig[module]);
 
-      std::cout << "Module: " << module << std::endl;
       for (auto& s : metricsSettings) {
         try {
           uint64_t val = stoul(s,nullptr,16);
           regValues[type].push_back(val);
         } catch (...) {
-          std::cout << "Error parsing string: " << s << std::endl;
+            xrt_core::message::send(severity_level::warning, "XRT", "Error Parsing Metric String.");
         }
       }
     }
@@ -294,7 +276,6 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
-    std::cout << "executing!" << std::endl;
 
     instr_bo.write(instr_buf.ibuf_.data());
     instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -318,7 +299,7 @@ namespace xdp {
 
     for (uint32_t i = 0; i < output->count; i++) {
       std::stringstream msg;
-      msg << "Register address/values: 0x" << std::hex << output->profile_data[i].perf_address << ": " << std::dec << output->profile_data[i].perf_value;
+      msg << "Debug Register address/values: 0x" << std::hex << output->profile_data[i].perf_address << ": " << std::dec << output->profile_data[i].perf_value;
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 

@@ -49,7 +49,6 @@ load()
 void 
 update_device(void* handle)
 {
-  std::cout << "inisde profile2 update_Device " << (update_device_cb != nullptr) << std::endl;
 
   if (update_device_cb)
     update_device_cb(handle);
@@ -64,22 +63,78 @@ end_poll(void* handle)
 
 } // end namespace xrt_core::xdp::aie::profile
 
+namespace xrt_core::xdp::aie::debug {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> end_debug_cb;
+
+void 
+register_callbacks(void* handle)
+{  
+  #ifdef XDP_MINIMAL_BUILD
+    using ftype = void (*)(void*);
+
+    end_debug_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugRead"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
+  #else 
+    (void)handle;
+  #endif
+}
+
+void 
+warning_callbacks()
+{
+}
+
+void 
+load()
+{
+  static xrt_core::module_loader xdp_aie_debug_loader("xdp_aie_debug_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
+}
+
+// Make connections
+void 
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void 
+end_debug(void* handle)
+{
+  if (end_debug_cb)
+    end_debug_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::aie::debug
+
 namespace xrt_core::xdp {
 
 void 
 update_device(void* handle)
 {
 
-  std::cout << "inisde profile update_Device" << std::endl;
   if (xrt_core::config::get_aie_profile()) {
     try {
-      std::cout << "Loading! profile update_Device" << std::endl;
       xrt_core::xdp::aie::profile::load();
     } 
     catch (...) {
       return;
     }
     xrt_core::xdp::aie::profile::update_device(handle);
+  }
+
+  if (xrt_core::config::get_aie_debug()) {
+    try {
+      xrt_core::xdp::aie::debug::load();
+    } 
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::aie::debug::update_device(handle);
   }
 }
 
@@ -88,6 +143,9 @@ finish_flush_device(void* handle)
 {
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
+
+  if (xrt_core::config::get_aie_debug())
+    xrt_core::xdp::aie::debug::end_debug(handle);
 }
 
 } // end namespace xrt_core::xdp
