@@ -154,7 +154,7 @@ namespace xdp {
       if (tiles.empty()) {
         std::stringstream msg;
         msg << "AIE Debug found no tiles for module: " << module << ".";
-        xrt_core::message::send(severity_level::debug, "XRT", msg);
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
       
       std::vector<uint64_t> Regs = regValues[type];
@@ -164,7 +164,7 @@ namespace xdp {
           std::stringstream msg;
           msg << "AIE Debug monitoring AIE tile (" << tile.col << "," 
             << tile.row << ") in module " << module << ".";
-          xrt_core::message::send(severity_level::debug, "XRT", msg);
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20), 0});
           counterId++;
         }
