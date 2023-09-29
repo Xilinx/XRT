@@ -8,12 +8,12 @@
 #include "core/common/module_loader.h"
 
 #include <functional>
+
 // This file makes the connections between all xrt_coreutil level hooks
 // to the corresponding xdp plugins.  It is responsible for loading all of
 // modules.
 
 namespace xrt_core::xdp::aie::profile {
-
 
 std::function<void (void*)> update_device_cb;
 std::function<void (void*)> end_poll_cb;
@@ -30,7 +30,6 @@ register_callbacks(void* handle)
     (void)handle;
   #endif
 
-  
 }
 
 void 
@@ -80,10 +79,11 @@ update_device(void* handle)
 }
 
 void 
-end_poll(void* handle)
+finish_flush_device(void* handle)
 {
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
 }
 
 } // end namespace xrt_core::xdp
+
