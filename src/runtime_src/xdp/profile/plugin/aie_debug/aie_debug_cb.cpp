@@ -30,7 +30,6 @@ namespace xdp {
 
   static void endAIEDebugRead(void* handle)
   {
-    std::cout << "i'm in end AIE Debug Read!" << std::endl;
     if (AieDebugPlugin::alive())
       aieDebugPluginInstance.endAIEDebugRead(handle);
   }

@@ -56,7 +56,6 @@ namespace xdp {
     AieDebugPlugin::live = true;
 
     db->registerPlugin(this);
-    // db->registerInfo(info::aie_debug);
     db->getStaticInfo().setAieApplication();
   }
 
@@ -67,14 +66,10 @@ namespace xdp {
     endPoll();
 
     if (VPDatabase::alive()) {
-      // for (auto w : writers) {
-      //   w->write(false);
-      // }
-
       db->unregisterPlugin(this);
     }
-    AieDebugPlugin::live = false;
 
+    AieDebugPlugin::live = false;
   }
 
   bool AieDebugPlugin::alive()
@@ -145,7 +140,6 @@ namespace xdp {
     for (int module = 0; module < NUM_MODULES; ++module) {
       auto type = moduleTypes[module];
 
-      std::cout << "Module Number: " << module << std::endl;
       if (type == module_type::mem_tile) {
         continue;
       }
@@ -156,14 +150,21 @@ namespace xdp {
       } else {
         tiles = aie::getTiles(aie_meta,"all", type, "all");
       }
+
+      if (tiles.empty()) {
+        std::stringstream msg;
+        msg << "AIE Debug found no tiles for module: " << module << ".";
+        xrt_core::message::send(severity_level::debug, "XRT", msg);
+      }
       
       std::vector<uint64_t> Regs = regValues[type];
 
       for (auto &tile : tiles) {
-
         for (int i = 0; i < Regs.size(); i++){
-          std::cout << "Setting up Tile: Col, Row: " << tile.col << " " << tile.row << std::endl;
-          std::cout << std::hex << Regs[0] +  (tile.col << 25) + (tile.row << 20) << std::endl;
+          std::stringstream msg;
+          msg << "AIE Debug monitoring AIE tile (" << tile.col << "," 
+            << tile.row << ") in module " << module << ".";
+          xrt_core::message::send(severity_level::debug, "XRT", msg);
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20), 0});
           counterId++;
         }
@@ -235,11 +236,8 @@ namespace xdp {
 
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> settingsVector;
-
     boost::replace_all(settingsString, " ", "");
-
     boost::split(settingsVector, settingsString, boost::is_any_of(","));
-
     return settingsVector;
   }
 

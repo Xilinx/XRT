@@ -6,7 +6,6 @@
 #include "core/common/config_reader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
-#include <iostream>
 #include <functional>
 
 // This file makes the connections between all xrt_coreutil level hooks
@@ -49,7 +48,6 @@ load()
 void 
 update_device(void* handle)
 {
-
   if (update_device_cb)
     update_device_cb(handle);
 }
@@ -116,7 +114,6 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle)
 {
-
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();

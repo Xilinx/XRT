@@ -28,25 +28,25 @@
 
 namespace xdp {
 namespace aie {
-  bool tileCompare(tile_type tile1, tile_type tile2);
-  inline void throwIfError(bool err, const char* msg);
-  void readAIEMetadata(const char* data, size_t size, 
+  XDP_EXPORT bool tileCompare(tile_type tile1, tile_type tile2);
+  XDP_EXPORT inline void throwIfError(bool err, const char* msg);
+  XDP_EXPORT void readAIEMetadata(const char* data, size_t size, 
                        boost::property_tree::ptree& aie_project);
 
-  int getHardwareGeneration(const boost::property_tree::ptree& aie_meta);
-  uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta);
-  aiecompiler_options getAIECompilerOptions(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT int getHardwareGeneration(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT aiecompiler_options getAIECompilerOptions(const boost::property_tree::ptree& aie_meta);
 
   XDP_EXPORT std::vector<std::string> getValidGraphs(const boost::property_tree::ptree& aie_meta);
   XDP_EXPORT std::vector<std::string> getValidKernels(const boost::property_tree::ptree& aie_meta);
   XDP_EXPORT std::vector<std::string> getValidPorts(const boost::property_tree::ptree& aie_meta);
 
-  std::unordered_map<std::string, io_config> getPLIOs(const boost::property_tree::ptree& aie_meta);
-  std::unordered_map<std::string, io_config> getGMIOs(const boost::property_tree::ptree& aie_meta);
-  std::unordered_map<std::string, io_config> getTraceGMIOs(const boost::property_tree::ptree& aie_meta);
-  std::unordered_map<std::string, io_config> getChildGMIOs(const boost::property_tree::ptree& aie_meta,
+  XDP_EXPORT std::unordered_map<std::string, io_config> getPLIOs(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT std::unordered_map<std::string, io_config> getGMIOs(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT std::unordered_map<std::string, io_config> getTraceGMIOs(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT std::unordered_map<std::string, io_config> getChildGMIOs(const boost::property_tree::ptree& aie_meta,
                                                            const std::string& childStr);
-  std::unordered_map<std::string, io_config> getAllIOs(const boost::property_tree::ptree& aie_meta);
+  XDP_EXPORT std::unordered_map<std::string, io_config> getAllIOs(const boost::property_tree::ptree& aie_meta);
   XDP_EXPORT std::vector<tile_type> getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
                                            const std::string& graphName,
                                            const std::string& portName = "all",
@@ -56,13 +56,13 @@ namespace aie {
                                            uint32_t minCol = 0, 
                                            uint32_t maxCol = 0);
 
-  std::vector<tile_type> getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
+  XDP_EXPORT std::vector<tile_type> getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
                                         const std::string& graph_name,
                                         const std::string& buffer_name = "all");
 
-  std::vector<tile_type> getAIETiles(const boost::property_tree::ptree& aie_meta,
+  XDP_EXPORT std::vector<tile_type> getAIETiles(const boost::property_tree::ptree& aie_meta,
                                      const std::string& graph_name);
-  std::vector<tile_type> getEventTiles(const boost::property_tree::ptree& aie_meta, 
+  XDP_EXPORT std::vector<tile_type> getEventTiles(const boost::property_tree::ptree& aie_meta, 
                                        const std::string& graph_name,
                                        module_type type);
   XDP_EXPORT std::vector<tile_type> getTiles(const boost::property_tree::ptree& aie_meta, 
