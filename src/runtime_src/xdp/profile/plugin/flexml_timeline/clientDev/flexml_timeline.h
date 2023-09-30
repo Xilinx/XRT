@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef XDP_PLUGIN_FLEXML_TIMELINE_WIN_IMPL_H
-#define XDP_PLUGIN_FLEXML_TIMELINE_WIN_IMPL_H
+#ifndef XDP_PLUGIN_FLEXML_TIMELINE_CLIENTDEV_IMPL_H
+#define XDP_PLUGIN_FLEXML_TIMELINE_CLIENTDEV_IMPL_H
 
 #include "core/include/xrt/xrt_kernel.h"
 #include "core/include/xrt/xrt_bo.h"
@@ -23,7 +23,7 @@
 #include "xdp/config.h"
 #include "xdp/profile/plugin/flexml_timeline/aie_config_metadata.h"
 #include "xdp/profile/plugin/flexml_timeline/flexml_timeline_impl.h"
-#include "xdp/profile/plugin/flexml_timeline/win/op/op_types.h"
+#include "xdp/profile/plugin/flexml_timeline/clientDev/op/op_types.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -31,12 +31,12 @@ extern "C" {
 
 namespace xdp {
 
-  class FlexMLTimelineWinImpl : public FlexMLTimelineImpl
+  class FlexMLTimelineClientDevImpl : public FlexMLTimelineImpl
   {
     public :
-      XDP_EXPORT FlexMLTimelineWinImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> aieData);
+      XDP_EXPORT FlexMLTimelineClientDevImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> aieData);
 
-      ~FlexMLTimelineWinImpl() = default;
+      ~FlexMLTimelineClientDevImpl() = default;
 
       XDP_EXPORT virtual void updateAIEDevice(void* handle);
       XDP_EXPORT virtual void flushAIEDevice(void* handle);

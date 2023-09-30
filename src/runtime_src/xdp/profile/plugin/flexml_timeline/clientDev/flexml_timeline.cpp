@@ -28,26 +28,25 @@
 #include "core/common/api/xrt_hw_context_impl.h"
 #include "core/common/shim/hwctx_handle.h"
 
-#include "xdp/profile/plugin/flexml_timeline/win/flexml_timeline.h"
+#include "xdp/profile/plugin/flexml_timeline/clientDev/flexml_timeline.h"
 
-#include "xdp/profile/plugin/flexml_timeline/win/op/op_buf.hpp"
-#include "xdp/profile/plugin/flexml_timeline/win/op/op_init.hpp"
-#include "xdp/profile/plugin/flexml_timeline/win/op/op_types.h"
+#include "xdp/profile/plugin/flexml_timeline/clientDev/op/op_buf.hpp"
+#include "xdp/profile/plugin/flexml_timeline/clientDev/op/op_init.hpp"
 
 namespace xdp {
 
   
 
-  FlexMLTimelineWinImpl::FlexMLTimelineWinImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
+  FlexMLTimelineClientDevImpl::FlexMLTimelineClientDevImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
     : FlexMLTimelineImpl(dB, aieData)
       , recordTimerOpCode(0)
       , bufferOp(nullptr)
   {
   }
 
-  void FlexMLTimelineWinImpl::updateAIEDevice(void* /*handle*/)
+  void FlexMLTimelineClientDevImpl::updateAIEDevice(void* /*handle*/)
   {
-    std::cout << " In FlexMLTimelineWinImpl::updateAIEDevice " << std::endl;
+    std::cout << " In FlexMLTimelineClientDevImpl::updateAIEDevice " << std::endl;
 
     XAie_Config cfg {
       XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
@@ -125,11 +124,11 @@ namespace xdp {
 #endif
   }
 
-  void FlexMLTimelineWinImpl::flushAIEDevice(void* )
+  void FlexMLTimelineClientDevImpl::flushAIEDevice(void* )
   {
   }
 
-  void FlexMLTimelineWinImpl::finishflushAIEDevice(void* handle)
+  void FlexMLTimelineClientDevImpl::finishflushAIEDevice(void* handle)
   {
 
       //Start recording the transaction
