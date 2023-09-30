@@ -7,7 +7,7 @@
 # ==============================================================================
 
 if (XDP_MINIMAL_BUILD STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/flexml_timeline/win")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/flexml_timeline/clientDev")
 endif()
 
 file(GLOB FLEXML_TIMELINE_PLUGIN_FILES
