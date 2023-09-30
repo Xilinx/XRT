@@ -19,6 +19,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/config.h"
 
 namespace xdp {
@@ -26,13 +27,21 @@ namespace xdp {
 
   class AieConfigMetadata {
     boost::property_tree::ptree aieMetadata;
+    xrt::hw_context hwContext;
 
     public:
       AieConfigMetadata();
       ~AieConfigMetadata() {}
 
       boost::property_tree::ptree getAieConfigMetadata(std::string);
-
+      void setHwContext(xrt::hw_context ctx)
+      {
+        hwContext = std::move(ctx);
+      }
+      xrt::hw_context getHwContext()
+      {
+        return hwContext;
+      }
   };
 
 }
