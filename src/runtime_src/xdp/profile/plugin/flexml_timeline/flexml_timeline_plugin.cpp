@@ -22,6 +22,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/flexml_timeline/flexml_timeline_plugin.h"
@@ -29,7 +30,7 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 
 #ifdef XDP_MINIMAL_BUILD
-  #include "xdp/profile/plugin/flexml_timeline/win/flexml_timeline.h"
+  #include "xdp/profile/plugin/flexml_timeline/clientDev/flexml_timeline.h"
 #endif
 
 namespace xdp {
@@ -116,7 +117,8 @@ namespace xdp {
 
 #ifdef XDP_MINIMAL_BUILD
     AIEDataEntry.aieMetadata = std::make_shared<AieConfigMetadata>();
-    AIEDataEntry.implementation = std::make_unique<FlexMLTimelineWinImpl>(db, AIEDataEntry.aieMetadata);
+    AIEDataEntry.aieMetadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
+    AIEDataEntry.implementation = std::make_unique<FlexMLTimelineClientDevImpl>(db, AIEDataEntry.aieMetadata);
 #endif
     AIEDataEntry.implementation->updateAIEDevice(handle);
   }
