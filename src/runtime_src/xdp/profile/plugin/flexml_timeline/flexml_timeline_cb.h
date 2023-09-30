@@ -21,9 +21,9 @@
 
 extern "C" {
 
-  XDP_EXPORT void updateAIEDevice(void* handle);
-  XDP_EXPORT void flushAIEDevice(void* handle);
-  XDP_EXPORT void finishflushAIEDevice(void* handle);
+  XDP_EXPORT void updateDeviceFlexmlTmln(void* handle);
+  XDP_EXPORT void flushDeviceFlexmlTmln(void* handle);
+  XDP_EXPORT void finishflushDeviceFlexmlTmln(void* handle);
 
 }
 #endif
