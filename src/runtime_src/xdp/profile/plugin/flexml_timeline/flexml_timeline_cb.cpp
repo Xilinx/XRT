@@ -37,7 +37,7 @@ namespace xdp {
     } 
   } 
 
-  static void finishDeviceFlexmlTmln(void* handle)
+  static void finishflushDeviceFlexmlTmln(void* handle)
   {
     if (FlexMLTimelinePlugin::alive()) {
       flexmlTimelinePluginInstance.finishflushAIEDevice(handle);
