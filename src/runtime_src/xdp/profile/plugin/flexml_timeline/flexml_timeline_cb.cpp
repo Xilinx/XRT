@@ -23,21 +23,21 @@ namespace xdp {
 
   static FlexMLTimelinePlugin flexmlTimelinePluginInstance;
 
-  static void updateAIEDevice(void* handle)
+  static void updateDeviceFlexmlTmln(void* handle)
   {
     if (FlexMLTimelinePlugin::alive()) {
       flexmlTimelinePluginInstance.updateAIEDevice(handle);
     } 
   } 
 
-  static void flushAIEDevice(void* handle)
+  static void flushDeviceFlexmlTmln(void* handle)
   {
     if (FlexMLTimelinePlugin::alive()) {
       flexmlTimelinePluginInstance.flushAIEDevice(handle);
     } 
   } 
 
-  static void finishflushAIEDevice(void* handle)
+  static void finishDeviceFlexmlTmln(void* handle)
   {
     if (FlexMLTimelinePlugin::alive()) {
       flexmlTimelinePluginInstance.finishflushAIEDevice(handle);
@@ -47,20 +47,20 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C"
-void updateAIEDevice(void* handle)
+void updateDeviceFlexmlTmln(void* handle)
 {
-  xdp::updateAIEDevice(handle);
+  xdp::updateDeviceFlexmlTmln(handle);
 }
 
 extern "C"
-void flushAIEDevice(void* handle)
+void flushDeviceFlexmlTmln(void* handle)
 {
-  xdp::flushAIEDevice(handle);
+  xdp::flushDeviceFlexmlTmln(handle);
 }
 
 extern "C"
-void finishflushAIEDevice(void* handle)
+void finishflushDeviceFlexmlTmln(void* handle)
 {
-  xdp::finishflushAIEDevice(handle);
+  xdp::finishflushDeviceFlexmlTmln(handle);
 }
 
