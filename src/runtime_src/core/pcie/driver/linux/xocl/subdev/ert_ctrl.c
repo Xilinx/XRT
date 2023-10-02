@@ -616,7 +616,7 @@ static void ert_ctrl_xgq_fini(struct ert_ctrl *ec)
 		if (ec->ec_exgq[i] == NULL)
 			continue;
 
-		xocl_xgq_fini(ec->ec_exgq[i]);
+		xocl_decr_xgq_ref_cnt(ec->ec_exgq[i]);
 		ec->ec_exgq[i] = NULL;
 	}
 
