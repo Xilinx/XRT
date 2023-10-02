@@ -340,6 +340,14 @@ get_logging()
   return value;
 }
 
+inline bool
+get_trace_logging()
+{
+  static bool value = detail::get_bool_value("Runtime.trace_logging", false)
+    || detail::get_env_value("XRT_TRACE_LOGGING_ENABLE");
+  return value;
+}
+
 inline unsigned int
 get_verbosity()
 {

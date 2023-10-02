@@ -1,47 +1,36 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef NATIVE_PROFILE_DOT_H
 #define NATIVE_PROFILE_DOT_H
-
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
+#include "core/common/trace.h"
 #include "core/include/xrt.h"
 
-/**
- * This file contains the callback mechanisms for connecting the
- * Native XRT API (C/C++ layer) to the XDP plugin
- */
-
-namespace xdp {
-namespace native {
+// This file contains the callback mechanisms for connecting the
+// Native XRT API (C/C++ layer) to the XDP plugin
+namespace xdp::native {
 
 // The functions responsible for loading and linking the plugin
-bool load() ;
-void register_functions(void* handle) ;
-void warning_function() ;
+void
+load();
 
-// An instance of the api_call_logger class will be created
-//  in every function we are monitoring.  The constructor marks the
-//  start time, and the destructor marks the end time
+void
+register_functions(void* handle);
+
+void
+warning_function();
+
+// An instance of the api_call_logger class will be created in every
+// function we are monitoring.  The constructor marks the start time,
+// and the destructor marks the end time
 class api_call_logger
 {
  protected:
   uint64_t m_funcid ;
   const char* m_fullname = nullptr ;
+  xrt_core::trace* m_trace = nullptr;
  public:
   explicit api_call_logger(const char* function);
   virtual ~api_call_logger() = default ;
@@ -49,23 +38,24 @@ class api_call_logger
 
 class generic_api_call_logger : public api_call_logger
 {
- private:
   generic_api_call_logger() = delete ;
-  generic_api_call_logger(const generic_api_call_logger& x) = delete ;
-  generic_api_call_logger(generic_api_call_logger&& x) = delete ;
-  void operator=(const generic_api_call_logger& x) = delete ;
-  void operator=(generic_api_call_logger&& x) = delete ;
- public:
-  explicit generic_api_call_logger(const char* function) ;
-  ~generic_api_call_logger() override ;
+  generic_api_call_logger(const generic_api_call_logger&) = delete ;
+  generic_api_call_logger(generic_api_call_logger&&) = delete ;
+  void operator=(const generic_api_call_logger&) = delete ;
+  void operator=(generic_api_call_logger&&) = delete ;
+
+public:
+  explicit generic_api_call_logger(const char* function);
+  ~generic_api_call_logger();
 } ;
 
 template <typename Callable, typename ...Args>
 auto
 profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
-  if (xrt_core::config::get_native_xrt_trace() ||
-      xrt_core::config::get_host_trace()) {
+  if (xrt_core::config::get_native_xrt_trace()
+      || xrt_core::config::get_host_trace()
+      || xrt_core::config::get_trace_logging()) {
     generic_api_call_logger log_object(function) ;
     return f(std::forward<Args>(args)...) ;
   }
@@ -73,23 +63,21 @@ profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 }
 
 // Specializations of the logger for capturing different information
-//  for use in summary tables.
-
+// for use in summary tables.
 class sync_logger : public api_call_logger
 {
- private:
-  bool m_is_write ;
-  size_t m_buffer_size ;
+  bool m_is_write;
+  size_t m_buffer_size;
 
-  sync_logger() = delete ;
-  sync_logger(const sync_logger& x) = delete ;
-  sync_logger(sync_logger&& x) = delete ;
-  void operator=(const sync_logger& x) = delete ;
-  void operator=(sync_logger&& x) = delete ;
+  sync_logger() = delete;
+  sync_logger(const sync_logger&) = delete;
+  sync_logger(sync_logger&&) = delete;
+  void operator=(const sync_logger&) = delete;
+  void operator=(sync_logger&&) = delete;
 
  public:
   explicit sync_logger(const char* function, bool w, size_t s);
-  ~sync_logger() override ;
+  ~sync_logger();
 } ;
 
 template <typename Callable, typename ...Args>
@@ -104,7 +92,6 @@ profiling_wrapper_sync(const char* function, xclBOSyncDirection dir, size_t size
   return f(std::forward<Args>(args)...) ;
 }
 
-} // end namespace native
-} // end namespace xdp
+} // end namespace xdp::native
 
 #endif
