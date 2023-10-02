@@ -54,6 +54,7 @@ namespace xdp {
       }
       catch (...) {
       }
+      db->unregisterPlugin(this);
     }
 
     FlexMLTimelinePlugin::live = false;
