@@ -18,7 +18,7 @@
 // % tracefmt mytrace.etl -o mytrace.txt
 //
 // % cat guids.guid
-// b7484a37-032d-455a-8dc9-405a5996c422
+// e3e140bd-8a94-50be-2264-48e444a715db
 // ...
 
 #include "core/common/trace.h"
@@ -26,11 +26,12 @@
 #include <windows.h>
 #include <TraceLoggingProvider.h>
 
-// b7484a37-032d-455a-8dc9-405a5996c422
+// [System.Diagnostics.Tracing.EventSource]::new("XRT").Guid
+// e3e140bd-8a94-50be-2264-48e444a715db
 TRACELOGGING_DEFINE_PROVIDER(
   g_logging_provider,
   "XRT",
-  (0xb7484a37, 0x032d, 0x455a, 0x8d, 0xc9, 0x40, 0x5a, 0x59, 0x96, 0xc4, 0x22));
+  (0xe3e140bd, 0x8a94, 0x50be, 0x22, 0x64, 0x48, 0xe4, 0x44, 0xa7, 0x15, 0xdb));
 
 namespace xrt_core::detail::trace {
 
