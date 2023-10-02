@@ -33,6 +33,7 @@ namespace xdp {
     XDP_EXPORT void updateAIEDevice(void* handle);
     XDP_EXPORT void flushAIEDevice(void* handle);
     XDP_EXPORT void finishflushAIEDevice(void* handle);
+    XDP_EXPORT void writeAll(bool openNewFiles);
 
     XDP_EXPORT static bool alive();
 

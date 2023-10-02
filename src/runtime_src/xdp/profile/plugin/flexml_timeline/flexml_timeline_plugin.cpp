@@ -50,7 +50,7 @@ namespace xdp {
   {
     if (VPDatabase::alive()) {
       try {
-        // write
+        writeAll(false);
       }
       catch (...) {
       }
@@ -154,6 +154,20 @@ namespace xdp {
 
     AIEDataEntry.implementation->finishflushAIEDevice(handle);
     handleToAIEData.erase(handle);
+  }
+
+  void FlexMLTimelinePlugin::writeAll(bool openNewFiles)
+  {
+    for (const auto& entry = handleToAIEData) {
+      auto& AIEDataEntry = entry.second;
+
+      if (!AIEDataEntry.valid) {
+        continue;
+      }
+      AIEDataEntry.implementation->finishflushAIEDevice(entry.first);
+      handleToAIEData.erase(handle);
+    }
+    handleToAIEData.clear();
   }
 
 }
