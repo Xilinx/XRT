@@ -963,7 +963,22 @@ xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 int
 xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return 0;
+  try {
+    if (handle) {
+      xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
+      return drv ? drv->xrtSyncBOAIE(bo, gmioName, dir, size, offset) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+  return -1;
 }
 
 int

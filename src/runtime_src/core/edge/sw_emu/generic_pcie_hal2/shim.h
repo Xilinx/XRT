@@ -460,6 +460,23 @@ namespace xclswemuhal2 {
         xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
 
       /**
+      * xrtSyncBOAIE() - Transfer data between DDR and Shim DMA channel
+      *
+      * @bo:           BO obj.
+      * @gmioName:        GMIO port name
+      * @dir:             GM to AIE or AIE to GM
+      * @size:            Size of data to synchronize
+      * @offset:          Offset within the BO
+      *
+      * Return:          0 on success, or appropriate error number.
+      *
+      * Synchronize the buffer contents between GMIO and AIE.
+      * Note: Upon return, the synchronization is submitted or error out
+      */
+      int
+        xrtSyncBOAIE(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
+      /**
       * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
       *
       * @bo:           BO obj.
