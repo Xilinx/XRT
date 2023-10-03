@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "XBUtilities.h"
@@ -406,6 +406,30 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
     return device;
   }
+
+// TODO this is a temporary function that will be replaced
+// by something in the shim or device layer.
+static std::string
+tempDeviceMapping(const std::string& deviceName)
+{
+  if (deviceName.empty())
+    return "";
+
+  if (deviceName.find("IPU") != std::string::npos)
+    return "aie";
+
+  return "alveo";
+}
+
+std::string
+XBUtilities::get_device_class(const std::string &deviceBDF, bool in_user_domain)
+{
+  if (deviceBDF.empty()) 
+    return tempDeviceMapping("");
+
+  std::shared_ptr<xrt_core::device> device = get_device(boost::algorithm::to_lower_copy(deviceBDF), in_user_domain);
+  return tempDeviceMapping(xrt_core::device_query_default<xrt_core::query::rom_vbnv>(device, ""));
+}
 
 void
 XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& error)
