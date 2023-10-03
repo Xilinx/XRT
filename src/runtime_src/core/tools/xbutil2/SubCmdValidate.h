@@ -1,30 +1,19 @@
-/**
- * Copyright (C) 2019-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2020 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __SubCmdValidate_h_
 #define __SubCmdValidate_h_
 
 #include "tools/common/SubCmd.h"
+#include "tools/common/TestRunner.h"
 
 class SubCmdValidate : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations);
 
  private:
   std::string               m_device;
@@ -34,6 +23,14 @@ class SubCmdValidate : public SubCmd {
   std::string               m_param;
   std::string               m_xclbin_location;
   bool                      m_help;
+
+  void print_help_internal() const;
+
+  std::vector<std::shared_ptr<TestRunner>>
+  collect_and_validate_tests(const std::vector<std::shared_ptr<TestRunner>>& all_tests,
+                             const std::vector<std::string>& requested_tests,
+                             const std::vector<std::string>& param,
+                             const std::string& xclbin_path) const;
 };
 
 #endif

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -62,6 +62,9 @@ create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>&
   // Print out common options first
   const auto common_options = workingCollection.find("common");
   // Report names and description
+  if (_collection.size() >= 2)
+    supportedValues += "Common:\n";
+
   for (const auto& pairs : common_options->second) {
     boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
     auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
@@ -70,16 +73,27 @@ create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>&
   workingCollection.erase(common_options);
 
   // Print out all other device specific options
-  for (const auto& map_pair : workingCollection) {
-    std::string device_string = map_pair.first;
-    device_string[0] = static_cast<char>(std::toupper(device_string[0]));
-    if (!device_string.empty())
-      supportedValues += device_string + ":\n";
+  for (const auto& [device_class, test_list] : workingCollection) {
+
     // Report names and description
-    for (const auto& pairs : map_pair.second) {
+    std::stringstream help_data;
+    for (const auto& pairs : test_list) {
       boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
       auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
-      supportedValues += formattedString + "\n";
+      help_data << formattedString + "\n";
+    }
+
+    const std::string help_data_str = help_data.str();
+    if (!help_data_str.empty()) {
+      std::string device_string = device_class;
+      if (device_string.empty())
+        XBU::throw_cancel("Missing device class string");
+
+      device_string[0] = static_cast<char>(std::toupper(device_string[0]));\
+
+      supportedValues += device_string + ":\n";
+
+      supportedValues += help_data_str;
     }
   }
 
@@ -87,35 +101,52 @@ create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>&
 }
 
 std::string 
-XBUtilities::create_suboption_list_map(const std::map<std::string, std::vector<std::shared_ptr<Report>>>& reportCollection)
+XBUtilities::create_suboption_list_map(const std::string& deviceClass,
+                                       const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& device_options,
+                                       const VectorPairStrings& common_options)
 {
   std::map<std::string, VectorPairStrings> reportDescriptionCollection;
 
-  static std::map<std::string, std::string> deviceTypeMap = {
-    {"aie", "AIE Specific"},
-    {"alveo", "Alveo Specific"},
-    {"common", "common"}
-  };
+  VectorPairStrings commonCollection(common_options);
+  bool printAllOptions = false;
+  const auto& commonOptions = JSONConfigurable::extract_common_options(device_options);
+  // If a device is specified only print applicable commands
+  const auto it = device_options.find(deviceClass);
+  if (it != device_options.end()) {
+    for (const auto& option : it->second)
+      commonCollection.emplace_back(option->getConfigName(), option->getConfigDescription());
+  } else if (!device_options.empty())
+    printAllOptions = true;
 
-  // Add the report names and description
-  for (const auto& report_pair : reportCollection) {
-    VectorPairStrings collection;
-    for (const auto& report : report_pair.second) {
-      // Skip hidden reports
-      if (!XBU::getShowHidden() && report->isHidden()) 
-        continue;
-      collection.emplace_back(report->getReportName(), report->getShortDescription());
+  if (printAllOptions) {
+    for (const auto& option : commonOptions)
+      commonCollection.emplace_back(option->getConfigName(), option->getConfigDescription());
+  }
+
+  reportDescriptionCollection.emplace(std::string("common"), commonCollection);
+
+  if (printAllOptions) {
+    // Add the device specific options
+    for (const auto& report_pair : device_options) {
+      VectorPairStrings collection;
+      for (const auto& report : report_pair.second) {
+        // Skip options that are common between device types
+        const auto commonOptionsIt = commonOptions.find(report);
+        if (commonOptionsIt != commonOptions.end())
+          continue;
+
+        // Skip hidden reports
+        if (!XBU::getShowHidden() && report->getConfigHidden()) 
+          continue;
+        collection.emplace_back(report->getConfigName(), report->getConfigDescription());
+      }
+
+      auto map_it = JSONConfigurable::device_type_map.find(report_pair.first);
+      if (map_it == JSONConfigurable::device_type_map.end())
+        reportDescriptionCollection.emplace(report_pair.first, collection);
+      else
+        reportDescriptionCollection.emplace(map_it->second, collection);
     }
-
-    // Add the 'all' options to the common report group
-    if (boost::iequals(report_pair.first, "common"))
-      collection.emplace_back("all", "All known reports are produced");
-
-    auto map_it = deviceTypeMap.find(report_pair.first);
-    if (map_it == deviceTypeMap.end())
-      reportDescriptionCollection.emplace(report_pair.first, collection);
-    else
-      reportDescriptionCollection.emplace(map_it->second, collection);
   }
 
   // Sort the collection
@@ -129,42 +160,7 @@ XBUtilities::create_suboption_list_map(const std::map<std::string, std::vector<s
 }
 
 std::string 
-XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
-{
-  std::map<std::string, VectorPairStrings> collection = {
-    {"common", _collection}
-  };
-  return create_suboption_list_map_string(collection);
-}
-
-std::string 
-XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollection, 
-                                           bool _addAllOption)
-{
-  VectorPairStrings reportDescriptionCollection;
-
-  // Add the report names and description
-  for (const auto & report : _reportCollection) {
-    // Skip hidden reports
-    if (!XBU::getShowHidden() && report->isHidden()) 
-      continue;
-    reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
-  }
-
-  // 'verbose' option
-  if (_addAllOption) 
-    reportDescriptionCollection.emplace_back("all", "All known reports are produced");
-
-  // Sort the collection
-  sort(reportDescriptionCollection.begin(), reportDescriptionCollection.end(), 
-       [](const std::pair<std::string, std::string> & a, const std::pair<std::string, std::string> & b) -> bool
-       { return (a.first.compare(b.first) < 0); });
-
-  return create_suboption_list_string(reportDescriptionCollection);
-}
-
-std::string 
-XBUtilities::create_suboption_list_string( const Report::SchemaDescriptionVector &_formatCollection)
+XBUtilities::create_suboption_list_string(const Report::SchemaDescriptionVector &_formatCollection)
 {
   VectorPairStrings reportDescriptionCollection;
 
@@ -174,9 +170,11 @@ XBUtilities::create_suboption_list_string( const Report::SchemaDescriptionVector
       reportDescriptionCollection.emplace_back(format.optionName, format.shortDescription);
   }
 
-  return create_suboption_list_string(reportDescriptionCollection);
+  std::map<std::string, VectorPairStrings> collection = {
+    {"common", reportDescriptionCollection}
+  };
+  return create_suboption_list_map_string(collection);
 }
-
 
 void 
 XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAvailable,
