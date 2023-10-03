@@ -67,6 +67,8 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "Destroying AIE Profiling Plugin.");
     // Stop the polling thread
+    
+    AieProfilePlugin::live = false;
     endPoll();
 
     if (VPDatabase::alive()) {
@@ -76,7 +78,6 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
-    AieProfilePlugin::live = false;
 
   }
 
@@ -144,9 +145,6 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
 #ifdef XDP_MINIMAL_BUILD
-    // xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl *>(handle);
-    // auto impl_shared_ptr = impl_ptr->get_shared_ptr();
-    // xrt::hw_context profile_ctx(impl_shared_ptr);
     AIEData.metadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
