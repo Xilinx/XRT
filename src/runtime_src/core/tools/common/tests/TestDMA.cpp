@@ -56,7 +56,7 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
       continue;
 
     std::stringstream run_details;
-    logger(ptree, "Details", (boost::format("Buffer size - '%s'") % xrt_core::utils::unit_convert(m_block_size)).str());
+    logger(ptree, "Details", (boost::format("Buffer size - '%s' Memory Tag - '%s'") % xrt_core::utils::unit_convert(m_block_size) %  mem.m_tag).str());
 
     // check if the bank has enough memory to allocate
     // m_size is in KB so convert block_size (bytes) to KB for comparison
