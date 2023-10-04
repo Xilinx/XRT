@@ -41,6 +41,7 @@ void xocl_xgq_notify(struct xocl_xgq *xgq_handle);
 int xocl_xgq_check_response(struct xocl_xgq *xgq_handle, int client_id, int *status);
 struct kds_command *xocl_xgq_get_command(struct xocl_xgq *xgq_handle, int client_id);
 int xocl_xgq_attach(struct xocl_xgq *xgq_handle, void *client, struct semaphore *sem, u32 prot, int *client_id);
+void xocl_xgq_detach(struct xocl_xgq *xgq_handle, int client_id);
 int xocl_xgq_abort(struct xocl_xgq *xgq_handle, int client_id, void *cond,
 		   bool (*match)(struct kds_command *xcmd, void *cond));
 
@@ -48,5 +49,7 @@ irqreturn_t xgq_isr(int irq, void *arg);
 struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info);
 void xocl_xgq_fini(struct xocl_xgq *xgq_handle);
 int xocl_get_xgq_id(struct xocl_xgq *xgq);
+int xocl_incr_xgq_ref_cnt(struct xocl_xgq *xgq);
+int xocl_decr_xgq_ref_cnt(struct xocl_xgq *xgq);
 
 #endif /* _XOCL_XGQ_H_ */
