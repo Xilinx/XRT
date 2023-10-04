@@ -658,7 +658,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	}
 
 	/* Cache some axlf data which shared in ioctl */
-	axlf_obj = vmalloc(sizeof(struct xocl_axlf_obj_cache));
+	axlf_obj = vzalloc(sizeof(struct xocl_axlf_obj_cache));
 	if (!axlf_obj) {
 		err = -ENOMEM;
 		goto done;

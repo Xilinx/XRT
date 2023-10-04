@@ -182,6 +182,7 @@ void xrt_cu_xgq_fini(struct xrt_cu *xcu)
 
 	xrt_cu_fini(xcu);
 
+	xocl_xgq_detach(core->xgq, core->xgq_client_id);
 	if (core->vaddr)
 		iounmap(core->vaddr);
 	kfree(xcu->core);
