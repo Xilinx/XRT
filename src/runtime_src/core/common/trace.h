@@ -3,15 +3,16 @@
 #ifndef XRT_CORE_TRACE_HANDLE_H
 #define XRT_CORE_TRACE_HANDLE_H
 
-namespace xrt_core {
+namespace xrt_core::trace {
 
-// class trace - base class for managing event tracing
+// class logger - base class for managing trace logging
 //
-// Implementation of class trace is platform specific. Trace objects
+// Implementation of class logging is platform specific. Logging objects
 // are created per thread and logs to platform specific infrastructure.
 //
-// Tracing is instrusive and added specifically where needed.  In order
-// to enable tracing define xrt.ini or set an environment variable
+// Tracing logging is instrusive and added specifically where needed.
+// In order to enable trace logging define xrt.ini or set an environment
+// variable
 //
 // % cat xrt.ini
 // [Runtime]
@@ -19,21 +20,27 @@ namespace xrt_core {
 //
 // To enable through environment variable make sure XRT_TRACE_LOGGING_ENABLE
 // is defined.
-class trace
+class logger
 {
 public:
-  virtual ~trace()
+  virtual ~logger()
   {}
 
   // Log an event 
   virtual void
-  log_event(const char* id, const char* value) = 0;
+  add_event(const char* /*id*/, const char* /*value*/)
+  {}
 };
 
-// Get trace object for current thread, creates the object if
-// necessary
-trace*
-get_trace();
+// get_logger() - Return trace logger object for current thread
+//
+// Creates the logger object if necessary as thread local object.
+// It is undefined behavior to delete the returned object.
+//
+// Access to underlying trace object is to facilitate caching
+// to avoid repeated calls to get_logger() where applicable.  
+logger*
+get_logger();
 
-} // xrt_core
+} // xrt_core::trace
 #endif

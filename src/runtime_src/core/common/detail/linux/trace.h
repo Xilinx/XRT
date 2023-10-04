@@ -7,24 +7,24 @@
 // Implementation of trace infrastructure for Linux.
 // TBD
 
-namespace xrt_core::detail::trace {
+namespace xrt_core::trace::detail {
 
-// Trace class definition for Linux
-class trace_linux : public trace
+// Trace logger class definition for Linux
+class logger_linux : public logger
 {
 public:
   void
-  log_event(const char* id, const char* value) override
+  add_event(const char* id, const char* value) override
   {}
 };
 
 // Create a trace object for current thread.  This function is called
 // exactly once per thread that leverages tracing.
-std::unique_ptr<xrt_core::trace>
-create_trace_object()
+std::unique_ptr<xrt_core::trace::logger>
+create_logger_object()
 {
-  return std::make_unique<trace_linux>();
+  return std::make_unique<logger_linux>();
 }
 
-} // xrt_core::detail
+} // xrt_core::detail::trace
 

@@ -58,7 +58,7 @@ api_call_logger::
 api_call_logger(const char* function)
   : m_funcid(0)
   , m_fullname(function)
-  , m_trace(xrt_core::config::get_trace_logging() ? xrt_core::get_trace() : nullptr)
+  , m_trace_logger(xrt_core::trace::get_logger())
 {
   // With the addition of the generic "host_trace" feature, we have to
   // check if we should load the plugin.  We only want to load it if
@@ -82,8 +82,7 @@ generic_api_call_logger(const char* function)
     function_start_cb(m_fullname, m_funcid) ;
   }
 
-  if (m_trace)
-    m_trace->log_event(m_fullname, "begin");
+  m_trace_logger->add_event(m_fullname, "begin");
 }
 
 generic_api_call_logger::
@@ -94,8 +93,7 @@ generic_api_call_logger::
     function_end_cb(m_fullname, m_funcid, timestamp) ;
   }
 
-  if (m_trace)
-    m_trace->log_event(m_fullname, "end");
+  m_trace_logger->add_event(m_fullname, "end");
 }
 
 sync_logger::

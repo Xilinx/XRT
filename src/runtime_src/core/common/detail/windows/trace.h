@@ -33,14 +33,14 @@ TRACELOGGING_DEFINE_PROVIDER(
   "XRT",
   (0xe3e140bd, 0x8a94, 0x50be, 0x22, 0x64, 0x48, 0xe4, 0x44, 0xa7, 0x15, 0xdb));
 
-namespace xrt_core::detail::trace {
+namespace xrt_core::trace::detail {
 
 // Trace class definition for windows to tie into TraceLogging infrastructure  
-class trace_windows : public trace
+class logger_windows : public logger
 {
 public:
   void
-  log_event(const char* id, const char* value) override
+  add_event(const char* id, const char* value) override
   {
     TraceLoggingWrite(g_logging_provider,
                       "XRTTraceEvent", // must be a string literal
@@ -51,8 +51,8 @@ public:
 
 // Create a trace object for current thread.  This function is called
 // exactly once per thread that leverages tracing.
-std::unique_ptr<xrt_core::trace>
-create_trace_object()
+std::unique_ptr<xrt_core::trace::logger>
+create_logger_object()
 {
   // Globally initialize windows tracing infrastructure
   struct init
@@ -68,7 +68,7 @@ create_trace_object()
   };
 
   static init s_init;
-  return std::make_unique<trace_windows>();
+  return std::make_unique<logger_windows>();
 }
 
 } // xrt_core::detail

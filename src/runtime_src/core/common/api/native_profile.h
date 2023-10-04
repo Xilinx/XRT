@@ -30,7 +30,7 @@ class api_call_logger
  protected:
   uint64_t m_funcid ;
   const char* m_fullname = nullptr ;
-  xrt_core::trace* m_trace = nullptr;
+  xrt_core::trace::logger* m_trace_logger = nullptr;
  public:
   explicit api_call_logger(const char* function);
   virtual ~api_call_logger() = default ;
