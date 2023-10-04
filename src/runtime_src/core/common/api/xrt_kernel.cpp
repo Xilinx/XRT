@@ -3321,14 +3321,18 @@ void
 run::
 submit_wait(const xrt::fence& fence)
 {
-  handle->submit_wait(fence);
+  return xdp::native::profiling_wrapper("xrt::run::submit_wait", [this, &fence]{
+    handle->submit_wait(fence);
+  });
 }
 
 void
 run::
 submit_signal(const xrt::fence& fence)
 {
-  handle->submit_signal(fence);
+  return xdp::native::profiling_wrapper("xrt::run::submit_signal", [this, &fence]{
+    handle->submit_signal(fence);
+  });
 }
 
 kernel::
