@@ -469,6 +469,7 @@ public:
 
   using name2idx_type = std::map<std::string, cuidx_type>;
   std::map<slot_id, name2idx_type> m_cu2idx;  // slot -> cu name mapping to cuidx
+  std::map<slot_id, name2idx_type> m_scu2idx;  // slot -> scu name mapping to scuidx
   std::vector<uint64_t> m_cus;                // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)

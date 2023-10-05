@@ -14,12 +14,12 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle);
 
-// end_poll should be called when the application ends or a hardware context
+// finish_flush_device should be called when the application ends or a hardware context
 // is destroyed.  It is responsible for flushing out all of the device
 // information from the device to host memory so it can be processed before
 // the device is reset and the data is wiped.
 void 
-end_poll(void* handle);
+finish_flush_device(void* handle);
 
 } // end namespace xrt_core::xdp
 
