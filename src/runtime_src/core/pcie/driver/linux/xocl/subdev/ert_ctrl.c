@@ -565,6 +565,12 @@ static void ert_ctrl_unset_xgq(struct platform_device *pdev, void *xgq_handle)
 
 	BUG_ON(xgq_id == -EINVAL);
 
+	/* Check whether any further CUs/SCUs are still refering this XGQ.
+	 * If yes, then don't cleanup and return from here.
+	 */
+	if (xocl_decr_xgq_ref_cnt(ec->ec_exgq[xgq_id]) != 0)
+		return;
+
 	xgq_ips = &ec->ec_xgq_ips[xgq_id];
 	if ((xgq_id < ec->ec_num_xgq_ips) && xgq_ips) {
 		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
@@ -576,7 +582,7 @@ static void ert_ctrl_unset_xgq(struct platform_device *pdev, void *xgq_handle)
 			xocl_intc_ert_config(xdev, xgq_id, false);
 			xocl_intc_ert_request(xdev, xgq_id, NULL, NULL);
 		}
-		xocl_xgq_fini(ec->ec_exgq[xgq_id]);
+		
 		ec->ec_exgq[xgq_id] = NULL;
 	}
 }
@@ -610,7 +616,7 @@ static void ert_ctrl_xgq_fini(struct ert_ctrl *ec)
 		if (ec->ec_exgq[i] == NULL)
 			continue;
 
-		xocl_xgq_fini(ec->ec_exgq[i]);
+		xocl_decr_xgq_ref_cnt(ec->ec_exgq[i]);
 		ec->ec_exgq[i] = NULL;
 	}
 
@@ -746,6 +752,7 @@ static void *ert_ctrl_setup_xgq(struct platform_device *pdev, int id, u64 offset
 	}
 
 done:
+	xocl_incr_xgq_ref_cnt(ec->ec_exgq[id]);
 	return ec->ec_exgq[id];
 }
 
