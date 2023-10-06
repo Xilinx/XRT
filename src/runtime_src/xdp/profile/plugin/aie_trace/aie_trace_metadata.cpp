@@ -64,11 +64,23 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
 
-    // Grab AIE metadata
-    auto device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    invalidXclbinMetadata = (!data.first || !data.second);
-    aie::readAIEMetadata(data.first, data.second, aieMeta);
+    #ifdef XDP_MINIMAL_BUILD
+      try {
+        pt::read_json("aie_control_config.json", aieMeta);
+        invalidXclbinMetadata = false;
+      } catch (...) {
+        std::stringstream msg;
+        msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Trace.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      }   
+
+    #else
+      // Grab AIE metadata
+      auto device = xrt_core::get_userpf_device(handle);
+      auto data = device->get_axlf_section(AIE_METADATA);
+      invalidXclbinMetadata = (!data.first || !data.second);
+      aie::read_aie_metadata(data.first, data.second, aieMeta);
+    #endif
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     auto compilerOptions = aie::getAIECompilerOptions(aieMeta);
@@ -721,7 +733,7 @@ namespace xdp {
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
-    /* AIE_profile_settings config format ; Multiple values can be specified for
+    /* AIE_trace_settings config format ; Multiple values can be specified for
      * a metric separated with ';' Single or all tiles
      * tile_based_interface_tile_metrics =
      * [[<column|all>:<off|ports|input_ports|input_ports_stalls|output_ports|output_ports_stalls>[:<channel 1>][:<channel 2>]]
@@ -877,6 +889,11 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics.erase(t);
     }
+  }
+
+  boost::property_tree::ptree AieTraceMetadata::getAIEConfigMetadata(std::string config_name) {
+    std::string query = "aie_metadata.driver_config." + config_name;
+    return aieMeta.get_child(query);
   }
   
 }

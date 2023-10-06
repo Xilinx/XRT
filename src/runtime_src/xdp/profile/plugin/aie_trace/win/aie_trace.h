@@ -42,9 +42,15 @@ namespace xdp {
       virtual uint64_t checkTraceBufSize(uint64_t size);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
+      module_type getTileType(uint16_t row);
+      uint16_t getRelativeRow(uint16_t absRow);
+      module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
 
       
     private:
+      typedef XAie_Events EventType;
+      typedef std::vector<EventType> EventVector;
+
       xrt::device device;
       xrt::kernel aie_trace_kernel;
 
@@ -53,6 +59,43 @@ namespace xdp {
       // aie_profile_op_t* op;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
+
+    std::map<std::string, EventVector> mCoreEventSets;
+    std::map<std::string, EventVector> mMemoryEventSets;
+    std::map<std::string, EventVector> mMemoryTileEventSets;
+    std::map<std::string, EventVector> mInterfaceTileEventSets;
+
+    // // AIE profile counters
+    // std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+    // std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+
+    // Counter metrics (same for all sets)
+    EventType mCoreTraceStartEvent;
+    EventType mCoreTraceEndEvent;
+    EventType mMemoryTileTraceStartEvent;
+    EventType mMemoryTileTraceEndEvent;
+    EventType mInterfaceTileTraceStartEvent;
+    EventType mInterfaceTileTraceEndEvent;
+
+    EventVector mCoreCounterStartEvents;
+    EventVector mCoreCounterEndEvents;
+    ValueVector mCoreCounterEventValues;
+
+    EventVector mMemoryCounterStartEvents;
+    EventVector mMemoryCounterEndEvents;
+    ValueVector mMemoryCounterEventValues;
+
+    EventVector mInterfaceCounterStartEvents;
+    EventVector mInterfaceCounterEndEvents;
+    ValueVector mInterfaceCounterEventValues;
+
+    // Tile locations to apply trace end and flush
+    std::vector<XAie_LocType> mTraceFlushLocs;
+    std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
+    std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
+
+    // Keep track of number of events reserved per module and/or tile
+    int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];
     
   };
 

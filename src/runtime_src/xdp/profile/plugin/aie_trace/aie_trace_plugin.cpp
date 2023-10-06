@@ -61,6 +61,8 @@ namespace xdp {
 
   AieTracePluginUnified::~AieTracePluginUnified()
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Destroying AIE Trace Plugin");
+
     // Stop thread to write timestamps
     endPoll();
 
@@ -98,6 +100,7 @@ namespace xdp {
   
   void AieTracePluginUnified::updateAIEDevice(void* handle)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Trace updateAIEDevice.");
     if (!handle)
       return;
 
@@ -166,8 +169,10 @@ namespace xdp {
       (db->getStaticInfo()).setIsGMIORead(deviceID, true);
     }
 
-    // Check if trace streams are available
-    AIEData.metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
+    // Check if trace streams are available TODO
+    // AIEData.metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
+    AIEData.metadata->setNumStreams(2);
+
     if (AIEData.metadata->getNumStreams() == 0) {
       AIEData.valid = false;
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_UNAVAILABLE);
@@ -256,17 +261,17 @@ namespace xdp {
       offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
     }
 
-    try {
-      if (!offloader->initReadTrace()) {
-        xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
-        AIEData.valid = false;
-        return;
-      }
-    } catch (...) {
-        std::string msg = "AIE trace is currently not supported on this platform.";
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-        AIEData.valid = false;
-    }
+    // try {
+    //   if (!offloader->initReadTrace()) {
+    //     xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
+    //     AIEData.valid = false;
+    //     return;
+    //   }
+    // } catch (...) {
+    //     std::string msg = "AIE trace is currently not supported on this platform.";
+    //     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+    //     AIEData.valid = false;
+    // }
     
     // Support system timeline
     if (xrt_core::config::get_aie_trace_settings_enable_system_timeline()) {
@@ -296,11 +301,15 @@ namespace xdp {
 
     //Sets up and calls the PS kernel on x86 implementation
     //Sets up and the hardware on the edge implementation
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Trace updateDevice.");
+
     AIEData.implementation->updateDevice();
 
     // Continuous Trace Offload is supported only for PLIO flow
     if (AIEData.metadata->getContinuousTrace())
       offloader->startOffload();
+
+    xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace updateAIEDevice.");
   }
 
   void AieTracePluginUnified::pollAIETimers(uint64_t index, void* handle)
@@ -348,7 +357,11 @@ namespace xdp {
   }
 
   void AieTracePluginUnified::finishFlushAIEDevice(void* handle)
-  {
+  {    
+    xrt_core::message::send(severity_level::info, "XRT", "Beginning AIE Trace finishFlushAIEDevice.");
+    //For now, just return please
+    return;
+
     if (!handle)
       return;
     auto itr = handleToAIEData.find(handle);
@@ -372,6 +385,10 @@ namespace xdp {
 
   void AieTracePluginUnified::writeAll(bool openNewFiles)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Beginning AIE Trace WriteAll.");
+    // RETURN FOR NOW
+    return;
+
     (void)openNewFiles;
     for (const auto& kv : handleToAIEData) {
       // End polling thread

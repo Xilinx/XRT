@@ -65,6 +65,9 @@ class AieTraceMetadata {
         return metricSets[module_type::core][0];
     }
 
+    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+
+
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
     bool getUseGraphIterator(){return useGraphIterator;}
