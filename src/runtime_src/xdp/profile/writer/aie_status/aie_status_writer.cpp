@@ -26,10 +26,11 @@ namespace xdp {
    */
 
   AIEStatusWriter::AIEStatusWriter(const char* fileName,
-               const char* deviceName, uint64_t deviceIndex)
+      const char* deviceName, uint64_t deviceIndex, int hwGen)
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
+    , mHardwareGen(hwGen)
     , mWroteValidData(false)
   {
   }
@@ -72,7 +73,9 @@ namespace xdp {
       return true;
 
     // Now that we're valid, let's read the report the rest
-    auto memoryInfoStr = xrtDevice.get_info<xrt::info::device::aie_mem>();
+    std::string memoryInfoStr;
+    if (mHardwareGen > 1)
+      memoryInfoStr = xrtDevice.get_info<xrt::info::device::aie_mem>();
     auto interfaceInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
     
     bpt::ptree pt_memory;
