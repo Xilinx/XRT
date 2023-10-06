@@ -413,6 +413,7 @@ namespace xdp {
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
     aie::readAIEMetadata(data.first, data.second, mAieMeta);
+    auto hwGen = aie::getHardwareGeneration(mAieMeta);
 
     // Update list of tiles to debug
     getTilesForStatus();
@@ -433,7 +434,7 @@ namespace xdp {
 
     // Create and register AIE status writer
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
-    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID);
+    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
