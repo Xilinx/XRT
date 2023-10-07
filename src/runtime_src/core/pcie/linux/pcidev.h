@@ -80,10 +80,10 @@ public:
   bool m_is_mgmt =              false;
   bool m_is_ready =             false;
 
-  dev(const drv& driver, const std::string& sysfs_name);
+  dev(std::shared_ptr<const drv> driver, const std::string& sysfs_name);
+
   virtual
   ~dev();
-  dev() = delete;
 
   virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
@@ -135,10 +135,10 @@ public:
   get_subdev_path(const std::string& subdev, uint32_t idx) const;
 
   virtual int
-  pcieBarRead(uint64_t offset, void* buf, uint64_t len);
+  pcieBarRead(uint64_t offset, void* buf, uint64_t len) const;
 
   virtual int
-  pcieBarWrite(uint64_t offset, const void* buf, uint64_t len);
+  pcieBarWrite(uint64_t offset, const void* buf, uint64_t len) const;
 
   virtual int
   open(const std::string& subdev, int flag) const;
@@ -185,12 +185,12 @@ public:
 
 private:
   int
-  map_usr_bar();
+  map_usr_bar() const;
 
-  std::mutex m_lock;
-  char *m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
+  mutable std::mutex m_lock;
+  mutable char *m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 
-  const drv& m_driver;
+  std::shared_ptr<const drv> m_driver;
 };
 
 size_t

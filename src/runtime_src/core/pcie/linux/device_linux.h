@@ -9,8 +9,14 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/pcie/common/device_pcie.h"
+#include "core/pcie/linux/pcidev.h"
 
 namespace xrt_core {
+
+// Forward declaration
+namespace pci {
+class dev;
+}
 
 // concrete class derives from device_pcie, but mixes in
 // shim layer functions for access through base class
@@ -18,6 +24,7 @@ class device_linux : public shim<device_pcie>
 {
 public:
   device_linux(handle_type device_handle, id_type device_id, bool user);
+  ~device_linux();
 
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
@@ -86,9 +93,16 @@ public:
   {
     return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
   }
-  ////////////////////////////////////////////////////////////////
+
+protected:
+  std::shared_ptr<pci::dev>
+  get_dev() const
+  {
+    return m_pcidev;
+  }
 
 private:
+  std::shared_ptr<pci::dev> m_pcidev;
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const override;

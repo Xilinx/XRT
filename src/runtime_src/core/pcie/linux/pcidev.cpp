@@ -420,7 +420,7 @@ get_subdev_path(const std::string& subdev, uint idx) const
   if (subdev.empty()) {
     std::string instStr = std::to_string(m_instance);
     std::string prefixStr = "/dev/";
-    prefixStr += m_driver.dev_node_dir() + "/" + m_driver.dev_node_prefix();
+    prefixStr += m_driver->dev_node_dir() + "/" + m_driver->dev_node_prefix();
     return prefixStr + instStr;
   }
 
@@ -455,21 +455,23 @@ open(const std::string& subdev, int flag) const
 }
 
 dev::
-dev(const drv& driver, const std::string& sysfs) : m_sysfs_name(sysfs), m_driver(driver)
+dev(std::shared_ptr<const drv> driver, const std::string& sysfs)
+  : m_sysfs_name(sysfs)
+  , m_driver(driver)
 {
   std::string err;
 
   if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
     throw std::invalid_argument(sysfs + " is not valid BDF");
 
-  m_is_mgmt = !driver.is_user();
+  m_is_mgmt = !driver->is_user();
 
   if (m_is_mgmt) {
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
   } else {
     m_instance = get_render_value(
-      sysfs::dev_root + sysfs + "/" + driver.sysfs_dev_node_dir(),
-      driver.dev_node_prefix());
+      sysfs::dev_root + sysfs + "/" + driver->sysfs_dev_node_dir(),
+      driver->dev_node_prefix());
   }
 
   sysfs_get<int>("", "userbar", err, m_user_bar, 0);
@@ -487,7 +489,7 @@ dev::
 
 int
 dev::
-map_usr_bar()
+map_usr_bar() const
 {
   std::lock_guard<std::mutex> l(m_lock);
 
@@ -522,7 +524,7 @@ close(int dev_handle) const
 
 int
 dev::
-pcieBarRead(uint64_t offset, void* buf, uint64_t len)
+pcieBarRead(uint64_t offset, void* buf, uint64_t len) const
 {
   if (m_user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
@@ -535,7 +537,7 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 
 int
 dev::
-pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
+pcieBarWrite(uint64_t offset, const void* buf, uint64_t len) const
 {
   if (m_user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
