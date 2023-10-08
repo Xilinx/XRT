@@ -455,28 +455,28 @@ open(const std::string& subdev, int flag) const
 }
 
 dev::
-dev(std::shared_ptr<const drv> driver, const std::string& sysfs)
-  : m_sysfs_name(sysfs)
-  , m_driver(driver)
+dev(std::shared_ptr<const drv> driver, std::string sysfs)
+  : m_sysfs_name(std::move(sysfs))
+  , m_driver(std::move(driver))
 {
   std::string err;
 
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
-    throw std::invalid_argument(sysfs + " is not valid BDF");
+  if(sscanf(m_sysfs_name.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
+    throw std::invalid_argument(m_sysfs_name + " is not valid BDF");
 
-  m_is_mgmt = !driver->is_user();
+  m_is_mgmt = !m_driver->is_user();
 
   if (m_is_mgmt) {
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
   }
   else {
     m_instance = get_render_value(
-      sysfs::dev_root + sysfs + "/" + driver->sysfs_dev_node_dir(),
-      driver->dev_node_prefix());
+      sysfs::dev_root + m_sysfs_name + "/" + m_driver->sysfs_dev_node_dir(),
+      m_driver->dev_node_prefix());
   }
 
   sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::dev_root + sysfs, m_user_bar);
+  m_user_bar_size = bar_size(sysfs::dev_root + m_sysfs_name, m_user_bar);
   sysfs_get<bool>("", "ready", err, m_is_ready, false);
   m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }

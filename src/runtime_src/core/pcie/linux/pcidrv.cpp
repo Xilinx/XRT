@@ -47,7 +47,9 @@ std::shared_ptr<dev>
 drv::
 create_pcidev(const std::string& sysfs) const
 {
-  return std::make_shared<dev>(shared_from_this(), sysfs);
+  std::shared_ptr<const drv> pt = shared_from_this();
+  auto r = std::make_shared<dev>(pt, sysfs);
+  return r;
 }
 
 } } // namespace xrt_core :: pci

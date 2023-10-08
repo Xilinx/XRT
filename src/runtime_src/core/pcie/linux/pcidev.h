@@ -80,7 +80,7 @@ public:
   bool m_is_mgmt =              false;
   bool m_is_ready =             false;
 
-  dev(std::shared_ptr<const drv> driver, const std::string& sysfs_name);
+  dev(std::shared_ptr<const drv> driver, std::string sysfs_name);
 
   virtual
   ~dev();
