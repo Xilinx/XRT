@@ -468,7 +468,8 @@ dev(std::shared_ptr<const drv> driver, const std::string& sysfs)
 
   if (m_is_mgmt) {
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
-  } else {
+  }
+  else {
     m_instance = get_render_value(
       sysfs::dev_root + sysfs + "/" + driver->sysfs_dev_node_dir(),
       driver->dev_node_prefix());
@@ -722,7 +723,7 @@ get_runtime_active_kids(std::string &pci_bridge_path)
 }
 
 int
-shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
+shutdown(dev *mgmt_dev, bool remove_user, bool remove_mgmt)
 {
   if (!mgmt_dev->m_is_mgmt)
     return -EINVAL;

@@ -95,10 +95,10 @@ public:
   }
 
 protected:
-  std::shared_ptr<pci::dev>
+  pci::dev*
   get_dev() const
   {
-    return m_pcidev;
+    return m_pcidev.get();
   }
 
 private:

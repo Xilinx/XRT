@@ -486,7 +486,7 @@ struct hotplug_offline
     auto mgmt_dev = xrt_core::pci::get_dev(device->get_device_id(), false);
 
     // Remove both user_pf and mgmt_pf
-    if (xrt_core::pci::shutdown(mgmt_dev, true, true))
+    if (xrt_core::pci::shutdown(mgmt_dev.get(), true, true))
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;

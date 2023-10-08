@@ -188,6 +188,7 @@ private:
   map_usr_bar() const;
 
   mutable std::mutex m_lock;
+  // Virtual address of memory mapped BAR0, mapped on first use, once mapped, never change.
   mutable char *m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 
   std::shared_ptr<const drv> m_driver;
@@ -206,7 +207,7 @@ std::shared_ptr<dev>
 lookup_user_dev(std::shared_ptr<dev> mgmt_dev);
 
 int
-shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user = false, bool remove_mgmt = false);
+shutdown(dev *mgmt_dev, bool remove_user = false, bool remove_mgmt = false);
 
 int
 check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err);
