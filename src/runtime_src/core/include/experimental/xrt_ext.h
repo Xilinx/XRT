@@ -105,6 +105,42 @@ public:
   }
 
   /**
+   * bo() - Constructor with user host buffer and access mode
+   *
+   * @param device
+   *  The device on which to allocate this buffer
+   * @param userptr
+   *  The host buffer which must be page aligned
+   * @param sz
+   *  Size of buffer which must in multiple of page size
+   * @param access
+   *  Specific access mode for the buffer (see `enum access_mode`)
+   *
+   * This constructor creates a host_only buffer object with
+   * specified access.
+   */
+  XRT_API_EXPORT
+  bo(const xrt::device& device, void* userptr, size_t sz, access_mode access);
+
+  /**
+   * bo() - Constructor with user host buffer and access mode
+   *
+   * @param device
+   *  The device on which to allocate this buffer
+   * @param userptr
+   *  The host buffer which must be page aligned
+   * @param sz
+   *  Size of buffer which must in multiple of page size
+   * @param access
+   *  Specific access mode for the buffer (see `enum access_mode`)
+   *
+   * This constructor creates a host_only buffer object with local
+   * access and read|write direction.
+   */
+  XRT_API_EXPORT
+  bo(const xrt::device& device, void* userptr, size_t sz);
+
+  /**
    * bo() - Constructor for buffer object with specific access
    *
    * @param device
@@ -129,10 +165,26 @@ public:
    *  Size of buffer
 
    * This constructor creates a host_only buffer object with local
-   * access and in|out direction.
+   * access and read|write direction.
    */
   XRT_API_EXPORT
   bo(const xrt::device& device, size_t sz);
+
+  /**
+   * bo() - Constructor to import an exported buffer from another process
+   *
+   * @param device
+   *  The device that imports this buffer
+   * @param pid
+   *  Process id of exporting process
+   * @param ehdl
+   *  Exported buffer handle, implementation specific type
+   *
+   * The exported buffer handle is obtained from exporting process by
+   * calling `export_buffer()` on the buffer to be exported.
+   */
+  XRT_API_EXPORT
+  bo(const xrt::device& device, pid_type pid, xrt::bo::export_handle ehdl);
 
   /**
    * bo() - Constructor for buffer object
@@ -168,22 +220,11 @@ public:
   XRT_API_EXPORT
   bo(const xrt::hw_context& hwctx, size_t sz);
 
-  /**
-   * bo() - Constructor to import an exported buffer from another process
-   *
-   * @param hwctx
-   *  The hardware context that this buffer object uses for queue
-   *  operations such as syncing and residency operations.
-   * @param pid
-   *  Process id of exporting process
-   * @param ehdl
-   *  Exported buffer handle, implementation specific type
-   *
-   * The exported buffer handle is obtained from exporting process by
-   * calling `export_buffer()` on the buffer to be exported.
-   */
+  /// @cond
+  // Deprecated.  Hardware context specific import is not supported
   XRT_API_EXPORT
-  bo(const xrt::hw_context& hwctx, pid_type pid, xclBufferExportHandle ehdl);
+  bo(const xrt::hw_context& hwctx, pid_type pid, xrt::bo::export_handle ehdl);
+  /// @endcond
 };
 
 
