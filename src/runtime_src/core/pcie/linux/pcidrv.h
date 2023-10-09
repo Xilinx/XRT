@@ -8,7 +8,7 @@
 
 namespace xrt_core { namespace pci {
 
-class drv
+class drv : public std::enable_shared_from_this<drv>
 {
 public:
   // Name of the driver as shown under /sys/bus/pci/drivers/
