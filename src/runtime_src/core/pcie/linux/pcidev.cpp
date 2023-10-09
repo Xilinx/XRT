@@ -813,9 +813,6 @@ shutdown(dev *mgmt_dev, bool remove_user, bool remove_mgmt)
     rem_dev_cnt++;
   }
 
-  if (!rem_dev_cnt)
-    return 0;
-
   for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
     int curr_act_dev;
     std::string active_kids_path = parent_path + "/power/runtime_active_kids";
