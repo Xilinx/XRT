@@ -86,6 +86,8 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
           % lib.get<std::string>("version", "N/A");
     }
     _output << boost::format("  %-20s : %s\n") % "Model" % _pt.get<std::string>("host.os.model");
+    _output << boost::format("  %-20s : %s\n") % "BIOS vendor" % _pt.get<std::string>("host.os.bios_vendor");
+    _output << boost::format("  %-20s : %s\n") % "BIOS version" % _pt.get<std::string>("host.os.bios_version");
     _output << std::endl;
     _output << "XRT\n";
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");

@@ -229,6 +229,23 @@ get_os_info(boost::property_tree::ptree &pt)
       ifs.close();
   }
 
+  // BIOS info
+  std::string bios_vendor("unknown");
+  std::string bios_version("unknown");
+  std::ifstream bios_stream("/sys/class/dmi/id/bios_vendor");
+  if (bios_stream.is_open()) {
+    getline(bios_stream, bios_vendor);
+    pt.put("bios_vendor", bios_vendor);
+    bios_stream.close();
+  }
+
+  std::ifstream ver_stream("/sys/class/dmi/id/bios_version");
+  if (ver_stream.is_open()) {
+    getline(ver_stream, bios_version);
+    pt.put("bios_version", bios_version);
+    ver_stream.close();
+  }
+
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());
   pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
