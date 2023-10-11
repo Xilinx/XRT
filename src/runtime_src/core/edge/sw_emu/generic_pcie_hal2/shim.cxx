@@ -2462,47 +2462,6 @@ int SwEmuShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer
     return 0;
 }
 
-/**
-* xrtSyncBOAIE() - Transfer data between DDR and Shim DMA channel
-*
-* @bo:           BO obj.
-* @gmioName:        GMIO port name
-* @dir:             GM to AIE or AIE to GM
-* @size:            Size of data to synchronize
-* @offset:          Offset within the BO
-*
-* Return:          0 on success, or appropriate error number.
-*
-* Synchronize the buffer contents between GMIO and AIE.
-* Note: Upon return, the synchronization is submitted or error out
-*/
-
-int SwEmuShim::xrtSyncBOAIE(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  bool ack = false;
-  if (!gmioname)
-    return -1;
-
-  if (mLogStream.is_open())
-    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
-
-  auto boBase = bo.address();
-  xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
-  if (!ack) {
-    PRINTENDFUNC;
-    return -1;
-  }
-  if (true) // to maintain different scope for shared ptr in MACRO's.
-  {
-    xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
-    if (!ack) {
-      PRINTENDFUNC;
-      return -1;
-    }
-  }
-  return 0;
-}
-
 
 /**
 * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
