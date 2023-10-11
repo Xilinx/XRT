@@ -2259,6 +2259,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		XDEV(xdev)->kds.ert_disable = true;
 		goto create_regular_cu;
 	}
+	else
+		XDEV(xdev)->kds.ert_disable = false;
 
 	// Soft Kernel Info
 	scu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
