@@ -29,9 +29,17 @@ extern "C" {
 }
 
 namespace xdp {
+  typedef struct {
+    uint64_t perf_address;
+    uint32_t perf_value;
+  } trace_data_t;
 
-  class AieTrace_WinImpl : public AieTraceImpl{
+  typedef struct {
+    uint32_t count;
+    trace_data_t trace_data[1];
+  } aie_trace_op_t;
 
+  class AieTrace_WinImpl : public AieTraceImpl {
     public:
       AieTrace_WinImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
       ~AieTrace_WinImpl() = default;
@@ -44,9 +52,22 @@ namespace xdp {
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       module_type getTileType(uint16_t row);
       uint16_t getRelativeRow(uint16_t absRow);
-      module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
-
       
+      bool isStreamSwitchPortEvent(const XAie_Events event);
+      bool isPortRunningEvent(const XAie_Events event);
+      uint8_t getPortNumberFromEvent(XAie_Events event);
+      void configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+                                  /*xaiefal::XAieTile& xaieTile,*/ const XAie_LocType loc,
+                                  const module_type type, const std::string metricSet, 
+                                  const uint8_t channel0, const uint8_t channel1,
+                                  std::vector<XAie_Events>& events);
+      void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, 
+                                const XAie_ModuleType mod, const module_type type, 
+                                const std::string metricSet, const uint8_t channel0,
+                                const uint8_t channel);
+      void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
+                            const std::string metricSet, const XAie_Events event);
+
     private:
       typedef XAie_Events EventType;
       typedef std::vector<EventType> EventVector;
@@ -56,7 +77,7 @@ namespace xdp {
 
       xrt::kernel mKernel;
       xrt::bo input_bo;
-      // aie_profile_op_t* op;
+      aie_trace_op_t* op;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
 
@@ -65,29 +86,13 @@ namespace xdp {
     std::map<std::string, EventVector> mMemoryTileEventSets;
     std::map<std::string, EventVector> mInterfaceTileEventSets;
 
-    // // AIE profile counters
-    // std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
-    // std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
-
-    // Counter metrics (same for all sets)
+    // Trace metrics (same for all sets)
     EventType mCoreTraceStartEvent;
     EventType mCoreTraceEndEvent;
     EventType mMemoryTileTraceStartEvent;
     EventType mMemoryTileTraceEndEvent;
     EventType mInterfaceTileTraceStartEvent;
     EventType mInterfaceTileTraceEndEvent;
-
-    EventVector mCoreCounterStartEvents;
-    EventVector mCoreCounterEndEvents;
-    ValueVector mCoreCounterEventValues;
-
-    EventVector mMemoryCounterStartEvents;
-    EventVector mMemoryCounterEndEvents;
-    ValueVector mMemoryCounterEventValues;
-
-    EventVector mInterfaceCounterStartEvents;
-    EventVector mInterfaceCounterEndEvents;
-    ValueVector mInterfaceCounterEventValues;
 
     // Tile locations to apply trace end and flush
     std::vector<XAie_LocType> mTraceFlushLocs;
