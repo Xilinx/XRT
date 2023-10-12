@@ -12,6 +12,7 @@ namespace XBU = XBUtilities;
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 
 // #include "cmdlineparser.h"
 
@@ -135,27 +136,29 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
   /* calculate performance */
   int overallCommands = 0;
   double duration;
-  std::stringstream details;
+  // std::stringstream details;
   for (int i = 0; i < threadNumber; i++) {
     if (verbose) {
       duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
-      details << " Commands: " << std::setw(7) << total
-          << std::setprecision(0) << std::fixed
-          << " IOPS: " << (total * 1000000.0 / duration)
-          << std::endl;
-      logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id), details.str());
-      details.str("");
+      // details << " Commands: " << std::setw(7) << total
+      //     << std::setprecision(0) << std::fixed
+      //     << " IOPS: " << (total * 1000000.0 / duration)
+      //     << std::endl;
+      logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id), 
+                    boost::str(boost::format("Commands: %d IOPS: %f") % total % boost::io::group(std::setprecision(0), std::fixed, (total * 1000000.0 / duration))));
+      // details.str("");
     }
     overallCommands += total;
   }
 
   duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
-  std::cout << "Overall Commands: " << std::setw(7) << overallCommands
-            << std::setprecision(0) << std::fixed
-            << " IOPS: " << (overallCommands * 1000000.0 / duration)
-            << " (" << krnl.name << ")"
-            << std::endl;
-  logger(ptree, "Overall Details", details.str());
+  // std::cout << "Overall Commands: " << std::setw(7) << overallCommands
+  //           << std::setprecision(0) << std::fixed
+  //           << " IOPS: " << (overallCommands * 1000000.0 / duration)
+  //           << " (" << krnl.name << ")"
+  //           << std::endl;
+  logger(ptree, "Overall Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
+                % total % boost::io::group(std::setprecision(0), std::fixed, (overallCommands * 1000000.0 / duration)) % krnl.name));
   ptree.put("status", test_token_passed);
 }
 
@@ -178,9 +181,10 @@ TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::p
       return;
     }
     b_file = (boost::filesystem::path(test_path) / "verify.xclbin").string();
-    krnl.name = "verify";
-    krnl.new_style = true;
   }
+
+  krnl.name = "verify";
+  krnl.new_style = true;
 
   const std::string xclbin_fn = b_file;
   auto retVal = validate_binary_file(xclbin_fn);
