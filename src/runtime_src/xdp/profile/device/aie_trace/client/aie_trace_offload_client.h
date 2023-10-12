@@ -163,7 +163,6 @@ private:
     bool mCircularBufOverwrite;
 
 private:
-    void readTracePLIO(bool final);
     void readTraceGMIO(bool final);
     void continuousOffload();
     bool keepOffloading();
