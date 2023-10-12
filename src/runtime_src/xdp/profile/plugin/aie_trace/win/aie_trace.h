@@ -56,17 +56,19 @@ namespace xdp {
       bool isStreamSwitchPortEvent(const XAie_Events event);
       bool isPortRunningEvent(const XAie_Events event);
       uint8_t getPortNumberFromEvent(XAie_Events event);
-      void configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+      void configStreamSwitchPorts(const tile_type& tile,
                                   /*xaiefal::XAieTile& xaieTile,*/ const XAie_LocType loc,
                                   const module_type type, const std::string metricSet, 
                                   const uint8_t channel0, const uint8_t channel1,
                                   std::vector<XAie_Events>& events);
-      void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, 
+      void configEventSelections(const XAie_LocType loc, 
                                 const XAie_ModuleType mod, const module_type type, 
                                 const std::string metricSet, const uint8_t channel0,
                                 const uint8_t channel);
-      void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
+      void configEdgeEvents(const tile_type& tile,
                             const std::string metricSet, const XAie_Events event);
+
+      uint32_t bcIdToEvent(int bcId);
 
     private:
       typedef XAie_Events EventType;
