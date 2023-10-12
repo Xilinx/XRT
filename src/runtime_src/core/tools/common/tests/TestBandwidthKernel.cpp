@@ -6,6 +6,14 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/filesystem.hpp>
+#include <math.h>
+#include <sys/time.h>
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestBandwidthKernel::TestBandwidthKernel()
@@ -25,8 +33,241 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
     ptree.put("status", test_token_failed);
     return ptree;
   }
-  std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
-  runTestCase(dev, testcase, ptree);
-  
+  runTest(dev, ptree);
   return ptree;
+}
+
+static bool 
+is_emulation() {
+  bool ret = false;
+  char* xcl_mode = getenv("XCL_EMULATION_MODE");
+  if (xcl_mode != nullptr) {
+    ret = true;
+  }
+  return ret;
+}
+
+void
+TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+{
+  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
+  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
+  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string b_file = findXclbinPath(dev, ptree); // bandwidth.xclbin
+  bool flag_s = false;
+
+  xrt::device device(dev->get_device_id());
+
+  if (test_path.empty()) {
+    logger(ptree, "Error", "Platform test path was not found.");
+    ptree.put("status", test_token_failed);
+    return;
+  }
+
+  auto retVal = validate_binary_file(b_file);
+  if (flag_s || retVal == EOPNOTSUPP) {
+    ptree.put("status", test_token_skipped);
+    return;
+  } else if (retVal != EXIT_SUCCESS) {
+    logger(ptree, "Error", "Unknown error validating bandwidth xclbin");
+    ptree.put("status", test_token_failed);
+    return;
+  }
+
+  int num_kernel = 0, num_kernel_ddr = 0;
+  bool chk_hbm_mem = false;
+  std::string filename = "/platform.json";
+  auto platform_json = boost::filesystem::path(test_path) / filename;
+
+  try {
+    boost::property_tree::ptree load_ptree_root;
+    boost::property_tree::read_json(platform_json.string(), load_ptree_root);
+
+    auto temp = load_ptree_root.get_child("total_ddr_banks");
+    num_kernel = temp.get_value<int>();
+    num_kernel_ddr = num_kernel;
+    auto pt_mem_array = load_ptree_root.get_child("meminfo");
+    for (const auto& mem_entry : pt_mem_array) {
+      boost::property_tree::ptree pt_mem_entry = mem_entry.second;
+      auto sValue = pt_mem_entry.get<std::string>("type");
+      if (sValue == "HBM")
+        chk_hbm_mem = true;
+    }
+    if (chk_hbm_mem) {
+      // As HBM is part of platform, number of ddr kernels is total count reduced by 1(single HBM)
+      num_kernel_ddr = num_kernel - 1;
+    }
+  } catch (const std::exception& e) {
+    logger(ptree, "Error", "Bad JSON format detected while marshaling build metadata");
+    ptree.put("status", test_token_skipped);
+    return;
+  }
+
+  auto xclbin_uuid = device.load_xclbin(b_file);
+
+  std::string krnl_name = "bandwidth";
+  std::vector<xrt::kernel> krnls(num_kernel);
+
+  for (int i = 0; i < num_kernel; i++) {
+    std::string cu_id = std::to_string(i + 1);
+    std::string krnl_name_full = krnl_name + ":{" + "bandwidth_" + cu_id + "}";
+
+    // Here Kernel object is created by specifying kernel name along with
+    // compute unit.
+    // For such case, this kernel object can only access the specific
+    // Compute unit
+    krnls[i] = xrt::kernel(device, xclbin_uuid, krnl_name_full.c_str());
+  }
+
+  double max_throughput = 0;
+  int reps = 10000;
+  if (num_kernel_ddr) {
+    // Starting at 4K and going up to 16M with increments of power of 2
+    for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+      unsigned int data_size = i;
+
+      if (is_emulation()) {
+        reps = 2; // reducing the repeat count to 2 for emulation flow
+        // Running only upto 8K for emulation flow
+        if (data_size > 8 * 1024) {
+          break;
+        }
+      }
+
+      unsigned int vector_size_bytes = data_size;
+      std::vector<unsigned char> input_host(data_size);
+      std::vector<unsigned char> output_host[num_kernel_ddr];
+
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        output_host[i].resize(data_size);
+      }
+      // Filling up memory with an incremental byte pattern
+      for (uint32_t j = 0; j < data_size; j++) {
+        input_host[j] = j % 256;
+      }
+
+      // Initializing output vectors to zero
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        std::fill(output_host[i].begin(), output_host[i].end(), 0);
+      }
+
+      std::vector<xrt::bo> input_buffer(num_kernel_ddr);
+      std::vector<xrt::bo> output_buffer(num_kernel_ddr);
+
+      // Creating Buffers
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        input_buffer[i] = xrt::bo(device, vector_size_bytes, krnls[i].group_id(0));
+        output_buffer[i] = xrt::bo(device, vector_size_bytes, krnls[i].group_id(1));
+      }
+
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        input_buffer[i].write(input_host.data());
+        input_buffer[i].sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      }
+
+      auto time_start = std::chrono::high_resolution_clock::now();
+
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        auto run = krnls[i](input_buffer, output_buffer, data_size, reps);
+        run.wait();
+      }
+      auto time_end = std::chrono::high_resolution_clock::now();
+
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        output_buffer[i].sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        output_buffer[i].read(output_host[i].data());
+      }
+
+      // check
+      for (int i = 0; i < num_kernel_ddr; i++) {
+        for (uint32_t j = 0; j < data_size; j++) {
+          if (output_host[i][j] != input_host[j]) {
+            logger(ptree, "Error", boost::str(boost::format("Kernel failed to copy entry %d input %d output %d") % j % (uint32_t)input_host[j] % (uint32_t)output_host[i][j]));
+            ptree.put("status", test_token_failed);
+            return;
+          }
+        }
+      }
+
+      double usduration =
+        (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
+
+      double dnsduration = (double)usduration;
+      double dsduration = dnsduration / ((double)1000000000); // Convert the duration from nanoseconds to seconds
+      double bpersec = (data_size * num_kernel_ddr) / dsduration;
+      double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
+
+      if (mbpersec > max_throughput) 
+        max_throughput = mbpersec;
+    }
+    logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %f MB/s") % num_kernel_ddr % max_throughput));
+  }
+  if (chk_hbm_mem) {
+    max_throughput = 0;
+    // Starting at 4K and going up to 16M with increments of power of 2
+    for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+      unsigned int data_size = i;
+
+      if (is_emulation()) {
+        reps = 2; // reducing the repeat count to 2 for emulation flow
+        // Running only upto 8K for emulation flow
+        if (data_size > 8 * 1024) {
+          break;
+        }
+      }
+
+      unsigned int vector_size_bytes = data_size;
+      std::vector<unsigned char> input_host(data_size);
+      std::vector<unsigned char> output_host(data_size);
+
+      for (uint32_t j = 0; j < data_size; j++) {
+        input_host[j] = j % 256;
+      }
+
+      // Initializing output vectors to zero
+      std::fill(output_host.begin(), output_host.end(), 0);
+
+      xrt::bo input_buffer, output_buffer;
+
+      // These commands will allocate memory on the FPGA.
+      // Creating Buffers
+      input_buffer = xrt::bo(device, vector_size_bytes, krnls[num_kernel - 1].group_id(0));
+      output_buffer = xrt::bo(device, vector_size_bytes, krnls[num_kernel - 1].group_id(1));
+
+      input_buffer.write(input_host.data());
+      input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+      auto time_start = std::chrono::high_resolution_clock::now();
+
+      auto run = krnls[num_kernel - 1](input_buffer, output_buffer, data_size, reps);
+      run.wait();
+ 
+      auto time_end = std::chrono::high_resolution_clock::now();
+
+      output_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+      output_buffer.read(output_host.data());
+
+      // check
+      for (uint32_t j = 0; j < data_size; j++) {
+        if (output_host[j] != input_host[j]) {
+          logger(ptree, "Error", boost::str(boost::format("Kernel failed to copy entry %d input %d output %d") % j % (uint32_t)input_host[j] % (uint32_t)output_host[j]));
+          ptree.put("status", test_token_failed);
+          return;
+        }
+      }
+
+      double usduration =
+        (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
+
+      double dnsduration = (double)usduration;
+      double dsduration = dnsduration / ((double)1000000000); // Convert duration from nanoseconds to seconds
+      double bpersec = data_size / dsduration;
+      double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
+
+      if (mbpersec > max_throughput) 
+        max_throughput = mbpersec;
+    }
+    logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HBM) (Bank count: 1) : %f MB/s") % max_throughput));
+  }
+  ptree.put("status", test_token_passed);
 }

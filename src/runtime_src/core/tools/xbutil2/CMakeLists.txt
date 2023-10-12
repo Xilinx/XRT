@@ -26,6 +26,10 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/SubCmdJSON.cpp"
   "../common/TestRunner.cpp"
   "../common/tests/*.cpp"
+  "../common/tests/aie_pl_util/*"
+  "../common/tests/ps_iops_util/*"
+  # "../common/tests/vcu_kernel_util/*"
+  "../common/tests/xcl_iops_util/*"
 )
 
 # Collect local directory files
