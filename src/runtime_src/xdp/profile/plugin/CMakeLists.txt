@@ -10,6 +10,7 @@ if (XDP_MINIMAL_BUILD STREQUAL "yes")
   if (WIN32)
     add_subdirectory(aie_profile)
     add_subdirectory(aie_trace)
+    add_subdirectory(aie_debug)
   endif()
 else()
 

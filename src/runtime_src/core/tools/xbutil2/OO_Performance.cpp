@@ -22,7 +22,7 @@ OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: DEFAULT, LOW, MEDIUM or HIGH")
+    ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: DEFAULT, POWERSAVER, BALANCED, PERFORMANCE")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -79,13 +79,13 @@ OO_Performance::execute(const SubCmdOptions& _options) const
     if (boost::iequals(m_action, "DEFAULT")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::basic); // default
     }
-    else if (boost::iequals(m_action, "LOW")) {
+    else if (boost::iequals(m_action, "POWERSAVER")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::low);
     }
-    else if (boost::iequals(m_action, "MEDIUM")) {
+    else if (boost::iequals(m_action, "BALANCED")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::medium);
     }
-    else if (boost::iequals(m_action, "HIGH")) {
+    else if (boost::iequals(m_action, "PERFORMANCE")) {
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::high);
     }
     else {
