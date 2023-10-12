@@ -493,6 +493,23 @@ namespace xclswemuhal2
     xrtSyncBOAIENB(xrt::bo &bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     /**
+      * xrtSyncBOAIE() - Transfer data between DDR and Shim DMA channel
+      *
+      * @bo:              BO obj.
+      * @gmioName:        GMIO port name
+      * @dir:             GM to AIE or AIE to GM
+      * @size:            Size of data to synchronize
+      * @offset:          Offset within the BO
+      *
+      * Return:          0 on success, or appropriate error number.
+      *
+      * Synchronize the buffer contents between GMIO and AIE.
+      * Note: Upon return, the synchronization is submitted or error out
+      */
+    int
+    xrtSyncBOAIE(xrt::bo &bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
+    /**
       * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
       *
       * @gmioName:        GMIO port name

@@ -2467,6 +2467,8 @@ namespace xclswemuhal2
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
+    auto boBase = bo.address();
+    
     std::lock_guard lk(mApiMtx);
     bool ack = false;
     if (!gmioname)
@@ -2475,7 +2477,7 @@ namespace xclswemuhal2
     if (mLogStream.is_open())
       mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
 
-    auto boBase = bo.address();
+    
     //bool isCacheable = bo.flags & XCL_BO_FLAGS_CACHEABLE;
     DEBUG_MSGS("%s, %d(gmioname: %s size: %zx offset: %zx boBase: %lx)\n", __func__, __LINE__, gmioname, size, offset, boBase);
 
@@ -2487,6 +2489,66 @@ namespace xclswemuhal2
       return -1;
     }
     DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
+    return 0;
+  }
+
+/**
+* xrtSyncBOAIE() - Transfer data between DDR and Shim DMA channel
+*
+* @bo:           BO obj.
+* @gmioName:        GMIO port name
+* @dir:             GM to AIE or AIE to GM
+* @size:            Size of data to synchronize
+* @offset:          Offset within the BO
+*
+* Return:          0 on success, or appropriate error number.
+*
+* Synchronize the buffer contents between GMIO and AIE.
+* Note: Upon return, the synchronization is submitted or error out
+*/
+
+  int SwEmuShim::xrtSyncBOAIE(xrt::bo &bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+
+    auto boBase = bo.address();
+
+    std::lock_guard lk(mApiMtx);
+    bool ack = false;
+    if (!gmioname)
+      return -1;
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
+
+    
+    //bool isCacheable = bo.flags & XCL_BO_FLAGS_CACHEABLE;
+    DEBUG_MSGS("%s, %d(gmioname: %s size: %zx offset: %zx boBase: %lx)\n", __func__, __LINE__, gmioname, size, offset, boBase);
+    if (true) {
+      xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
+
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " End" << std::endl;
+
+      if (!ack)
+      {
+        DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
+        PRINTENDFUNC;
+        return -1;
+      }
+      DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
+    }
+
+    xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
+    if (!ack)
+    {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
+      PRINTENDFUNC;
+      return -1;
+    }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
+
     return 0;
   }
 
