@@ -292,7 +292,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
         pretty_print_test_desc(testPtr->get_test_header(), test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
     }
 
-    auto ptTest = testPtr->run(device);
+    auto ptTest = testPtr->startTest(device);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
     if (!is_black_box_test())

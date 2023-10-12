@@ -21,6 +21,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
 #include "core/tools/common/Process.h"
+#include "tools/common/BusyBar.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
@@ -33,10 +34,23 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 #include <iostream>
 #include <regex>
+#include <thread>
+
+static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 namespace {
+
+static void
+runTestInternal(std::shared_ptr<xrt_core::device> dev,
+                boost::property_tree::ptree& ptree,
+                TestRunner* test,
+                bool& is_thread_running)
+{
+  ptree = test->run(dev);
+  is_thread_running = false;
+}
 
 static const std::string
 getXsaPath(const uint16_t vendor)
@@ -83,6 +97,33 @@ TestRunner::TestRunner (const std::string & test_name,
     , m_explicit(is_explicit)
 {
   //Empty
+}
+
+boost::property_tree::ptree 
+TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
+{
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+  bool is_thread_running = true;
+
+  boost::property_tree::ptree result;
+
+  // Start the test process
+  std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running); });
+  // Wait for the test process to finish
+  while (is_thread_running) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try {
+      busy_bar.check_timeout(MAX_TEST_DURATION);
+    } catch (const std::exception&) {
+      test_thread.detach();
+      throw;
+    }
+  }
+  test_thread.join();
+  busy_bar.finish();
+
+  return result;
 }
 
 /*
