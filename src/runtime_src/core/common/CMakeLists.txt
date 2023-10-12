@@ -15,6 +15,7 @@ add_library(core_common_library_objects OBJECT
   info_memory.cpp
   info_platform.cpp
   info_vmr.cpp
+  info_telemetry.cpp
   memaccess.cpp
   message.cpp
   module_loader.cpp

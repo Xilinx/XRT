@@ -15,6 +15,7 @@
 #include "core/common/info_memory.h"
 #include "core/common/info_platform.h"
 #include "core/common/info_vmr.h"
+#include "core/common/info_telemetry.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/sensor.h"
@@ -175,6 +176,8 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
     return json_str(xrt_core::memory::dynamic_regions(device), abi);
   case xrt::info::device::vmr : //std::string
     return json_str(xrt_core::vmr::vmr_info(device), abi);
+  case xrt::info::device::telemetry : //std::string
+    return json_str(xrt_core::telemetry::telemetry_info(device), abi);
   case xrt::info::device::aie : // std::string
     return json_str(xrt_core::aie::aie_core(device), abi);
   case xrt::info::device::aie_shim : // std::string

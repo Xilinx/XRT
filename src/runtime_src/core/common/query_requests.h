@@ -298,6 +298,7 @@ enum class key_type
   xgq_scaling_power_override,
   xgq_scaling_temp_override,
   performance_mode,
+  telemetry,
   noop
 };
 
@@ -3382,6 +3383,33 @@ struct performance_mode : request
         throw xrt_core::system_error(EINVAL, "Invalid performance status: " + status);
     }
   }
+};
+
+struct telemetry : request
+{
+  union telemetry_data {
+    struct piece1 {
+      uint32_t counter_ops[2] ;
+      uint32_t context_starting[10];
+      uint32_t scheduler_scheduled[10];
+      uint32_t syscalls[10];
+      uint32_t did_dma[10];
+      uint32_t resource_acquired[10];
+      uint32_t sb_tokens[4];
+      uint32_t deep_slp[6];
+      uint32_t trace_opcode[30];
+    };
+    struct piece2 {
+        uint32_t dtlb_misses[10][11];
+    };
+  };
+
+  using result_type = std::vector<char>;
+  using data_type = telemetry_data;
+  static const key_type key = key_type::telemetry;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 } // query

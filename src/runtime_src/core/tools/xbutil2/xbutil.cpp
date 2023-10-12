@@ -35,7 +35,7 @@ R"(
         "name": "common",
         "contents": [{
             "name": "examine",
-            "contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
+            "contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "telemetry"]
         },{
             "name": "configure",
             "contents": ["host-mem", "p2p", "performance"]

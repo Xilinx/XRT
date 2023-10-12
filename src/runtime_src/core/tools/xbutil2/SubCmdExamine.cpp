@@ -30,6 +30,7 @@
 #include "tools/common/reports/ReportPsKernels.h"
 #include "tools/common/reports/ReportQspiStatus.h"
 #include "tools/common/reports/ReportThermal.h"
+#include "tools/common/reports/ReportTelemetry.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   ReportCollection SubCmdExamineInternal::uniqueReportCollection = {
@@ -47,6 +48,7 @@
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
     std::make_shared<ReportPsKernels>(),
+    std::make_shared<ReportTelemetry>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportElectrical>(),
