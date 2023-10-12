@@ -33,8 +33,6 @@ telemetry_info(const xrt_core::device * device)
     telemetry_raw = xrt_core::device_query<xq::telemetry>(device);
   }
   catch(xq::exception &) {
-    // Telemetry not available
-    pt_root.put("error_msg", "Telemetry data is not available");
     //return pt_root;
   }
 
@@ -45,13 +43,22 @@ telemetry_info(const xrt_core::device * device)
   if(1) {
 //   if(telemetry_info->piece1.counter_ops != -1) { //to-do: understand how to access members
     boost::property_tree::ptree pt_stat;
-    pt_stat.add("label", "counter ops");
+    pt_stat.add("label", "Counter ops");
     pt_stat.add("value", 1);
     // pt_stat.add("value", telemetry_info.piece1.counter_ops);
     pt_telemetry_array.push_back(std::make_pair("", pt_stat));
   }
 
-  pt_root.put_child("telemetry", pt_telemetry_array);
+  if(1) {
+//   if(telemetry_info->piece1.counter_ops != -1) { //to-do: understand how to access members
+    boost::property_tree::ptree pt_stat;
+    pt_stat.add("label", "Context starting");
+    pt_stat.add("value", 2);
+    // pt_stat.add("value", telemetry_info.piece1.counter_ops);
+    pt_telemetry_array.push_back(std::make_pair("", pt_stat));
+  }
+
+  pt_root.add_child("telemetry", pt_telemetry_array);
   return pt_root;
 }
 }
