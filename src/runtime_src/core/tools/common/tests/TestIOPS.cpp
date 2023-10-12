@@ -136,28 +136,17 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
   /* calculate performance */
   int overallCommands = 0;
   double duration;
-  // std::stringstream details;
   for (int i = 0; i < threadNumber; i++) {
     if (verbose) {
       duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
-      // details << " Commands: " << std::setw(7) << total
-      //     << std::setprecision(0) << std::fixed
-      //     << " IOPS: " << (total * 1000000.0 / duration)
-      //     << std::endl;
       logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id), 
                     boost::str(boost::format("Commands: %d IOPS: %f") % total % boost::io::group(std::setprecision(0), std::fixed, (total * 1000000.0 / duration))));
-      // details.str("");
     }
     overallCommands += total;
   }
 
   duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
-  // std::cout << "Overall Commands: " << std::setw(7) << overallCommands
-  //           << std::setprecision(0) << std::fixed
-  //           << " IOPS: " << (overallCommands * 1000000.0 / duration)
-  //           << " (" << krnl.name << ")"
-  //           << std::endl;
-  logger(ptree, "Overall Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
+  logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
                 % total % boost::io::group(std::setprecision(0), std::fixed, (overallCommands * 1000000.0 / duration)) % krnl.name));
   ptree.put("status", test_token_passed);
 }
