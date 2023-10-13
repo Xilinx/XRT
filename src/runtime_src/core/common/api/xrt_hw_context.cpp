@@ -8,6 +8,7 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #include "core/include/xrt/xrt_hw_context.h"
 #include "hw_context_int.h"
+#include "native_profile.h"
 
 #include "core/common/device.h"
 #include "core/common/shim/hwctx_handle.h"
@@ -151,9 +152,22 @@ create_hw_context_from_implementation(void* hwctx_impl)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
 
+static std::shared_ptr<hw_context_impl>
+alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
+{
+  return std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param);
+}
+
+static std::shared_ptr<hw_context_impl>
+alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::access_mode mode)
+{
+  return std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode);
+}
+
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
-  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
+  : detail::pimpl<hw_context_impl>(xdp::native::profiling_wrapper("xrt::hw_context::hw_context",
+      alloc_hwctx_from_cfg, device, xclbin_id, cfg_param))
 {
   // Update device is called with a raw pointer to dyanamically
   // link to callbacks that exist in XDP via a C-style interface
@@ -165,8 +179,13 @@ hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_
 
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
-  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
+  : detail::pimpl<hw_context_impl>(xdp::native::profiling_wrapper("xrt::hw_context::hw_context",
+      alloc_hwctx_from_mode, device, xclbin_id, mode))
 {
+  // Update device is called with a raw pointer to dyanamically
+  // link to callbacks that exist in XDP via a C-style interface
+  // The create_hw_context_from_implementation function is then 
+  // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(get_handle().get());
 }
 
@@ -174,7 +193,9 @@ void
 hw_context::
 update_qos(const qos_type& qos)
 {
-  get_handle()->update_qos(qos);
+  xdp::native::profiling_wrapper("xrt::hw_context::update_qos", [this, &qos] {
+    get_handle()->update_qos(qos);
+  });
 }
 
 xrt::device

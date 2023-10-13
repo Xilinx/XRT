@@ -18,7 +18,7 @@ file(GLOB AIE_STATUS_PLUGIN_FILES
 
 add_library(xdp_aie_status_plugin MODULE ${AIE_STATUS_PLUGIN_FILES})
 add_dependencies(xdp_aie_status_plugin xdp_core)
-target_link_libraries(xdp_aie_status_plugin PRIVATE xdp_core metal xaiengine)
+target_link_libraries(xdp_aie_status_plugin PRIVATE xdp_core xaiengine)
 
 set_target_properties(xdp_aie_status_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 

@@ -23,6 +23,7 @@ add_library(core_common_library_objects OBJECT
   system.cpp
   thread.cpp
   time.cpp
+  trace.cpp
   utils.cpp
   xclbin_parser.cpp
   xclbin_swemu.cpp

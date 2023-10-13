@@ -125,6 +125,12 @@ public:
     svm         = XRT_BO_FLAGS_SVM,
   };
 
+#ifdef _WIN32
+  using export_handle = uint64_t;
+#else
+  using export_handle = int32_t;
+#endif
+
   /**
    * bo() - Constructor for empty bo
    */
@@ -210,6 +216,42 @@ public:
   bo(const xrt::device& device, size_t sz, memory_group grp);
 
   /**
+   * bo() - Constructor to import an exported buffer
+   *
+   * @param device
+   *  Device that imports the exported buffer
+   * @param ehdl
+   *  Exported buffer handle, implementation specific type
+   *
+   * If the exported buffer handle acquired by using the export() method is
+   * from another process, then it must be transferred through proper IPC
+   * mechanism translating the underlying file-descriptor asscociated with
+   * the buffer, see also constructor taking process id as argument.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(const xrt::device& device, export_handle ehdl);
+
+  /**
+   * bo() - Constructor to import an exported buffer from another process
+   *
+   * @param device
+   *  Device that imports the exported buffer
+   * @param pid
+   *  Process id of exporting process
+   * @param ehdl
+   *  Exported buffer handle, implementation specific type
+   *
+   * The exported buffer handle is obtained from exporting process by
+   * calling `export()`. This contructor requires that XRT is built on
+   * and running on a system with pidfd support.  Also the importing
+   * process must have permission to duplicate the exporting process'
+   * file descriptor.  This permission is controlled by ptrace access
+   * mode PTRACE_MODE_ATTACH_REALCREDS check (see ptrace(2)).
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(const xrt::device& device, pid_type pid, export_handle ehdl);
+
+  /**
    * bo() - Constructor with user host buffer and flags
    *
    * @param hwctx
@@ -288,7 +330,7 @@ public:
   bo(const xrt::hw_context& hwctx, size_t sz, memory_group grp);
 
   /// @cond
-  // Deprecated constructor, use xrt::hw_context variant
+  // Deprecated constructor, use xrt::device variant
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp);
   /// @endcond
@@ -301,67 +343,43 @@ public:
   /// @endcond
 
   /// @cond
-  // Deprecated constructor, use xrt::hw_context variant
+  // Deprecated constructor, use xrt::device variant
   bo(xclDeviceHandle dhdl, void* userptr, size_t sz, memory_group grp)
     : bo(dhdl, userptr, sz, bo::flags::normal, grp)
   {}
   /// @endcond
 
   /// @cond
-  // Deprecated constructor, use xrt::hw_context variant
+  // Deprecated constructor, use xrt::device variant
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp);
   /// @endcond
 
   /// @cond
-  // Legacy constructor
+  // Legacy constructor, use xrt::device variant
   bo(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, memory_group grp)
     : bo(dhdl, size, static_cast<bo::flags>(flags), grp)
   {}
   /// @endcond
 
   /// @cond
-  // Legacy constructor
+  // Legacy constructor, use xrt::device variant
   bo(xclDeviceHandle dhdl, size_t size, memory_group grp)
     : bo(dhdl, size, bo::flags::normal, grp)
   {}
   /// @endcond
 
-  /**
-   * bo() - Constructor to import an exported buffer
-   *
-   * @param dhdl
-   *  Device that imports the exported buffer
-   * @param ehdl
-   *  Exported buffer handle, implementation specific type
-   *
-   * If the exported buffer handle acquired by using the export() method is
-   * from another process, then it must be transferred through proper IPC
-   * mechanism translating the underlying file-descriptor asscociated with
-   * the buffer, see also constructor taking process id as argument.
-   */
+  /// @cond
+  // Legacy constructor, use xrt::device variant
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl);
+  /// @endcond
 
-  /**
-   * bo() - Constructor to import an exported buffer from another process
-   *
-   * @param dhdl
-   *  Device that imports the exported buffer
-   * @param pid
-   *  Process id of exporting process
-   * @param ehdl
-   *  Exported buffer handle, implementation specific type
-   *
-   * The exported buffer handle is obtained from exporting process by
-   * calling `export()`. This contructor requires that XRT is built on
-   * and running on a system with pidfd support.  Also the importing
-   * process must have permission to duplicate the exporting process'
-   * file descriptor.  This permission is controlled by ptrace access
-   * mode PTRACE_MODE_ATTACH_REALCREDS check (see ptrace(2)).
-   */
+  /// @cond
+  // Legacy constructor, use xrt::device variant
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl);
+  /// @endcond
 
   /**
    * bo() - Constructor for sub-buffer
@@ -500,7 +518,7 @@ public:
    * exporting buffer object has gone out of scope.
    */
   XCL_DRIVER_DLLESPEC
-  xclBufferExportHandle
+  export_handle
   export_buffer();
 
   /**
