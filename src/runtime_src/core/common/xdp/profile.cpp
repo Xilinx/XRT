@@ -43,19 +43,7 @@ load()
                                                 register_callbacks,
                                                 warning_callbacks);
 }
-void 
-warning_callbacks()
-{
-}
 
-void 
-load()
-{
-  static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
-  static xrt_core::module_loader xdp_aie_debug_loader("xdp_aie_debug_plugin",
-                                                register_callbacks,
-                                                warning_callbacks);
-}
 // Make connections
 void 
 update_device(void* handle)
@@ -112,6 +100,7 @@ update_device(void* handle)
     update_device_cb(handle);
 }
 
+void
 end_debug(void* handle)
 {
   if (end_debug_cb)

@@ -146,10 +146,10 @@ namespace xdp {
           return moduleTypes[0];
       }
       int getNumModules() {return NUM_MODULES;}
-    xrt::hw_context getHwContext(){return hwContext;}
-    void setHwContext(xrt::hw_context c) {
-      hwContext = std::move(c);
-    }
+      xrt::hw_context getHwContext(){return hwContext;}
+      void setHwContext(xrt::hw_context c) {
+        hwContext = std::move(c);
+      }
   };
 }
 

@@ -18,6 +18,7 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -136,6 +137,7 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
 
 #ifdef XDP_MINIMAL_BUILD
+    AIEData.metadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
     AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);

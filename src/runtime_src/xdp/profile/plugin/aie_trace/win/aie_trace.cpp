@@ -38,6 +38,8 @@
 constexpr uint32_t MAX_TILES = 400;
 constexpr uint64_t ALIGNMENT_SIZE = 4096;
 
+constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
+
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
@@ -958,6 +960,42 @@ namespace xdp {
       // NOTE: Do not access cfgTile after this
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     }  // For tiles
+
+    auto context = metadata->getHwContext();
+
+    try {
+      mKernel = xrt::kernel(context, "XDP_KERNEL");  
+    } catch (std::exception &e){
+      std::stringstream msg;
+      msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to configure AIE Profile." << e.what() ;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return false;
+    }
+
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+    xrt::bo instr_bo;
+
+    // Configuration bo
+    try {
+      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    } catch (std::exception &e){
+      std::stringstream msg;
+      msg << "Unable to create instruction buffer for AIE Trace transaction. Not configuring AIE Trace. " << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return false;
+    }
+
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    run.wait2();
+
+    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Profiling Transaction Buffer.");
+
+    // Must clear aie state
+    XAie_ClearTransaction(&aieDevInst);
 
     // Report trace events reserved per tile
     // printTraceEventStats(deviceId);

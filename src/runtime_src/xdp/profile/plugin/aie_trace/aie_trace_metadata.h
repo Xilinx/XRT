@@ -95,6 +95,11 @@ class AieTraceMetadata {
     void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
     uint64_t getDelay() {return ((useDelay) ? delayCycles : 0);}
 
+    xrt::hw_context getHwContext(){return hwContext;}
+    void setHwContext(xrt::hw_context c) {
+      hwContext = std::move(c);
+    }
+
   private:
     bool useDelay = false;
     bool useUserControl = false;
@@ -137,7 +142,7 @@ class AieTraceMetadata {
     };
 
     void* handle;
-    
+    xrt::hw_context hwContext;
   };
 
 }

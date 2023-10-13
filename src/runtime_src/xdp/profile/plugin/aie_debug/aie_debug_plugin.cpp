@@ -251,10 +251,10 @@ namespace xdp {
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
     try {
-      mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
+      mKernel = xrt::kernel(context, "XDP_KERNEL");  
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to find DPU kernel from hardware context. Not configuring AIE Profile. " << e.what() ;
+      msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Profile. " << e.what() ;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
