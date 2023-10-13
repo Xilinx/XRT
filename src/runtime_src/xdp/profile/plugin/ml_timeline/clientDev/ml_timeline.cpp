@@ -28,25 +28,25 @@
 #include "core/common/api/xrt_hw_context_impl.h"
 #include "core/common/shim/hwctx_handle.h"
 
-#include "xdp/profile/plugin/flexml_timeline/clientDev/flexml_timeline.h"
+#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 
-#include "xdp/profile/plugin/flexml_timeline/clientDev/op/op_buf.hpp"
-#include "xdp/profile/plugin/flexml_timeline/clientDev/op/op_init.hpp"
+#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_buf.hpp"
+#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_init.hpp"
 
 namespace xdp {
 
   
 
-  FlexMLTimelineClientDevImpl::FlexMLTimelineClientDevImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
-    : FlexMLTimelineImpl(dB, aieData)
+  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
+    : MLTimelineImpl(dB, aieData)
       , recordTimerOpCode(0)
       , bufferOp(nullptr)
   {
   }
 
-  void FlexMLTimelineClientDevImpl::updateAIEDevice(void* /*handle*/)
+  void MLTimelineClientDevImpl::updateAIEDevice(void* /*handle*/)
   {
-    std::cout << " In FlexMLTimelineClientDevImpl::updateAIEDevice " << std::endl;
+    std::cout << " In MLTimelineClientDevImpl::updateAIEDevice " << std::endl;
 
     XAie_Config cfg {
       XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
@@ -80,7 +80,7 @@ namespace xdp {
       instrKernel = xrt::kernel(hwContext, "DPU_1x4_FM"); // NAME CHANGED
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to find DPU kernel from hardware context. Cannot get FlexML Timeline info. " << e.what() ;
+      msg << "Unable to find DPU kernel from hardware context. Cannot get ML Timeline info. " << e.what() ;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -109,7 +109,7 @@ namespace xdp {
       instrBO = xrt::bo(hwContext.get_device(), instrBuf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get FlexML Timeline info. " << e.what() << std::endl;
+      msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get ML Timeline info. " << e.what() << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -124,11 +124,11 @@ namespace xdp {
 #endif
   }
 
-  void FlexMLTimelineClientDevImpl::flushAIEDevice(void* )
+  void MLTimelineClientDevImpl::flushAIEDevice(void* )
   {
   }
 
-  void FlexMLTimelineClientDevImpl::finishflushAIEDevice(void* handle)
+  void MLTimelineClientDevImpl::finishflushAIEDevice(void* handle)
   {
 
       //Start recording the transaction
@@ -143,7 +143,7 @@ namespace xdp {
       }
       catch (std::exception& e) {
           std::stringstream msg;
-          msg << "Unable to find DPU kernel from hardware context. Cannot get FlexML Timeline info. " << e.what();
+          msg << "Unable to find DPU kernel from hardware context. Cannot get ML Timeline info. " << e.what();
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
           return;
       }
@@ -173,7 +173,7 @@ namespace xdp {
       }
       catch (std::exception& e) {
           std::stringstream msg;
-          msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get FlexML Timeline info. " << e.what() << std::endl;
+          msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get ML Timeline info. " << e.what() << std::endl;
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
           return;
       }
