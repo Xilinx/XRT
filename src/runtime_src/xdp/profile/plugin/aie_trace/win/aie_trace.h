@@ -69,6 +69,8 @@ namespace xdp {
                             const std::string metricSet, const XAie_Events event);
 
       uint32_t bcIdToEvent(int bcId);
+      int run_shim_loopback();
+      uint8_t* shim_loopback_test(uint64_t src, uint64_t dest, uint32_t size, uint8_t col);
 
     private:
       typedef XAie_Events EventType;

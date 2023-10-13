@@ -415,6 +415,9 @@ namespace xdp {
       return false;
     }
 
+    //Start recording the transaction
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+
     if (!metadata->getIsValidMetrics()) {
       std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
@@ -450,6 +453,7 @@ namespace xdp {
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
     for (auto& tileMetric : metadata->getConfigMetrics()) {
+
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
       auto col        = tile.col;
@@ -992,7 +996,7 @@ namespace xdp {
     auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
     run.wait2();
 
-    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Profiling Transaction Buffer.");
+    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Trace Transaction Buffer.");
 
     // Must clear aie state
     XAie_ClearTransaction(&aieDevInst);
@@ -1000,7 +1004,128 @@ namespace xdp {
     // Report trace events reserved per tile
     // printTraceEventStats(deviceId);
     xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace IPU SetMetricsSettings.");
+    
+    run_shim_loopback();
     return true;
   }
+
+  // uint8_t*
+  // AieTrace_WinImpl::shim_loopback_test(uint64_t src, uint64_t dest, uint32_t size, uint8_t col) {
+  //   AieRC RC;
+  //   XAie_LocType loc;
+  //   XAie_DmaDesc DmaDesc1, DmaDesc2;
+
+  //   loc = XAie_TileLoc(col, 0);
+  //   uint8_t s2mm_bd_id = 5;
+  //   uint8_t s2mm_ch_id = 1;
+  //   uint8_t mm2s_bd_id = 2;
+  //   uint8_t mm2s_ch_id = 0;
+
+  //   printf("Configuring AIE...\n");
+  //   XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+  //   RC = XAie_StrmConnCctEnable(&aieDevInst, loc, SOUTH, 3, SOUTH, 3);
+  //   RC = XAie_EnableShimDmaToAieStrmPort(&aieDevInst, loc, 3);
+  //   RC = XAie_EnableAieToShimDmaStrmPort(&aieDevInst, loc, 3);
+
+  //   // MM2S BD
+  //   RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc1, loc);
+  //   RC = XAie_DmaSetAddrLen(&DmaDesc1, src, size);
+  //   RC = XAie_DmaEnableBd(&DmaDesc1);
+  //   RC = XAie_DmaSetAxi(&DmaDesc1, 0U, 16U, 0U, 0U, 0U);
+  //   RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc1, loc, mm2s_bd_id);
+
+  //   // S2MM BD
+  //   RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc2, loc);
+  //   RC = XAie_DmaSetAddrLen(&DmaDesc2, dest, size);
+  //   RC = XAie_DmaEnableBd(&DmaDesc2);
+  //   RC = XAie_DmaSetAxi(&DmaDesc2, 0U, 16U, 0U, 0U, 0U);
+  //   RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc2, loc, s2mm_bd_id);
+
+  //   printf("Enabling channels....\n");
+  //   RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM, s2mm_bd_id);
+  //   RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, mm2s_ch_id, DMA_MM2S, mm2s_bd_id);
+
+  //   RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
+  //   RC = XAie_DmaChannelEnable(&aieDevInst, loc, mm2s_ch_id, DMA_MM2S);
+
+  //   RC = XAie_DmaWaitForDone(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM, 0);
+
+  //   uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 0, 0);
+  //   return txn_ptr;
+  // }
+
+  // int
+  // AieTrace_WinImpl::run_shim_loopback()
+  // {
+  //   std::cout << "run_shim_loopback begin" << std::endl;
+  //   auto context = metadata->getHwContext();
+
+  //   try {
+  //     mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
+  //   } catch (std::exception &e){
+  //     std::stringstream msg;
+  //     msg << "Unable to find DPU kernel from hardware context. Not configuring AIE Profile. " << e.what() ;
+  //     xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+  //     return -1;
+  //   }
+
+  //   constexpr uint32_t DATA_SIZE = 64;
+  //   constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
+  //   constexpr std::uint64_t LB_OPCODE = std::uint64_t{2};
+
+  //   // create vectors for input/output data;
+  //   std::vector<uint32_t> input;
+
+  //   for (int i = 0; i < DATA_SIZE; i++)
+  //     input.push_back(i);
+
+  //   // create all BOs.
+  //   std::cout << "Allocating BOs" << std::endl;
+  //   xrt::bo inp_bo, out_bo, instr_bo;
+  //   inp_bo = xrt::bo(context.get_device(), DATA_SIZE * sizeof(uint32_t), XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0));
+  //   out_bo = xrt::bo(context.get_device(), DATA_SIZE * sizeof(uint32_t), XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0));
+
+  //   // Copy input / output vectors into XRT BOs
+  //   inp_bo.write(input.data());
+  //   inp_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+  //   std::cout << "Allocated all BOs" << std::endl;
+
+  //   uint8_t *txn_ptr = shim_loopback_test(inp_bo.address() + DDR_AIE_ADDR_OFFSET, out_bo.address() + DDR_AIE_ADDR_OFFSET, DATA_SIZE * sizeof(uint32_t), 1);
+  //   XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
+  //   std::cout << "Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
+
+  //   op_buf instr_buf;
+  //   instr_buf.addOP(transaction_op(txn_ptr));
+
+  //   instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+  //   instr_bo.write(instr_buf.ibuf_.data());
+  //   instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    
+  //   auto out_bo_map = out_bo.map<uint32_t*>();
+
+  //   for (int r = 0; r < 10; r++) {
+  //     std::vector<u64> kargv(5, 0);
+  //     auto run = mKernel(LB_OPCODE, instr_bo, instr_bo.size() / sizeof(int), kargv[0], kargv[1], kargv[2], kargv[3], kargv[4]);
+  //     run.wait();
+  //     // Read output and validate
+  //     out_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+  //     for (int i = 0; i < DATA_SIZE; i++) {
+  //       if (out_bo_map[i] != input[i]) {
+  //         std::cout << "Mismatch id " << i << " input: " << input[i] << " output : " << out_bo_map[i] << std::endl;
+  //         std::cout << "Test FAILED" << std::endl;
+  //         return -1;
+  //       }
+  //       out_bo_map[i] = 0xdeadbeef;
+  //     }
+  //     std::cout << "Reset output BO" << std::endl;
+  //     out_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  //   }
+
+  //   std::cout << "Shim loop-back PASSED" << std::endl;
+
+  //   return 0;
+  // }
+
 
 }  // namespace xdp
