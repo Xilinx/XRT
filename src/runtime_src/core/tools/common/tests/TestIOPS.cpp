@@ -14,8 +14,6 @@ namespace XBU = XBUtilities;
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 
-// #include "cmdlineparser.h"
-
 #include "xrt_iops_util/xilutil.hpp"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
@@ -146,7 +144,7 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
   }
 
   duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
-  logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
+  logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d, IOPS: %f (%s)")
                 % total % boost::io::group(std::setprecision(0), std::fixed, (overallCommands * 1000000.0 / duration)) % krnl.name));
   ptree.put("status", test_token_passed);
 }

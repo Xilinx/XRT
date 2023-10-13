@@ -266,7 +266,6 @@ void plController_aie2::enqueue_write(int addr, int val) {
 // re-use this code from "core/edge/common/aie_parser.cpp"
 void plController_aie2::get_rtp() {
     boost::property_tree::ptree aie_meta;
-    std::cout << "aie_info_path " << m_aie_info_path << std::endl;
     std::ifstream jsonFile(m_aie_info_path);
     if (!jsonFile.good())
 	throw std::runtime_error("get_rtp():ERROR:No aie info file specified");

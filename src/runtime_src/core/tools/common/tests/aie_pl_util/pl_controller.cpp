@@ -50,17 +50,17 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
                     "iter_mem_addr to be same to make sure broadcast is "
                     "correct");
         }
-        std::cout
-            << boost::format(
-                   "enqueue_graph_run(): INFO: tile: %u, itr_mem_addr: %u\n") %
-                   (num_tile - 1) % tile.itr_mem_addr;
+        // std::cout
+        //     << boost::format(
+        //            "enqueue_graph_run(): INFO: tile: %u, itr_mem_addr: %u\n") %
+        //            (num_tile - 1) % tile.itr_mem_addr;
     }
     m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SET_AIE_ITERATION));
     m_opcodeBuffer.push_back(num_iter);
     m_opcodeBuffer.push_back(itr_mem_addr);
-    std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
-                               "itr_mem_addr: %u\n") %
-                     num_iter % itr_mem_addr;
+    // std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
+    //                            "itr_mem_addr: %u\n") %
+    //                  num_iter % itr_mem_addr;
 }
 
 void
@@ -144,12 +144,12 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
     m_opcodeBuffer.push_back(m_ping_pong);
 
     m_ping_pong = !m_ping_pong;
-    std::cout << boost::format(
-                     "enqueue_graph_rtp_update(): INFO: ping_addr = %u"
-                     ", pong_addr = %u, selector_addr = %u"
-                     ", ping_locd_id = %u, pong_lock_id = %u\n") %
-                     rtp.ping_addr % rtp.pong_addr % rtp.selector_addr %
-                     rtp.ping_lock_id % rtp.pong_lock_id;
+    // std::cout << boost::format(
+    //                  "enqueue_graph_rtp_update(): INFO: ping_addr = %u"
+    //                  ", pong_addr = %u, selector_addr = %u"
+    //                  ", ping_locd_id = %u, pong_lock_id = %u\n") %
+    //                  rtp.ping_addr % rtp.pong_addr % rtp.selector_addr %
+    //                  rtp.ping_lock_id % rtp.pong_lock_id;
 }
 
 void
@@ -170,7 +170,6 @@ void
 plController::get_rtp()
 {
     boost::property_tree::ptree aie_meta;
-    std::cout << "aie_info_path " << m_aie_info_path << std::endl;
     std::ifstream jsonFile(m_aie_info_path);
     if (!jsonFile.good())
         throw std::runtime_error("get_rtp():ERROR:No aie info file specified");
