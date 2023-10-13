@@ -102,6 +102,7 @@ rh_package_list()
      rapidjson-devel \
      rpm-build \
      strace \
+     systemtap-sdt-devel \
      unzip \
      zlib-static \
     )
@@ -220,6 +221,7 @@ ub_package_list()
      python3-sphinx-rtd-theme \
      sphinx-common \
      strace \
+     systemtab-sdt-dev \
      unzip \
      uuid-dev \
     )
@@ -303,6 +305,7 @@ fd_package_list()
      strace \
      systemd-devel \
      systemd-devel \
+     systemtap-sdt-devel \
      unzip \
      zlib-static \
     )
@@ -350,6 +353,7 @@ suse_package_list()
      python3-pip \
      rpm-build \
      strace \
+     systemtap-sdt-devel \
      unzip \
      zlib-devel-static \
    )
