@@ -16,51 +16,51 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/plugin/flexml_timeline/flexml_timeline_cb.h"
-#include "xdp/profile/plugin/flexml_timeline/flexml_timeline_plugin.h"
+#include "xdp/profile/plugin/ml_timeline/ml_timeline_cb.h"
+#include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
 
 namespace xdp {
 
-  static FlexMLTimelinePlugin flexmlTimelinePluginInstance;
+  static MLTimelinePlugin mlTimelinePluginInstance;
 
-  static void updateDeviceFlexmlTmln(void* handle)
+  static void updateDeviceMLTmln(void* handle)
   {
-    if (FlexMLTimelinePlugin::alive()) {
-      flexmlTimelinePluginInstance.updateAIEDevice(handle);
+    if (MLTimelinePlugin::alive()) {
+      mlTimelinePluginInstance.updateAIEDevice(handle);
     } 
   } 
 
-  static void flushDeviceFlexmlTmln(void* handle)
+  static void flushDeviceMLTmln(void* handle)
   {
-    if (FlexMLTimelinePlugin::alive()) {
-      flexmlTimelinePluginInstance.flushAIEDevice(handle);
+    if (MLTimelinePlugin::alive()) {
+      mlTimelinePluginInstance.flushAIEDevice(handle);
     } 
   } 
 
-  static void finishflushDeviceFlexmlTmln(void* handle)
+  static void finishflushDeviceMLTmln(void* handle)
   {
-    if (FlexMLTimelinePlugin::alive()) {
-      flexmlTimelinePluginInstance.finishflushAIEDevice(handle);
+    if (MLTimelinePlugin::alive()) {
+      mlTimelinePluginInstance.finishflushAIEDevice(handle);
     } 
   } 
 
 } // end namespace xdp
 
 extern "C"
-void updateDeviceFlexmlTmln(void* handle)
+void updateDeviceMLTmln(void* handle)
 {
-  xdp::updateDeviceFlexmlTmln(handle);
+  xdp::updateDeviceMLTmln(handle);
 }
 
 extern "C"
-void flushDeviceFlexmlTmln(void* handle)
+void flushDeviceMLTmln(void* handle)
 {
-  xdp::flushDeviceFlexmlTmln(handle);
+  xdp::flushDeviceMLTmln(handle);
 }
 
 extern "C"
-void finishflushDeviceFlexmlTmln(void* handle)
+void finishflushDeviceMLTmln(void* handle)
 {
-  xdp::finishflushDeviceFlexmlTmln(handle);
+  xdp::finishflushDeviceMLTmln(handle);
 }
 

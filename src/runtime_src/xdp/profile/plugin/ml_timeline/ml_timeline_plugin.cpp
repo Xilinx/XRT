@@ -25,28 +25,28 @@
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/device/utility.h"
-#include "xdp/profile/plugin/flexml_timeline/flexml_timeline_plugin.h"
+#include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 
 #ifdef XDP_MINIMAL_BUILD
-  #include "xdp/profile/plugin/flexml_timeline/clientDev/flexml_timeline.h"
+  #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #endif
 
 namespace xdp {
 
-  bool FlexMLTimelinePlugin::live = false;
+  bool MLTimelinePlugin::live = false;
 
-  FlexMLTimelinePlugin::FlexMLTimelinePlugin()
+  MLTimelinePlugin::MLTimelinePlugin()
     : XDPPlugin()
   {
-    FlexMLTimelinePlugin::live = true;
+    MLTimelinePlugin::live = true;
 
     db->registerPlugin(this);
-    db->registerInfo(info::flexml_timeline);
+    db->registerInfo(info::ml_timeline);
   }
 
-  FlexMLTimelinePlugin::~FlexMLTimelinePlugin()
+  MLTimelinePlugin::~MLTimelinePlugin()
   {
     if (VPDatabase::alive()) {
       try {
@@ -57,15 +57,15 @@ namespace xdp {
       db->unregisterPlugin(this);
     }
 
-    FlexMLTimelinePlugin::live = false;
+    MLTimelinePlugin::live = false;
   }
 
-  bool FlexMLTimelinePlugin::alive()
+  bool MLTimelinePlugin::alive()
   {
-    return FlexMLTimelinePlugin::live;
+    return MLTimelinePlugin::live;
   }
 
-  uint64_t FlexMLTimelinePlugin::getDeviceIDFromHandle(void* handle)
+  uint64_t MLTimelinePlugin::getDeviceIDFromHandle(void* handle)
   { 
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
@@ -82,7 +82,7 @@ namespace xdp {
 #endif
   }
 
-  void FlexMLTimelinePlugin::updateAIEDevice(void* handle)
+  void MLTimelinePlugin::updateAIEDevice(void* handle)
   {
     if (!handle)
       return;
@@ -119,12 +119,12 @@ namespace xdp {
 #ifdef XDP_MINIMAL_BUILD
     AIEDataEntry.aieMetadata = std::make_shared<AieConfigMetadata>();
     AIEDataEntry.aieMetadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
-    AIEDataEntry.implementation = std::make_unique<FlexMLTimelineClientDevImpl>(db, AIEDataEntry.aieMetadata);
+    AIEDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db, AIEDataEntry.aieMetadata);
 #endif
     AIEDataEntry.implementation->updateAIEDevice(handle);
   }
 
-  void FlexMLTimelinePlugin::flushAIEDevice(void* handle)
+  void MLTimelinePlugin::flushAIEDevice(void* handle)
   {
     if (!handle)
       return;
@@ -140,7 +140,7 @@ namespace xdp {
     AIEDataEntry.implementation->flushAIEDevice(handle);
   }
 
-  void FlexMLTimelinePlugin::finishflushAIEDevice(void* handle)
+  void MLTimelinePlugin::finishflushAIEDevice(void* handle)
   {
     if (!handle)
       return;
@@ -157,7 +157,7 @@ namespace xdp {
     handleToAIEData.erase(handle);
   }
 
-  void FlexMLTimelinePlugin::writeAll(bool openNewFiles)
+  void MLTimelinePlugin::writeAll(bool openNewFiles)
   {
     for (const auto& entry = handleToAIEData) {
       auto& AIEDataEntry = entry.second;

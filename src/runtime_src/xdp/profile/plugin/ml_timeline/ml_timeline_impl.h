@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef XDP_PLUGIN_FLEXML_TIMELINE_IMPL_H
-#define XDP_PLUGIN_FLEXML_TIMELINE_IMPL_H
+#ifndef XDP_PLUGIN_ML_TIMELINE_IMPL_H
+#define XDP_PLUGIN_ML_TIMELINE_IMPL_H
 
-#include "xdp/profile/plugin/flexml_timeline/aie_config_metadata.h"
+#include "xdp/profile/plugin/ml_timeline/aie_config_metadata.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
 
-  class FlexMLTimelineImpl
+  class MLTimelineImpl
   {
 
     protected :
@@ -30,14 +30,14 @@ namespace xdp {
       std::shared_ptr<AieConfigMetadata> aieMetadata;
 
     public:
-      FlexMLTimelineImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> data)
+      MLTimelineImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> data)
         : db(dB)
          ,aieMetadata(data)
       {}
 
-      FlexMLTimelineImpl() = delete;
+      MLTimelineImpl() = delete;
 
-      virtual ~FlexMLTimelineImpl() {}
+      virtual ~MLTimelineImpl() {}
 
       virtual void updateAIEDevice(void*) = 0;
       virtual void flushAIEDevice(void*) = 0;

@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef XDP_FLEXML_TIMELINE_AIE_CONFIG_METADATA_H
-#define XDP_FLEXML_TIMELINE_AIE_CONFIG_METADATA_H
+#ifndef XDP_ML_TIMELINE_AIE_CONFIG_METADATA_H
+#define XDP_ML_TIMELINE_AIE_CONFIG_METADATA_H
 
 #include <boost/property_tree/ptree.hpp>
 

@@ -14,21 +14,21 @@
  * under the License.
  */
 
-#ifndef XDP_FLEXML_TIMELINE_PLUGIN_H
-#define XDP_FLEXML_TIMELINE_PLUGIN_H
+#ifndef XDP_ML_TIMELINE_PLUGIN_H
+#define XDP_ML_TIMELINE_PLUGIN_H
 
-#include "xdp/profile/plugin/flexml_timeline/flexml_timeline_impl.h"
+#include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 
 namespace xdp {
 
-  class FlexMLTimelinePlugin : public XDPPlugin
+  class MLTimelinePlugin : public XDPPlugin
   {
     public:
 
-    XDP_EXPORT FlexMLTimelinePlugin();
-    XDP_EXPORT ~FlexMLTimelinePlugin();
+    XDP_EXPORT MLTimelinePlugin();
+    XDP_EXPORT ~MLTimelinePlugin();
 
     XDP_EXPORT void updateAIEDevice(void* handle);
     XDP_EXPORT void flushAIEDevice(void* handle);
@@ -46,7 +46,7 @@ namespace xdp {
     struct AIEData {
       bool valid;
       uint64_t deviceID;
-      std::unique_ptr<FlexMLTimelineImpl> implementation;
+      std::unique_ptr<MLTimelineImpl> implementation;
       std::shared_ptr<AieConfigMetadata>  aieMetadata;
     };
  

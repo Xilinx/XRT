@@ -14,16 +14,16 @@
  * under the License.
  */
 
-#ifndef XDP_PLUGIN_FLEXML_TIMELINE_CB_H
-#define XDP_PLUGIN_FLEXML_TIMELINE_CB_H
+#ifndef XDP_PLUGIN_ML_TIMELINE_CB_H
+#define XDP_PLUGIN_ML_TIMELINE_CB_H
 
 #include "xdp/config.h"
 
 extern "C" {
 
-  XDP_EXPORT void updateDeviceFlexmlTmln(void* handle);
-  XDP_EXPORT void flushDeviceFlexmlTmln(void* handle);
-  XDP_EXPORT void finishflushDeviceFlexmlTmln(void* handle);
+  XDP_EXPORT void updateDeviceMLTmln(void* handle);
+  XDP_EXPORT void flushDeviceMLTmln(void* handle);
+  XDP_EXPORT void finishflushDeviceMLTmln(void* handle);
 
 }
 #endif
