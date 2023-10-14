@@ -3,11 +3,11 @@
 #include "core/common/trace.h"
 
 #include <memory>
+#include <stdexcept>
 
 #define SDT_USE_VARIADIC
 #include <sys/sdt.h>
 
-// % cat core/common/detail/linux/trace.h
 #define XRT_DETAIL_TRACE_POINT_LOG(probe, ...) \
   STAP_PROBEV(xrt, probe##_log, ##__VA_ARGS__)
 

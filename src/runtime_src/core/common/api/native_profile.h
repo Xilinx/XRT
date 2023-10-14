@@ -5,7 +5,6 @@
 #define NATIVE_PROFILE_DOT_H
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
-#include "core/common/trace.h"
 #include "core/include/xrt.h"
 
 // This file contains the callback mechanisms for connecting the
