@@ -221,7 +221,7 @@ ub_package_list()
      python3-sphinx-rtd-theme \
      sphinx-common \
      strace \
-     systemtab-sdt-dev \
+     systemtap-sdt-dev \
      unzip \
      uuid-dev \
     )
