@@ -66,25 +66,11 @@ typedef struct {
 
 /*
  * OP Structs for record timer
- * record_timer_buffer_address_op_t : to pass buffer address for storing (unique id + timestamp) pair
+ * record_timer_buffer_address_op_t : to pass buffer address for storing timestamp (in future, along with unique id)
  * record_timer_id_op_t             : to pass unique id 
  */
 
-#if 0
 typedef struct {
-  uint64_t  buffer_address;
-} record_timer_buffer_address_op_t;
-#endif
-
-#if 0
-typedef struct {
-  uint64_t  record_timer_data[1];
-} record_timer_buffer_op_t;
-#endif
-
-typedef struct {
-//  uint64_t record_timer_data[4000];
-//  uint32_t record_timer_data[8000];
   uint32_t record_timer_data[100];
 } record_timer_buffer_op_t;
 
