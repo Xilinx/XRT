@@ -44,8 +44,6 @@ namespace xdp {
 
     private :
       uint8_t recordTimerOpCode;
-//      record_timer_buffer_address_op_t bufAddrOp;
-//      record_timer_id_op_t             unqIdOp;
 
       record_timer_buffer_op_t *bufferOp;
 
@@ -53,7 +51,6 @@ namespace xdp {
 
       xrt::kernel instrKernel;
       xrt::bo     instrBO;
-
   };
 
 }
