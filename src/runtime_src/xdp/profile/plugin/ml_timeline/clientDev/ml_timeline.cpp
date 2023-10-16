@@ -73,60 +73,55 @@ namespace xdp {
 
   void MLTimelineClientDevImpl::finishflushAIEDevice(void* handle)
   {
-      //Start recording the transaction
-      XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+    //Start recording the transaction
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
-      xrt::hw_context_impl* hwCtxImpl = static_cast<xrt::hw_context_impl*>(handle);
-      xrt::hw_context       hwContext(hwCtxImpl->get_shared_ptr());
+    xrt::hw_context_impl* hwCtxImpl = static_cast<xrt::hw_context_impl*>(handle);
+    xrt::hw_context       hwContext(hwCtxImpl->get_shared_ptr());
 
-      // what happens with the DPU kernel when updateAIEDevice is called multiple times
-      try {
-          instrKernel = xrt::kernel(hwContext, "DPU_1x4_NEW"); // NAME CHANGED
-      }
-      catch (std::exception& e) {
-          std::stringstream msg;
-          msg << "Unable to find DPU kernel from hardware context. Cannot get ML Timeline info. " << e.what();
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-          return;
-      }
+    try {
+      instrKernel = xrt::kernel(hwContext, "DPU_1x4_NEW"); // NAME CHANGED
+    }
+    catch (std::exception& e) {
+        std::stringstream msg;
+        msg << "Unable to find DPU kernel from hardware context. Cannot get ML Timeline info. " << e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        return;
+    }
 
-      // Record Timer is the 4th Custom Op
-      // Call Request APIs only once in application
-      XAie_RequestCustomTxnOp(&aieDevInst);
-      XAie_RequestCustomTxnOp(&aieDevInst);
-      XAie_RequestCustomTxnOp(&aieDevInst);
+    // Record Timer is the 4th Custom Op
+    // Call Request APIs only once in application
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    XAie_RequestCustomTxnOp(&aieDevInst);
 
-      recordTimerOpCode = (uint8_t)XAie_RequestCustomTxnOp(&aieDevInst);
+    recordTimerOpCode = (uint8_t)XAie_RequestCustomTxnOp(&aieDevInst);
 
-      //    XAie_AddCustomTxnOp(&aieDevInst, recordTimerOpCode, (void*)bufAddrOp, sizeof(record_timer_buffer_address_op_t));
+    bufferOp = (record_timer_buffer_op_t*)calloc(1, sizeof(record_timer_buffer_op_t));
+    XAie_AddCustomTxnOp(&aieDevInst, recordTimerOpCode, (void*)bufferOp, sizeof(record_timer_buffer_op_t));
 
-      //    bufferOp = (record_timer_buffer_op_t*)calloc(4000, sizeof(uint64_t));
+    uint8_t* txn = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    op_buf instrBuf;
+    instrBuf.addOP(transaction_op(txn));
 
-      bufferOp = (record_timer_buffer_op_t*)calloc(1, sizeof(record_timer_buffer_op_t));
-      XAie_AddCustomTxnOp(&aieDevInst, recordTimerOpCode, (void*)bufferOp, sizeof(record_timer_buffer_op_t));
+    // Configuration bo
+    try {
+      instrBO = xrt::bo(hwContext.get_device(), instrBuf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
+    }
+    catch (std::exception& e) {
+        std::stringstream msg;
+        msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get ML Timeline info. " << e.what() << std::endl;
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        return;
+    }
 
-      uint8_t* txn = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-      op_buf instrBuf;
-      instrBuf.addOP(transaction_op(txn));
+    instrBO.write(instrBuf.ibuf_.data());
+    instrBO.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    auto run = instrKernel(std::uint64_t{ 2 } /*CONFIGURE_OPCODE*/, instrBO, instrBO.size() / sizeof(int), 0, 0, 0, 0);
+    run.wait2();
 
-      // Configuration bo
-      try {
-          instrBO = xrt::bo(hwContext.get_device(), instrBuf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
-      }
-      catch (std::exception& e) {
-          std::stringstream msg;
-          msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get ML Timeline info. " << e.what() << std::endl;
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-          return;
-      }
-
-      instrBO.write(instrBuf.ibuf_.data());
-      instrBO.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      auto run = instrKernel(std::uint64_t{ 2 } /*CONFIGURE_OPCODE*/, instrBO, instrBO.size() / sizeof(int), 0, 0, 0, 0);
-      run.wait2();
-
-      // Must clear aie state
-      XAie_ClearTransaction(&aieDevInst);
+    // Must clear aie state
+    XAie_ClearTransaction(&aieDevInst);
 
     auto instrBOMap = instrBO.map<uint8_t*>();
     instrBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -151,37 +146,8 @@ namespace xdp {
         writeSz -= entrySz;
     }
 
-#if 0
-    auto instrBOMap = instrBO.map<uint8_t*>();
-    instrBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
-    // TODO: figure out where the 8 comes from
-    instrBOMap += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
-
-    record_timer_buffer_op_t* bufferData = reinterpret_cast<record_timer_buffer_op_t*>(instrBOMap);
-    uint32_t* ptr = bufferData->record_timer_data;
-    size_t writeSz = sizeof(record_timer_buffer_op_t);
-    size_t entrySz = sizeof(uint32_t) + sizeof(uint64_t);
-
-    std::ofstream fOut;
-    fOut.open("timestamp.txt");
-    while (writeSz && writeSz >= entrySz) {
-        uint32_t unqId = *ptr;
-        ptr++;
-        uint64_t ts    = *((uint64_t*)ptr);
-        ptr++;
-        ptr++;
-//        std::stringstream msg;
-//        msg << " Record timer id : " << unqId << " timestamp value " << std::hex << ts ;
-//        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-
-        fOut << "timestamp[" << unqId << "] = " << std::hex << ts << std::endl;
-        writeSz -= entrySz;
-    }
-#endif
     fOut.close();
     free(bufferOp);
-    
   }
 }
 
