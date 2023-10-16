@@ -80,11 +80,11 @@ namespace xdp {
     xrt::hw_context       hwContext(hwCtxImpl->get_shared_ptr());
 
     try {
-      instrKernel = xrt::kernel(hwContext, "DPU_1x4_NEW"); // NAME CHANGED
+      instrKernel = xrt::kernel(hwContext, "XDP_KERNEL");
     }
     catch (std::exception& e) {
         std::stringstream msg;
-        msg << "Unable to find DPU kernel from hardware context. Cannot get ML Timeline info. " << e.what();
+        msg << "Unable to find XDP_KERNEL kernel from hardware context. Cannot get ML Timeline info. " << e.what();
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         return;
     }
