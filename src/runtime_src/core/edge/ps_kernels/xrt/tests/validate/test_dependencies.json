@@ -1,0 +1,16 @@
+{
+  "ps_kernel_mappings": [
+    {
+      "name": "ps_aie.xclbin",
+      "dependencies": ["ps_aie.xclbin"]
+    },
+    {
+      "name": "ps_bandwidth.xclbin",
+      "dependencies": ["bandwidth.xclbin"]
+    },
+    {
+      "name": "ps_validate.xclbin",
+      "dependencies": []
+    }
+  ]
+}

@@ -11,7 +11,6 @@ import math
 
 # ----------------------------------------------------------------------------
 # VT100 ASCII Constants
-# https://en.wikipedia.org/wiki/ANSI_escape_code
 
 ESC = '\x1b'          # Escape character
 CSI = ESC + '['       # Control Sequence Introducer

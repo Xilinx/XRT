@@ -7,6 +7,7 @@
 
 #include "core/common/ishim.h"
 #include "core/pcie/common/device_pcie.h"
+#include "core/common/shim/hwctx_handle.h"
 
 namespace xrt_core {
 
@@ -41,6 +42,26 @@ public:
   virtual void close(int dev_handle) const;
   virtual void reset(const char*, const char*, const char*) const;
   virtual void xclmgmt_load_xclbin(const char* buffer) const;
+
+  virtual std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::cfg_param_type& cfg_param,
+                    xrt::hw_context::access_mode mode) const override
+  {
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, cfg_param, mode);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, uint64_t flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, xcl_bo_flags{flags}.flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, uint64_t flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
+  }
 
 private:
   // Private look up function for concrete query::request

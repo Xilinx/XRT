@@ -15,6 +15,7 @@
 
 #ifdef __cplusplus
 # include "experimental/xrt_exception.h"
+# include "experimental/xrt_fence.h"
 # include "experimental/xrt_hw_context.h"
 # include <chrono>
 # include <condition_variable>
@@ -337,6 +338,16 @@ public:
   state() const;
 
   /**
+   * return_code() - Get the return code from PS kernel
+   *
+   * @return
+   *  Return code from PS kernel run
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  return_code() const;
+
+  /**
    * add_callback() - Add a callback function for run state
    *
    * @param state       State to invoke callback on
@@ -445,6 +456,17 @@ public:
   {
     set_arg_at_index(index, boh);
   }
+
+  ///@cond
+  /// Experimental in 2023.2
+  XCL_DRIVER_DLLESPEC
+  void
+  submit_wait(const xrt::fence& fence);
+  
+  XCL_DRIVER_DLLESPEC
+  void
+  submit_signal(const xrt::fence& fence);
+  ///@endcond
 
   /**
    * set_arg - set named argument
@@ -673,7 +695,7 @@ public:
 
 
   /// @cond
-  /// Experimental in 2022.2
+  /// Experimental in 2022.2, 2023.1, 2023.3
   XCL_DRIVER_DLLESPEC
   kernel(const xrt::hw_context& ctx, const std::string& name);
   /// @endcond
@@ -738,38 +760,15 @@ public:
   uint32_t
   offset(int argno) const;
 
-  /**
-   * write() - Write to the address range of a kernel
-   *
-   * @param offset
-   *  Offset in register space to write to
-   * @param data
-   *  Data to write
-   *
-   * Throws std::out_or_range if offset is outside the
-   * kernel address space
-   *
-   * The kernel must be associated with exactly one kernel instance
-   * (compute unit), which must be opened for exclusive access.
-   */
+  [[deprecated("Please use user-managed xrt::ip "
+               "for read and write register functionality")]]
   XCL_DRIVER_DLLESPEC
   void
   write_register(uint32_t offset, uint32_t data);
 
-  /**
-   * read() - Read data from kernel address range
-   *
-   * @param offset
-   *  Offset in register space to read from
-   * @return
-   *  Value read from offset
-   *
-   * Throws std::out_or_range if offset is outside the
-   * kernel address space
-   *
-   * The kernel must be associated with exactly one kernel instance
-   * (compute unit), which must be opened for exclusive access.
-   */
+  [[deprecated("It is not recommended to use read_register() with XRT "
+               "managed kernels.  Please use user-managed xrt::ip for read and "
+               "write register functionality")]]
   XCL_DRIVER_DLLESPEC
   uint32_t
   read_register(uint32_t offset) const;
@@ -795,6 +794,10 @@ public:
   {
     return handle;
   }
+
+  kernel(std::shared_ptr<kernel_impl> impl)
+    : handle(std::move(impl))
+  {}
   /// @endcond
 
 private:

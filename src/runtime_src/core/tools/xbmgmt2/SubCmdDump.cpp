@@ -26,10 +26,10 @@ namespace po = boost::program_options;
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 static void
-flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string output)
+flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string m_output)
 {
-  // Sample output:
-  //   Output file: foo.bin
+  // Sample m_output:
+  //   m_output file: foo.bin
   //   Flash Size: 0x222 (Mbits)
   //   <Progress Bar>
 
@@ -38,7 +38,12 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
     xrt_core::error(boost::str(boost::format("%d is an invalid index") % _dev->get_device_id()));
     return;
   }
-  flasher.readBack(output);
+  try{
+    flasher.readBack(m_output);
+  } catch(const std::exception& ex){
+      std::cerr << "  ERROR: " << ex.what() << std::endl << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+  }
 }
 
 static bool
@@ -72,7 +77,7 @@ is_supported(const std::shared_ptr<xrt_core::device>& dev)
  * cache_xclbin = 0
  */
 static void
-config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string output)
+config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string m_output)
 {
   boost::property_tree::ptree ptRoot;
 
@@ -86,28 +91,33 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
     bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(_dev);
     if (is_versal) {
       try {
-        child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xgq_scaling_enabled>(_dev));
-        child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xgq_scaling_power_override>(_dev));
-        child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xgq_scaling_temp_override>(_dev));
+        child.put("throttling_enabled", xrt_core::device_query<xrt_core::query::xgq_scaling_enabled>(_dev));
+        child.put("throttling_power_override", xrt_core::device_query<xrt_core::query::xgq_scaling_power_override>(_dev));
+        child.put("throttling_temp_override", xrt_core::device_query<xrt_core::query::xgq_scaling_temp_override>(_dev));
       } catch(const xrt_core::query::exception&) {}
     } else {
       try {
-        child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
-        child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
-        child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
+        child.put("throttling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
+        child.put("throttling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
+        child.put("throttling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
       } catch(const xrt_core::query::exception&) {}
     }
   }
 
   ptRoot.put_child("Device", child);
 
-  boost::property_tree::ini_parser::write_ini(output, ptRoot);
-  std::cout << "config has been dumped to " << output << std::endl;
+  boost::property_tree::ini_parser::write_ini(m_output, ptRoot);
+  std::cout << "config has been dumped to " << m_output << std::endl;
 }
 
 SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("dump",
              "Dump out the contents of the specified option")
+    , m_device("")
+    , m_output("")
+    , m_flash(false)
+    , m_config(false)
+    , m_help(false)
 {
   const std::string longDescription = "Dump out the contents of the specified option.";
   setLongDescription(longDescription);
@@ -115,6 +125,14 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("config,c", boost::program_options::bool_switch(&m_config), "Dumps the m_output of system configuration, requires a .ini m_output file by -o option")
+    ("flash,f", boost::program_options::bool_switch(&m_flash), "Dumps the m_output of programmed system image, requires a .bin m_output file by -o option")
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the m_output to the given file")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 }
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -123,31 +141,14 @@ void
 SubCmdDump::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: dump");
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::string output = "";
-  bool flash = false;
-  bool config = false;
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
-    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
-    ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (help)  {
-    printHelp(commonOptions, hiddenOptions);
+  if (m_help)  {
+    printHelp();
     return;
   }
 
@@ -156,14 +157,14 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   // -- process "device" option -----------------------------------------------
   XBU::verbose("Option: device");
-  for (auto & str : device_str)
+  for (auto & str : m_device)
     XBU::verbose(std::string(" ") + str);
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
 
   try {
-    device = XBU::get_device(device_str, false /*inUserDomain*/);
+    device = XBU::get_device(m_device, false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -171,30 +172,30 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   }
 
   // -- process "output" option -----------------------------------------------
-  // Output file
-  XBU::verbose("Option: output: " + output);
+  // output file
+  XBU::verbose("Option: output: " + m_output);
 
-  if (output.empty()) {
+  if (m_output.empty()) {
     std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  if (!output.empty() && boost::filesystem::exists(output) && !XBU::getForce()) {
-    std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
+  if (!m_output.empty() && boost::filesystem::exists(m_output) && !XBU::getForce()) {
+    std::cerr << boost::format("m_output file already exists: '%s'") % m_output << "\n\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   //decide the contents of the dump file
-  if(flash) {
-    flash_dump(device, output);
+  if(m_flash) {
+    flash_dump(device, m_output);
     return;
   }
-  if (config) {
-    config_dump(device, output);
+  if (m_config) {
+    config_dump(device, m_output);
     return;
   }
 
   std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
-  printHelp(commonOptions, hiddenOptions);
+  printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }

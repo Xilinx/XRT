@@ -24,22 +24,30 @@ private:
   virtual const query::request&
   lookup_query(query::key_type query_key) const override;
 
-  uint32_t // ctx handle aka slotidx
-  create_hw_context(const xrt::uuid& xclbin_uuid, const xrt::hw_context::qos_type& qos, xrt::hw_context::access_mode mode) const override
+  std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::cfg_param_type& cfg_param,
+                    xrt::hw_context::access_mode mode) const override
   {
-    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
-  }
-
-  void
-  destroy_hw_context(uint32_t ctxhdl) const override
-  {
-    xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, cfg_param, mode);
   }
 
   void
   register_xclbin(const xrt::xclbin& xclbin) const override
   {
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, uint64_t flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), size, xcl_bo_flags{flags}.flags);
+  }
+
+  std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, uint64_t flags) override
+  {
+    return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
   }
 };
 

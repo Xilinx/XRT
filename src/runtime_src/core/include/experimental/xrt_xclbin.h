@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef XRT_XCLBIN_H_
@@ -436,6 +437,14 @@ public:
   class kernel : public detail::pimpl<kernel_impl>
   {
   public:
+    /**
+     * @enum kernel_type
+     *
+     * The kernel type is extracted from the XML kernel meta data section
+     */
+    enum class kernel_type : uint8_t { none = 0, pl = 1, ps = 2, dpu = 3};
+    
+  public:
     kernel() = default;
 
     explicit
@@ -452,6 +461,16 @@ public:
     XCL_DRIVER_DLLESPEC
     std::string
     get_name() const;
+
+    /**
+     * get_type() - Get kernel type
+     *
+     * @return
+     *  The type of the kernel
+     */
+    XCL_DRIVER_DLLESPEC
+    kernel_type
+    get_type() const;
 
     /**
      * get_cus() - Get list of cu from kernel.
@@ -574,10 +593,16 @@ public:
   /**
    * xclbin() - Constructor from an xclbin filename
    *
-   * @param filename
-   *  Path to the xclbin file
    *
-   * Throws if file not found.
+   * @param filename : A path relative or absolute to an xclbin file
+   *
+   * If the specified path is an absolute path then the function
+   * returns this path or throws if file does not exist.  If the path
+   * is relative, or just a plain file name, then the function check
+   * first in current directory, then in the platform specific xclbin
+   * repository. 
+   *
+   * Throws if file could not be found.
    */
   XCL_DRIVER_DLLESPEC
   explicit
@@ -733,6 +758,18 @@ public:
   XCL_DRIVER_DLLESPEC
   uuid
   get_uuid() const;
+
+  /**
+  * get_interface_uuid() - Get the interface uuid of the xclbin
+  *
+  * @return
+  *  Interface uuid of the xclbin
+  *
+  * An exception is thrown if the data is missing.
+  */
+  XCL_DRIVER_DLLESPEC
+  uuid
+  get_interface_uuid() const;
 
   /**
    * get_target_type() - Get the type of this xclbin

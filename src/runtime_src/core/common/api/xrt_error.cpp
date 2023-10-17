@@ -112,6 +112,8 @@ error_module_to_string(xrtErrorModule err)
     {XRT_ERROR_MODULE_AIE_CORE,   "MODULE_AIE_CORE"},
     {XRT_ERROR_MODULE_AIE_MEMORY, "MODULE_AIE_MEMORY"},
     {XRT_ERROR_MODULE_AIE_SHIM,   "MODULE_AIE_SHIM"},
+    {XRT_ERROR_MODULE_AIE_NOC,    "MODULE_AIE_NOC"},
+    {XRT_ERROR_MODULE_AIE_PL,     "MODULE_AIE_PL"},
   };
 
   return code_to_string(map, err, "Unknown error module");
@@ -249,6 +251,9 @@ public:
   std::string
   to_string()
   {
+    if (!m_errcode)
+      return "No async error was detected";
+
     auto fmt = boost::format
       ("%s\n"
        "Timestamp: %s")

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1075,7 +1075,7 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
     //return max length of the cuname and port names
     size_t max1 = 0, max2 = 0;
     char sep = '/';
-    for (auto slotName: aSlotNames) {
+    for (const auto& slotName: aSlotNames) {
         size_t found1;
         size_t start = 0;
         found1 = slotName.find(sep, 0);

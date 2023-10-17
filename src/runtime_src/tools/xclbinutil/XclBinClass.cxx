@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2018-2022 Xilinx, Inc Copyright (C) 2022 
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  * Advanced Micro Devices, Inc. 
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -217,7 +218,7 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header)
     _pt_header.put("FeatureRomTimeStamp", FormattedOutput::getFeatureRomTimeStampAsString(m_xclBinHeader).c_str());
     _pt_header.put("Version", FormattedOutput::getVersionAsString(m_xclBinHeader).c_str());
     _pt_header.put("Mode", FormattedOutput::getModeAsString(m_xclBinHeader).c_str());
-    _pt_header.put("FeatureRomUUID", FormattedOutput::getFeatureRomUuidAsString(m_xclBinHeader).c_str());
+    _pt_header.put("InterfaceUUID", FormattedOutput::getInterfaceUuidAsString(m_xclBinHeader).c_str());
     _pt_header.put("PlatformVBNV", FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader).c_str());
     _pt_header.put("XclBinUUID", FormattedOutput::getXclBinUuidAsString(m_xclBinHeader).c_str());
     _pt_header.put("DebugBin", FormattedOutput::getDebugBinAsString(m_xclBinHeader).c_str());
@@ -539,8 +540,8 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
 
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
-  auto sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
-  XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+  auto sInterfaceUUID = _ptHeader.get<std::string>("InterfaceUUID");
+  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&_axlfHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
   auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV,
 
@@ -881,11 +882,6 @@ XclBin::updateHeaderFromSection(Section* _pSection)
 
     // Feature ROM Time Stamp
     m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
-
-    // Feature ROM UUID
-    auto sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
-    sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
-    XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
 
     // Feature ROM VBNV
     auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
@@ -1526,16 +1522,16 @@ XclBin::setKeyValue(const std::string& _keyValue)
         }
       }
       return; // Key processed
-    }
+    }   
 
     if (sKey == "FeatureRomTimestamp") {
       m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
       return; // Key processed
     }
 
-    if (sKey == "FeatureRomUUID") {
+    if (sKey == "InterfaceUUID") {
       sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
-      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
       return; // Key processed
     }
 
@@ -1673,12 +1669,13 @@ XclBin::reportInfo(std::ostream& _ostream, const std::string& _sInputFile, bool 
 
 static void
 parsePSKernelString(const std::string& encodedString,
+                    std::string& mem_banks,
                     std::string& symbol_name,
                     unsigned long& num_instances,
                     std::string& path_to_library)
 // Line being parsed:
-//   Syntax: <symbol_name>:<instances>:<path_to_shared_library>
-//   Example: myKernel:3:./data/mylib.so
+//   Syntax: <mem_banks>:<symbol_name>:<instances>:<path_to_shared_library>
+//   Example: 0,1:myKernel:3:./data/mylib.so
 //
 // Note: A file name can contain a colen (e.g., C:\test)
 {
@@ -1691,7 +1688,7 @@ parsePSKernelString(const std::string& encodedString,
   std::vector<std::string> tokens;
 
   // Parse the string until the entire string has been parsed or MAX_TOKENS tokens have been found
-  constexpr size_t maxTokens = 3;
+  constexpr size_t maxTokens = 4;
   while ((lastPos < encodedString.length() + 1) &&
          (tokens.size() < maxTokens)) {
     pos = encodedString.find_first_of(delimiters, lastPos);
@@ -1727,7 +1724,19 @@ parsePSKernelString(const std::string& encodedString,
   // -- [2]: Symbolic name --
   symbol_name = (tokens.size() > 2) ? tokens[2] : "";
 
-  XUtil::TRACE(boost::format("PSKernel command arguments: symbol_name='%s'; num_instances=%d; library='%s'") % symbol_name % num_instances % path_to_library);
+  // -- [3]: Mem banks --
+  mem_banks = (tokens.size() > 3) ? tokens[3] : "";
+
+  // add check for leading and trailing ;
+  if (!mem_banks.empty()) {
+    if (mem_banks.front() == ',' || mem_banks.back() == ',' )
+      throw std::runtime_error("Specifїed mem_banks is not valid");
+    
+    std::cout << "Attention: Specifying memory banks in --add-pskernel is an advanced feature." << std::endl;
+    std::cout << "           Be sure to validate connections after performing this operation." << std::endl;
+  }
+
+  XUtil::TRACE(boost::format("PSKernel command arguments: mem_banks='%s', symbol_name='%s'; num_instances=%d; library='%s'") % mem_banks % symbol_name % num_instances % path_to_library);
 }
 
 void getSectionPayload(const XclBin* pXclBin,
@@ -1790,15 +1799,17 @@ updateKernelSections(const std::vector<boost::property_tree::ptree> &kernels,
   }
 }
 
+// --add-pskernel
 void
 XclBin::addPsKernel(const std::string& encodedString)
 {
   XUtil::TRACE("Adding PSKernel");
   // Get the PS Kernel metadata from the encoded string
+  std::string memBanks;
   std::string symbolicName;
   std::string kernelLibrary;
   unsigned long numInstances = 0;
-  parsePSKernelString(encodedString, symbolicName, numInstances, kernelLibrary);
+  parsePSKernelString(encodedString, memBanks, symbolicName, numInstances, kernelLibrary);
 
   // Examine the PS library data mining the function and its arguments
   // Convert the function signatures into something useful.
@@ -1808,7 +1819,7 @@ XclBin::addPsKernel(const std::string& encodedString)
 
   // Create the same schema that is used for kernels
   boost::property_tree::ptree ptPSKernels;
-  XUtil::createPSKernelMetadata(numInstances, ptFunctions, kernelLibrary, ptPSKernels);
+  XUtil::createPSKernelMetadata(memBanks, numInstances, ptFunctions, kernelLibrary, ptPSKernels);
 
   // Update the EMBEDDED_METADATA, MEM_TOPOLOGY, IP_LAYOUT, and CONNECTIVITY sections
   const boost::property_tree::ptree ptEmpty;  
@@ -1874,14 +1885,14 @@ XclBin::addPsKernel(const std::string& encodedString)
   }
 }
 
-
+// --add-kernel
 void
 XclBin::addKernels(const std::string& jsonFile)
 {
   XUtil::TRACE("Adding fixed kernel");
 
   // -- Read in the Fixed Kernel Metadata
-  XUtil::TRACE("Reading given JSON file: " + jsonFile);
+  XUtil::TRACE("Reading given Fixed Kernel JSON file: " + jsonFile);
   std::fstream ifFixedKernels;
   ifFixedKernels.open(jsonFile, std::ifstream::in | std::ifstream::binary);
   if (!ifFixedKernels.is_open()) {
@@ -1907,8 +1918,42 @@ XclBin::addKernels(const std::string& jsonFile)
   updateKernelSections(kernels, true /*isFixedPS*/, this);
 }
 
+void
+XclBin::updateInterfaceuuid()
+{
+  XUtil::TRACE("Updating Interface uuid in xclbin");
+  // Get the PARTITION_METADATA property tree (if there is one)
+  const boost::property_tree::ptree ptEmpty;
+  Section* pSection = findSection(PARTITION_METADATA);
+  if (pSection == nullptr) {
+    return;
+  }
 
+  // Get the complete JSON metadata tree
+  boost::property_tree::ptree ptRoot;
+  pSection->getPayload(ptRoot);
+  if (ptRoot.empty()) {
+    throw std::runtime_error("ERROR: Unable to get the complete JSON metadata tree.");
+  }
 
+  // Look for the "partition_metadata" node
+  boost::property_tree::ptree ptPartitionMetadata = ptRoot.get_child("partition_metadata", ptEmpty);
+  if (ptPartitionMetadata.empty()) {
+    throw std::runtime_error("ERROR: Partition metadata node not found.");
+  }
 
+  // Look for the "interfaces" node
+  auto ptInterfaces = XUtil::as_vector<boost::property_tree::ptree>(ptPartitionMetadata, "interfaces");
+  // DRC check for "interfaces"
+  if (m_xclBinHeader.m_header.m_mode == XCLBIN_PR) { // check only for xclbin's, not for xsabin's
+    if (ptInterfaces.size() > 1) {
+      throw std::runtime_error("ERROR: Invalid interfaces found in partition_metadata");
+    }
+  }
 
-
+  // Updating axlf header interface_uuid with interface_uuid from partition_metadata  
+  boost::property_tree::ptree ptInterface = ptInterfaces[0];
+  auto sInterfaceUUID = ptInterface.get<std::string>("interface_uuid", "00000000-0000-0000-0000-000000000000");
+  sInterfaceUUID.erase(std::remove(sInterfaceUUID.begin(), sInterfaceUUID.end(), '-'), sInterfaceUUID.end()); // Remove the '-'
+  XUtil::hexStringToBinaryBuffer(sInterfaceUUID, (unsigned char*)&m_xclBinHeader.m_header.m_interface_uuid, sizeof(axlf_header::m_interface_uuid));
+}

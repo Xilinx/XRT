@@ -26,6 +26,9 @@ class SubCmdAdvanced : public SubCmd {
  public:
   SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary);
   virtual ~SubCmdAdvanced() {};
+
+  private:
+    bool m_help;
 };
 
 #endif

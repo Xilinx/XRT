@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -60,7 +60,8 @@ namespace xdp {
     //  we use a memory resource, we must have a TS2MM.  We cannot mix FIFO
     //  and memory resources for trace offload.
     bool usesTs2mm = false ;
-
+    bool usesFifo = false ;
+    
     // Our AIMs and ASMs can be attached to any AXI-MM or AXI-S connection.
     //  If we cannot associate the AXI-MM or AXI-S connection to a specific
     //  compute unit, we consider them to be "floating" and we lump their
@@ -84,6 +85,9 @@ namespace xdp {
     std::vector<Monitor*> aims ;
     std::vector<Monitor*> asms ;
 
+    // HLS deadlock diagnosis registers
+    std::unique_ptr<ip_metadata> ip_metadata_section = nullptr;
+
     ~PLInfo() ;
     void addComputeUnitPorts(const std::string& kernelName,
                              const std::string& portName,
@@ -91,10 +95,12 @@ namespace xdp {
     void addArgToPort(const std::string& kernelName,
                       const std::string& argName,
                       const std::string& portName);
-    void connectArgToMemory(const std::string& kernelName,
+    void connectArgToMemory(const std::string& cuName,
                             const std::string& portName,
                             const std::string& argName,
                             int32_t memId);
+    // Collect all compute units of a kernel
+    std::vector<ComputeUnitInstance*> collectCUs(const std::string& kernelName);
   } ;
 
   // The AIEInfo struct keeps track of all of the information associated
@@ -128,9 +134,11 @@ namespace xdp {
     std::map<uint32_t, uint32_t> aieCoreCountersMap ;
     std::map<uint32_t, uint32_t> aieMemoryCountersMap ;
     std::map<uint32_t, uint32_t> aieShimCountersMap ;
+    std::map<uint32_t, uint32_t> aieMemTileCountersMap ;
     std::map<uint32_t, uint32_t> aieCoreEventsMap ;
     std::map<uint32_t, uint32_t> aieMemoryEventsMap ;
     std::map<uint32_t, uint32_t> aieShimEventsMap ;
+    std::map<uint32_t, uint32_t> aieMemTileEventsMap ;
     std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList ;
 
     // A list of all the NoC nodes identified at compile time used by

@@ -40,7 +40,7 @@ namespace {
 void
 spiCommand(po::variables_map& vm) {
     //root privileges required.
-    XBU::sudo_or_throw_err();
+    XBU::sudo_or_throw("ERROR: root privileges required.");
 
     //mandatory command line args
     std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
@@ -151,7 +151,7 @@ OO_Program_Spi::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  XBU::sudo_or_throw_err();
+  XBU::sudo_or_throw("ERROR: root privileges required.");
  
   try {
       spiCommand(vm);

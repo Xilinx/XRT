@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef DEVICE_PCIE_H
 #define DEVICE_PCIE_H
@@ -35,7 +23,7 @@ public:
   /**
    * get_device_handle() - Get underlying shim device handle
    *
-   * Throws if called on non userof devices
+   * Throws if called on non userpf devices
    */
   xclDeviceHandle
   get_device_handle() const;

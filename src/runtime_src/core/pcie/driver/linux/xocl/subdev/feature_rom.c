@@ -541,15 +541,20 @@ static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 	size_t size = 0;
 	int ret;
 
-	ret = load_firmware_from_disk(pdev, &buf, &size, "xsabin");
+	/*
+	 * If this is a vmr devices, load firmware from device first.
+	 * If this is not a vmr device, we continue to try next possible
+	 * location.
+	 */
+	ret = load_firmware_from_vmr(pdev, &buf, &size);
+	if (ret)
+		ret = load_firmware_from_disk(pdev, &buf, &size, "xsabin");
 	if (ret)
 		ret = load_firmware_from_disk(pdev, &buf, &size, "dsabin");
 	if (ret)
 		ret = load_firmware_from_flash(pdev, &buf, &size);
-	if (ret)
-		ret = load_firmware_from_vmr(pdev, &buf, &size);
 	if (ret) {
-		xocl_err(&pdev->dev, "can't load firmware, give up");
+		xocl_err(&pdev->dev, "can't load firmware, ret:%d, give up", ret);
 		return ret;
 	}
 

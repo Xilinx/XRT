@@ -21,23 +21,22 @@
 #include "xdp/config.h"
 
 // These are the functions that are visible when the plugin is dynamically
-//  linked in.  XRT should call them directly
+// linked in.  XRT should call them directly
 extern "C"
 XDP_EXPORT
 void user_event_start_cb(unsigned int functionID,
                          const char* label,
-                         const char* tooltip) ;
+                         const char* tooltip);
+extern "C"
+XDP_EXPORT
+void user_event_end_cb(unsigned int functionID);
 
 extern "C"
 XDP_EXPORT
-void user_event_end_cb(unsigned int functionID) ;
+void user_event_happened_cb(const char* label);
 
 extern "C"
 XDP_EXPORT
-void user_event_happened_cb(const char* label) ;
-
-extern "C"
-XDP_EXPORT
-void user_event_time_ns_cb(unsigned long long int time_ns, const char* label) ;
+void user_event_time_ns_cb(unsigned long long int time_ns, const char* label);
 
 #endif

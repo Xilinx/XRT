@@ -54,7 +54,7 @@ void xocl_subdev_fini(xdev_handle_t xdev_hdl)
 			kfree(core->subdevs[i]);
 			core->subdevs[i] = NULL;
 		}
-		
+
 	}
 
 	if (core->dyn_subdev_store) {
@@ -148,7 +148,7 @@ static struct xocl_subdev *xocl_subdev_info2dev(xdev_handle_t xdev_hdl,
 	return NULL;
 }
 
-static int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+static int __xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 		struct xocl_subdev_info *sdev_info,
 		struct xocl_subdev **rtn_subdev)
 {
@@ -162,7 +162,8 @@ static int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	}
 
 	if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
-		xocl_xdev_dbg(xdev_hdl, "subdev is in-use");
+		xocl_xdev_dbg(xdev_hdl, "subdev %s is in-use", subdev->info.name);
+		*rtn_subdev = subdev;
 		return -EEXIST;
 	}
 
@@ -178,6 +179,25 @@ static int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	subdev->state = XOCL_SUBDEV_STATE_INIT;
 	*rtn_subdev = subdev;
 	return 0;
+}
+
+int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+		struct xocl_subdev_info *sdev_info)
+{
+	int retval = 0;
+	struct xocl_subdev *subdev = NULL;
+
+	xocl_lock_xdev(xdev_hdl);
+	retval = __xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
+	if ((retval && retval != -EEXIST) ||
+	    subdev->state != XOCL_SUBDEV_STATE_INIT) {
+		xocl_unlock_xdev(xdev_hdl);
+		return retval;
+	}
+
+	xocl_unlock_xdev(xdev_hdl);
+
+	return subdev->info.dev_idx;
 }
 
 static struct xocl_subdev *xocl_subdev_lookup(struct platform_device *pldev)
@@ -393,7 +413,11 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+			fallthrough;
+#else
 			/* fall through */
+#endif
 		case XOCL_SUBDEV_STATE_ADDED:
 		default:
 			__xocl_platform_device_unreg(xdev_hdl, pldev, state);
@@ -485,7 +509,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 				res[i].end += iostart;
 			/*
 			 * Make sure the resource of subdevice is a
-			 * child of the pci bar resource in the 
+			 * child of the pci bar resource in the
 			 * resource tree.
 			 */
 			res[i].parent = &(core->pdev->resource[bar_idx]);
@@ -528,6 +552,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 		goto error;
 	priv_data->debug_hdl = reg.hdl;
 	priv_data->data_sz = data_len;
+	priv_data->inst_idx = subdev->info.override_idx;
 
 	retval = platform_device_add_data(subdev->pldev, priv_data,
 			sizeof(*priv_data) + data_len);
@@ -562,8 +587,9 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	int i, retval;
 	uint32_t dev_idx = 0;
 
-	retval = xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
-	if (retval)
+	retval = __xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
+	if ((retval && retval != -EEXIST) ||
+	    subdev->state != XOCL_SUBDEV_STATE_INIT)
 		goto error;
 
 	/* Restore the dev_idx */
@@ -592,7 +618,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		memcpy(res, sdev_info->res, sizeof(*res) * sdev_info->num_res);
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].name) {
-				res[i].name = subdev->res_name + 
+				res[i].name = subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN;
 				strncpy(subdev->res_name +
 					i * XOCL_SUBDEV_RES_NAME_LEN,
@@ -998,6 +1024,26 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 				core->subdevs[i][j]->info.level == level)
 				__xocl_subdev_destroy(xdev_hdl,
 					core->subdevs[i][j]);
+	xocl_unlock_xdev(xdev_hdl);
+}
+
+void xocl_subdev_destroy_by_slot(xdev_handle_t xdev_hdl,
+				 uint32_t slot_id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i = 0, j = 0;
+	int level = XOCL_SUBDEV_LEVEL_URP; // Slot is only valid for URP level
+
+	xocl_lock_xdev(xdev_hdl);
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
+			if (core->subdevs[i][j] &&
+				(core->subdevs[i][j]->info.level == level) &&
+				(core->subdevs[i][j]->info.slot_idx == slot_id)){
+					__xocl_subdev_destroy(xdev_hdl,
+						core->subdevs[i][j]);
+			}
+
 	xocl_unlock_xdev(xdev_hdl);
 }
 
@@ -1442,7 +1488,7 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
  * |----------------------+-----|
  * | rsvd                       |
  * |----------------------------|
- *   ... start 1st entry ...          
+ *   ... start 1st entry ...
  * +--------------+---+---+-----|
  * |uuid(15:0)    |bar|rev| type|
  * |--------------+---+---+-----|
@@ -1643,7 +1689,11 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			    (subdev_info.priv_data))->flash_type,
 			    FLASH_TYPE_QSPIPS, strlen(FLASH_TYPE_QSPIPS));
 			/* default is FLASH_TYPE_SPI, thus pass through. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+			fallthrough;
+#else
 			/* fall through */
+#endif
 		case XOCL_VSEC_FLASH_TYPE_SPI_IP:
 		case XOCL_VSEC_FLASH_TYPE_SPI_REG:
 			xocl_xdev_dbg(xdev,
@@ -1683,7 +1733,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ, &bar, &offset, NULL);
 	if (!ret) {
-		int bar_payload = 0; 
+		int bar_payload = 0;
 		u64 offset_payload = 0;
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VMR_VSEC;
 
@@ -1797,7 +1847,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_fetch_dynamic_platform(core, &in, -1);
 		vsec = true;
 	}
-		
+
 	/* workaround firewall completer abort issue */
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
 	if (cap) {
@@ -1918,10 +1968,10 @@ int xocl_enable_vmr_boot(xdev_handle_t xdev)
 	err = xocl_vmr_enable_multiboot(xdev);
 	if (err && err != -ENODEV) {
 		xocl_xdev_info(xdev, "config vmr multi-boot failed. err: %d. continue to reset.", err);
-	} 
+	}
 
 	/*
-	 * set reset signal 
+	 * set reset signal
 	 */
 	err = xocl_pmc_enable_reset(xdev);
 	if (err && err != -ENODEV) {
@@ -2131,7 +2181,7 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 	}
 
 	xocl_dbg(&pdev->dev, "waiting for %d ms", i);
-	if (i == timeout) 
+	if (i == timeout)
 		return -ETIME;
 
 	return 0;

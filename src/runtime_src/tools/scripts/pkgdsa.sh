@@ -704,7 +704,7 @@ dodsabin()
 
 dodebdev()
 {
-    uRel=`lsb_release -r -s`
+    uRel=`awk -F= '$1=="VERSION_ID" {print $2}' /etc/os-release | tr -d '"'`
     dir=debbuild/$dsa-$version-dev_${uRel}
     pkg_dirname=debbuild/$dsa-dev-${version}-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname
@@ -755,7 +755,7 @@ EOF
 
 dodeb()
 {
-    uRel=`lsb_release -r -s`
+    uRel=`awk -F= '$1=="VERSION_ID" {print $2}' /etc/os-release | tr -d '"'`
     dir=debbuild/$dsa-${version}_${uRel}
     pkg_dirname=debbuild/$dsa-${version}-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname

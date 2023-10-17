@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -183,32 +183,55 @@ namespace xdp {
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
                                          DeviceIntf* devInterface)
   {
+    if (devInterface->hasHSDPforPL()) {
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+           "HSDP Infrastructure is used for PL trace offload. So, just initialize PL monitors for trace and skip offload in XRT.");
+      return;
+    }
+
     uint64_t trace_buffer_size = 0;
     std::vector<uint64_t> buf_sizes;
 
     if (devInterface->hasTs2mm()) {
+
       size_t num_ts2mm = devInterface->getNumberTS2MM();
       trace_buffer_size = GetTS2MMBufSize();
-      uint64_t each_buffer_size = devInterface->getAlignedTraceBufferSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
 
+      uint64_t each_buffer_size = devInterface->getAlignedTraceBufSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
+
+      // Initialize all of the buffers with the size requested by
+      // the user.
       buf_sizes.resize(num_ts2mm, each_buffer_size);
-      for(size_t i = 0; i < num_ts2mm; i++) {
-        Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex(i));
+
+      // Now go through each of the memories connected to the TS2MM
+      // and verify that we have enough space to allocate the buffer
+      for(size_t i = 0; i < num_ts2mm; ++i) {
+        Memory* memory =
+          db->getStaticInfo().getMemory(deviceId,
+                                        devInterface->getTS2MmMemIndex(i));
         if(nullptr == memory) {
-          std::string msg = "Information about memory index " + std::to_string(devInterface->getTS2MmMemIndex(i)) 
-                             + " not found in given xclbin. So, cannot check availability of memory resource for "
+          std::string msg = "Information about memory index " +
+                            std::to_string(devInterface->getTS2MmMemIndex(i)) + 
+                             " not found in given xclbin. So, cannot check availability of memory resource for "
                              + std::to_string(i) +
                              + "th. TS2MM for device trace offload.";
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
           return;
-        } else {
-          uint64_t memorySz = (memory->size) * 1024 ;
-          if (memorySz > 0 && each_buffer_size > memorySz) {
-            buf_sizes[i] = memorySz ;
-            std::string msg = "Trace buffer size for " + std::to_string(i)
-                              + "th. TS2MM is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
-          }
+        }
+
+        uint64_t memorySz = (memory->size) * 1024;
+        if (memorySz > 0 && each_buffer_size > memorySz) {
+          // If we are requesting more than the total available memory, then
+          // reduce it to a reasonable size so it fits
+          auto eightyPercent =
+            static_cast<uint64_t>(static_cast<double>(memorySz) * 0.8);
+          eightyPercent =
+            devInterface->getAlignedTraceBufSize(eightyPercent, 1);
+
+          buf_sizes[i] = eightyPercent;
+          std::string msg = "Trace buffer size for TS2MM " + std::to_string(i)
+                            + " is too big for memory resource.  Using " + std::to_string(eightyPercent) + " (80% of total resource) instead.";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
       }
     }
@@ -337,7 +360,7 @@ namespace xdp {
 
   void DeviceOffloadPlugin::readCounters()
   {
-    for (auto o : offloaders)
+    for (const auto& o : offloaders)
     {
       uint64_t deviceId = o.first ;
       xdp::CounterResults results ;
@@ -388,7 +411,7 @@ namespace xdp {
     //  the plugin object.  At this time, the information in the database
     //  still exists and is viable, so we should flush our devices
     //  and write our writers.
-    for (auto o : offloaders) {
+    for (const auto& o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
       flushTraceOffloader(offloader);
       checkTraceBufferFullness(offloader, o.first);
@@ -450,7 +473,7 @@ namespace xdp {
 
   void DeviceOffloadPlugin::clearOffloaders()
   {
-    for(auto entry : offloaders) {
+    for(const auto& entry : offloaders) {
       auto offloader = std::get<0>(entry.second);
       auto logger    = std::get<1>(entry.second);
 

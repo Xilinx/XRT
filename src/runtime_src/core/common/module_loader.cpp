@@ -18,10 +18,10 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
+#include "detail/xilinx_xrt.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
-
 
 #ifdef _WIN32
 # pragma warning (disable : 4996)
@@ -95,20 +95,33 @@ shim_name()
 }
 
 static bfs::path
-xilinx_xrt()
+get_xilinx_xrt()
 {
   bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
-  if (xrt.empty()){
-#if defined (__aarch64__) || defined (__arm__)
-    xrt = bfs::path("/usr");
-#elif defined (_WIN32)
-    xrt = bfs::path("C:/Windows/System32/AMD");
-#else
-    throw std::runtime_error("XILINX_XRT not set");
-#endif
-  }
+  if (!xrt.empty())
+    return xrt;
 
+  return xrt_core::detail::xilinx_xrt();
+}
+
+static bfs::path
+xilinx_xrt()
+{
+  static bfs::path xrt = get_xilinx_xrt();
   return xrt;
+}
+
+static bfs::path
+xclbin_path(const std::string& xclbin)
+{
+  bfs::path xpath(xclbin);
+  if (!xpath.is_absolute())
+    xpath = xrt_core::detail::xclbin_path(xclbin);
+  
+  if (bfs::exists(xpath) && bfs::is_regular_file(xpath))
+    return xpath;
+
+  throw std::runtime_error("No such xclbin '" + xpath.string() + "'");
 }
 
 static bfs::path
@@ -144,6 +157,27 @@ shim_path()
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
+}
+
+static std::vector<std::string>
+driver_plugin_paths()
+{
+  std::vector<std::string> ret;
+  bfs::directory_iterator p{shim_path().parent_path()};
+
+  // All driver plug-ins are in the same directory as shim .so and with below prefix and suffix.
+  const std::string pre = "libxrt_driver_";
+  const std::string suf = std::string(".so.") + XRT_VERSION_MAJOR;
+  while (p != bfs::directory_iterator{}) {
+    const auto name = p->path().filename().string();
+    if ((name.size() > (pre.size() + suf.size())) &&
+      !name.compare(0, pre.size(), pre) &&
+      !name.compare(name.size() - suf.size(), suf.size(), suf))
+      ret.push_back(p->path().string());
+    p++;
+  }
+
+  return ret;
 }
 
 static void*
@@ -192,5 +226,30 @@ shim_loader()
   auto path = shim_path();
   load_library(path.string());
 }
+
+driver_loader::
+driver_loader()
+{
+  auto paths = driver_plugin_paths();
+
+  for (const auto& p : paths)
+    load_library(p);
+}
+
+namespace environment {
+
+std::string
+xilinx_xrt()
+{
+  return ::xilinx_xrt().string();
+}
+
+std::string
+xclbin_path(const std::string& xclbin_name)
+{
+  return ::xclbin_path(xclbin_name).string();
+}
+
+} // environment
 
 } // xrt_core

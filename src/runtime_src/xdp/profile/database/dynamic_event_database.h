@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -57,12 +57,12 @@ namespace xdp {
     // information per execution.  This abstracts the host API event
     // storage and matching of start with end events.  User level events
     // are also stored here as well as dependency information.
-    HostDB* host = nullptr;
+    std::unique_ptr<HostDB> host = nullptr;
 
     // Device related information.  There can be multiple devices active
     // in each execution.  This abstracts the device events and the
     // matching of start with end device events.
-    std::map<uint64_t, DeviceDB*> devices;
+    std::map<uint64_t, std::unique_ptr<DeviceDB>> devices;
     DeviceDB* getDeviceDB(uint64_t deviceId);
 
     // A unique event id for every event added to the database, both host
@@ -82,7 +82,7 @@ namespace xdp {
 
   public:
     XDP_EXPORT VPDynamicDatabase(VPDatabase* d);
-    XDP_EXPORT ~VPDynamicDatabase();
+    XDP_EXPORT ~VPDynamicDatabase() = default;
 
     // For multiple xclbin designs, add a device event that marks the
     // transition from one xclbin to another
@@ -122,6 +122,9 @@ namespace xdp {
     //  the plugins, we have a seperate matching of start to end
     XDP_EXPORT void markXRTUIDStart(uint64_t uid, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingXRTUIDStart(uint64_t uid);
+
+    XDP_EXPORT void markEventPairStart(uint64_t functionId, const EventPair& events);
+    XDP_EXPORT EventPair matchingEventPairStart(uint64_t functionId);
 
     // A lookup into the string table.  If the string isn't already in
     // the string table it will be added
@@ -172,10 +175,17 @@ namespace xdp {
     XDP_EXPORT void addAIESample(uint64_t deviceId, double timestamp,
 				   const std::vector<uint64_t>& values) ;
     XDP_EXPORT std::vector<counters::Sample> getAIESamples(uint64_t deviceId) ;
+    XDP_EXPORT void addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,
+				   unsigned long timestamp2, const std::vector<uint64_t>& values) ;
+    XDP_EXPORT std::vector<counters::DoubleSample> getAIETimerSamples(uint64_t deviceId) ;
 
     // Device Trace Buffer Fullness Status - PL
     XDP_EXPORT void setPLTraceBufferFull(uint64_t deviceId, bool val);
     XDP_EXPORT bool isPLTraceBufferFull(uint64_t deviceId);
+
+    // Deadlock Diagnosis metadata
+    XDP_EXPORT void setPLDeadlockInfo(uint64_t deviceId, const std::string& str);
+    XDP_EXPORT std::string getPLDeadlockInfo();
   } ;
   
 }

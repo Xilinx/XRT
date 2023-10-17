@@ -88,7 +88,7 @@ add_board_info(const xrt_core::device* device, ptree_type& pt)
     bd_info.add("error_msg", ex.what());
   }
 
-  if (xrt_core::device_query<xq::is_versal>(device)) {
+  if (xrt_core::device_query_default<xq::is_versal>(device, false)) {
     bd_info.put("revision", xrt_core::device_query<xq::hwmon_sdm_revision>(device));
     bd_info.put("mfg_date", xrt_core::device_query<xq::hwmon_sdm_mfg_date>(device));
   }
@@ -149,36 +149,111 @@ add_p2p_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_performance_info(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    const auto mode = xrt_core::device_query<xq::performance_mode>(device);
+    pt.add("performance_mode", xq::performance_mode::parse_status(mode));
+  } 
+  catch (xrt_core::query::no_such_key&) {
+    pt.add("performance_mode", "not supported");
+  }
+}
+
+static std::string
+get_host_mem_status(const xrt_core::device* device)
+{
+  std::string host_mem_status;
+  try {
+    // Verify the user enabled host-mem
+    auto hostValue = xrt_core::device_query<xrt_core::query::shared_host_mem>(device);
+    host_mem_status = (hostValue > 0 ? "enabled" : "disabled");
+  }
+  catch (xrt_core::query::no_such_key&) {
+    // Device does not support host memory features
+    return "not supported";
+  }
+
+  try {
+    // Verify the address translator exists. Via the shell or an xclbin
+    xrt_core::device_query<xrt_core::query::enabled_host_mem>(device);
+  }
+  catch (xrt_core::query::exception&) {
+    // Device is missing an xclbin or shell with an address translator IP
+    return "disabled";
+  }
+
+  return host_mem_status;
+}
+
+void
+add_host_mem_info(const xrt_core::device* device, ptree_type& pt)
+{
+  pt.add("host_memory_status", get_host_mem_status(device));
+}
+
+void
 add_status_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_status;
 
   add_mig_info(device, pt_status);
   add_p2p_info(device, pt_status);
+  add_performance_info(device, pt_status);
+  add_host_mem_info(device, pt_status);
 
   pt.put_child("status", pt_status);
 }
 
 void
-add_controller_info(const xrt_core::device* device, ptree_type& pt)
+add_versal_controller_info(const xrt_core::device* device, ptree_type& pt)
 {
-  ptree_type controller;
+  std::string sc_ver;
+  std::string exp_sc_ver;
+  std::string version;
+  std::string serial_num;
+  std::string oem_id;
+  try {
+    sc_ver = xrt_core::device_query<xq::hwmon_sdm_active_msp_ver>(device);
+    exp_sc_ver = xrt_core::device_query<xq::hwmon_sdm_target_msp_ver>(device);
+    serial_num = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
+    oem_id = xq::oem_id::parse(xrt_core::device_query<xq::hwmon_sdm_oem_id>(device));
+  }
+  catch (const xq::exception&) {
+    // Ignoring if not available
+  }
 
   try {
     ptree_type sc;
-    std::string sc_ver = xrt_core::device_query<xq::xmc_sc_version>(device);
-    if (sc_ver.empty()) {
-      try {
-        sc_ver = xrt_core::device_query<xq::hwmon_sdm_active_msp_ver>(device);
-      }
-      catch (const xq::exception&) {
-        // Ignoring if not available
-      }
-    }
     sc.add("version", sc_ver);
-    sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
-    ptree_type cmc;
+    sc.add("expected_version", exp_sc_ver);
 
+    ptree_type cmc;
+    cmc.add("version", version);
+    cmc.add("serial_number", serial_num);
+    cmc.add("oem_id", oem_id);
+
+    ptree_type controller;
+    controller.put_child("satellite_controller", sc);
+    controller.put_child("card_mgmt_controller", cmc);
+    pt.put_child("controller", controller);
+  }
+  catch (const xq::exception&) {
+    // Ignoring if not available: Edge Case
+  }
+}
+
+void
+add_controller_info(const xrt_core::device* device, ptree_type& pt)
+{
+  std::string sc_ver;
+  std::string exp_sc_ver;
+  std::string version;
+  std::string serial_num;
+  std::string oem_id;
+  try {
+    sc_ver = xrt_core::device_query<xq::xmc_sc_version>(device);
+    exp_sc_ver = xrt_core::device_query<xq::expected_sc_version>(device);
     /*
      * The card managment controller (CMC) version number is formatted where the bottom three bytes contain
      * the Major, Minor, and Version values respectively.
@@ -190,36 +265,30 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
      * 03 -> Version Number
      * Output = 1.2.3
      */
-    uint64_t versionValue = std::stoull(xrt_core::device_query<xq::xmc_version>(device), nullptr, 10);
-    std::string version = boost::str(boost::format("%u.%u.%u")
-                          % ((versionValue >> (2 * 8)) & 0xFF) // Major
-                          % ((versionValue >> (1 * 8)) & 0xFF) // Minor
-                          % ((versionValue >> (0 * 8)) & 0xFF)); // Version
+    uint64_t versionValue;
+    versionValue = std::stoull(xrt_core::device_query<xq::xmc_version>(device), nullptr, 10);
+    version = boost::str(boost::format("%u.%u.%u")
+              % ((versionValue >> (2 * 8)) & 0xFF) // Major
+              % ((versionValue >> (1 * 8)) & 0xFF) // Minor
+              % ((versionValue >> (0 * 8)) & 0xFF)); // Version
+    serial_num = xrt_core::device_query<xq::xmc_serial_num>(device);
+    oem_id = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
+  }
+  catch (const xq::exception&) {
+    // Ignoring if not available
+  }
+
+  try {
+    ptree_type sc;
+    sc.add("version", sc_ver);
+    sc.add("expected_version", exp_sc_ver);
+
+    ptree_type cmc;
     cmc.add("version", version);
-    std::string sn = xrt_core::device_query<xq::xmc_serial_num>(device);
-    if (sn.empty()) {
-      try {
-        sn = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
-      }
-      catch (const xq::exception&) {
-        // Ignoring if not available
-      }
-    }
-    cmc.add("serial_number", sn);
+    cmc.add("serial_number", serial_num);
+    cmc.add("oem_id", oem_id);
 
-    std::string oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
-    if (boost::iequals(oid, "N/A"))
-      oid.clear();
-    if (oid.empty()) {
-      try {
-        oid = xq::oem_id::parse(xrt_core::device_query<xq::hwmon_sdm_oem_id>(device));
-      }
-      catch (const xq::exception&) {
-        // Ignoring if not available
-      }
-    }
-    cmc.add("oem_id", oid);
-
+    ptree_type controller;
     controller.put_child("satellite_controller", sc);
     controller.put_child("card_mgmt_controller", cmc);
     pt.put_child("controller", controller);
@@ -320,7 +389,10 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_static_region_info(device, pt_platform);
   add_board_info(device, pt_platform);
   add_status_info(device, pt_platform);
-  add_controller_info(device, pt_platform);
+  if (xrt_core::device_query_default<xq::is_versal>(device, false))
+    add_versal_controller_info(device, pt_platform);
+  else
+    add_controller_info(device, pt_platform);
   add_clock_info(device, pt_platform);
   add_mac_info(device, pt_platform);
   add_config_info(device, pt_platform);

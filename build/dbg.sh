@@ -2,7 +2,7 @@
 
 set -e
 
-OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
+OSDIST=`awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake

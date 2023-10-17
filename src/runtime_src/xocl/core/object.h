@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2017 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xocl_core_object_h_
 #define xocl_core_object_h_
 
@@ -41,9 +28,7 @@ class memory;
 class stream;
 class stream_mem;
 
-/**
- * Base class for all CL API object types
- */
+// Base class for all CL API object types
 template <typename XOCLTYPE, typename CLTYPE>
 class object
 {
@@ -75,22 +60,34 @@ struct cl_object_traits<CLTYPE*>
 
 }
 
-/**
- * Get an xocl object from a CL API object
- *
- * Example:
- *  cl_platform_id cp = ...;
- *  xocl::platform* xp = obj(cp);
- *
- * This function simply does a static downcast of the API object.
- * The static downcast is safe as long as the CL API object is a
- * standard layout object.
- */
+// Get an xocl object from a CL API object
+// Example:
+//  cl_platform_id cp = ...;
+//  xocl::platform* xp = obj(cp);
+//
+// This function simply does a static downcast of the API object.
+// The static downcast is safe as long as the CL API object is a
+// standard layout object.
 template <typename CLTYPE>
 typename detail::cl_object_traits<CLTYPE>::xocl_type*
 xocl(CLTYPE c)
 {
   return detail::cl_object_traits<CLTYPE>::get_xocl(c);
+}
+
+// Get an xocl object from a CL API object
+// Provided as a work-around for GCC too aggressive optimization
+// GCC Bugzilla – Bug 104475
+template <typename CLTYPE>
+typename detail::cl_object_traits<CLTYPE>::xocl_type*
+xocl_or_error(CLTYPE c)
+{
+  auto x = detail::cl_object_traits<CLTYPE>::get_xocl(c);
+#ifdef __GNUC__
+  if (!x)
+    __builtin_unreachable();
+#endif
+  return x;
 }
 
 template <typename CLTYPE>

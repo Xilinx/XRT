@@ -2,14 +2,19 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Script to setup environment for XRT
 # This script is installed in /opt/xilinx/xrt and must
 # be sourced from that location
 
 # Check OS version requirement
-OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
-OSREL=`lsb_release -r |awk -F: '{print tolower($2)}' |tr -d ' \t' | awk -F. '{print $1*100+$2}'`
+OSDIST=`cat /etc/os-release | grep -i "^ID=" | awk -F= '{print $2}'`
+if [[ $OSDIST == "centos" ]]; then
+    OSREL=`cat /etc/redhat-release | awk '{print $4}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
+else
+    OSREL=`cat /etc/os-release | grep -i "^VERSION_ID=" | awk -F= '{print $2}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
+fi
 
 if [[ $OSDIST == "ubuntu" ]]; then
     if (( $OSREL < 1604 )); then
@@ -18,14 +23,22 @@ if [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "redhat"* ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "rhel"* ]]; then
     if (( $OSREL < 704 )); then
         echo "ERROR: Centos or RHEL release version must be 7.4 or later"
         return 1
     fi
 fi
 
-XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]:-${(%):-%x}}))
+
+if [ -n "$BASH_VERSION" ]; then
+    XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]:-${(%):-%x}}))
+elif [ -n "$ZSH_VERSION" ]; then
+    XILINX_XRT=$(readlink -f $(dirname ${(%):-%N}))
+else
+    echo "ERROR: Unsupported shell. Only bash and zsh are supported"
+    return 1
+fi
 
 if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     echo "Invalid location: $XILINX_XRT"
@@ -34,12 +47,11 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
 fi
 
 COMP_FILE="/usr/share/bash-completion/bash_completion"
-# 1. This is a hack to get around set -e
-# The issue is chaining conditionals with actual commands and is
-# documented here: http://mywiki.wooledge.org/BashFAQ/105\
+# 1. This is a workaround for set -e
+# The issue is chaining conditionals with actual commands
 # The issue is caused when sourcing the ${COMP_FILE}.
 # Specifically ${COMP_FILE}::_sysvdirs. Each check in that function
-# will fail the script due to the issues documented in the FAQ above.
+# will fail the script due to the issues.
 # If set -e is removed from the pipeline then check can be removed
 # 2. Make sure that the shell is bash! The completion may not function
 # correctly or setup on other shells.

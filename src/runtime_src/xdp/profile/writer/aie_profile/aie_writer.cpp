@@ -35,16 +35,19 @@ namespace xdp {
   {    
   }
 
-  bool AIEProfilingWriter::write(bool openNewFile)
+  bool AIEProfilingWriter::write(bool)
   {
+    // Report HW generation to inform analysis how to interpret event IDs
+    auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+    
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
-
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
 
     // Write header
     fout << "Target device: " << mDeviceName << "\n";
+    fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "timestamp"    << ","
          << "column"       << ","

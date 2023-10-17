@@ -1702,7 +1702,6 @@ static void engine_process_requests(struct work_struct *work)
 	rv = xdma_request_desc_init(engine, 0);
 	if (rv < 0)
 		pr_err("Failed to perform descriptor init\n");
-		return;
 }
 
 
@@ -3231,7 +3230,7 @@ static ssize_t fastpath_start(struct xdma_engine *engine, u64 endpoint_addr,
 			      struct scatterlist **sg, u32 *sg_off, u32 *last_adj)
 {
 	dma_addr_t addr;
-	int i, ret = 0;
+	int i;
 	u32 len, rest, adj, desc_num = 0;
 	ssize_t total = 0;
 
@@ -3254,6 +3253,8 @@ static ssize_t fastpath_start(struct xdma_engine *engine, u64 endpoint_addr,
 			desc_num++;
 		}
 	}
+	if (!total)
+		return 0;
 	fastpath_desc_set_last(engine, desc_num);
 	engine->f_submitted_desc_cnt = desc_num;
 
@@ -3269,9 +3270,9 @@ static ssize_t fastpath_start(struct xdma_engine *engine, u64 endpoint_addr,
 		mmiowb();
 		*last_adj = adj;
 	}
-	ret = engine_start_mode_config(engine);
+	engine_start_mode_config(engine);
 
-	return ret ? -EIO : total;
+	return total;
 }
 
 ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
@@ -3320,10 +3321,9 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	while (sg && ret >= 0) {
 		engine->f_fastpath = true;
 		ret = fastpath_start(engine, ep_addr + done_bytes,&sg, &sg_off, &last_adj);
-		if (ret < 0) {
-			engine->f_fastpath = false;
-			break;
-		}
+		if (!ret)
+			continue;
+
 		done_bytes += ret;
 		if (!wait_for_completion_timeout(&engine->f_req_compl,
 						 msecs_to_jiffies(10000))) {
@@ -4344,7 +4344,7 @@ MODULE_AUTHOR("Xilinx, Inc.");
 MODULE_DESCRIPTION(DRV_MODULE_DESC);
 MODULE_VERSION(DRV_MODULE_VERSION);
 MODULE_LICENSE("GPL v2");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0) || defined(RHEL_9_0_GE)
 MODULE_IMPORT_NS(DMA_BUF);
 #endif
 

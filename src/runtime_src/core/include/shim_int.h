@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef SHIM_INT_H_
 #define SHIM_INT_H_
 
 #include "core/include/xrt.h"
-#include "core/include/xcl_hwctx.h"
-#include "core/include/xcl_hwqueue.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt_hwqueue.h"
+#include "core/include/xrt/xrt_hw_context.h"
 #include "core/common/cuidx_type.h"
+#include "core/common/shim/buffer_handle.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/hwqueue_handle.h"
+#include "core/common/shim/shared_handle.h"
 
 #include <string>
 
@@ -53,29 +56,44 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
 void
 close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
 
+// alloc_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle, size_t size, unsigned int flags);
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle, void* userptr, size_t size, unsigned int flags);
+
+// import_bo
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle, xrt_core::shared_handle::export_handle);
+
 // create_hw_context() -
-xcl_hwctx_handle // ctxhdl aka slotidx
+std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
-                  const xrt::hw_context::qos_type& qos,
+                  const xrt::hw_context::cfg_param_type& cfg_param,
                   xrt::hw_context::access_mode mode);
 
-// dsstroy_hw_context() -
-void
-destroy_hw_context(xclDeviceHandle handle, xcl_hwctx_handle ctxhdl);
-
 // create_hw_queue() -
-xcl_hwqueue_handle
-create_hw_queue(xclDeviceHandle handle, const xrt::hw_context& hwctx);
-
-// create_hw_queue() -
-void
-destroy_hw_queue(xclDeviceHandle handle, xcl_hwqueue_handle qhdl);
+std::unique_ptr<xrt_core::hwqueue_handle>
+create_hw_queue(xclDeviceHandle handle, xrt_core::hwctx_handle* ctxhdl);
 
 // register_xclbin() -
 void
 register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
 
+// submit_command() -
+void
+submit_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_core::buffer_handle* cmdbo);
+
+// wait_command() -
+int
+wait_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_core::buffer_handle* cmdbo, int timeout_ms);
+
+// exec_buf() - Exec Buf with hw ctx handle.
+void
+exec_buf(xclDeviceHandle handle, xrt_core::buffer_handle* bohdl, xrt_core::hwctx_handle* ctxhdl);
 }} // shim_int, xrt
 
 #endif

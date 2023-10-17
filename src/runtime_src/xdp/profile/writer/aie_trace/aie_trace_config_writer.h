@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- *
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -33,9 +34,8 @@ namespace xdp {
   {
   private:
     uint64_t deviceIndex;
-    std::string traceMetricString;
   public:
-    AieTraceConfigWriter(const char* filename, uint64_t index, std::string m);
+    AieTraceConfigWriter(const char* filename, uint64_t index);
     ~AieTraceConfigWriter();
 
   private:
@@ -44,11 +44,10 @@ namespace xdp {
     std::ostringstream oss;
     bpt::write_json(oss, ptree);
 
-    // Patterns matching "12" "null" "100.0" ""
-    //Patterns ignored "12":  "100.0":
-    std::regex reg("\\\"(([0-9]+\\.{0,1}[0-9]*)|(null)|())\\\"(?!\\:)");
-    //std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"(?!\\:)");
-    //std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"");
+    // Remove quotes from value strings
+    //   Patterns matched - "12" "null" "100.0" "-1" ""
+    //   Patterns ignored - "12": "100.0":
+    std::regex reg("\\\"((-?[0-9]+\\.{0,1}[0-9]*)|(null)|())\\\"(?!\\:)");
     std::string result = std::regex_replace(oss.str(), reg, "$1");
 
     std::ofstream file;

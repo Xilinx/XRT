@@ -34,6 +34,7 @@ Aied::Aied(xrt_core::device* device): mCoreDevice(device)
 {
   done = false;
   pthread_create(&ptid, NULL, &Aied::pollAIE, this);
+  pthread_setname_np(ptid, "Graph Status");
 }
 
 Aied::~Aied()
@@ -60,6 +61,9 @@ Aied::pollAIE(void* arg)
 
   /* Ever running thread */
   while (1) {
+    /* Give up the cpu to the other threads. We are running this in an
+     * infinite for loop */
+    sleep(1);
     /* Calling XRT interface to wait for commands */
     if (ai->mGraphs.empty() || drv->xclAIEGetCmd(&cmd) != 0) {
       /* break if destructor called */

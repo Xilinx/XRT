@@ -38,6 +38,11 @@
 # pragma warning( disable : 4201 )
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #ifdef __cplusplus
 # include <cstdint>
 extern "C" {
@@ -55,11 +60,22 @@ extern "C" {
 struct xcl_bo_flags
 {
   union {
-    uint32_t flags;
+    uint64_t all;           // [63-0]
+
     struct {
-      uint16_t bank;       // [15-0]
-      uint8_t  slot;       // [16-23]
-      uint8_t  boflags;    // [24-31]
+      uint32_t flags;       // [31-0]
+      uint32_t extension;   // [63-32]
+    };
+
+    struct {
+      uint16_t bank;        // [15-0]
+      uint8_t  slot;        // [23-16]
+      uint8_t  boflags;     // [31-24]
+
+      // extension
+      uint32_t access : 2;  // [33-32]
+      uint32_t dir    : 2;  // [35-34]
+      uint32_t unused : 28; // [63-36]
     };
   };
 };
@@ -80,6 +96,20 @@ struct xcl_bo_flags
 #define	XCL_BO_FLAGS_HOST_ONLY		(1U << 29)
 #define	XCL_BO_FLAGS_P2P		(1U << 30)
 #define	XCL_BO_FLAGS_EXECBUF		(1U << 31)
+
+/**
+ * Shim level BO Flags for extension
+ */
+#define XRT_BO_ACCESS_SHARED 1
+#define XRT_BO_ACCESS_EXPORTED 2
+
+/**
+ * Shim level BO Flags for direction of data transfer
+ * as seen from device.
+ */
+#define XRT_BO_ACCESS_READ    (1U << 0)
+#define XRT_BO_ACCESS_WRITE   (1U << 1)
+#define XRT_BO_ACCESS_READ_WRITE (XRT_BO_ACCESS_READ | XRT_BO_ACCESS_WRITE)
 
 /**
  * XRT Native BO flags
@@ -107,6 +137,10 @@ enum xclDDRFlags {
 
 #ifdef __cplusplus
 }
+#endif
+
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
 #endif
 
 #ifdef _WIN32

@@ -67,7 +67,7 @@ clGetContextInfo(cl_context         context,
     buffer.as<cl_device_id>() = xcontext->get_device_range();
     break;
   case CL_CONTEXT_PROPERTIES:
-    for (auto prop : xcontext->get_properties()) {
+    for (auto& prop : xcontext->get_properties()) {
       buffer.as<cl_context_properties>() = prop.get_key();
       buffer.as<cl_context_properties>() = prop.get_value();
     }

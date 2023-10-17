@@ -25,10 +25,7 @@
 #define UINT_BIG_CONST 1812433253U
 #define NORM_RANGE 4294967296.0f
 
-// Mersenne twister algorithm constants. Please refer for details
-// http://en.wikipedia.org/wiki/Mersenne_twister
-// Matsumoto, M.; Nishimura, T. (1998). "Mersenne twister: a 623-dimensionally equidistributed uniform pseudo-random number generator".
-// ACM Transactions on Modeling and Computer Simulation 8 (1): 3–30.
+// Mersenne twister algorithm constants.
 
 // degree of Mersenne twister recurrence
 #define N 624

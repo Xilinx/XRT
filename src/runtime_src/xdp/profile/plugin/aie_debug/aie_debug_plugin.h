@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,64 +17,57 @@
 #ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
 
-#include <atomic>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <vector>
+#include <boost/property_tree/ptree.hpp>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/config.h"
+#include "core/include/xrt/xrt_kernel.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
-#include "core/common/device.h"
-#include "core/edge/common/aie_parser.h"
-#include "xaiefal/xaiefal.hpp"
 
 extern "C" {
-#include <xaiengine.h>
-#include "xaiengine/xaie_helper.h"
+  #include <xaiengine.h>
+  #include <xaiengine/xaiegbl_params.h>
 }
 
 namespace xdp {
 
-  using tile_type = xrt_core::edge::aie::tile_type;
-
-  class AIEDebugPlugin : public XDPPlugin
+  class AieDebugPlugin : public XDPPlugin
   {
   public:
-    AIEDebugPlugin();
-    ~AIEDebugPlugin();
-
-    XDP_EXPORT
-    void updateAIEDevice(void* handle);
-    XDP_EXPORT
-    void endPollforDevice(void* handle);
-
-    XDP_EXPORT
-    static bool alive();
+    XDP_EXPORT AieDebugPlugin();
+    XDP_EXPORT ~AieDebugPlugin();
+    XDP_EXPORT void updateAIEDevice(void* handle);
+    XDP_EXPORT void endAIEDebugRead(void* handle);
+    XDP_EXPORT static bool alive();
 
   private:
-    void getTilesForDebug(void* handle);
+    uint64_t getDeviceIDFromHandle(void* handle);
     void endPoll();
-    std::string getCoreStatusString(uint32_t status);
-
-    // Threads used by this plugin
-    void pollDeadlock(uint64_t index, void* handle);
-    void writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter);
+    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+    std::vector<std::string> getSettingsVector(std::string settingsString);
+    std::map<module_type, std::vector<uint64_t>> parseMetrics();
 
   private:
+    static constexpr int NUM_MODULES = 4;
+    uint32_t mIndex = 0;
+    xrt::kernel mKernel;
+    xrt::bo input_bo; 
+    XAie_DevInst aieDevInst = {0};
+    boost::property_tree::ptree aie_meta;
+    aie_profile_op_t* op;
+    std::size_t op_size;
+    xrt::hw_context context;
 
     static bool live;
+    struct AIEData {
+      uint64_t deviceID;
+      std::atomic<bool> threadCtrlBool;
+      std::thread thread;
 
-    uint32_t mPollingInterval;
+    };
+    std::map<void*, AIEData>  handleToAIEData;
 
-    // Thread control flags for each device handle
-    std::map<void*,std::atomic<bool>> mThreadCtrlMap;
-    // Threads mapped to device handles
-    std::map<void*,std::thread> mDeadlockThreadMap;
-    std::map<void*,std::thread> mDebugThreadMap;
-    // Graphname -> coretiles
-    std::map<std::string,std::vector<tile_type>> mGraphCoreTilesMap;
   };
 
 } // end namespace xdp

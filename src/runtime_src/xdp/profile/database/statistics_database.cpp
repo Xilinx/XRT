@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -151,7 +151,7 @@ namespace xdp {
   VPStatisticsDatabase::getComputeUnitExecutionStats(const std::string& cuName)
   {
     std::vector<std::pair<std::string, TimeStatistics>> calls;
-    for (auto element : computeUnitExecutionStats) {
+    for (const auto& element : computeUnitExecutionStats) {
       if (0 == cuName.compare(std::get<0>(element.first))) {
         calls.push_back(std::make_pair(std::get<2>(element.first), element.second));
       }
@@ -428,7 +428,7 @@ namespace xdp {
     //  the number of calls
     std::map<std::string, uint64_t> counts ;
 
-    for (auto c : callCount)
+    for (const auto& c : callCount)
     {
       if (counts.find(c.first.first) == counts.end())
       {
@@ -440,7 +440,7 @@ namespace xdp {
       }
     }
 
-    for (auto i : counts)
+    for (const auto& i : counts)
     {
       fout << i.first << "," << i.second << std::endl ;
     }
@@ -449,7 +449,7 @@ namespace xdp {
   void VPStatisticsDatabase::dumpHALMemory(std::ofstream& fout)
   {
     unsigned int i = 0 ; 
-    for (auto m : memoryStats)
+    for (const auto& m : memoryStats)
     {
       fout << "Device " << i << std::endl ;
 

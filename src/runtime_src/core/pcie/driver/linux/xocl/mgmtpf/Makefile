@@ -76,7 +76,7 @@ xclmgmt-y := \
 	../subdev/ulite.o \
 	../subdev/calib_storage.o \
 	../subdev/pmc.o \
-	../subdev/xgq.o \
+	../subdev/xgq_vmr.o \
 	../subdev/icap_cntrl.o \
 	../subdev/version_ctrl.o \
 	../subdev/pcie_firewall.o \

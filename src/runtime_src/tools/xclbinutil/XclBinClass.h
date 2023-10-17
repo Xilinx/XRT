@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2018-2022 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,6 +60,7 @@ class XclBin {
   void addSection(Section* _pSection);
   void addPsKernel(const std::string &encodedString);
   void addKernels(const std::string &jsonFile);
+  void updateInterfaceuuid();
 
   public:
     // Helper method to take given encoded keyValue and break it down to its individual values (e.g., domain, key, and value)

@@ -3,7 +3,7 @@
  * Xilinx Unify CU Model
  *
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -266,6 +266,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
 		set_xcmd_timestamp(xcmd, xcmd->status);
 		xrt_cu_circ_produce(xcu, CU_LOG_STAGE_CQ, (uintptr_t)xcmd);
+		xcu->bad_state = (xcmd->status == KDS_SKCRASHED);
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		xrt_cu_incr_ecmd_count(xcu);
 		list_del(&xcmd->list);
@@ -357,6 +358,7 @@ static inline void process_sq(struct xrt_cu *xcu)
 static inline int process_rq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
+	struct kds_command *tmp;
 	struct kds_client *ev_client;
 	struct list_head *dst_q;
 	int *dst_len;
@@ -364,15 +366,23 @@ static inline int process_rq(struct xrt_cu *xcu)
 	if (!xcu->num_rq)
 		return 0;
 
-	xcmd = list_first_entry(&xcu->rq, struct kds_command, list);
-
+	/* A client is closing and it has outstanding commands */
 	ev_client = first_event_client_or_null(xcu);
-	if (unlikely(xcu->bad_state || (ev_client == xcmd->client))) {
-		xcmd->status = KDS_ABORT;
-		dst_q = &xcu->cq;
-		dst_len = &xcu->num_cq;
-		goto move_cmd;
+	if (ev_client) {
+		list_for_each_entry_safe(xcmd, tmp, &xcu->rq, list) {
+			if ((ev_client != xcmd->client) && !xcu->bad_state)
+				continue;
+
+			xcmd->status = KDS_ABORT;
+			dst_q = &xcu->cq;
+			dst_len = &xcu->num_cq;
+			move_to_queue(xcmd, dst_q, dst_len);
+			--xcu->num_rq;
+		}
+		return 0;
 	}
+
+	xcmd = list_first_entry(&xcu->rq, struct kds_command, list);
 
 	if (!xrt_cu_get_credit(xcu))
 		return 0;
@@ -391,6 +401,10 @@ static inline int process_rq(struct xrt_cu *xcu)
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
 	xrt_cu_circ_produce(xcu, CU_LOG_STAGE_RQ, (uintptr_t)xcmd);
 
+	/*
+	 * We move submit queue to CU impl level. The xrt_cu.c only need to
+	 * count how many commands are moved. Thus use NULL.
+	 */
 	dst_q = NULL;
 	dst_len = &xcu->num_sq;
 	/* ktime_get_* is still heavy. This impact ~20% of IOPS on echo mode.
@@ -400,7 +414,6 @@ static inline int process_rq(struct xrt_cu *xcu)
 	 * specific thread if needed.
 	 */
 	//xcmd->start = ktime_get_raw_fast_ns();
-move_cmd:
 	move_to_queue(xcmd, dst_q, dst_len);
 	--xcu->num_rq;
 	if (xcu->stats.max_sq_length < xcu->num_sq)
@@ -551,8 +564,10 @@ int xrt_cu_intr_thread(void *data)
 	xcu->interrupt_used = 0;
 	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
-	if (xcu->force_intr)
+	if (xcu->force_intr) {
+		xcu->interrupt_used = 1;
 		xrt_cu_switch_to_interrupt(xcu);
+	}
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
@@ -649,6 +664,10 @@ void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 {
 	unsigned long flags;
+
+	/* For CTRL_NONE hpq doesn't exists. Hence return from here */
+	if (xcu->info.protocol == CTRL_NONE)
+		return;
 
 	/* This high priority queue is designed to handle those hight priority
 	 * but low frequency commands. Like abort command.

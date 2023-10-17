@@ -20,7 +20,7 @@ Example g++ command
     g++ -g -std=c++17 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 
 
-The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc: `xrt_native.main`.
+The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc:`xrt_native.main`.
 
 
 The C++ Class objects used for the APIs are 
@@ -222,6 +222,21 @@ Code example of transferring data from the host to the device
 Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for partial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments. 
 
 Also note that if the buffer is created through the user-pointer, the ``xrt::bo::write`` or ``xrt::bo::read`` is not required before or after the ``xrt::bo::sync`` call. 
+
+For the device only buffers (created with ``xrt::bo::flags::device_only`` flag) the ``xrt::bo::sync()`` operation is not required, only ``xrt::bo::write()`` (or ``xrt::bo::read()``) is sufficient for DMA operation. As for the device only buffer there is no host backing storage, the ``xrt::bo::write()`` (or ``xrt::bo::read()``) directly performs DMA operation to (or from) the device memory.
+
+Below is the example for creation of device only buffers.
+
+.. code:: c++
+      :number-lines: 18
+
+           xrt::bo::flags device_flags = xrt::bo::flags::device_only;
+           auto device_only_buffer = xrt::bo(device, size_in_bytes, device_flags, bank_grp_arg0);
+
+Here is how ``xrt::bo::read()`` and ``xrt::bo::write()`` API's to read/write directly from/to device only buffer there is no host backing storage.
+
+- ``xrt::bo::write(const void* src, size_t size, size_t seek)``: Copies data from src to device buffer directly.
+- ``xrt::bo::read(void* dst, size_t size, size_t skip)``: Copies data from device buffer to dst.
 
 II. Data transfer between host and device by Buffer map API
 ***********************************************************

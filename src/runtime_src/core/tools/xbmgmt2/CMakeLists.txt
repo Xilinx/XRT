@@ -8,14 +8,18 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBMain.cpp"
   "../common/XBUtilitiesCore.cpp"
   "../common/XBUtilities.cpp"
+  "../common/JSONConfigurable.cpp"
   "../common/SubCmd.cpp"
+  "../common/SubCmdConfigureInternal.cpp"
+  "../common/SubCmdExamineInternal.cpp"
   "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
   "../common/BusyBar.cpp"
   "../common/Process.cpp"
-  "../common/Report*.cpp"
+  "../common/reports/*.cpp"
+  "../common/Report.cpp"
   "../common/PsKernelUtilities.cpp"
   "../common/Table2D.cpp"
 )
@@ -29,6 +33,13 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdDump.cpp"
   "SubCmdConfigure.cpp"
   "OO_Hotplug.cpp"
+  "OO_UpdateBase.cpp"
+  "OO_FactoryReset.cpp"
+  "OO_UpdateShell.cpp"
+  "OO_ChangeBoot.cpp"
+  "OO_UpdateXclbin.cpp"
+  "OO_Input.cpp"
+  "OO_Retention.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )
@@ -63,7 +74,6 @@ if (XRT_STATIC_BUILD)
   # The -static link option will pick the static libraries. 
   target_link_libraries(${XBMGMT2_NAME}_static
     PRIVATE
-    xrt_core_static
     xrt_coreutil_static
     boost_system
     boost_filesystem
@@ -78,7 +88,6 @@ endif()
 
 target_link_libraries(${XBMGMT2_NAME}
   PRIVATE
-  xrt_core
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}

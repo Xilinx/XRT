@@ -28,11 +28,14 @@ namespace xdp {
   {
   private:
     XDP_EXPORT virtual void pollDeadlock(void* handle, uint64_t index);
+    void forceWrite();
   
   private:
     uint32_t mPollingIntervalMs = 100;
     std::map<void*, std::thread> mThreadMap;
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
+    bool fileExists;
+    std::mutex writeLock;
 
   public:
     XDP_EXPORT PLDeadlockPlugin();

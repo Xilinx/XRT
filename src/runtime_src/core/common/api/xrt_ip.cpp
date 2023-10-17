@@ -183,12 +183,14 @@ class ip_impl
       m_size = m_ip.get_size();
 
       // context, driver allows shared context per xrt.ini
-      m_idx = m_device->open_cu_context(m_hwctx, m_ip.get_name());
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
+      m_idx = hwctx_hdl->open_cu_context(m_ip.get_name());
     }
 
     ~ip_context()
     {
-      m_device->close_cu_context(m_hwctx, m_idx);
+      auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
+      hwctx_hdl->close_cu_context(m_idx);
     }
 
     ip_context(const ip_context&) = delete;
@@ -248,7 +250,7 @@ public:
     , m_ipctx(xrt::hw_context{xrt::device{m_device}, xid, hwctx_access_mode()}, nm)
     , m_uid(create_uid())
   {
-    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);
+    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , m_uid);
   }
 
   ip_impl(const xrt::hw_context& hwctx, const std::string& nm)
@@ -256,12 +258,12 @@ public:
     , m_ipctx(hwctx, nm)
     , m_uid(create_uid())
   {
-    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);
+    XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , m_uid);
   }
 
   ~ip_impl()
   {
-    XRT_DEBUGF("ip_impl::~ip_impl(%d)\n" , uid);
+    XRT_DEBUGF("ip_impl::~ip_impl(%d)\n" , m_uid);
   }
 
   ip_impl(const ip_impl&) = delete;

@@ -20,7 +20,6 @@ file(GLOB XRT_SYSTEM_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_
 file(GLOB XRT_UUID_H       ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h)
 file(GLOB XRT_XCLBIN_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h)
 file(GLOB XRT_INI_H        ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h)
-file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/ert.h)
 file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
 file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
@@ -160,12 +159,6 @@ else ()
     VERBATIM
     )
 
-  add_custom_command(OUTPUT core/xrt.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XRT_H} > core/xrt.rst
-    DEPENDS ${XRT_XRT_H}
-    VERBATIM
-    )
-
   add_custom_command(OUTPUT core/ert.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ERT_H} > core/ert.rst
     DEPENDS ${XRT_ERT_H}
@@ -243,7 +236,6 @@ else ()
     core/xrt_system.rst
     core/xrt_uuid.rst
     core/xrt_xclbin.rst
-    core/xrt.rst
     core/ert.rst
     core/xma.rst
     core/xmaplugin.rst

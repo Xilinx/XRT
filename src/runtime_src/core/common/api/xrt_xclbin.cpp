@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -24,6 +25,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/module_loader.h"
 #include "core/common/query_requests.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/xclbin_swemu.h"
@@ -35,6 +37,8 @@
 #include "xclbin_int.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <array>
 #include <fstream>
@@ -56,7 +60,7 @@ namespace {
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
-constexpr size_t max_sections = 13;
+constexpr size_t max_sections = 14;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -70,18 +74,13 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   CLOCK_FREQ_TOPOLOGY,
   BUILD_METADATA,
   SOFT_KERNEL,
-  AIE_PARTITION
+  AIE_PARTITION,
+  IP_METADATA
 };
 
-XRT_CORE_UNUSED
-
 static std::vector<char>
-read_xclbin(const std::string& fnm)
+read_file(const std::string& fnm)
 {
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin specified");
-
-  // load the file
   std::ifstream stream(fnm, std::ios::binary);
   if (!stream)
     throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
@@ -93,6 +92,27 @@ read_xclbin(const std::string& fnm)
   std::vector<char> header(size);
   stream.read(header.data(), size);
   return header;
+}
+
+static std::vector<char>
+read_xclbin(const std::string& fnm)
+{
+  if (fnm.empty())
+    throw std::runtime_error("No xclbin specified");
+
+  namespace bfs = boost::filesystem;
+  if (bfs::exists(fnm) && bfs::is_regular_file(fnm))
+    return read_file(fnm);
+
+  std::string path;
+  try {
+    path = xrt_core::environment::xclbin_path(fnm);
+  }
+  catch (const std::exception&) {
+    throw std::runtime_error("Failed to find xclbin '" + fnm);
+  }
+
+  return read_file(path);
 }
 
 static std::vector<char>
@@ -641,6 +661,13 @@ public:
   }
 
   virtual
+  uuid
+  get_interface_uuid() const
+  {
+      throw std::runtime_error("not implemented");
+  }
+
+  virtual
   std::string
   get_xsa_name() const
   {
@@ -756,6 +783,7 @@ class xclbin_full : public xclbin_impl
   std::vector<char> m_axlf;    // complete copy of xclbin raw data
   const axlf* m_top = nullptr; // axlf pointer to the raw data
   uuid m_uuid;                 // uuid of xclbin
+  uuid m_intf_uuid;
 
   // sections within this xclbin
   std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
@@ -786,6 +814,7 @@ class xclbin_full : public xclbin_impl
     m_top = tmp;
 
     m_uuid = uuid(m_top->m_header.uuid);
+    m_intf_uuid = uuid(m_top->m_header.m_interface_uuid);
 
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
@@ -833,6 +862,12 @@ public:
   get_uuid() const override
   {
     return m_uuid;
+  }
+
+  uuid
+  get_interface_uuid() const override
+  {
+    return m_intf_uuid;
   }
 
   std::string
@@ -992,6 +1027,13 @@ get_uuid() const
   return handle ? handle->get_uuid() : uuid{};
 }
 
+uuid
+xclbin::
+get_interface_uuid() const
+{
+  return handle ? handle->get_interface_uuid() : uuid{};
+}
+
 xclbin::target_type
 xclbin::
 get_target_type() const
@@ -1046,6 +1088,15 @@ xclbin::kernel::
 get_cus(const std::string& kname) const
 {
   return handle ? handle->get_cus(kname) : std::vector<xclbin::ip>{};
+}
+
+xrt::xclbin::kernel::kernel_type
+xclbin::kernel::
+get_type() const
+{
+  return handle
+    ? static_cast<xrt::xclbin::kernel::kernel_type>(handle->m_properties.type)
+    : xrt::xclbin::kernel::kernel_type::none;
 }
 
 std::vector<xclbin::ip>

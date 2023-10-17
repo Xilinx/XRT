@@ -342,6 +342,23 @@ read_legacy_electrical(const xrt_core::device * device)
     populate_sensor<xq::v3v3_pex_millivolts, xq::v3v3_pex_milliamps>(device, "3v3_pex", "3.3 Volts PCI Express")});
   sensor_array.push_back({"",
     populate_sensor<xq::v3v3_aux_millivolts, xq::v3v3_aux_milliamps>(device, "3v3_aux", "3.3 Volts Auxillary")});
+
+  /* Board power measurement uses cached values of above sensors.*/
+  std::string power_watts;
+  std::string power_warn;
+  std::string max_power_watts;
+  try {
+    power_watts = xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xq::power_microwatts>(device));
+    power_warn = xq::power_warning::to_string(xrt_core::device_query<xq::power_warning>(device));
+    auto power_level = xrt_core::device_query<xq::max_power_level>(device);
+    max_power_watts = lvl_to_power_watts(power_level);
+  }
+  catch (const xq::exception&) {
+    power_watts = "N/A";
+    power_warn = "N/A";
+    max_power_watts = "N/A";
+  }
+
   sensor_array.push_back({"",
     populate_sensor<xq::int_vcc_millivolts, xq::int_vcc_milliamps>(device, "vccint", "Internal FPGA Vcc")});
   sensor_array.push_back({"",
@@ -389,26 +406,11 @@ read_legacy_electrical(const xrt_core::device * device)
   sensor_array.push_back({"",
     populate_sensor<xq::v0v9_int_vcc_vcu_millivolts, xq::noop>(device, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")});
 
-  std::string max_power_watts;
-  std::string power_watts;
-  std::string warning;
-  try {
-    auto power_level = xrt_core::device_query<xq::max_power_level>(device);
-    max_power_watts = lvl_to_power_watts(power_level);
-    power_watts = xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xq::power_microwatts>(device));
-    warning = xq::power_warning::to_string(xrt_core::device_query<xq::power_warning>(device));
-  }
-  catch (const xq::exception&) {
-    max_power_watts = "N/A";
-    power_watts = "N/A";
-    warning = "N/A";
-  }
-
   ptree_type root;
   root.add_child("power_rails", sensor_array);
   root.put("power_consumption_max_watts", max_power_watts);
   root.put("power_consumption_watts", power_watts);
-  root.put("power_consumption_warning", warning);
+  root.put("power_consumption_warning", power_warn);
 
   return root;
 }
@@ -443,8 +445,10 @@ read_electrical(const xrt_core::device * device)
     //Check for any of these data is available
     if (!current.empty() || !voltage.empty() || !power.empty())
       return read_data_driven_electrical(current, voltage, power);
-    else
+    else {
+      sensor_array.put("msg", "No sensors present");
       return sensor_array;
+    }
   }
   catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
@@ -475,7 +479,7 @@ read_thermals(const xrt_core::device * device)
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::thermal);
     if (output.empty()) {
-      thermal_array.put("error_msg", "Information unavailable");
+      thermal_array.put("msg", "No sensors present");
       root.add_child("thermals", thermal_array);
       return root;
     }
@@ -510,7 +514,7 @@ read_mechanical(const xrt_core::device * device)
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::mechanical);
     if (output.empty()) {
-      fan_array.put("error_msg", "Information unavailable");
+      fan_array.put("msg", "No sensors present");
       root.add_child("fans", fan_array);
       return root;
     }

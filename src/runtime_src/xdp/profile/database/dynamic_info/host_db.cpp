@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,6 +13,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#define XDP_SOURCE
 
 #include "xdp/profile/database/dynamic_info/host_db.h"
 #include "xdp/profile/database/events/vtf_event.h"
@@ -121,10 +123,14 @@ namespace xdp {
 
     for (auto iter = unsortedEvents.begin();
          iter != unsortedEvents.end();
-         ++iter) {
-      auto event = (*iter);
-      if (filter(event))
+         /* Intentionally blank*/) {
+      auto event = *iter;
+      if (filter(event)) {
         collected.emplace_back(event);
+        iter = unsortedEvents.erase(iter);
+      }
+      else
+        ++iter;
     }
     return collected;
   }

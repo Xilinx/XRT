@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -185,7 +185,7 @@ namespace xdp {
     std::set<std::string> bitWidthStrings ;
     for (auto device : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(device)->get_cus()) {
-        for (auto arg : cu->get_args()) {
+        for (const auto& arg : cu->get_args()) {
           if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
             continue;
 

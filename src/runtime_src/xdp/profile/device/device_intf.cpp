@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,9 +17,25 @@
 
 #define XDP_SOURCE
 
-#include "aieTraceS2MM.h"
-#include "device_intf.h"
-#include "tracedefs.h"
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/include/xdp/fifo.h"
+
+#include "xdp/profile/device/aieTraceS2MM.h"
+#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifndef _WIN32
 #ifndef SKIP_IOCTL
@@ -47,19 +63,6 @@
 #include "mmapped_monitors/mmapped_add.h"
 
 #endif
-
-#include "core/common/message.h"
-#include "core/common/system.h"
-#include "core/include/xdp/fifo.h"
-
-#include <iostream>
-#include <cstdio>
-#include <cstring>
-#include <thread>
-#include <vector>
-#include <string>
-#include <chrono>
-#include <regex>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -90,14 +93,6 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
   if (isAIETrace) {
 #ifndef SKIP_AIE_INI
     size_str = xrt_core::config::get_aie_trace_settings_buffer_size();
-    if (0 == size_str.compare("8M")) {
-      // if set to default value, then check for old style config
-      size_str = xrt_core::config::get_aie_trace_buffer_size();
-
-      if (0 != size_str.compare("8M"))
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
-          "The xrt.ini flag \"aie_trace_buffer_size\" is deprecated and will be removed in future release. Please use \"buffer_size\" under \"AIE_trace_settings\" section.");
-    }
 #else
     size_str = "8M";
 #endif
@@ -128,6 +123,41 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
   } else {
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
   }
+
+  // When running on Edge, check if the requested size is greater than 80%
+  // of the total possible memory available to the PS.  If so, issue
+  // a warning and restrict the size.
+  if (isEdge()) {
+    uint64_t deviceMemorySize = getPSMemorySize();
+    if (deviceMemorySize == 0)
+      return bytes;
+
+    double percentSize =
+      (100.0 * bytes) / static_cast<double>(deviceMemorySize);
+
+    if (percentSize >= 80.0) {
+      // Limit bytes to 80% of the total physical memory
+      bytes = static_cast<uint64_t>(std::ceil(0.8 * deviceMemorySize));
+
+      std::stringstream percentSizeStr;
+      percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
+
+      std::stringstream bufSizeStr;
+      bufSizeStr << std::fixed << std::setprecision(3)
+                 << (static_cast<double>(bytes) / (1024.0 * 1024.0)); // In MB
+
+      std::string msg =
+        "Requested PL trace buffer size is " + percentSizeStr.str() +
+        "% of device memory.  You may run into errors depending upon memory"
+        " usage of your application.\nLimiting to " + bufSizeStr.str() + "MB.";
+
+      xrt_core::message::send(xrt_core::message::severity_level::warning,
+                              "XRT", msg);
+    }
+    return bytes;
+  }
+
+  // On x86 and Alveo, check against the current hard-coded lmits
   if (bytes > TS2MM_MAX_BUF_SIZE) {
     bytes = TS2MM_MAX_BUF_SIZE;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
@@ -560,8 +590,16 @@ DeviceIntf::~DeviceIntf()
             case ACCEL_DEADLOCK_DETECTOR :
               mDeadlockDetector = new DeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
-            case AXI_STREAM_PROTOCOL_CHECKER :
             case HSDP_TRACE :
+            {
+              // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
+              uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
+              if (1 == bitsForPL || 3 == bitsForPL) {
+                mHSDPforPL = true;
+              }
+              break;
+            }
+            case AXI_STREAM_PROTOCOL_CHECKER :
             default : 
               break;
           }
@@ -676,6 +714,15 @@ DeviceIntf::~DeviceIntf()
               }
               break;
             }
+            case HSDP_TRACE :
+            {
+              // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
+              uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
+              if (1 == bitsForPL || 3 == bitsForPL) {
+                mHSDPforPL = true;
+              }
+              break;
+            }
             default :
               break;
           }
@@ -778,6 +825,15 @@ DeviceIntf::~DeviceIntf()
               }
               break;
             }
+            case HSDP_TRACE :
+            {
+              // 2nd and 1st LSB (not the 0th) indicate AIE only (00) or PL only (01) or AIE+PL (11)
+              uint8_t bitsForPL = (((map->m_debug_ip_data[i]).m_properties) >> 1) & 3 ;
+              if (1 == bitsForPL || 3 == bitsForPL) {
+                mHSDPforPL = true;
+              }
+              break;
+            }
             case AXI_STREAM_PROTOCOL_CHECKER :
             case AXI_NOC :
             default :
@@ -866,18 +922,18 @@ DeviceIntf::~DeviceIntf()
   size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    auto bufHandle = mDevice->alloc(sz, memIdx);
-    if (bufHandle) {
-    // Can't read a buffer xrt hasn't written to
-      mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+    auto bufId = mDevice->alloc(sz, memIdx);
+    if (bufId) {
+      // Can't read a buffer xrt hasn't written to
+      mDevice->sync(bufId, sz, 0, xdp::Device::direction::HOST2DEVICE);
     }
-    return bufHandle;
+    return bufId;
   }
 
-  void DeviceIntf::freeTraceBuf(size_t bufHandle)
+  void DeviceIntf::freeTraceBuf(size_t id)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    mDevice->free(bufHandle);
+    mDevice->free(id);
   }
 
   /**
@@ -886,24 +942,30 @@ DeviceIntf::~DeviceIntf()
   * We can read the entire buffer in one go if we want to
   * or choose to read in chunks
   */
-  void* DeviceIntf::syncTraceBuf(size_t bufHandle, uint64_t offset, uint64_t bytes)
+  void* DeviceIntf::syncTraceBuf(size_t id, uint64_t offset, uint64_t bytes)
   {
     std::lock_guard<std::mutex> lock(traceLock);
-    auto addr = mDevice->map(bufHandle);
+    auto addr = mDevice->map(id);
     if (!addr)
       return nullptr;
-    mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
-    mDevice->unmap(bufHandle);
+    mDevice->sync(id, bytes, offset, xdp::Device::direction::DEVICE2HOST);
+    mDevice->unmap(id);
     return static_cast<char*>(addr) + offset;
   }
 
-  uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
+  xclBufferExportHandle DeviceIntf::exportTraceBuf(size_t id)
   {
-    return mDevice->getDeviceAddr(bufHandle);
+    std::lock_guard<std::mutex> lock(traceLock);
+    return mDevice->exportBuffer(id);
+  }
+
+  uint64_t DeviceIntf::getTraceBufDeviceAddr(size_t id)
+  {
+    return mDevice->getBufferDeviceAddr(id);
   }
 
   // All buffers have to be 4k Aligned
-  uint64_t DeviceIntf::getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks)
+  uint64_t DeviceIntf::getAlignedTraceBufSize(uint64_t total_bytes, unsigned int num_chunks)
   {
     constexpr uint64_t TRACE_BUFFER_4K_MASK = 0xfffffffffffff000;
 
@@ -1021,6 +1083,26 @@ DeviceIntf::~DeviceIntf()
     if (mDeadlockDetector)
       return mDeadlockDetector->getDeadlockStatus();
     return 0;
+  }
+
+  void DeviceIntf::createXrtIP
+  ( const std::unique_ptr<ip_metadata>& ip_metadata_section
+  , const std::string& fullname
+  )
+  {
+    mXrtIPList.emplace_back(std::make_unique<XrtIP>(mDevice, ip_metadata_section, fullname));
+  }
+
+  std::string DeviceIntf::getDeadlockDiagnosis(bool print)
+  {
+    std::string status;
+    if (!mDeadlockDetector)
+      return status;
+
+    for (auto& ip : mXrtIPList)
+      status += ip->getDeadlockDiagnosis(print);
+
+    return status;
   }
 
 } // namespace xdp

@@ -88,6 +88,9 @@ enum {
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
+	bool			is_legacy_ctx;
+	bool			reset_ert_cus;
+	int                 	ps_slot_id;
 	struct list_head	ctx_list;
 
 	/*
@@ -103,16 +106,14 @@ struct xocl_dev	{
 	struct xocl_subdev	*dyn_subdev_store;
 	int			dyn_subdev_num;
 
-	void			*ulp_blob;
-
 	unsigned int		mbx_offset;
 
 	uint64_t		mig_cache_expire_secs;
 	ktime_t			mig_cache_expires;
 
 	u32			flags;
-	struct xocl_cma_bank  *cma_bank;
-	struct xocl_pci_info pci_stat;
+	struct xocl_cma_bank	*cma_bank;
+	struct xocl_pci_info	pci_stat;
 	atomic_t		dev_hotplug_done;
 };
 
@@ -141,21 +142,22 @@ struct client_ctx {
 };
 #define	CLIENT_NUM_CU_CTX(client) ((client)->num_cus + (client)->virt_cu_ref)
 
-struct xocl_mm_wrapper {
-  struct drm_mm *mm;
-  struct drm_xocl_mm_stat *mm_usage_stat;
-  uint64_t start_addr;
-  uint64_t size;
-  uint32_t ddr;
-  struct hlist_node node;
-};
-
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
@@ -171,6 +173,8 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
+	struct drm_file *filp, bool in_kernel);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct xocl_dev *xdev);
@@ -216,6 +220,9 @@ static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 	return 1ULL << (size + 20);
 }
 
+int xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
+	                     uint32_t qos, uint32_t *slot_id);
+
 /* KDS functions */
 int xocl_init_sched(struct xocl_dev *xdev);
 void xocl_fini_sched(struct xocl_dev *xdev);
@@ -223,6 +230,21 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv);
 void xocl_destroy_client(struct xocl_dev *xdev, void **priv);
 int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 		      struct drm_file *filp);
+/* New hw context support functions */
+int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
+		struct drm_file *filp, uint32_t hw_ctx_id);
+int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id);
+int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_destroy_hw_ctx *hw_ctx_args);
+int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_open_cu_ctx *drm_cu_args);
+int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
+                struct drm_xocl_close_cu_ctx *drm_cu_args);
+int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
+		      struct drm_file *filp);
+/* End of new hw context support functions */
+
 int xocl_poll_client(struct file *filp, poll_table *wait, void *priv);
 int xocl_kds_stop(struct xocl_dev *xdev);
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id);
@@ -237,6 +259,7 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
 			  struct ip_layout *ip_layout,
 			  struct ps_kernel_node *ps_kernel);
 int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
+int xocl_kds_xgq_query_mem(struct xocl_dev *xdev, struct mem_data *mem_data);
 int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
 			       u32 start, u32 size);
 

@@ -324,8 +324,11 @@ namespace xdp {
     case 1:
       xclbin->aie.aieMemoryCountersMap[numCounters] = numTiles ;
       break ;
-    default:
+    case 2:
       xclbin->aie.aieShimCountersMap[numCounters] = numTiles ;
+      break ;
+    default:
+      xclbin->aie.aieMemTileCountersMap[numCounters] = numTiles ;
       break ;
     }
   }
@@ -358,6 +361,16 @@ namespace xdp {
       return ;
 
     xclbin->aie.aieShimEventsMap[numEvents] = numTiles ;
+  }
+
+  void DeviceInfo::addAIEMemTileEventResources(uint32_t numEvents,
+                                               uint32_t numTiles)
+  {
+    XclbinInfo* xclbin = currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->aie.aieMemTileEventsMap[numEvents] = numTiles ;
   }
 
   void DeviceInfo::addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile)

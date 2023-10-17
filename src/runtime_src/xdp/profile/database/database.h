@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,6 +20,7 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "xdp/config.h"
@@ -57,7 +59,7 @@ namespace xdp {
     std::list<XDPPlugin*> plugins ;
 
     // The database itself keeps track of the generic summary
-    VPWriter* summary ;
+    std::unique_ptr<VPWriter> summary;
 
     // Additionally, for summary generation, the database must expose
     //  what plugins were loaded and what information is available

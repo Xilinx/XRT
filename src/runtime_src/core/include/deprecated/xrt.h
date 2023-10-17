@@ -1,8 +1,8 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  *
- * Copyright (C) 2020, Xilinx Inc. All rights reserved
- * Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2020-2022, Xilinx Inc. All rights reserved
+ * Copyright (C) 2022-2023, Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifndef _XCL_XRT_DEPRECATED_H_
 #define _XCL_XRT_DEPRECATED_H_
@@ -67,9 +67,9 @@ typedef void * xclDeviceHandle;
 /*
  * typedef xclBufferHandle - opaque buffer handle
  *
- * A buffer handle of xclBufferHandle kind is obtained by allocating
- * buffer objects. The buffer handle is used by XRT APIs that operate
- * on on buffer objects.
+ * A buffer handle of xclBufferHandle kind is obtained by allocating buffer
+ * objects through HAL API. The buffer handle is used by XRT HAL APIs that
+ * operate on on buffer objects.
  */
 #ifdef _WIN32
 typedef void * xclBufferHandle;
@@ -87,8 +87,8 @@ typedef unsigned int xclBufferHandle;
  * that can be passed between processes.
  */
 #ifdef _WIN32
-typedef void* xclBufferExportHandle;  // TBD
-#define NULLBOEXPORT INVALID_HANDLE_VALUE
+typedef uint64_t xclBufferExportHandle;  // TBD
+#define NULLBOEXPORT -1
 #else
 typedef int32_t xclBufferExportHandle;
 #define NULLBOEXPORT -1

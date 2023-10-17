@@ -43,7 +43,7 @@
 #define	MINOR_NAME_MASK		0xffffffff
 
 #define QDMA_MAX_INTR		16
-#define QDMA_USER_INTR_MASK	0xff
+#define QDMA_USER_INTR_MASK	0xffff
 
 #define QDMA_QSETS_MAX		256
 #define QDMA_QSETS_BASE		0
@@ -821,8 +821,8 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->bar_num_user = -1;
 	conf->bar_num_bypass = -1;
 	conf->data_msix_qvec_max = 1;
-	conf->user_msix_qvec_max = 8;
-	conf->msix_qvec_max = 16;
+	conf->user_msix_qvec_max = 16;
+	conf->msix_qvec_max = 32;
 	conf->qdma_drv_mode = qdma_interrupt_mode;
 
 	conf->fp_user_isr_handler = (void*)qdma_isr;

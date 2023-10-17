@@ -104,7 +104,7 @@ static boost::property_tree::ptree
 get_boot_info(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
-  // get boot on default from vmr_status sysfs node
+  // get boot status from vmr_status sysfs node
   boost::property_tree::ptree pt_empty;
   const auto pt = xrt_core::vmr::vmr_info(dev).get_child("vmr", pt_empty);
   for (auto& ks : pt) {
@@ -112,8 +112,10 @@ get_boot_info(const xrt_core::device * dev)
     if (boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
       auto is_default_boot = std::stoi(vmr_stat.get<std::string>("value"));
       ptree.add("default", is_default_boot ? "ACTIVE" : "INACTIVE");
-      ptree.add("backup", is_default_boot ? "INACTIVE" : "ACTIVE");
-      break;
+    }
+    if (boost::iequals(vmr_stat.get<std::string>("label"), "Boot on backup")) {
+      auto is_backup_boot = std::stoi(vmr_stat.get<std::string>("value"));
+      ptree.add("backup", is_backup_boot ? "ACTIVE" : "INACTIVE");
     }
   }
   return ptree;
@@ -360,7 +362,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   auto logic_uuid = _pt.get<std::string>("platform.current_shell.logic-uuid", "");
   auto interface_uuid = _pt.get<std::string>("platform.current_shell.interface-uuid", "");
   if (!logic_uuid.empty() && !interface_uuid.empty()) {
-    _output << fmtBasic % "Platform UUID" % logic_uuid;
+    _output << fmtBasic % "Logic UUID" % logic_uuid;
     _output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
     _output << fmtBasic % "Platform ID" % string_or_NA(_pt.get<std::string>("platform.current_shell.id", ""));
@@ -390,9 +392,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << fmtBasic % "Platform" % string_or_NA(available_shell.get<std::string>("vbnv"));
     _output << fmtBasic % "SC Version" % string_or_NA(available_shell.get<std::string>("sc_version"));
     // print platform ID, for 2RP, platform ID = logic UUID
-    auto platform_uuid = available_shell.get<std::string>("logic-uuid", "");
-    if (!platform_uuid.empty()) {
-      _output << fmtBasic % "Platform UUID" % platform_uuid;
+    auto available_shell_logic_uuid = available_shell.get<std::string>("logic-uuid", "");
+    if (!available_shell_logic_uuid.empty()) {
+      _output << fmtBasic % "Logic UUID" % available_shell_logic_uuid;
     } else {
       _output << fmtBasic % "Platform ID" % string_or_NA(available_shell.get<std::string>("id"));
     }

@@ -6,6 +6,7 @@ set(XRT_XRT_HEADER_SRC
   xrt_bo.h
   xrt_device.h
   xrt_graph.h
+  xrt_hw_context.h
   xrt_kernel.h
   xrt_uuid.h)
 
@@ -15,6 +16,7 @@ install (FILES ${XRT_XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt 
 set(XRT_XRT_DETAIL_HEADER_SRC
   detail/abi.h
   detail/any.h
+  detail/bitmask.h
   detail/config.h
   detail/param_traits.h
   detail/pimpl.h)

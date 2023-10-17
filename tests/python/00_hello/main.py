@@ -3,7 +3,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2019-2021 Xilinx, Inc
+# Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 
 import os
@@ -48,7 +49,8 @@ def runTest(opt):
 
 def main(args):
     opt = Options()
-    Options.getOptions(opt, args)
+    b_file= "kernel.xclbin"
+    Options.getOptions(opt, args, b_file)
     opt.first_mem = 0
 
     try:

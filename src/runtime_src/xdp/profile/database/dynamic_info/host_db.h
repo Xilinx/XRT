@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,6 +24,7 @@
 #include <mutex>
 #include <vector>
 
+#include "xdp/config.h"
 #include "xdp/profile/database/dynamic_info/dependency_manager.h"
 #include "xdp/profile/database/dynamic_info/mark.h"
 #include "xdp/profile/database/dynamic_info/types.h"
@@ -61,6 +62,10 @@ namespace xdp {
     // from the event IDs and the user IDs.
     APIMatch<uint64_t, uint64_t> uidStarts;
 
+    // This object keeps track of matching start events with end events
+    // for situations where we have one callback creating two database events.
+    APIMatch<uint64_t, EventPair> eventPairStarts;
+
     // Different host layers can have dependencies between events
     DependencyManager openclDependencies;
 
@@ -69,7 +74,7 @@ namespace xdp {
 
   public:
     HostDB() = default;
-    ~HostDB();
+    XDP_EXPORT ~HostDB();
 
     // Functions to add host events to the database
     void addSortedEvent(VTFEvent* event);
@@ -120,6 +125,12 @@ namespace xdp {
 
     inline uint64_t matchingXRTUIDStart(uint64_t uid)
     { return uidStarts.lookupStart(uid); }
+
+    inline void registerEventPairStart(uint64_t functionId, const EventPair& events)
+    { eventPairStarts.registerStart(functionId, events); }
+
+    inline EventPair matchingEventPairStart(uint64_t functionId)
+    { return eventPairStarts.lookupStart(functionId); }
 
     // Functions for handling dependencies
     inline void addOpenCLMapping(uint64_t openclId, uint64_t endXDPEventId,

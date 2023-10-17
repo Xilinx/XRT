@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 
@@ -22,7 +22,6 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
-#include "core/common/api/hw_context_int.h"
 
 #include <cassert>
 #include <cerrno>
@@ -45,7 +44,7 @@
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/aie_debug.h"
+#include "plugin/xdp/aie_status.h"
 
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
@@ -140,11 +139,10 @@ shim::
   xclLog(XRT_INFO, "%s", __func__);
 
 #ifndef __HWEM__
-//  xdphal::finish_flush_device(handle) ;
-  xdp::aie::finish_flush_device(this) ;
+  xdp::aie::finish_flush_device(this);
 #endif
   xdp::aie::ctr::end_poll(this);
-  xdp::aie::dbg::end_poll(this);
+  xdp::aie::sts::end_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -291,20 +289,23 @@ xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
   return size;
 }
 
-unsigned int
+std::unique_ptr<xrt_core::buffer_handle>
 shim::
-xclAllocBO(size_t size, int unused, unsigned flags)
+xclAllocBO(size_t size, unsigned flags)
 {
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
+ 
+  if (result)
+    throw std::bad_alloc();
 
   xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
-  return info.handle;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 
-unsigned int
+std::unique_ptr<xrt_core::buffer_handle>
 shim::
 xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
@@ -312,10 +313,13 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
 
+  if (result)
+    throw std::bad_alloc();
+
   xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
-  return info.handle;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 
 unsigned int
@@ -472,9 +476,10 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                       src_offset, dst_offset, size);
 
-  ret = xclExecBuf(bo.first);
+  auto boh = static_cast<buffer_object*>(bo.first.get());
+  ret = xclExecBuf(boh->get_handle());
   if (ret) {
-    mCmdBOCache->release(bo);
+    mCmdBOCache->release(std::move(bo));
     return ret;
   }
 
@@ -488,7 +493,8 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ret = (ret == -1) ? -errno : 0;
   if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
     ret = -EINVAL;
-  mCmdBOCache->release<ert_start_copybo_cmd>(bo);
+
+  mCmdBOCache->release(std::move(bo));
 #endif
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
   return ret;
@@ -736,7 +742,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
-      .za_dtbo_path_len = dtbo_path.length(),
+      .za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
       .hw_gen = hw_gen,
     };
 
@@ -821,7 +827,7 @@ secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *to
   return 1;
 }
 
-int
+std::unique_ptr<xrt_core::shared_handle>
 shim::
 xclExportBO(unsigned int boHandle)
 {
@@ -834,24 +840,26 @@ xclExportBO(unsigned int boHandle)
     result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
   }
 
+  if (result)
+    throw xrt_core::system_error(result, "failed to export bo");
+
   xclLog(XRT_INFO, "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
 
-  return !result ? info.fd : result;
+  return std::make_unique<shared_object>(this, info.fd);
 }
 
-unsigned int
+std::unique_ptr<xrt_core::buffer_handle>
 shim::
 xclImportBO(int fd, unsigned flags)
 {
   drm_prime_handle info = {0xffffffff, flags, fd};
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
-  if (result) {
-    xclLog(XRT_ERROR, "%s: FD to handle IOCTL failed", __func__);
-  }
+  if (result)
+    throw xrt_core::system_error(result, "ioctl failed to import bo");
 
   xclLog(XRT_INFO, "%s: fd %d, flags %x, ioctl return %d, bo handle %d", __func__, fd, flags, result, info.handle);
 
-  return !result ? info.handle : 0xffffffff;
+  return std::make_unique<buffer_object>(this, info.handle);
 }
 
 unsigned int
@@ -1014,6 +1022,7 @@ xclSKGetCmd(xclSKCmd *cmd)
     cmd->meta_bohdl = scmd.meta_bohdl;
     memcpy(cmd->uuid, &scmd.uuid, sizeof(cmd->uuid));
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
+    cmd->slot_id = scmd.slot_id;
   }
 
   return ret ? -errno : ret;
@@ -1119,26 +1128,36 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 // open_context() - aka xclOpenContextByName
 xrt_core::cuidx_type
 shim::
-open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname)
 {
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+  auto cuidx = mCoreDevice->get_cuidx(hwctx->get_slotidx(), cuname);
+  xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
 }
 
 void
 shim::
-close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
   // To-be-implemented
-  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
     throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
+std::unique_ptr<xrt_core::hwctx_handle>
+shim::
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::cfg_param_type&,
+                  xrt::hw_context::access_mode mode)
+{
+  return std::make_unique<hwcontext>(this, 0, xclbin_uuid, mode);
 }
 
 int
@@ -1684,6 +1703,23 @@ xclErrorClear()
   return ret ? -errno : ret;
 }
 
+int
+shim::
+resetDevice(xclResetKind kind)
+{
+  std::string errmsg{""};
+
+  if (kind == XCL_USER_RESET) {
+    mDev->sysfs_put("zocl_reset", errmsg, "1\n");
+    if (!errmsg.empty())
+      throw std::runtime_error("Failed to reset zocl, err : " + errmsg + "\n");
+  }
+  else
+    throw std::runtime_error("Invalid reset type\n"); // other kinds of reset are not supported
+
+  return 0;
+}
+
 #ifdef XRT_ENABLE_AIE
 zynqaie::Aie*
 shim::
@@ -1835,19 +1871,38 @@ setAIEAccessMode(xrt::aie::access_mode am)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-xrt_core::cuidx_type
-open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+std::unique_ptr<xrt_core::hwctx_handle>
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::cfg_param_type& cfg_param,
+                  xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->open_cu_context(hwctx, cuname);
+  return shim->create_hw_context(xclbin_uuid, cfg_param, mode);
 }
 
-void
-close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, size_t size, unsigned int flags)
 {
   auto shim = get_shim_object(handle);
-  return shim->close_cu_context(hwctx, cuidx);
+  return shim->xclAllocBO(size, flags);
 }
+
+// alloc_userptr_bo()
+std::unique_ptr<xrt_core::buffer_handle>
+alloc_bo(xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclAllocUserPtrBO(userptr, size, flags);
+}
+
+std::unique_ptr<xrt_core::buffer_handle>
+import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
+{
+  auto shim = get_shim_object(handle);
+  return shim->xclImportBO(ehdl, 0);
+}
+
 
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
@@ -1946,19 +2001,23 @@ xclClose(xclDeviceHandle handle)
 }
 
 unsigned int
-xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
+xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
 {
-  return xdp::hal::profiling_wrapper("xclAllocBO", [handle, size, unused, flags] {
+  return xdp::hal::profiling_wrapper("xclAllocBO", [handle, size, flags] {
+    try {
+      auto shim = ZYNQ::shim::handleCheck(handle);
+      if (!shim)
+        return static_cast<unsigned int>(-EINVAL);
 
-  //std::cout << "xclAllocBO called " << std::endl;
-  //std::cout << "xclAllocBO size:  "  << size << std::endl;
-  //std::cout << "xclAllocBO handle " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return static_cast<unsigned int>(-EINVAL);
-  //std::cout << "xclAllocBO handle check passed" << std::endl;
-  return drv->xclAllocBO(size, unused, flags);
-  }) ;
+        auto bo = shim->xclAllocBO(size, flags);
+        auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+        return ptr->detach_handle();
+      }
+      catch (const xrt_core::error& ex) {
+        xrt_core::send_exception_message(ex.what());
+        return static_cast<unsigned int>(ex.get_code());
+      }
+    });
 }
 
 unsigned int
@@ -1966,14 +2025,20 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned f
 {
   return xdp::hal::profiling_wrapper("xclAllocUserPtrBO",
   [handle, userptr, size, flags] {
+    try {
+      auto shim = ZYNQ::shim::handleCheck(handle);
+      if (!shim)
+        return static_cast<unsigned int>(-EINVAL);
 
-  //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return static_cast<unsigned int>(-EINVAL);
-  return drv->xclAllocUserPtrBO(userptr, size, flags);
-  //return 0xffffffff;
-  }) ;
+      auto bo = shim->xclAllocUserPtrBO(userptr, size, flags);
+      auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+      return ptr->detach_handle();
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return static_cast<unsigned int>(ex.get_code());
+    }
+  });
 }
 
 unsigned int
@@ -2082,27 +2147,37 @@ xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
 int
 xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  //std::cout << "xclExportBO called.. " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return -EINVAL;
-  return drv->xclExportBO(boHandle);
+  try {
+    auto shim = ZYNQ::shim::handleCheck(handle);
+    if (!shim)
+      return -EINVAL;
+
+    auto shared = shim->xclExportBO(boHandle);
+    auto ptr = static_cast<ZYNQ::shim::shared_object*>(shared.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
 }
 
 unsigned int
 xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 {
-  //std::cout << "xclImportBO called.. " << handle << std::endl;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  if (!drv)
-    return -EINVAL;
-  return drv->xclImportBO(fd, flags);
-}
+  try {
+    auto shim = ZYNQ::shim::handleCheck(handle);
+    if (!shim)
+      return static_cast<unsigned int>(-EINVAL); // argh ...
 
-int
-xclCloseExportHandle(int fd)
-{
-  return close(fd) ? -errno : 0;
+    auto bo = shim->xclImportBO(fd, flags);
+    auto ptr = static_cast<ZYNQ::shim::buffer_object*>(bo.get());
+    return ptr->detach_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<unsigned int>(ex.get_code());
+  }
 }
 
 static int
@@ -2169,7 +2244,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::aie::update_device(handle);
 #endif
     xdp::aie::ctr::update_device(handle);
-    xdp::aie::dbg::update_device(handle);
+    xdp::aie::sts::update_device(handle);
 #ifndef __HWEM__
     xdp::pl_deadlock::update_device(handle);
 
@@ -2717,13 +2792,16 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
 int
 xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-  return -ENOSYS;
+  return xclInternalResetDevice(handle, kind);
 }
 
 int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-  return -ENOSYS;
+  // NOTE: until xclResetDevice is made completely internal,
+  // this wrapper is being used to limit the pragma use to this file
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->resetDevice(kind) : -ENODEV;
 }
 
 int

@@ -55,7 +55,7 @@ singleContextDevice(cl_context context, cl_mem_flags flags, const void *host_ptr
   } else {
     // Check that all CUs in device has same single mem connectivity
     xocl::device::memidx_bitmask_type ucon;
-    for (auto cu : device->get_cu_range())
+    for (auto& cu : device->get_cu_range())
       ucon |= cu->get_memidx_union();
     if (ucon.count() > 1)
       return nullptr;

@@ -55,10 +55,11 @@ static void cu_xgq_start(void *core)
 static void cu_xgq_check(void *core, struct xcu_status *status, bool force)
 {
 	struct xrt_cu_xgq *cu_xgq = core;
+	uint32_t cu_status = CU_AP_IDLE;
 
 	status->num_ready = 1;
-	while (!xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id));
-	status->new_status = 0x4;
+	while (!xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id, &cu_status));
+	status->new_status = (cu_status == KDS_SKCRASHED) ? CU_AP_CRASHED : CU_AP_IDLE;
 }
 
 static void cu_xgq_enable_intr(void *core, u32 intr_type)
@@ -180,6 +181,8 @@ void xrt_cu_xgq_fini(struct xrt_cu *xcu)
 	struct xrt_cu_xgq *core = xcu->core;
 
 	xrt_cu_fini(xcu);
+
+	xocl_xgq_detach(core->xgq, core->xgq_client_id);
 
 	if (core->vaddr)
 		iounmap(core->vaddr);

@@ -37,7 +37,7 @@ static cl_int
 clReleaseKernel(cl_kernel kernel)
 {
   validOrError(kernel);
-  if (xocl(kernel)->release())
+  if (xocl_or_error(kernel)->release())
     delete xocl(kernel);
   return CL_SUCCESS;
 }

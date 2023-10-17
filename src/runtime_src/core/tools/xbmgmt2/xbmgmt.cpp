@@ -20,32 +20,47 @@
 
 // System include files
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <string>
 #include <iostream>
 #include <exception>
 
+const std::string& command_config = 
+R"(
+[{
+    "name": "cmd_configs",
+    "contents": [{
+        "name": "common",
+        "contents": [{
+            "name": "examine",
+            "contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
+        },{
+            "name": "configure",
+            "contents": ["input", "retention"]
+        }]
+    }]
+}]
+)";
+
 // Program entry
 int main( int argc, char** argv )
 {
-  // force linking with libxrt_core
-  // find a way in CMake to specify -undef <symbol>
-  try{
-    xclProbe();
-  } catch (...) {
-    xrt_core::send_exception_message("xclProbe failed");
-  }
-
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
+
+  boost::property_tree::ptree configTree;
+  std::istringstream command_config_stream(command_config);
+  boost::property_tree::read_json(command_config_stream, configTree);
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
-    subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false, configTree));
   }
 
   const std::string executable = "xbmgmt";

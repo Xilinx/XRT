@@ -17,6 +17,8 @@
 #include <fcntl.h>
 #include "xospiversal.h"
 #include "core/common/xclbin_parser.h"
+#include "core/tools/common/BusyBar.h"
+#include "tools/common/XBUtilitiesCore.h"
 
 /**
  * @brief XOSPIVER_Flasher::XOSPIVER_Flasher
@@ -34,6 +36,8 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
   std::cout << "INFO: ***xsabin has " << total_size << " bytes" << std::endl;
 
+  XBUtilities::BusyBar busy_bar("Working...", std::cout);
+
   try {
     std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
@@ -46,6 +50,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     ssize_t size = hdr->m_sectionSize;
 
     std::cout << "INFO: ***PDI has " << size << " bytes" << std::endl;
+    busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
 #ifdef __linux__
     auto data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) +
@@ -53,11 +58,12 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     auto fd = m_device->file_open("xfer_versal", O_RDWR);
     ret = write(fd.get(), data, size);
 #endif
+    busy_bar.finish();
     std::cout << "INFO: ***Write " << ret << " bytes" << std::endl;
-
     return ret == size ? 0 : -EIO;
   }
   catch (const std::exception& e) {
+    busy_bar.finish();
     xrt_core::send_exception_message(e.what(), "xfer_versal operation failed");
     return -EIO;
   }

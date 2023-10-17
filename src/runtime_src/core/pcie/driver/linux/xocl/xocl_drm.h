@@ -23,6 +23,8 @@
 #include <linux/hashtable.h>
 #endif
 
+#define MAX_MEM_BANK_COUNT 	128
+
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
 /**
@@ -54,22 +56,36 @@ struct xocl_cma_bank {
 	struct xocl_cma_memory	cma_mem[1];
 };
 
-struct xocl_drm {
-	xdev_handle_t		xdev;
-	/* memory management */
-	struct drm_device       *ddev;
+struct xocl_mm {
 	/* Memory manager */
 	struct drm_mm           *mm;
-	struct mutex            mm_lock;
-	struct drm_xocl_mm_stat **mm_usage_stat;
-	/* Array of bo usage stats */
+
+	/* Array of bo stats for whole device memory manager */
 	struct drm_xocl_mm_stat *bo_usage_stat;
+};
 
+struct xocl_mem_stat {
+	struct list_head        link;
+	uint32_t 		mem_idx;
+	uint32_t 		slot_idx;
+	
+	/* Memory usage stats for each memory bank per slot */
+	struct drm_xocl_mm_stat mm_usage_stat;
+};
+
+struct xocl_drm {
+	xdev_handle_t		xdev;
+	struct drm_device       *ddev;
+	struct mutex            mm_lock;
+
+	/* Memory manager */
+	struct xocl_mm		*xocl_mm;
+	struct drm_xocl_mm_stat mm_usage_stat[MAX_MEM_BANK_COUNT];
+
+	/* Xocl driver memory list head */
+	struct list_head        mem_list_head;
+	struct mem_data		ps_mem_data;
 	int			cma_bank_idx;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-	DECLARE_HASHTABLE(mm_range, 6);
-#endif
 };
 
 struct drm_xocl_bo {
@@ -97,7 +113,7 @@ struct drm_xocl_unmgd {
 };
 
 struct drm_xocl_bo *__xocl_create_bo_ioctl(struct drm_device *dev,
-	struct drm_xocl_create_bo *args);
+	struct drm_file *filp, struct drm_xocl_create_bo *args);
 struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
 	uint64_t unaligned_size, unsigned user_flags);
 void xocl_drm_free_bo(struct drm_gem_object *obj);
@@ -108,13 +124,14 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
 
-int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
-                struct drm_mm_node *node, u64 size);
+int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
+                uint32_t slotidx, struct drm_xocl_bo *xobj, u64 size);
 
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
-int xocl_init_mem(struct xocl_drm *drm_p);
-int xocl_cleanup_mem(struct xocl_drm *drm_p);
+int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id);
+int xocl_cleanup_mem_all(struct xocl_drm *drm_p);
+int xocl_cleanup_mem(struct xocl_drm *drm_p, uint32_t slot_id);
 
 int xocl_check_topology(struct xocl_drm *drm_p);
 

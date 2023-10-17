@@ -1,38 +1,12 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2015-2017 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
-/*
- * Copyright (C) 2015 Xilinx, Inc
- * Author: Paul Schumacher
- * Performance Monitoring using PCIe for XDMA HAL Driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+#include "pcidev.h"
+#include "shim.h"
+#include "xclbin.h"
 
+#include "core/common/message.h"
 #include "core/include/xdp/aim.h"
 #include "core/include/xdp/am.h"
 #include "core/include/xdp/asm.h"
@@ -41,20 +15,15 @@
 #include "core/include/xdp/lapc.h"
 #include "core/include/xdp/spc.h"
 
-#include "shim.h"
-#include "scan.h"
-#include "xclbin.h"
-#include "core/common/message.h"
-
-#include <iostream>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <cassert>
-#include <algorithm>
-#include <thread>
-#include <vector>
-#include <time.h>
+#include <iostream>
 #include <string>
+#include <thread>
+#include <time.h>
+#include <vector>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -96,7 +65,7 @@ namespace xocl {
                                          uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                          size_t size) {
     debug_ip_layout *map;
-    auto dev = pcidev::get_dev(mBoardNumber);
+    auto dev = xrt_core::pci::get_dev(mBoardNumber);
     std::string subdev_str = "icap";
     std::string entry_str = "debug_ip_layout";
     std::string path = dev->get_sysfs_path(subdev_str, entry_str);

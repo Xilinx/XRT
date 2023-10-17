@@ -18,13 +18,20 @@
 #define __SubCmdExamine_h_
 
 #include "tools/common/SubCmd.h"
+#include "tools/common/SubCmdExamineInternal.h"
+#include <boost/property_tree/ptree.hpp>
 
-class SubCmdExamine : public SubCmd {
+class SubCmdExamine : public SubCmdExamineInternal {
  public:
-  virtual void execute(const SubCmdOptions &_options) const;
+  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree configurations);
 
- public:
-  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+ private:
+  std::string               m_device;
+  std::vector<std::string>  m_reportNames;
+  std::vector<std::string>  m_elementsFilter;
+  std::string               m_format;
+  std::string               m_output;
+  bool                      m_help;
 };
 
 #endif

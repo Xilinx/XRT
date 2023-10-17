@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef xrtcore_util_module_loader_h_
 #define xrtcore_util_module_loader_h_
@@ -78,6 +66,52 @@ public:
   XRT_CORE_COMMON_EXPORT
   shim_loader();
 };
+
+/**
+ * Load XRT driver library at runtime
+ */
+class driver_loader
+{
+public:
+  /**
+   * driver_loader() - Load one or more versioned XRT driver libraries.
+   *
+   * The driver library is a plugin library to XRT core library. It is
+   * a link library in the same directory as core XRT library. The name
+   * of the library needs to match "libxrt_driver_xxx.so.<XRT-core-lib-version>".
+   */
+  XRT_CORE_COMMON_EXPORT
+  driver_loader();
+};
+
+namespace environment {
+
+/**
+ * xilinx_xrt() - Get path to XRT installation
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+xilinx_xrt();
+
+/**
+ * xclbin_path() - Get path to xclbin directory
+ *
+ * @xclbin_name : A path relative or absolute to an xclbin file
+ * Return: Full path the xclbin file
+ *
+ * If the specified path is an absolute path then the function returns
+ * this path or throws if file does not exist.  If the path is
+ * relative, or just a plain file name, then the function prepends the
+ * absolute path of a platform specific xclbin repository that
+ * contains the specified file.
+ *
+ * The function throws if the file does not exist.
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+xclbin_path(const std::string& xclbin_name);
+
+} // environment
 
 } // end namespace xrt_core
 

@@ -31,16 +31,24 @@ SET(CPACK_RPM_SPEC_MORE_DEFINE "%define __python python3")
 
 if (DEFINED CROSS_COMPILE)
   set(CPACK_REL_VER ${LINUX_VERSION})
+elseif (${LINUX_FLAVOR} MATCHES "^centos")
+  execute_process(
+    COMMAND awk "{print $4}" /etc/redhat-release
+    COMMAND tr -d "\""
+    OUTPUT_VARIABLE CPACK_REL_VER
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
 else()
   execute_process(
-      COMMAND lsb_release -r -s
+      COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
+      COMMAND tr -d "\""
       OUTPUT_VARIABLE CPACK_REL_VER
       OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 endif()
 
 SET(PACKAGE_KIND "TGZ")
-if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
+if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
   execute_process(
     COMMAND dpkg --print-architecture
     OUTPUT_VARIABLE CPACK_ARCH
@@ -66,7 +74,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   endif()
 
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), lsb-release, dkms (>= 2.2.0), udev, python3")
+  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), dkms (>= 2.2.0), udev, python3")
 
   if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
     # applications link with -luuid
@@ -95,7 +103,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
     SET(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS})
   endif()
 
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
+elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
   execute_process(
     COMMAND uname -m
     OUTPUT_VARIABLE CPACK_ARCH
@@ -123,10 +131,10 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
   SET(CPACK_RPM_CONTAINER_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
-  if (${LINUX_FLAVOR} MATCHES "^(SUSE)")
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, lsb-release, dkms >= 2.2.0, python3 >= 3.6")
+  if (${LINUX_FLAVOR} MATCHES "^(sles)")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, dkms >= 2.2.0, python3 >= 3.6")
   else()
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, redhat-lsb-core, dkms >= 2.5.0, python3 >= 3.6")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, dkms >= 2.5.0, python3 >= 3.6")
   endif()
 
   if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
@@ -158,7 +166,7 @@ endif()
 # On Amazon Linux CPACK_REL_VER is just '2' and it is hard to
 # distinguish it as AL package, so adding CPACK_FLOVOR (eg: amzn) 
 # to package name
-if (${LINUX_FLAVOR} MATCHES "^Amazon")
+if (${LINUX_FLAVOR} MATCHES "^amzn")
   execute_process(
     COMMAND awk -F= "$1==\"ID\" {print $2}" /etc/os-release
     COMMAND tr -d "\""

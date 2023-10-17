@@ -54,19 +54,19 @@ public:
   {
   }
 
-  reset_key get_key() {
+  reset_key get_key() const {
     return mKey;
   }
 
-  std::string get_name() {
+  std::string get_name() const {
     return mName;
   }
 
-  std::string get_subdev() {
+  std::string get_subdev() const {
     return mSubdev;
   }
 
-  std::string get_entry() {
+  std::string get_entry() const {
     return mEntry;
   }
 
@@ -78,11 +78,11 @@ public:
     mEntry = str;
   }
 
-  std::string get_warning() {
+  std::string get_warning() const {
     return mWarning;
   }
 
-  std::string get_value() {
+  std::string get_value() const {
     return mValue;
   }
 };

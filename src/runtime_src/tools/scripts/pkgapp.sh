@@ -129,7 +129,7 @@ done < "$app_dep"
 
 dodeb()
 {
-    uRel=`lsb_release -r -s`
+    uRel=`awk -F= '$1=="VERSION_ID" {print $2}' /etc/os-release | tr -d '"'`
     dir=debbuild/$app_name-$app_ver_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
@@ -205,7 +205,7 @@ EOF
     echo "================================================================"
 }
 
-FLAVOR=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
+FLAVOR=`awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}'`
 
 if [[ $FLAVOR == "centos" ]]; then
     dorpm

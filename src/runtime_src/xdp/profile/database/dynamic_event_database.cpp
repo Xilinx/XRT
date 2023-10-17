@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,19 +30,7 @@ namespace xdp {
   VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
     db(d), eventId(1)
   {
-    host = new HostDB();
-  }
-
-  VPDynamicDatabase::~VPDynamicDatabase()
-  {
-    if (host != nullptr)
-      delete host;
-
-    std::lock_guard<std::mutex> lock(deviceDBLock);
-    for (auto& iter : devices) {
-      auto device = iter.second;
-      delete device;
-    }
+    host = std::make_unique<HostDB>();
   }
 
   // For designs that load multiple xclbins, we add an event into the database
@@ -82,8 +70,8 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(deviceDBLock);
     if (devices.find(deviceId) == devices.end())
-      devices[deviceId] = new DeviceDB;
-    return devices[deviceId];
+      devices[deviceId] = std::make_unique<DeviceDB>();
+    return devices[deviceId].get();
   }
 
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
@@ -148,6 +136,16 @@ namespace xdp {
   uint64_t VPDynamicDatabase::matchingXRTUIDStart(uint64_t uid)
   {
     return host->matchingXRTUIDStart(uid);
+  }
+
+  void VPDynamicDatabase::markEventPairStart(uint64_t functionId, const EventPair& events)
+  {
+    host->registerEventPairStart(functionId, events);
+  }
+
+  EventPair VPDynamicDatabase::matchingEventPairStart(uint64_t functionId)
+  {
+    return host->matchingEventPairStart(functionId);
   }
 
   void VPDynamicDatabase::markRange(uint64_t functionID,
@@ -286,6 +284,20 @@ namespace xdp {
     return std::move(device_db->getAIESamples());
   }
 
+  void VPDynamicDatabase::addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,
+          unsigned long timestamp2, const std::vector<uint64_t>& values)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    device_db->addAIETimerSample(timestamp1, timestamp2, values);
+  }
+
+  std::vector<counters::DoubleSample>
+  VPDynamicDatabase::getAIETimerSamples(uint64_t deviceId)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    return std::move(device_db->getAIETimerSamples());
+  }
+
   void VPDynamicDatabase::setPLTraceBufferFull(uint64_t deviceId, bool val)
   {
     auto device_db = getDeviceDB(deviceId);
@@ -296,5 +308,22 @@ namespace xdp {
   {
     auto device_db = getDeviceDB(deviceId);
     return device_db->isPLTraceBufferFull();
+  }
+
+  void VPDynamicDatabase::
+  setPLDeadlockInfo(uint64_t deviceId, const std::string& info)
+  {
+    auto device_db = getDeviceDB(deviceId);
+    device_db->setPLDeadlockInfo(info);
+  }
+
+  std::string VPDynamicDatabase::
+  getPLDeadlockInfo()
+  {
+    std::lock_guard<std::mutex> lock(deviceDBLock);
+    std::string info;
+    for (const auto& d : devices)
+      info += d.second->getPLDeadlockInfo();
+    return info;
   }
 }

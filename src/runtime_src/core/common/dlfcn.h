@@ -20,6 +20,8 @@
 #ifndef _WIN32
 # include <dlfcn.h>
 #else
+# include <stdexcept>
+# include <string>
 # include <windows.h>
 # define RTLD_LAZY 0
 # define RTLD_GLOBAL 0
@@ -77,7 +79,17 @@ dlerror()
 inline void*
 dlsym(void* handle, const char* symbol)
 {
-  return ::GetProcAddress(HMODULE(handle),symbol);
+  return ::GetProcAddress(HMODULE(handle), symbol);
+}
+
+inline std::string
+dlpath(const char* dllname)
+{
+  char dll_path[MAX_PATH];
+  if (!::GetModuleFileName(::GetModuleHandle(dllname), dll_path, MAX_PATH))
+    throw std::runtime_error("Get handle of " + std::string(dllname) + " failed");
+
+  return dll_path;
 }
 
 #endif

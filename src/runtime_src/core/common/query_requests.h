@@ -1,32 +1,23 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
+#include "asd_parser.h"
 #include "error.h"
 #include "query.h"
 #include "uuid.h"
 
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xclerr_int.h"
 
+#include <cstdint>
 #include <iomanip>
 #include <map>
-#include <string>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <boost/any.hpp>
@@ -84,10 +75,13 @@ enum class key_type
   debug_ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
+  device_status,
   kds_cu_info,
   sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
+  hw_context_info,
+  hw_context_memory_info,
   xocl_errors,
   xclbin_full,
   ic_enable,
@@ -124,8 +118,16 @@ enum class key_type
 
   dna_serial_num,
   clock_freqs_mhz,
-  aie_core_info,
-  aie_shim_info,
+
+  aie_core_info_sysfs,
+  aie_shim_info_sysfs,
+  aie_mem_info_sysfs,
+
+  aie_status_version,
+  aie_tiles_stats,
+  aie_tiles_status_info,
+  aie_partition_info,
+
   idcode,
   data_retention,
   sec_level,
@@ -279,6 +281,7 @@ enum class key_type
   hwmon_sdm_oem_id,
   hwmon_sdm_board_name,
   hwmon_sdm_active_msp_ver,
+  hwmon_sdm_target_msp_ver,
   hwmon_sdm_mac_addr0,
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
@@ -294,70 +297,8 @@ enum class key_type
   xgq_scaling_enabled,
   xgq_scaling_power_override,
   xgq_scaling_temp_override,
+  performance_mode,
   noop
-};
-
-// Base class for query request exceptions.
-//
-// Provides granularity for calling code to catch errors specific to
-// query request which are often acceptable errors because some
-// devices may not support all types of query requests.
-//
-// Other non query exceptions signal a different kind of error which
-// should maybe not be caught.
-//
-// The addition of the query request exception hierarchy does not
-// break existing code that catches std::exception (or all errors)
-// because ultimately the base query exception is-a std::exception
-class exception : public std::runtime_error
-{
-public:
-  explicit
-  exception(const std::string& err)
-    : std::runtime_error(err)
-  {}
-};
-
-class no_such_key : public exception
-{
-  key_type m_key;
-
-  using qtype = std::underlying_type<query::key_type>::type;
-public:
-  explicit
-  no_such_key(key_type k)
-    : exception(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
-    , m_key(k)
-  {}
-
-  no_such_key(key_type k, const std::string& msg)
-    : exception(msg)
-    , m_key(k)
-  {}
-
-  key_type
-  get_key() const
-  {
-    return m_key;
-  }
-};
-
-class sysfs_error : public exception
-{
-public:
-  explicit
-  sysfs_error(const std::string& msg)
-    : exception(msg)
-  {}
-};
-
-class not_supported : public exception
-{
-public:
-  explicit
-  not_supported(const std::string& msg)
-    : exception(msg)
-  {}
 };
 
 struct pcie_vendor : request
@@ -939,6 +880,34 @@ struct sdm_sensor_info : request
   get(const device*, const boost::any& req_type) const = 0;
 };
 
+/**
+ * Extract the status of the device
+ * This states whether or not a device is stuck due to an xclbin issue
+ */
+struct device_status : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::device_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  parse_status(const result_type status)
+  {
+    switch (status) {
+      case 0:
+        return "HEALTHY";
+      case 1:
+        return "HANG";
+      case 2:
+        return "UNKNOWN";
+      default:
+        throw xrt_core::system_error(EINVAL, "Invalid device status: " + status);
+    }
+  }
+};
+
 struct kds_cu_info : request
 {
   struct data {
@@ -978,6 +947,69 @@ struct kds_scu_info : request
   using result_type = std::vector<struct data>;
   using data_type = struct data;
   static const key_type key = key_type::kds_scu_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/**
+ * Return all hardware contexts within a device
+ */
+struct hw_context_info : request
+{
+  struct metadata {
+    std::string id;
+    std::string xclbin_uuid;
+  };
+
+  /**
+   * A structure to represent a single hardware context on any device type. This
+   * structure must contain all data that makes up a hardware context across
+   * all device types.
+   * 
+   * The only field that must be populated is the xclbin uuid.
+   * All other fields can be populated as required by the appropriate device.
+   * As new compute types are created they must be accounted for here
+   * 
+   * For example:
+   *  Alveo -> populate only the PL compute units
+   *  Versal -> populate PL and PS compute units
+   */
+  struct data {
+    struct metadata metadata;
+    kds_cu_info::result_type pl_compute_units;
+    kds_scu_info::result_type ps_compute_units;
+  };
+
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::hw_context_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/**
+ * Return all hardware contexts' memory info within a device
+ */
+struct hw_context_memory_info : request
+{
+  /**
+   * A structure to represent a single hardware context's memory contents on
+   * any device type. This structure contains all data that makes up a 
+   * hardware context memory structure across all device types.
+   */
+  struct data {
+    hw_context_info::metadata metadata;
+    mem_topology_raw::result_type topology;
+    group_topology::result_type grp_topology;
+    memstat_raw::result_type statistics;
+    temp_by_mem_topology::result_type temperature;
+  };
+
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::hw_context_memory_info;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1367,22 +1399,111 @@ struct dna_serial_num : request
   }
 };
 
-struct aie_core_info : request
+// Used to retrive aie core tile status information from sysfs
+struct aie_core_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_core_info;
+  static const key_type key = key_type::aie_core_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
 };
 
-struct aie_shim_info : request
+// Used to retrive aie shim tile status information from sysfs
+struct aie_shim_info_sysfs : request
 {
   using result_type = std::string;
-  static const key_type key = key_type::aie_shim_info;
+  static const key_type key = key_type::aie_shim_info_sysfs;
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+// Used to retrive aie mem tile status information from sysfs
+struct aie_mem_info_sysfs : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_mem_info_sysfs;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrive aie status version
+// We use binary parser for parsing info from driver
+// This version is used as handshake b/w userspace and driver
+struct aie_status_version : request
+{
+  struct aie_version {
+    uint16_t major;
+    uint16_t minor;
+  };
+
+  using result_type = aie_version;
+  static const key_type key = key_type::aie_status_version;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrive device specific Aie tiles(core, mem, shim) tiles info
+// like total num of rows, cols, and num of core, mem, shim rows
+// num of dma channels, locks, events
+struct aie_tiles_stats : request
+{
+  using result_type = asd_parser::aie_tiles_info;
+  static const key_type key = key_type::aie_tiles_stats;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Used to retrive aie tiles status info
+struct aie_tiles_status_info : request
+{
+  struct parameters
+  {
+    uint32_t col_size;
+    uint16_t start_col;
+    uint16_t num_cols;
+  };
+
+  struct result
+  {
+    std::vector<char> buf;
+    uint32_t cols_filled;
+  };
+
+  using result_type = result;
+  static const key_type key = key_type::aie_tiles_status_info;
+
+  virtual boost::any
+  get(const device* device, const boost::any& param) const = 0;
+};
+
+// Retrieves the aie partition info.
+// An aie partition consists of a starting column and a number of columns.
+// The information is returned via hardware contexts as the driver keeps
+// track of the data this way.
+// Hardware contexts may share the same aie partition.
+struct aie_partition_info : request
+{
+  struct data
+  {
+    hw_context_info::metadata metadata;
+    uint64_t    start_col;
+    uint64_t    num_cols;
+    uint64_t    usage_count;
+    uint64_t    migration_count;
+    uint64_t    bo_sync_count;
+
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::aie_partition_info;
+
+  virtual boost::any
+  get(const device* device) const = 0;
 };
 
 struct clock_freqs_mhz : request
@@ -2527,12 +2648,11 @@ struct is_recovery : request
   get(const device*) const = 0;
 };
 
-/*
- * struct is_versal - check if device is versal or not
- * A value of true means it is a versal device.
- * This entry is needed as some of the operations are handled
- * differently on versal devices compared to Alveo devices
- */
+
+// struct is_versal - check if device is versal or not
+// A value of true means it is a versal device.
+// This entry is needed as some of the operations are handled
+// differently on versal devices compared to Alveo devices
 struct is_versal : request
 {
   using result_type = bool;
@@ -2542,6 +2662,9 @@ struct is_versal : request
   get(const device*) const = 0;
 };
 
+// struct is_ready - A boolean stating
+// if the specified device is ready for
+// XRT operations such as program or reset
 struct is_ready : request
 {
   using result_type = bool;
@@ -2982,6 +3105,11 @@ struct program_sc : request
   put(const device*, const boost::any&) const = 0;
 };
 
+
+// Returns the status the vmr subdevice. This
+// includes boot information and other data.
+// In the user partition only the boot information
+// is returned.
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
@@ -3004,7 +3132,7 @@ struct extended_vmr_status : request
 // from xclbin uuid to the slot index created by the driver
 struct xclbin_slots : request
 {
-  using slot_id = uint32_t;
+  using slot_id = hwctx_handle::slot_id;
 
   struct slot_info {
     slot_id slot;
@@ -3022,6 +3150,7 @@ struct xclbin_slots : request
   get(const xrt_core::device* device) const = 0;
 };
 
+// Retrieve Board Serial number from xocl hwmon_sdm driver
 struct hwmon_sdm_serial_num : request
 {
   using result_type = std::string;
@@ -3031,6 +3160,7 @@ struct hwmon_sdm_serial_num : request
   get(const device*) const = 0;
 };
 
+// Retrieve OEM ID data from xocl hwmon_sdm driver
 struct hwmon_sdm_oem_id : request
 {
   using result_type = std::string;
@@ -3040,6 +3170,7 @@ struct hwmon_sdm_oem_id : request
   get(const device*) const = 0;
 };
 
+// Retrieve Board name from xocl hwmon_sdm driver
 struct hwmon_sdm_board_name : request
 {
   using result_type = std::string;
@@ -3049,6 +3180,7 @@ struct hwmon_sdm_board_name : request
   get(const device*) const = 0;
 };
 
+// Retrieve active SC version from xocl hwmon_sdm driver
 struct hwmon_sdm_active_msp_ver : request
 {
   using result_type = std::string;
@@ -3058,6 +3190,17 @@ struct hwmon_sdm_active_msp_ver : request
   get(const device*) const = 0;
 };
 
+// Retrieve expected SC version from xocl hwmon_sdm driver
+struct hwmon_sdm_target_msp_ver : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_target_msp_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrieve MAC ADDR0 from xocl hwmon_sdm driver
 struct hwmon_sdm_mac_addr0 : request
 {
   using result_type = std::string;
@@ -3067,6 +3210,7 @@ struct hwmon_sdm_mac_addr0 : request
   get(const device*) const = 0;
 };
 
+// Retrieve MAC ADDR1 from xocl hwmon_sdm driver
 struct hwmon_sdm_mac_addr1 : request
 {
   using result_type = std::string;
@@ -3076,6 +3220,7 @@ struct hwmon_sdm_mac_addr1 : request
   get(const device*) const = 0;
 };
 
+// Retrieve Revision data from xocl hwmon_sdm driver
 struct hwmon_sdm_revision : request
 {
   using result_type = std::string;
@@ -3085,6 +3230,7 @@ struct hwmon_sdm_revision : request
   get(const device*) const = 0;
 };
 
+// Retrieve FAN presence status from xocl hwmon_sdm driver
 struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
@@ -3197,6 +3343,45 @@ struct xgq_scaling_temp_override : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct performance_mode : request
+{
+  // Get and set power mode of device
+  enum class power_type
+  {
+    basic, // deafult
+    low,
+    medium,
+    high
+  };
+  using result_type = uint32_t;  // get value type
+  using value_type = power_type;   // put value type
+
+  static const key_type key = key_type::performance_mode;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+  static std::string
+  parse_status(const result_type status)
+  {
+    switch(status) {
+      case 0:
+        return "Default";
+      case 1:
+        return "Low";
+      case 2:
+        return "Medium";
+      case 3:
+        return "High";
+      default:
+        throw xrt_core::system_error(EINVAL, "Invalid performance status: " + status);
+    }
+  }
 };
 
 } // query

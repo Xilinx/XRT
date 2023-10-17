@@ -3,7 +3,7 @@
 
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
  *          : Tianhao Zhou
@@ -34,7 +34,7 @@
 #include "core/include/xdp/trace.h"
 
 #include "xdp/config.h"
-
+#include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/add.h"
 #include "xdp/profile/device/aim.h"
 #include "xdp/profile/device/am.h"
@@ -45,6 +45,7 @@
 #include "xdp/profile/device/traceFifoLite.h"
 #include "xdp/profile/device/traceFunnel.h"
 #include "xdp/profile/device/traceS2MM.h"
+#include "xdp/profile/device/xrtIP.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
@@ -113,13 +114,15 @@ class DeviceIntf {
     XDP_EXPORT
     size_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
     XDP_EXPORT
-    void freeTraceBuf(size_t bufHandle);
+    void freeTraceBuf(size_t id);
     XDP_EXPORT
-    void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
+    void* syncTraceBuf(size_t id ,uint64_t offset, uint64_t bytes);
     XDP_EXPORT
-    uint64_t getDeviceAddr(size_t bufHandle);
+    xclBufferExportHandle exportTraceBuf(size_t id);
     XDP_EXPORT
-    uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
+    uint64_t getTraceBufDeviceAddr(size_t id);
+    XDP_EXPORT
+    uint64_t getAlignedTraceBufSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
     bool hasFIFO() {return (mFifoCtrl != nullptr);};
@@ -202,7 +205,17 @@ class DeviceIntf {
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
 
+    XDP_EXPORT
+    void createXrtIP
+    (
+      const std::unique_ptr<ip_metadata>& ip_metadata_section,
+      const std::string& fullname
+    );
+    XDP_EXPORT
+    std::string getDeadlockDiagnosis(bool print);
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
+
+    bool hasHSDPforPL() { return mHSDPforPL; }
 
   private:
     // Turn on/off debug messages to stdout
@@ -211,6 +224,9 @@ class DeviceIntf {
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
+
+    // HSDP Trace IP is used for PL Trace offload
+    bool mHSDPforPL = false;
 
     std::mutex traceLock ;
 
@@ -229,7 +245,10 @@ class DeviceIntf {
 
     std::vector<TraceS2MM*> mPlTraceDmaList;
     std::vector<TraceS2MM*> mAieTraceDmaList;
+
+    // Deadlock Detection and Diagnosis
     DeadlockDetector*     mDeadlockDetector  = nullptr;
+    std::vector<std::unique_ptr<XrtIP>> mXrtIPList;
 
     /*
      * Set max bandwidths to reasonable defaults

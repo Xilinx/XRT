@@ -20,6 +20,7 @@
 #ifndef _WIN32
 #include <unistd.h>
 #else
+#include <Shlobj.h>
 #endif
 
 namespace xrt_core {
@@ -33,6 +34,17 @@ getpagesize()
   return 4096;
 #endif
 }
+
+inline bool
+is_user_privileged()
+{
+#ifndef _WIN32
+  return (getuid() == 0) || (geteuid() == 0);
+#else
+  return IsUserAnAdmin();
+#endif
+}
+
 
 } // xrt_core
 #endif

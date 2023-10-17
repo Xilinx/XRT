@@ -86,8 +86,15 @@ static ssize_t mfg_ver_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	struct VmrStatus vmr_header = {};
 
-	return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, _GOLDEN_VER));
+	/*
+	 * Non-Versal Platform:	ret is ENODEV and continue Reg read from PCIE Bar
+	 * Versal Platform:	ret is 0 or any other and return EINVAL.
+	 */
+	if(xocl_vmr_status(lro, &vmr_header) == -ENODEV)
+		return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, _GOLDEN_VER));
+	return -EINVAL;
 }
 static DEVICE_ATTR_RO(mfg_ver);
 

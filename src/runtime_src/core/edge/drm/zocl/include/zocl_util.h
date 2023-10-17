@@ -72,6 +72,26 @@ enum zocl_mem_type {
 	ZOCL_MEM_TYPE_STREAMING		= 2,
 };
 
+/* Possible slots Types for ZOCL */
+enum zocl_slot_type {
+	ZOCL_SLOT_TYPE_PHY			= 0,
+	ZOCL_SLOT_TYPE_VIRT			= 1
+};
+
+/* Possible XCLBIN Types that ZOCL supports */
+enum zocl_xclbin_type {
+	ZOCL_XCLBIN_TYPE_FULL			= 0,
+	ZOCL_XCLBIN_TYPE_PL_ONLY		= 1,
+	ZOCL_XCLBIN_TYPE_AIE_ONLY		= 2,
+	ZOCL_XCLBIN_TYPE_PS			= 3
+};
+
+/* Hard coded XCLBIN slot id for AIE in ZOCL */
+enum zocl_xclbin_slot {
+	ZOCL_DEFAULT_XCLBIN_SLOT		= 0,
+	ZOCL_AIE_ONLY_XCLBIN_SLOT		= 1
+};
+
 /*
  * Memory structure in zocl driver. There will be an array of this
  * structure where each element is representing each section in
@@ -94,6 +114,7 @@ struct zocl_mem {
  */
 struct zdev_data {
 	char fpga_driver_name[64];
+	char fpga_driver_new_name[64];
 };
 
 struct aie_metadata {
@@ -103,6 +124,8 @@ struct aie_metadata {
 
 struct drm_zocl_slot {
 	u32			 slot_idx;
+	u32			 slot_type;
+	u32			 xclbin_type;
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
@@ -169,10 +192,8 @@ struct drm_zocl_dev {
 	struct dma_chan		*zdev_dma_chan;
 	struct mailbox		*zdev_mailbox;
 	const struct zdev_data	*zdev_data_info;
-	struct generic_cu	*generic_cu;
 	struct zocl_error	 zdev_error;
 	struct zocl_aie		*aie;
-	struct zocl_watchdog_dev *watchdog;
 
 	int			 num_pr_slot;
 	int			 full_overlay_id;

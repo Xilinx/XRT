@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -40,6 +41,9 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset);
 
+  virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data);
+  virtual int initXrtIP(const char *name, uint64_t base, uint32_t range);
+
   virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret);
 
   virtual double getDeviceClock();
@@ -48,11 +52,13 @@ public:
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
   virtual size_t alloc(size_t sz, uint64_t memoryIndex);
-  virtual void free(size_t xdpBoHandle);
-  virtual void* map(size_t xdpBoHandle);
-  virtual void unmap(size_t xdpBoHandle);
-  virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
-  virtual uint64_t getDeviceAddr(size_t xdpBoHandle);
+  virtual void   free(size_t id);
+  virtual void*  map(size_t id);
+  virtual void   unmap(size_t id);
+  virtual void   sync(size_t id, size_t sz, size_t offset, direction dir, bool async=false);
+  virtual xclBufferExportHandle exportBuffer(size_t id);
+  virtual uint64_t              getBufferDeviceAddr(size_t id);
+
   virtual void* getRawDevice() { return mHalDevice ; }
 
   virtual double getHostMaxBwRead();
@@ -61,6 +67,7 @@ public:
   virtual double getKernelMaxBwWrite();
 
   virtual std::string getSubDevicePath(std::string& subdev, uint32_t index);
+
 };
 }
 

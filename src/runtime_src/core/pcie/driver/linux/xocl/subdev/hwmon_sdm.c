@@ -70,7 +70,7 @@ struct xocl_sdr_bdinfo {
 	char revision[SDR_BDINFO_ENTRY_LEN_MAX];
 	uint64_t mfg_date;
 	uint64_t pcie_info;
-	uint64_t uuid;
+	char uuid[UUID_STRING_LEN + 1];
 	char mac_addr0[SDR_BDINFO_ENTRY_LEN_MAX];
 	char mac_addr1[SDR_BDINFO_ENTRY_LEN_MAX];
 	char active_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
@@ -675,7 +675,7 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 	else if (!strcmp(sensor_name, "PCIE Info"))
 		memcpy(&sdm->bdinfo.pcie_info, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "UUID"))
-		memcpy(&sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 0"))
 		memcpy(sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 1"))
@@ -1188,7 +1188,7 @@ abort:
 
 static int create_hwmon_sysfs(struct platform_device *pdev)
 {
-	struct xocl_hwmon_sdm *sdm;
+	struct xocl_hwmon_sdm *sdm = NULL;
 	struct xocl_dev_core *core;
 	int err;
 
@@ -1207,7 +1207,8 @@ static int create_hwmon_sysfs(struct platform_device *pdev)
 	if (IS_ERR(sdm->hwmon_dev)) {
 		err = PTR_ERR(sdm->hwmon_dev);
 		xocl_err(&pdev->dev, "register sdm hwmon failed: 0x%x", err);
-		goto hwmon_reg_failed;
+		sdm->hwmon_dev = NULL;
+		return err;
 	}
 
 	dev_set_drvdata(sdm->hwmon_dev, sdm);
@@ -1215,17 +1216,15 @@ static int create_hwmon_sysfs(struct platform_device *pdev)
 	err = device_create_file(sdm->hwmon_dev, &name_attr.dev_attr);
 	if (err) {
 		xocl_err(&pdev->dev, "create attr name failed: 0x%x", err);
-		goto create_name_failed;
+		goto failed;
 	}
 
 	xocl_dbg(&pdev->dev, "created hwmon sysfs list");
 	sdm->sysfs_created = true;
 
 	return 0;
-
-create_name_failed:
+failed:
 	hwmon_device_unregister(sdm->hwmon_dev);
-hwmon_reg_failed:
 	sdm->hwmon_dev = NULL;
 	return err;
 }
@@ -1233,6 +1232,7 @@ hwmon_reg_failed:
 static int hwmon_sdm_remove(struct platform_device *pdev)
 {
 	struct xocl_hwmon_sdm *sdm;
+	void *hdl;
 
 	sdm = platform_get_drvdata(pdev);
 	if (!sdm) {
@@ -1240,11 +1240,14 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drvinst_release(sdm, &hdl);
+
 	if (sdm->sysfs_created)
 		destroy_hwmon_sysfs(pdev);
 
 	mutex_destroy(&sdm->sdm_lock);
 	platform_set_drvdata(pdev, NULL);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }
@@ -1308,7 +1311,7 @@ uuid_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo.uuid);
+	return sprintf(buf, "%pUB", sdm->bdinfo.uuid);
 };
 static DEVICE_ATTR_RO(uuid);
 
@@ -1428,16 +1431,8 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, sdm);
 	sdm->pdev = pdev;
 	sdm->supported = true;
-	mutex_init(&sdm->sdm_lock);
-
-	/* create hwmon sysfs nodes */
-	err = create_hwmon_sysfs(pdev);
-	if (err) {
-		xocl_err(&pdev->dev, "hwmon_sdm hwmon_sysfs is failed, err: %d", err);
-		goto failed;
-	}
-
 	sdm->cache_expire_secs = HWMON_SDM_DEFAULT_EXPIRE_SECS;
+	mutex_init(&sdm->sdm_lock);
 
 	if (XGQ_DEV(xdev) == NULL) {
 		xocl_dbg(&pdev->dev, "in userpf driver");
@@ -1447,14 +1442,25 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 		sdm->privileged = true;
 	}
 
-	if (sysfs_create_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup))
-		xocl_err(&pdev->dev, "unable to create sysfs group for bdinfo");
+	err = sysfs_create_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
+	if (err) {
+		xocl_err(&pdev->dev, "unable to create sysfs group for bdinfo, err: %d", err);
+		return err;
+	}
+
+	/* create hwmon sysfs nodes */
+	err = create_hwmon_sysfs(pdev);
+	if (err) {
+		xocl_err(&pdev->dev, "hwmon_sdm hwmon_sysfs is failed, err: %d", err);
+		goto failed;
+	}
 
 	xocl_info(&pdev->dev, "hwmon_sdm driver probe is successful");
 
-	return err;
+	return 0;
 
 failed:
+	sysfs_remove_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
 	hwmon_sdm_remove(pdev);
 	return err;
 }

@@ -1,6 +1,6 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -42,16 +42,22 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) = 0;
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
+  // Access to IP in IP_LAYOUT
+  virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data) = 0;
+  virtual int initXrtIP(const char *name, uint64_t base, uint32_t range) = 0;
+
   virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) = 0;
 
   // Only device RAM
   virtual size_t alloc(size_t sz, uint64_t memoryIndex) = 0;
-  virtual void free(size_t xdpBoHandle) = 0;
+  virtual void   free(size_t id) = 0;
 
-  virtual void* map(size_t xdpBoHandle) = 0;
-  virtual void unmap(size_t xdpBoHandle) = 0;
-  virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false) = 0;
-  virtual uint64_t getDeviceAddr(size_t xdpBoHandle) = 0;
+  virtual void*  map(size_t id) = 0;
+  virtual void   unmap(size_t id) = 0;
+  virtual void   sync(size_t id, size_t sz, size_t offset, direction dir, bool async=false) = 0;
+
+  virtual xclBufferExportHandle exportBuffer(size_t id) = 0;
+  virtual uint64_t              getBufferDeviceAddr(size_t id) = 0;
 
   virtual double getDeviceClock() = 0;
   virtual uint64_t getTraceTime() = 0;
@@ -67,6 +73,7 @@ public:
   virtual void* getRawDevice() = 0 ;
 
   virtual std::string getSubDevicePath(std::string& subdev, uint32_t index) = 0;
+
 };
 
 }

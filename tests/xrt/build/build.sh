@@ -16,12 +16,12 @@
 # build/{Release,Debug,WRelease,WDebug}
 ################################################################
 
-OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
+OSDIST=`awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 WSL=0
 CMAKE=cmake
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]]; then
     CMAKE=cmake3
     if [[ ! -x "$(command -v $CMAKE)" ]]; then
         echo "$CMAKE is not installed, please run xrtdeps.sh"

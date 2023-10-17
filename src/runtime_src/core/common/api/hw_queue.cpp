@@ -3,25 +3,31 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #define XRT_API_SOURCE         // in same dll as API sources
-
 #include "hw_queue.h"
 
 #include "command.h"
 #include "hw_context_int.h"
+#include "fence_int.h"
 
 #include "core/common/debug.h"
 #include "core/common/device.h"
 #include "core/common/thread.h"
-#include "experimental/xrt_hw_context.h"
 #include "core/include/ert.h"
-#include "core/include/xcl_hwqueue.h"
+#include "core/include/xrt_hwqueue.h"
+
+#include "xrt/xrt_hw_context.h"
+#include "experimental/xrt_fence.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
+
+using namespace std::chrono_literals;
 
 ////////////////////////////////////////////////////////////////
 // Main command execution interface for scheduling commands for
@@ -53,6 +59,12 @@ notify_host(xrt_core::command* cmd, ert_cmd_state state)
 {
   XRT_DEBUGF("xrt_core::kds::command(%d), [running->done]\n", cmd->get_uid());
   auto retain = cmd->shared_from_this();
+
+  // If retain is last reference to cmd, then the command object is
+  // deleted here from the monitor thread, but that can result in
+  // hwqueue destruction (command owns reference). If the hwqueue owns
+  // the monitor thread and stops and joins with it, the result will
+  // be a resource deadlock exception.
   cmd->notify(state);
 }
 
@@ -62,25 +74,36 @@ notify_host(xrt_core::command* cmd)
   notify_host(cmd, get_command_state(cmd));
 }
 
-
-// class kds_device - kds book keeping data for command scheduling
+// class command_manager - managed command executuon
 //
-// @device: The core device used for shim level calls
-// @exec_wait_mutex: Synchronize acces to exec_wait
+// @m_qimpl: The hw queue used for command submission
 // @work_mutex: Syncrhonize monitor thread with launched commands
 // @work_cond: Kick off monitor thread when there are new commands
 // @monitor_thread: Thread for asynchronous monitoring of command execution
-// @exec_wait_call_count:  Count of number of calls to exec wait
 // @stop: Stop the monitor thread
 //
-// This class is per xrt_core::device. The class constructor starts a
-// command monitor thread that manages command execution.  It also
-// provides a thread safe interface to shim level exec_wait which can
-// be called explicitly to wait for command completion.
-class kds_device
+// This is constructed on demand when commands are submitted for managed
+// execution through a command queue.  Managed execution means that
+// commands are submitted for execution and receive a callback on
+// completion.  This is the OpenCL model but is also supported by
+// native XRT APIs.
+//
+// The command manager requires submission and wait APIs to be implemented
+// by which ever object (hw queue) uses the manager.
+class command_manager
 {
-  xrt_core::device* device;
-  std::mutex exec_wait_mutex;
+public:
+  struct executor
+  {
+    virtual std::cv_status
+    wait(size_t timeout_ms) = 0;
+
+    virtual void
+    submit(xrt_core::command* cmd) = 0;
+  };
+
+private:
+  executor* m_impl;
   std::mutex work_mutex;
   std::condition_variable work_cond;
   command_queue_type submitted_cmds;
@@ -116,7 +139,7 @@ class kds_device
         return;
 
       // Finer wait
-      exec_wait();
+      m_impl->wait(0);
 
       // Drain submitted commands.  It is important that this comes
       // after exec_wait and is synchronized with launch() that added
@@ -172,104 +195,39 @@ class kds_device
     }
   }
 
-
 public:
   // Constructor starts monitor thread
-  kds_device(xrt_core::device* dev)
-      : device(dev), monitor_thread(xrt_core::thread(&kds_device::monitor, this))
-  {}
+  command_manager(executor* impl)
+    : m_impl(impl), monitor_thread(xrt_core::thread(&command_manager::monitor, this))
+  {
+    XRT_DEBUGF("command_manager::command_manager(0x%x)\n", impl);
+  }
 
   // Destructor stops and joins monitor thread
-  ~kds_device()
+  ~command_manager()
   {
-    stop = true;
-    work_cond.notify_one();
+    XRT_DEBUGF("command_manager::~command_manager() executor(0x%x)\n", m_impl);
+    {
+      // Modify stop while keeping the lock so that the multi
+      // conditional wait in monitor_loop is atomic.  E.g., a
+      // std::atomic stop is not sufficient.
+      std::lock_guard lk(work_mutex);
+      stop = true;
+      work_cond.notify_one();
+    }
     monitor_thread.join();
   }
 
-  // Thread safe shim level exec wait call.   This function allows
-  // multiple threads to call exec_wait through same device handle.
-  //
-  // In multi-threaded applications it is possible that a call to shim
-  // level exec_wait by one thread covers completion for other
-  // threads.  Without careful synchronization, a thread that calls
-  // device->exec_wait could end up being stuck either forever or
-  // until some other unrelated command completes.  This function
-  // prevents that scenario from happening.
-  //
-  // Thread local storage keeps a call count that syncs with the
-  // number of times device->exec_wait has been called. If thread
-  // local call count is different from the global count, then this
-  // function resets the thread local call count and return without
-  // calling shim exec_wait.
-  //
-  // The specified timeout has effect only when underlying xclExecWait
-  // times out. The timeout can be masked if device is busy and many
-  // commands complete with the specified timeout.
-  std::cv_status
-  exec_wait(size_t timeout_ms=0)
-  {
-    static thread_local uint64_t thread_exec_wait_call_count = 0;
-    std::lock_guard<std::mutex> lk(exec_wait_mutex);
-
-    if (thread_exec_wait_call_count != exec_wait_call_count) {
-      // some other thread has called exec_wait and may have
-      // covered this thread's commands, synchronize thread
-      // local call count and return to caller.
-      thread_exec_wait_call_count = exec_wait_call_count;
-      return std::cv_status::no_timeout;
-    }
-
-    auto status = std::cv_status::no_timeout;
-    if (timeout_ms) {
-      // device exec_wait is a system poll which returns
-      // 0 when specified timeout is exceeded without any
-      // file descriptors to read
-      if (device->exec_wait(static_cast<int>(timeout_ms)) == 0)
-        status = std::cv_status::timeout;
-    }
-    else {
-      // wait for ever for some command to complete
-      while (device->exec_wait(1000) == 0) {}
-    }
-
-    // synchronize this thread with total call count
-    thread_exec_wait_call_count = ++exec_wait_call_count;
-
-    return status;
-  }
-
-  // exec_wait() - Wait for specific command completion with optional timeout
-  //
-  // Wait for command completion
-  // This function is safe to call for managed and unmanaged commands.
-  std::cv_status
-  exec_wait(const xrt_core::command* cmd, size_t timeout_ms=0)
-  {
-    auto pkt = cmd->get_ert_packet();
-    while (pkt->state < ERT_CMD_STATE_COMPLETED) {
-      // return immediately on timeout
-      if (exec_wait(timeout_ms) == std::cv_status::timeout)
-        return std::cv_status::timeout;
-    }
-
-    // notify_host is not strictly necessary for unmanaged
-    // command execution but provides a central place to update
-    // and mark commands as done so they can be re-executed.
-    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state));
-
-    return std::cv_status::no_timeout;
-  }
-
-  // exec_buf() - Submit a command for execution
-  //
-  // This function is used to schedule unmanaged commands for
-  // execution. The execution monitor is by-passed and will be unaware
-  // of argument command having been scheduled for execution.
   void
-  exec_buf(xrt_core::command* cmd)
+  clear_executor()
   {
-    device->exec_buf(cmd->get_exec_bo());
+    m_impl = nullptr;
+  }
+
+  void
+  set_executor(executor* impl)
+  {
+    m_impl = impl;
   }
 
   // launch() - Submit a command for managed execution
@@ -293,7 +251,7 @@ public:
 
     // Submit the command
     try {
-      exec_buf(cmd);
+      m_impl->submit(cmd);
     }
     catch (...) {
       // Remove the pending command
@@ -308,71 +266,115 @@ public:
     // exec_buf call so that actual execution doesn't have to wait.
     work_cond.notify_one();
   }
-}; // kds_device
+};
 
-// Statically allocated kds_device object for each core device
-static std::map<const xrt_core::device*, std::unique_ptr<kds_device>> kds_devices;
+// Ideally a command manager should be owned by a hw_queue which
+// constructs the manager on demand.  But there is a thread exit
+// problem that can result in resource deadlock exception when the
+// hwqueue is destructed from the monitor thread itself as part of
+// calling notify_host (see comment in notify_host() above).
+//
+// To work-around this, command_managers are managed globally and
+// destructed only at program exit by the main thread.  The managers
+// are recycled for subsequent use by a new hwqueue.
+//
+// Statically allocated command managers to handle thread exit
+static std::vector<std::unique_ptr<command_manager>> s_command_manager_pool;
+static std::mutex s_pool_mutex;
 
-// Get or create kds_device object from core device
-static kds_device*
-get_kds_device(xrt_core::device* device)
+// At program exit, the command manager threads (monitor threads) must
+// be stopped and joined.  Normally this is done during static global
+// destruction, but in the OpenCL case a 'bad' program can exit before
+// all monitor threads have completed their work.  This function
+// handles that case and is used only by OpenCL.
+static void
+stop_monitor_threads()
 {
-  static std::mutex mutex;
-  std::lock_guard lk(mutex);
-
-  auto itr = kds_devices.find(device);
-  if (itr != kds_devices.end())
-    return (*itr).second.get();
-
-  auto iitr = kds_devices.insert(std::make_pair(device, std::make_unique<kds_device>(device)));
-  return (iitr.first)->second.get();
+    std::lock_guard lk(s_pool_mutex);
+    XRT_DEBUGF("stop_monitor_threads() pool(%d)\n", s_command_manager_pool.size());
+    s_command_manager_pool.clear();
 }
 
 } // namespace
 
 namespace xrt_core {
 
-// class hw_queue_impl - implementation of hardware queue
+// class hw_queue_impl - base implementation class
 //
-// This class provides a command submission API on top of
-// xrt_core::device::ishim APIs. It leverage the KDS execbuf
-// and execwait protocol through kds_device.
-class hw_queue_impl
+// Implements the interface required for both managed
+// and unmanaged execution.
+class hw_queue_impl : public command_manager::executor
 {
-  xrt::hw_context m_hwctx;
-  device* m_core_device;
-  xcl_hwqueue_handle m_hdl;
+  std::unique_ptr<command_manager> m_cmd_manager;
+  unsigned int m_uid = 0;
 
-  // This is logically const
-  mutable kds_device* m_kds_device;
-
-public:
-  // Construct from hardware context
-  hw_queue_impl(xrt::hw_context hwctx)
-    : m_hwctx(std::move(hwctx))
-    , m_core_device(hw_context_int::get_core_device_raw(m_hwctx))
-    , m_hdl(m_core_device->create_hw_queue(m_hwctx))
-    , m_kds_device(get_kds_device(m_core_device))
-  {}
-
-  // This constructor is for legacy command execution where there
-  // is no associated hw context.
-  hw_queue_impl(xrt_core::device* device)
-    : m_core_device(device)
-    , m_hdl(XRT_NULL_HWQUEUE)
-    , m_kds_device(get_kds_device(m_core_device))
-  {}
-
-  ~hw_queue_impl()
+  // Thread safe on-demand creation of m_cmd_manager
+  command_manager*
+  get_cmd_manager()
   {
-    m_core_device->destroy_hw_queue(m_hdl);
+    std::lock_guard lk(s_pool_mutex);
+
+    if (m_cmd_manager)
+      return m_cmd_manager.get();
+
+    // Use recycled manager if any
+    if (!s_command_manager_pool.empty()) {
+      m_cmd_manager = std::move(s_command_manager_pool.back());
+      s_command_manager_pool.pop_back();
+      m_cmd_manager->set_executor(this);
+      return m_cmd_manager.get();
+    }
+
+    // Construct new manager
+    m_cmd_manager = std::make_unique<command_manager>(this);
+    return m_cmd_manager.get();
   }
 
-  // Managed start uses execution monitor for command completion
+public:
+  hw_queue_impl()
+  {
+    static unsigned int count = 0;
+    m_uid = count++;
+    XRT_DEBUGF("hw_queue_impl::hw_queue_impl(%d) this(0x%x)\n", m_uid, this);
+  }
+
+  virtual
+  ~hw_queue_impl()
+  {
+    XRT_DEBUGF("hw_queue_impl::~hw_queue_impl(%d)\n", m_uid);
+    if (m_cmd_manager) {
+      m_cmd_manager->clear_executor();
+      std::lock_guard lk(s_pool_mutex);
+      s_command_manager_pool.push_back(std::move(m_cmd_manager));
+    }
+  }
+
+  // Submit command for execution
+  virtual void
+  submit(xrt_core::command* cmd) = 0;
+
+  // Wait for some command to finish
+  virtual std::cv_status
+  wait(size_t timeout_ms) = 0;
+
+  // Wait for specified command to finish
+  virtual std::cv_status
+  wait(const xrt_core::command* cmd, size_t timeout_ms) = 0;
+
+  // Enqueue a command dependency
+  virtual void
+  submit_wait(const xrt::fence& fence) = 0;
+
+  // Signal a command dependency
+  virtual void
+  submit_signal(const xrt::fence& fence) = 0;
+
+  // Managed start uses command manager for monitoring command
+  // completion
   void
   managed_start(xrt_core::command* cmd)
   {
-    m_kds_device->launch(cmd);
+    get_cmd_manager()->launch(cmd);
   }
 
   // Unmanaged start submits command directly for execution
@@ -380,46 +382,346 @@ public:
   void
   unmanaged_start(xrt_core::command* cmd)
   {
-    m_kds_device->exec_buf(cmd);
+    submit(cmd);
   }
 
-  // Wait for command completion. Supports both managed and
-  // unmanaged commands
-  void
-  wait(const xrt_core::command* cmd) const
-  {
-    m_kds_device->exec_wait(cmd);
-  }
+};
 
-  // Wait for command completion with timeout. Supports both managed
-  // and unmanaged commands
+// class qds_device - queue implementation for shim queue support
+class qds_device : public hw_queue_impl
+{
+  xrt_core::device* m_device;
+  std::unique_ptr<hwqueue_handle> m_qhdl;
+
+public:
+  qds_device(xrt_core::device* device, std::unique_ptr<hwqueue_handle>&& qhdl)
+    : m_device(device), m_qhdl(std::move(qhdl))
+  {}
+
   std::cv_status
-  wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const
+  wait(size_t /*timeout_ms*/) override
   {
-    return m_kds_device->exec_wait(cmd, timeout_ms.count());
+    // OpenCL uses this function, but it is not implemented for
+    // platforms that implement hwqueue_handle.  Rework this if OpenCL
+    // needs to support shim hw queues.  Probably use a combination of
+    // counters or cached commands, or change command monitor to track
+    // order of submitted commands.
+    throw std::runtime_error("qds_device::wait() not implemented");
+  }
+
+  std::cv_status
+  wait(const xrt_core::command* cmd, size_t timeout_ms) override
+  {
+    // Dispatch wait to shim hwqueue_handle rather than accessing
+    // pkt state directly.  This is done to allow shim direct control
+    // over command completion and command state.
+    if (m_qhdl->wait_command(cmd->get_exec_bo(), static_cast<int>(timeout_ms)) == 0)
+      return std::cv_status::timeout;
+
+    // Validate command state
+    auto pkt = cmd->get_ert_packet();
+    if (pkt->state < ERT_CMD_STATE_COMPLETED)
+      // unexpected state
+      throw std::runtime_error("qds_device::wait() unexpected command state");
+
+    // notify_host is not strictly necessary for unmanaged
+    // command execution but provides a central place to update
+    // and mark commands as done so they can be re-executed.
+    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state));
+
+    return std::cv_status::no_timeout;
+  }
+
+  void
+  submit(xrt_core::command* cmd) override
+  {
+    m_qhdl->submit_command(cmd->get_exec_bo());
+  }
+
+  void
+  submit_wait(const xrt::fence& fence) override
+  {
+    m_qhdl->submit_wait(xrt_core::fence_int::get_fence_handle(fence));
+  }
+
+  void
+  submit_signal(const xrt::fence& fence) override
+  {
+    m_qhdl->submit_signal(xrt_core::fence_int::get_fence_handle(fence));
   }
 };
 
+// class kds_device - queue implementation for legacy shim support
+//
+// @exec_wait_mutex: Synchronize access to exec_wait
+// @exec_wait_call_count:  Count of number of calls to exec wait
+class kds_device : public hw_queue_impl
+{
+  xrt_core::device* m_device;
+  std::mutex m_exec_wait_mutex;
+  std::condition_variable m_work;
+  uint64_t m_exec_wait_call_count {0};
+  uint32_t m_exec_wait_active {0};
+
+  // Thread safe shim level exec wait call.   This function allows
+  // multiple threads to call exec_wait through same device handle.
+  //
+  // In multi-threaded applications it is possible that a call to shim
+  // level exec_wait by one thread covers completion for other
+  // threads.  Without careful synchronization, a thread that calls
+  // device::exec_wait could end up being stuck either forever or
+  // until some other unrelated command completes.  This function
+  // prevents that scenario from happening.
+  //
+  // Thread local storage keeps a call count that syncs with the
+  // number of times device::exec_wait has been called. If thread
+  // local call count is different from the global count, then this
+  // function resets the thread local call count and return without
+  // calling device::exec_wait.
+  //
+  // In order to reduce multi-threaded wait time, condition variable
+  // wait is used for subsequent threads calling this function while
+  // some other thread is busy running device->exec_wait. Condition
+  // variable wait and wake up is faster than letting multiple threads
+  // wait on a single mutex lock.  This means that device::exec_wait
+  // is done by the first host thread that needs the call to
+  // exec_wait, while condition variable notification is used for
+  // additional threads.
+  //
+  // The specified timeout affects the waiting for device::exec_wait
+  // only. The timeout can be masked if device is busy and many
+  // commands complete with the specified timeout.
+  std::cv_status
+  exec_wait(size_t timeout_ms=0)
+  {
+    static thread_local uint64_t thread_exec_wait_call_count = 0;
+
+    // Critical section to check if this thread needs to call
+    // device::exec_wait or should wait on some other thread
+    // completing the call.
+    {
+      std::unique_lock lk(m_exec_wait_mutex);
+      if (thread_exec_wait_call_count != m_exec_wait_call_count) {
+        // Some other thread has called exec_wait and may have
+        // covered this thread's commands, synchronize thread
+        // local call count and return to caller.
+        thread_exec_wait_call_count = m_exec_wait_call_count;
+        return std::cv_status::no_timeout;
+      }
+
+      if (m_exec_wait_active) {
+        // Some other thread is calling device::exec_wait, wait
+        // for it complete its work and notify this thread
+        auto status = std::cv_status::no_timeout;
+        if (timeout_ms)
+          status = (m_work.wait_for(lk, timeout_ms * 1ms,
+                                    [this] {
+                                      return thread_exec_wait_call_count != m_exec_wait_call_count;
+                                    }))
+            ? std::cv_status::no_timeout
+            : std::cv_status::timeout;
+        else
+          m_work.wait(lk,
+                      [this] {
+                        return thread_exec_wait_call_count != m_exec_wait_call_count;
+                      });
+
+        // The other thread has completed its exec_wait call,
+        // sync with current global call count and return
+        thread_exec_wait_call_count = m_exec_wait_call_count;
+        return status;
+      }
+
+      // Critical section updates wait status to prevent other threads
+      // from calling exec_wait while this thread is calling it.
+      ++m_exec_wait_active;
+    }
+
+    // Call device exec_wait without keeping the lock to allow other
+    // threads to proceed into a conditional wait.  This scales better
+    // than one giant exclusive region.  It is guaranteed that only
+    // this thread will be here because other threads are blocked by
+    // the active count that is only modified in the exclusive region.
+    // assert(m_exec_wait_active == 1);
+    auto status = std::cv_status::no_timeout;
+    if (timeout_ms) {
+      // device exec_wait is a system poll which returns
+      // 0 when specified timeout is exceeded without any
+      // file descriptors to read
+      if (m_device->exec_wait(static_cast<int>(timeout_ms)) == 0)
+        // nothing happened within specified time
+        status = std::cv_status::timeout;
+    }
+    else {
+      // wait for ever for some command to complete
+      while (m_device->exec_wait(1000) == 0) {}
+    }
+
+    // Acquire lock before updating shared state
+    {
+      std::lock_guard lk(m_exec_wait_mutex);
+      thread_exec_wait_call_count = ++m_exec_wait_call_count;
+      --m_exec_wait_active;
+    }
+
+    // Notify any waiting threads so they can check command status and
+    // possibly call exec_wait again.
+    m_work.notify_all();
+
+    return status;
+  }
+
+public:
+  kds_device(xrt_core::device* device)
+    : m_device(device)
+  {}
+
+  std::cv_status
+  wait(size_t timeout_ms) override
+  {
+    return exec_wait(timeout_ms);
+  }
+
+  std::cv_status
+  wait(const xrt_core::command* cmd, size_t timeout_ms) override
+  {
+    volatile auto pkt = cmd->get_ert_packet();
+    while (pkt->state < ERT_CMD_STATE_COMPLETED) {
+      // return immediately on timeout
+      if (exec_wait(timeout_ms) == std::cv_status::timeout)
+        return std::cv_status::timeout;
+    }
+
+    // notify_host is not strictly necessary for unmanaged
+    // command execution but provides a central place to update
+    // and mark commands as done so they can be re-executed.
+    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state));
+
+    return std::cv_status::no_timeout;
+  }
+
+  void
+  submit(xrt_core::command* cmd) override
+  {
+    if (auto hwctx = cmd->get_hwctx_handle()) {
+      hwctx->exec_buf(cmd->get_exec_bo());
+      return;
+    }
+
+    // device specific execution, e.g. copy command not tied
+    // to a context
+    m_device->exec_buf(cmd->get_exec_bo());
+  }
+
+  void
+  submit_wait(const xrt::fence&) override
+  {
+    throw std::runtime_error("kds_device::submit_wait_on_fence not implemented");
+  }
+
+  void
+  submit_signal(const xrt::fence&) override
+  {
+    throw std::runtime_error("kds_device::submit_wait_on_fence not implemented");
+  }
+};
+
+}  // xrt_core
+
+namespace {
+
+// Manage hw_queue implementations.
 // For time being there is only one hw_queue per hw_context
 // Use static map with weak pointers to implementation.
-// Ensure unique queue per device since driver doesn't currently
-// guarantee unique hwctx handle cross devices
-static std::shared_ptr<hw_queue_impl>
-get_hw_queue_impl(const xrt::hw_context& hwctx)
+using hwc2hwq_type = std::map<const xrt_core::hwctx_handle*, std::weak_ptr<xrt_core::hw_queue_impl>>;
+using queue_ptr = std::shared_ptr<xrt_core::hw_queue_impl>;
+static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
+static std::mutex mutex;
+static std::condition_variable device_erased;
+
+// This function ensures that only one kds_device is created per
+// xrt_core::device regardless of hwctx.  It allocates (if necessary)
+// a kds_device queue impl in the sentinel slot that represents a null
+// hardware context.
+static std::shared_ptr<xrt_core::hw_queue_impl>
+get_kds_device_nolock(hwc2hwq_type& queues, const xrt_core::device* device)
 {
-  using hwc2hwq_type = std::map<xcl_hwctx_handle, std::weak_ptr<hw_queue_impl>>;
-  static std::mutex mutex;
-  static std::map<device*, hwc2hwq_type> dev2hwc;  // per device
-  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-  auto xhdl = static_cast<xcl_hwctx_handle>(hwctx);
-  std::lock_guard lk(mutex);
-  auto& queues = dev2hwc[device];
-  auto hwqimpl = queues[xhdl].lock();
+  auto hwqimpl = queues[nullptr].lock();
   if (!hwqimpl)
-    queues[xhdl] = hwqimpl = std::shared_ptr<hw_queue_impl>(new hw_queue_impl(hwctx));
+    queues[nullptr] = hwqimpl =
+      queue_ptr{new xrt_core::kds_device(const_cast<xrt_core::device*>(device))};
 
   return hwqimpl;
 }
+
+// Create a hw_queue implementation assosicated with a device without
+// any hw context.  This is used for legacy construction for internal
+// support of command execution that is not tied to kernel execution,
+// .e.g for copy_bo_with_kdma.
+static std::shared_ptr<xrt_core::hw_queue_impl>
+get_hw_queue_impl(const xrt_core::device* device)
+{
+  std::lock_guard lk(mutex);
+  auto& queues = dev2hwc[device];
+  return get_kds_device_nolock(queues, device);
+}
+
+// Create a hw_queue implementation for a hw context.
+// Ensure unique queue per device since driver doesn't currently
+// guarantee unique hwctx handle cross devices.  Also make sure
+// only one kds_device queue impl is created per device.
+static std::shared_ptr<xrt_core::hw_queue_impl>
+get_hw_queue_impl(const xrt::hw_context& hwctx)
+{
+  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
+  auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(hwctx);
+  std::lock_guard lk(mutex);
+  auto& queues = dev2hwc[device];
+  auto hwqimpl = queues[hwctx_hdl].lock();
+  if (!hwqimpl) {
+    auto hwqueue_hdl = hwctx_hdl->create_hw_queue();
+    queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == nullptr)
+      ? get_kds_device_nolock(queues, device)
+      : queue_ptr{new xrt_core::qds_device(device, std::move(hwqueue_hdl))};
+  }
+  return hwqimpl;
+}
+
+// This function removes a device entry from the static map managed in
+// this compilation unit.  While it is not wrong to keep stale device
+// pointers in the map, they can accumulate and burn 8 bytes of memory
+// if application constructs device after device. This function is
+// called when an xrt_core::device is destructed.
+static void
+remove_device(const xrt_core::device* device)
+{
+  std::lock_guard lk(mutex);
+  XRT_DEBUGF("remove_device(0x%x) devices(%d)\n", device, dev2hwc.size());
+  dev2hwc.erase(device);
+  device_erased.notify_all();
+}
+
+// This function is used exclusively by OpenCL prior to stopping
+// command manager monitor threads.  It is possible that during exit
+// of an OpenCL application (see also stop_monitor_threads()) the
+// devices are still busy executing commands.  This function waits for
+// devices to be removed properly, or after a timeout, it simply uses
+// the big hammer to cleanup, which implies that the OpenCL application
+// did not properly clean up its resources.
+static void
+wait_while_devices()
+{
+  std::unique_lock lk(mutex);
+  XRT_DEBUGF("wait_while_devices() wait for %d devices to clear\n", dev2hwc.size());
+  if (!device_erased.wait_for(lk, 200ms, [] { return dev2hwc.empty(); }))
+    // timeout, force stop the devices if application didn't free all
+    // resources and relies on static destr where order is undefined.
+    dev2hwc.clear();
+}
+
+} // namespace
+
+namespace xrt_core {
 
 ////////////////////////////////////////////////////////////////
 // Public APIs
@@ -431,7 +733,7 @@ hw_queue(const xrt::hw_context& hwctx)
 
 hw_queue::
 hw_queue(const xrt_core::device* device)
-  : xrt::detail::pimpl<hw_queue_impl>(std::make_shared<hw_queue_impl>(const_cast<xrt_core::device*>(device)))
+  : xrt::detail::pimpl<hw_queue_impl>(get_hw_queue_impl(device))
 {}
 
 void
@@ -453,7 +755,21 @@ void
 hw_queue::
 wait(const xrt_core::command* cmd) const
 {
-  get_handle()->wait(cmd);
+  get_handle()->wait(cmd, 0);
+}
+
+void
+hw_queue::
+submit_wait(const xrt::fence& fence)
+{
+  get_handle()->submit_wait(fence);
+}
+
+void
+hw_queue::
+submit_signal(const xrt::fence& fence)
+{
+  get_handle()->submit_signal(fence);
 }
 
 // Wait for command completion for unmanaged command execution with timeout
@@ -461,7 +777,7 @@ std::cv_status
 hw_queue::
 wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const
 {
-  return get_handle()->wait(cmd, timeout_ms);
+  return get_handle()->wait(cmd, timeout_ms.count());
 }
 
 std::cv_status
@@ -469,17 +785,37 @@ hw_queue::
 exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms)
 {
   // bypass hwqueue and call exec wait directly
-  auto kds_device = get_kds_device(const_cast<xrt_core::device*>(device));
+  auto impl = get_hw_queue_impl(device);
 
   // add dummy hwqueue null arg when changing shim
-  return kds_device->exec_wait(timeout_ms.count());
+  return impl->wait(timeout_ms.count());
+}
+
+void
+hw_queue::
+finish(const xrt_core::device* device)
+{
+  remove_device(device);
 }
 
 void
 hw_queue::
 stop()
 {
-  kds_devices.clear();
+  XRT_DEBUGF("-> xrt_core::hw_queue::stop()\n");
+
+  // Ensure all threads are joined prior to other cleanup
+  // This is used by OpenCL code path before it deletes the
+  // global platform and takes care of completing outstanding
+  // event synchronization for commands.
+
+  // Wait for all devices to become idle, or force stop them
+  // if application relies on static destruction where order is
+  // undefined
+  wait_while_devices();   // all devices must be done
+  stop_monitor_threads(); // stop all idle threads
+
+  XRT_DEBUGF("<- xrt_core::kds::stop()\n");
 }
 
 } // namespace xrt_core

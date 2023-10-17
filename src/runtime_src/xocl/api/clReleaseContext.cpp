@@ -36,7 +36,7 @@ static cl_int
 clReleaseContext(cl_context  context )
 {
   validOrError(context);
-  if (xocl(context)->release())
+  if (xocl_or_error(context)->release())
     delete xocl(context);
   return CL_SUCCESS;
 }

@@ -25,6 +25,11 @@ class SubCmdProgram : public SubCmd {
 
  public:
   SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+
+ private:
+  std::string m_device;
+  std::string m_xclbin;
+  bool        m_help;
 };
 
 #endif

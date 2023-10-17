@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,13 +14,16 @@
  * under the License.
  */
 
-#ifdef  XDP_PLUGIN_AIE_TRACE_CB_H
+#ifndef XDP_PLUGIN_AIE_TRACE_CB_H
 #define XDP_PLUGIN_AIE_TRACE_CB_H
 
-extern "C" {
-void updateAIEDevice(void* handle) ;
-void flushAIEDevice(void* handle) ;
-void finishFlushAIEDevice(void* handle) ;
-}
+#include "xdp/config.h"
 
+extern "C" {
+
+  XDP_EXPORT void updateAIEDevice(void* handle);
+  XDP_EXPORT void flushAIEDevice(void* handle);
+  XDP_EXPORT void finishFlushAIEDevice(void* handle);
+
+}
 #endif

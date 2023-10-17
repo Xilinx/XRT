@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
  *          : Jeff Lin	<jeffli@xilinx.com>
@@ -30,7 +31,8 @@
  * freeBO    : free BO handle.
  * logMsg    : send log messages to XRT driver for saving as per ini settings
  */
-struct sk_operations {
+struct XRT_DEPRECATED
+sk_operations {
   unsigned int (* getHostBO)(unsigned long paddr, size_t size);
   void *(* mapBO)(unsigned int boHandle, bool write);
   void (* freeBO)(unsigned int boHandle);
@@ -45,29 +47,15 @@ struct sk_operations {
  *       for soft kernel to run.
  * ops:  provide help functions for soft kernel to use.
  */
+XRT_DEPRECATED
 typedef int (* kernel_t)(void *args, struct sk_operations *ops);
 
+#pragma message ("sk_types.h is deprecated and will be removed from the distribution directory in a future release.  Please use pscontext.h instead.")
+
 /*
- * PS Context Data Structure included by user PS kernel code
+ * Including pscontext.h for backward compatibility with 
+ * PS kernels that were using sk_types.h
  */
-
-class pscontext {
-public:
- pscontext()
-   : pimpl{std::make_shared<pscontext::impl>()} {}
-  virtual ~pscontext() {}
- 
-protected:
-  struct impl;
-  std::shared_ptr<impl> pimpl;
-};
-
-struct pscontext::impl {
-private:
-  bool aie_profile_en;
-};
-
-typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, unsigned char *uuid);
-typedef int (* kernel_fini_t)(pscontext *xrtHandles);
+#include "pscontext.h"
 
 #endif

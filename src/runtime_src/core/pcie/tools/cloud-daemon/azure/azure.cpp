@@ -1,20 +1,6 @@
-/*
- * Partial Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Microsoft provides sample code how RESTful APIs are being called
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include <errno.h>
 
@@ -70,7 +56,7 @@ static std::vector<std::string> fpga_serial_number;
 int init(mpd_plugin_callbacks *cbs)
 {
     int ret = 1;
-    auto total = pcidev::get_dev_total();
+    auto total = xrt_core::pci::get_dev_total();
     if (total == 0) {
         syslog(LOG_INFO, "azure: no device found");
         return ret;
@@ -428,7 +414,7 @@ AzureDev::~AzureDev()
 
 AzureDev::AzureDev(size_t index) : index(index)
 {
-    dev = pcidev::get_dev(index, true);
+    dev = xrt_core::pci::get_dev(index, true);
     gettimeofday(&start, NULL);
 }
 
@@ -626,7 +612,7 @@ void AzureDev::get_fpga_serialNo(std::string &fpgaSerialNo)
         //save the serial in case the already saved is empty
         fpga_serial_number.at(index) = fpgaSerialNo;
     if (!errmsg.empty() || fpgaSerialNo.empty()) {
-        std::cerr << "get_fpga_serialNo warning(" << dev->sysfs_name << ")";
+        std::cerr << "get_fpga_serialNo warning(" << dev->m_sysfs_name << ")";
         std::cerr << " sysfs errmsg: " << errmsg;
         std::cerr << " serialNumber: " << fpga_serial_number.at(index);
         std::cerr << std::endl;

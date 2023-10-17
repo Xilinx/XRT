@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -139,10 +140,10 @@ namespace xdp {
       // Get timestamp in milliseconds
       double timestamp = xrt_core::time_ns() / 1.0e6 ;
       uint64_t index = 0 ;
-      for (auto device : filePaths)
+      for (const auto& device : filePaths)
       {
         std::vector<uint64_t> values ;
-        for (auto file : device)
+        for (const auto& file : device)
         {
           std::ifstream fs(file) ;
           if (!fs)

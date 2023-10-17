@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.5.0)
 project(XRT)
 set(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Include utility functions
+include(CMake/utilities.cmake)
+
 # Include supporting CMake functions
 include(CMake/unitTestSupport.cmake)
 
@@ -92,10 +95,10 @@ set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
 #set (XRT_DEV_COMPONENT "xrt-dev")
 set (XRT_DEV_COMPONENT "xrt")
 
-# Version adjusted to 2.15 for 2023.1
-set(XRT_VERSION_RELEASE 202310)
+# Version adjusted to 2.17 for 2024.1
+set(XRT_VERSION_RELEASE 202410)
 SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 15)
+SET(XRT_VERSION_MINOR 17)
 
 if (DEFINED ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})
@@ -103,9 +106,9 @@ else(DEFINED $ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH 0)
 endif(DEFINED ENV{XRT_VERSION_PATCH})
 
-#set(XRT_SOVERSION ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR})
-set(XRT_SOVERSION ${XRT_VERSION_MAJOR})
-set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
+# Also update cache to set version for external plug-in .so
+set(XRT_SOVERSION ${XRT_VERSION_MAJOR} CACHE INTERNAL "")
+set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH} CACHE INTERNAL "")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${XRT_SOURCE_DIR}/CMake/")
 
@@ -123,7 +126,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   else()
     include(CMake/nativeLnx.cmake)
   endif()
-  include(CMake/nativeTests.cmake)
+  xrt_include(CMake/nativeTests.cmake)
 else()
   include(CMake/embedded_system.cmake)
 endif()

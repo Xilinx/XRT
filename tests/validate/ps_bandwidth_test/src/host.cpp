@@ -13,73 +13,84 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
+#include <boost/program_options.hpp>
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <vector>
 // XRT includes
 #include "experimental/xrt_system.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 
-static void printHelp() {
-    std::cout << "usage: %s <options>\n";
-    std::cout << "  -p <path>\n";
-    std::cout << "  -d <device> \n";
-    std::cout << "  -l <loop_iter_cnt> \n";
-    std::cout << "  -s <supported>\n";
-    std::cout << "  -h <help>\n";
+static int
+validate_binary_file(const std::string& binaryfile, bool print = false)
+{
+    std::ifstream infile(binaryfile);
+    if (!infile.good()) {
+        if (print)
+            std::cout << "\nNOT SUPPORTED" << std::endl;
+        return EOPNOTSUPP;
+    } else {
+        if (print)
+            std::cout << "\nSUPPORTED" << std::endl;
+        return EXIT_SUCCESS;
+    }
 }
 
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
     std::string iter_cnt = "10000";
-    std::string b_file = "/ps_bandwidth.xclbin";
-    bool flag_s = false;
+    std::string b_file = "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin";
+    std::vector<std::string> dependency_paths;
+    bool flag_s;
 
-    for (int i = 1; i < argc; i++) {
-        if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
-            test_path = argv[i + 1];
-        } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
-            dev_id = argv[i + 1];
-        } else if ((strcmp(argv[i], "-l") == 0) || (strcmp(argv[i], "--loop_iter_cnt") == 0)) {
-            iter_cnt = argv[i + 1];
-        } else if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--supported") == 0)) {
-            flag_s = true;
-        } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
-            printHelp();
-            return 1;
+    boost::program_options::options_description options;
+    options.add_options()
+        ("help,h", "Print help messages")
+        ("xclbin,x", boost::program_options::value<decltype(b_file)>(&b_file)->implicit_value("/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin"), "Path to the xclbin file for the test")
+        ("path,p", boost::program_options::value<decltype(test_path)>(&test_path)->required(), "Path to the platform resources")
+        ("device,d", boost::program_options::value<decltype(dev_id)>(&dev_id)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+        ("supported,s", boost::program_options::bool_switch(&flag_s), "Print supported or not")
+        ("include,i" , boost::program_options::value<decltype(dependency_paths)>(&dependency_paths)->multitoken(), "Paths to xclbins required for this test")
+        ("loop_iter_cnt,l", boost::program_options::value<decltype(iter_cnt)>(&iter_cnt)->implicit_value("10000"), "The number of iterations the test will sample over")
+    ;
+
+    boost::program_options::variables_map vm;
+    try {
+        boost::program_options::store(boost::program_options::parse_command_line(argc, argv, options), vm);
+        if (vm.count("help")) {
+            std::cout << options << std::endl;
+            return EXIT_SUCCESS;
         }
-    }
-
-    if (test_path.empty()) {
-        std::cout << "ERROR : please provide the platform test path to -p option\n";
+        boost::program_options::notify(vm);
+    } catch (boost::program_options::error& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        std::cout << options << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::string binaryfile = test_path + b_file;
-    std::ifstream infile(binaryfile);
-    if (flag_s) {
-        if (!infile.good()) {
-            std::cout << "\nNOT SUPPORTED" << std::endl;
-            return EOPNOTSUPP;
-        } else {
-            std::cout << "\nSUPPORTED" << std::endl;
-            return EXIT_SUCCESS;
-        }
-    }
-
-    if (!infile.good()) {
-        std::cout << "\nNOT SUPPORTED" << std::endl;
-        return EOPNOTSUPP;
-    }
 
     auto num_devices = xrt::system::enumerate_devices();
 
     auto device = xrt::device {dev_id};
 
-    auto uuid = device.load_xclbin(binaryfile);
+    // Load dependency xclbins onto device if any
+    for (const auto& path : dependency_paths) {
+        auto retVal = validate_binary_file(path);
+        if (retVal != EXIT_SUCCESS)
+	    return retVal;
+        auto uuid = device.load_xclbin(path);
+    }
+
+    // Load ps kernel onto device
+    auto retVal = validate_binary_file(b_file, flag_s);
+    if (flag_s || retVal != EXIT_SUCCESS)
+        return retVal;
+
+    auto uuid = device.load_xclbin(b_file);
     auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
 
     auto max_throughput_bo = xrt::bo(device, 4096, bandwidth_kernel.group_id(1));

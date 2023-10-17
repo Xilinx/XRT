@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2022 Xilinx, Inc
+ * Copyright (C) 2018, 2022-2023 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -53,7 +53,7 @@ SectionKeyValueMetadata::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree ptEmptyKeyvalues;
     ptKeyValuesMetadata.add_child("key_values", ptEmptyKeyvalues);
   } else {
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[_sectionSize + 1]);
+    std::unique_ptr<unsigned char[]> memBuffer(new unsigned char[_sectionSize + 1]);
     memcpy((char*)memBuffer.get(), _pDataSection, _sectionSize);
     memBuffer.get()[_sectionSize] = '\0';
 

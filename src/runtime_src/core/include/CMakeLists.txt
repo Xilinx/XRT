@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
+
 set(XRT_HEADER_SRC
   ert.h
   xstream.h
@@ -16,7 +17,6 @@ set(XRT_HEADER_SRC
   xcl_app_debug.h
   xclperf.h
   xclhal2_mem.h
-  xcl_hwctx.h
   xrt_mem.h
   xrt_error_code.h
   xgq_cmd_common.h
@@ -32,3 +32,4 @@ add_subdirectory(deprecated)
 if(WIN32)
 add_subdirectory(windows)
 endif()
+add_subdirectory(unittests)

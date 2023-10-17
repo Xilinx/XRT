@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2018-2022, Xilinx Inc
+ *  Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -106,6 +107,7 @@ struct xocl_subdev_info {
 	const char		*override_name;
 	int			override_idx;
 	int 			dev_idx;
+	uint32_t 		slot_idx;
 };
 
 struct xocl_board_private {
@@ -322,6 +324,7 @@ enum subdev_id {
 	XOCL_SUBDEV_SRSR,
 	XOCL_SUBDEV_UARTLITE,
 	XOCL_SUBDEV_UARTLITE_01,
+	XOCL_SUBDEV_UARTLITE_02,
 	XOCL_SUBDEV_CALIB_STORAGE,
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_INTC,
@@ -2647,6 +2650,24 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_XMC_USER,					\
 	 })
 
+#define RES_USER_V70_VSEC						\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_ICAP_USER,					\
+	 })
+
+#define RES_USER_V80_VSEC						\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_ICAP_USER,					\
+	 })
+
+#define RES_USER_RAVE_VSEC						\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_ICAP_USER,					\
+	 })
+
 #define RES_MGMT_U2_VSEC						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
@@ -2929,10 +2950,54 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
 			XOCL_DSAFLAG_VERSAL_ES3 |			\
 			XOCL_DSAFLAG_VERSAL,				\
-		.subdev_info = RES_USER_VERSAL_VSEC,			\
-		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
+		.subdev_info = RES_USER_V70_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_V70_VSEC),		\
 		.board_name = "v70",				\
 		.vbnv       = "xilinx_v70"				\
+	}
+
+#define	XOCL_BOARD_V80_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_VERSAL |				\
+			XOCL_DSAFLAG_FIXED_INTR |			\
+			XOCL_DSAFLAG_DYNAMIC_IP,			\
+		.subdev_info = RES_MGMT_VSEC,				\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
+		.board_name = "v80",				\
+		.vbnv       = "xilinx_v80"				\
+	}
+#define	XOCL_BOARD_V80_USER_RAPTOR2_ES3				\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_VERSAL_ES3 |			\
+			XOCL_DSAFLAG_VERSAL,				\
+		.subdev_info = RES_USER_V80_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_V80_VSEC),		\
+		.board_name = "v80",				\
+		.vbnv       = "xilinx_v80"				\
+	}
+
+#define	XOCL_BOARD_RAVE_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_VERSAL |				\
+			XOCL_DSAFLAG_FIXED_INTR |			\
+			XOCL_DSAFLAG_DYNAMIC_IP,			\
+		.subdev_info = RES_MGMT_VSEC,				\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
+		.board_name = "rave",				\
+		.vbnv       = "xilinx_rave"				\
+	}
+#define	XOCL_BOARD_RAVE_USER_RAPTOR2_ES3				\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_VERSAL_ES3 |			\
+			XOCL_DSAFLAG_VERSAL,				\
+		.subdev_info = RES_USER_RAVE_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_RAVE_VSEC),		\
+		.board_name = "rave",				\
+		.vbnv       = "xilinx_rave"				\
 	}
 
 #define	XOCL_BOARD_AVALON_USER_RAPTOR2				\
@@ -2940,7 +3005,7 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
-		.board_name = "avalon",					\
+		.board_name = "avalon"					\
 	}
 
 #define	XOCL_BOARD_AVALON_MGMT_RAPTOR2				\
@@ -2949,7 +3014,7 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.board_name = "avalon"					\
+		.board_name = "avalon"		                        \
 	}
 
 /*********************************VCK190 MGMTPF START*******************/
@@ -3438,6 +3503,9 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5044, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5048, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5094, PCI_ANY_ID, V70_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x50B0, PCI_ANY_ID, V70_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x50B4, PCI_ANY_ID, V80_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5700, PCI_ANY_ID, RAVE_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6098, PCI_ANY_ID, VCK190_MGMT_RAPTOR2) },    \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE098, PCI_ANY_ID, XBB_MFG_VCK190) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5078, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
@@ -3516,6 +3584,9 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5045, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5049, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5095, PCI_ANY_ID, V70_USER_RAPTOR2_ES3) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x50B1, PCI_ANY_ID, V70_USER_RAPTOR2_ES3) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x50B5, PCI_ANY_ID, V80_USER_RAPTOR2_ES3) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x5701, PCI_ANY_ID, RAVE_USER_RAPTOR2_ES3) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x6099, PCI_ANY_ID, VCK190_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5099, PCI_ANY_ID, AVALON_USER_RAPTOR2) }
@@ -3599,6 +3670,30 @@ struct xocl_subdev_map {
 		.vbnv = "xilinx_v70",				\
 		.priv_data = &XOCL_BOARD_V70_USER_RAPTOR2_ES3,	\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x50B0, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v70pq2",				\
+		.priv_data = &XOCL_BOARD_V70_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x50B1, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v70pq2",				\
+		.priv_data = &XOCL_BOARD_V70_USER_RAPTOR2_ES3,	\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x50B4, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v80",				\
+		.priv_data = &XOCL_BOARD_V80_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x50B5, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v80",				\
+		.priv_data = &XOCL_BOARD_V80_USER_RAPTOR2_ES3,	\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5700, PCI_ANY_ID,					\
+		.vbnv = "xilinx_rave",				\
+		.priv_data = &XOCL_BOARD_RAVE_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5701, PCI_ANY_ID,					\
+		.vbnv = "xilinx_rave",				\
+		.priv_data = &XOCL_BOARD_RAVE_USER_RAPTOR2_ES3,	\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x6098, PCI_ANY_ID,					\
                 .vbnv = "xilinx_vck190",				\
                 .priv_data = &XOCL_BOARD_VCK190_MGMT_RAPTOR2,		\
@@ -3640,11 +3735,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_U30_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5099, PCI_ANY_ID,					\
-		.vbnv = "xilinx_avalon",				\
+		.vbnv = "xilinx_ul3x24",				\
 		.priv_data = &XOCL_BOARD_AVALON_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5098, PCI_ANY_ID,					\
-		.vbnv = "xilinx_avalon",				\
+		.vbnv = "xilinx_ul3x24",				\
 		.priv_data = &XOCL_BOARD_AVALON_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 

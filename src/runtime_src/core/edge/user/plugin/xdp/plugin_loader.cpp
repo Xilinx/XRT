@@ -21,7 +21,7 @@
 #include "hal_profile.h"
 #include "plugin_loader.h"
 
-#include "aie_debug.h"
+#include "aie_status.h"
 #include "aie_profile.h"
 
 #ifndef __HWEM__
@@ -52,7 +52,7 @@ bool load()
     xdp::hal::device_offload::load() ;
 
   if (xrt_core::config::get_aie_status())
-    xdp::aie::debug::load();
+    xdp::aie::status::load();
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();
@@ -102,7 +102,7 @@ bool load()
     xdp::hal::hw_emu::device_offload::load() ;
 
   if (xrt_core::config::get_aie_status())
-    xdp::aie::debug::load();
+    xdp::aie::status::load();
 
   if (xrt_core::config::get_aie_profile())
     xdp::aie::profile::load();

@@ -17,19 +17,30 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "error.h"
 #include "message.h"
+#include <iostream>
 
 namespace xrt_core {
 
 void
-send_exception_message(const char* msg, const char* tag)
+send_exception_message(const char* msg, const char* tag) noexcept
 {
-  message::send(message::severity_level::error, tag, msg);
+  try {
+    message::send(message::severity_level::error, tag, msg);
+  }
+  catch (...) {
+    std::cerr << "exception occurred: " << tag << ":" << msg << '\n';
+  }
 }
 
 void
-send_exception_message(const std::string& msg, const char* tag)
+send_exception_message(const std::string& msg, const char* tag) noexcept
 {
-  message::send(message::severity_level::error, tag, msg);
+  try {
+    message::send(message::severity_level::error, tag, msg);
+  }
+  catch (...) {
+    std::cerr << "exception occurred: " << tag << ":" << msg << '\n';
+  }
 }
 
 } // xrt_core

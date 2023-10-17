@@ -79,6 +79,9 @@ namespace xdp {
     // and memory.  This maximum is the same regardless of the xclbin loaded.
     uint32_t maxConnectionBitWidth = 512;
 
+    // Generation of AI Engine hardware on device, regardless of xclbin loaded.
+    uint8_t aieGeneration = 1;
+
     ~DeviceInfo() ;
 
     // ****** Functions for information on the device ******
@@ -88,6 +91,9 @@ namespace xdp {
     XDP_EXPORT void cleanCurrentXclbinInfo() ;
     inline bool isNoDMA() const { return isNoDMADevice ; }
     double getMaxClockRatePLMHz();
+
+    XDP_EXPORT void setAIEGeneration(uint8_t hw_gen) { aieGeneration = hw_gen; }
+    inline uint8_t getAIEGeneration() const { return aieGeneration ; }
 
     // ****** Functions for information on the currently loaded xclbin *******
     XDP_EXPORT XclbinInfo* currentXclbin() ;
@@ -141,6 +147,8 @@ namespace xdp {
     void addAIEMemoryEventResources(uint32_t numEvents, uint32_t numTiles) ;
     XDP_EXPORT
     void addAIEShimEventResources(uint32_t numEvents, uint32_t numTiles) ;
+    XDP_EXPORT
+    void addAIEMemTileEventResources(uint32_t numEvents, uint32_t numTiles) ;
     XDP_EXPORT
     void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) ;
   } ;

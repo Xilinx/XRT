@@ -4,24 +4,23 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "core/common/time.h"
+#include "core/common/query_requests.h"
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenus.h"
 #include "XBUtilities.h"
-#include "core/common/time.h"
-#include "core/common/query_requests.h"
-
 namespace XBU = XBUtilities;
 
 
 // 3rd Party Library - Include Files
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/format.hpp>
+#include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 
 // ------ N A M E S P A C E ---------------------------------------------------
@@ -32,43 +31,111 @@ static unsigned int m_maxColumnWidth = 100;
 static unsigned int m_shortDescriptionColumn = 24;
 
 // ------ F U N C T I O N S ---------------------------------------------------
-std::string 
-XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
+static std::string 
+create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>& _collection)
 {
   // Working variables
   const unsigned int maxColumnWidth = m_maxColumnWidth - m_shortDescriptionColumn; 
   std::string supportedValues;        // Formatted string of supported values
                                       
   // Make a copy of the data (since it is going to be modified)
-  VectorPairStrings workingCollection = _collection;
+  auto workingCollection = _collection;
 
   // Determine the indention width
   unsigned int maxStringLength = 0;
-  for (auto & pairs : workingCollection) {
-    // Determine if the keyName needs to have 'quotes', if so add them
-    if (pairs.first.find(' ') != std::string::npos ) {
-      pairs.first.insert(0, 1, '\'');  
-      pairs.first += "\'";     
-    }
+  for (auto& map_pair : workingCollection) {
+    for (auto& pairs : map_pair.second) {
+      // Determine if the keyName needs to have 'quotes', if so add them
+      if (pairs.first.find(' ') != std::string::npos ) {
+        pairs.first.insert(0, 1, '\'');  
+        pairs.first += "\'";     
+      }
 
-    maxStringLength = std::max<unsigned int>(maxStringLength, static_cast<unsigned int>(pairs.first.length()));
+      maxStringLength = std::max<unsigned int>(maxStringLength, static_cast<unsigned int>(pairs.first.length()));
+    }
   }
 
   const unsigned int indention = maxStringLength + 5;  // New line indention after the '-' character (5 extra spaces)
   boost::format reportFmt(std::string("  %-") + std::to_string(maxStringLength) + "s - %s");  
-  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s");  
+  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s");
 
+  // Print out common options first
+  const auto common_options = workingCollection.find("common");
   // Report names and description
-  for (const auto & pairs : workingCollection) {
+  for (const auto& pairs : common_options->second) {
     boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
     auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
     supportedValues += formattedString + "\n";
+  }
+  workingCollection.erase(common_options);
+
+  // Print out all other device specific options
+  for (const auto& map_pair : workingCollection) {
+    std::string device_string = map_pair.first;
+    device_string[0] = static_cast<char>(std::toupper(device_string[0]));
+    if (!device_string.empty())
+      supportedValues += device_string + ":\n";
+    // Report names and description
+    for (const auto& pairs : map_pair.second) {
+      boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
+      auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
+      supportedValues += formattedString + "\n";
+    }
   }
 
   return supportedValues;
 }
 
+std::string 
+XBUtilities::create_suboption_list_map(const std::map<std::string, std::vector<std::shared_ptr<Report>>>& reportCollection)
+{
+  std::map<std::string, VectorPairStrings> reportDescriptionCollection;
 
+  static std::map<std::string, std::string> deviceTypeMap = {
+    {"aie", "AIE Specific"},
+    {"alveo", "Alveo Specific"},
+    {"common", "common"}
+  };
+
+  // Add the report names and description
+  for (const auto& report_pair : reportCollection) {
+    VectorPairStrings collection;
+    for (const auto& report : report_pair.second) {
+      // Skip hidden reports
+      if (!XBU::getShowHidden() && report->isHidden()) 
+        continue;
+      collection.emplace_back(report->getReportName(), report->getShortDescription());
+    }
+
+    // Add the 'all' options to the common report group
+    if (boost::iequals(report_pair.first, "common"))
+      collection.emplace_back("all", "All known reports are produced");
+
+    auto map_it = deviceTypeMap.find(report_pair.first);
+    if (map_it == deviceTypeMap.end())
+      reportDescriptionCollection.emplace(report_pair.first, collection);
+    else
+      reportDescriptionCollection.emplace(map_it->second, collection);
+  }
+
+  // Sort the collection
+  for (auto& collection : reportDescriptionCollection) {
+    sort(collection.second.begin(), collection.second.end(), 
+        [](const std::pair<std::string, std::string> & a, const std::pair<std::string, std::string> & b) -> bool
+        { return (a.first.compare(b.first) < 0); });
+  }
+
+  return create_suboption_list_map_string(reportDescriptionCollection);
+}
+
+std::string 
+XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
+{
+  std::map<std::string, VectorPairStrings> collection = {
+    {"common", _collection}
+  };
+  return create_suboption_list_map_string(collection);
+}
 
 std::string 
 XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollection, 
@@ -142,8 +209,8 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 void 
 XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                               const ReportCollection & reportsToProcess, 
-                              Report::SchemaVersion schemaVersion, 
-                              std::vector<std::string> & elementFilter,
+                              const Report::SchemaVersion schemaVersion, 
+                              const std::vector<std::string> & elementFilter,
                               std::ostream & consoleStream,
                               std::ostream & schemaStream)
 {
@@ -214,6 +281,9 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     ptDevice.put("interface_type", "pcie");
     ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
 
+    const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(device, 2);
+    ptDevice.put("device_status", xrt_core::query::device_status::parse_status(device_status));
+
     bool is_mfg = false;
     try {
       is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
@@ -243,7 +313,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     consoleStream << dev_desc;
     consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
-    const auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+    const auto is_ready = xrt_core::device_query_default<xrt_core::query::is_ready>(device, true);
     bool is_recovery = false;
     try {
       is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
@@ -257,7 +327,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     // 1. Is in factory mode and is not in recovery mode
     // 2. Is not ready and is not in recovery mode
     if ((is_mfg || !is_ready) && !is_recovery)
-      std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
+      std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n";
 
     for (auto &report : reportsToProcess) {
       if (!report->isDeviceRequired())

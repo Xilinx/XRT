@@ -19,6 +19,9 @@ namespace XBUtilities {
   using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
 
   std::string 
+    create_suboption_list_map(const std::map<std::string, std::vector<std::shared_ptr<Report>>>& reportCollection);
+
+  std::string 
     create_suboption_list_string(const VectorPairStrings &_collection);
 
   std::string 
@@ -35,8 +38,8 @@ namespace XBUtilities {
   void 
      produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                       const ReportCollection & reportsToProcess, 
-                      Report::SchemaVersion schema, 
-                      std::vector<std::string> & elementFilter,
+                      const Report::SchemaVersion schema, 
+                      const std::vector<std::string> & elementFilter,
                       std::ostream & consoleStream,
                       std::ostream & schemaStream);
 };

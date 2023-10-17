@@ -29,7 +29,7 @@ namespace xdp {
                        uint64_t deviceIndex);
     ~AIEProfilingWriter();
 
-    virtual bool write(bool openNewFile);
+    virtual bool write(bool openNewFile = true);
     
   private:
     std::string mDeviceName;

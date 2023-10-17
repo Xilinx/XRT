@@ -39,7 +39,7 @@ clReleaseMemObject(cl_mem memobj)
 {
   validOrError(memobj);
 
-  if (!xocl(memobj)->release())
+  if (!xocl_or_error(memobj)->release())
     return CL_SUCCESS;
 
   delete xocl(memobj);

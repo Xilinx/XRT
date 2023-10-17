@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +19,7 @@
 #include "KernelUtilities.h"
 
 #include "XclBinUtilities.h"
+#include "SectionIPLayout.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -126,8 +128,20 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
 
   // -- Extended-data
   // Blindly add it.  In the future add a JSON schema to validate it
-  const boost::property_tree::ptree& ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
+  boost::property_tree::ptree ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
   if (!ptExtendedData.empty()) {
+    // the extended-data in dpu json has "subtype" and "functional" attributes
+    // these two attributes can either have string or numeric value
+    // but xml only taks numeric value
+    // we need to conver string to correponding nemeric
+    auto sFunctional = ptExtendedData.get<std::string>("functional", "");
+    sFunctional = SectionIPLayout::getFunctionalEnumStr(sFunctional); 
+    ptExtendedData.put("functional", sFunctional);
+
+    auto sSubType = ptExtendedData.get<std::string>("subtype", "");
+    sSubType = SectionIPLayout::getSubTypeEnumStr(sSubType); 
+    ptExtendedData.put("subtype", sSubType);
+ 
     boost::property_tree::ptree ptEntry;
     ptEntry.add_child("<xmlattr>", ptExtendedData);
     ptKernelXML.add_child("extended-data", ptEntry);
@@ -275,15 +289,30 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
     const auto& ptArg = arg.second;
 
     // Determine if there should be a memory connection, if so add it
+    //
     static const std::string NOT_DEFINED = "<not defined>";
     auto memoryConnection = ptArg.get<std::string>("memory-connection", NOT_DEFINED);
 
-    // An empty memory connection indicates that we should connect it to a yet to be define PS kernel memory entry
+    // if memory-connection is not defined, skip this arg
+    // if memory-connection is empty we should connect the arg to a yet to be define PS kernel memory entry
+    // if memory-connection is not empty
+    //   1. for --add-pskernel, user can specify the memory bank indices in
+    //      the value
+    //   2. for --add-kernel, user can specify the memory bank tag in the 
+    //      input file
+    if (memoryConnection == NOT_DEFINED) {
+      ++argIndexID;
+      continue;
+    }
+
+    std::vector<std::string> vMemBanks;
+
     if (memoryConnection.empty()) {
       // Look for entry.  If it doesn't exist create one
       auto iter = std::find_if(memTopology.begin(), memTopology.end(),
                                [](const boost::property_tree::ptree& pt)
       {return pt.get<std::string>("m_type", "") == "MEM_PS_KERNEL";});
+
       if (iter == memTopology.end()) {
         XUtil::TRACE("MEM Entry of PS Kernel memory not found, creating one.");
         boost::property_tree::ptree ptMemData;
@@ -293,26 +322,70 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
         ptMemData.put("m_base_address", "0x0");
         memTopology.push_back(ptMemData);
       }
+      // memoryConnection = "MEM_PS_KERNEL";
 
-      memoryConnection = "MEM_PS_KERNEL";
+      // the newly added mem bank is always at the last of memTopology
+      const unsigned int memIndex = static_cast<unsigned int>(memTopology.size()) - 1;
+      vMemBanks.push_back(std::to_string(memIndex));
+    } else {
+      // memory-connection could be
+      //   a comma separated memory bank indices, for --add-pskernel
+      //   a string which matches to m_tag, for --add-kernel
+      std::vector<int> viMemBanks;
+      auto isNumeric = [&viMemBanks](const std::string& str) {
+        std::istringstream ss(str);
+        std::string token;
+        while(std::getline(ss, token, ',')) {
+          int index;
+          try {
+            index = std::stoi(token);
+          } catch (const std::exception&) {
+            return false;
+          }
+          viMemBanks.push_back(index);
+        }
+        return true;
+      };
+
+      if (isNumeric(memoryConnection)) {
+        // make sure the specified index exists
+        for (const auto& memBankIndex : viMemBanks) {
+          if (memBankIndex >= 0 && memBankIndex < static_cast<int>(memTopology.size())) {
+            vMemBanks.push_back(std::to_string(memBankIndex));
+            std::cout << "\tconnecting arg " << std::to_string(argIndexID) << " to mem bank " << std::to_string(memBankIndex) << std::endl;
+          }
+          else
+          {
+            const auto errMsg = boost::format("Specified memory bank (%d) is invalid.  Valid ranges are from 0 to %d.") % memBankIndex % memTopology.size(); 
+            throw std::runtime_error(errMsg.str());
+          }
+        }
+      } else {
+        auto iter = std::find_if(memTopology.begin(), memTopology.end(),
+                               [memoryConnection](const boost::property_tree::ptree& pt)
+        {return pt.get<std::string>("m_tag", "") == memoryConnection;});
+
+        if (iter == memTopology.end())
+          throw std::runtime_error("Error: Memory tag '" + memoryConnection + "' not found in the MEM_TOPOLOGY section.");
+
+        // We have a match
+        uint64_t memIndex = std::distance(memTopology.begin(), iter);
+        vMemBanks.push_back(std::to_string(memIndex));
+      }
     }
 
-    // Do we have a connection to perform?
-    if (memoryConnection != NOT_DEFINED) {
-      auto iter = std::find_if(memTopology.begin(), memTopology.end(),
-                               [memoryConnection](const boost::property_tree::ptree& pt)
-      {return pt.get<std::string>("m_tag", "") == memoryConnection;});
-
-      if (iter == memTopology.end())
-        throw std::runtime_error("Error: Memory tag '" + memoryConnection + "' not found in the MEM_TOPOLOGY section.");
-
-      // We have a match
-      uint64_t memIndex = std::distance(memTopology.begin(), iter);
+    for (const auto& memBank : vMemBanks) {
       boost::property_tree::ptree ptEntry;
       ptEntry.put("arg_index", std::to_string(argIndexID));
       ptEntry.put("m_ip_layout_index", std::to_string(ipLayoutIndexID));
-      ptEntry.put("mem_data_index", std::to_string(memIndex));
+      ptEntry.put("mem_data_index", memBank);
       connectivity.push_back(ptEntry);
+
+      // update the corresponding memtopology
+      int index = std::stoi(memBank);
+      boost::property_tree::ptree& ptMemData = memTopology[index];
+      if (ptMemData.get<int>("m_used", 0) != 1)
+        ptMemData.put("m_used", "1");
     }
     ++argIndexID;
   }
@@ -357,7 +430,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 
   // Transform the sections into something more manageable
   const boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout", ptEmpty);
-  auto ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
+  auto ipData = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
   const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology", ptEmpty);
   auto memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
@@ -377,7 +450,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     const std::string ipLayoutName = kernelName + ":" + instanceName;
 
     // Validate that this PS kernel with this name doesn't already exist
-    for (const auto& ipEntry : ipLayout) {
+    for (const auto& ipEntry : ipData) {
       if ((ipEntry.get<std::string>("m_type", "") == "PS_KERNEL") &&
           (ipEntry.get<std::string>("m_name", "") == ipLayoutName))
         throw std::runtime_error("PS Kernel instance name already exists: '" + ipLayoutName + "'");
@@ -386,17 +459,40 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     // Create the new PS kernel instance and add it to the vector
     boost::property_tree::ptree ptIPEntry;
     ptIPEntry.put("m_type", "IP_PS_KERNEL");
+    // IP_PS_KERNEL specific data
+    // Note: extended-data is optional, only appliable to fixed ps kernel (-add-kernel)
+    //       not appicable to non-fixed ps kernel (-add-pskernel)
+    // "extended-data" {
+    //   "fundtional": "0"
+    //   "subtype": "1"
+    //   "dpu_kernel_id": "0x101"
+    // }   
+    boost::optional< const boost::property_tree::ptree& > boExtendedData = ptKernel.get_child_optional("extended-data");
+    if (boExtendedData) {
+      const boost::property_tree::ptree& ptExtendedData = boExtendedData.get();
+      if (!ptExtendedData.empty()) {
+        static const std::string NOT_DEFINED = "";
+        auto subType = ptExtendedData.get<std::string>("subtype", NOT_DEFINED);
+        auto functional = ptExtendedData.get<std::string>("functional", NOT_DEFINED);
+        auto dpuKernelId = ptExtendedData.get<std::string>("dpu_kernel_id", NOT_DEFINED);
+        // subType and functinoal can either be string or numeric value
+        ptIPEntry.put("m_subtype", subType);
+        ptIPEntry.put("m_functional", functional);
+        ptIPEntry.put("m_kernel_id", dpuKernelId);
+      }
+    }
     ptIPEntry.put("m_base_address", "not_used");
     ptIPEntry.put("m_name", ipLayoutName);
-    ipLayout.push_back(ptIPEntry);
-    const unsigned int ipLayoutIndex = static_cast<unsigned int>(ipLayout.size()) - 1;
+
+    ipData.push_back(ptIPEntry); // There is at least 1 element in the ipLayout vector
+    const unsigned int ipLayoutIndex = static_cast<unsigned int>(ipData.size()) - 1;
 
     // -- For each PS Kernel Instance, connect any argument to its memory
     addArgsToMemoryConnections(ipLayoutIndex, ptKernel.get_child("arguments", ptEmpty), memTopology,  connectivity);
   }
 
   // Replace the original property tree
-  transformVectorToPtree(ipLayout, "ip_layout", "m_ip_data", ptIPLayoutRoot);
+  transformVectorToPtree(ipData, "ip_layout", "m_ip_data", ptIPLayoutRoot);
   transformVectorToPtree(connectivity, "connectivity", "m_connection", ptConnectivityRoot);
   transformVectorToPtree(memTopology, "mem_topology", "m_mem_data", ptMemTopologyRoot);
 }
@@ -525,7 +621,8 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
 
 
 void
-XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
+XclBinUtilities::createPSKernelMetadata(const std::string& memBanks,
+                                        unsigned long numInstances,
                                         const boost::property_tree::ptree& ptFunctions,
                                         const std::string& kernelLibrary,
                                         boost::property_tree::ptree& ptPSKernels)
@@ -569,7 +666,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
       if (addrQualifier == "GLOBAL") {
         byteSize = 16;
         if (entry.get<int>("use-id", 1))
-          ptArg.put("memory-connection", "");
+          ptArg.put("memory-connection", memBanks);
       }
 
       ptArg.put("byte-size", byteSize);
@@ -604,7 +701,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
   boost::property_tree::ptree ptKernels;
   ptKernels.add_child("kernels", ptKernelArray);
 
-  // Build the ps-kernel node
+  // Build the ps-kernels node
   ptPSKernels.add_child("ps-kernels", ptKernels);
 
   XUtil::TRACE_PrintTree("PS Kernel Entries", ptPSKernels);

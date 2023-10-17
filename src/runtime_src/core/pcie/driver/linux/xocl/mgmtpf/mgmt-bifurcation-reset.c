@@ -84,7 +84,8 @@ static void xclmgmt_reset_pci_post(struct xclmgmt_dev *lro)
 	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL,
 					   (lro->devctl | PCI_EXP_DEVCTL_FERE));
 
-	pci_enable_device(pdev);
+	if (pci_enable_device(pdev))
+		mgmt_err(lro, "failed to enable pci device");
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
@@ -156,6 +157,7 @@ done:
 static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 {
 	long err = 0;
+	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
 
@@ -206,8 +208,9 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
+	/* For legacy case always download to slot 0 */
 	if (lro->preload_xclbin)
-		xocl_xclbin_download(lro, lro->preload_xclbin);
+		xocl_xclbin_download(lro, lro->preload_xclbin, legacy_slot_id);
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)
@@ -227,7 +230,7 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
  * 3. restore both after SBR
  *
  * Also, during reset, the pcie linkdown will last, in worst case, 3-5s
- * for the u30 card with PS/PL   
+ * for the u30 card with PS/PL
  */
 long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,
 	struct xclmgmt_dev *buddy_lro, bool force)

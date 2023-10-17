@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/api/command.h"
 #include "core/common/api/hw_queue.h"
+#include "core/common/shim/buffer_handle.h"
+#include "core/common/shim/hwctx_handle.h"
 
 #include <functional>
 
@@ -89,9 +92,9 @@ create_exec_buf(xrt_xocl::device* device)
 }
 
 static void
-release_exec_buf(const xrt_xocl::device* device, execbuf_type& ebo)
+release_exec_buf(const xrt_xocl::device* device, execbuf_type&& ebo)
 {
-  s_ebocache[device]->release(ebo);
+  s_ebocache[device]->release(std::move(ebo));
 }
 
 struct command::impl : xrt_core::command
@@ -108,7 +111,7 @@ struct command::impl : xrt_core::command
 
   ~impl()
   {
-    release_exec_buf(m_device, m_execbuf);
+    release_exec_buf(m_device, std::move(m_execbuf));
   }
 
   xrt_xocl::device* m_device;
@@ -182,10 +185,16 @@ struct command::impl : xrt_core::command
     return m_device->get_core_device().get();
   }
 
-  virtual xclBufferHandle
+  virtual xrt_core::buffer_handle*
   get_exec_bo() const
   {
-    return m_execbuf.first;
+    return m_execbuf.first.get();
+  }
+
+  virtual xrt_core::hwctx_handle*
+  get_hwctx_handle() const
+  {
+    return nullptr;
   }
 
   virtual void

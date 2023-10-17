@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2022, Xilinx Inc
+ *  Copyright (C) 2015-2023, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -38,41 +38,53 @@
 #ifndef _XCLBIN_H_
 #define _XCLBIN_H_
 
-#ifdef _WIN32
-  #include <cstdint>
-  #include <algorithm>
-  #include "windows/uuid.h"
-#else
-  #if defined(__KERNEL__)
-    #include <linux/types.h>
-    #include <linux/uuid.h>
-    #include <linux/version.h>
-  #elif defined(__cplusplus)
-    #include <cstdlib>
-    #include <cstdint>
-    #include <algorithm>
-    #include <uuid/uuid.h>
-  #else
-    #include <stdlib.h>
-    #include <stdint.h>
-    #include <uuid/uuid.h>
-  #endif
+#if defined(__linux__)
+# if defined(__KERNEL__)
+#  include <linux/types.h>
+#  include <linux/uuid.h>
+#  include <linux/version.h>
+# elif defined(__cplusplus)
+#  include <cstdlib>
+#  include <cstdint>
+#  include <algorithm>
+#  include <uuid/uuid.h>
+# else
+#  include <stdlib.h>
+#  include <stdint.h>
+#  include <uuid/uuid.h>
+# endif
+#elif defined(_WIN32)
+# if defined(_KERNEL_MODE)
+#  include <guiddef.h>
+#  include <stdlib.h>
+# elif defined(__cplusplus)
+#  include <cstdlib>
+#  include <cstdint>
+#  include <algorithm>
+#  include <windows/uuid.h>
+# else
+#  include <stdlib.h>
+#  include <stdint.h>
+#  include <windows/uuid.h>
+# endif
+#endif
 
-  #if !defined(__KERNEL__)
-    typedef uuid_t xuid_t;
-  #else //(__KERNEL__)
-    #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-      typedef uuid_t xuid_t;
-    #elif defined(RHEL_RELEASE_CODE)
-      #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
-        typedef uuid_t xuid_t;
-      #else
-        typedef uuid_le xuid_t;
-      #endif
-    #else
-      typedef uuid_le xuid_t;
-    #endif
-  #endif
+#if defined(__linux__) && defined(__KERNEL__)
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+typedef uuid_t xuid_t;
+# elif defined(RHEL_RELEASE_CODE)
+#  if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+typedef uuid_t xuid_t;
+#  else
+typedef uuid_le xuid_t;
+#  endif
+# else
+typedef uuid_le xuid_t;
+# endif
+#elif defined(__linux__) && !defined(__KERNEL__)
+typedef uuid_t xuid_t;
+#elif defined(_WIN32) && defined(_KERNEL_MODE)
+typedef GUID xuid_t;
 #endif
 
 // ----------------- Custom Assert Macro -------------------------
@@ -176,6 +188,7 @@ extern "C" {
         OVERLAY                = 30,
         VENDER_METADATA        = 31,
         AIE_PARTITION          = 32,
+        IP_METADATA           = 33,
     };
 
     enum MEM_TYPE {
@@ -225,13 +238,7 @@ extern "C" {
         uint8_t m_versionMinor;             /* Minor Version */
         uint16_t m_mode;                    /* XCLBIN_MODE */
         uint16_t m_actionMask;              /* Bit Mask */
-	union {
-	    struct {
-		uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
-		uint64_t m_featureId;       /* 64 bit feature id */
-	    } rom;
-	    unsigned char rom_uuid[16];     /* feature ROM UUID for which this xclbin was generated */
-	};
+        unsigned char m_interface_uuid[16];     /* Interface uuid of this xclbin */
         unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
 	union {
 	    char m_next_axlf[16];           /* Name of next xclbin file in the daisy chain */
@@ -329,6 +336,18 @@ extern "C" {
         FAST_ADAPTER = 5
     };
 
+    // m_subtype
+    enum PS_SUBTYPE {
+        ST_PS = 0,
+        ST_DPU = 1,
+    };
+
+    // m_functional
+    enum PS_FUNCTIONAL {
+        FC_DPU = 0,
+        FC_PREPOST = 1,
+    };
+
     #define IP_CONTROL_MASK  0xFF00
     #define IP_CONTROL_SHIFT 0x8
 
@@ -341,6 +360,19 @@ extern "C" {
                                  //         m_int_enable   : Bit  - 0x0000_0001;
                                  //         m_interrupt_id : Bits - 0x0000_00FE;
                                  //         m_ip_control   : Bits = 0x0000_FF00;
+                                 // properties is also used for ps kernel (i.e. -add-pskernel)
+       
+            // PS Kernels
+            // m_type: IP_PS_KERNEL
+            struct {
+               uint16_t m_subtype : 2;        // Bits - 0x0003 - PS_SUBTYPE enum values
+               uint16_t : 2;                  // Bits - 0x000C - Future use
+               uint16_t m_functional : 2;     // Bits - 0x0030 - PS_FUNCTIONAL enum values
+               uint16_t : 10;                 // Bits - 0xFFC0 - Future use
+               uint16_t m_kernel_id : 12;     // Bits - 0x0FFF
+               uint16_t : 4;                  // Bits - 0xF000 - Future use
+            } ps_kernel;
+
             struct {             // m_type: IP_MEM_*
                uint16_t m_index;
                uint8_t m_pc_index;
@@ -546,7 +578,8 @@ extern "C" {
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) == 96, "cdo_group structure no longer is 96 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) % sizeof(uint64_t) == 0, "cdo_group structure needs to be 64-bit word aligned");
 
-
+    // 32KB per tile, 64 rows * 64 columns
+    #define PDI_IMAGE_MAX_SIZE 32*1024*64*64
     struct aie_pdi {
         xuid_t uuid;                        // PDI container UUID (16 bytes)
         struct array_offset pdi_image;      // PDI Image (uint8_t)
@@ -582,7 +615,7 @@ extern "C" {
 
     /**** END : Xilinx internal section *****/
 
-# ifdef __cplusplus
+# if defined(__cplusplus) && !defined(__KERNEL__) && !defined(_KERNEL_MODE) 
     namespace xclbin {
       inline const axlf_section_header*
       get_axlf_section(const axlf* top, axlf_section_kind kind)

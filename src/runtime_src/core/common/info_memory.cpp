@@ -1,18 +1,7 @@
-/**
- * Copyright (C) 2021, 2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+
 #define XRT_CORE_COMMON_SOURCE
 #include "info_memory.h"
 #include "ps_kernel.h"
@@ -87,25 +76,7 @@ struct memory_info_collector
 {
   const xrt_core::device* device;          // device to query for info
 
-  const std::vector<char> mem_topo_raw;    // xclbin raw mem topology
-  const std::vector<char> grp_topo_raw;    // xclbin raw grp topology
-  std::vector<char> mem_temp_raw;    // xclbin temperator raw data
-
-  const mem_topology* mem_topo = nullptr;  // xclbin mem topology from device
-  const mem_topology* grp_topo = nullptr;  // xclbin group topology from device
-  const std::vector<std::string> mem_stat; // raw memory stat from device
-  const uint32_t* mem_temp = nullptr;      // temperature stat from device
-
-  // Get topology index of a mem_data element
-  static decltype(mem_topology::m_count)
-  get_mem_data_index(const mem_topology* mt, const mem_data* mem)
-  {
-    auto idx = std::distance(mt->m_mem_data, mem);
-    if (idx >= 0 && idx < mt->m_count)
-      return static_cast<decltype(mem_topology::m_count)>(idx);
-
-    throw xrt_core::internal_error("add_temp_mem_info: invalid mem_data entry");
-  }
+  std::vector<xrt_core::query::hw_context_memory_info::data_type> hw_context_memories;  // xclbin mem topology from device
 
   // Add bytes transferred by each PCIe channel to tree
   void
@@ -191,21 +162,6 @@ struct memory_info_collector
     pt_stream_array.push_back(std::make_pair("",pt_stream));
   }
 
-  // Add info from all streaming entries in mem topology
-  void
-  add_streaming_info(ptree_type& pt)
-  {
-    ptree_type pt_stream_array;
-
-    for (int i = 0; i < mem_topo->m_count; ++i) {
-      const auto& mem = mem_topo->m_mem_data[i];
-      if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
-        add_stream_info(&mem, pt_stream_array);
-    }
-
-    pt.add_child("board.memory.data_streams", pt_stream_array);
-  }
-
   // Add ecc info for specified mem entry
   void
   add_mem_ecc_info(const mem_data* mem, ptree_type& pt_mem)
@@ -237,8 +193,13 @@ struct memory_info_collector
 
   // Add general mem info for specified mem entry
   static void
-  add_mem_general_info(const mem_data* mem, ptree_type& pt_mem)
+  add_mem_general_info(
+    const xq::hw_context_memory_info::data_type& topology,
+    const mem_data* mem,
+    ptree_type& pt_mem)
   {
+    pt_mem.put("xclbin_uuid", topology.metadata.xclbin_uuid);
+    pt_mem.put("hw_context_slot", boost::format("%u") % topology.metadata.id);
     pt_mem.put("type", memtype2str(mem->m_type));
     pt_mem.put("tag", mem->m_tag);
     pt_mem.put("enabled", mem->m_used ? true : false);
@@ -250,21 +211,23 @@ struct memory_info_collector
   // This function is shared with group topology, hence need to
   // know where the mem entry is comining from
   void
-  add_mem_usage_info(const mem_topology* mtopo, const mem_data* mem, ptree_type& pt_mem)
+  add_mem_usage_info(const std::string& mem_stat, ptree_type& pt_mem)
   {
-    auto idx = get_mem_data_index(mtopo, mem);
-    uint64_t memory_usage = 0, bo_count = 0;
-    std::stringstream {mem_stat[idx]} >> memory_usage >> bo_count; // idx has been validated
+    uint64_t memory_usage = 0;
+    uint64_t bo_count = 0;
+    std::stringstream {mem_stat} >> memory_usage >> bo_count; // idx has been validated
     pt_mem.put("extended_info.usage.allocated_bytes", memory_usage);
     pt_mem.put("extended_info.usage.buffer_objects_count", bo_count);
   }
 
   // Add mem temperature info for specified mem entry
   void
-  add_mem_temp_info(const mem_data* mem, ptree_type& pt_mem)
+  add_mem_temp_info(
+    const size_t idx,
+    const xq::temp_by_mem_topology::result_type& temp,
+    ptree_type& pt_mem)
   {
-    auto idx = get_mem_data_index(mem_topo, mem);
-
+    const auto mem_temp = temp.empty() ? nullptr : reinterpret_cast<const uint32_t*>(temp.data());
     // temperature is guaranteed to match up with mem_topo entries
     // indexing is safe because idx is validated
     constexpr int invalid_sensor_value = 0;
@@ -272,59 +235,60 @@ struct memory_info_collector
       pt_mem.put("extended_info.temperature_C", mem_temp[idx]);
   }
 
-  // Add mem info for specified mem data entry
-  void
-  add_mem_info(const mem_data* mem, ptree_type& pt_mem_array)
-  {
-    ptree_type pt_mem;
-    add_mem_ecc_info(mem, pt_mem);
-    add_mem_general_info(mem, pt_mem);
-    add_mem_usage_info(mem_topo, mem, pt_mem);
-    add_mem_temp_info(mem, pt_mem);
-    pt_mem_array.push_back(std::make_pair("",pt_mem));
-  }
-
   // Add mem info for all mem entries in mem_topology section
   void
   add_mem_info(ptree_type& pt)
   {
     ptree_type pt_mem_array;
+    ptree_type pt_stream_array;
 
-    for (int i = 0; i < mem_topo->m_count; ++i) {
-      const auto& mem = mem_topo->m_mem_data[i];
-      if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
+    for (const auto& topology : hw_context_memories) {
+      const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
+
+      if (!mem_topo)
         continue;
 
-      add_mem_info(&mem, pt_mem_array);
+      for (int i = 0; i < mem_topo->m_count; ++i) {
+        const auto& mem = mem_topo->m_mem_data[i];
+        
+        if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
+          add_stream_info(&mem, pt_stream_array);
+        else {
+          ptree_type pt_mem;
+          add_mem_ecc_info(&mem, pt_mem);
+          add_mem_general_info(topology, &mem, pt_mem);
+          add_mem_usage_info(topology.statistics[i], pt_mem);
+          add_mem_temp_info(i, topology.temperature, pt_mem);
+          pt_mem_array.push_back(std::make_pair("", pt_mem));
+        }
+      }
     }
 
-    pt.add_child("board.memory.memories", pt_mem_array );
-  }
-
-  // Add mem info for specified mem_data entry in group topology section
-  void
-  add_grp_info(const mem_data* mem, ptree_type& pt_grp_array)
-  {
-    ptree_type pt_grp;
-    add_mem_general_info(mem, pt_grp);
-    add_mem_usage_info(grp_topo, mem, pt_grp);
-    pt_grp_array.push_back(std::make_pair("",pt_grp));
+    pt.add_child("board.memory.data_streams", pt_stream_array);
+    pt.add_child("board.memory.memories", pt_mem_array);
   }
 
   // Add grp info for all mem entries in group_topology section
   void
   add_grp_info(ptree_type& pt)
   {
-    if (!grp_topo)
-      return;
-
     ptree_type pt_grp_array;
 
-    // group_topology prepends all mem_topology entries so groups
-    // are following at index mem_topo->m_count
-    for (int i = mem_topo->m_count; i < grp_topo->m_count; i++) {
-      const auto& mem = grp_topo->m_mem_data[i];
-      add_grp_info(&mem, pt_grp_array);
+    for (const auto& topology : hw_context_memories) {
+      const auto mem_topo = reinterpret_cast<const mem_topology*>(topology.topology.data());
+      const auto grp_topo = reinterpret_cast<const mem_topology*>(topology.grp_topology.data());
+
+      if (!mem_topo || !grp_topo)
+        continue;
+
+      // group_topology prepends all mem_topology entries so groups
+      // are following at index mem_topo->m_count
+      for (int i = mem_topo->m_count; i < grp_topo->m_count; i++) {
+        ptree_type pt_grp;
+        add_mem_general_info(topology, &grp_topo->m_mem_data[i], pt_grp);
+        add_mem_usage_info(topology.statistics[i], pt_grp);
+        pt_grp_array.push_back(std::make_pair("",pt_grp));
+      }
     }
 
     if (!pt_grp_array.empty())
@@ -335,42 +299,51 @@ public:
   explicit
   memory_info_collector(const xrt_core::device* dev)
     : device(dev)
-    , mem_topo_raw(xrt_core::device_query<xq::mem_topology_raw>(device))
-    , grp_topo_raw(xrt_core::device_query<xq::group_topology>(device))
-    , mem_topo(mem_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mem_topo_raw.data()))
-    , grp_topo(grp_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(grp_topo_raw.data()))
-    , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))
-    , mem_temp(0)
   {
     try {
-      mem_temp_raw = xrt_core::device_query<xq::temp_by_mem_topology>(dev);
-      mem_temp = mem_temp_raw.empty() ? nullptr : reinterpret_cast<const uint32_t*>(mem_temp_raw.data());
+      hw_context_memories = xrt_core::device_query<xq::hw_context_memory_info>(device);
     }
     catch (const xq::exception&) {
-      //ignore if xmc is not present 
+      // Try legacy method
+      xq::hw_context_memory_info::data_type hw_context_mem;
+      hw_context_mem.metadata.id = "0";
+      hw_context_mem.metadata.xclbin_uuid = xrt_core::device_query_default<xq::xclbin_uuid>(device, "");
+      hw_context_mem.topology = xrt_core::device_query<xq::mem_topology_raw>(device);
+      hw_context_mem.grp_topology = xrt_core::device_query<xq::group_topology>(device);
+      hw_context_mem.statistics = xrt_core::device_query<xq::memstat_raw>(device);
+      hw_context_mem.temperature = xrt_core::device_query_default<xq::temp_by_mem_topology>(dev, {});
+      hw_context_memories.push_back(hw_context_mem);
     }
-    // info gathering functions indexes mem_stat by mem_toplogy entry index
-    if (mem_topo && mem_stat.size() < static_cast<size_t>(mem_topo->m_count))
-      throw xrt_core::internal_error("incorrect memstat_raw entries");
 
-    // info gathering functions indexes mem_temp by mem_topology entry index
-    if (mem_topo && mem_temp && mem_temp_raw.size() < static_cast<size_t>(mem_topo->m_count))
-      throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
+    // validate the memory topologies for each hardware context
+    for (const auto& memory : hw_context_memories) {
+      const auto mem_topo = reinterpret_cast<const mem_topology*>(memory.topology.data());
+      const auto& mem_stat = memory.statistics;
+      const auto grp_topo = reinterpret_cast<const mem_topology*>(memory.grp_topology.data());
+      const auto mem_temp = reinterpret_cast<const uint32_t*>(memory.temperature.data());
 
-    // info gathering functions indexes mem_stat by group_toplogy entry index
-    if (grp_topo && mem_stat.size() < static_cast<size_t>(grp_topo->m_count))
-      throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
+      // info gathering functions indexes mem_stat by mem_toplogy entry index
+      if (mem_topo && mem_stat.size() < static_cast<size_t>(mem_topo->m_count))
+        throw xrt_core::internal_error("incorrect memstat_raw entries");
+
+      // info gathering functions indexes mem_temp by mem_topology entry index
+      if (mem_topo && mem_temp && memory.temperature.size() < static_cast<size_t>(mem_topo->m_count))
+        throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
+
+      // info gathering functions indexes mem_stat by group_toplogy entry index
+      if (grp_topo && mem_stat.size() < static_cast<size_t>(grp_topo->m_count))
+        throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
+    }
   }
 
   void
   collect(ptree_type& pt)
   {
-    if (!mem_topo)
+    if (hw_context_memories.empty())
       return;
 
     add_channel_info(pt);
     update_mig_cache(pt);  // why?
-    add_streaming_info(pt);
     add_mem_info(pt);
     add_grp_info(pt);
   }
@@ -398,7 +371,7 @@ memory_topology(const xrt_core::device* device)
 }
 
 ptree_type
-xclbin_info(const xrt_core::device * device)
+xclbin_info(const xrt_core::device* device)
 {
   ptree_type pt;
 
@@ -460,7 +433,7 @@ get_cu_status(uint32_t cu_status)
 }
 
 static void
-scheduler_update_stat(const xrt_core::device *device)
+scheduler_update_stat(const xrt_core::device* device)
 {
   // device query and open_context requires a non-cont raw device ptr
   auto dev = const_cast<xrt_core::device *>(device);
@@ -483,7 +456,7 @@ scheduler_update_stat(const xrt_core::device *device)
 }
 
 std::vector<ps_kernel_data> 
-get_ps_kernels(const xrt_core::device *device)
+get_ps_kernels(const xrt_core::device* device)
 {
   std::vector<ps_kernel_data> ps_kernels;
   try {
@@ -491,7 +464,7 @@ get_ps_kernels(const xrt_core::device *device)
     if (buf.empty())
       return ps_kernels;
     const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
-    if(map->pkn_count < 0)
+    if(map->pkn_count == 0)
       throw xrt_core::error("'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.");
 
     for (unsigned int i = 0; i < map->pkn_count; i++)
@@ -505,34 +478,12 @@ get_ps_kernels(const xrt_core::device *device)
 }
 
 ptree_type
-populate_cus(const xrt_core::device *device)
+populate_cus(const xrt_core::device* device, const std::vector<xq::kds_cu_info::data_type>& cu_stats, const std::vector<xq::kds_scu_info::data_type>& scu_stats)
 {
-  scheduler_update_stat(device);
-
+  // Tree that holds all ps and pl objects
   ptree_type pt;
-  using cu_data_type = xq::kds_cu_info::data_type;
-  using scu_data_type = xq::kds_scu_info::data_type;
-  std::vector<cu_data_type> cu_stats;
-  std::vector<scu_data_type> scu_stats;
-  ptree_type ptree;
-  try {
-    std::string uuid = xrt_core::device_query<xq::xclbin_uuid>(device);
-    boost::algorithm::to_upper(uuid);
-    ptree.put("xclbin_uuid", uuid);
-  } catch (xq::exception&) {  }
 
-  try {
-    cu_stats  = xrt_core::device_query<xq::kds_cu_info>(device);
-    scu_stats = xrt_core::device_query<xq::kds_scu_info>(device);
-  }
-  catch (const xq::no_such_key&) {
-    // Ignoring if not available: Edge Case
-  }
-  catch (const std::exception& ex) {
-    ptree.put("error_msg", ex.what());
-    return ptree;
-  }
-
+  // Add all CU objects into tree
   for (auto& stat : cu_stats) {
     ptree_type pt_cu;
     pt_cu.put( "name", stat.name);
@@ -543,14 +494,16 @@ populate_cus(const xrt_core::device *device)
     pt.push_back(std::make_pair("", pt_cu));
   }
 
+  // Collect ps kernel information and correlate it to scu stats
   std::vector<ps_kernel_data> ps_kernels;
   try {
     ps_kernels = get_ps_kernels(device);
   } catch(const xrt_core::error& ex) {
     std::cout << ex.what() <<std::endl;
-    return ptree;
+    return pt;
   }
 
+  // Add all SCU objects into tree
   uint32_t psk_inst = 0;
   uint32_t num_scu = 0;
   ptree_type pscu_list;
@@ -586,18 +539,56 @@ populate_cus(const xrt_core::device *device)
     }
   }
 
-  auto pt_dynamic_regions = xclbin_info(device);
-  pt_dynamic_regions.add_child("compute_units", pt);
-  return pt_dynamic_regions;
+  return pt;
+}
+
+static ptree_type
+populate_hardware_context(const xrt_core::device* device)
+{
+  ptree_type pt;
+  scheduler_update_stat(device);
+
+  std::vector<xq::hw_context_info::data_type> hw_context_stats;
+  ptree_type ptree;
+
+  // Get HW context info
+  try {
+    hw_context_stats = xrt_core::device_query<xq::hw_context_info>(device);
+  }
+  catch (const xq::no_such_key&) {
+    // Legacy Case
+    xq::hw_context_info::data_type hw_context;
+
+    hw_context.metadata.id = "0";
+    hw_context.metadata.xclbin_uuid = xrt_core::device_query_default<xq::xclbin_uuid>(device, "");
+    hw_context.pl_compute_units = xrt_core::device_query_default<xq::kds_cu_info>(device, {});
+    hw_context.ps_compute_units = xrt_core::device_query_default<xq::kds_scu_info>(device, {});
+
+    // Account for devices that do not have an xclbin uuid but have compute units
+    if (!hw_context.metadata.xclbin_uuid.empty() || !hw_context.pl_compute_units.empty() || !hw_context.ps_compute_units.empty())
+      hw_context_stats.push_back(hw_context);
+  }
+  catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return pt;
+  }
+
+  for (const auto& hw : hw_context_stats) {
+    ptree_type pt_hw;
+    pt_hw.put("id", boost::algorithm::to_upper_copy(hw.metadata.id));
+    pt_hw.put("xclbin_uuid", boost::algorithm::to_upper_copy(hw.metadata.xclbin_uuid));
+    pt_hw.add_child("compute_units", populate_cus(device, hw.pl_compute_units, hw.ps_compute_units));
+    pt.push_back(std::make_pair("", pt_hw));
+  }
+
+  return pt;
 }
 
 ptree_type
-dynamic_regions(const xrt_core::device * device)
+dynamic_regions(const xrt_core::device* device)
 {
   ptree_type pt;
-  ptree_type pt_dynamic_region;
-  pt_dynamic_region.push_back(std::make_pair("", populate_cus(device)));
-  pt.add_child("dynamic_regions", pt_dynamic_region);
+  pt.add_child("dynamic_regions", populate_hardware_context(device));
   return pt;
 }
 

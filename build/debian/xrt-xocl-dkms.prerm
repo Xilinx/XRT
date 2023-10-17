@@ -33,13 +33,13 @@ version_line=$(grep ^PACKAGE_VERSION= "$dkms_file")
 eval "$version_line"
 echo "Removing version $PACKAGE_VERSION"
 
-lsb_release -si | grep -Eq "^RedHat|^CentOS"
+awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}' | grep -Eq "^rhel|^centos"
 if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
     echo "Cleanup is skipped for package upgrade/downgrade/re-install on RHEL/CentOS"
     exit 0
 fi
 
-lsb_release -si | grep -Eq "^Ubuntu|^Debian"
+awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}' | grep -Eq "^ubuntu|^debian"
 if [ $? -eq 0 ] && [ "$1" = "upgrade" ]; then
     echo "Unregistering old XRT Linux kernel module sources $PACKAGE_VERSION from dkms on Ubuntu/Debian"
     dkms remove -m xrt -v "$PACKAGE_VERSION" --all

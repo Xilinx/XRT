@@ -16,6 +16,8 @@
 
 #include <fcntl.h>
 #include "core/common/query_requests.h"
+#include "core/tools/common/BusyBar.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "flasher.h"
 #include "xgq_vmr.h"
 
@@ -35,6 +37,9 @@ int XGQ_VMR_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
   std::cout << "INFO: ***xsabin has " << total_size << " bytes" << std::endl;
 
+  XBUtilities::BusyBar busy_bar("Working...", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+
   try {
     std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
@@ -44,10 +49,12 @@ int XGQ_VMR_Flasher::xclUpgradeFirmware(std::istream& binStream)
     auto fd = m_device->file_open("xgq_vmr", O_RDWR);
     ret = write(fd.get(), buffer.data(), total_size);
 #endif
+    busy_bar.finish();
     std::cout << "INFO: ***Write " << ret << " bytes" << std::endl;
     return ret == total_size ? 0 : -EIO;
   }
   catch (const std::exception& e) {
+    busy_bar.finish();
     xrt_core::send_exception_message(e.what(), "xgq_vmr operation failed");
     return -EIO;
   }

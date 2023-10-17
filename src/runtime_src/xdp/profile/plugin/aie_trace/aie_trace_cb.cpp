@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,36 +14,36 @@
  * under the License.
  */
 
-#include "xdp/profile/plugin/aie_trace/aie_trace_cb.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
+#define XDP_SOURCE
+
+#include "aie_trace_cb.h"
+#include "aie_trace_plugin.h"
+
 
 namespace xdp {
 
   // AIE Trace Plugin has only a static instance of the plugin object and a callback
 
-  static AieTracePlugin aieTracePluginInstance;
+  static AieTracePluginUnified aieTracePluginInstance;
 
   static void updateAIEDevice(void* handle)
   {
-    if (AieTracePlugin::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.updateAIEDevice(handle);
-    }
   }
 
   static void flushAIEDevice(void* handle)
   {
-    if (AieTracePlugin::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.flushAIEDevice(handle);
-    }
   }
 
   static void finishFlushAIEDevice(void* handle)
   {
-    if (AieTracePlugin::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.finishFlushAIEDevice(handle);
-    }
   }
-
+  
 } // end namespace xdp
 
 extern "C" 
@@ -58,9 +58,8 @@ void flushAIEDevice(void* handle)
   xdp::flushAIEDevice(handle);
 }
 
-extern "C" 
+extern "C"
 void finishFlushAIEDevice(void* handle)
 {
   xdp::finishFlushAIEDevice(handle);
 }
-

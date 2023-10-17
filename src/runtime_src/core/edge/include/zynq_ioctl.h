@@ -476,6 +476,7 @@ struct drm_zocl_sk_getcmd {
 	int		bohdl;
 	int		meta_bohdl;
 	unsigned char	uuid[16];
+	uint32_t	slot_id;
 };
 
 enum aie_info_code {

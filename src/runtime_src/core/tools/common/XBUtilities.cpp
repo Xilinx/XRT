@@ -8,6 +8,7 @@
 
 // Local - Include Files
 #include "core/common/error.h"
+#include "core/common/info_vmr.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
 
@@ -92,10 +93,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
 
     //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
-    bool is_mfg = false;
-    try{
-      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    } catch(...) {}
+    const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
 
     //if factory mode
     if (is_mfg) {
@@ -109,7 +107,8 @@ XBUtilities::get_available_devices(bool inUserDomain)
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) {
+      }
+      catch(...) {
         // The id wasn't added
       }
 
@@ -117,21 +116,22 @@ XBUtilities::get_available_devices(bool inUserDomain)
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
           pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
-      } catch(...) {
+      }
+      catch(...) {
         // The id wasn't added
       }
 
-     try {
-       std::string stream;
-       auto  instance = xrt_core::device_query<xrt_core::query::instance>(device);
-       std::string pf = device->is_userpf() ? "user" : "mgmt";
-       pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
-     } catch(const xrt_core::query::exception&) {
-         // The instance wasn't added
-       }
+    try {
+      auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
+      std::string pf = device->is_userpf() ? "user" : "mgmt";
+      pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
+    }
+    catch(const xrt_core::query::exception&) {
+        // The instance wasn't added
+    }
 
     }
-    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
+    pt_dev.put("is_ready", xrt_core::device_query_default<xrt_core::query::is_ready>(device, true));
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;
@@ -318,8 +318,76 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
+  static void 
+  check_versal_boot(const std::shared_ptr<xrt_core::device> &device)
+  {
+    std::vector<std::string> warnings;
+
+    try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::has_fpt);
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT migrated");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::boot_on_default);
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT in default boot");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    try {
+      const std::string unavail = "N/A";
+      const std::string zeroes = "0.0.0";
+      auto cur_ver = xrt_core::device_query_default<xrt_core::query::hwmon_sdm_active_msp_ver>(device, unavail);
+      auto exp_ver = xrt_core::device_query_default<xrt_core::query::hwmon_sdm_target_msp_ver>(device, unavail);
+      cur_ver = (boost::equals(cur_ver, zeroes)) ? unavail : cur_ver;
+      exp_ver = (boost::equals(exp_ver, zeroes)) ? unavail : exp_ver;
+      if (boost::equals(cur_ver, unavail) || boost::equals(exp_ver, unavail))
+        warnings.push_back("SC version data missing. Upgrade your shell");
+      else if (!boost::equals(cur_ver, exp_ver))
+        warnings.push_back(boost::str(boost::format("Invalid SC version. Expected: %s Current: %s") % exp_ver % cur_ver));
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    if (warnings.empty())
+      return;
+
+    const std::string star_line = "***********************************************************";
+
+    std::cout << star_line << "\n";
+    std::cout << "*        WARNING          WARNING          WARNING        *\n";
+
+    // Print all warnings
+    for (const auto& warning : warnings) {
+      // Subtract the:
+      // 1. Side stars
+      // 2. Single space next to the side star
+      const size_t available_space = star_line.size() - 2 - 2;
+      // Account for strings who are larger than the star line
+      size_t warning_index = 0;
+      while (warning_index < warning.size()) {
+        // Extract the largest possible string from the warning
+        const auto warning_msg = warning.substr(warning_index, available_space);
+        // Update the index so the next substring is valid
+        warning_index += warning_msg.size();
+        const auto side_spaces = available_space - warning_msg.size();
+        // The left side should be larger than the right if there is an imbalance
+        const size_t left_spaces = (side_spaces % 2 == 0) ? side_spaces / 2 : (side_spaces / 2) + 1;
+        const size_t right_spaces = side_spaces / 2;
+        std::cout << "* " << std::string(left_spaces, ' ') << warning_msg << std::string(right_spaces, ' ') << " *\n";
+      }
+    }
+
+    std::cout << star_line << "\n";
+  }
+
   std::shared_ptr<xrt_core::device>
-  XBUtilities::get_device ( const std::string &deviceBDF, bool in_user_domain)
+  XBUtilities::get_device( const std::string &deviceBDF, bool in_user_domain)
   {
     // -- If the deviceBDF is empty then do nothing
     if (deviceBDF.empty())
@@ -327,10 +395,16 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
     // -- Collect the devices by name
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw
+    std::shared_ptr<xrt_core::device> device;
     if(in_user_domain)
-      return xrt_core::get_userpf_device(index);
+      device = xrt_core::get_userpf_device(index);
+    else
+      device = xrt_core::get_mgmtpf_device(index);
 
-    return xrt_core::get_mgmtpf_device(index);
+    if (xrt_core::device_query_default<xq::is_versal>(device, false))
+      check_versal_boot(device);
+
+    return device;
   }
 
 void
@@ -342,37 +416,20 @@ XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& er
 }
 
 void
-XBUtilities::sudo_or_throw(const std::string& msg)
-{
-#ifndef _WIN32
-  if ((getuid() == 0) || (geteuid() == 0))
-    return;
-
-  std::cerr << "ERROR: " << msg << std::endl;
-  throw xrt_core::error(std::errc::operation_canceled);
-#endif
-}
-
-void
-XBUtilities::throw_cancel(const std::string& msg)
-{
-  throw_cancel(boost::format("%s") % msg);
-}
-
-void
-XBUtilities::throw_cancel(const boost::format& format)
-{
-  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
-}
-
-void
 XBUtilities::print_exception(const std::system_error& e)
 {
-  // Remove the type of error from the message.
-  const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
+  try {
+    // Remove the type of error from the message.
+    const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
 
-  if (!msg.empty())
-    std::cerr << boost::format("ERROR: %s\n") % msg;
+    if (!msg.empty())
+      std::cerr << boost::format("ERROR: %s\n") % msg;
+  }
+  catch (const std::exception&)
+  {
+    // exception can occur while formatting message, print normal message
+    std::cerr << e.what() << std::endl;
+  }
 }
 
 std::vector<char>

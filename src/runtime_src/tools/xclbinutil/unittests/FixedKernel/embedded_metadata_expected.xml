@@ -67,7 +67,7 @@
         <connection srcType="core" srcInst="OCL_REGION_0" srcPort="noc_32_0_M13_AXI" dstType="kernel" dstInst="vadd_1" dstPort="S_AXI_CONTROL"/>
         <connection srcType="core" srcInst="OCL_REGION_0" srcPort="noc_64_0_S02_AXI" dstType="kernel" dstInst="vadd_1" dstPort="M_AXI_GMEM"/>
         <kernel name="DPU" language="c" type="dpu">
-          <extended-data functional="0" dpu_kernel_id="0x101"/>
+          <extended-data subtype="1" functional="0" dpu_kernel_id="0x101"/>
           <arg name="ifm" addressQualifier="1" id="0" size="0x8" offset="0x00" hostOffset="0x0" hostSize="0x8" type="char *"/>
           <arg name="param" addressQualifier="1" id="1" size="0x8" offset="0x08" hostOffset="0x0" hostSize="0x8" type="char *"/>
           <arg name="ofm" addressQualifier="1" id="2" size="0x8" offset="0x10" hostOffset="0x0" hostSize="0x8" type="char *"/>

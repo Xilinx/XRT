@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "device_linux.h"
 #include "xrt.h"
 #include "zynq_dev.h"
@@ -108,17 +94,6 @@ struct board_name
   }
 };
 
-struct is_ready
-{
-  using result_type = query::is_ready::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    return true;
-  }
-};
-
 static xclDeviceInfo2
 init_device_info(const xrt_core::device* device)
 {
@@ -168,87 +143,137 @@ struct dev_info
   }
 };
 
-struct aie_metadata
-{
-  // Function to read aie_metadata sysfs, and parse max rows and max
-  // columns from it.
-  static void
-  read_aie_metadata(const xrt_core::device* device, uint32_t &row, uint32_t &col)
-  {
-    std::string err;
-    std::string value;
-    static std::string AIE_TAG = "aie_metadata";
-    constexpr uint32_t major = 1;
-    constexpr uint32_t minor = 0;
-    constexpr uint32_t patch = 0;
-
-    auto dev = get_edgedev(device);
-
-    dev->sysfs_get(AIE_TAG, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    std::stringstream ss(value);
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_json(ss, pt);
-
-    if(pt.get<uint32_t>("schema_version.major") != major ||
-       pt.get<uint32_t>("schema_version.minor") != minor ||
-       pt.get<uint32_t>("schema_version.patch") != patch )
-      throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
-                                                             % pt.get<uint32_t>("schema_version.major")
-                                                             % pt.get<uint32_t>("schema_version.minor")
-                                                             % pt.get<uint32_t>("schema_version.patch")));
-    col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
-    row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
-  }
+struct aie_metadata_info{
+  uint32_t num_cols;
+  uint32_t num_rows;
+  uint32_t shim_row;
+  uint32_t core_row;
+  uint32_t mem_row;
+  uint32_t num_mem_row;
+  uint8_t hw_gen;
 };
 
-struct aie_core_info : aie_metadata
+// Function to get aie max rows and cols by parsing aie_metadata sysfs node
+static aie_metadata_info
+get_aie_metadata_info(const xrt_core::device* device)
 {
-  using result_type = query::aie_core_info::result_type;
+  std::string err;
+  std::string value;
+  static const std::string AIE_TAG = "aie_metadata";
+  constexpr uint32_t major = 1;
+  constexpr uint32_t minor = 0;
+  constexpr uint32_t patch = 0;
+  aie_metadata_info aie_meta;
+
+  auto dev = get_edgedev(device);
+
+  dev->sysfs_get(AIE_TAG, err, value);
+  if (!err.empty())
+    throw xrt_core::query::sysfs_error(err);
+
+  std::stringstream ss(value);
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_json(ss, pt);
+
+  if (pt.get<uint32_t>("schema_version.major") != major ||
+      pt.get<uint32_t>("schema_version.minor") != minor ||
+      pt.get<uint32_t>("schema_version.patch") != patch )
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Aie Metadata major:minor:patch [%d:%d:%d] version are not matching")
+        % pt.get<uint32_t>("schema_version.major")
+        % pt.get<uint32_t>("schema_version.minor")
+        % pt.get<uint32_t>("schema_version.patch")));
+
+  aie_meta.num_cols = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
+  aie_meta.num_rows = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
+  aie_meta.shim_row = pt.get<uint32_t>("aie_metadata.driver_config.shim_row");
+  aie_meta.core_row = pt.get<uint32_t>("aie_metadata.driver_config.aie_tile_row_start");
+  if (!pt.get_optional<uint32_t>("aie_metadata.driver_config.mem_tile_row_start") || 
+      !pt.get_optional<uint32_t>("aie_metadata.driver_config.mem_tile_num_rows")) {
+       aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_row_start");
+       aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.reserved_num_rows");
+  }
+  else {
+       aie_meta.mem_row = pt.get<uint32_t>("aie_metadata.driver_config.mem_tile_row_start");
+       aie_meta.num_mem_row = pt.get<uint32_t>("aie_metadata.driver_config.mem_tile_num_rows");
+  }
+  aie_meta.hw_gen = pt.get<uint8_t>("aie_metadata.driver_config.hw_gen");
+  return aie_meta;
+}
+
+struct aie_core_info_sysfs
+{
+  using result_type = query::aie_core_info_sysfs::result_type;
   static result_type
-  get(const xrt_core::device* device,key_type key)
+  get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
-    uint32_t max_col = 0, max_row = 0;
-
-    read_aie_metadata(device, max_row, max_col);
+    aie_metadata_info aie_meta = get_aie_metadata_info(device);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
-    for(int i=0;i<max_col;i++)
-      for(int j=0; j<(max_row-1);j++)
-        ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
-                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1))));
+    for (int i = 0; i < aie_meta.num_cols; ++i)
+      for (int j = 0; j < (aie_meta.num_rows-1); ++j)
+        ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+                          aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.core_row))));
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
+    pt.put("hw_gen",std::to_string(aie_meta.hw_gen));
     std::ostringstream oss;
     boost::property_tree::write_json(oss, pt);
-
     std::string inifile_text = oss.str();
     return inifile_text;
   }
 };
 
-struct aie_shim_info : aie_metadata
+struct aie_shim_info_sysfs
 {
-  using result_type = query::aie_shim_info::result_type;
+  using result_type = query::aie_shim_info_sysfs::result_type;
+
   static result_type
-  get(const xrt_core::device* device,key_type key)
+  get(const xrt_core::device* device, key_type key)
   {
     boost::property_tree::ptree ptarray;
-    uint32_t max_col = 0, max_row = 0;
-
-    read_aie_metadata(device, max_row, max_col);
+    aie_metadata_info aie_meta = get_aie_metadata_info(device);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
-    for(int i=0;i<max_col;i++) {
-      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0)));
+    for (int i=0; i < aie_meta.num_cols; ++i) {
+      ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(aie_meta.shim_row),
+			aie_sys_parser::get_parser(aiepart)->aie_sys_read(i, aie_meta.shim_row)));
     }
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_shim",ptarray);
+    pt.put("hw_gen",std::to_string(aie_meta.hw_gen));
+    std::ostringstream oss;
+    boost::property_tree::write_json(oss, pt);
+    std::string inifile_text = oss.str();
+    return inifile_text;
+  }
+};
+
+struct aie_mem_info_sysfs
+{
+  using result_type = query::aie_mem_info_sysfs::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    boost::property_tree::ptree ptarray;
+    aie_metadata_info aie_meta = get_aie_metadata_info(device);
+    const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+
+    ptarray.put("hw_gen",std::to_string(aie_meta.hw_gen));
+
+    /* Loop all mem tiles and collect all dma, events, errors, locks status */
+    for (int i = 0; i < aie_meta.num_cols; ++i)
+      for (int j = 0; j < (aie_meta.num_mem_row-1); ++j)
+	ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+			  aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.mem_row))));
+
+    boost::property_tree::ptree pt;
+    pt.add_child("aie_mem",ptarray);
     std::ostringstream oss;
     boost::property_tree::write_json(oss, pt);
     std::string inifile_text = oss.str();
@@ -372,7 +397,7 @@ struct xclbin_slots
       if (std::distance(tokens.begin(), tokens.end()) != 2)
         throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
 
-      slot_info data = { 0 };
+      slot_info data {};
       tokenizer::iterator tok_it = tokens.begin();
       data.slot = std::stoi(std::string(*tok_it++));
       data.uuid = std::string(*tok_it++);
@@ -456,6 +481,17 @@ struct aie_reg_read
 
   XAie_DevInst* devInst;         // AIE Device Instance
 
+  uint8_t mem_row_start, mem_num_rows;
+  if (!pt.get_optional<uint8_t>("aie_metadata.driver_config.mem_tile_row_start") ||
+      !pt.get_optional<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows")) {
+       mem_row_start = pt.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+       mem_num_rows = pt.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+  }
+  else {
+       mem_row_start = pt.get<uint8_t>("aie_metadata.driver_config.mem_tile_row_start");
+       mem_num_rows = pt.get<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows");
+  }
+
   XAie_SetupConfig(ConfigPtr,
     pt.get<uint8_t>("aie_metadata.driver_config.hw_gen"),
     pt.get<uint64_t>("aie_metadata.driver_config.base_address"),
@@ -464,8 +500,8 @@ struct aie_reg_read
     pt.get<uint8_t>("aie_metadata.driver_config.num_columns"),
     pt.get<uint8_t>("aie_metadata.driver_config.num_rows"),
     pt.get<uint8_t>("aie_metadata.driver_config.shim_row"),
-    pt.get<uint8_t>("aie_metadata.driver_config.reserved_row_start"),
-    pt.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows"),
+    mem_row_start,
+    mem_num_rows,
     pt.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start"),
     pt.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows"));
 
@@ -870,10 +906,11 @@ initialize_query_table()
   emplace_func0_request<query::rom_time_since_epoch,    dev_info>();
 
   emplace_func0_request<query::clock_freqs_mhz,         dev_info>();
-  emplace_func0_request<query::aie_core_info,		aie_core_info>();
-  emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
+  emplace_func0_request<query::aie_core_info_sysfs,     aie_core_info_sysfs>();
+  emplace_func0_request<query::aie_shim_info_sysfs,     aie_shim_info_sysfs>();
+  emplace_func0_request<query::aie_mem_info_sysfs,      aie_mem_info_sysfs>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
-  emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
+  emplace_func4_request<query::aie_get_freq,            aie_get_freq>();
   emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
@@ -890,7 +927,6 @@ initialize_query_table()
   emplace_sysfs_get<query::host_mem_size>             ("host_mem_size");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
-  emplace_func0_request<query::is_ready,                is_ready>();
   emplace_func0_request<query::xclbin_uuid ,            xclbin_uuid>();
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
@@ -985,6 +1021,16 @@ set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
 {
   if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
     throw xrt_core::error(ret, "failed to set cu read range");
+}
+
+std::unique_ptr<buffer_handle>
+device_linux::
+import_bo(pid_t pid, shared_handle::export_handle ehdl)
+{
+  if (pid == 0 || getpid() == pid)
+    return xrt::shim_int::import_bo(get_device_handle(), ehdl);
+
+  throw xrt_core::error(std::errc::not_supported, __func__);
 }
 
 ////////////////////////////////////////////////////////////////

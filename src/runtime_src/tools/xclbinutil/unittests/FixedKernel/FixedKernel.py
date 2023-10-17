@@ -51,7 +51,9 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Read in a fixed kernel, updated and validate the sections"
+  step = '''1) Read in a fixed ps kernel, updated and validate the sections
+   fixed ps kernel file: fixed_kernel_add.json
+   this file has string value for subtype and functional in extended-data'''
 
   inputJSON = os.path.join(args.resource_dir, "fixed_kernel_add.json")
   outputEmbeddedMetadata = "updated_embedded_metadata.xml"
@@ -79,8 +81,75 @@ def main():
                      "--dump-section", "GROUP_TOPOLOGY:JSON:" + outputGroupTopology,
                      "--dump-section", "GROUP_CONNECTIVITY:JSON:" + outputGroupConnectivity,
                      "--output", outputXCLBIN, 
-                     "--force",
-                     "--trace"]
+                     "--force"
+                     ]
+  execCmd(step, cmd)
+
+  # Validate the contents of the various sections
+  textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
+  jsonFileCompare(outputIpLayout, expectedIpLayout)
+  jsonFileCompare(outputConnectivity, expectedConnectivity)
+  jsonFileCompare(outputGroupTopology, expectedGroupTopology)
+  jsonFileCompare(outputGroupConnectivity, expectedGroupConnectivity)
+
+  # ---------------------------------------------------------------------------
+
+  step = '''2) Read in fixed ps kernel, updated and validate the sections
+   fixed ps kernel file: fixed_kernel_add_num.json
+   this file has numberic value for subtype and functional in extended-data'''
+
+  # fixed_kernel_add_2.json is semantically identical to fixed_kernel_add.json
+  # hence all the output files remain the same
+
+  inputJSON = os.path.join(args.resource_dir, "fixed_kernel_add_num.json")
+
+  cmd = [xclbinutil, "--input", workingXCLBIN,
+                     "--add-kernel", inputJSON, 
+                     "--dump-section", "EMBEDDED_METADATA:RAW:" + outputEmbeddedMetadata,
+                     "--dump-section", "IP_LAYOUT:JSON:" + outputIpLayout,
+                     "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
+                     "--dump-section", "GROUP_TOPOLOGY:JSON:" + outputGroupTopology,
+                     "--dump-section", "GROUP_CONNECTIVITY:JSON:" + outputGroupConnectivity,
+                     "--output", outputXCLBIN, 
+                     "--force"
+                     ]
+  execCmd(step, cmd)
+
+  # Validate the contents of the various sections
+  textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
+  jsonFileCompare(outputIpLayout, expectedIpLayout)
+  jsonFileCompare(outputConnectivity, expectedConnectivity)
+  jsonFileCompare(outputGroupTopology, expectedGroupTopology)
+  jsonFileCompare(outputGroupConnectivity, expectedGroupConnectivity)
+
+  # ---------------------------------------------------------------------------
+  
+  step = '''3) Read in fixed ps kernel, updated and validate the sections
+   fixed ps kernel file: fixed_kernel_add_2.json
+   this file set the functional to 1 (i.e. "PrePost")'''
+
+  inputJSON = os.path.join(args.resource_dir, "fixed_kernel_add_2.json")
+
+  outputEmbeddedMetadata = "updated_embedded_metadata_2.xml"
+  expectedEmbeddedMetadata = os.path.join(args.resource_dir, "embedded_metadata_expected_2.xml")
+
+  outputIpLayout = "updated_ip_layout_2.json"
+  expectedIpLayout = os.path.join(args.resource_dir, "ip_layout_expected_2.json")
+
+  # other output files should remain the same
+
+  outputXCLBIN = "pskernel_output_2.xclbin"
+
+  cmd = [xclbinutil, "--input", workingXCLBIN,
+                     "--add-kernel", inputJSON, 
+                     "--dump-section", "EMBEDDED_METADATA:RAW:" + outputEmbeddedMetadata,
+                     "--dump-section", "IP_LAYOUT:JSON:" + outputIpLayout,
+                     "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
+                     "--dump-section", "GROUP_TOPOLOGY:JSON:" + outputGroupTopology,
+                     "--dump-section", "GROUP_CONNECTIVITY:JSON:" + outputGroupConnectivity,
+                     "--output", outputXCLBIN, 
+                     "--force"
+                     ]
   execCmd(step, cmd)
 
   # Validate the contents of the various sections
@@ -90,7 +159,6 @@ def main():
   jsonFileCompare(outputGroupTopology, expectedGroupTopology)
   jsonFileCompare(outputGroupConnectivity, expectedGroupConnectivity)
   # ---------------------------------------------------------------------------
-
 
   # If the code gets this far, all is good.
   return False

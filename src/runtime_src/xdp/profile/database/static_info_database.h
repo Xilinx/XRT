@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -53,6 +53,9 @@ namespace xdp {
   struct DeviceInfo ;
   struct XclbinInfo ;
 
+  //Forward declaration of XDP's device structure
+  class Device;
+
   // The VPStaticDatabase contains information that is expected to not change
   //  throughout the execution of the program.  For device information,
   //  we keep track of the structure of the hardware in all the xclbins
@@ -66,7 +69,7 @@ namespace xdp {
     // Parent pointer to database so we can issue broadcasts
     VPDatabase* db ;
     // The static database handles the single instance of the run summary
-    VPWriter* runSummary ;
+    std::unique_ptr<VPWriter> runSummary;
 
   private:
     // ********* Information specific to each host execution **********
@@ -91,7 +94,7 @@ namespace xdp {
     std::vector<std::string> softwareEmulationPortBitWidths ;
 
     // Device Specific Information mapped to the Unique Device Id
-    std::map<uint64_t, DeviceInfo*> deviceInfo;
+    std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
 
     // Static info can be accessed via any host thread, so we have
     //  fine grained locks on each of the types of data.
@@ -108,8 +111,6 @@ namespace xdp {
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that create the overall structure of the Xclbin's PL region
-    bool initializeStructure(XclbinInfo*,
-                             const std::shared_ptr<xrt_core::device>&);
     void createComputeUnits(XclbinInfo*, const ip_layout*);
     void createMemories(XclbinInfo*, const mem_topology*);
     void createConnections(XclbinInfo*, const ip_layout*, const mem_topology*,
@@ -118,9 +119,9 @@ namespace xdp {
     void setXclbinName(XclbinInfo*, const char*, size_t);
     void updateSystemDiagram(const char*, size_t);
     void addPortInfo(XclbinInfo*, const char*, size_t);
+    void parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that initialize the structure of the debug/profiling IP
-    bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
     void initializeAM(DeviceInfo* devInfo, const std::string& name,
                       const struct debug_ip_data* debugIpData) ;
     void initializeAIM(DeviceInfo* devInfo, const std::string& name,
@@ -131,7 +132,18 @@ namespace xdp {
                        const struct debug_ip_data* debugIpData) ;
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
-    double findClockRate(std::shared_ptr<xrt_core::device> device) ;
+    void initializeFIFO(DeviceInfo* devInfo) ;
+    void initializeXrtIP(XclbinInfo* xclbin);
+
+    void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
+    void setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    void setAIEClockRateMHz(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    bool initializeStructure(XclbinInfo*, xrt::xclbin);
+    bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
+    double findClockRate(xrt::xclbin);
+    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+
+    
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -233,11 +245,10 @@ namespace xdp {
     XDP_EXPORT void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId) ;
     XDP_EXPORT bool isDeviceReady(uint64_t deviceId) ;
     XDP_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
-    XDP_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ;
+    XDP_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ; 
     XDP_EXPORT std::string getDeviceName(uint64_t deviceId) ;
-    XDP_EXPORT void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf) ;
     XDP_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
-    XDP_EXPORT void setKDMACount(uint64_t deviceId, uint64_t num) ;
+    XDP_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
     XDP_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;
@@ -250,17 +261,20 @@ namespace xdp {
     XDP_EXPORT std::string getXclbinName(uint64_t deviceId) ;
     XDP_EXPORT std::vector<XclbinInfo*> getLoadedXclbins(uint64_t deviceId) ;
     XDP_EXPORT ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId) ;
-    XDP_EXPORT
-    std::map<int32_t, ComputeUnitInstance*>* getCUs(uint64_t deviceId) ;
-    XDP_EXPORT std::map<int32_t, Memory*>* getMemoryInfo(uint64_t deviceId) ;
     XDP_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
 
     // *********************************************************
+    // ***** Functions related to trace_processor tool *****
+    // ***** which creates events from raw PL trace    *****
+    XDP_EXPORT void updateDevice(uint64_t deviceId, const std::string& xclbinFile);
+
+    // *********************************************************
     // ***** Functions related to AIE specific information *****
-    XDP_EXPORT bool isAIECounterRead(uint64_t deviceId) ;
+    XDP_EXPORT uint8_t getAIEGeneration(uint64_t deviceId) ;
     XDP_EXPORT void setIsAIECounterRead(uint64_t deviceId, bool val) ;
+    XDP_EXPORT bool isAIECounterRead(uint64_t deviceId) ;
     XDP_EXPORT void setIsGMIORead(uint64_t deviceId, bool val) ;
     XDP_EXPORT bool isGMIORead(uint64_t deviceId) ;
     XDP_EXPORT uint64_t getNumAIECounter(uint64_t deviceId) ;
@@ -276,11 +290,16 @@ namespace xdp {
     std::map<uint32_t, uint32_t>*
     getAIEShimCounterResources(uint64_t deviceId) ;
     XDP_EXPORT
+    std::map<uint32_t, uint32_t>*
+    getAIEMemTileCounterResources(uint64_t deviceId) ;
+    XDP_EXPORT
     std::map<uint32_t, uint32_t>* getAIECoreEventResources(uint64_t deviceId) ;
     XDP_EXPORT
-    std::map<uint32_t, uint32_t>* getAIEMemoryEventResources(uint64_t deviceId);
+    std::map<uint32_t, uint32_t>* getAIEMemoryEventResources(uint64_t deviceId) ;
     XDP_EXPORT
     std::map<uint32_t, uint32_t>* getAIEShimEventResources(uint64_t deviceId) ;
+    XDP_EXPORT
+    std::map<uint32_t, uint32_t>* getAIEMemTileEventResources(uint64_t deviceId) ;
     XDP_EXPORT
     std::vector<std::unique_ptr<aie_cfg_tile>>*
     getAIECfgTiles(uint64_t deviceId) ;
@@ -295,13 +314,19 @@ namespace xdp {
     XDP_EXPORT void addAIECounterResources(uint64_t deviceId,
                                            uint32_t numCounters,
                                            uint32_t numTiles,
-                                           bool isCore) ;
+                                           uint8_t moduleType) ;
     XDP_EXPORT void addAIECoreEventResources(uint64_t deviceId,
                                              uint32_t numEvents,
                                              uint32_t numTiles) ;
     XDP_EXPORT void addAIEMemoryEventResources(uint64_t deviceId,
                                                uint32_t numEvents,
                                                uint32_t numTiles) ;
+    XDP_EXPORT void addAIEShimEventResources(uint64_t deviceId,
+                                             uint32_t numEvents,
+                                             uint32_t numTiles) ;
+    XDP_EXPORT void addAIEMemTileEventResources(uint64_t deviceId,
+                                                uint32_t numEvents,
+                                                uint32_t numTiles) ;
     XDP_EXPORT void addAIECfgTile(uint64_t deviceId,
                                   std::unique_ptr<aie_cfg_tile>& tile) ;
     XDP_EXPORT uint64_t getNumTracePLIO(uint64_t deviceId) ;

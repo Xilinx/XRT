@@ -192,6 +192,7 @@ xrt_xclbin_kind_to_string(enum axlf_section_kind kind)
 	case ASK_GROUP_CONNECTIVITY: 	return "ASK_GROUP_CONNECTIVITY";
 	case SMARTNIC:			return "SMARTNIC";
 	case AIE_RESOURCES:		return "AIE_RESOURCES";
+	case IP_METADATA:		return "IP_METADATA";
 	default: 			return "UNKNOWN";
 	}
 }
@@ -206,8 +207,13 @@ xrt_xclbin_get_section_hdr(const struct axlf *xclbin, enum axlf_section_kind kin
 		return NULL;
 
 	for (i = 0; i < xclbin->m_header.m_numSections; i++) {
-		if (xclbin->m_sections[i].m_sectionKind == kind)
+		if (xclbin->m_sections[i].m_sectionKind == kind) {
+			int err = 0;
+			err = xrt_xclbin_check_section_hdr(&(xclbin->m_sections[i]), xclbin->m_header.m_length);
+			if (err)
+				return NULL;
 			return &xclbin->m_sections[i];
+		}
 	}
 
 	return NULL;
@@ -217,7 +223,8 @@ int
 xrt_xclbin_check_section_hdr(const struct axlf_section_header *header,
 	uint64_t xclbin_len)
 {
-	return (header->m_sectionOffset + header->m_sectionSize) > xclbin_len ?
+	return ((header->m_sectionOffset + header->m_sectionSize < header->m_sectionOffset)
+	            || (header->m_sectionOffset + header->m_sectionSize > xclbin_len)) ?
 		-EINVAL : 0;
 }
 

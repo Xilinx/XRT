@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,11 +17,10 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/writer/native/native_writer.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/native_events.h"
-
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/writer/native/native_writer.h"
 
 namespace xdp {
 
@@ -64,34 +64,29 @@ namespace xdp {
       (db->getDynamicInfo()).moveUnsortedHostEvents(
         [](VTFEvent* e)
         {
-          return e->isNativeHostEvent() ;
+          return e->isNativeHostEvent();
         } ) ;
 
     std::sort(APIEvents.begin(), APIEvents.end(),
               [](VTFEvent* x, VTFEvent* y)
                 {
                   if (x->getTimestamp() < y->getTimestamp()) return true;
-                  return false ;
+                  return false;
                 }) ;
 
-    fout << "EVENTS" << "\n" ;
+    fout << "EVENTS" << "\n";
     for (auto& e : APIEvents) {
-      e->dump(fout, APIBucket) ;
-      // If this is also a read/write, then dump the event in the other bucket
-      NativeAPICall* call = dynamic_cast<NativeAPICall*>(e) ;
-      if (call != nullptr) {
-        if (call->isRead()) {
-          call->dumpSync(fout, readBucket) ;
-        }
-        if (call->isWrite()) {
-          call->dumpSync(fout, writeBucket) ;
-        }
-      }
+      // If this is a read/write, then dump the event in the other bucket
+      if (e->isNativeRead())
+        e->dumpSync(fout, readBucket);
+      else if (e->isNativeWrite())
+        e->dumpSync(fout, writeBucket);
+      else
+        e->dump(fout, APIBucket);
     }
 
-    for (auto& e : APIEvents) {
-      delete e ;
-    }
+    for (auto& e : APIEvents)
+      delete e;
   }
 
   void NativeTraceWriter::writeDependencies()

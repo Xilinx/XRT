@@ -28,7 +28,6 @@ usage()
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
     echo "[-nocmake]                 Do not rerun cmake generation, just build"
     echo "[-noabi]                   Do compile with ABI version check"
-    echo "[-mcdm]                    Build mcdm subset"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-dbg]                     Build debug library (default: optimized)"
     echo "[-all]                     Build debug and optimized library (default: optimized)"
@@ -70,10 +69,6 @@ while [ $# -gt 0 ]; do
         -all)
             dbg=1
             release=1
-            shift
-            ;;
-        -mcdm)
-            cmake_flags+=" -DMCDM=1 -DMCDM_IN_XRT=1"
             shift
             ;;
 	-boost)

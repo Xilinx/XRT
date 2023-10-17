@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,10 +19,24 @@
 
 #define XDP_SOURCE
 
+#include "core/common/message.h"
+
 #include "xdp/profile/database/static_info/pl_constructs.h"
 
 // Anonymous namespace for local static helper functions
 namespace {
+
+  static std::string convertBankToDDR(const std::string& memory)
+  {
+    auto loc = memory.find("bank");
+    if (loc == std::string::npos)
+      return memory;
+
+    std::string ddr = "DDR[";
+    ddr += memory.substr(loc + 4);
+    ddr += "]";
+    return ddr;
+  }
 
   // This function will check if the spTag a particular port or argument
   // is connected to belongs to a particular memory resource.  If the strings
@@ -33,14 +47,30 @@ namespace {
     if (spTag == memory)
       return true;
 
+    // On platforms that have HOST bridge enabled, the spTag and memory
+    // are hardcoded to specific values that don't match the rest of the
+    // algorithm.
+    if (spTag == "HOST[0]" && memory == "HOST")
+      return true;
+
+    // On some platforms, the memory name is still formatted as "bank0"
+    // and needs to be changed to DDR[0].
+    std::string mem = convertBankToDDR(memory);
+
+    // On Versal, MC_NOC0 and equivalent actually represent DDR connections.
+    // We do that hard coded check here
+    if (spTag.find("MC_NOC") != std::string::npos &&
+        mem.find("DDR")      != std::string::npos)
+      return true;
+
     // If it is not an exact match, check to see if there is a range
     // specification and if the spTag falls in that range.  For example,
     // PLRAM[2] should match PLRAM[0:2].
 
     auto bracePosSpTag    = spTag.find("[");
     auto endBracePosSpTag = spTag.find("]");
-    auto bracePosMem      = memory.find("[");
-    auto endBracePosMem   = memory.find("]");
+    auto bracePosMem      = mem.find("[");
+    auto endBracePosMem   = mem.find("]");
 
     // Both the spTag and memory resource must have braces in order
     if (bracePosSpTag    == std::string::npos ||
@@ -51,7 +81,7 @@ namespace {
 
     // First, make sure the memory type before the brace is the same
     std::string spResource  = spTag.substr(0, bracePosSpTag);
-    std::string memResource = memory.substr(0, bracePosMem);
+    std::string memResource = mem.substr(0, bracePosMem);
 
     if (spResource != memResource)
       return false;
@@ -61,8 +91,8 @@ namespace {
     // the range.
     std::string spRange = spTag.substr(bracePosSpTag + 1,
                                        endBracePosSpTag - bracePosSpTag - 1);
-    std::string memRange = memory.substr(bracePosMem + 1,
-                                         endBracePosMem - bracePosMem - 1);
+    std::string memRange = mem.substr(bracePosMem + 1,
+                                      endBracePosMem - bracePosMem - 1);
 
     auto colonPos = memRange.find(":");
     if (colonPos == std::string::npos)
@@ -126,11 +156,11 @@ namespace xdp {
 
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string& n)
     : index(i)
+    , fullname(n)
   {
-    std::string fullName(n) ;
-    size_t pos = fullName.find(':') ;
-    kernelName = fullName.substr(0, pos) ;
-    name = fullName.substr(pos + 1) ;
+    size_t pos = fullname.find(':') ;
+    kernelName = fullname.substr(0, pos) ;
+    name = fullname.substr(pos + 1) ;
   }
 
   std::string ComputeUnitInstance::getDim()
@@ -212,6 +242,57 @@ namespace xdp {
     ddr += tag.substr(loc + 4);
     ddr += "]";
     spTag = ddr;
+  }
+
+  ip_metadata::
+  ip_metadata(const boost::property_tree::ptree& pt)
+  : s_major(0)
+  , s_minor(0)
+  {
+    auto& v = pt.get_child("version");
+    s_major = v.get<uint32_t>("major");
+    s_minor = v.get<uint32_t>("minor");
+    auto& kernels = pt.get_child("kernels");
+    for (const auto& k : kernels) {
+      auto kname = k.second.get<std::string>("name");
+      auto reglist = k.second.get_child("deadlock_register_list");
+      kernel_reginfo kinfo;
+      for (const auto& reg : reglist) {
+        std::array<std::string, num_bits_deadlock_diagnosis> reginfo;
+        auto offset_str = reg.second.get<std::string>("register_word_offset");
+        uint32_t reg_offset = get_offset_from_string(offset_str);
+        auto bitinfo = reg.second.get_child("register_bit_info");
+        for (const auto& bits : bitinfo) {
+          auto bit_offset = bits.second.get<uint32_t>("bit");
+          auto bit_msg = bits.second.get<std::string>("message");
+          reginfo[bit_offset] = bit_msg;
+        }
+        kinfo[reg_offset] = reginfo;
+      }
+      kernel_infos.push_back(std::make_pair(kname, kinfo));
+    }
+  }
+
+  /*
+   * Useful for debug
+   */
+  void ip_metadata::
+  print()
+  {
+    std::stringstream ss;
+    ss << "Major : " << s_major << std::endl;
+    ss << "Minor : " << s_minor << std::endl;
+    for (const auto& kernel_info : kernel_infos) {
+      ss << kernel_info.first << " : \n";
+      for (const auto& reginfo : kernel_info.second) {
+        ss <<std::hex << "0x" << reginfo.first << " :\n" << std::dec;
+        for (const auto& bitstring : reginfo.second)
+          if (!bitstring.empty())
+            ss << " " << bitstring << "\n";
+      }
+      ss << std::endl;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", ss.str());
   }
 
 } // end namespace xdp

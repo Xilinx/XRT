@@ -7,18 +7,23 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_graph.h
   xrt_bo.h
   xrt_device.h
+  xrt_elf.h
   xrt_error.h
   xrt_exception.h
+  xrt_ext.h
+  xrt_fence.h
   xrt_hw_context.h
   xrt_ini.h
   xrt_ip.h
   xrt_kernel.h
   xrt_mailbox.h
   xrt_message.h
+  xrt_module.h
   xrt_profile.h
   xrt_queue.h
   xrt_system.h
   xrt_uuid.h
+  xrt_version.h
   xrt_xclbin.h
   xclbin_util.h
   xclbin-util.h)

@@ -25,6 +25,14 @@ class SectionIPLayout : public Section {
  public:
   void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo)override;
 
+ public:
+  // static so that these two methods can be used in KernelUtilities 
+  static std::string getFunctionalEnumStr(const std::string& sFunctional);
+  static std::string getSubTypeEnumStr(const std::string& sSubType);
+
+  static PS_FUNCTIONAL getFunctional(const std::string& sFunctional);
+  static PS_SUBTYPE getSubType(const std::string& sSubType);
+   
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
@@ -32,6 +40,8 @@ class SectionIPLayout : public Section {
  protected:
   const std::string getIPTypeStr(IP_TYPE _ipType) const;
   const std::string getIPControlTypeStr(IP_CONTROL _ipControlType) const;
+  const std::string getFunctionalStr(PS_FUNCTIONAL eFunctional) const;
+  const std::string getSubTypeStr(PS_SUBTYPE eSubType) const;
   IP_TYPE getIPType(std::string& _sIPType) const;
   IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
 

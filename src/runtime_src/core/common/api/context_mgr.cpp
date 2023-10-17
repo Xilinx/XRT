@@ -7,6 +7,7 @@
 #include "hw_context_int.h"
 #include "core/common/cuidx_type.h"
 #include "core/common/device.h"
+#include "core/common/shim/hwctx_handle.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -76,7 +77,7 @@ class device_context_mgr
   };
 
   std::mutex m_mutex;
-  std::map<xcl_hwctx_handle, ctx> m_ctx;
+  std::map<const hwctx_handle*, ctx> m_ctx;
   std::condition_variable m_cv;
   xrt_core::device* m_device;
 
@@ -94,12 +95,14 @@ public:
   open(const xrt::hw_context& hwctx, const std::string& ipname)
   {
     std::unique_lock<std::mutex> ul(m_mutex);
-    auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
+    auto hwctx_hdl = static_cast<hwctx_handle*>(hwctx);
+    auto& ctx = m_ctx[hwctx_hdl];
     while (ctx.get(ipname)) {
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    auto ipidx = m_device->open_cu_context(hwctx, ipname);
+
+    auto ipidx = hwctx_hdl->open_cu_context(ipname);
     ctx.add(ipname, ipidx);
     return ipidx;
   }
@@ -110,10 +113,12 @@ public:
   close(const xrt::hw_context& hwctx, cuidx_type ipidx)
   {
     std::lock_guard<std::mutex> lk(m_mutex);
-    auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
+    auto hwctx_hdl = static_cast<hwctx_handle*>(hwctx);
+    auto& ctx = m_ctx[hwctx_hdl];
     if (!ctx.get(ipidx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_cu_context(hwctx, ipidx);
+
+    hwctx_hdl->close_cu_context(ipidx);
     ctx.erase(ipidx);
     m_cv.notify_all();
   }

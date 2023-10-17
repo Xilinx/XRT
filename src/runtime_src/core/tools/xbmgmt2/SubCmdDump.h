@@ -25,6 +25,13 @@ class SubCmdDump : public SubCmd {
 
  public:
   SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+
+ private:
+  std::string m_device;
+  std::string m_output;
+  bool m_flash;
+  bool m_config;
+  bool m_help;
 };
 
 #endif

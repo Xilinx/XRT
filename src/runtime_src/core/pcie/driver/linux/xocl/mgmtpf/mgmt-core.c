@@ -1,35 +1,29 @@
-/*
- * Simple Driver for Management PF
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2017-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved
  *
- * Copyright (C) 2017-2022 Xilinx, Inc.
+ * Simple Driver for Management PF
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
  * Author(s):
  * Sonal Santan <sonal.santan@xilinx.com>
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
  */
 #include "mgmt-core.h"
-#include <linux/ioctl.h>
-#include <linux/module.h>
-#include <linux/vmalloc.h>
-#include <linux/version.h>
-#include <linux/fs.h>
-#include <linux/platform_device.h>
-#include <linux/i2c.h>
+
 #include <linux/crc32c.h>
-#include "../xocl_drv.h"
+#include <linux/fs.h>
+#include <linux/ioctl.h>
+#include <linux/i2c.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/version.h>
+#include <linux/vmalloc.h>
+
 #include "version.h"
 #include "xclbin.h"
+#include "../xocl_drv.h"
 #include "../xocl_xclbin.h"
 
 #define SIZE_4KB  4096
@@ -321,9 +315,17 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	 * and prevent the pages from being swapped out
 	 */
 #ifndef VM_RESERVED
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #else
+	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#endif
+#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO | VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
 #endif
 
 	/* make MMIO accessible to user space */
@@ -604,9 +606,14 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
 	int err = 0;
+	uint32_t slot_id = 0;
 	xuid_t *xclbin_id = NULL;
 
-	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
+	err = xocl_get_pl_slot(lro, &slot_id);
+	if (err)
+		return err;
+
+	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id, slot_id);
 	if (err)
 		return err;
 
@@ -623,7 +630,7 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->mig_calib = lro->ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
 	hwicap->data_retention = xocl_icap_get_data(lro, DATA_RETAIN);
 
-	XOCL_PUT_XCLBIN_ID(lro);
+	XOCL_PUT_XCLBIN_ID(lro, slot_id);
 
 	return 0;
 }
@@ -658,7 +665,7 @@ static void xclmgmt_multislot_version(struct xclmgmt_dev *lro, void *buf)
 	struct xcl_multislot_info *slot_info = (struct xcl_multislot_info *)buf;
 
 	/* Fill the icap version here */
-	slot_info->multislot_version = MULTISLOT_VERSION; 	
+	slot_info->multislot_version = MULTISLOT_VERSION;
 	mgmt_info(lro, "Multislot Version : %x\n", slot_info->multislot_version);
 }
 
@@ -762,8 +769,8 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, void *data_ptr, void
 		xclmgmt_multislot_version(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
-		/* when allocating response buffer, 
-		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries), 
+		/* when allocating response buffer,
+		 * we shall use remote_entry_size * min(local_num_entries, remote_num_entries),
 		 * and check the final total buffer size.
 		 * when filling up each entry, we should use min(local_entry_size, remote_entry_size)
 		 * when moving to next entry, we should use remote_entry_size as step size.
@@ -859,6 +866,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	int ret = 0;
+	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 	uint64_t ch_switch = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
@@ -941,7 +949,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
 
-			ret = xocl_xclbin_download(lro, buf);
+			/* For legacy case always download to slot 0 */
+			ret = xocl_xclbin_download(lro, buf, legacy_slot_id);
 
 			vfree(buf);
 		}
@@ -981,7 +990,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
 
-			ret = xocl_xclbin_download(lro, buf);
+			ret = xocl_xclbin_download(lro, buf, slot_id);
 
 			vfree(buf);
 		}
@@ -1013,12 +1022,14 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 *    predefined location
 		 */
 		if (fetch)
-			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin);
+			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin,
+					legacy_slot_id);
 		else
-			ret = xocl_xclbin_download(lro, xclbin);
+			/* For legacy case always download to slot 0 */
+			ret = xocl_xclbin_download(lro, xclbin, legacy_slot_id);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
-			sizeof(ret));
+				sizeof(ret));
 		break;
 	}
 	case XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: {
@@ -1043,7 +1054,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
 		}
-	
+
 		/*
 		 * User may transfer a fake xclbin which doesn't have bitstream
 		 * In this case, 'config_xclbin_change' has to be set, and we
@@ -1053,9 +1064,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 *    predefined location
 		 */
 		if (fetch)
-			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin);
+			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin, legacy_slot_id);
 		else
-			ret = xocl_xclbin_download(lro, xclbin);
+			ret = xocl_xclbin_download(lro, xclbin, slot_id);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
@@ -1078,7 +1089,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = xocl_clock_freq_scaling_by_request(lro,
 				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 		if (ret == -ENODEV)
-			ret = xocl_xgq_freq_scaling(lro,
+			ret = xocl_xgq_clk_scaling(lro,
 				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
@@ -1245,10 +1256,9 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
  */
 static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 {
-	int ret;
+	int ret = 0;
 	struct xocl_board_private *dev_info = &lro->core.priv;
-	struct pci_dev *pdev = lro->pci_dev;
-	int i;
+	int i = 0;
 
 	lro->core.thread_arg.thread_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
@@ -1282,20 +1292,22 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * data after the platform has been reset
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
-	if (ret && ret != -ENODEV) {
-		xocl_err(&pdev->dev, "failed to register firewall\n");
+	if (ret && (ret != -ENODEV)) {
+		mgmt_err(lro, "Failed to register firewall");
 		goto fail_all_subdev;
 	}
+
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		xocl_err(&pdev->dev, "failed to register subdevs %d", ret);
+		mgmt_err(lro, "Failed to register subdevs %d", ret);
 		goto fail_all_subdev;
 	}
-	xocl_info(&pdev->dev, "created all sub devices");
+	mgmt_info(lro, "Created all sub devices");
 
+	/* Attempt to load firmware and get the appropriate device */
 	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)))
 		ret = xocl_icap_download_boot_firmware(lro);
 
@@ -1337,13 +1349,13 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
-	xocl_info(&pdev->dev, "device fully initialized\n");
+	mgmt_info(lro, "device fully initialized\n");
 	return;
 
 fail_all_subdev:
 	xocl_subdev_destroy_all(lro);
 fail:
-	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
+	mgmt_err(lro, "failed to fully probe device, err: %d\n", ret);
 }
 
 int xclmgmt_config_pci(struct xclmgmt_dev *lro)
@@ -1418,10 +1430,11 @@ static void xclmgmt_work_cb(struct work_struct *work)
  */
 static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	int rc = 0, i;
+	int rc = 0;
+	int i = 0;
 	struct xclmgmt_dev *lro = NULL;
-	struct xocl_board_private *dev_info;
-	char wq_name[15];
+	struct xocl_board_private *dev_info = NULL;
+	char wq_name[15] = {0};
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
@@ -1510,6 +1523,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return 0;
 	}
 
+	/* Detect if the device is ready for operations */
 	xclmgmt_extended_probe(lro);
 
 	/*
@@ -1517,15 +1531,25 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 * is loaded to provide basic info about the board. Also, need
 	 * FLASH to be able to flash new shell.
 	 */
-	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
-	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
+	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
+	if (rc && (rc != -ENODEV))
+		mgmt_err(lro, "Failed to create ROM subdevice");
+
+	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
+	if (rc && (rc != -ENODEV))
+		mgmt_err(lro, "Failed to create Flash subdevice");
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
 	 * allow user switch BLP
 	 */
-	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
-	(void) xocl_subdev_create_vsec_devs(lro);
+	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
+	if (rc && (rc != -ENODEV))
+		mgmt_err(lro, "Failed to create BLD level");
+
+	rc = xocl_subdev_create_vsec_devs(lro);
+	if (rc && (rc != -ENODEV))
+		mgmt_err(lro, "Failed to create VSEC devices");
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
@@ -1542,7 +1566,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		xocl_xmc_get_serial_num(lro);
 
 	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
-
 	xocl_drvinst_set_offline(lro, false);
 	return 0;
 
@@ -1736,7 +1759,13 @@ static int __init xclmgmt_init(void)
 	int res, i;
 
 	pr_info(DRV_NAME " init()\n");
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
+#else
+	xrt_class = class_create("xrt_mgmt");
+#endif
+
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 

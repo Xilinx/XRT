@@ -19,6 +19,7 @@
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
+#include "core/common/api/hw_queue.h"
 #include "core/common/api/xclbin_int.h"
 
 #include <boost/format.hpp>
@@ -46,12 +47,14 @@ device::
 {
   // virtual must be declared and defined
   XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
+  hw_queue::finish(this);
 }
 
 bool
 device::
 is_nodma() const
 {
+  std::lock_guard lk(m_mutex);
   if (m_nodma != boost::none)
     return *m_nodma;
 
@@ -92,7 +95,18 @@ void
 device::
 record_xclbin(const xrt::xclbin& xclbin)
 {
-  register_xclbin(xclbin); // shim level registration
+  try {
+    register_xclbin(xclbin); // shim level registration
+  }
+  catch (const not_supported_error&) {
+    // Shim does not support register xclbin, meaning it
+    // doesn't support multi-xclbin, so just take the
+    // load_xclbin flow.
+    load_xclbin(xclbin);
+    return;
+  }
+
+  std::lock_guard lk(m_mutex);
   m_xclbins.insert(xclbin);
 
   // For single xclbin case, where shim doesn't implement
@@ -158,8 +172,10 @@ get_xclbin(const uuid& xclbin_id) const
   // Allow access to xclbin in process of loading via device::load_xclbin
   if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
     return m_xclbin;
-  if (xclbin_id)
+  if (xclbin_id) {
+    std::lock_guard lk(m_mutex);
     return m_xclbins.get(xclbin_id);
+  }
 
   // Single xclbin case
   return m_xclbin;
@@ -176,6 +192,7 @@ device::
 update_xclbin_info()
 {
   // Update cached slot xclbin uuid mapping
+  std::lock_guard lk(m_mutex);
   try {
     // [slot, xclbin_uuid]+
     auto xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(this);
@@ -195,8 +212,10 @@ update_cu_info()
   // Compute CU sort order, kernel driver zocl and xocl now assign and
   // control the sort order, which is accessible via a query request.
   // For emulation old xclbin_parser::get_cus is used.
+  std::lock_guard lk(m_mutex);
   m_cus.clear();
   m_cu2idx.clear();
+  m_scu2idx.clear();
   try {
     // Regular CUs
     auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
@@ -214,7 +233,7 @@ update_cu_info()
     try {
       auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
       for (const auto& d : scudata) {
-        auto& cu2idx = m_cu2idx[d.slot_index];
+        auto& cu2idx = m_scu2idx[d.slot_index];
         cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
       }
     }
@@ -226,7 +245,7 @@ update_cu_info()
     // It assumes that m_xclbin is the single xclbin and that
     // there is only one default slot with number 0.
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
-    auto& cu2idx = m_cu2idx[0]; // default slot 0
+    auto& cu2idx = m_cu2idx[0u]; // default slot 0
     if (ip_layout != nullptr) {
       m_cus = xclbin::get_cus(ip_layout);
       cu2idx = xclbin::get_cu_indices(ip_layout);
@@ -261,6 +280,7 @@ register_axlf(const axlf* top)
     m_xclbin = xrt::xclbin{top};
 
   // Record the xclbin
+  std::lock_guard lk(m_mutex);
   m_xclbins.insert(m_xclbin);
 }
 
@@ -329,6 +349,10 @@ const std::vector<uint64_t>&
 device::
 get_cus() const
 {
+  // This function returns a reference to internal data
+  // that is modified when an xclbin is loaded.  Normally
+  // not an issue since only single xclbin is supported
+  // when using this API.
   if (m_cu2idx.size() > 1)
     throw error(std::errc::not_supported, "multiple xclbins not supported");
 
@@ -339,9 +363,14 @@ cuidx_type
 device::
 get_cuidx(slot_id slot, const std::string& cuname) const
 {
+  std::lock_guard lk(m_mutex);
   auto slot_itr = m_cu2idx.find(slot);
-  if (slot_itr == m_cu2idx.end())
-    throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  if (slot_itr == m_cu2idx.end()) {
+    // CU doesn't exists in cu mapping. Now check for scu mapping 
+    slot_itr = m_scu2idx.find(slot);
+    if (slot_itr == m_scu2idx.end())
+      throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  }
 
   const auto& cu2idx = (*slot_itr).second;
   auto cu_itr = cu2idx.find(cuname);

@@ -66,34 +66,8 @@ namespace xdp {
 #ifndef SKIP_AIE_INI
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
-    addParameter("aie_trace_buffer_size",
-                 xrt_core::config::get_aie_trace_buffer_size(),
-                 "Size of buffer to allocate for AI Engine trace");
-    addParameter("aie_trace_metrics",
-                 xrt_core::config::get_aie_trace_metrics(),
-                 "Configuration level used for AI Engine trace");
-    addParameter("aie_trace_periodic_offload", xrt_core::config::get_aie_trace_periodic_offload(),
-                 "Periodic offloading of aie trace from memory to host");
-    addParameter("aie_trace_buffer_offload_interval_ms",
-                 xrt_core::config::get_aie_trace_buffer_offload_interval_ms(),
-                 "Interval for reading of device aie trace data to host (in ms)");
-    addParameter("aie_trace_file_dump_interval_s",
-                 xrt_core::config::get_aie_trace_file_dump_interval_s(),
-                 "Interval for dumping aie trace files to host (in s)");  
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
-                 "Generation of AI Engine profiling");
-    addParameter("aie_profile_interval_us",
-                 xrt_core::config::get_aie_profile_interval_us(),
-                 "Interval for reading AI Engine profile counters (in us)");
-    addParameter("aie_profile_core_metrics",
-                 xrt_core::config::get_aie_profile_core_metrics(),
-                 "Metric set for AI Engine core modules");
-    addParameter("aie_profile_memory_metrics",
-                 xrt_core::config::get_aie_profile_memory_metrics(),
-                 "Metric set for AI Engine memory modules");
-    addParameter("aie_profile_interface_metrics",
-                 xrt_core::config::get_aie_profile_interface_metrics(),
-                 "Metric set for AI Engine interface tiles");             
+                 "Generation of AI Engine profiling");            
     addParameter("aie_status", xrt_core::config::get_aie_status(),
                  "Generation of AI Engine debug/status");
     addParameter("aie_status_interval_us",
@@ -102,6 +76,7 @@ namespace xdp {
     addParameter("vitis_ai_profile", xrt_core::config::get_vitis_ai_profile(),
                  "Generation of Vitis AI summary and trace (Vitis AI designs only)");
 
+    // AIE Profile
     addParameter("AIE_profile_settings.interval_us",
                  xrt_core::config::get_aie_profile_settings_interval_us(),
                  "Interval for reading AI Engine profile counters (in us)");
@@ -111,16 +86,26 @@ namespace xdp {
     addParameter("AIE_profile_settings.graph_based_aie_memory_metrics",
                  xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics(),
                  "Metric set for profiling AI Engine memory modules per graph");
+    addParameter("AIE_profile_settings.graph_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_profile_settings_graph_based_memory_tile_metrics(),
+                 "Metric set for profiling AI Engine memory tiles per graph");
+    addParameter("AIE_profile_settings.graph_based_interface_tile_metrics",
+                 xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics(),
+                 "Metric set for profiling AI Engine interface tiles per graph");
     addParameter("AIE_profile_settings.tile_based_aie_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics(),
                  "Metric set for profiling AI Engine processor modules per tile");
     addParameter("AIE_profile_settings.tile_based_aie_memory_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics(),
                  "Metric set for profiling AI Engine memory modules per tile");
+    addParameter("AIE_profile_settings.tile_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_profile_settings_tile_based_memory_tile_metrics(),
+                 "Metric set for profiling AI Engine memory tiles per tile");
     addParameter("AIE_profile_settings.tile_based_interface_tile_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics(),
                  "Metric set for profiling AI Engine interface tiles per tile");
 
+    // AIE Trace
     addParameter("AIE_trace_settings.start_type",
                  xrt_core::config::get_aie_trace_settings_start_type(),
                  "Type of delay to use in AI Engine trace");
@@ -133,9 +118,21 @@ namespace xdp {
     addParameter("AIE_trace_settings.graph_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per graph");
+    addParameter("AIE_trace_settings.graph_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_graph_based_memory_tile_metrics(),
+                 "Configuration level used for memory tile trace per graph");
+    addParameter("AIE_trace_settings.graph_based_interface_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_graph_based_interface_tile_metrics(),
+                 "Configuration level used for interface tile trace per graph");
     addParameter("AIE_trace_settings.tile_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per tile");
+    addParameter("AIE_trace_settings.tile_based_memory_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_tile_based_memory_tile_metrics(),
+                 "Configuration level used for memory tile trace per tile");
+    addParameter("AIE_trace_settings.tile_based_interface_tile_metrics",
+                 xrt_core::config::get_aie_trace_settings_tile_based_interface_tile_metrics(),
+                 "Configuration level used for interface tile trace per tile");
     addParameter("AIE_trace_settings.buffer_size",
                  xrt_core::config::get_aie_trace_settings_buffer_size(),
                  "Size of buffer to allocate for AI Engine trace");
@@ -151,6 +148,9 @@ namespace xdp {
     addParameter("AIE_trace_settings.file_dump_interval_s",
                  xrt_core::config::get_aie_trace_settings_file_dump_interval_s(),
                  "Interval for dumping AI Engine trace files to host (in s)");
+    addParameter("AIE_trace_settings.poll_timers_interval_us",
+                 xrt_core::config::get_aie_trace_settings_poll_timers_interval_us(),
+                 "Interval for polling AI Engine timers (in us)");
 #endif
   }
 

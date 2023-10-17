@@ -68,6 +68,9 @@ namespace xdp {
     std::mutex counterLock; // For protecting the plCounters map
     std::mutex fullLock;    // For protecting the trace buffer full bool
 
+    // Deadlock Diagnosis String
+    std::string deadlockInfo;
+
   public:
     PLDB()  = default;
     ~PLDB() = default;
@@ -91,6 +94,11 @@ namespace xdp {
     { powerSamples.addSample({timestamp, values});  }
     inline std::vector<counters::Sample> getPowerSamples()
     { return std::move(powerSamples.getSamples()); }
+
+    inline void setDeadlockInfo(const std::string& info)
+    { deadlockInfo = info; }
+    inline std::string& getDeadlockInfo()
+    { return deadlockInfo; }
   };
 
 } // end namespace xdp

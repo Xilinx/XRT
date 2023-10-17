@@ -867,6 +867,9 @@ get_aie_partition(const axlf* top)
     aie_pdi_obj pdiobj;
     auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
 
+    if (aiepdip->pdi_image.size > PDI_IMAGE_MAX_SIZE)
+      throw std::runtime_error("PDI image size too big");
+
     pdiobj.uuid = aiepdip->uuid;
     pdiobj.pdi.resize(aiepdip->pdi_image.size);
     memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());

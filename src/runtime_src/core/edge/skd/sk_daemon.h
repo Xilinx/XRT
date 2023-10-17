@@ -2,6 +2,7 @@
  * Copyright (C) 2019-2022 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
+ *          : Jeff Lin	<jeffli@xilinx.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,19 +20,22 @@
 #ifndef __SK_RUNNER_H_
 #define __SK_RUNNER_H_
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdint.h>
+// TO-DO: Remove after XRT Pipeline for edge build is updated to Centos8
+#ifndef __x86_64__
+#include <boost/stacktrace.hpp>
+#endif
 #include <errno.h>
-#include <sys/types.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
-#include <syslog.h>
+#include <sys/types.h>
 
 #include "xclhal2_mpsoc.h"
 #include "xrt_skd.h"
 
 xclDeviceHandle initXRTHandle(unsigned deviceIndex);
-void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd);
+void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size);
 
 #endif

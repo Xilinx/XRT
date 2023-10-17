@@ -176,7 +176,6 @@ The command ``xbutil examine``  can be used to find the details of the specific 
     - ``platform``: Platforms flashed on the device (default when ``--device`` is provided)
     - ``qspi-status``: QSPI write protection status
     - ``thermal``: Reports thermal sensors present on the device
-    - ``cmc``: Reports cmc status of the device
 
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
@@ -212,7 +211,7 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 
 .. code-block:: shell 
 
-    xbutil configure [--device| -d] <user bdf> [--host-mem|--p2p] <action> [--size <size>]
+    xbutil configure [ --host-mem | --p2p | --performance ] [--help]
 
 
 **The details of the supported options**
@@ -227,6 +226,12 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 - The ``--size`` is used in conjuction with ``xbutil configure --host-mem enable`` to specify the host-memory size to be enabled
     
     - ``<size>``: Size and unit specified as a combined string 
+- The ``--performance`` select specific configuration for benchmarking tests
+    
+    - ``low``: Set performance mode to low
+    - ``medium``: Set performance mode to medium
+    - ``high``: Set performance mode to high
+    - ``default``: Set performance mode to default
     
  
 

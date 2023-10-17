@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -79,6 +80,43 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 #endif
 }
 
+// This uses mmap and is recommended way to access an XRT IP
+int HalDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
+{
+  return xclRegRead(mHalDevice, index, offset, data);
+}
+
+#if defined(_WIN32) || defined(XDP_HWEMU_USING_HAL_BUILD)
+int HalDevice::initXrtIP(const char * /*name*/, uint64_t /*base*/, uint32_t /*range*/)
+{
+  // The required APIs are missing from windows and hw emulation shim
+  return -1;
+}
+#else
+int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
+{
+  // We cannot always get index from ip_layout
+  // For some cases, this is determined by the driver
+  int index = xclIPName2Index(mHalDevice, name);
+  if (index < 0)
+    return index;
+
+  // A shared context is needed
+  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(mHalDevice);
+  int ret = xclOpenContext(mHalDevice, device->get_xclbin_uuid().get(), index, true);
+  if (ret < 0)
+    return ret;
+
+  // Open access to IP Registers. base should be > 0x10
+  ret = xclIPSetReadRange(mHalDevice, index, base, range);
+  if (ret < 0)
+    return ret;
+
+  return index;
+}
+#endif
+
+
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
   return xclUnmgdPread(mHalDevice, flags, buf, count, offset);
@@ -145,7 +183,15 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   xrt_bos[boIndex].sync(dir, size, offset);
 }
 
-uint64_t HalDevice::getDeviceAddr(size_t id)
+xclBufferExportHandle HalDevice::exportBuffer(size_t id)
+{
+  if(!id) return static_cast<xclBufferExportHandle>(XRT_NULL_BO_EXPORT);
+  size_t boIndex = id - 1;
+
+  return (xrt_bos[boIndex].export_buffer());
+}
+
+uint64_t HalDevice::getBufferDeviceAddr(size_t id)
 {
   if(!id) return 0;
   size_t boIndex = id - 1;
@@ -184,4 +230,3 @@ std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
 }
 
 }
-

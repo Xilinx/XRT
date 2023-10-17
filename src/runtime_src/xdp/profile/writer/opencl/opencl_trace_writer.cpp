@@ -55,7 +55,7 @@ namespace xdp {
     ++rowID ;
     copyBucket = rowID ;
     ++rowID ;
-    for (auto e : (db->getStaticInfo()).getEnqueuedKernels())
+    for (auto& e : (db->getStaticInfo()).getEnqueuedKernels())
     {
       enqueueBuckets[e] = rowID ;
       ++rowID ;
@@ -180,7 +180,7 @@ namespace xdp {
 
     std::pair<uint64_t, uint64_t> zero = std::make_pair(0, 0) ;
 
-    for (auto iter : dependencies) {
+    for (auto& iter : dependencies) {
       auto xrtID = iter.first ;
 
       std::pair<uint64_t, uint64_t> mapping =

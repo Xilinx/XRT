@@ -399,6 +399,7 @@ static int cu_probe(struct platform_device *pdev)
 	struct resource **res = NULL;
 	struct xrt_cu_info *info = NULL;
 	struct xrt_cu_arg *args = NULL;
+	uint32_t subdev_inst_idx = 0;
 	int err = 0;
 	int i = 0;
 
@@ -415,6 +416,18 @@ static int cu_probe(struct platform_device *pdev)
 
 	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	BUG_ON(!info);
+
+	subdev_inst_idx = XOCL_SUBDEV_INST_IDX(&pdev->dev);
+	if (subdev_inst_idx == INVALID_INST_INDEX) {
+		XCU_ERR(xcu, "Unknown Instance index");
+		return -EINVAL;
+	}
+
+	/* Store subdevice instance index with this CU info.
+	 * This will be required to destroy this subdevice.
+	 */
+	info->inst_idx = subdev_inst_idx;
+
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	if (xcu->base.info.model == XCU_AUTO) {
@@ -516,8 +529,8 @@ static int cu_remove(struct platform_device *pdev)
 	if (!xcu)
 		return -EINVAL;
 
-	write_lock(&xcu->attr_rwlock);
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
+	write_lock(&xcu->attr_rwlock);
 	info = &xcu->base.info;
 	write_unlock(&xcu->attr_rwlock);
 

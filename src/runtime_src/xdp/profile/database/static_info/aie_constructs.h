@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,6 +25,59 @@
 #include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
+  struct aiecompiler_options
+  {
+    bool broadcast_enable_core;
+    bool graph_iterator_event;
+    std::string event_trace;
+  };
+
+enum class module_type {
+    core = 0,
+    dma,
+    shim,
+    mem_tile,
+    num_types
+  };
+
+  struct tile_type
+  { 
+    uint16_t row;
+    uint16_t col;
+    uint16_t itr_mem_row;
+    uint16_t itr_mem_col;
+    uint64_t itr_mem_addr;
+    bool     is_trigger;
+    
+    bool operator==(const tile_type &tile) const {
+      return (col == tile.col) && (row == tile.row);
+    }
+    bool operator<(const tile_type &tile) const {
+      return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+    }
+  };
+
+  struct io_config
+  { 
+    // Object id
+    int id;
+    // Variable name
+    std::string name;
+    // Loginal name
+    std::string logicalName;
+    // Column where I/O is mapped
+    short shimColumn;
+    // slave or master - 0:slave, 1:master
+    short slaveOrMaster;
+    // Shim stream switch port id
+    short streamId;
+    // Channel number
+    short channelNum;
+    // Burst length
+    short burstLength;
+    // I/O type - 0:PLIO, 1:GMIO
+    short type;
+  };  
 
   /*
    * Represents AIE counter configuration for a single counter
@@ -181,6 +235,25 @@ namespace xdp {
   };
 
   /*
+   * Interface or memory tiles
+   * Uses up to 2 channel selections and 8 stream switch monitor ports
+   */
+  class aie_cfg_peripheral_tile : public aie_cfg_base
+  {
+  public:
+    bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
+    int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
+    int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+    int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+    aie_cfg_peripheral_tile() : aie_cfg_base(4) {
+      for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
+        port_trace_is_master[i] = false;
+        port_trace_ids[i] = -1;
+      }
+    }
+  };
+
+  /*
    * Abstracted AIE tile configuration for trace
    */
   class aie_cfg_tile
@@ -188,11 +261,25 @@ namespace xdp {
   public:
     uint32_t column;
     uint32_t row;
+    module_type type;
     std::string trace_metric_set;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
-    aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
+    aie_cfg_peripheral_tile memory_tile_trace_config;
+    aie_cfg_peripheral_tile interface_tile_trace_config;
+    aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
+
+  // Used by by IPU profiling/debug on Windows
+  typedef struct {
+    uint64_t perf_address;
+    uint32_t perf_value;
+  } profile_data_t;
+
+  typedef struct {
+    uint32_t count;
+    profile_data_t profile_data[1];
+  } aie_profile_op_t;
 
 } // end namespace xdp
 

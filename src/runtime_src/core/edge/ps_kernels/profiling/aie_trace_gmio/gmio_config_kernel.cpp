@@ -1,5 +1,5 @@
 /* Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,10 +17,10 @@
 #include <sys/mman.h>
 
 #include "xaiefal/xaiefal.hpp"
+#include "core/edge/include/pscontext.h"
 #include "core/edge/user/shim.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
-#include "core/edge/include/sk_types.h"
+#include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
 
 struct AIETraceGmioDMAInst{
   XAie_DmaDesc shimDmaInst;

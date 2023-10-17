@@ -18,9 +18,15 @@ add_test(NAME xbutil2
   COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbutil2/xbutil2 examine
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
+set_tests_properties(xbutil2 PROPERTIES ENVIRONMENT
+  "XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
+
 add_test(NAME xbmgmt2
   COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 examine -r host
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(xbmgmt2 PROPERTIES ENVIRONMENT
+  "XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
 
 add_test(NAME python_binding
   COMMAND ${PYTHON_EXECUTABLE} "${XRT_SOURCE_DIR}/../tests/python/200_binding/200_main.py"

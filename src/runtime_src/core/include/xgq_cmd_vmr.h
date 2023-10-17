@@ -47,8 +47,8 @@
 #define XGQ_CLOCK_WIZ_MAX_RES           4
 
 /* VMR Identify Command Version Major and Minor Numbers */
-#define VMR_IDENTIFY_CMD_MAJOR                  1
-#define VMR_IDENTIFY_CMD_MINOR                  0
+#define VMR_IDENTIFY_CMD_MAJOR		1
+#define VMR_IDENTIFY_CMD_MINOR		0
 
 
 /**
@@ -116,14 +116,19 @@ enum xgq_cmd_vmr_control_type {
  * log page type
  */
 enum xgq_cmd_log_page_type {
-	XGQ_CMD_LOG_AF_CHECK	= 0x0,
-	XGQ_CMD_LOG_FW		= 0x1,
-	XGQ_CMD_LOG_INFO	= 0x2,
-	XGQ_CMD_LOG_AF_CLEAR	= 0x3,
-	XGQ_CMD_LOG_ENDPOINT	= 0x4,
-	XGQ_CMD_LOG_TASK_STATS  = 0x5,
-	XGQ_CMD_LOG_MEM_STATS	= 0x6,
-	XGQ_CMD_LOG_SYSTEM_DTB	= 0x7,
+	XGQ_CMD_LOG_AF_CHECK		 = 0x0,
+	XGQ_CMD_LOG_FW			 = 0x1,
+	XGQ_CMD_LOG_INFO		 = 0x2,
+	XGQ_CMD_LOG_AF_CLEAR		 = 0x3,
+	XGQ_CMD_LOG_ENDPOINT		 = 0x4,
+	XGQ_CMD_LOG_TASK_STATS  	 = 0x5,
+	XGQ_CMD_LOG_MEM_STATS		 = 0x6,
+	XGQ_CMD_LOG_SYSTEM_DTB		 = 0x7,
+	XGQ_CMD_LOG_PLM_LOG		 = 0x8,
+	XGQ_CMD_LOG_APU_LOG		 = 0x9,
+	XGQ_CMD_LOG_SHELL_INTERFACE_UUID = 0xa,
+	XGQ_CMD_LOG_DEFAULT_FPT		 = 0xb,
+	XGQ_CMD_LOG_BACKUP_FPT		 = 0xc,
 };
 
 /**
@@ -209,6 +214,7 @@ struct xgq_cmd_data_payload {
 	uint32_t flash_type:4;
 	uint32_t rsvd1:24;
 	uint32_t pad1;
+	uint64_t priv;
 };
 
 enum xgq_cmd_flash_type {
@@ -241,9 +247,12 @@ struct xgq_cmd_vmr_control_payload {
  * @aid: Clock scaling API ID which decides API in VMC.
  *          0x1 - READ_CLOCK_THROTTLING_CONFIGURATION
  *          0x2 - SET_CLOCK_THROTTLING_CONFIGURATION
- * @scaling_enable: enable or disable flag
- * @pwr_ovrd: power override value
- * @temp_ovrd: temperature override value
+ * @scaling_en: enable or disable flag
+ * @pwr_scaling_ovrd_limit: set power override value
+ * @temp_scaling_ovrd_limit: set temperature override value
+ * @reset: reset the clock scaling configs to defaults
+ * @pwr_scaling_ovrd_en: power override enable/disable flag
+ * @temp_scaling_ovrd_en: temperature override enable/disable flag
  *
  * This payload is used for clock scaling configuration report.
  */
@@ -252,7 +261,10 @@ struct xgq_cmd_clk_scaling_payload {
 	uint32_t scaling_en:1;
 	uint32_t pwr_scaling_ovrd_limit:16;
 	uint32_t temp_scaling_ovrd_limit:8;
-	uint32_t rsvd1:4;
+	uint32_t reset:1;
+	uint32_t pwr_scaling_ovrd_en:1;
+	uint32_t temp_scaling_ovrd_en:1;
+	uint32_t rsvd1:1;
 };
 
 /**
@@ -334,13 +346,23 @@ struct xgq_cmd_cq_data_payload {
 /**
  * struct xgq_cmd_cq_clk_scaling_payload: clock scaling status payload
  *
- * clock scaling status
+ * @has_clk scaling: shows if the platform support clock scaling feature
+ * @clk_scaling_mode: which clock scaling mode enabled currently
+ * @clk_scaling_en: shows if clock scaling is enabled (1) or disabled (0)
+ * @pwr_scaling_ovrd_en: power scaling override is enabled or not
+ * @temp_scaling_ovrd_en: temperature scaling override is enabled or not
+ * @temp_shutdown_limit: temperature shutdown limit
+ * @temp_scaling_limit: temperature scaling override value set
+ * @pwr_shutdown_limit: power shutdown limit
+ * @pwr_scaling_limit: power scaling override value set
  */
 struct xgq_cmd_cq_clk_scaling_payload {
 	uint8_t has_clk_scaling:1;
 	uint8_t clk_scaling_mode:2;
 	uint8_t clk_scaling_en:1;
-	uint8_t rsvd:4;
+	uint8_t pwr_scaling_ovrd_en:1;
+	uint8_t temp_scaling_ovrd_en:1;
+	uint8_t rsvd:2;
 	uint8_t temp_shutdown_limit;
 	uint8_t temp_scaling_limit;
 	uint16_t pwr_shutdown_limit;
@@ -365,7 +387,8 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_ext_sysdtb:1;
 	uint16_t ps_is_ready:1;
 	uint16_t pl_is_ready:1;
-	uint16_t resvd1:5;
+	uint16_t sc_is_ready:1;
+	uint16_t resvd1:4;
 	uint16_t current_multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t program_progress:7;
@@ -379,9 +402,9 @@ struct xgq_cmd_cq_vmr_payload {
  * VMR Identify Command
 */
 struct xgq_cmd_cq_vmr_identify_payload {
-    uint16_t ver_major;
-    uint16_t ver_minor;
-    uint32_t resvd;
+	uint16_t ver_major;
+	uint16_t ver_minor;
+	uint32_t resvd;
 };
 
 /*
@@ -393,6 +416,10 @@ struct xgq_cmd_cq_vmr_identify_payload {
  * @clock_payload:
  * @sensor_payload:
  * @multiboot_payload:
+ * @log_payload:
+ * @xclbin_payload:
+ * @clk_scaling_payload:
+ * @vmr_identify_payload:
  */
 struct xgq_cmd_cq {
 	struct xgq_cmd_cq_hdr hdr;
@@ -403,7 +430,7 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
 		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
 		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
-		struct xgq_cmd_cq_clk_scaling_payload cq_clk_scaling_payload;
+		struct xgq_cmd_cq_clk_scaling_payload	cq_clk_scaling_payload;
 		struct xgq_cmd_cq_vmr_identify_payload  cq_vmr_identify_payload;
 	};
 	uint32_t rcode;

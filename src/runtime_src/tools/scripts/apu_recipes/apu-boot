@@ -1,8 +1,7 @@
 #!/bin/sh
 if [ -e /sys/bus/platform/devices/rpu-channel/ready ]; then
 	echo 1 > /sys/bus/platform/devices/rpu-channel/ready
-	# Add softkernel user for PS kernel daemon to run as
-	useradd softkernel
-	# Work-around for AIE as it defaults root access only
-	chmod 666 /dev/aie0
+
+	# Stop sytemd-journald service to have kernel log sent to /var/log/messages
+	systemctl mask systemd-journald
 fi

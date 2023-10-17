@@ -232,15 +232,13 @@ void Flasher::readBack(const std::string& output)
     {
         XQSPIPS_Flasher xqspi_ps(m_device);
         xqspi_ps.readBack(output);
-        return;
+	return;
     }
     case SPI:
     case OSPIVERSAL:
-        std::cout << "ERROR: flash read back is not supported" << std::endl;
-        return;
+        throw xrt_core::error(-ECANCELED,"Flash read back is not supported");
     default:
-        std::cout << "ERROR: flash type is not supported" << std::endl;
-        return;
+	throw xrt_core::error(-EOPNOTSUPP,"Flash type is not supported");
     }
 }
 

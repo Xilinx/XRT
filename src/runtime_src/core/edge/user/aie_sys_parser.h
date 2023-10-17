@@ -36,7 +36,7 @@ private:
     aie_sys_parser& operator=(const aie_sys_parser& s) = delete;
 
 public:
-    static aie_sys_parser *get_parser();
+    static aie_sys_parser *get_parser(const std::string& aiepart);
     boost::property_tree::ptree aie_sys_read(const int col, const int row);
 
 };

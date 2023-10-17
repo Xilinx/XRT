@@ -1,20 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
-/*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+
 // This file implements XRT APIs as declared in
 // core/include/experimental/xrt_aie.h -- end user APIs
 // core/include/experimental/xrt_graph.h -- end user APIs
@@ -28,6 +15,7 @@
 
 #include "core/include/experimental/xrt_device.h"
 #include "core/common/api/device_int.h"
+#include "core/common/api/native_profile.h"
 #include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
@@ -244,73 +232,91 @@ void
 graph::
 reset() const
 {
-  handle->reset();
+  xdp::native::profiling_wrapper("xrt::graph::reset", [=]{
+    handle->reset();
+  });
 }
 
 uint64_t
 graph::
 get_timestamp() const
 {
-  return (handle->get_timestamp());
+  return xdp::native::profiling_wrapper("xrt::graph::get_timestamp", [=]{return (handle->get_timestamp());});
 }
 
 void
 graph::
 run(uint32_t iterations)
 {
-  handle->run(iterations);
+  xdp::native::profiling_wrapper("xrt::graph::run", [=]{
+    handle->run(iterations);
+  });
 }
 
 void
 graph::
 wait(std::chrono::milliseconds timeout_ms)
 {
-  if (timeout_ms.count() == 0)
-    handle->wait(static_cast<uint64_t>(0));
-  else
-    handle->wait(static_cast<int>(timeout_ms.count()));
+  xdp::native::profiling_wrapper("xrt::graph::wait", [=]{
+    if (timeout_ms.count() == 0)
+      handle->wait(static_cast<uint64_t>(0));
+    else
+      handle->wait(static_cast<int>(timeout_ms.count()));
+  });
 }
 
 void
 graph::
 wait(uint64_t cycles)
 {
-  handle->wait(cycles);
+  xdp::native::profiling_wrapper("xrt::graph::wait", [=]{
+    handle->wait(cycles);
+  });
 }
 
 void
 graph::
 suspend()
 {
-  handle->suspend();
+  xdp::native::profiling_wrapper("xrt::graph::suspend", [=]{
+    handle->suspend();
+  });
 }
 
 void
 graph::
 resume()
 {
-  handle->resume();
+  xdp::native::profiling_wrapper("xrt::graph::resume", [=]{
+    handle->resume();
+  });
 }
 
 void
 graph::
 end(uint64_t cycles)
 {
-  handle->end(cycles);
+  xdp::native::profiling_wrapper("xrt::graph::end", [=]{
+    handle->end(cycles);
+  });
 }
 
 void
 graph::
 update_port(const std::string& port_name, const void* value, size_t bytes)
 {
-  handle->update_rtp(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
+  xdp::native::profiling_wrapper("xrt::graph::update_port", [=]{
+    handle->update_rtp(port_name.c_str(), reinterpret_cast<const char*>(value), bytes);
+  });
 }
 
 void
 graph::
 read_port(const std::string& port_name, void* value, size_t bytes)
 {
-  handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
+  xdp::native::profiling_wrapper("xrt::graph::read_port", [=]{
+    handle->read_rtp(port_name.c_str(), reinterpret_cast<char *>(value), bytes);
+  });
 }
 
 } // namespace xrt

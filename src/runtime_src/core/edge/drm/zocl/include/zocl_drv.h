@@ -22,8 +22,12 @@
 #include <drm/drm_drv.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
-#include <drm/drm_gem_cma_helper.h>
 #include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#include <drm/drm_gem_dma_helper.h>
+#else
+#include <drm/drm_gem_cma_helper.h>
+#endif
 #include <linux/poll.h>
 #include "zocl_util.h"
 #include "zocl_ioctl.h"
@@ -31,13 +35,24 @@
 #include "zocl_bo.h"
 #include "zocl_dma.h"
 #include "zocl_ospi_versal.h"
-#include "zocl_watchdog.h"
 #include "xrt_cu.h"
 
 #if defined(CONFIG_ARM64)
 #define ZOCL_PLATFORM_ARM64   1
 #else
 #define ZOCL_PLATFORM_ARM64   0
+#endif
+
+#ifndef XRT_DRIVER_VERSION
+#define XRT_DRIVER_VERSION ""
+#endif
+
+#ifndef XRT_HASH
+#define XRT_HASH ""
+#endif
+
+#ifndef XRT_HASH_DATE
+#define XRT_HASH_DATE ""
 #endif
 
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
@@ -104,8 +119,6 @@
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
 
-struct sched_client_ctx;
-
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;
@@ -117,7 +130,11 @@ struct zocl_drv_private {
 
 struct drm_zocl_bo {
 	union {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		struct drm_gem_dma_object       cma_base;
+#else
 		struct drm_gem_cma_object       cma_base;
+#endif
 		struct {
 			struct drm_gem_object         gem_base;
 			struct page                 **pages;
@@ -247,22 +264,13 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 void zocl_clear_mem_slot(struct drm_zocl_dev *zdev, u32 slot_idx);
+int zocl_cleanup_aie(struct drm_zocl_dev *zdev);
 int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		void *aie_res, uint8_t hw_gen);
 void zocl_destroy_aie(struct drm_zocl_dev *zdev);
 int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_reset(struct drm_zocl_dev *zdev);
 int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data);
-int zocl_aie_graph_alloc_context(struct drm_zocl_dev *dev, u32 gid,
-		u32 ctx_code, struct sched_client_ctx *client);
-int zocl_aie_graph_free_context(struct drm_zocl_dev *dev, u32 gid,
-		struct sched_client_ctx *client);
-void zocl_aie_graph_free_context_all(struct drm_zocl_dev *zdev,
-		struct sched_client_ctx *client);
-int zocl_aie_alloc_context(struct drm_zocl_dev *zdev, u32 ctx_code,
-		struct sched_client_ctx *client);
-int zocl_aie_free_context(struct drm_zocl_dev *zdev,
-		struct sched_client_ctx *client);
 int zocl_aie_kds_add_graph_context(struct drm_zocl_dev *zdev, u32 gid,
 	        u32 ctx_code, struct kds_client *client);
 int zocl_aie_kds_del_graph_context(struct drm_zocl_dev *zdev, u32 gid,

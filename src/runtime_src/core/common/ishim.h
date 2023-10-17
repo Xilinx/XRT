@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef core_common_ishim_h
 #define core_common_ishim_h
 
 #include "error.h"
 #include "xcl_graph.h"
 #include "xrt.h"
+
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/shim_int.h"
 
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
-
-#include "experimental/xrt_hw_context.h"
+#include "experimental/xrt_fence.h"
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
@@ -24,7 +26,6 @@
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
 int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
-int xclCloseExportHandle(xclBufferExportHandle);
 
 namespace xrt_core {
 
@@ -47,57 +48,12 @@ struct ishim
   virtual void
   close_device() = 0;
 
-  virtual cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) = 0;
-
-  virtual void
-  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index) = 0;
-
   // Legacy, to be removed
   virtual void
   open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
   close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) = 0;
-
-  virtual xclBufferHandle
-  alloc_bo(size_t size, unsigned int flags) = 0;
-
-  virtual xclBufferHandle
-  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
-
-  virtual void
-  free_bo(xclBufferHandle boh) = 0;
-
-  virtual xclBufferExportHandle
-  export_bo(xclBufferHandle boh) const = 0;
-
-  virtual xclBufferHandle
-  import_bo(xclBufferExportHandle ehdl) = 0;
-
-  virtual void
-  close_export_handle(xclBufferExportHandle) = 0;
-
-  // Import an exported BO from another process identified by argument pid.
-  // This function is only supported on systems with pidfd kernel support
-  virtual xclBufferHandle
-  import_bo(pid_t, xclBufferExportHandle)
-  { throw not_supported_error{__func__}; }
-
-  virtual void
-  copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
-
-  virtual void
-  sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
-
-  virtual void*
-  map_bo(xclBufferHandle boh, bool write) = 0;
-
-  virtual void
-  unmap_bo(xclBufferHandle boh, void* addr) = 0;
-
-  virtual void
-  get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) const = 0;
 
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
@@ -118,7 +74,7 @@ struct ishim
   unmgd_pwrite(const void* buffer, size_t size, uint64_t offset) = 0;
 
   virtual void
-  exec_buf(xclBufferHandle boh) = 0;
+  exec_buf(buffer_handle* boh) = 0;
 
   virtual int
   exec_wait(int timeout_ms) const = 0;
@@ -145,6 +101,33 @@ struct ishim
   user_reset(xclResetKind kind) = 0;
 
   ////////////////////////////////////////////////////////////////
+  // Interfaces for buffer handling
+  // Implemented explicitly by concrete shim device class
+  ////////////////////////////////////////////////////////////////
+  virtual std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, uint64_t flags) = 0;
+
+  virtual std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, uint64_t flags) = 0;
+
+  // Import an exported BO from another process identified by argument pid.
+  // This function is only supported on systems with pidfd kernel support
+  // Redo when supporting windows
+  virtual std::unique_ptr<buffer_handle>
+  import_bo(pid_t, shared_handle::export_handle)
+  { throw not_supported_error{__func__}; }
+
+  ////////////////////////////////////////////////////////////////
+  // Interfaces for fence handling
+  ////////////////////////////////////////////////////////////////
+  virtual std::unique_ptr<fence_handle>
+  create_fence(xrt::fence::access_mode)
+  { throw not_supported_error{__func__}; }
+  
+  virtual std::unique_ptr<fence_handle>
+  import_fence(pid_t, shared_handle::export_handle)
+  { throw not_supported_error{__func__}; }
+  ////////////////////////////////////////////////////////////////
   // Interfaces for hw context handling
   // Implemented explicitly by concrete shim device class
   ////////////////////////////////////////////////////////////////
@@ -152,25 +135,13 @@ struct ishim
   // cannot be created for that xclbin.  This function throws
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
-  virtual xcl_hwctx_handle // ctx handle aka slot idx
-  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
-  { throw not_supported_error{__func__}; }
+  virtual std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/,
+                    const xrt::hw_context::cfg_param_type& /*cfg_params*/,
+                    xrt::hw_context::access_mode /*mode*/) const = 0;
 
-  virtual void
-  destroy_hw_context(xcl_hwctx_handle /*ctxhdl*/) const
-  { throw not_supported_error{__func__}; }
-
-  // Return default sentinel for legacy platforms without hw_queue support
-  virtual xcl_hwqueue_handle
-  create_hw_queue(const xrt::hw_context&) const
-  { return XRT_NULL_HWQUEUE; }
-
-  // Default noop for legacy platforms without hw_queue support
-  virtual void
-  destroy_hw_queue(xcl_hwqueue_handle) const
-  {}
-
-  // Registers an xclbin, but does not load it.
+  // Registers an xclbin with shim, but does not load it.
+  // This is no-op for most platform shims
   virtual void
   register_xclbin(const xrt::xclbin&) const
   { throw not_supported_error{__func__}; }
@@ -295,18 +266,6 @@ struct shim : public DeviceType
     xclClose(DeviceType::get_device_handle());
   }
 
-  cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) override
-  {
-    return xrt::shim_int::open_cu_context(DeviceType::get_device_handle(), hwctx, cuname);
-  }
-
-  void
-  close_cu_context(const xrt::hw_context& hwctx, cuidx_type cuidx) override
-  {
-    xrt::shim_int::close_cu_context(DeviceType::get_device_handle(), hwctx, cuidx);
-  }
-
   // Legacy, to be removed
   void
   open_context(const xrt::uuid& xclbin_uuid , unsigned int ip_index, bool shared) override
@@ -320,97 +279,6 @@ struct shim : public DeviceType
   {
     if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index))
       throw system_error(ret, "failed to close ip context");
-  }
-
-  xclBufferHandle
-  alloc_bo(size_t size, unsigned int flags) override
-  {
-    auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags);
-    if (bo == XRT_NULL_BO)
-      throw std::bad_alloc();
-
-    return bo;
-  }
-
-  xclBufferHandle
-  alloc_bo(void* userptr, size_t size, unsigned int flags) override
-  {
-    auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags);
-    if (bo == XRT_NULL_BO)
-      throw std::bad_alloc();
-
-    return bo;
-  }
-
-  void
-  free_bo(xclBufferHandle bo) override
-  {
-    xclFreeBO(DeviceType::get_device_handle(), bo);
-  }
-
-  xclBufferExportHandle
-  export_bo(xclBufferHandle bo) const override
-  {
-    auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
-    if (ehdl == XRT_NULL_BO_EXPORT)
-      throw system_error(EINVAL, "Unable to export BO");
-    if (ehdl < 0) // system error code
-      throw system_error(ENODEV, "Unable to export BO");
-    return ehdl;
-  }
-
-  xclBufferHandle
-  import_bo(xclBufferExportHandle ehdl) override
-  {
-    auto ihdl = xclImportBO(DeviceType::get_device_handle(), ehdl, 0);
-    if (ihdl == XRT_NULL_BO)
-      throw system_error(EINVAL, "unable to import BO");
-    if (ihdl < 0) // system error code
-      throw system_error(ENODEV, "unable to import BO");
-    return ihdl;
-  }
-
-  void
-  close_export_handle(xclBufferExportHandle ehdl) override
-  {
-    if (auto err = xclCloseExportHandle(ehdl))
-      throw system_error(err, "failed to close export handle");
-  }
-
-  void
-  copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) override
-  {
-    if (auto err = xclCopyBO(DeviceType::get_device_handle(), dst, src, size, dst_offset, src_offset))
-      throw system_error(err, "unable to copy BO");
-  }
-
-  void
-  sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset) override
-  {
-    if (auto err = xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset))
-      throw system_error(err, "unable to sync BO");
-  }
-
-  void*
-  map_bo(xclBufferHandle bo, bool write) override
-  {
-    if (auto mapped = xclMapBO(DeviceType::get_device_handle(), bo, write))
-      return mapped;
-    throw system_error(EINVAL, "could not map BO");
-  }
-
-  void
-  unmap_bo(xclBufferHandle bo, void* addr) override
-  {
-    if (auto ret = xclUnmapBO(DeviceType::get_device_handle(), bo, addr))
-      throw system_error(ret, "failed to unmap BO");
-  }
-
-  void
-  get_bo_properties(xclBufferHandle bo, struct xclBOProperties *properties) const override
-  {
-    if (auto ret = xclGetBOProperties(DeviceType::get_device_handle(), bo, properties))
-      throw system_error(ret, "failed to get BO properties");
   }
 
   void
@@ -463,9 +331,9 @@ struct shim : public DeviceType
   }
 
   void
-  exec_buf(xclBufferHandle bo) override
+  exec_buf(buffer_handle* bo) override
   {
-    if (auto ret = xclExecBuf(DeviceType::get_device_handle(), bo))
+    if (auto ret = xclExecBuf(DeviceType::get_device_handle(), bo->get_xcl_handle()))
       throw system_error(ret, "failed to launch execution buffer");
   }
 

@@ -19,12 +19,13 @@
 
 // Please keep eternal include file dependencies to a minimum
 #include "core/common/device.h"
+#include "JSONConfigurable.h"
 #include <boost/property_tree/ptree.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
 
-class Report {
+class Report : public JSONConfigurable {
  public:
   // Supported JSON schemas.
   // 
@@ -54,6 +55,7 @@ class Report {
   // Supporting APIs
  public:
   const std::string & getReportName() const { return m_reportName; };
+  const std::string & getConfigName() const { return getReportName(); };
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
   bool isHidden() const { return m_isHidden; };

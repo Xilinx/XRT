@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,28 +13,25 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#define XDP_SOURCE
 
-#include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "aie_debug_cb.h"
+#include "aie_debug_plugin.h"
 
 namespace xdp {
 
-  // The AIE debug plugin doesn't have any callbacks. Instead, it
-  //  only has a single static instance of the plugin object
-
-  static AIEDebugPlugin aiePluginInstance;
+  static AieDebugPlugin aieDebugPluginInstance;
 
   static void updateAIEDebugDevice(void* handle)
   {
-    if (AIEDebugPlugin::alive()) {
-      aiePluginInstance.updateAIEDevice(handle);
-    }
+    if (AieDebugPlugin::alive())
+      aieDebugPluginInstance.updateAIEDevice(handle);
   }
 
-  static void endAIEDebugPoll(void* handle)
+  static void endAIEDebugRead(void* handle)
   {
-    if (AIEDebugPlugin::alive()) {
-      aiePluginInstance.endPollforDevice(handle);
-    }
+    if (AieDebugPlugin::alive())
+      aieDebugPluginInstance.endAIEDebugRead(handle);
   }
 
 } // end namespace xdp
@@ -46,7 +43,7 @@ void updateAIEDebugDevice(void* handle)
 }
 
 extern "C"
-void endAIEDebugPoll(void* handle)
+void endAIEDebugRead(void* handle)
 {
-  xdp::endAIEDebugPoll(handle);
+  xdp::endAIEDebugRead(handle);
 }

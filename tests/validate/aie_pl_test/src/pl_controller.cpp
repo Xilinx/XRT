@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2019-2022 Xilinx, Inc
+* Copyright (C) 2019-2023 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -20,32 +20,15 @@
 
 namespace xf {
 namespace plctrl {
-plController::plController(const std::string& xclbin_path)
+plController::plController(const std::string& aie_info_path,
+                           const std::string& dma_info_path)
+  : m_aie_info_path(aie_info_path),
+    m_dma_info_path(dma_info_path),
+    m_outputSize(0),
+    m_ping_pong(false)
 {
-    dma_info_path = "dma_lock_report.json";
-    aie_info_path = "aie_control_config.json";
-
     // read rtp from metadata
     get_rtp();
-
-    outputSize = 0;
-    ping_pong = false;
-}
-plController::plController(const std::string& _aie_info_path,
-                           const std::string& _dma_info_path)
-{
-    aie_info_path = _aie_info_path;
-    dma_info_path = _dma_info_path;
-
-    // read rtp from metadata
-    get_rtp();
-
-    outputSize = 0;
-    ping_pong = false;
-}
-plController::~plController()
-{
-    // Empty
 }
 
 void
@@ -54,7 +37,7 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
 {
     auto tiles = get_tiles(graphName);
 
-    unsigned int metadata_offset = metadata.size();
+    unsigned int metadata_offset = m_metadata.size();
 
     unsigned int itr_mem_addr = 0;
     unsigned int num_tile = 0;
@@ -75,9 +58,9 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
                    (num_tile - 1) % tile.itr_mem_addr;
     }
     uint32_t metadata_num = num_tile;
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SET_AIE_ITERATION));
-    opcodeBuffer.push_back(num_iter);
-    opcodeBuffer.push_back(itr_mem_addr);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SET_AIE_ITERATION));
+    m_opcodeBuffer.push_back(num_iter);
+    m_opcodeBuffer.push_back(itr_mem_addr);
     std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
                                "itr_mem_addr: %u\n") %
                      num_iter % itr_mem_addr;
@@ -86,33 +69,33 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
 void
 plController::enqueue_enable_aie_cores()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::ENABLE_AIE_CORES));
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::ENABLE_AIE_CORES));
 }
 
 void
 plController::enqueue_disable_aie_cores()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::DISABLE_AIE_CORES));
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::DISABLE_AIE_CORES));
 }
 
 void
 plController::enqueue_sync(uint32_t pld)
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SYNC));
-    opcodeBuffer.push_back(pld);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SYNC));
+    m_opcodeBuffer.push_back(pld);
 }
 
 void
 plController::enqueue_loop_begin(int trip_count)
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::LOOP_BEGIN));
-    opcodeBuffer.push_back(trip_count);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::LOOP_BEGIN));
+    m_opcodeBuffer.push_back(trip_count);
 }
 
 void
 plController::enqueue_loop_end()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::LOOP_END));
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::LOOP_END));
 }
 
 void
@@ -130,20 +113,20 @@ plController::enqueue_set_and_enqueue_dma_bd(const std::string& portName,
     auto buffer = buffers.at(idx);
 
     uint32_t dma_bd_value = 0x83FC0000 + dma_bd_len - 1;
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SET_DMA_BD));
-    opcodeBuffer.push_back(buffer.bd_num);
-    opcodeBuffer.push_back(dma_bd_value);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SET_DMA_BD));
+    m_opcodeBuffer.push_back(buffer.bd_num);
+    m_opcodeBuffer.push_back(dma_bd_value);
 
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::ENQUEUE_DMA_BD));
-    opcodeBuffer.push_back(buffer.bd_num);
-    opcodeBuffer.push_back(buffer.ch_num);
-    opcodeBuffer.push_back(buffer.s2mm);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::ENQUEUE_DMA_BD));
+    m_opcodeBuffer.push_back(buffer.bd_num);
+    m_opcodeBuffer.push_back(buffer.ch_num);
+    m_opcodeBuffer.push_back(buffer.s2mm);
 }
 void
 plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
 {
-    auto it = rtps.find(rtpPort);
-    if (it == rtps.end())
+    auto it = m_rtps.find(rtpPort);
+    if (it == m_rtps.end())
         throw std::runtime_error("Can't update RTP port '" + rtpPort +
                                  "' not found");
     auto& rtp = it->second;
@@ -156,14 +139,14 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
         throw std::runtime_error("Can't update RTP port '" + rtpPort +
                                  "' is not input");
 
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::UPDATE_AIE_RTP));
-    opcodeBuffer.push_back(rtpVal);
-    opcodeBuffer.push_back(ping_pong ? rtp.ping_addr : rtp.pong_addr);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::UPDATE_AIE_RTP));
+    m_opcodeBuffer.push_back(rtpVal);
+    m_opcodeBuffer.push_back(m_ping_pong ? rtp.ping_addr : rtp.pong_addr);
 
-    opcodeBuffer.push_back(rtp.selector_addr);
-    opcodeBuffer.push_back(ping_pong);
+    m_opcodeBuffer.push_back(rtp.selector_addr);
+    m_opcodeBuffer.push_back(m_ping_pong);
 
-    ping_pong = ~ping_pong;
+    m_ping_pong = ~m_ping_pong;
     std::cout << boost::format(
                      "enqueue_graph_rtp_update(): INFO: ping_addr = %u"
                      ", pong_addr = %u, selector_addr = %u"
@@ -175,14 +158,14 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
 void
 plController::enqueue_sleep(uint32_t num_cycles)
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SLEEP));
-    opcodeBuffer.push_back(num_cycles);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SLEEP));
+    m_opcodeBuffer.push_back(num_cycles);
 }
 
 void
 plController::enqueue_halt()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::HALT));
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::HALT));
 }
 
 // re-use this code from "core/edge/common/aie_parser.cpp"
@@ -190,12 +173,12 @@ void
 plController::get_rtp()
 {
     boost::property_tree::ptree aie_meta;
-    std::cout << "aie_info_path " << aie_info_path << std::endl;
-    std::ifstream jsonFile(aie_info_path);
+    std::cout << "aie_info_path " << m_aie_info_path << std::endl;
+    std::ifstream jsonFile(m_aie_info_path);
     if (!jsonFile.good())
         throw std::runtime_error("get_rtp():ERROR:No aie info file specified");
 
-    read_json(aie_info_path, aie_meta);
+    boost::property_tree::json_parser::read_json(m_aie_info_path, aie_meta);
 
     for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
       rtp_type rtp = {};
@@ -223,7 +206,7 @@ plController::get_rtp()
         rtp.is_connected = rtp_node.second.get<bool>("is_connected");
         rtp.require_lock = rtp_node.second.get<bool>("requires_lock");
 
-        rtps.emplace(std::move(rtp.name), std::move(rtp));
+        m_rtps.emplace(std::move(rtp.name), std::move(rtp));
     }
 }
 
@@ -232,12 +215,12 @@ plController::get_tiles(const std::string& graph_name)
 {
     boost::property_tree::ptree aie_meta;
 
-    std::ifstream jsonFile(aie_info_path);
+    std::ifstream jsonFile(m_aie_info_path);
     if (!jsonFile.good())
         throw std::runtime_error(
             "ERROR (get_tiles):No aie info file specified");
 
-    read_json(aie_info_path, aie_meta);
+    boost::property_tree::json_parser::read_json(m_aie_info_path, aie_meta);
     std::vector<tile_type> tiles;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
@@ -290,12 +273,12 @@ std::vector<buffer_type>
 plController::get_buffers(const std::string& port_name)
 {
     boost::property_tree::ptree dma_meta;
-    std::ifstream jsonFile(dma_info_path);
+    std::ifstream jsonFile(m_dma_info_path);
     if (!jsonFile.good())
         throw std::runtime_error(
             "get_buffers():ERROR:No dma info file specified");
 
-    read_json(dma_info_path, dma_meta);
+    boost::property_tree::json_parser::read_json(m_dma_info_path, dma_meta);
     std::vector<buffer_type> buffers;
 
     for (auto& buffer : dma_meta.get_child("S2MM")) {

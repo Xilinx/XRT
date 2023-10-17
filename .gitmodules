@@ -1,3 +1,6 @@
 [submodule "src/runtime_src/core/pcie/driver/linux/xocl/lib/libqdma"]
 	path = src/runtime_src/core/pcie/driver/linux/xocl/lib/libqdma
 	url = https://github.com/Xilinx/dma_ip_drivers.git
+[submodule "src/runtime_src/core/common/elf"]
+	path = src/runtime_src/core/common/elf
+	url = https://github.com/serge1/ELFIO.git

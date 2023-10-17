@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +27,6 @@
 #else
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #endif
 
 namespace xdp {
@@ -45,53 +45,66 @@ namespace xdp {
 #endif
     fileNum(1), db(inst)
   {
+#ifdef _WIN32
+    // On Windows, we are currently always opening the file in the
+    // current directory and do not yet support the user specified
+    // directory
+    fout.open(filename);
+
+    try {
+      if (useDir) {
+        std::string msg =
+          "The user specified profiling directory is not supported on Windows.";
+        xrt_core::message::send(xrt_core::message::severity_level::info,
+                                "XRT", msg);
+      }
+    }
+    catch (...) {
+      // The message sending could throw a boost::property_tree exception.
+      // If we catch it, just ignore it and move on.
+    }
+#else
     directory = xrt_core::config::get_profiling_directory() ;
 
     if (!useDir || directory == "") {
       // If no directory was specified, just use the file in
       //  the working directory
-      fout.open(filename) ;
-      return ;
+      fout.open(filename);
+      return;
     }
 
-    // The directory was specified.  Check if it exists and is writable
-    bool dirExists  = false ;
-    bool writeable  = false ;
-#ifdef _WIN32
-#else
-    struct stat buf = {0} ;
-    int result = stat(directory.c_str(), &buf) ;
-    if (!result) {
-      // The file exists.  Is it a directory?
-      dirExists = S_ISDIR(buf.st_mode) ;
-      if (dirExists) {
-        // The directory exists, but can we write to it?
-        writeable = (buf.st_mode & S_IWUSR) != 0 ;
+    // The directory was specified.  Try to create it (regardless of if
+    // it exists already or not).
+    constexpr mode_t rwx_all = 0777;
+    int result = mkdir(directory.c_str(), rwx_all);
+
+    try {
+      if (result != 0) {
+        // We could not create the directory, but that doesn't necessarily
+        // mean it doesn't exist and we don't have access to it.  Just send
+        // an informational message.
+        std::string msg =
+          "The user specified profiling directory could not be created.";
+        xrt_core::message::send(xrt_core::message::severity_level::info,
+                                "XRT", msg);
       }
-      //else {
-        // The file exists, but it is not a directory.  We cannot write to it
-      //}
     }
-    else {
-      // The file does not exist at all, so try to create it
-      const mode_t rwx_all = 0777 ;
-      result = mkdir(directory.c_str(), rwx_all) ;
-      if (!result) {
-        dirExists = true ;
-        writeable = true ;
-      }
+    catch (...) {
+      // Sending the message could throw a boost::property_tree exception.
+      // If we catch it, just ignore it and move on
+    }
+
+    // Try to open the file in the directory + filename
+    currentFileName = directory + separator + filename;
+    fout.open(currentFileName);
+
+    if (!fout) {
+      // If we cannot create the file in the user specified directory, then
+      // just open it in the local directory
+      currentFileName = filename;
+      fout.open(currentFileName);
     }
 #endif
-    if (!dirExists || !writeable) {
-      // If we cannot create the directory, or if we cannot write to
-      //  the directory, then just use the filename
-      fout.open(filename) ;
-      return ;
-    }
-
-    // Set the file name to directory + filename
-    currentFileName = directory + separator + basename ;
-    fout.open(currentFileName) ;
   }
 
   VPWriter::~VPWriter()
