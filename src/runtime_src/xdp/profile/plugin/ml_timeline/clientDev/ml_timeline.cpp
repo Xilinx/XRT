@@ -104,8 +104,6 @@ namespace xdp {
 
     uint32_t* ptr = reinterpret_cast<uint32_t*>(resultBOMap);
 
-    uint32_t id = 0;
-
     boost::property_tree::ptree ptTop;
     boost::property_tree::ptree ptHeader;
     boost::property_tree::ptree ptRecordTimerTS;
