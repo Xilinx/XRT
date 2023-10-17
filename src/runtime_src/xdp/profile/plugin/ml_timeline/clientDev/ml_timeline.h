@@ -17,9 +17,6 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 
-#include "core/include/xrt/xrt_kernel.h"
-#include "core/include/xrt/xrt_bo.h"
-
 #include "xdp/config.h"
 #include "xdp/profile/plugin/ml_timeline/aie_config_metadata.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
@@ -43,14 +40,7 @@ namespace xdp {
       XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
 
     private :
-      uint8_t recordTimerOpCode;
-
-      record_timer_buffer_op_t *bufferOp;
-
       XAie_DevInst aieDevInst = {0};
-
-      xrt::kernel instrKernel;
-      xrt::bo     instrBO;
   };
 
 }

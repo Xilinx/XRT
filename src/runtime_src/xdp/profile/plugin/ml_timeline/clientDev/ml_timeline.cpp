@@ -28,6 +28,7 @@
 #include "core/common/system.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #include "xdp/profile/plugin/ml_timeline/clientDev/op/op_buf.hpp"
@@ -38,8 +39,6 @@ namespace xdp {
 
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
     : MLTimelineImpl(dB, aieData)
-      , recordTimerOpCode(0)
-      , bufferOp(nullptr)
   {
   }
 
@@ -74,8 +73,9 @@ namespace xdp {
   {
     auto hwContext = aieMetadata->getHwContext();
 
+    xrt::kernel instKernel;
     try {
-      instrKernel = xrt::kernel(hwContext, "XDP_KERNEL");
+      instKernel = xrt::kernel(hwContext, "XDP_KERNEL");
     }
     catch (std::exception& e) {
       std::stringstream msg;
@@ -90,7 +90,7 @@ namespace xdp {
     // Read Record Timer TS buffer
     xrt::bo resultBO;
     try {
-      resultBO = xrt::bo(hwContext.get_device(), SIZE_4K, XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
+      resultBO = xrt::bo(hwContext.get_device(), SIZE_4K, XCL_BO_FLAGS_CACHEABLE, instKernel.group_id(1));
     }
     catch (std::exception& e) {
       std::stringstream msg;
@@ -154,8 +154,6 @@ namespace xdp {
     fOut.open("record_timer_ts.json");
     fOut << result;
     fOut.close();
-
-    free(bufferOp);
   }
 }
 
