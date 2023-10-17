@@ -71,7 +71,7 @@ typedef struct {
  */
 
 typedef struct {
-  uint32_t record_timer_data[100];
+  uint32_t record_timer_data[300];
 } record_timer_buffer_op_t;
 
 typedef struct {

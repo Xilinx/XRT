@@ -173,6 +173,11 @@ namespace xdp {
     // Record Timer TS
     while (writeSz && writeSz >= entrySz) {
       uint32_t ts32 = *ptr;
+      if (0 == ts32) {
+        ptr++;
+        writeSz -= entrySz;
+        continue;
+      }
 #if 0
         std::stringstream msg;
         msg << " Record timer value " << ts32;
