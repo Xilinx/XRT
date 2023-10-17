@@ -16,31 +16,25 @@
 
 #define XDP_SOURCE
 
-#include <fstream>
-
-#include "core/include/xrt/xrt_bo.h"
-
-#include "core/common/device.h"
-#include "core/common/message.h"
-#include "core/common/system.h"
-
-#include "core/common/shim/hwctx_handle.h"
-
-#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
-
-#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_buf.hpp"
-#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_init.hpp"
-
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <chrono>
-#include <iostream>
+#include <fstream>
 #include <regex>
 
-namespace xdp {
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/include/xrt/xrt_bo.h"
 
-  
+#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
+#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_buf.hpp"
+#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_init.hpp"
+#include "xdp/profile/plugin/vp_base/utility.h"
+
+namespace xdp {
 
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
     : MLTimelineImpl(dB, aieData)
@@ -160,11 +154,9 @@ namespace xdp {
     boost::property_tree::ptree ptHeader;
     boost::property_tree::ptree ptRecordTimerTS;
 
-    // Header
-    ptHeader.put("date", "10-16-2023");
-    ptHeader.put("time_created", "00");
-//    ptHeader.put("date", getCurrentDateTime());
-//    ptHeader.put("time_created", getMsecSinceEpoch());
+    // Header for JSON 
+    ptHeader.put("date", xdp::getCurrentDateTime());
+    ptHeader.put("time_created", xdp::getMsecSinceEpoch());
 
     boost::property_tree::ptree ptSchema;
     ptSchema.put("major", "1");
@@ -175,7 +167,7 @@ namespace xdp {
     ptHeader.put("clock_freq_MHz", 1000);
     ptTop.add_child("header", ptHeader);
 
-    // Record Timer TS
+    // Record Timer TS in JSON
     while (writeSz && writeSz >= entrySz) {
       uint32_t ts32 = *ptr;
       if (0 == ts32) {
@@ -204,7 +196,6 @@ namespace xdp {
       ptRecordTimerTS.push_back(std::make_pair("", ptEmpty));
     }
     ptTop.add_child("record_timer_ts", ptRecordTimerTS);
-
 
     // Write output file
     std::ostringstream oss;
