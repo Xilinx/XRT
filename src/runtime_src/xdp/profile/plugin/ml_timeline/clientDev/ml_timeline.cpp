@@ -87,7 +87,7 @@ namespace xdp {
     // Read Record Timer TS buffer
     xrt::bo resultBO;
     try {
-      resultBO = xrt::bo(hwContext.get_device(), 1*sizeof(record_timer_buffer_op_t), XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
+      resultBO = xrt::bo(hwContext.get_device(), 0x1000, XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
     }
     catch (std::exception& e) {
       std::stringstream msg;
