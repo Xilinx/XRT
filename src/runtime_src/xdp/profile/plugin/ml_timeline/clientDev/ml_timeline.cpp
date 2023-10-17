@@ -134,17 +134,69 @@ namespace xdp {
     size_t writeSz = sizeof(record_timer_buffer_op_t);
     size_t entrySz = sizeof(uint32_t);
 
-    std::ofstream fOut;
-    fOut.open("timestamp.txt");
+    uint32_t id = 0;
+
+    bpt::ptree ptTop;
+    bpt::ptree ptHeader;
+    bpt::ptree ptRecordTimerTS;
+
+    // Header
+    ptHeader.put("date", "10-16-2023");
+    ptHeader.put("time_created", "00");
+//    ptHeader.put("date", getCurrentDateTime());
+//    ptHeader.put("time_created", getMsecSinceEpoch());
+
+    bpt::ptree ptSchema;
+    ptSchema.put("major", "1");
+    ptSchema.put("minor", "0");
+    ptSchema.put("patch", "0");
+    ptSchild("schema_version", pt_schema);
+    ptHeader.put("device", "Phoenix");
+    ptHeader.put("clock_freq_MHz", 1000);
+    ptTop.add_child("header", ptHeader);
+
+    // Record Timer TS
     while (writeSz && writeSz >= entrySz) {
-        uint32_t ts32 = *ptr;
-        ptr++;
+      uint32_t ts32 = *ptr;
+#if 0
         std::stringstream msg;
         msg << " Record timer value " << ts32;
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-        fOut << ts32 << std::endl;
-        writeSz -= entrySz;
+#endif
+
+      bpt::ptree ptIdTS;
+      ptIdTS.put("id", id);
+      ptIdTS.put("cycle", ts32);
+      id++;
+      ptr++;
+      writeSz -= entrySz;
+
+      ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
     }
+
+    if (ptRecordTimerTS.empty()) {
+      bpt::ptree dummy;
+      ptRecordTimerTS.push_back(std::make_pair("", dummy));
+    }
+    ptTop.add_child("record_timer_ts", ptRecordTimerTS);
+
+
+    // Write output file
+    std::ostringstream oss;
+    bpt::write_json(oss, ptTop);
+
+#if 0
+    // Remove quotes from value strings
+    //   Patterns matched - "12" "null" "100.0" "-1" ""
+    //   Patterns ignored - "12": "100.0":
+    std::regex reg("\\\"((-?[0-9]+\\.{0,1}[0-9]*)|(null)|())\\\"(?!\\:)");
+    std::string result = std::regex_replace(oss.str(), reg, "$1");
+#endif
+
+    std::ofstream file;
+    file.open("record_timer_ts.json");
+    file << result;
+    file.close();
 
     fOut.close();
     free(bufferOp);
