@@ -71,13 +71,10 @@ namespace xdp {
   {
   }
 
-  void MLTimelineClientDevImpl::finishflushAIEDevice(void* handle)
+  void MLTimelineClientDevImpl::finishflushAIEDevice(void* /*handle*/)
   {
-    //Start recording the transaction
-    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
-    xrt::hw_context_impl* hwCtxImpl = static_cast<xrt::hw_context_impl*>(handle);
-    xrt::hw_context       hwContext(hwCtxImpl->get_shared_ptr());
+    auto hwContext = aieMetadata->getHwContext();
 
     try {
       instrKernel = xrt::kernel(hwContext, "XDP_KERNEL");
@@ -88,6 +85,10 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         return;
     }
+
+#if 0
+    //Start recording the transaction
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
     // Record Timer is the 4th Custom Op
     // Call Request APIs only once in application
@@ -105,6 +106,7 @@ namespace xdp {
     instrBuf.addOP(transaction_op(txn));
 
     // Configuration bo
+    xrt::bo instrBO;
     try {
       instrBO = xrt::bo(hwContext.get_device(), instrBuf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
     }
@@ -122,14 +124,27 @@ namespace xdp {
 
     // Must clear aie state
     XAie_ClearTransaction(&aieDevInst);
+#endif
 
-    auto instrBOMap = instrBO.map<uint8_t*>();
-    instrBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    // Read Record Timer TS buffer
+    xrt::bo resultBO;
+    try {
+      resultBO = xrt::bo(hwContext.get_device(), 1*sizeof(record_timer_buffer_op_t), XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
+    }
+    catch (std::exception& e) {
+        std::stringstream msg;
+        msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get ML Timeline info. " << e.what() << std::endl;
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        return;
+    }
+
+    auto resultBOMap = resultBO.map<uint8_t*>();
+    resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     // TODO: figure out where the 8 comes from
-    instrBOMap += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
+    resultBOMap += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
 
-    record_timer_buffer_op_t* bufferData = reinterpret_cast<record_timer_buffer_op_t*>(instrBOMap);
+    record_timer_buffer_op_t* bufferData = reinterpret_cast<record_timer_buffer_op_t*>(resultBOMap);
     uint32_t* ptr = bufferData->record_timer_data;
     size_t writeSz = sizeof(record_timer_buffer_op_t);
     size_t entrySz = sizeof(uint32_t);
