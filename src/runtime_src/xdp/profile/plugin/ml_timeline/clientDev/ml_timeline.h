@@ -20,7 +20,6 @@
 #include "xdp/config.h"
 #include "xdp/profile/plugin/ml_timeline/aie_config_metadata.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
-#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_types.h"
 
 extern "C" {
 #include <xaiengine.h>

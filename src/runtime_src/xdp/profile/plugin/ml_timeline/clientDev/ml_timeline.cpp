@@ -31,8 +31,6 @@
 #include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
-#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_buf.hpp"
-#include "xdp/profile/plugin/ml_timeline/clientDev/op/op_init.hpp"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
