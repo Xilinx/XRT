@@ -46,7 +46,7 @@ namespace xdp {
   void MLTimelineClientDevImpl::updateAIEDevice(void* /*handle*/)
   {
     XAie_Config cfg {
-      XAIE_DEV_GEN_AIE2IPU,                                 //xaie_dev_gen_aie
+      aieMetadata->getAieConfigMetadata("hw_gen").get_value<uint8_t>(),               //xaie_dev_gen_aie
       aieMetadata->getAieConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
       aieMetadata->getAieConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
       aieMetadata->getAieConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
