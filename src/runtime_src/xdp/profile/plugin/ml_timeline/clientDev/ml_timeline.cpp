@@ -73,6 +73,7 @@ namespace xdp {
 
     xrt::kernel instKernel;
     try {
+      // Currently this kernel helps in creating XRT BO connected to SRAM memory
       instKernel = xrt::kernel(hwContext, "XDP_KERNEL");
     }
     catch (std::exception& e) {
@@ -115,11 +116,12 @@ namespace xdp {
     ptSchema.put("minor", "0");
     ptSchema.put("patch", "0");
     ptHeader.add_child("schema_version", ptSchema);
-    ptHeader.put("device", "Phoenix");
+    ptHeader.put("device", "Client");
     ptHeader.put("clock_freq_MHz", 1000);
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON
+    // Assuming correct Stub has been called and Write Buffer contains valid data
     while (*ptr < MAX_INDEX_IN_SIZE_3K) {
       boost::property_tree::ptree ptIdTS;
       ptIdTS.put("id", *ptr);
