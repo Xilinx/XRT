@@ -21,7 +21,7 @@ if (XDP_MINIMAL_BUILD STREQUAL "yes")
   add_library(xdp_ml_timeline_plugin MODULE ${ML_TIMELINE_PLUGIN_FILES})
   add_dependencies(xdp_ml_timeline_plugin xdp_core xrt_coreutil)
 
-  include_directories(xdp_ml_timeline_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/win/op)
+  include_directories(xdp_ml_timeline_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/clientDev/op)
   target_link_libraries(xdp_ml_timeline_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
 
   target_compile_definitions(xdp_ml_timeline_plugin PRIVATE XDP_MINIMAL_BUILD=1)
