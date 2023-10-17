@@ -157,16 +157,16 @@ namespace xdp {
     handleToAIEData.erase(handle);
   }
 
-  void MLTimelinePlugin::writeAll(bool openNewFiles)
+  void MLTimelinePlugin::writeAll(bool /*openNewFiles*/)
   {
-    for (const auto& entry = handleToAIEData) {
+    for (const auto& entry : handleToAIEData) {
       auto& AIEDataEntry = entry.second;
 
       if (!AIEDataEntry.valid) {
         continue;
       }
       AIEDataEntry.implementation->finishflushAIEDevice(entry.first);
-      handleToAIEData.erase(handle);
+      handleToAIEData.erase(entry.first);
     }
     handleToAIEData.clear();
   }
