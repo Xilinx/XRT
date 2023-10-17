@@ -84,14 +84,17 @@ namespace xdp {
       return;
     }
 
+    static const uint32_t SIZE_4K = 0x1000;
+    static const uint32_t MAX_INDEX_IN_SIZE_3K = (0xC00 / (2 * sizeof(uint32_t))) - 1;
+
     // Read Record Timer TS buffer
     xrt::bo resultBO;
     try {
-      resultBO = xrt::bo(hwContext.get_device(), 0x1000, XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
+      resultBO = xrt::bo(hwContext.get_device(), SIZE_4K, XCL_BO_FLAGS_CACHEABLE, instrKernel.group_id(1));
     }
     catch (std::exception& e) {
       std::stringstream msg;
-      msg << "Unable to create instruction buffer for Record Timer transaction. Cannot get ML Timeline info. " << e.what() << std::endl;
+      msg << "Unable to create result buffer for Record Timer Values. Cannot get ML Timeline info. " << e.what() << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -99,10 +102,7 @@ namespace xdp {
     auto resultBOMap = resultBO.map<uint8_t*>();
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-    record_timer_buffer_op_t* bufferData = reinterpret_cast<record_timer_buffer_op_t*>(resultBOMap);
-    uint32_t* ptr = bufferData->record_timer_data;
-    size_t writeSz = sizeof(record_timer_buffer_op_t);
-    size_t entrySz = sizeof(uint32_t);
+    uint32_t* ptr = reinterpret_cast<uint32_t*>(resultBOMap);
 
     uint32_t id = 0;
 
@@ -124,25 +124,12 @@ namespace xdp {
     ptTop.add_child("header", ptHeader);
 
     // Record Timer TS in JSON
-    while (writeSz && writeSz >= entrySz) {
-      uint32_t ts32 = *ptr;
-      if (0 == ts32) {
-        ptr++;
-        writeSz -= entrySz;
-        continue;
-      }
-#if 0
-        std::stringstream msg;
-        msg << " Record timer value " << ts32;
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
-#endif
-
+    while (*ptr < MAX_INDEX_IN_SIZE_3K) {
       boost::property_tree::ptree ptIdTS;
-      ptIdTS.put("id", id);
-      ptIdTS.put("cycle", ts32);
-      id++;
+      ptIdTS.put("id", *ptr);
       ptr++;
-      writeSz -= entrySz;
+      ptIdTS.put("cycle", *ptr);
+      ptr++;
 
       ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
     }
