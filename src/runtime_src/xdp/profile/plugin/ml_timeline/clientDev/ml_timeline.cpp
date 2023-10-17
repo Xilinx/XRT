@@ -35,12 +35,8 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <chrono>
-//#include <ctime>
-////#include <cstring>
 #include <iostream>
 #include <regex>
-
-namespace bpt = boost::property_tree;
 
 namespace xdp {
 
@@ -160,9 +156,9 @@ namespace xdp {
 
     uint32_t id = 0;
 
-    bpt::ptree ptTop;
-    bpt::ptree ptHeader;
-    bpt::ptree ptRecordTimerTS;
+    boost::property_tree::ptree ptTop;
+    boost::property_tree::ptree ptHeader;
+    boost::property_tree::ptree ptRecordTimerTS;
 
     // Header
     ptHeader.put("date", "10-16-2023");
@@ -170,11 +166,11 @@ namespace xdp {
 //    ptHeader.put("date", getCurrentDateTime());
 //    ptHeader.put("time_created", getMsecSinceEpoch());
 
-    bpt::ptree ptSchema;
+    boost::property_tree::ptree ptSchema;
     ptSchema.put("major", "1");
     ptSchema.put("minor", "0");
     ptSchema.put("patch", "0");
-    ptSchild("schema_version", pt_schema);
+    ptHeader.add_child("schema_version", ptSchema);
     ptHeader.put("device", "Phoenix");
     ptHeader.put("clock_freq_MHz", 1000);
     ptTop.add_child("header", ptHeader);
@@ -193,7 +189,7 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
 #endif
 
-      bpt::ptree ptIdTS;
+      boost::property_tree::ptree ptIdTS;
       ptIdTS.put("id", id);
       ptIdTS.put("cycle", ts32);
       id++;
@@ -204,15 +200,15 @@ namespace xdp {
     }
 
     if (ptRecordTimerTS.empty()) {
-      bpt::ptree dummy;
-      ptRecordTimerTS.push_back(std::make_pair("", dummy));
+      boost::property_tree::ptree ptEmpty;
+      ptRecordTimerTS.push_back(std::make_pair("", ptEmpty));
     }
     ptTop.add_child("record_timer_ts", ptRecordTimerTS);
 
 
     // Write output file
     std::ostringstream oss;
-    bpt::write_json(oss, ptTop);
+    boost::property_tree::write_json(oss, ptTop);
 
     // Remove quotes from value strings
     //   Patterns matched - "12" "null" "100.0" "-1" ""
@@ -220,12 +216,11 @@ namespace xdp {
     std::regex reg("\\\"((-?[0-9]+\\.{0,1}[0-9]*)|(null)|())\\\"(?!\\:)");
     std::string result = std::regex_replace(oss.str(), reg, "$1");
 
-    std::ofstream file;
-    file.open("record_timer_ts.json");
-    file << result;
-    file.close();
-
+    std::ofstream fOut;
+    fOut.open("record_timer_ts.json");
+    fOut << result;
     fOut.close();
+
     free(bufferOp);
   }
 }
