@@ -19,13 +19,11 @@
 #include <fstream>
 
 #include "core/include/xrt/xrt_bo.h"
-#include "core/include/xrt/xrt_hw_context.h"
 
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
 
-#include "core/common/api/xrt_hw_context_impl.h"
 #include "core/common/shim/hwctx_handle.h"
 
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
