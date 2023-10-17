@@ -90,7 +90,9 @@ namespace xdp {
     uint64_t deviceID = getDeviceIDFromHandle(handle);
 
     (db->getStaticInfo()).updateDevice(deviceID, handle);
+#ifdef XDP_MINIMAL_BUILD
     (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#endif
 
     // Clean out old data every time xclbin gets updated
     if (handleToAIEData.find(handle) != handleToAIEData.end())
@@ -102,7 +104,7 @@ namespace xdp {
     AIEDataEntry.deviceID = deviceID;
     AIEDataEntry.valid = true; // initialize struct
 
-#if 0
+#ifndef XDP_MINIMAL_BUILD
     // Get Device info // Investigate further (isDeviceReady should be always called??)
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
@@ -122,22 +124,6 @@ namespace xdp {
     AIEDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db, AIEDataEntry.aieMetadata);
 #endif
     AIEDataEntry.implementation->updateAIEDevice(handle);
-  }
-
-  void MLTimelinePlugin::flushAIEDevice(void* handle)
-  {
-    if (!handle)
-      return;
-
-    auto itr = handleToAIEData.find(handle);
-    if (itr == handleToAIEData.end()) {
-      return;
-    }
-    auto& AIEDataEntry = itr->second;
-    if (!AIEDataEntry.valid)
-      return;
-
-    AIEDataEntry.implementation->flushAIEDevice(handle);
   }
 
   void MLTimelinePlugin::finishflushAIEDevice(void* handle)

@@ -63,10 +63,6 @@ namespace xdp {
     }
   }
 
-  void MLTimelineClientDevImpl::flushAIEDevice(void* )
-  {
-  }
-
   void MLTimelineClientDevImpl::finishflushAIEDevice(void* /*handle*/)
   {
     auto hwContext = aieMetadata->getHwContext();

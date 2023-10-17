@@ -30,13 +30,6 @@ namespace xdp {
     } 
   } 
 
-  static void flushDeviceMLTmln(void* handle)
-  {
-    if (MLTimelinePlugin::alive()) {
-      mlTimelinePluginInstance.flushAIEDevice(handle);
-    } 
-  } 
-
   static void finishflushDeviceMLTmln(void* handle)
   {
     if (MLTimelinePlugin::alive()) {
@@ -50,12 +43,6 @@ extern "C"
 void updateDeviceMLTmln(void* handle)
 {
   xdp::updateDeviceMLTmln(handle);
-}
-
-extern "C"
-void flushDeviceMLTmln(void* handle)
-{
-  xdp::flushDeviceMLTmln(handle);
 }
 
 extern "C"

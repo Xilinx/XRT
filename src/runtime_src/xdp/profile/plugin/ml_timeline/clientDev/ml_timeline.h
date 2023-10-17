@@ -35,7 +35,6 @@ namespace xdp {
       ~MLTimelineClientDevImpl() = default;
 
       XDP_EXPORT virtual void updateAIEDevice(void* handle);
-      XDP_EXPORT virtual void flushAIEDevice(void* handle);
       XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
 
     private :

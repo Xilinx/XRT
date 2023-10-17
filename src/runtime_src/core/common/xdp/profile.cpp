@@ -113,7 +113,6 @@ end_debug(void* handle)
 namespace xrt_core::xdp::ml_timeline {
 
 std::function<void (void*)> update_device_cb;
-std::function<void (void*)> flush_device_cb;
 std::function<void (void*)> finish_flush_device_cb;
 
 void
@@ -123,7 +122,6 @@ register_callbacks(void* handle)
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
-    flush_device_cb  = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushDeviceMLTmln"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
   #else
     (void)handle;
@@ -150,13 +148,6 @@ update_device(void* handle)
 {
   if (update_device_cb)
     update_device_cb(handle);
-}
-
-void
-flush_device(void* handle)
-{
-  if (flush_device_cb)
-    flush_device_cb(handle);
 }
 
 void
