@@ -20,6 +20,15 @@
 
 #include "xdp/config.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/xrt_kernel.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+
+
+extern "C" {
+  #include <xaiengine.h>
+  #include <xaiengine/xaiegbl_params.h>
+}
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
@@ -95,7 +104,9 @@ class AIETraceOffload
                     DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
-                    uint64_t numStrm
+                    uint64_t numStrm,
+                    xrt::hw_context context,
+                    std::shared_ptr<AieTraceMetadata> metadata
                    );
 
     XDP_EXPORT
@@ -141,6 +152,11 @@ private:
     //Internal use only
     // Set this for verbose trace offload
     bool m_debug = false;
+    xrt::hw_context context;
+    XAie_DevInst aieDevInst = {0};
+    xrt::kernel mKernel;
+    std::shared_ptr<AieTraceMetadata> metadata;
+    xrt::bo inp_bo;
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds

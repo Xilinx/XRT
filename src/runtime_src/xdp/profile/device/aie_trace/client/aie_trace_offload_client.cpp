@@ -24,11 +24,19 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
+#include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
 #include "xdp/profile/device/device_intf.h"
+#include "core/common/message.h"
+
+
+#include "xdp/profile/plugin/aie_trace/win/transactions/op_types.h"
+#include "xdp/profile/plugin/aie_trace/win/transactions/op_buf.hpp"
+#include "xdp/profile/plugin/aie_trace/win/transactions/op_init.hpp"
+
+constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
 namespace xdp {
-
+using severity_level = xrt_core::message::severity_level;
 
 AIETraceOffload::AIETraceOffload
   ( void* handle, uint64_t id
@@ -37,6 +45,8 @@ AIETraceOffload::AIETraceOffload
   , bool isPlio
   , uint64_t totalSize
   , uint64_t numStrm
+  , xrt::hw_context context
+  , std::shared_ptr<AieTraceMetadata>(metadata)
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -51,6 +61,8 @@ AIETraceOffload::AIETraceOffload
   , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
   , mCircularBufOverwrite(false)
+  , context(context)
+  , metadata(metadata)
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
 
@@ -67,41 +79,135 @@ AIETraceOffload::~AIETraceOffload()
 
 bool AIETraceOffload::initReadTrace()
 {
+  std::cout << "Inside init read trace!" << std::endl;
   buffers.clear();
   buffers.resize(numStream);
 
-  uint8_t  memIndex = 0;
-  if (isPLIO) {
-    memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
-  } else {
-    memIndex = 0;  // for now
+  // uint8_t  memIndex = 0;
+//   if (isPLIO) {
+//     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
+//   } else {
+//     memIndex = 0;  // for now
 
-/*
- * XRT_X86_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
-  gmioDMAInsts.clear();
-  gmioDMAInsts.resize(numStream);
-#endif
-  }
+// /*
+//  * XRT_X86_BUILD is set only for x86 builds
+//  * Only compile this on edge+versal build
+//  */
+// #if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
+//   gmioDMAInsts.clear();
+//   gmioDMAInsts.resize(numStream);
+// #endif
+//   }
 
   checkCircularBufferSupport();
+  constexpr uint32_t DATA_SIZE = 65536;
+  constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
+  
+  try {
+    mKernel = xrt::kernel(context, "XDP_KERNEL");  
+  } catch (std::exception &e){
+    std::stringstream msg;
+    msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to configure AIE Trace Offloading." << e.what() ;
+    xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    return false;
+  }
 
-  for(uint64_t i = 0; i < numStream ; ++i) {
-    buffers[i].bufId = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
-    if (!buffers[i].bufId) {
-      bufferInitialized = false;
-      return bufferInitialized;
+
+  for(uint64_t i = 0; i < 1; ++i) {
+    std::cout << "Allocating stream in  read trace!" << std::endl;
+    inp_bo = xrt::bo(context.get_device(), DATA_SIZE * sizeof(uint32_t), XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0));
+
+    // buffers[i].bufId = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
+    // if (!buffers[i].bufId) {
+    //   bufferInitialized = false;
+    //   return bufferInitialized;
+    // }
+
+    // // Data Mover will write input stream to this address
+    // uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
+
+    // std::string tracemsg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
+    // xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", tracemsg.c_str());
+
+    // std::cout << "Buffer Address: " << bufAddr << std::endl;
+
+    XAie_Config cfg { 
+      metadata->getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),               //hw_gen
+      metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
+      metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
+      metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
+      metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows,
+      metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols,
+      metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
+      metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start,
+      metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
+      metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start,
+      metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
+      {0}                                                                          //PartProp
+    };
+
+    auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
+    if (RC != XAIE_OK) {
+      xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
+      return false;
     }
 
-    // Data Mover will write input stream to this address
-    uint64_t bufAddr = deviceIntf->getTraceBufDeviceAddr(buffers[i].bufId);
+    //Start recording the transaction
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
-    std::string msg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
+    // AieRC RC;
+    XAie_LocType loc;
+    XAie_DmaDesc DmaDesc2;
 
-    std::cout << "Buffer Address: " << bufAddr << std::endl;
+    loc = XAie_TileLoc(1, 0);
+    uint8_t s2mm_ch_id = 1;
+    uint8_t s2mm_bd_id = 4 * s2mm_ch_id;
+
+    // uint8_t mm2s_bd_id = 2;
+    // uint8_t mm2s_ch_id = 0;
+
+    printf("Configuring AIE...\n");
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+
+    // S2MM BD
+    RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc2, loc);
+    RC = XAie_DmaSetAddrLen(&DmaDesc2, inp_bo.address() + DDR_AIE_ADDR_OFFSET, DATA_SIZE * sizeof(uint32_t));
+    RC = XAie_DmaEnableBd(&DmaDesc2);
+    RC = XAie_DmaSetAxi(&DmaDesc2, 0U, 4U, 0U, 0U, 0U);
+    RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc2, loc, s2mm_bd_id);
+
+    printf("Enabling channels....\n");
+    RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM, s2mm_bd_id);
+    // RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, mm2s_ch_id, DMA_MM2S, mm2s_bd_id);
+
+    RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
+    // RC = XAie_DmaChannelEnable(&aieDevInst, loc, mm2s_ch_id, DMA_MM2S);
+
+
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+    xrt::bo instr_bo;
+
+    // Configuration bo
+    try {
+      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    } catch (std::exception &e){
+      std::stringstream msg;
+      msg << "Unable to create instruction buffer for AIE Trace transaction. Not configuring AIE Trace Offloading. " << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return false;
+    }
+
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    run.wait2();
+
+    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Trace Offloading Transaction Buffer.");
+
+    // Must clear aie state
+    XAie_ClearTransaction(&aieDevInst);
 
     // VPDatabase* db = VPDatabase::Instance();
     // TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
@@ -175,11 +281,12 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTraceGMIO(bool final)
 {
-  (void)final;
+  std::cout << "Inside read Trace GMIO" << std::endl;
+
   // // Keep it low to save bandwidth
   // constexpr uint64_t chunk_512k = 0x80000;
 
-  // for (uint64_t index = 0; index < numStream; ++index) {
+  // for (uint64_t index = 0; index < 1; ++index) {
   //   auto& bd = buffers[index];
   //   if (bd.offloadDone)
   //     continue;
@@ -192,11 +299,13 @@ void AIETraceOffload::readTraceGMIO(bool final)
 
   //   bd.offset += syncAndLog(index);
   // }
+  (void)final;
+  syncAndLog(0);
 }
 
 uint64_t AIETraceOffload::syncAndLog(uint64_t index)
 {
-  return index;
+  std::cout << "Inside Sync and Log " << index << std::endl;
   // auto& bd = buffers[index];
 
   // if (bd.offset >= bd.usedSz)
@@ -230,9 +339,14 @@ uint64_t AIETraceOffload::syncAndLog(uint64_t index)
   //   bd.offloadDone = true;
   // }
 
-  // // Log nBytes of trace
-  // traceLogger->addAIETraceData(index, hostBuf, nBytes, mEnCircularBuf);
-  // return nBytes;
+  inp_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+  auto in_bo_map = inp_bo.map<void*>();
+  std::cout << "Synced From Device" << std::endl;
+
+  // Log nBytes of trace
+  traceLogger->addAIETraceData(0, in_bo_map, inp_bo.size(), false);
+  return inp_bo.size();
 }
 
 bool AIETraceOffload::isTraceBufferFull()

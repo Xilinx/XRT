@@ -254,6 +254,8 @@ namespace xdp {
     , isPLIO              // isPLIO?
     , aieTraceBufSize     // total trace buffer size
     , AIEData.metadata->getNumStreams()
+    , AIEData.metadata->getHwContext()
+    , AIEData.metadata
     );
     auto& offloader = AIEData.offloader;
 
@@ -263,17 +265,19 @@ namespace xdp {
       offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
     }
 
-    // try {
-    //   if (!offloader->initReadTrace()) {
-    //     xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
-    //     AIEData.valid = false;
-    //     return;
-    //   }
-    // } catch (...) {
-    //     std::string msg = "AIE trace is currently not supported on this platform.";
-    //     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-    //     AIEData.valid = false;
-    // }
+    std::cout << "About to schedule offloader!" << std::endl;
+
+    try {
+      if (!offloader->initReadTrace()) {
+        xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
+        AIEData.valid = false;
+        return;
+      }
+    } catch (...) {
+        std::string msg = "AIE trace is currently not supported on this platform.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        AIEData.valid = false;
+    }
     
     // Support system timeline
     if (xrt_core::config::get_aie_trace_settings_enable_system_timeline()) {
@@ -330,10 +334,12 @@ namespace xdp {
 
   void AieTracePluginUnified::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn)
   {
+    std::cout << "Flushing offloaders" << std::endl;
     if (offloader->continuousTrace()) {
       offloader->stopOffload();
       while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
     } else {
+      std::cout << "Calling Offloader read trace" << std::endl;
       offloader->readTrace(true);
       offloader->endReadTrace();
     } 

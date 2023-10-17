@@ -69,8 +69,8 @@ namespace xdp {
                             const std::string metricSet, const XAie_Events event);
 
       uint32_t bcIdToEvent(int bcId);
-      int run_shim_loopback();
-      uint8_t* shim_loopback_test(uint64_t src, uint64_t dest, uint32_t size, uint8_t col);
+      // int run_shim_loopback();
+      // uint8_t* shim_loopback_test(uint64_t src, uint64_t dest, uint32_t size, uint8_t col);
 
     private:
       typedef XAie_Events EventType;
@@ -85,26 +85,26 @@ namespace xdp {
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
 
-    std::map<std::string, EventVector> mCoreEventSets;
-    std::map<std::string, EventVector> mMemoryEventSets;
-    std::map<std::string, EventVector> mMemoryTileEventSets;
-    std::map<std::string, EventVector> mInterfaceTileEventSets;
+      std::map<std::string, EventVector> mCoreEventSets;
+      std::map<std::string, EventVector> mMemoryEventSets;
+      std::map<std::string, EventVector> mMemoryTileEventSets;
+      std::map<std::string, EventVector> mInterfaceTileEventSets;
 
-    // Trace metrics (same for all sets)
-    EventType mCoreTraceStartEvent;
-    EventType mCoreTraceEndEvent;
-    EventType mMemoryTileTraceStartEvent;
-    EventType mMemoryTileTraceEndEvent;
-    EventType mInterfaceTileTraceStartEvent;
-    EventType mInterfaceTileTraceEndEvent;
+      // Trace metrics (same for all sets)
+      EventType mCoreTraceStartEvent;
+      EventType mCoreTraceEndEvent;
+      EventType mMemoryTileTraceStartEvent;
+      EventType mMemoryTileTraceEndEvent;
+      EventType mInterfaceTileTraceStartEvent;
+      EventType mInterfaceTileTraceEndEvent;
 
-    // Tile locations to apply trace end and flush
-    std::vector<XAie_LocType> mTraceFlushLocs;
-    std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
-    std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
+      // Tile locations to apply trace end and flush
+      std::vector<XAie_LocType> mTraceFlushLocs;
+      std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
+      std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
 
-    // Keep track of number of events reserved per module and/or tile
-    int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];
+      // Keep track of number of events reserved per module and/or tile
+      int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];
     
   };
 

@@ -27,6 +27,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "core/common/device.h"
 #include "core/common/system.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 namespace xdp {
 

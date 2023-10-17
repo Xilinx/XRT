@@ -297,7 +297,13 @@ namespace xdp {
 
     for (uint32_t i = 0; i < output->count; i++) {
       std::stringstream msg;
-      msg << "Debug Register address/values: 0x" << std::hex << output->profile_data[i].perf_address << ": " << std::dec << output->profile_data[i].perf_value;
+      uint64_t addr = output->profile_data[i].perf_address;
+      uint64_t reg = addr & 0xFFFFF;
+      uint64_t col = addr >> 25;
+      uint64_t row = (addr >> 20) & 0x1F;
+      msg << "Debug Register "  << col << "," << row << std::hex 
+        << " 0x" << reg << " :" 
+        << " 0x" << output->profile_data[i].perf_value << std::dec;
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 

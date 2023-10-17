@@ -140,6 +140,26 @@ namespace xdp {
     // Interface tile trace is flushed at end of run
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
     mInterfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_PL;
+
+    XAie_Config cfg { 
+      metadata->getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),               //hw_gen
+      metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
+      metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
+      metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
+      metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows,
+      metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols,
+      metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
+      metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start,
+      metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
+      metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start,
+      metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
+      {0}                                                                          //PartProp
+    };
+
+    auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
+    if (RC != XAIE_OK) {
+      xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
+    }
   }
 
   void AieTrace_WinImpl::updateDevice()
@@ -393,27 +413,6 @@ namespace xdp {
 
     // Inputs to the DPU kernel
     std::vector<trace_data_t> op_trace_data;
-
-    XAie_Config cfg { 
-      metadata->getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),               //hw_gen
-      metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
-      metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
-      metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
-      metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows,
-      metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols,
-      metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
-      metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start,
-      metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
-      metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start,
-      metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-      {0}                                                                          //PartProp
-    };
-
-    auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
-    if (RC != XAIE_OK) {
-      xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
-      return false;
-    }
 
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -1005,7 +1004,7 @@ namespace xdp {
     // printTraceEventStats(deviceId);
     xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace IPU SetMetricsSettings.");
     
-    run_shim_loopback();
+    // run_shim_loopback();
     return true;
   }
 
