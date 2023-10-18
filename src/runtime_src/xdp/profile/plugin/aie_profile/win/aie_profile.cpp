@@ -523,8 +523,8 @@ namespace xdp {
 
     XAie_ClearTransaction(&aieDevInst);
 
-    static const uint32_t SIZE_4K   = 0x1000;
-    static const uint32_t OFFSET_3K = 0x0C00;
+    static constexpr uint32_t SIZE_4K   = 0x1000;
+    static constexpr uint32_t OFFSET_3K = 0x0C00;
 
     // results BO syncs profile result from device
     xrt::bo result_bo;
