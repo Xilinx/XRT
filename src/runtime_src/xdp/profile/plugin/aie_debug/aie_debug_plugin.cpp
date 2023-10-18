@@ -165,7 +165,7 @@ namespace xdp {
           msg << "AIE Debug monitoring AIE tile (" << tile.col << "," 
             << tile.row << ") in module " << module << ".";
           xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-          op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20), 0});
+          op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20)});
           counterId++;
         }
       }
@@ -295,7 +295,7 @@ namespace xdp {
     // results BO syncs AIE Debug result from device
     xrt::bo result_bo;
     try {
-      result_bo = xrt::bo(context.get_device(), SIZE_4K, , XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+      result_bo = xrt::bo(context.get_device(), SIZE_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e) {
       std::stringstream msg;
       msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << std::endl;
@@ -306,7 +306,7 @@ namespace xdp {
     auto result_bo_map = result_bo.map<uint8_t*>();
     result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-    auto output = reinterpret_cast<uint32_t*>(result_bo_map+OFFSET_3K);
+    uint32_t* output = reinterpret_cast<uint32_t*>(result_bo_map+OFFSET_3K);
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;
