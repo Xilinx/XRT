@@ -71,9 +71,12 @@ AIETraceOffload::AIETraceOffload
 
 AIETraceOffload::~AIETraceOffload()
 {
+  std::cout << "Destroying AIE Trace Offload!" << std::endl;
   stopOffload();
   if (offloadThread.joinable())
     offloadThread.join();
+  std::cout << "Finished Destroying AIE Trace Offload!" << std::endl;
+
 }
 
 
@@ -159,9 +162,9 @@ bool AIETraceOffload::initReadTrace()
     XAie_LocType loc;
     XAie_DmaDesc DmaDesc2;
 
-    loc = XAie_TileLoc(1, 0);
+    loc = XAie_TileLoc(4, 0);
     uint8_t s2mm_ch_id = 1;
-    uint8_t s2mm_bd_id = 4 * s2mm_ch_id;
+    uint8_t s2mm_bd_id = 15/*4 * s2mm_ch_id*/;
 
     // uint8_t mm2s_bd_id = 2;
     // uint8_t mm2s_ch_id = 0;
@@ -169,11 +172,15 @@ bool AIETraceOffload::initReadTrace()
     printf("Configuring AIE...\n");
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
+    std::cout << "INPUT BO ADDRESS: " << inp_bo.address() << std::endl;
+    std::cout << "INPUT BO ADDRESS + DDR OFFSET: " << inp_bo.address() + DDR_AIE_ADDR_OFFSET << std::endl;
+    std::cout << "DATA SIZE: " << DATA_SIZE * sizeof(uint32_t) << std::endl;
+    
     // S2MM BD
     RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc2, loc);
     RC = XAie_DmaSetAddrLen(&DmaDesc2, inp_bo.address() + DDR_AIE_ADDR_OFFSET, DATA_SIZE * sizeof(uint32_t));
     RC = XAie_DmaEnableBd(&DmaDesc2);
-    RC = XAie_DmaSetAxi(&DmaDesc2, 0U, 4U, 0U, 0U, 0U);
+    RC = XAie_DmaSetAxi(&DmaDesc2, 0U, 8U, 0U, 0U, 0U);
     RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc2, loc, s2mm_bd_id);
 
     printf("Enabling channels....\n");
@@ -341,11 +348,22 @@ uint64_t AIETraceOffload::syncAndLog(uint64_t index)
 
   inp_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-  auto in_bo_map = inp_bo.map<void*>();
+  auto in_bo_map = inp_bo.map<uint32_t*>();
+
+  if (!in_bo_map) {
+    std::cout << "Map was nullptr" << std::endl;
+    return 0;
+  } 
+
+  for (int i = 0; i < 32; i++) {
+    std::cout << std::hex << in_bo_map[i] << std::endl;
+  }
+
   std::cout << "Synced From Device" << std::endl;
 
   // Log nBytes of trace
-  traceLogger->addAIETraceData(0, in_bo_map, inp_bo.size(), false);
+  traceLogger->addAIETraceData(0, (void*)in_bo_map, inp_bo.size(), false);
+  std::cout << "Finished Logging!" << std::endl;
   return inp_bo.size();
 }
 
@@ -440,10 +458,10 @@ bool AIETraceOffload::keepOffloading()
 
 void AIETraceOffload::stopOffload()
 {
-  std::lock_guard<std::mutex> lock(statusLock);
-  if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
-    return;
-  offloadStatus = AIEOffloadThreadStatus::STOPPING;
+  // std::lock_guard<std::mutex> lock(statusLock);
+  // if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
+  //   return;
+  // offloadStatus = AIEOffloadThreadStatus::STOPPING;
 }
 
 void AIETraceOffload::offloadFinished()

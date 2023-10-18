@@ -336,6 +336,7 @@ namespace xdp {
   {
     std::cout << "Flushing offloaders" << std::endl;
     if (offloader->continuousTrace()) {
+      std::cout << "In continuous trace!" << std::endl;;
       offloader->stopOffload();
       while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
     } else {
@@ -395,19 +396,22 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "Beginning AIE Trace WriteAll.");
     // RETURN FOR NOW
-    return;
+    // return;
 
     (void)openNewFiles;
     for (const auto& kv : handleToAIEData) {
       // End polling thread
       endPollforDevice(kv.first);
+      std::cout << "Finished End pOll!" << std::endl;
 
       auto& AIEData = kv.second;
       if (AIEData.valid) {
+        std::cout << "Flushing offloaders!!!" << std::endl;
         AIEData.implementation->flushAieTileTraceModule();
         flushOffloader(AIEData.offloader, true);
       }
     }
+    std::cout << "Finished flushing!" << std::endl;
 
     XDPPlugin::endWrite();
     handleToAIEData.clear();
@@ -420,6 +424,7 @@ namespace xdp {
 
   void AieTracePluginUnified::endPollforDevice(void* handle)
   {
+    std::cout << "Inside End Poll For Device!" << std::endl;
     auto itr = handleToAIEData.find(handle);
     if (itr == handleToAIEData.end())
       return;
@@ -431,6 +436,7 @@ namespace xdp {
     if (AIEData.thread.joinable())
       AIEData.thread.join();
     AIEData.implementation->freeResources();
+    std::cout << "Finished End Poll For Device!" << std::endl;
   }
 
   void AieTracePluginUnified::endPoll()
