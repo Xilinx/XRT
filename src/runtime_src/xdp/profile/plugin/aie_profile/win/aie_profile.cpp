@@ -540,14 +540,14 @@ namespace xdp {
     auto result_bo_map = result_bo.map<uint8_t*>();
     result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-    auto output = reinterpret_cast<uint32_t*>(result_bo_map+OFFSET_3K);
+    uint32_t* output = reinterpret_cast<uint32_t*>(result_bo_map+OFFSET_3K);
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;
       msg << "Counter address/values: 0x" << std::hex << op->profile_data[i].perf_address << ": " << std::dec << output[i];
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       std::vector<uint64_t> values = outputValues[i];
-      values[5] = static_cast<uint64_t>(op->profile_data[i].perf_value); //write pc value
+      values[5] = static_cast<uint64_t>(output[i]); //write pc value
       db->getDynamicInfo().addAIESample(index, timestamp, values);
     }
 
