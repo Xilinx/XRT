@@ -173,7 +173,7 @@ namespace xdp {
 
     // Check if trace streams are available TODO
     // AIEData.metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
-    AIEData.metadata->setNumStreams(2);
+    AIEData.metadata->setNumStreams(1);
 
     if (AIEData.metadata->getNumStreams() == 0) {
       AIEData.valid = false;

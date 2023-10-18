@@ -34,6 +34,7 @@
 #include "xdp/profile/plugin/aie_trace/win/transactions/op_init.hpp"
 
 constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
+constexpr uint32_t DATA_SIZE = 65536;
 
 namespace xdp {
 using severity_level = xrt_core::message::severity_level;
@@ -103,7 +104,6 @@ bool AIETraceOffload::initReadTrace()
 //   }
 
   checkCircularBufferSupport();
-  constexpr uint32_t DATA_SIZE = 65536;
   constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
   
   try {
@@ -356,13 +356,14 @@ uint64_t AIETraceOffload::syncAndLog(uint64_t index)
   } 
 
   for (int i = 0; i < 32; i++) {
-    std::cout << std::hex << in_bo_map[i] << std::endl;
+    if (in_bo_map[i] != 0)
+      std::cout << std::hex << in_bo_map[i] << std::endl;
   }
 
   std::cout << "Synced From Device" << std::endl;
 
   // Log nBytes of trace
-  traceLogger->addAIETraceData(0, (void*)in_bo_map, inp_bo.size(), false);
+  traceLogger->addAIETraceData(0, (void*)in_bo_map, 4, false);
   std::cout << "Finished Logging!" << std::endl;
   return inp_bo.size();
 }
