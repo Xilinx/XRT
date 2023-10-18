@@ -529,7 +529,7 @@ namespace xdp {
     // results BO syncs profile result from device
     xrt::bo result_bo;
     try {
-      result_bo = xrt::bo(context.get_device(), SIZE_4K, , XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+      result_bo = xrt::bo(context.get_device(), SIZE_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e) {
       std::stringstream msg;
       msg << "Unable to create result buffer for AIE Profle. Cannot get AIE Profile Info." << e.what() << std::endl;
@@ -547,7 +547,7 @@ namespace xdp {
       msg << "Counter address/values: 0x" << std::hex << op->profile_data[i].perf_address << ": " << std::dec << output[i];
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
       std::vector<uint64_t> values = outputValues[i];
-      values[5] = static_cast<uint64_t>(output->profile_data[i].perf_value); //write pc value
+      values[5] = static_cast<uint64_t>(op->profile_data[i].perf_value); //write pc value
       db->getDynamicInfo().addAIESample(index, timestamp, values);
     }
 
