@@ -40,6 +40,7 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 
 #include <boost/format.hpp>
@@ -3188,9 +3189,10 @@ void
 run::
 start()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_start);
   xdp::native::profiling_wrapper
-    ("xrt::run::start", [this]{
-    handle->start();
+    ("xrt::run::start", [this] {
+      handle->start();
     });
 }
 
@@ -3219,6 +3221,7 @@ ert_cmd_state
 run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_wait);
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
@@ -3229,6 +3232,7 @@ std::cv_status
 run::
 wait2(const std::chrono::milliseconds& timeout_ms) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_wait2);
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
@@ -3321,6 +3325,7 @@ void
 run::
 submit_wait(const xrt::fence& fence)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_submit_wait);
   return xdp::native::profiling_wrapper("xrt::run::submit_wait", [this, &fence]{
     handle->submit_wait(fence);
   });
@@ -3330,6 +3335,7 @@ void
 run::
 submit_signal(const xrt::fence& fence)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_submit_signal);
   return xdp::native::profiling_wrapper("xrt::run::submit_signal", [this, &fence]{
     handle->submit_signal(fence);
   });
