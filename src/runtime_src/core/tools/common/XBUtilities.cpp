@@ -404,6 +404,15 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     if (xrt_core::device_query_default<xq::is_versal>(device, false))
       check_versal_boot(device);
 
+    const std::string device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(device, "");
+    if (device_name.find("IPU") != std::string::npos) {
+      std::cout << "------------------------------------------------------------\n";
+      std::cout << "                        EARLY ACCESS                        \n";
+      std::cout << "        This release of xbutil contains early access        \n";
+      std::cout << "         experimental features which may have bugs.         \n";
+      std::cout << "------------------------------------------------------------\n";
+    }
+
     return device;
   }
 
