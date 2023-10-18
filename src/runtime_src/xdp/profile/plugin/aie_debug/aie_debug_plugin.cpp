@@ -284,21 +284,34 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to successfully execute AIE Profile polling kernel. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return;
     }
 
     XAie_ClearTransaction(&aieDevInst);
 
-    auto instrbo_map = instr_bo.map<uint8_t*>();
-    instr_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    
-    // TODO: figure out where the 8 comes from
-    instrbo_map += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
-    auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
+    static constexpr uint32_t SIZE_4K   = 0x1000;
+    static constexpr uint32_t OFFSET_3K = 0x0C00;
 
-    for (uint32_t i = 0; i < output->count; i++) {
+    // results BO syncs AIE Debug result from device
+    xrt::bo result_bo;
+    try {
+      result_bo = xrt::bo(context.get_device(), SIZE_4K, , XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    } catch (std::exception &e) {
       std::stringstream msg;
-      msg << "Debug Register address/values: 0x" << std::hex << output->profile_data[i].perf_address << ": " << std::dec << output->profile_data[i].perf_value;
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      return;
+    }
+
+    auto result_bo_map = result_bo.map<uint8_t*>();
+    result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+    auto output = reinterpret_cast<uint32_t*>(result_bo_map+OFFSET_3K);
+
+    for (uint32_t i = 0; i < op->count; i++) {
+      std::stringstream msg;
+      msg << "Debug Register address/values: 0x" << std::hex << op->profile_data[i].perf_address << ": " << std::dec << output[i];
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
 
     free(op);
@@ -310,3 +323,4 @@ namespace xdp {
   }
 
 }  // end namespace xdp
+
