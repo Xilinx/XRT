@@ -19,6 +19,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/sensor.h"
 #include "core/common/system.h"
+#include "core/common/trace.h"
 
 #include "device_int.h"
 #include "handle.h"
@@ -53,6 +54,7 @@ send_exception_message(const char* msg)
 static std::shared_ptr<xrt_core::device>
 alloc_device_index(unsigned int index)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_alloc_index);
   return xrt_core::get_userpf_device(index) ;
 }
 
@@ -244,6 +246,7 @@ uuid
 device::
 load_xclbin(const struct axlf* top)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_load_xclbin);
   return xdp::native::profiling_wrapper("xrt::device::load_xclbin", [this, top]{
     xrt::xclbin xclbin{top};
     handle->load_xclbin(xclbin);
@@ -255,6 +258,7 @@ uuid
 device::
 load_xclbin(const std::string& fnm)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_load_xclbin);
   return xdp::native::profiling_wrapper("xrt::device::load_xclbin", [this, &fnm]{
     xrt::xclbin xclbin{fnm};
     handle->load_xclbin(xclbin);
@@ -266,6 +270,7 @@ uuid
 device::
 load_xclbin(const xclbin& xclbin)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_load_xclbin);
   return xdp::native::profiling_wrapper("xrt::device::load_xclbin",
   [this, &xclbin]{
     handle->load_xclbin(xclbin);
@@ -277,6 +282,7 @@ uuid
 device::
 register_xclbin(const xclbin& xclbin)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_device_register_xclbin);
   return xdp::native::profiling_wrapper("xrt::device::register_xclbin",
   [this, &xclbin]{
     handle->record_xclbin(xclbin);

@@ -109,6 +109,56 @@ end_debug(void* handle)
 
 } // end namespace xrt_core::xdp::aie::debug
 
+
+namespace xrt_core::xdp::ml_timeline {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> finish_flush_device_cb;
+
+void
+register_callbacks(void* handle)
+{ 
+  #ifdef XDP_MINIMAL_BUILD
+    using ftype = void (*)(void*);
+
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
+  #else
+    (void)handle;
+  #endif
+
+}
+
+void
+warning_callbacks()
+{
+}
+
+void
+load()
+{
+  static xrt_core::module_loader xdp_loader("xdp_ml_timeline_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
+}
+
+// Make connections
+void
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void
+finish_flush_device(void* handle)
+{
+  if (finish_flush_device_cb)
+    finish_flush_device_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::ml_timeline
+
 namespace xrt_core::xdp {
 
 void 
@@ -133,6 +183,16 @@ update_device(void* handle)
     }
     xrt_core::xdp::aie::debug::update_device(handle);
   }
+
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::ml_timeline::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::ml_timeline::update_device(handle);
+  }
 }
 
 void 
@@ -143,6 +203,9 @@ finish_flush_device(void* handle)
 
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
+
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::finish_flush_device(handle);
 }
 
 } // end namespace xrt_core::xdp

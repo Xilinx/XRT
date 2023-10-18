@@ -252,6 +252,13 @@ get_trace_buffer_size()
 }
 
 inline bool
+get_ml_timeline()
+{
+  static bool value = detail::get_bool_value("Debug.ml_timeline",false);
+  return value;
+}
+
+inline bool
 get_profile_api()
 {
   static bool value = detail::get_bool_value("Debug.profile_api", false);
