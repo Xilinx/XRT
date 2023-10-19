@@ -112,7 +112,6 @@ struct ishim
 
   virtual std::string
   get_type() = 0;
-  // { throw not_supported_error{__func__}; }
   
   // Import an exported BO from another process identified by argument pid.
   // This function is only supported on systems with pidfd kernel support

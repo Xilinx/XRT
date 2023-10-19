@@ -47,9 +47,6 @@ public:
   { 
     return "edge_swemu"; 
   }
-
-
-
 private:
   // Private look up function for concrete query::request
   virtual const query::request&

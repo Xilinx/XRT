@@ -59,7 +59,6 @@ private:
   { 
     return "pcie_linux"; 
   }
-
 };
 
 }} // hwemu, xrt_core
