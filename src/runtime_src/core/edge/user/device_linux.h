@@ -82,6 +82,14 @@ public:
 
   std::unique_ptr<buffer_handle>
   import_bo(pid_t pid, shared_handle::export_handle ehdl) override;
+
+  std::string
+  get_type() override
+  { 
+    return "edge_linux"; 
+  }
+
+  
   ////////////////////////////////////////////////////////////////
 
 private:

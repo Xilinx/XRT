@@ -53,6 +53,13 @@ private:
 
   std::unique_ptr<buffer_handle>
   import_bo(pid_t pid, shared_handle::export_handle ehdl) override;
+
+  std::string
+  get_type() override
+  { 
+    return "pcie_hwemu"; 
+  }
+
 };
 
 }} // hwemu, xrt_core

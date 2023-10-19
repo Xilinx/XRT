@@ -110,6 +110,10 @@ struct ishim
   virtual std::unique_ptr<buffer_handle>
   alloc_bo(void* userptr, size_t size, uint64_t flags) = 0;
 
+  virtual std::string
+  get_type() = 0;
+  // { throw not_supported_error{__func__}; }
+  
   // Import an exported BO from another process identified by argument pid.
   // This function is only supported on systems with pidfd kernel support
   // Redo when supporting windows

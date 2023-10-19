@@ -63,6 +63,12 @@ public:
     return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
   }
 
+  std::string
+  get_type() override
+  { 
+    return "pcie_windows";
+  }
+
 private:
   // Private look up function for concrete query::request
   virtual const query::request&
