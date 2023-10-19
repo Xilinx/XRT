@@ -57,7 +57,7 @@ private:
   std::string
   get_type() override
   { 
-    return "pcie_hwemu"; 
+    return "pcie_linux"; 
   }
 
 };
