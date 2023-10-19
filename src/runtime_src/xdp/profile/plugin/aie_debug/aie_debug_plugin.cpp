@@ -251,10 +251,10 @@ namespace xdp {
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
     try {
-      mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
+      mKernel = xrt::kernel(context, "XDP_KERNEL");  
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to find DPU kernel from hardware context. Not configuring AIE Profile. " << e.what() ;
+      msg << "Unable to find XDP_KERNEL kernel from hardware context. Not configuring AIE Debug. " << e.what() ;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -270,7 +270,7 @@ namespace xdp {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to create the instruction buffer for polling during AIE Profile. " << e.what() << std::endl;
+      msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
