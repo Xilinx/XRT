@@ -104,10 +104,8 @@ namespace xdp {
     else {
       mCoreStartEvents["floating_point"]   = {XAIE_EVENT_FP_HUGE_CORE,        XAIE_EVENT_INT_FP_0_CORE, 
                                               XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
-      mCoreStartEvents["s2mm_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE,
-                                              XAIE_EVENT_PORT_RUNNING_1_CORE, XAIE_EVENT_PORT_STALLED_1_CORE};
-      mCoreStartEvents["mm2s_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE,
-                                              XAIE_EVENT_PORT_RUNNING_1_CORE, XAIE_EVENT_PORT_STALLED_1_CORE};
+      mCoreStartEvents["s2mm_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE};
+      mCoreStartEvents["mm2s_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE};
     }
     mCoreEndEvents = mCoreStartEvents;
 
@@ -144,9 +142,17 @@ namespace xdp {
 
     // **** Interface Tile Counters ****
     mShimStartEvents = {
-      {"input_throughputs",       {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_GROUP_DMA_ACTIVITY_PL}},
-      {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_GROUP_DMA_ACTIVITY_PL}},
-      {"packets",                 {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
+      {"packets",                 {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
+      {"input_throughputs",       {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {"output_throughputs",      {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {"s2mm_stalls0",            {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL}},
+      {"s2mm_stalls1",            {XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL}},
+      {"mm2s_stalls0",            {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
+      {"mm2s_stalls1",            {XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL}}
     };
     mShimEndEvents = mShimStartEvents;
 
@@ -177,6 +183,32 @@ namespace xdp {
                                    XAIE_EVENT_PORT_IDLE_0_MEM_TILE,
                                    XAIE_EVENT_PORT_TLAST_0_MEM_TILE}}
     };
+    if (metadata->getHardwareGen() > 1) {
+      mMemTileStartEvents["s2mm_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                                 XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE,
+                                                 XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
+                                                 XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
+      mMemTileStartEvents["mm2s_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                                 XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
+                                                 XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
+                                                 XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
+      mMemTileStartEvents["conflict_stats1"]  = {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
+      mMemTileStartEvents["conflict_stats2"]  = {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE};
+      mMemTileStartEvents["conflict_stats3"]  = {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE}; 
+      mMemTileStartEvents["conflict_stats4"]  = {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
+                                                 XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
+    }
     mMemTileEndEvents = mMemTileStartEvents;
   }
 
