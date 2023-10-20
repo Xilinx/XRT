@@ -15,6 +15,8 @@
 namespace xrt_core { namespace hw_context_int {
 
 // Get the core_device from this context
+// Exported for xdp access
+XRT_CORE_COMMON_EXPORT
 std::shared_ptr<xrt_core::device>
 get_core_device(const xrt::hw_context& ctx);
 

@@ -287,7 +287,7 @@ namespace xdp {
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20), 0});
 
           std::vector<uint64_t> values;
-          values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 1000, payload});
+          values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 0, payload});
           outputValues.push_back(values);
 
           counterId++;
@@ -314,10 +314,10 @@ namespace xdp {
     auto context = metadata->getHwContext();
 
     try {
-      mKernel = xrt::kernel(context, "DPU_PROFILE");  
+      mKernel = xrt::kernel(context, "XDP_KERNEL");  
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to find DPU_PROFILE kernel from hardware context. Failed to configure AIE Profile." << e.what() ;
+      msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to configure AIE Profile." << e.what() ;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
