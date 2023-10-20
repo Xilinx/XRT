@@ -168,7 +168,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       auto time_start = std::chrono::high_resolution_clock::now();
 
       for (int i = 0; i < num_kernel_ddr; i++) {
-        auto run = krnls[i](input_buffer, output_buffer, data_size, reps);
+        auto run = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
         run.wait();
       }
       auto time_end = std::chrono::high_resolution_clock::now();
