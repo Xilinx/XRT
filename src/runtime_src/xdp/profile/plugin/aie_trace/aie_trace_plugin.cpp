@@ -178,8 +178,9 @@ namespace xdp {
     }
 
     // Check if trace streams are available TODO
-    // AIEData.metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
-    AIEData.metadata->setNumStreams(1);
+    AIEData.metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
+    // AIEData.metadata->setNumStreams(1);
+    std::cout << "Num Streams: " << AIEData.metadata->getNumStreams() << std::endl;
 
     if (AIEData.metadata->getNumStreams() == 0) {
       AIEData.valid = false;

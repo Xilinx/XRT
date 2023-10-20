@@ -34,7 +34,6 @@
 #include "xdp/profile/plugin/aie_trace/win/transactions/op_init.hpp"
 
 constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
-constexpr uint32_t DATA_SIZE = 65536;
 
 namespace xdp {
 using severity_level = xrt_core::message::severity_level;
@@ -108,12 +107,14 @@ initReadTrace()
     xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
     return false;
   }
+  for (uint64_t i = 0; i < numStream; ++i) {
+    VPDatabase* db = VPDatabase::Instance();
+    TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-  for (uint64_t i = 0; i < 1; ++i) {
-    std::cout << "Allocating stream in  read trace!" << std::endl;
-    inp_bo = xrt::bo(context.get_device(), DATA_SIZE * sizeof(uint32_t), XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0));
-    std::cout << "INPUT BO ADDRESS: " << inp_bo.address() + DDR_AIE_ADDR_OFFSET << std::endl;
-    std::cout << "DATA SIZE: " << DATA_SIZE * sizeof(uint32_t) << std::endl;
+    std::string tracemsg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", tracemsg.c_str());
+    xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz, XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0)));
+    
 
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -122,15 +123,15 @@ initReadTrace()
     // Todo: get this from aie metadata
     XAie_LocType loc;
     XAie_DmaDesc DmaDesc;
-    loc = XAie_TileLoc(4, 0);
-    uint8_t s2mm_ch_id = 1;
-    uint8_t s2mm_bd_id = 15;
+    loc = XAie_TileLoc(static_cast<uint8_t>(traceGMIO->shimColumn), 0);
+    uint8_t s2mm_ch_id = static_cast<uint8_t>(traceGMIO->channelNumber);
+    uint8_t s2mm_bd_id = 15; /* for now use last bd */
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
  
     // S2MM BD
     RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc, loc);
-    RC = XAie_DmaSetAddrLen(&DmaDesc, inp_bo.address() + DDR_AIE_ADDR_OFFSET, DATA_SIZE * sizeof(uint32_t));
+    RC = XAie_DmaSetAddrLen(&DmaDesc, xrt_bos[i].address() + DDR_AIE_ADDR_OFFSET, static_cast<uint32_t>(bufAllocSz));
     RC = XAie_DmaEnableBd(&DmaDesc);
     RC = XAie_DmaSetAxi(&DmaDesc, 0U, 8U, 0U, 0U, 0U);
     RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
@@ -173,21 +174,23 @@ void
 AIETraceOffload::
 readTraceGMIO(bool /*final*/)
 {
-  syncAndLog(0);
+  for (int index = 0; index < numStream; index++) {
+    syncAndLog(index);
+  }
 }
 
 uint64_t
 AIETraceOffload::
 syncAndLog(uint64_t index)
 {
-  inp_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-  auto in_bo_map = inp_bo.map<uint32_t*>();
+  xrt_bos[index].sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+  auto in_bo_map = xrt_bos[index].map<uint32_t*>();
   if (!in_bo_map)
     return 0;
 
   // Log nBytes of trace
-  traceLogger->addAIETraceData(index, (void*)in_bo_map, DATA_SIZE * sizeof(uint32_t), true);
-  return inp_bo.size();
+  traceLogger->addAIETraceData(index, (void*)in_bo_map, bufAllocSz, true);
+  return xrt_bos[index].size();
 }
 
 /*

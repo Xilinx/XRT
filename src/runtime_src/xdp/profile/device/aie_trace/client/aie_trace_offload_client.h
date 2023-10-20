@@ -155,7 +155,7 @@ private:
     XAie_DevInst aieDevInst = {0};
     xrt::kernel mKernel;
     std::shared_ptr<AieTraceMetadata> metadata;
-    xrt::bo inp_bo;
+    std::vector<xrt::bo> xrt_bos;
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
