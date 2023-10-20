@@ -579,7 +579,11 @@ install()
                 yum install -y centos-release-scl-rh
             fi
             yum install -y devtoolset-9
-	fi
+        fi
+    fi
+
+    if [ $FLAVOR == "centos" ] && [ $MAJOR -eq "8" ]; then
+        yum install -y gcc-toolset-9-toolchain
     fi
 
     if [ $FLAVOR == "fedora" ]; then

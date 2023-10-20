@@ -422,7 +422,7 @@ TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
 #ifdef _WIN32
   boost::ignore_unused(_dev);
   try {
-    xclbin_path = xrt_core::environment::xclbin_path(xclbin_name);
+    xclbin_path = xrt_core::environment::xclbin_path(xclbin_name).string();
   }
   catch(const std::exception) {
     const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_name;

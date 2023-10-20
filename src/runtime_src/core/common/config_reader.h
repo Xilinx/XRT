@@ -404,6 +404,13 @@ get_xclbin_programming()
   return get_xclbin_programing();
 }
 
+inline std::string
+get_xclbin_repo()
+{
+  static std::string value = detail::get_string_value("Runtime.xclbin_repo_path","");
+  return value;
+}
+
 /**
  * Enable xma mode. 1 = default (1 cu cmd at a time); 2 = (upto 2 cu cmds at a time);
  *     3 = (upto 8 cu cmds at a time);  4 = (upto 64 cu cmds at a time); Max cu cmds at a time per session
