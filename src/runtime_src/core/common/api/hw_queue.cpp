@@ -412,12 +412,17 @@ public:
   std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) override
   {
+    // Dispatch wait to shim hwqueue_handle rather than accessing
+    // pkt state directly.  This is done to allow shim direct control
+    // over command completion and command state.
+    if (m_qhdl->wait_command(cmd->get_exec_bo(), static_cast<int>(timeout_ms)) == 0)
+      return std::cv_status::timeout;
+
+    // Validate command state
     auto pkt = cmd->get_ert_packet();
-    while (pkt->state < ERT_CMD_STATE_COMPLETED) {
-      // return immediately on timeout
-      if (m_qhdl->wait_command(cmd->get_exec_bo(), static_cast<int>(timeout_ms)) == 0)
-        return std::cv_status::timeout;
-    }
+    if (pkt->state < ERT_CMD_STATE_COMPLETED)
+      // unexpected state
+      throw std::runtime_error("qds_device::wait() unexpected command state");
 
     // notify_host is not strictly necessary for unmanaged
     // command execution but provides a central place to update

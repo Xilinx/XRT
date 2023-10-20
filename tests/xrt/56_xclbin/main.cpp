@@ -156,6 +156,22 @@ operator << (std::ostream& ostr, const xrt::xclbin::aie_partition& aiep)
   return ostr;
 }
 
+static void
+list_xclbins_in_repo()
+{
+  // List all xclbins
+  std::cout << "============================ XCLBINS ==========================\n";
+  xrt::xclbin_repository repo{}; // repository, current directory, or ini
+  auto end = repo.end();
+  std::cout << "number of xclbins: " << std::distance(repo.begin(), end) << '\n';
+  for (auto itr = repo.begin(); itr != end; ++itr) {
+    std::cout << "xclbin: " << itr.path() << '\n';
+    auto xclbin = (*itr);
+    std::cout << "xsa(" << xclbin.get_xsa_name() << ")\n";
+    std::cout << "uuid(" << xclbin.get_uuid().to_string() << ")\n";
+  }
+}
+
 void
 run_cpp(const std::string& xclbin_fnm)
 {
@@ -225,6 +241,7 @@ run(int argc, char** argv)
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
+  list_xclbins_in_repo();
   run_cpp(xclbin_fnm);
   run_c(xclbin_fnm);
 

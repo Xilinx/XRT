@@ -88,7 +88,7 @@ add_board_info(const xrt_core::device* device, ptree_type& pt)
     bd_info.add("error_msg", ex.what());
   }
 
-  if (xrt_core::device_query<xq::is_versal>(device)) {
+  if (xrt_core::device_query_default<xq::is_versal>(device, false)) {
     bd_info.put("revision", xrt_core::device_query<xq::hwmon_sdm_revision>(device));
     bd_info.put("mfg_date", xrt_core::device_query<xq::hwmon_sdm_mfg_date>(device));
   }
@@ -149,12 +149,58 @@ add_p2p_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_performance_info(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    const auto mode = xrt_core::device_query<xq::performance_mode>(device);
+    pt.add("performance_mode", xq::performance_mode::parse_status(mode));
+  } 
+  catch (xrt_core::query::no_such_key&) {
+    pt.add("performance_mode", "not supported");
+  }
+}
+
+static std::string
+get_host_mem_status(const xrt_core::device* device)
+{
+  std::string host_mem_status;
+  try {
+    // Verify the user enabled host-mem
+    auto hostValue = xrt_core::device_query<xrt_core::query::shared_host_mem>(device);
+    host_mem_status = (hostValue > 0 ? "enabled" : "disabled");
+  }
+  catch (xrt_core::query::no_such_key&) {
+    // Device does not support host memory features
+    return "not supported";
+  }
+
+  try {
+    // Verify the address translator exists. Via the shell or an xclbin
+    xrt_core::device_query<xrt_core::query::enabled_host_mem>(device);
+  }
+  catch (xrt_core::query::exception&) {
+    // Device is missing an xclbin or shell with an address translator IP
+    return "disabled";
+  }
+
+  return host_mem_status;
+}
+
+void
+add_host_mem_info(const xrt_core::device* device, ptree_type& pt)
+{
+  pt.add("host_memory_status", get_host_mem_status(device));
+}
+
+void
 add_status_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_status;
 
   add_mig_info(device, pt_status);
   add_p2p_info(device, pt_status);
+  add_performance_info(device, pt_status);
+  add_host_mem_info(device, pt_status);
 
   pt.put_child("status", pt_status);
 }
@@ -343,7 +389,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_static_region_info(device, pt_platform);
   add_board_info(device, pt_platform);
   add_status_info(device, pt_platform);
-  if (xrt_core::device_query<xq::is_versal>(device))
+  if (xrt_core::device_query_default<xq::is_versal>(device, false))
     add_versal_controller_info(device, pt_platform);
   else
     add_controller_info(device, pt_platform);

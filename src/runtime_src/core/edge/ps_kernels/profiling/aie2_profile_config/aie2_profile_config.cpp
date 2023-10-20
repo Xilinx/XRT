@@ -19,7 +19,7 @@
 #include "xaiengine.h"
 
 #include "core/common/time.h"
-#include "core/edge/include/sk_types.h"
+#include "core/edge/include/pscontext.h"
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/shim.h"
 #include "xaiefal/xaiefal.hpp"
@@ -27,13 +27,12 @@
 #include "xdp/profile/plugin/aie_profile/x86/aie_profile_kernel_config.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 
-extern "C"{
+extern "C" {
 #include <xaiengine/xaiegbl_params.h>
 }
 
 // User private data structure container (context object) definition
-class xrtHandles : public pscontext
-{
+class xrtHandles : public pscontext {
   public:
     XAie_DevInst* aieDevInst = nullptr;
     xaiefal::XAieDev* aieDev = nullptr;
@@ -49,6 +48,7 @@ class xrtHandles : public pscontext
       // aieDevInst is not owned by xrtHandles, so don't delete here
       if (aieDev != nullptr)
         delete aieDev;
+
       // handle is not owned by xrtHandles, so don't close or delete here
     }
 };
@@ -61,12 +61,12 @@ namespace {
   using InterfaceMetrics = xdp::built_in::InterfaceMetrics;
   using MemTileMetrics = xdp::built_in::MemTileMetrics;
 
-  std::map<tile_type, uint8_t> processMetrics(const xdp::built_in::ProfileInputConfiguration* params, uint8_t module){
-  
+  std::map<tile_type, uint8_t> processMetrics(const xdp::built_in::ProfileInputConfiguration* params, uint8_t module)
+  {
     std::map<tile_type, uint8_t> tiles;
 
     for (int i = 0; i < params->numTiles; i++) {
-      if (params->tiles[i].tile_mod == module){
+      if (params->tiles[i].tile_mod == module) {
         auto tile = tile_type();
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
@@ -76,7 +76,8 @@ namespace {
         tile.is_trigger = params->tiles[i].is_trigger;
         tiles.insert({tile, params->tiles[i].metricSet});
       }
-    }  
+    }
+
     return tiles;
   }
 
@@ -84,30 +85,35 @@ namespace {
   {
     if (absRow == 0)
       return xdp::module_type::shim;
+
     if (absRow < offset)
       return xdp::module_type::mem_tile;
+
     return ((mod == XAIE_CORE_MOD) ? xdp::module_type::core : xdp::module_type::dma);
   }
 
   bool isStreamSwitchPortEvent(const XAie_Events event)
   {
     // AIE tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) 
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE)
         && (event < XAIE_EVENT_GROUP_BROADCAST_CORE))
       return true;
+
     // Interface tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL)
         && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
       return true;
+
     // MEM tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
+    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE)
         && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
       return true;
 
     return false;
   }
 
-  void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc, const XAie_ModuleType mod, const XAie_Events event, const uint8_t metricSet)
+  void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc, const XAie_ModuleType mod,
+                         const XAie_Events event, const uint8_t metricSet)
   {
     // Set masks for group events
     // NOTE: Group error enable register is blocked, so ignoring
@@ -123,20 +129,20 @@ namespace {
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
   }
 
-  void 
+  void
   configEventSelections(XAie_DevInst* aieDevInst,
-                                             const XAie_LocType loc,
-                                             const XAie_ModuleType mod,
-                                             const xdp::module_type type,
-                                             const xdp::built_in::MemTileMetrics metricSet,
-                                             const uint8_t channel0,
-                                             const uint8_t channel1) 
+                        const XAie_LocType loc,
+                        const XAie_ModuleType mod,
+                        const xdp::module_type type,
+                        const xdp::built_in::MemTileMetrics metricSet,
+                        const uint8_t channel0,
+                        const uint8_t channel1)
   {
     if (type != xdp::module_type::mem_tile)
       return;
 
     XAie_DmaDirection dmaDir = ((metricSet == xdp::built_in::MemTileMetrics::INPUT_CHANNELS)
-                              || (metricSet == xdp::built_in::MemTileMetrics::INPUT_CHANNELS_DETAILS)) ? DMA_S2MM : DMA_MM2S;
+                                || (metricSet == xdp::built_in::MemTileMetrics::INPUT_CHANNELS_DETAILS)) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
@@ -158,6 +164,7 @@ namespace {
 
     auto switchPortRsc = xaieTile.sswitchPort();
     auto ret = switchPortRsc->reserve();
+
     if (ret != AieRC::XAIE_OK)
       return;
 
@@ -179,9 +186,9 @@ namespace {
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
       auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+      auto streamPortId = static_cast<uint8_t>(tile.itr_mem_row);
 
-      // Define stream switch port to monitor interface 
+      // Define stream switch port to monitor interface
       XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       return;
     }
@@ -191,15 +198,16 @@ namespace {
       XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, 0);
     }
     else {
-      auto slaveOrMaster = ((metricSet == static_cast<uint8_t>(xdp::built_in::MemTileMetrics::OUTPUT_CHANNELS)) || (metricSet == static_cast<uint8_t>(xdp::built_in::MemTileMetrics::OUTPUT_CHANNELS_DETAILS))) ?
-        XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      auto slaveOrMaster = ((metricSet == static_cast<uint8_t>(xdp::built_in::MemTileMetrics::OUTPUT_CHANNELS)) ||
+                            (metricSet == static_cast<uint8_t>(xdp::built_in::MemTileMetrics::OUTPUT_CHANNELS_DETAILS))) ?
+                           XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
     }
   }
 
-   // Get reportable payload specific for this tile and/or counter
-  uint32_t getCounterPayload(XAie_DevInst* aieDevInst, 
-      const tile_type& tile, uint16_t column, uint16_t row, uint16_t startEvent)
+  // Get reportable payload specific for this tile and/or counter
+  uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
+                             const tile_type& tile, uint16_t column, uint16_t row, uint16_t startEvent)
   {
     // First, catch stream ID for PLIO metrics
     // NOTE: value = ((master or slave) << 8) & (stream ID)
@@ -221,28 +229,33 @@ namespace {
     constexpr int NUM_BDS = 8;
     constexpr uint32_t BYTES_PER_WORD = 4;
     constexpr uint32_t ACTUAL_OFFSET = 1;
-    uint64_t offsets[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL,            XAIEGBL_MEM_DMABD1CTRL,
-                                 XAIEGBL_MEM_DMABD2CTRL,            XAIEGBL_MEM_DMABD3CTRL,
-                                 XAIEGBL_MEM_DMABD4CTRL,            XAIEGBL_MEM_DMABD5CTRL,
-                                 XAIEGBL_MEM_DMABD6CTRL,            XAIEGBL_MEM_DMABD7CTRL};
-    uint32_t lsbs[NUM_BDS]    = {XAIEGBL_MEM_DMABD0CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD1CTRL_LEN_LSB,
-                                 XAIEGBL_MEM_DMABD2CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD3CTRL_LEN_LSB,
-                                 XAIEGBL_MEM_DMABD4CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD5CTRL_LEN_LSB,
-                                 XAIEGBL_MEM_DMABD6CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD7CTRL_LEN_LSB};
-    uint32_t masks[NUM_BDS]   = {XAIEGBL_MEM_DMABD0CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD1CTRL_LEN_MASK,
-                                 XAIEGBL_MEM_DMABD2CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD3CTRL_LEN_MASK,
-                                 XAIEGBL_MEM_DMABD4CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD5CTRL_LEN_MASK,
-                                 XAIEGBL_MEM_DMABD6CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD7CTRL_LEN_MASK};
-    uint32_t valids[NUM_BDS]  = {XAIEGBL_MEM_DMABD0CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD1CTRL_VALBD_MASK,
-                                 XAIEGBL_MEM_DMABD2CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD3CTRL_VALBD_MASK,
-                                 XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
-                                 XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
+    uint64_t offsets[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL, XAIEGBL_MEM_DMABD1CTRL,
+                                 XAIEGBL_MEM_DMABD2CTRL, XAIEGBL_MEM_DMABD3CTRL,
+                                 XAIEGBL_MEM_DMABD4CTRL, XAIEGBL_MEM_DMABD5CTRL,
+                                 XAIEGBL_MEM_DMABD6CTRL, XAIEGBL_MEM_DMABD7CTRL
+                                };
+    uint32_t lsbs[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL_LEN_LSB, XAIEGBL_MEM_DMABD1CTRL_LEN_LSB,
+                              XAIEGBL_MEM_DMABD2CTRL_LEN_LSB, XAIEGBL_MEM_DMABD3CTRL_LEN_LSB,
+                              XAIEGBL_MEM_DMABD4CTRL_LEN_LSB, XAIEGBL_MEM_DMABD5CTRL_LEN_LSB,
+                              XAIEGBL_MEM_DMABD6CTRL_LEN_LSB, XAIEGBL_MEM_DMABD7CTRL_LEN_LSB
+                             };
+    uint32_t masks[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL_LEN_MASK, XAIEGBL_MEM_DMABD1CTRL_LEN_MASK,
+                               XAIEGBL_MEM_DMABD2CTRL_LEN_MASK, XAIEGBL_MEM_DMABD3CTRL_LEN_MASK,
+                               XAIEGBL_MEM_DMABD4CTRL_LEN_MASK, XAIEGBL_MEM_DMABD5CTRL_LEN_MASK,
+                               XAIEGBL_MEM_DMABD6CTRL_LEN_MASK, XAIEGBL_MEM_DMABD7CTRL_LEN_MASK
+                              };
+    uint32_t valids[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD1CTRL_VALBD_MASK,
+                                XAIEGBL_MEM_DMABD2CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD3CTRL_VALBD_MASK,
+                                XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
+                                XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK
+                               };
 
     auto tileOffset = _XAie_GetTileAddr(aieDevInst, row, column);
+
     for (int bd = 0; bd < NUM_BDS; ++bd) {
       uint32_t regValue = 0;
       XAie_Read32(aieDevInst, tileOffset + offsets[bd], &regValue);
-      
+
       if (regValue & valids[bd]) {
         uint32_t bdBytes = BYTES_PER_WORD * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);
         payloadValue = std::max(bdBytes, payloadValue);
@@ -254,23 +267,25 @@ namespace {
 
   bool isValidType(xdp::module_type type, XAie_ModuleType mod)
   {
-    if ((mod == XAIE_CORE_MOD) && ((type == xdp::module_type::core) 
-        || (type == xdp::module_type::dma)))
+    if ((mod == XAIE_CORE_MOD) && ((type == xdp::module_type::core)
+                                   || (type == xdp::module_type::dma)))
       return true;
-    if ((mod == XAIE_MEM_MOD) && ((type == xdp::module_type::dma) 
-        || (type == xdp::module_type::mem_tile)))
+
+    if ((mod == XAIE_MEM_MOD) && ((type == xdp::module_type::dma)
+                                  || (type == xdp::module_type::mem_tile)))
       return true;
-    if ((mod == XAIE_PL_MOD) && (type == xdp::module_type::shim)) 
+
+    if ((mod == XAIE_PL_MOD) && (type == xdp::module_type::shim))
       return true;
+
     return false;
   }
 
-  bool setMetricsSettings(xrtHandles* constructs, 
+  bool setMetricsSettings(xrtHandles* constructs,
                           EventConfiguration& config,
                           const xdp::built_in::ProfileInputConfiguration* params,
                           xdp::built_in::ProfileOutputConfiguration* outputcfg)
-  
-  
+
   {
     XAie_DevInst* aieDevInst = constructs->aieDevInst;
     xaiefal::XAieDev* aieDevice = constructs->aieDev;
@@ -282,113 +297,123 @@ namespace {
     bool runtimeCounters = false;
 
     // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
-    constexpr int NUM_MODULES = 4;
+    constexpr uint8_t NUM_MODULES = 4;
 
-    int numCountersMod[NUM_MODULES] =
-        {xdp::built_in::ProfileInputConfiguration::NUM_CORE_COUNTERS,
-        xdp::built_in::ProfileInputConfiguration::NUM_MEMORY_COUNTERS,
-        xdp::built_in::ProfileInputConfiguration::NUM_SHIM_COUNTERS,
-        xdp::built_in::ProfileInputConfiguration::NUM_MEM_TILE_COUNTERS};
-    XAie_ModuleType falModuleTypes[NUM_MODULES] = 
-        {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
+    int numCountersMod[NUM_MODULES] = {
+      xdp::built_in::ProfileInputConfiguration::NUM_CORE_COUNTERS,
+      xdp::built_in::ProfileInputConfiguration::NUM_MEMORY_COUNTERS,
+      xdp::built_in::ProfileInputConfiguration::NUM_SHIM_COUNTERS,
+      xdp::built_in::ProfileInputConfiguration::NUM_MEM_TILE_COUNTERS
+    };
+    XAie_ModuleType falModuleTypes[NUM_MODULES] =
+    {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
 
-    
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
-    for(int module = 0; module < NUM_MODULES; ++module) {
+    for (uint8_t module = 0; module < NUM_MODULES; ++module) {
 
-      int numTileCounters[numCountersMod[module]+1] = {0};
-      XAie_ModuleType mod    = falModuleTypes[module];
+      int numTileCounters[numCountersMod[module] + 1] = {0};
+      XAie_ModuleType mod = falModuleTypes[module];
 
       auto mConfigMetrics = processMetrics(params, module);
       std::map<xrt_core::edge::aie::tile_type, uint8_t> configChannel0;
       std::map<xrt_core::edge::aie::tile_type, uint8_t> configChannel1;
 
-      for (int i = 0; i < params->numTiles; i ++ ){
+      for (int i = 0; i < params->numTiles; i ++) {
         auto tile = xrt_core::edge::aie::tile_type();
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
 
-        if (params->tiles[i].channel0 != -1) 
+        if (params->tiles[i].channel0 != -1)
           configChannel0.insert({tile, params->tiles[i].channel0});
-        if (params->tiles[i].channel1 != -1) 
+
+        if (params->tiles[i].channel1 != -1)
           configChannel1.insert({tile, params->tiles[i].channel1});
       }
 
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : mConfigMetrics) {
         int numCounters = 0;
-        auto tile        = tileMetric.first;
+        auto tile = tileMetric.first;
         auto col = tileMetric.first.col;
         auto row = tileMetric.first.row;
 
         auto type = getModuleType(row, params->offset, mod);
+
         if (!isValidType(type, mod))
-                  continue;
+          continue;
 
         // NOTE: resource manager requires absolute row number
-        auto loc        = XAie_TileLoc(col, row);
-        auto& xaieTile  = aieDevice->tile(col, row);
+        auto loc = XAie_TileLoc(col, row);
+        auto& xaieTile = aieDevice->tile(col, row);
         auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
-                        : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
-                        : xaieTile.pl());
+                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem()
+                             : xaieTile.pl());
 
         auto metricSet = tileMetric.second;
-        
-        auto startEvents = (type  == xdp::module_type::core) ? config.mCoreStartEvents[static_cast<CoreMetrics>(metricSet)]
-                         : ((type == xdp::module_type::dma)  ? config.mMemoryStartEvents[static_cast<MemoryMetrics>(metricSet)]
-                         : ((type == xdp::module_type::shim) ? config.mShimStartEvents[static_cast<InterfaceMetrics>(metricSet)]
-                         : config.mMemTileStartEvents[static_cast<MemTileMetrics>(metricSet)]));
-        auto endEvents   = (type  == xdp::module_type::core) ? config.mCoreEndEvents[static_cast<CoreMetrics>(metricSet)]
-                         : ((type == xdp::module_type::dma)  ? config.mMemoryEndEvents[static_cast<MemoryMetrics>(metricSet)]
-                         : ((type == xdp::module_type::shim) ? config.mShimEndEvents[static_cast<InterfaceMetrics>(metricSet)]
-                         : config.mMemTileEndEvents[static_cast<MemTileMetrics>(metricSet)]));
+
+        auto startEvents = (type == xdp::module_type::core) ? config.mCoreStartEvents[static_cast<CoreMetrics>(metricSet)]
+                           : ((type == xdp::module_type::dma) ? config.mMemoryStartEvents[static_cast<MemoryMetrics>(metricSet)]
+                              : ((type == xdp::module_type::shim) ? config.mShimStartEvents[static_cast<InterfaceMetrics>(metricSet)]
+                                 : config.mMemTileStartEvents[static_cast<MemTileMetrics>(metricSet)]));
+        auto endEvents = (type == xdp::module_type::core) ? config.mCoreEndEvents[static_cast<CoreMetrics>(metricSet)]
+                         : ((type == xdp::module_type::dma) ? config.mMemoryEndEvents[static_cast<MemoryMetrics>(metricSet)]
+                            : ((type == xdp::module_type::shim) ? config.mShimEndEvents[static_cast<InterfaceMetrics>(metricSet)]
+                               : config.mMemTileEndEvents[static_cast<MemTileMetrics>(metricSet)]));
 
         // std::vector<XAie_Events> startEvents = (mod == XAIE_CORE_MOD) ? config.mCoreStartEvents[static_cast<CoreMetrics>(metricSet)]
-        //                  : ((mod == XAIE_MEM_MOD) ? config.mMemoryStartEvents[static_cast<MemoryMetrics>(metricSet)] 
-        //                  : config.mShimStartEvents[static_cast<InterfaceMetrics>(metricSet)] );
+        // : ((mod == XAIE_MEM_MOD) ? config.mMemoryStartEvents[static_cast<MemoryMetrics>(metricSet)]
+        // : config.mShimStartEvents[static_cast<InterfaceMetrics>(metricSet)] );
         // std::vector<XAie_Events> endEvents   = (mod == XAIE_CORE_MOD) ? config.mCoreEndEvents[static_cast<CoreMetrics>(metricSet)]
-        //                  : ((mod == XAIE_MEM_MOD) ? config.mMemoryEndEvents[static_cast<MemoryMetrics>(metricSet)] 
-        //                  : config.mShimEndEvents[static_cast<InterfaceMetrics>(metricSet)]);
+        // : ((mod == XAIE_MEM_MOD) ? config.mMemoryEndEvents[static_cast<MemoryMetrics>(metricSet)]
+        // : config.mShimEndEvents[static_cast<InterfaceMetrics>(metricSet)]);
 
         auto numFreeCtr = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
         auto iter0 = configChannel0.find(tile);
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-        configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, static_cast<xdp::built_in::MemTileMetrics>(metricSet), channel0, channel1);
+        configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, static_cast<xdp::built_in::MemTileMetrics>(metricSet),
+                              channel0, channel1);
 
-        for (int i=0; i < numFreeCtr; ++i) {
+        for (int i = 0; i < numFreeCtr; ++i) {
           auto startEvent = startEvents.at(i);
-          auto endEvent   = endEvents.at(i);
+          auto endEvent = endEvents.at(i);
 
           uint8_t resetEvent = 0;
 
           // Request counter from resource manager
           auto perfCounter = xaieModule.perfCounter();
           auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
-          if (ret != XAIE_OK) break;
+
+          if (ret != XAIE_OK)
+            break;
+
           ret = perfCounter->reserve();
-          if (ret != XAIE_OK) break;
-        
+
+          if (ret != XAIE_OK)
+            break;
+
           auto channel = (i == 0) ? channel0 : channel1;
           configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
           configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
                                   startEvent, i, metricSet, channel);
-          
-        
+
           // Start the counters after group events have been configured
           ret = perfCounter->start();
-          if (ret != XAIE_OK) break;
+
+          if (ret != XAIE_OK)
+            break;
+
           mPerfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
           uint8_t tmpStart;
           uint8_t tmpEnd;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvent, &tmpEnd);
           uint16_t phyStartEvent = tmpStart + config.mCounterBases[type];
-          uint16_t phyEndEvent   = tmpEnd + config.mCounterBases[type];
+          uint16_t phyEndEvent = tmpEnd + config.mCounterBases[type];
 
           auto payload = getCounterPayload(aieDevInst, tileMetric.first, col, row, startEvent);
 
@@ -411,6 +436,7 @@ namespace {
           outputcfg->numCounters = counterId;
         }
       }
+
       runtimeCounters = true;
     } // modules
 
@@ -435,8 +461,8 @@ namespace {
     //auto numCounters = db->getStaticInfo().getNumAIECounter(index);
     auto numCounters = counterData.size();
     countercfg->numCounters = numCounters;
-    for (uint64_t c=0; c < numCounters; c++) {
 
+    for (uint64_t c = 0; c < numCounters; c++) {
 
       xdp::built_in::PSCounterInfo pscfg;
       pscfg.col = counterData[c].col;
@@ -444,9 +470,10 @@ namespace {
       pscfg.startEvent = counterData[c].startEvent;
       pscfg.endEvent = counterData[c].endEvent;
       pscfg.resetEvent = counterData[c].resetEvent;
-      
+
       // Read counter value from device
       uint32_t counterValue;
+
       if (mPerfCounters.empty()) {
         // Compiler-defined counters
         XAie_LocType tileLocation = XAie_TileLoc(counterData[c].col, counterData[c].row);
@@ -457,6 +484,7 @@ namespace {
         auto perfCounter = mPerfCounters.at(c);
         perfCounter->readResult(counterValue);
       }
+
       pscfg.counterValue = counterValue;
 
       // Read tile timer (once per tile to minimize overhead)
@@ -464,12 +492,13 @@ namespace {
         prevColumn = counterData[c].col;
         prevRow = counterData[c].row;
         auto moduleType = getModuleType(counterData[c].row, offset, XAIE_CORE_MOD);
-        auto falModuleType =  (moduleType == xdp::module_type::core) ? XAIE_CORE_MOD 
-                             : ((moduleType == xdp::module_type::shim) ? XAIE_PL_MOD 
-                             : XAIE_MEM_MOD);
+        auto falModuleType = (moduleType == xdp::module_type::core) ? XAIE_CORE_MOD
+                             : ((moduleType == xdp::module_type::shim) ? XAIE_PL_MOD
+                                : XAIE_MEM_MOD);
         XAie_LocType tileLocation = XAie_TileLoc(counterData[c].col, counterData[c].row);
         XAie_ReadTimer(aieDevInst, tileLocation, falModuleType, &timerValue);
       }
+
       pscfg.timerValue = timerValue;
       pscfg.payload = counterData[c].payload;
 
@@ -484,32 +513,38 @@ extern "C" {
 
 // The PS kernel initialization function
 __attribute__((visibility("default")))
-xrtHandles* aie_profile_config_init (xclDeviceHandle handle, const xuid_t xclbin_uuid) {
+xrtHandles* aie2_profile_config_init(xclDeviceHandle handle, const xuid_t xclbin_uuid)
+{
 
-    xrtHandles* constructs = new xrtHandles;
-    if (!constructs)
-        return nullptr;
-   
-    constructs->handle = handle; 
-    return constructs;
+  xrtHandles* constructs = new xrtHandles;
+
+  if (!constructs)
+    return nullptr;
+
+  constructs->handle = handle;
+  return constructs;
 }
 
 // The main PS kernel functionality
 __attribute__((visibility("default")))
-int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHandles* constructs)
+int aie2_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHandles* constructs)
 {
+
   if (constructs == nullptr)
     return 0;
 
   auto drv = ZYNQ::shim::handleCheck(constructs->handle);
-  if(!drv)
+
+  if (!drv)
     return 0;
 
   auto aieArray = drv->getAieArray();
+
   if (!aieArray)
     return 0;
 
   constructs->aieDevInst = aieArray->getDevInst();
+
   if (!constructs->aieDevInst)
     return 0;
 
@@ -518,67 +553,71 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
 
   EventConfiguration config;
   config.initialize();
-  
+
   // Run-time Setup Iteration
   if (iteration == 0) {
     xdp::built_in::ProfileInputConfiguration* params =
-    reinterpret_cast<xdp::built_in::ProfileInputConfiguration*>(input);
+      reinterpret_cast<xdp::built_in::ProfileInputConfiguration*>(input);
     // Using malloc/free instead of new/delete because the struct treats the
     // last element as a variable sized array
     int total_tiles = params->numTiles;
+
     if (total_tiles == 0)
       return 1;
-  
+
     std::size_t total_size = sizeof(xdp::built_in::ProfileOutputConfiguration)
-     + sizeof(xdp::built_in::PSCounterInfo[total_tiles * 4 - 1]);
+                             + sizeof(xdp::built_in::PSCounterInfo[total_tiles * 4 - 1]);
     xdp::built_in::ProfileOutputConfiguration* outputcfg =
       (xdp::built_in::ProfileOutputConfiguration*)malloc(total_size);
-    
-    bool success =  setMetricsSettings(constructs, config, params, outputcfg);
+
+    bool success = setMetricsSettings(constructs, config, params, outputcfg);
     constructs->offset = params->offset;
-
     uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
-    std::memcpy(output, out, total_size);   
-    free (outputcfg);
+    std::memcpy(output, out, total_size);
+    // free(outputcfg);
 
-  // Polling Iteration
-  } else if (iteration == 1) {
+    // Polling Iteration
+  }
+  else if (iteration == 1) {
     if (constructs->counterData.size() == 0)
       return 1;
-    
+
     std::size_t total_size = sizeof(xdp::built_in::ProfileOutputConfiguration)
-     + (sizeof(xdp::built_in::PSCounterInfo) * (constructs->counterData.size() - 1));
+                             + (sizeof(xdp::built_in::PSCounterInfo) * (constructs->counterData.size() - 1));
     xdp::built_in::ProfileOutputConfiguration* outputcfg =
       (xdp::built_in::ProfileOutputConfiguration*)malloc(total_size);
 
     pollAIECounters(constructs, outputcfg);
 
     uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
-    std::memcpy(output, out, total_size);   
-    free (outputcfg);
+    std::memcpy(output, out, total_size);
+    free(outputcfg);
 
-  //Cleanup Iteration
-  } else if (iteration == 2) {
-    for (auto& c : constructs->mPerfCounters){
+    //Cleanup Iteration
+  }
+  else if (iteration == 2) {
+
+    for (auto& c : constructs->mPerfCounters) {
       c->stop();
       c->release();
     }
 
-    for (auto& c : constructs->mStreamPorts){
+    for (auto& c : constructs->mStreamPorts) {
       c->stop();
       c->release();
     }
-  } 
+  }
 
   return 0;
 }
 
 // The final function for the PS kernel
 __attribute__((visibility("default")))
-int aie_profile_config_fini(xrtHandles* handles)
+int aie2_profile_config_fini(xrtHandles* handles)
 {
   if (handles != nullptr)
     delete handles;
+
   return 0;
 }
 

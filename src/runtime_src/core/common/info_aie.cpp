@@ -972,10 +972,10 @@ boost::property_tree::ptree
 populate_aie(const xrt_core::device* device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
+  boost::property_tree::ptree pt_aie;
 
   pt.put("description", desc); 
   try {
-    boost::property_tree::ptree pt_aie;
     std::string aie_data = xrt_core::device_query<qr::aie_metadata>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_aie);
@@ -988,6 +988,12 @@ populate_aie(const xrt_core::device* device, const std::string& desc)
   }
   catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));
+    return pt;
+  }
+
+  if (pt_aie.empty()) {
+    // AIE tile not available
+    pt.put("error_msg", "AIE information is not available");
     return pt;
   }
 

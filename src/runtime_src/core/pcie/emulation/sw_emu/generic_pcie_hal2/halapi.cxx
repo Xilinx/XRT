@@ -564,12 +564,18 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  return -ENOSYS;
+  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
+  if (!drv)
+    return -ENOSYS;
+  return drv->xclUnmgdPread(flags, buf, count, offset);
 }
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-  return -ENOSYS;
+  xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
+  if (!drv)
+    return -ENOSYS;
+  return drv->xclUnmgdPwrite(flags, buf, count, offset);
 }
 
 /*
@@ -922,7 +928,22 @@ xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 int
 xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return 0;
+  try {
+    if (handle) {
+      xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
+      return drv ? drv->xrtSyncBOAIE(bo, gmioName, dir, size, offset) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+  return -1;
 }
 
 int

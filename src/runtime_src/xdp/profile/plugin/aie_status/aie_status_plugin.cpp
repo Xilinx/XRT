@@ -100,16 +100,13 @@ namespace xdp {
   }
 
   // Get tiles to status
-  void AIEStatusPlugin::getTilesForStatus(void* handle)
+  void AIEStatusPlugin::getTilesForStatus()
   {
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+    auto graphs = aie::getValidGraphs(mAieMeta);
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-          xrt_core::edge::aie::module_type::core);
+      mGraphCoreTilesMap[graph] = aie::getEventTiles(mAieMeta, graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -189,7 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = getAIETileRowOffset(handle);
+    auto offset = aie::getAIETileRowOffset(mAieMeta);
+    auto hwGen = aie::getHardwareGeneration(mAieMeta);
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -220,6 +218,7 @@ namespace xdp {
     // Reset values
     constexpr uint32_t CORE_RESET_STATUS  = 0x2;
     constexpr uint32_t CORE_ENABLE_MASK  = 0x1;
+
     // Tiles already reported with error(s)
     std::set<tile_type> errorTileSet;
     // Graph -> total stuck core cycles
@@ -298,18 +297,26 @@ namespace xdp {
           // Check for errors in tile
           // NOTE: warning is only issued once per tile
           if (errorTileSet.find(tile) == errorTileSet.end()) {
+            auto loc = XAie_TileLoc(tile.col, tile.row + offset);
+
+            // Memory module
+            uint8_t memErrors = 0;
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
+                XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
+            
+            // Core module
+            // NOTE: Per CR-1167717, ignore group errors on AIE1 devices 
+            //       since instruction event 2 is used as DONE bit.
             uint8_t coreErrors0 = 0;
             uint8_t coreErrors1 = 0;
-            uint8_t memErrors = 0;
-            auto loc = XAie_TileLoc(tile.col, tile.row + offset);
-            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
-              XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
-            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
-              XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
-            XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
-              XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
-            
-            if (coreErrors0 || coreErrors1 || memErrors) {
+            if (hwGen > 1) {
+              XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+                  XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
+              XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+                  XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
+            }
+
+            if (memErrors || coreErrors0 || coreErrors1) {
               std::stringstream errorMessage;
               errorMessage << "Error(s) found in tile (" << tile.col << "," << tile.row 
                           << "). Please view status in Vitis Analyzer for specifics.";
@@ -402,8 +409,14 @@ namespace xdp {
       }
     }
 
+    // Grab AIE metadata
+    auto device = xrt_core::get_userpf_device(handle);
+    auto data = device->get_axlf_section(AIE_METADATA);
+    aie::readAIEMetadata(data.first, data.second, mAieMeta);
+    auto hwGen = aie::getHardwareGeneration(mAieMeta);
+
     // Update list of tiles to debug
-    getTilesForStatus(handle);
+    getTilesForStatus();
 
     // Open the writer for this device
     struct xclDeviceInfo2 info;
@@ -421,7 +434,7 @@ namespace xdp {
 
     // Create and register AIE status writer
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
-    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID);
+    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
@@ -475,32 +488,6 @@ namespace xdp {
     mThreadCtrlMap.clear();
     mDeadlockThreadMap.clear();
     mStatusThreadMap.clear();
-  }
-
-  uint16_t AIEStatusPlugin::getAIETileRowOffset(void* handle)
-  {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-      if (!data.first || !data.second) {
-        rowOffset = 1;
-      } else {
-        boost::property_tree::ptree aie_meta;
-        read_aie_metadata(data.first, data.second, aie_meta);
-        rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
-      }
-      gotValue = true;
-    }
-    return rowOffset;
-  }
-
-  void AIEStatusPlugin::read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data,size);
-    boost::property_tree::read_json(aie_stream,aie_project);
   }
 
 } // end namespace xdp

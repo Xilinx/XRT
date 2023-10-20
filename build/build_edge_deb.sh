@@ -108,6 +108,15 @@ if [ ! -d $DEBIAN ]; then
     error "$DEBIAN is not accessible"
 fi
 
+# update git submodules if they are missing
+GIT_MODULES=$XRT_DIR/.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd $XRT_DIR
+    echo "Updating Git XRT submodules"
+    git submodule update --init
+    cd -
+fi
+
 DEBIAN_ARTIFACTS=$THIS_SCRIPT_DIR/$BUILD_FOLDER/debian_artifacts
 mkdir -p $DEBIAN_ARTIFACTS
 cd $DEBIAN_ARTIFACTS

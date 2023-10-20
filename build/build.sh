@@ -3,6 +3,7 @@
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
@@ -34,12 +35,19 @@ if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
+# Use GCC 9 on CentOS 8 for std::filesystem
+# The dependency is installed by xrtdeps.sh
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" ]] && [[ $VERSION == 8 ]]; then
+    source /opt/rh/gcc-toolset-9/enable
+fi
+
 usage()
 {
     echo "Usage: build.sh [options]"
     echo
     echo "[-help]                     List this help"
     echo "[clean|-clean]              Remove build directories"
+    echo "[-ci]                       Build is initiated by CI"
     echo "[-dbg]                      Build debug library only (default)"
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
@@ -77,6 +85,7 @@ usage()
 
 clean=0
 ccache=0
+ci=0
 docs=0
 verbose=""
 driver=0
@@ -102,6 +111,10 @@ while [ $# -gt 0 ]; do
             ;;
         clean|-clean)
             clean=1
+            shift
+            ;;
+        -ci)
+            ci=1
             shift
             ;;
         -dbg)
@@ -261,12 +274,20 @@ fi
 
 # we pick microblaze toolchain from Vitis install
 if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
-    export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
+    export XILINX_VITIS=/proj/xbuilds/2023.1_released/installs/lin64/Vitis/2023.1
     if [[ ! -d ${XILINX_VITIS} ]]; then
         echo "****************************************************************"
         echo "* XILINX_VITIS is undefined or not accessible                  *"
         echo "* MicroBlaze firmware will not be built                        *"
         echo "****************************************************************"
+
+        # When the build is initiated by CI, it is an error to build
+        # XRT without MicroBlaze firmware. The FW is needed when
+        # platform packages are installed and creates xsabin files.
+        # CI validates install of platform packages with XRT build.
+        if [[ $ci == 1 ]]; then
+            exit 1
+        fi
     fi
 fi
 
@@ -329,8 +350,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.16.0/driver/xocl"
-    make -C usr/src/xrt-2.16.0/driver/xocl
+    echo "make -C usr/src/xrt-2.17.0/driver/xocl"
+    make -C usr/src/xrt-2.17.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -360,7 +381,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.16.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.17.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

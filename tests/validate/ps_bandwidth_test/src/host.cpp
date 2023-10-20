@@ -42,8 +42,8 @@ validate_binary_file(const std::string& binaryfile, bool print = false)
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string iter_cnt;
-    std::string b_file;
+    std::string iter_cnt = "10000";
+    std::string b_file = "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin";
     std::vector<std::string> dependency_paths;
     bool flag_s;
 
@@ -72,7 +72,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    return EOPNOTSUPP;
 
     auto num_devices = xrt::system::enumerate_devices();
 
@@ -82,7 +81,7 @@ int main(int argc, char** argv) {
     for (const auto& path : dependency_paths) {
         auto retVal = validate_binary_file(path);
         if (retVal != EXIT_SUCCESS)
-            return retVal;
+	    return retVal;
         auto uuid = device.load_xclbin(path);
     }
 

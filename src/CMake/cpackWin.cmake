@@ -33,64 +33,29 @@ file(COPY "${XRT_SOURCE_DIR}/../LICENSE" DESTINATION "${PROJECT_BINARY_DIR}")
 file(RENAME "${PROJECT_BINARY_DIR}/LICENSE" "${PROJECT_BINARY_DIR}/license.txt")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_BINARY_DIR}/license.txt")
 
-
-# --- Include supporting runtime libraries ---
-
-# VC Runtime Libraries
-set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
-include(InstallRequiredSystemLibraries)
-install(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
-        DESTINATION xrt/ext/bin
-        COMPONENT runtime_libraries)
-
-cpack_add_component(runtime_libraries
-  DISPLAY_NAME "Visual Studio Runtime Libraries"
-  DESCRIPTION "Visual Studio Runtime Libraries by the XRT applications."
-  GROUP THIRD_PARTY_LIBRARIES
-  ENABLED
-#  EXPANDED
-)
-
-
-# -- Boost shared libraries --
-file(GLOB XRT_BOOST_DLL_LIB_FILES
-  "${Boost_LIBRARY_DIRS}/boost_system*.dll"
-  "${Boost_LIBRARY_DIRS}/boost_program_options*.dll"
-  "${Boost_LIBRARY_DIRS}/boost_filesystem*.dll"
-  )
-install(FILES ${XRT_BOOST_DLL_LIB_FILES}
-        DESTINATION xrt/ext/bin
-        COMPONENT boost_libraries)
-
-cpack_add_component(boost_libraries
-  DISPLAY_NAME "Boost Runtime Libraries"
-  DESCRIPTION "Boost runtime libraries used by the XRT applications."
-  GROUP THIRD_PARTY_LIBRARIES
-  ENABLED
-#  EXPANDED
-)
-
-# -- Khronos shared libraries --
+################################################################
+# Khronos ICD loader
+################################################################
 file(GLOB XRT_OPENCL_DLL_LIB_FILES
   "${KHRONOS}/bin/OpenCL.dll"
   )
-  install(FILES ${XRT_OPENCL_DLL_LIB_FILES}
-        DESTINATION xrt/ext/bin
-        COMPONENT opencl_libraries)
+
+install(FILES ${XRT_OPENCL_DLL_LIB_FILES}
+   DESTINATION xrt/ext/bin
+   COMPONENT opencl_libraries)
 
 cpack_add_component(opencl_libraries
   DISPLAY_NAME "OpenCL Libraries"
   DESCRIPTION "OpenCL libraries used by the XRT applications."
   GROUP THIRD_PARTY_LIBRARIES
   ENABLED
-#  EXPANDED
 )
-
-# -- Label the third party libraries group --
+################################################################
+# Label the third party libraries group
+################################################################
 cpack_add_component_group(THIRD_PARTY_LIBRARIES
   DISPLAY_NAME "Third Party Libraries"
   DESCRIPTION "Third party libraries used by the XRT applications."
-#  EXPANDED
 )
 
 

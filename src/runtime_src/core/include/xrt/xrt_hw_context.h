@@ -114,6 +114,13 @@ public:
   /// @endcond
 
   ///@cond
+  // Undocumented construction using impl only
+  hw_context(std::shared_ptr<hw_context_impl> impl)
+    : detail::pimpl<hw_context_impl>(std::move(impl))
+  {}
+  /// @endcond
+
+  ///@cond
   // Undocument experimental API to change the QoS of a hardware context
   // Subject to change or removal
   XRT_API_EXPORT

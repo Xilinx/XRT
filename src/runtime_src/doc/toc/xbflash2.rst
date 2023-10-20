@@ -11,9 +11,15 @@ The Xilinx (R) Board Flash utility (xbflash2) is a standalone command line utili
 
 In 2022.1 release, this utility is Early Access with limited validation.
 
-This tool supported for all Alveo platforms, U2 and U30 platforms.
+This tool supported for all Alveo platforms.
 
-This tool doesn't come with XRT package, it comes as separate xbflash package.
+This tool doesn't require XRT Package and it doesn't come with XRT package, it comes as separate xbflash package.
+
+``xbflash2`` tool is available in the Alveo card web page, getting started session, xbflash2 tab.
+
+For example: https://www.xilinx.com/products/boards-and-kits/alveo/u50.html#xbflash2
+
+After xbflash package installation, content goes to ``/usr/local/bin``
 
 This tool is verified and supported only on XDMA PCIe DMA designs.
 

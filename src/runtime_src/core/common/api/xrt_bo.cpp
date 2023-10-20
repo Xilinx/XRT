@@ -25,6 +25,7 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "core/common/trace.h"
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
@@ -1089,6 +1090,7 @@ alloc_nodma(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup
 static std::shared_ptr<xrt::bo_impl>
 alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc);
   xcl_bo_flags xflags{flags};
   auto type = xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
@@ -1125,24 +1127,28 @@ alloc_xbuf(const device_type& device, xcl_buffer_handle xhdl)
 static std::shared_ptr<xrt::bo_impl>
 alloc_userptr(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_userptr);
   return alloc_ubuf(device, userptr, sz, flags, grp);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_import(const device_type& device, xrt::bo_impl::export_handle ehdl)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import);
   return std::make_shared<xrt::buffer_import>(device, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xrt::bo_impl::export_handle ehdl)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import_from_pid);
   return std::make_shared<xrt::buffer_import>(device, pid, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_sub);
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
 }
 
@@ -1305,6 +1311,18 @@ bo(const xrt::device& device, size_t sz, memory_group grp)
 {}
 
 bo::
+bo(const xrt::device& device, xrt::bo::export_handle ehdl)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc_import, device_type{device.get_handle()}, ehdl))
+{}
+
+bo::
+bo(const xrt::device& device, pid_type pid, xrt::bo::export_handle ehdl)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc_import_from_pid, device_type{device.get_handle()}, pid , ehdl))
+{}
+
+bo::
 bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
       alloc_userptr, device_type{hwctx}, userptr, sz
@@ -1344,12 +1362,14 @@ bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
     , adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
+// Deprecated
 bo::
 bo(xclDeviceHandle dhdl, xrt::bo_impl::export_handle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
       alloc_import, xcl_to_core_device(dhdl), ehdl))
 {}
 
+// Deprecated
 bo::
 bo(xclDeviceHandle dhdl, pid_type pid, xrt::bo_impl::export_handle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
@@ -1410,7 +1430,7 @@ get_flags() const
   });
 }
 
-xclBufferExportHandle
+bo::export_handle
 bo::
 export_buffer()
 {
@@ -1539,8 +1559,23 @@ alloc_kbuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags f
 }
 
 bo::
+bo(const xrt::device& device, void* userptr, size_t sz, access_mode access)
+  : xrt::bo::bo{alloc_kbuf(device_type{device.get_handle()}, userptr, sz, adjust_buffer_flags(access))}
+{}
+
+bo::
+bo(const xrt::device& device, void* userptr, size_t sz)
+  : bo{device, userptr, sz, xrt::ext::bo::access_mode::local}
+{}
+
+bo::
+bo(const xrt::device& device, pid_type pid, xrt::bo::export_handle ehdl)
+  : xrt::bo::bo{alloc_import_from_pid(device_type{device.get_handle()}, pid, ehdl)}
+{}
+
+bo::
 bo(const xrt::device& device, size_t sz, access_mode access)
-  : xrt::bo::bo{alloc_kbuf(device_type{device.get_handle()}, nullptr, sz, adjust_buffer_flags(access))}
+  : bo{device, nullptr, sz, access}
 {}
 
 bo::
@@ -1559,7 +1594,7 @@ bo(const xrt::hw_context& hwctx, size_t sz)
 {}
 
 bo::
-bo(const xrt::hw_context& hwctx, pid_type pid, xclBufferExportHandle ehdl)
+bo(const xrt::hw_context& hwctx, pid_type pid, xrt::bo::export_handle ehdl)
   : xrt::bo::bo{alloc_import_from_pid(device_type{hwctx}, pid, ehdl)}
 {}
 

@@ -20,12 +20,17 @@
 #include <cstdint>
 
 #include "core/include/xrt/xrt_kernel.h"
-// #include "aiegraph.hpp"
-
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
 
-namespace xdp {
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
+namespace xdp {
+  
   class AieProfile_WinImpl : public AieProfileImpl {
    public:
     AieProfile_WinImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
@@ -34,25 +39,77 @@ namespace xdp {
     void updateDevice();
     void poll(uint32_t index, void* handle);
     void freeResources();
-    bool setMetricsSettings(uint64_t deviceId, void* handle);
-
+    bool setMetricsSettings(uint64_t deviceId);
+    xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
+    bool isValidType(module_type type, XAie_ModuleType mod);
+    bool isStreamSwitchPortEvent(const XAie_Events event);
+    void configEventSelections(
+      const XAie_LocType loc, const xdp::module_type type,
+      const std::string metricSet, const uint8_t channel0
+    );
+    void configGroupEvents(
+      const XAie_LocType loc, const XAie_ModuleType mod,
+      const XAie_Events event, const std::string& metricSet, 
+      uint8_t channel
+    );
+    uint32_t getCounterPayload(const tile_type& tile, 
+      const xdp::module_type type, uint16_t column, 
+      uint16_t row, XAie_Events startEvent, 
+      const std::string metricSet, const uint8_t channel
+    );
+    void configStreamSwitchPorts(
+      const tile_type& tile, const XAie_LocType& loc,
+      const module_type& type, const std::string& metricSet,
+      uint8_t channel
+    );
    private:
-    xrt::device device;
-    // xrt::kernel aie_profile_kernel;
+      std::vector<XAie_ModuleType> falModuleTypes = {
+        XAIE_CORE_MOD,
+        XAIE_MEM_MOD,
+        XAIE_PL_MOD,
+        XAIE_MEM_MOD
+      };
 
-    // //inpu specific private members
-    // std::string name;
+      std::map<xdp::module_type, uint16_t> mCounterBases = {
+        {module_type::core,     static_cast<uint16_t>(0)},
+        {module_type::dma,      BASE_MEMORY_COUNTER},
+        {module_type::shim,     BASE_SHIM_COUNTER},
+        {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
+      };
 
-    // AIEGraphHandle aiegraph_handle;
-    // XrtContext &xrt_context_
-    // std::vector<bd_bundle> bd_bundles;
-    // xrt::bo bo_fm;
-    // xrt::bo bo_instr;
-    // std::vector<xrt::bo> bufferidx_to_xrt_subbo;
+      std::vector<XAie_Events> mSSEventList = {
+        XAIE_EVENT_PORT_RUNNING_0_CORE,
+        XAIE_EVENT_PORT_STALLED_0_CORE,
+        XAIE_EVENT_PORT_RUNNING_0_PL,
+        XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+        XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+        XAIE_EVENT_PORT_TLAST_0_MEM_TILE
+      };
 
-    // std::unordered_set<void*> inputs;
-    // std::unordered_set<void*> outputs;
-    // std::unordered_set<void*> buffers;
+      std::map<module_type, std::vector<uint64_t>> regValues {
+        {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
+        {module_type::dma, {0x11020,0x11024}}, 
+        {module_type::shim, {0x31020, 0x31024}}, 
+        {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
+      };
+
+      std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents;
+
+      xrt::kernel mKernel;
+      xrt::bo input_bo;
+      aie_profile_op_t* op;
+      std::size_t op_size;
+      XAie_DevInst aieDevInst = {0};
+      std::vector<std::vector<uint64_t>> outputValues;
+      bool finishedPoll = false;
+
   };
 
 }  // namespace xdp

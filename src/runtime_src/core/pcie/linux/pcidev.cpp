@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "pcidev.h"
 #include "pcidrv.h"
 #include "xclbin.h"
@@ -26,7 +26,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define RENDER_NM       "renderD"
 #define DEV_TIMEOUT	90 // seconds
 
 namespace {
@@ -105,7 +104,7 @@ bar_size(const std::string &dir, unsigned bar)
 }
 
 static int
-get_render_value(const std::string& dir)
+get_render_value(const std::string& dir, const std::string& devnode_prefix)
 {
   struct dirent *entry;
   DIR *dp;
@@ -116,8 +115,9 @@ get_render_value(const std::string& dir)
     return instance_num;
 
   while ((entry = readdir(dp))) {
-    if(strncmp(entry->d_name, RENDER_NM, sizeof (RENDER_NM) - 1) == 0) {
-      sscanf(entry->d_name, RENDER_NM "%d", &instance_num);
+    std::string dirname{entry->d_name};
+    if(dirname.compare(0, devnode_prefix.size(), devnode_prefix) == 0) {
+      instance_num = std::stoi(dirname.substr(devnode_prefix.size()));
       break;
     }
   }
@@ -419,11 +419,8 @@ get_subdev_path(const std::string& subdev, uint idx) const
   // Main devfs path
   if (subdev.empty()) {
     std::string instStr = std::to_string(m_instance);
-    if (m_is_mgmt) {
-      std::string prefixStr = "/dev/xclmgmt";
-      return prefixStr + instStr;
-    }
-    std::string prefixStr = "/dev/dri/" RENDER_NM;
+    std::string prefixStr = "/dev/";
+    prefixStr += m_driver->dev_node_dir() + "/" + m_driver->dev_node_prefix();
     return prefixStr + instStr;
   }
 
@@ -458,22 +455,28 @@ open(const std::string& subdev, int flag) const
 }
 
 dev::
-dev(const drv& driver, const std::string& sysfs) : m_sysfs_name(sysfs)
+dev(std::shared_ptr<const drv> driver, std::string sysfs)
+  : m_sysfs_name(std::move(sysfs))
+  , m_driver(std::move(driver))
 {
   std::string err;
 
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
-    throw std::invalid_argument(sysfs + " is not valid BDF");
+  if(sscanf(m_sysfs_name.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
+    throw std::invalid_argument(m_sysfs_name + " is not valid BDF");
 
-  m_is_mgmt = !driver.is_user();
+  m_is_mgmt = !m_driver->is_user();
 
-  if (m_is_mgmt)
+  if (m_is_mgmt) {
     sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
-  else
-    m_instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
+  }
+  else {
+    m_instance = get_render_value(
+      sysfs::dev_root + m_sysfs_name + "/" + m_driver->sysfs_dev_node_dir(),
+      m_driver->dev_node_prefix());
+  }
 
   sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::dev_root + sysfs, m_user_bar);
+  m_user_bar_size = bar_size(sysfs::dev_root + m_sysfs_name, m_user_bar);
   sysfs_get<bool>("", "ready", err, m_is_ready, false);
   m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }
@@ -487,7 +490,7 @@ dev::
 
 int
 dev::
-map_usr_bar()
+map_usr_bar() const
 {
   std::lock_guard<std::mutex> l(m_lock);
 
@@ -522,7 +525,7 @@ close(int dev_handle) const
 
 int
 dev::
-pcieBarRead(uint64_t offset, void* buf, uint64_t len)
+pcieBarRead(uint64_t offset, void* buf, uint64_t len) const
 {
   if (m_user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
@@ -535,7 +538,7 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 
 int
 dev::
-pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
+pcieBarWrite(uint64_t offset, const void* buf, uint64_t len) const
 {
   if (m_user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
@@ -720,7 +723,7 @@ get_runtime_active_kids(std::string &pci_bridge_path)
 }
 
 int
-shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
+shutdown(dev *mgmt_dev, bool remove_user, bool remove_mgmt)
 {
   if (!mgmt_dev->m_is_mgmt)
     return -EINVAL;
@@ -809,9 +812,6 @@ shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
     }
     rem_dev_cnt++;
   }
-
-  if (!rem_dev_cnt)
-    return 0;
 
   for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
     int curr_act_dev;

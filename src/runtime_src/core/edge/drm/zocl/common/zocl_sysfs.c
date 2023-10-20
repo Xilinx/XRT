@@ -3,6 +3,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -598,27 +599,29 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
-		zocl_slot = zdev->pr_slot[i];
-		if (!zocl_slot || !zocl_slot->axlf)
-			continue;
-
-		size = zocl_slot->axlf_size;
-		if (off >= size) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
-
-		if (count < size - off)
-			nread = count;
-		else
-			nread = size - off;
-
-		memcpy(buf, ((char *)zocl_slot->axlf + off), nread);
-
-		buf += nread;
-		f_nread += nread;
+	// Only read slot 0's xclbin - TODO: extend to multi-slot 
+	zocl_slot = zdev->pr_slot[0];
+	if (!zocl_slot || !zocl_slot->axlf) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
 	}
+
+	size = zocl_slot->axlf_size;
+	if (off >= size) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
+
+	if (count < size - off)
+		nread = count;
+	else
+		nread = size - off;
+
+	memcpy(buf, ((char *)zocl_slot->axlf + off), nread);
+
+	buf += nread;
+	f_nread += nread;
+
 	read_unlock(&zdev->attr_rwlock);
 
 	return f_nread;

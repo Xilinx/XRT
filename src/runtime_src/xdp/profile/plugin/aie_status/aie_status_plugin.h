@@ -26,10 +26,10 @@
 #include <vector>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/config.h"
 
 #include "core/common/device.h"
-#include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
 extern "C" {
@@ -38,8 +38,6 @@ extern "C" {
 }
 
 namespace xdp {
-
-  using tile_type = xrt_core::edge::aie::tile_type;
 
   class AIEStatusPlugin : public XDPPlugin
   {
@@ -56,21 +54,18 @@ namespace xdp {
     static bool alive();
 
   private:
-    void getTilesForStatus(void* handle);
+    void getTilesForStatus();
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
-    uint16_t getAIETileRowOffset(void* handle);
-    static void read_aie_metadata(const char* data, size_t size, 
-                                  boost::property_tree::ptree& aie_project);
+    
     // Threads used by this plugin
     void pollDeadlock(uint64_t index, void* handle);
     void writeStatus(uint64_t index, void* handle, VPWriter* aieWriter);
 
   private:
-
     static bool live;
-
     uint32_t mPollingInterval;
+    boost::property_tree::ptree mAieMeta;
 
     // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;

@@ -658,7 +658,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	}
 
 	/* Cache some axlf data which shared in ioctl */
-	axlf_obj = vmalloc(sizeof(struct xocl_axlf_obj_cache));
+	axlf_obj = vzalloc(sizeof(struct xocl_axlf_obj_cache));
 	if (!axlf_obj) {
 		err = -ENOMEM;
 		goto done;
@@ -808,6 +808,7 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	if (chan_disable & (1 << XCL_MAILBOX_REQ_HOT_RESET))
 		return -EOPNOTSUPP;
 
+	xdev->ps_slot_id = 0;  // Clear PS kernel xclbin slots after reset
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 	xocl_xdev_info(xdev, "Scheduled reset");

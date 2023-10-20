@@ -23,6 +23,7 @@
 #include <cmath>
 #include <memory>
 #include <cstring>
+#include <map>
 
 #include "core/common/message.h"
 #include "core/common/time.h"
@@ -299,60 +300,109 @@ namespace xdp {
     return (runningEvents.find(event) != runningEvents.end());
   }
 
+  bool AieProfile_EdgeImpl::isPortTlastEvent(const XAie_Events event)
+  {
+    switch (event) {
+    case XAIE_EVENT_PORT_TLAST_0_PL:
+    case XAIE_EVENT_PORT_TLAST_1_PL:
+    case XAIE_EVENT_PORT_TLAST_0_MEM_TILE:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(XAie_Events event)
+  {
+    switch (event) {
+    case XAIE_EVENT_PORT_RUNNING_1_CORE:
+    case XAIE_EVENT_PORT_STALLED_1_CORE:
+    case XAIE_EVENT_PORT_TLAST_1_PL:
+      return 1;
+    default:
+      return 0;
+    }
+  }
+
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
-  XAie_Events
+  void
   AieProfile_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
                                                xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
-                                               const module_type type, const XAie_Events event,
-                                               const std::string metricSet, const uint8_t channel)
+                                               const module_type type, const uint32_t numCounters,
+                                               const std::string metricSet, const uint8_t channel0, 
+                                               const uint8_t channel1, std::vector<XAie_Events>& startEvents, 
+                                               std::vector<XAie_Events>& endEvents)
   {
-    // Only configure as needed: must be applicable event and only need at most two
-    if (!isStreamSwitchPortEvent(event))
-      return event;
+    std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
 
-    auto switchPortRsc = xaieTile.sswitchPort();
-    auto ret = switchPortRsc->reserve();
-    if (ret != AieRC::XAIE_OK)
-      return event;
+    // Traverse all counters and request monitor ports as needed
+    for (int i=0; i < numCounters; ++i) {
+      // Ensure applicable event
+      auto startEvent = startEvents.at(i);
+      auto endEvent = endEvents.at(i);
+      if (!isStreamSwitchPortEvent(startEvent))
+        continue;
 
-    if (type == module_type::core) {
-      // AIE Tiles (e.g., trace streams)
-      // Define stream switch port to monitor core or memory trace
-      uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-      switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
-    }
-    else if (type == module_type::shim) {
-      // Interface tiles (e.g., PLIO, GMIO)
-      // Grab slave/master and stream ID
-      // NOTE: stored in getTilesForProfiling() above
-      auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
-      switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
-    }
-    else {
-      // Memory tiles
-      if (metricSet.find("trace") != std::string::npos) {
-        switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+      bool newPort = false;
+      auto portnum = getPortNumberFromEvent(startEvent);
+
+      // New port needed: reserver, configure, and store
+      if (switchPortMap.find(portnum) == switchPortMap.end()) {
+        auto switchPortRsc = xaieTile.sswitchPort();
+        if (switchPortRsc->reserve() != AieRC::XAIE_OK)
+          continue;
+        newPort = true;
+        switchPortMap[portnum] = switchPortRsc;
+
+        if (type == module_type::core) {
+          // AIE Tiles (e.g., trace streams)
+          // Define stream switch port to monitor core or memory trace
+          uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
+          switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+        }
+        else if (type == module_type::shim) {
+          // Interface tiles (e.g., PLIO, GMIO)
+          // Grab slave/master and stream ID
+          auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+          switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
+        }
+        else {
+          // Memory tiles
+          if (metricSet.find("trace") != std::string::npos) {
+            switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+          }
+          else {
+            uint8_t channel = (portnum == 0) ? channel0 : channel1;
+            auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
+              XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+          }
+        }
       }
-      else {
-        auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
-          XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-        switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+
+      auto switchPortRsc = switchPortMap[portnum];
+
+      // Event options:
+      //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
+      XAie_Events ssEvent;
+      if (isPortRunningEvent(startEvent))
+        switchPortRsc->getSSRunningEvent(ssEvent);
+      else if (isPortTlastEvent(startEvent))
+        switchPortRsc->getSSTlastEvent(ssEvent);
+      else
+        switchPortRsc->getSSStalledEvent(ssEvent);
+      startEvents.at(i) = ssEvent;
+      endEvents.at(i) = ssEvent;
+
+      if (newPort) {
+        switchPortRsc->start();
+        mStreamPorts.push_back(switchPortRsc);
       }
     }
 
-    // Event options:
-    //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
-    XAie_Events ssEvent;
-    if (isPortRunningEvent(event))
-      switchPortRsc->getSSRunningEvent(ssEvent);
-    else
-	    switchPortRsc->getSSStalledEvent(ssEvent);
-
-    switchPortRsc->start();
-    mStreamPorts.push_back(switchPortRsc);
-    return ssEvent;
+    switchPortMap.clear();
   }
 
   void 
@@ -558,7 +608,10 @@ namespace xdp {
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
+        
         configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
+        configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtr, 
+                                metricSet, channel0, channel1, startEvents, endEvents);
 
         // Request and configure all available counters for this tile
         for (int i=0; i < numFreeCtr; ++i) {
@@ -584,7 +637,7 @@ namespace xdp {
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
 
-          // Start the counters after group events have been configured
+          // Start the counter
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
           mPerfCounters.push_back(perfCounter);
@@ -596,6 +649,10 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
           uint16_t phyStartEvent = tmpStart + mCounterBases[type];
           uint16_t phyEndEvent   = tmpEnd   + mCounterBases[type];
+
+          // Get payload for reporting purposes
+          auto portnum = getPortNumberFromEvent(startEvent);
+          uint8_t channel = (portnum == 0) ? channel0 : channel1;
           auto payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
                                            startEvent, metricSet, channel);
 

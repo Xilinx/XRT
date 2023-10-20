@@ -179,6 +179,13 @@ get_aie_profile()
 }
 
 inline bool
+get_aie_debug()
+{
+  static bool value = detail::get_bool_value("Debug.aie_debug",false);
+  return value;
+}
+
+inline bool
 get_aie_status()
 {
   static bool value = detail::get_bool_value("Debug.aie_status", false);
@@ -241,6 +248,13 @@ inline std::string
 get_trace_buffer_size()
 {
   static std::string value = detail::get_string_value("Debug.trace_buffer_size", "1M");
+  return value;
+}
+
+inline bool
+get_ml_timeline()
+{
+  static bool value = detail::get_bool_value("Debug.ml_timeline",false);
   return value;
 }
 
@@ -340,6 +354,14 @@ get_logging()
   return value;
 }
 
+inline bool
+get_trace_logging()
+{
+  static bool value = detail::get_bool_value("Runtime.trace_logging", false)
+    || detail::get_env_value("XRT_TRACE_LOGGING_ENABLE");
+  return value;
+}
+
 inline unsigned int
 get_verbosity()
 {
@@ -380,6 +402,13 @@ inline bool
 get_xclbin_programming()
 {
   return get_xclbin_programing();
+}
+
+inline std::string
+get_xclbin_repo()
+{
+  static std::string value = detail::get_string_value("Runtime.xclbin_repo_path","");
+  return value;
 }
 
 /**
@@ -737,6 +766,35 @@ inline unsigned int
 get_device_offline_timer()
 {
   static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 320);
+  return value;
+}
+
+// Configurations under AIE_debug_settings section
+inline std::string
+get_aie_debug_settings_core_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.core_registers", "");
+  return value;
+}
+
+inline std::string
+get_aie_debug_settings_memory_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.memory_registers", "");
+  return value;
+}
+
+inline std::string
+get_aie_debug_settings_interface_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.interface_registers", "");
+  return value;
+}
+
+inline std::string
+get_aie_debug_settings_memory_tile_registers()
+{
+  static std::string value = detail::get_string_value("AIE_debug_settings.memory_tile_registers", "");
   return value;
 }
 

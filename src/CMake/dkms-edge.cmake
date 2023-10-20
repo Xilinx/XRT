@@ -37,7 +37,26 @@ SET (XRT_DKMS_CORE_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR})
 SET (XRT_DKMS_CORE_COMMON_DRV ${XRT_DKMS_CORE_DIR}/common/drv)
 
 SET (XRT_DKMS_DRIVER_SRCS
-  zocl/include/sched_exec.h
+  zocl/10-zocl.rules
+  zocl/LICENSE
+  zocl/Makefile
+
+  zocl/common/cu.c
+  zocl/common/zocl_bo.c
+  zocl/common/zocl_drv.c
+  zocl/common/zocl_ioctl.c
+  zocl/common/zocl_kds.c
+  zocl/common/zocl_sysfs.c
+  zocl/common/zocl_xclbin.c
+
+  zocl/edge/zocl_aie.c
+  zocl/edge/zocl_cu.c
+  zocl/edge/zocl_dma.c
+  zocl/edge/zocl_edge_xclbin.c
+  zocl/edge/zocl_edge_kds.c
+  zocl/edge/zocl_error.c
+  zocl/edge/zocl_mailbox.c
+
   zocl/include/zocl_aie.h
   zocl/include/zocl_bo.h
   zocl/include/zocl_cu.h
@@ -47,46 +66,32 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/include/zocl_error.h
   zocl/include/zocl_ert.h
   zocl/include/zocl_ert_intc.h
-  zocl/include/zocl_generic_cu.h
   zocl/include/zocl_ioctl.h
+  zocl/include/zocl_kds.h
   zocl/include/zocl_lib.h
   zocl/include/zocl_mailbox.h
   zocl/include/zocl_ospi_versal.h
   zocl/include/zocl_sk.h
   zocl/include/zocl_util.h
-  zocl/include/zocl_watchdog.h
   zocl/include/zocl_xclbin.h
   zocl/include/zocl_xgq.h
   zocl/include/zocl_xgq_plat.h
-  zocl/10-zocl.rules
-  zocl/cu.c
-  zocl/cu_scu.c
-  zocl/LICENSE
-  zocl/Makefile
-  zocl/zocl_aie.c
-  zocl/zocl_bo.c
-  zocl/zocl_csr_intc.c
-  zocl/zocl_ctrl_ert.c
-  zocl/zocl_cu.c
-  zocl/zocl_cu_xgq.c
-  zocl/zocl_dma.c
-  zocl/zocl_drv.c
-  zocl/zocl_error.c
-  zocl/zocl_ert.c
-  zocl/zocl_ioctl.c
-  zocl/zocl_kds.c
-  zocl/zocl_lib.c
-  zocl/zocl_mailbox.c
-  zocl/zocl_ospi_versal.c
-  zocl/zocl_ov_sysfs.c
-  zocl/zocl_sk.c
-  zocl/zocl_rpu_channel.c
-  zocl/zocl_sk.c
-  zocl/zocl_sysfs.c
-  zocl/zocl_watchdog.c
-  zocl/zocl_xclbin.c
-  zocl/zocl_xgq.c
-  zocl/zocl_xgq_intc.c
+  
+  zocl/zert/cu_scu.c
+  zocl/zert/scu.c
+  zocl/zert/zocl_csr_intc.c
+  zocl/zert/zocl_ctrl_ert.c
+  zocl/zert/zocl_cu_xgq.c
+  zocl/zert/zocl_ert.c
+  zocl/zert/zocl_lib.c
+  zocl/zert/zocl_ospi_versal.c
+  zocl/zert/zocl_ov_sysfs.c
+  zocl/zert/zocl_ps_xclbin.c
+  zocl/zert/zocl_sk.c
+  zocl/zert/zocl_ps_kds.c
+  zocl/zert/zocl_rpu_channel.c
+  zocl/zert/zocl_xgq.c
+  zocl/zert/zocl_xgq_intc.c
   )
 
 # includes relative to core

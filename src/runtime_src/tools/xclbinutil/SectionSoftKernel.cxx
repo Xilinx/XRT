@@ -81,7 +81,7 @@ SectionSoftKernel::getSubSectionEnum(const std::string& sSubSectionName)
 const std::string&
 SectionSoftKernel::getSubSectionName(SectionSoftKernel::SubSection eSubSection)
 {
-  auto subSectionTable = getSubSectionTable();
+  const auto& subSectionTable = getSubSectionTable();
   auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return entry.second == eSubSection;});
 
   if (iter == subSectionTable.end())

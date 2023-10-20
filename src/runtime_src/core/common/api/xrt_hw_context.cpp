@@ -10,7 +10,9 @@
 #include "hw_context_int.h"
 
 #include "core/common/device.h"
+#include "core/common/trace.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/xdp/profile.h"
 
 #include <limits>
 #include <memory>
@@ -19,7 +21,7 @@ namespace xrt {
 
 // class hw_context_impl - insulated implemention of an xrt::hw_context
 //
-class hw_context_impl
+class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
 {
   using cfg_param_type = xrt::hw_context::cfg_param_type;
   using qos_type = cfg_param_type;
@@ -47,6 +49,25 @@ public:
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
   {}
+
+  std::shared_ptr<hw_context_impl>
+  get_shared_ptr()
+  {
+    return shared_from_this();
+  }
+
+  ~hw_context_impl()
+  {
+    // This trace point measures the time to tear down a hw context on the device
+    XRT_TRACE_POINT_SCOPE(xrt_hw_context_dtor);
+
+    // finish_flush_device should only be called when the underlying 
+    // hw_context_impl is destroyed. The xdp::update_device cannot exist
+    // in the hw_context_impl constructor because an existing
+    // shared pointer must already exist to call get_shared_ptr(),
+    // which is not true at that time.
+    xrt_core::xdp::finish_flush_device(this);
+  }
 
   void
   update_qos(const qos_type& qos)
@@ -117,6 +138,16 @@ set_exclusive(xrt::hw_context& hwctx)
   hwctx.get_handle()->set_exclusive();
 }
 
+xrt::hw_context
+create_hw_context_from_implementation(void* hwctx_impl)
+{
+  if (!hwctx_impl)
+    throw std::runtime_error("Invalid hardware context implementation."); 
+
+  xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl*>(hwctx_impl);
+  return xrt::hw_context(impl_ptr->get_shared_ptr());
+}
+
 }} // hw_context_int, xrt_core
 
 ////////////////////////////////////////////////////////////////
@@ -124,21 +155,51 @@ set_exclusive(xrt::hw_context& hwctx)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
 
+static std::shared_ptr<hw_context_impl>
+alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
+{
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  auto handle = std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param);
+
+  // Update device is called with a raw pointer to dyanamically
+  // link to callbacks that exist in XDP via a C-style interface
+  // The create_hw_context_from_implementation function is then 
+  // called in XDP create a hw_context to the underlying implementation
+  xrt_core::xdp::update_device(handle.get());
+
+  return handle;
+}
+
+static std::shared_ptr<hw_context_impl>
+alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::access_mode mode)
+{
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  auto handle = std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode);
+
+  // Update device is called with a raw pointer to dyanamically
+  // link to callbacks that exist in XDP via a C-style interface
+  // The create_hw_context_from_implementation function is then 
+  // called in XDP create a hw_context to the underlying implementation
+  xrt_core::xdp::update_device(handle.get());
+
+  return handle;
+}
+
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
-  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param))
+  : detail::pimpl<hw_context_impl>(alloc_hwctx_from_cfg(device, xclbin_id, cfg_param))
 {}
-
 
 hw_context::
 hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
-  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
+  : detail::pimpl<hw_context_impl>(alloc_hwctx_from_mode(device, xclbin_id, mode))
 {}
 
 void
 hw_context::
 update_qos(const qos_type& qos)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_hw_context_update_qos);
   get_handle()->update_qos(qos);
 }
 

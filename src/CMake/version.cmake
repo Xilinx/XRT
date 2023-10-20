@@ -1,6 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+
+# AMD promotion build works from copied sources with no git
+# repository.  The build cannot query git for git metadata.  The
+# promotion build has explicitly overwritten config/version.h.in and
+# config/version.json.in with pre-generated ones.
+if (DEFINED ENV{DK_ROOT})
+
+message("-- Skipping Git metadata")
+
+else (DEFINED ENV{DK_ROOT})
+
 # Get the branch
 execute_process(
   COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
@@ -9,12 +20,27 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-
 # Get the latest abbreviated commit hash of the working branch
 execute_process(
   COMMAND ${GIT_EXECUTABLE} rev-parse --verify HEAD
   WORKING_DIRECTORY ${XRT_SOURCE_DIR}
   OUTPUT_VARIABLE XRT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get number of commits for HEAD
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+  WORKING_DIRECTORY ${XRT_SOURCE_DIR}
+  OUTPUT_VARIABLE XRT_HEAD_COMMITS
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get number of commits between HEAD and master
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD ^origin/master
+  WORKING_DIRECTORY ${XRT_SOURCE_DIR}
+  OUTPUT_VARIABLE XRT_BRANCH_COMMITS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
@@ -34,6 +60,8 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 string(REPLACE "\n" "," XRT_MODIFIED_FILES "${XRT_MODIFIED_FILES}")
+
+endif(DEFINED ENV{DK_ROOT})
 
 # Get the build date RFC format
 execute_process(

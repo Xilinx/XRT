@@ -1063,10 +1063,12 @@ const struct drm_gem_object_funcs zocl_cma_default_funcs = {
 #endif
 static const struct zdev_data zdev_data_mpsoc = {
 	.fpga_driver_name = "pcap",
+	.fpga_driver_new_name = "pcap"
 };
 
 static const struct zdev_data zdev_data_versal = {
-	.fpga_driver_name = "versal_fpga"
+	.fpga_driver_name = "versal_fpga",
+	.fpga_driver_new_name = "versal-fpga"
 };
 
 static const struct of_device_id zocl_drm_of_match[] = {
@@ -1188,6 +1190,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		 */
 		fnode = of_find_node_by_name(NULL,
 				     zdev->zdev_data_info->fpga_driver_name);
+		if(!fnode) {
+			fnode = of_find_node_by_name(NULL,
+				     zdev->zdev_data_info->fpga_driver_new_name);
+		}
+
 		if (fnode) {
 			zdev->fpga_mgr = of_fpga_mgr_get(fnode);
 			if (IS_ERR(zdev->fpga_mgr))

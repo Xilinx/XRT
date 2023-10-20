@@ -131,7 +131,14 @@ get_userpf_device(device::id_type id)
   // but leaves device object alone. The returned device is managed in that
   // it calls xclClose when going out of scope.
   auto close = [] (xrt_core::device* d) { d->close_device(); };
-  return {device.get(), close};
+  std::shared_ptr<xrt_core::device> ptr{device.get(), close};
+
+  // The repackage raw ptr is the one that should be cached so
+  // so that all references to device handles in application code
+  // are tied to the shared ptr that ends up calling xclClose
+  std::lock_guard lk(mutex);
+  userpf_device_map[device->get_device_handle()] = ptr;
+  return ptr;
 }
 
 std::shared_ptr<device>

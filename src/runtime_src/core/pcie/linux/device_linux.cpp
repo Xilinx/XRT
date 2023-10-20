@@ -486,7 +486,7 @@ struct hotplug_offline
     auto mgmt_dev = xrt_core::pci::get_dev(device->get_device_id(), false);
 
     // Remove both user_pf and mgmt_pf
-    if (xrt_core::pci::shutdown(mgmt_dev, true, true))
+    if (xrt_core::pci::shutdown(mgmt_dev.get(), true, true))
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
@@ -887,23 +887,6 @@ struct accel_deadlock_status
     result_type ret_val = val_buf[0];
 
     return ret_val;
-  }
-};
-
-// structure to get Aie tiles status version info
-// This version is used for handshake b/w userspace and driver
-struct aie_status_version
-{
-  using result_type = query::aie_status_version::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key)
-  {
-    result_type version{0};
-
-    // TODO : Add code to get the data
-
-    return version;
   }
 };
 
@@ -1382,7 +1365,6 @@ initialize_query_table()
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
 
-  emplace_func0_request<query::aie_status_version,             aie_status_version>();
   emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
   emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 }
@@ -1409,6 +1391,12 @@ lookup_query(query::key_type query_key) const
 device_linux::
 device_linux(handle_type device_handle, id_type device_id, bool user)
   : shim<device_pcie>(device_handle, device_id, user)
+  , m_pcidev(pci::get_dev(device_id, user))
+{
+}
+
+device_linux::
+~device_linux()
 {
 }
 
@@ -1439,7 +1427,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
+  if (auto err = get_dev()->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -1447,7 +1435,7 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
+  if (auto err = get_dev()->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
 }
 
@@ -1456,8 +1444,7 @@ device_linux::
 reset(query::reset_type& key) const
 {
   std::string err;
-  xrt_core::pci::get_dev(get_device_id(), false)->sysfs_put(
-    key.get_subdev(), key.get_entry(), err, key.get_value());
+  get_dev()->sysfs_put(key.get_subdev(), key.get_entry(), err, key.get_value());
   if (!err.empty())
     throw error("reset failed");
 }
@@ -1466,14 +1453,14 @@ int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
-  return xrt_core::pci::get_dev(get_device_id(), false)->open(subdev, flag);
+  return get_dev()->open(subdev, flag);
 }
 
 void
 device_linux::
 close(int dev_handle) const
 {
-  xrt_core::pci::get_dev(get_device_id(), false)->close(dev_handle);
+  get_dev()->close(dev_handle);
 }
 
 void
@@ -1489,7 +1476,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
-    ret = xrt_core::pci::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = get_dev()->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
@@ -1502,7 +1489,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
 void
 device_linux::
 device_shutdown() const {
-  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
+  auto mgmt_dev = get_dev();
   // hot reset pcie device
   if (xrt_core::pci::shutdown(mgmt_dev))
     throw xrt_core::error("Hot resetting pci device failed.");
@@ -1511,7 +1498,7 @@ device_shutdown() const {
 void
 device_linux::
 device_online() const {
-  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
+  auto mgmt_dev = get_dev();
   auto peer_dev = mgmt_dev->lookup_peer_dev();
   std::string errmsg;
 

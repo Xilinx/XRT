@@ -75,7 +75,6 @@ if (DEFINED XRT_AIE_BUILD)
     uuid
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
-    metal
     xaiengine
     )
 else()

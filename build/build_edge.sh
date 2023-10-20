@@ -47,6 +47,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo "EXTRA_OECMAKE += \"-DMY_VITIS=$XILINX_VITIS\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
+	echo 'DEPENDS += " systemtap"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=de2c993ac479f02575bcbfb14ef9b485 \' >> $XRT_BB
@@ -142,6 +143,7 @@ config_versal_project()
 
     # Configure u-boot to pick dtb from address 0x40000
     UBOOT_USER_SCRIPT=$APU_RECIPES_DIR/u-boot_custom.cfg
+    echo "CONFIG_BOOTDELAY=0" >> $UBOOT_USER_SCRIPT
     cp $UBOOT_USER_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/files
     echo "SRC_URI += \"file://u-boot_custom.cfg\"" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
 

@@ -40,6 +40,7 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/common/trace.h"
 #include "core/common/xclbin_parser.h"
 
 #include <boost/format.hpp>
@@ -2110,7 +2111,7 @@ public:
     , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
     , data(initialize_command(cmd.get()))
-    , m_header(cmd->get_ert_packet()->header)
+    , m_header(0)
     , uid(create_uid())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
@@ -2307,6 +2308,12 @@ public:
     encode_compute_units();
 
     auto pkt = cmd->get_ert_packet();
+
+    // Very first start() of this run object caches the command header
+    if (!m_header)
+      m_header = pkt->header;
+
+    // The cached command header is used for all subsequent starts
     pkt->header = m_header;
     pkt->state = ERT_CMD_STATE_NEW;
 
@@ -3182,9 +3189,10 @@ void
 run::
 start()
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_start);
   xdp::native::profiling_wrapper
-    ("xrt::run::start", [this]{
-    handle->start();
+    ("xrt::run::start", [this] {
+      handle->start();
     });
 }
 
@@ -3213,6 +3221,7 @@ ert_cmd_state
 run::
 wait(const std::chrono::milliseconds& timeout_ms) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_wait);
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait(timeout_ms);
@@ -3223,6 +3232,7 @@ std::cv_status
 run::
 wait2(const std::chrono::milliseconds& timeout_ms) const
 {
+  XRT_TRACE_POINT_SCOPE(xrt_run_wait2);
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);
@@ -3315,14 +3325,20 @@ void
 run::
 submit_wait(const xrt::fence& fence)
 {
-  handle->submit_wait(fence);
+  XRT_TRACE_POINT_SCOPE(xrt_submit_wait);
+  return xdp::native::profiling_wrapper("xrt::run::submit_wait", [this, &fence]{
+    handle->submit_wait(fence);
+  });
 }
 
 void
 run::
 submit_signal(const xrt::fence& fence)
 {
-  handle->submit_signal(fence);
+  XRT_TRACE_POINT_SCOPE(xrt_submit_signal);
+  return xdp::native::profiling_wrapper("xrt::run::submit_signal", [this, &fence]{
+    handle->submit_signal(fence);
+  });
 }
 
 kernel::
