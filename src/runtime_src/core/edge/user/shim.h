@@ -384,6 +384,7 @@ private:
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
 #ifdef XRT_ENABLE_AIE
+  std::mutex registerAieLock;
   std::unique_ptr<zynqaie::Aie> aieArray;
   std::unique_ptr<zynqaie::Aied> aied;
   xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;

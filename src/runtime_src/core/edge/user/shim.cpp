@@ -1739,6 +1739,7 @@ void
 shim::
 registerAieArray()
 {
+  std::lock_guard<std::mutex> guard(registerAieLock);
   delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
   aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
