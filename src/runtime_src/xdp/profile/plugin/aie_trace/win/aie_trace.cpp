@@ -555,8 +555,8 @@ namespace xdp {
         // NOTE: This needs to be done first.
         //if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK)
         //  break;
-        if (XAie_TraceStartEvent(&aieDevInst, loc, mod, mCoreTraceStartEvent) != XAIE_OK)
-          break;
+        //if (XAie_TraceStartEvent(&aieDevInst, loc, mod, mCoreTraceStartEvent) != XAIE_OK)
+        //  break;
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, mCoreTraceEndEvent) != XAIE_OK)
           break;
 
@@ -607,6 +607,7 @@ namespace xdp {
           break;
         if (XAie_TracePktConfig(&aieDevInst, loc, mod, pkt) != XAIE_OK)
           break;
+        XAie_TraceStartEvent(&aieDevInst, loc, mod, mCoreTraceStartEvent);
       } // Core modules
 
       //
@@ -649,9 +650,7 @@ namespace xdp {
           traceStartEvent = XAIE_EVENT_BROADCAST_8_MEM;
           traceEndEvent = XAIE_EVENT_BROADCAST_9_MEM;
         }
-
-        if (XAie_TraceStartEvent(&aieDevInst, loc, mod, traceStartEvent) != XAIE_OK)
-          break;
+        mMemoryModTraceStartEvent = traceStartEvent;
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, traceEndEvent) != XAIE_OK)
           break;
 
@@ -843,6 +842,8 @@ namespace xdp {
         // if (XAie_TraceModeConfig(&aieDevInst, loc, mod, XAIE_TRACE_EVENT_TIME) != XAIE_OK)
         //   break;
         if (XAie_TracePktConfig(&aieDevInst, loc, mod, pkt) != XAIE_OK)
+          break;
+        if (XAie_TraceStartEvent(&aieDevInst, loc, mod, mMemoryModTraceStartEvent) != XAIE_OK)
           break;
 
         // Update memory packet type in config file
