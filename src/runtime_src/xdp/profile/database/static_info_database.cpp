@@ -346,6 +346,7 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
+
     deviceInfo[deviceId]->deviceName = name ;
   }
 
@@ -1305,6 +1306,12 @@ namespace xdp {
      * Initialize xrt IP for deadlock diagnosis
      */
     parseXrtIPMetadata(deviceId, device);
+  }
+
+  void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
+  {
+    xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
+    updateDevice(deviceId, xrtXclbin);
   }
 
   // Return true if we should reset the device information.

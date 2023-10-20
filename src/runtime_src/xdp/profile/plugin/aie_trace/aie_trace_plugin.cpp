@@ -18,6 +18,7 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/api/device_int.h"
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/database/database.h"
@@ -88,9 +89,8 @@ namespace xdp {
       return itr->second.deviceID;
 
 #ifdef XDP_MINIMAL_BUILD
-  return 0;
+  return db->addDevice("win_sysfspath");
 #else
-
     std::array<char, sysfs_max_path_length> pathBuf = {0};
     xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
     std::string sysfspath(pathBuf.data());
@@ -105,39 +105,46 @@ namespace xdp {
     if (!handle)
       return;
 
+  /*
+   * handle relates to hw context handle in case of Client XRT
+   */
+#ifdef XDP_MINIMAL_BUILD
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto device = xrt_core::hw_context_int::get_core_device(context);
+#else
+    auto device = xrt_core::get_userpf_device(handle);
+#endif
+
     // Clean out old data every time xclbin gets updated
     if (handleToAIEData.find(handle) != handleToAIEData.end())
       handleToAIEData.erase(handle);
 
+    auto deviceID = getDeviceIDFromHandle(handle);
+ 
     //Setting up struct 
     auto& AIEData = handleToAIEData[handle];
-
-    auto deviceID = getDeviceIDFromHandle(handle);
     AIEData.deviceID = deviceID;
     AIEData.valid = true; // initialize struct
     AIEData.devIntf = nullptr;
 
-
+  // Update the static database with information from xclbin
+#ifdef XDP_MINIMAL_BUILD
+    (db->getStaticInfo()).updateDeviceClient(deviceID, device);
+    (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+#else
     // Update the static database with information from xclbin
     (db->getStaticInfo()).updateDevice(deviceID, handle);
-    {
-#ifdef XDP_MINIMAL_BUILD
-        (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
-#else 
-      struct xclDeviceInfo2 info;
-      if (xclGetDeviceInfo2(handle, &info) == 0)
-        (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+    struct xclDeviceInfo2 info;
+    if (xclGetDeviceInfo2(handle, &info) == 0)
+      (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
 #endif
 
-    }
 
-    // Metadata depends on static information from the database
-
-  
-    AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
+  // Metadata depends on static information from the database
+  AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
 
 #ifdef XDP_MINIMAL_BUILD
-    AIEData.metadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
+    AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
@@ -160,7 +167,6 @@ namespace xdp {
     if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
       // Update the AIE specific portion of the device
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
-      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
       if (device != nullptr) {
         for (auto& gmioEntry : AIEData.metadata->get_trace_gmios()) {
           auto gmio = gmioEntry.second;

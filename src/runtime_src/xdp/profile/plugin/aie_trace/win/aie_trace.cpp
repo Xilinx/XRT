@@ -572,19 +572,19 @@ namespace xdp {
         //   return false;
         // }
 
-        for (int i = 0; i < coreEvents.size(); i++) {
-          // uint8_t slot;
+        for (uint8_t i = 0; i < coreEvents.size(); i++) {
+          uint8_t slot = i;
           //if (coreTrace->reserveTraceSlot(slot) != XAIE_OK)
           //  break;
           //if (coreTrace->setTraceEvent(slot, coreEvents[i]) != XAIE_OK)
           //  break;
-          if (XAie_TraceEvent(&aieDevInst, loc, mod, coreEvents[i], static_cast<uint8_t>(i)) != XAIE_OK)
+          if (XAie_TraceEvent(&aieDevInst, loc, mod, coreEvents[i], i) != XAIE_OK)
             break;
           numCoreTraceEvents++;
 
           // Update config file
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, coreEvents[i], &phyEvent);
-          // cfgTile->core_trace_config.traced_events[slot] = phyEvent;
+          cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
 
         // Update config file
@@ -633,6 +633,12 @@ namespace xdp {
           if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, 9, traceEndEvent) != XAIE_OK)
             break;
 
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
+          cfgTile->core_trace_config.internal_events_broadcast[8] = phyEvent;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
+          cfgTile->core_trace_config.internal_events_broadcast[9] = phyEvent;
+
           if (XAie_EventBroadcastBlockMapDir(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_SWITCH_A, 0xFF00, XAIE_EVENT_BROADCAST_WEST | XAIE_EVENT_BROADCAST_NORTH | XAIE_EVENT_BROADCAST_SOUTH) != XAIE_OK)
             break;
           
@@ -648,6 +654,14 @@ namespace xdp {
           break;
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, traceEndEvent) != XAIE_OK)
           break;
+
+        {
+          uint8_t phyEvent = 0;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent);
+          cfgTile->memory_trace_config.start_event = phyEvent;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent);
+          cfgTile->memory_trace_config.stop_event = phyEvent;
+        }
 
         // auto ret = memoryTrace->reserve();
         // if (ret != XAIE_OK) {
@@ -727,14 +741,15 @@ namespace xdp {
           // XAie_ModuleType M;
           // TraceE->getRscId(L, M, S);
           // Get physical event
-          uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
-
           if (type == module_type::mem_tile) {
+             //.XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
             // cfgTile->memory_tile_trace_config.traced_events[S] = phyEvent;
           } else {
+            uint8_t phyEvent = 0;
+            XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-            // cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
+            XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_MEM_MOD, broadcastEvents[i], &phyEvent);
+            cfgTile->memory_trace_config.traced_events[i] = phyEvent;
           }
         }
         xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
@@ -773,7 +788,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::info, "XRT", "Updating Config File");
 
         // Update config file
-        {
+        /*{
           // Add Memory trace control events
           // Start
           uint32_t bcBit = 0x1;
@@ -810,7 +825,7 @@ namespace xdp {
             else
               cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
           }
-        }
+        }*/
 
         memoryEvents.clear();
         mNumTileTraceEvents[typeInt][numMemoryTraceEvents]++;
@@ -961,6 +976,7 @@ namespace xdp {
 
       // Add config info to static database
       // NOTE: Do not access cfgTile after this
+      std::cout <<"log tile to device : " << deviceId << std::endl;
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     }  // For tiles
 
@@ -1007,124 +1023,5 @@ namespace xdp {
     // run_shim_loopback();
     return true;
   }
-
-  // uint8_t*
-  // AieTrace_WinImpl::shim_loopback_test(uint64_t src, uint64_t dest, uint32_t size, uint8_t col) {
-  //   AieRC RC;
-  //   XAie_LocType loc;
-  //   XAie_DmaDesc DmaDesc1, DmaDesc2;
-
-  //   loc = XAie_TileLoc(col, 0);
-  //   uint8_t s2mm_bd_id = 5;
-  //   uint8_t s2mm_ch_id = 1;
-  //   uint8_t mm2s_bd_id = 2;
-  //   uint8_t mm2s_ch_id = 0;
-
-  //   printf("Configuring AIE...\n");
-  //   XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-  //   RC = XAie_StrmConnCctEnable(&aieDevInst, loc, SOUTH, 3, SOUTH, 3);
-  //   RC = XAie_EnableShimDmaToAieStrmPort(&aieDevInst, loc, 3);
-  //   RC = XAie_EnableAieToShimDmaStrmPort(&aieDevInst, loc, 3);
-
-  //   // MM2S BD
-  //   RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc1, loc);
-  //   RC = XAie_DmaSetAddrLen(&DmaDesc1, src, size);
-  //   RC = XAie_DmaEnableBd(&DmaDesc1);
-  //   RC = XAie_DmaSetAxi(&DmaDesc1, 0U, 16U, 0U, 0U, 0U);
-  //   RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc1, loc, mm2s_bd_id);
-
-  //   // S2MM BD
-  //   RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc2, loc);
-  //   RC = XAie_DmaSetAddrLen(&DmaDesc2, dest, size);
-  //   RC = XAie_DmaEnableBd(&DmaDesc2);
-  //   RC = XAie_DmaSetAxi(&DmaDesc2, 0U, 16U, 0U, 0U, 0U);
-  //   RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc2, loc, s2mm_bd_id);
-
-  //   printf("Enabling channels....\n");
-  //   RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM, s2mm_bd_id);
-  //   RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, mm2s_ch_id, DMA_MM2S, mm2s_bd_id);
-
-  //   RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
-  //   RC = XAie_DmaChannelEnable(&aieDevInst, loc, mm2s_ch_id, DMA_MM2S);
-
-  //   RC = XAie_DmaWaitForDone(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM, 0);
-
-  //   uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 0, 0);
-  //   return txn_ptr;
-  // }
-
-  // int
-  // AieTrace_WinImpl::run_shim_loopback()
-  // {
-  //   std::cout << "run_shim_loopback begin" << std::endl;
-  //   auto context = metadata->getHwContext();
-
-  //   try {
-  //     mKernel = xrt::kernel(context, "DPU_1x4_NEW");  
-  //   } catch (std::exception &e){
-  //     std::stringstream msg;
-  //     msg << "Unable to find DPU kernel from hardware context. Not configuring AIE Profile. " << e.what() ;
-  //     xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-  //     return -1;
-  //   }
-
-  //   constexpr uint32_t DATA_SIZE = 64;
-  //   constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
-  //   constexpr std::uint64_t LB_OPCODE = std::uint64_t{2};
-
-  //   // create vectors for input/output data;
-  //   std::vector<uint32_t> input;
-
-  //   for (int i = 0; i < DATA_SIZE; i++)
-  //     input.push_back(i);
-
-  //   // create all BOs.
-  //   std::cout << "Allocating BOs" << std::endl;
-  //   xrt::bo inp_bo, out_bo, instr_bo;
-  //   inp_bo = xrt::bo(context.get_device(), DATA_SIZE * sizeof(uint32_t), XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0));
-  //   out_bo = xrt::bo(context.get_device(), DATA_SIZE * sizeof(uint32_t), XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0));
-
-  //   // Copy input / output vectors into XRT BOs
-  //   inp_bo.write(input.data());
-  //   inp_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
-  //   std::cout << "Allocated all BOs" << std::endl;
-
-  //   uint8_t *txn_ptr = shim_loopback_test(inp_bo.address() + DDR_AIE_ADDR_OFFSET, out_bo.address() + DDR_AIE_ADDR_OFFSET, DATA_SIZE * sizeof(uint32_t), 1);
-  //   XAie_TxnHeader *hdr = (XAie_TxnHeader *)txn_ptr;
-  //   std::cout << "Txn Size: " << hdr->TxnSize << " bytes" << std::endl;
-
-  //   op_buf instr_buf;
-  //   instr_buf.addOP(transaction_op(txn_ptr));
-
-  //   instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-  //   instr_bo.write(instr_buf.ibuf_.data());
-  //   instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    
-  //   auto out_bo_map = out_bo.map<uint32_t*>();
-
-  //   for (int r = 0; r < 10; r++) {
-  //     std::vector<u64> kargv(5, 0);
-  //     auto run = mKernel(LB_OPCODE, instr_bo, instr_bo.size() / sizeof(int), kargv[0], kargv[1], kargv[2], kargv[3], kargv[4]);
-  //     run.wait();
-  //     // Read output and validate
-  //     out_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-  //     for (int i = 0; i < DATA_SIZE; i++) {
-  //       if (out_bo_map[i] != input[i]) {
-  //         std::cout << "Mismatch id " << i << " input: " << input[i] << " output : " << out_bo_map[i] << std::endl;
-  //         std::cout << "Test FAILED" << std::endl;
-  //         return -1;
-  //       }
-  //       out_bo_map[i] = 0xdeadbeef;
-  //     }
-  //     std::cout << "Reset output BO" << std::endl;
-  //     out_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-  //   }
-
-  //   std::cout << "Shim loop-back PASSED" << std::endl;
-
-  //   return 0;
-  // }
-
 
 }  // namespace xdp

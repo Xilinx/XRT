@@ -245,9 +245,7 @@ namespace xdp {
                                           uint64_t bufferSz,
                                           bool copy)
   {
-    std::cout << "Adding Trace data!" << std::endl;
     auto device_db = getDeviceDB(deviceId);
-    std::cout << "Got device DB!" << std::endl;
     device_db->addAIETraceData(strmIndex, buffer, bufferSz, copy,
                                db->getStaticInfo().getNumAIETraceStream(deviceId));
   }

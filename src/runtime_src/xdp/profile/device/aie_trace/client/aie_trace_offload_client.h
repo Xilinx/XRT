@@ -118,8 +118,6 @@ public:
     XDP_EXPORT
     void endReadTrace();
     XDP_EXPORT
-    bool isTraceBufferFull();
-    XDP_EXPORT
     void startOffload();
     XDP_EXPORT
     void stopOffload();
@@ -135,6 +133,7 @@ public:
     };
 
     void readTrace(bool final) {mReadTrace(final);};
+    bool isTraceBufferFull() {return false;};
 
 private:
 
@@ -180,10 +179,8 @@ private:
 
 private:
     void readTraceGMIO(bool final);
-    void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
-    void checkCircularBufferSupport();
     uint64_t syncAndLog(uint64_t index);
     std::function<void(bool)> mReadTrace;
     uint64_t searchWrittenBytes(void * buf, uint64_t bytes);
