@@ -188,8 +188,10 @@ syncAndLog(uint64_t index)
   if (!in_bo_map)
     return 0;
 
+  uint64_t nBytes = searchWrittenBytes((void*)in_bo_map, bufAllocSz);
+
   // Log nBytes of trace
-  traceLogger->addAIETraceData(index, (void*)in_bo_map, bufAllocSz, true);
+  traceLogger->addAIETraceData(index, (void*)in_bo_map, nBytes, true);
   return xrt_bos[index].size();
 }
 
@@ -230,9 +232,38 @@ endReadTrace()
 
 uint64_t
 AIETraceOffload::
-searchWrittenBytes(void* /*buf*/, uint64_t /*bytes*/)
+searchWrittenBytes(void* buf, uint64_t bytes)
 {
-  return 0;
+  /*
+   * Look For trace boundary using binary search.
+   * Use Dword to be safe
+   */
+  auto words = static_cast<uint64_t *>(buf);
+  uint64_t wordcount = bytes / TRACE_PACKET_SIZE;
+
+  // indices
+  int64_t low = 0;
+  int64_t high = static_cast<int64_t>(wordcount) - 1;
+
+  // Boundary at which trace ends and 0s begin
+  uint64_t boundary = wordcount;
+
+  while (low <= high) {
+    int64_t mid = low + (high - low) / 2;
+    if (!words[mid]) {
+      boundary = mid;
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+
+  uint64_t written = boundary * TRACE_PACKET_SIZE;
+
+  debug_stream
+    << "Found Boundary at 0x" << std::hex << written << std::dec << std::endl;
+
+  return written;
 }
 
 }
