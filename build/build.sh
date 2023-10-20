@@ -3,6 +3,7 @@
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
@@ -32,6 +33,12 @@ if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
 	export CC=gcc-8
 	export CXX=g++-8
     fi
+fi
+
+# Use GCC 9 on CentOS 8 for std::filesystem
+# The dependency is installed by xrtdeps.sh
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" ]] && [[ $VERSION == 8 ]]; then
+    source /opt/rh/gcc-toolset-9/enable
 fi
 
 usage()
