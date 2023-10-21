@@ -443,17 +443,17 @@ TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
 
 std::string
 TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
-                boost::property_tree::ptree& _ptTest)
+                const std::string dpu_name)
 {
   const static std::string dpu_dir = "DPU_Sequence"; 
-  auto dpu_name = _ptTest.get<std::string>("DPU-Sequence", "");
   boost::filesystem::path prefix_path;
 
 #ifdef _WIN32
   boost::ignore_unused(_dev);
   prefix_path = xrt_core::environment::xilinx_xrt();
 #else
-  const auto platform_path = findPlatformPath(_dev, _ptTest);
+  boost::property_tree::ptree ptree; //ignore
+  const auto platform_path = findPlatformPath(_dev, ptree);
   prefix_path = boost::filesystem::path(platform_path);
 #endif
   auto dpu_instr = prefix_path / dpu_dir / dpu_name;

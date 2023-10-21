@@ -19,7 +19,10 @@ static constexpr size_t word_count = buffer_size/4;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestDF_bandwidth::TestDF_bandwidth()
   : TestRunner("df-bw", 
-                "Run bandwidth test on data fabric"){}
+                "Run bandwidth test on data fabric")
+                {
+                  m_dpu_name = "df_bw.txt";
+                }
 
 namespace {
 
@@ -122,7 +125,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   // Find DPU instruction file
   std::string dpu_instr;
   try {
-    dpu_instr = findDPUPath(dev, ptree);
+    dpu_instr = findDPUPath(dev, m_dpu_name);
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
