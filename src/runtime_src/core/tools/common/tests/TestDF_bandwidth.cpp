@@ -10,7 +10,11 @@
 #include "xrt/xrt_kernel.h"
 namespace XBU = XBUtilities;
 
+// 3rd Party Library - Include Files
 #include <boost/filesystem.hpp>
+
+// System - Include Files
+#include <fstream>
 
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 1024 * 1024 * 1024; //1 GB
@@ -36,7 +40,7 @@ init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
 
   auto instr = bo_instr.map<int*>();
   std::string line;
-  while (getline(dpu_stream, line)) {
+  while (std::getline(dpu_stream, line)) {
     if (line.at(0) == '#') {
       continue;
     }
@@ -55,7 +59,7 @@ get_instr_size(const std::string& dpu_file) {
   }
   size_t size = 0;
   std::string line;
-  while (getline(file, line)) {
+  while (std::getline(file, line)) {
     if (line.at(0) != '#') {
       size++;
     }
