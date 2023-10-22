@@ -90,7 +90,7 @@ int main( int argc, char** argv )
     populateSubCommandsFromJSON(subCommands, executable);
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
-    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false, configTree));
+    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
 #endif
 
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true, false, true, configTree));

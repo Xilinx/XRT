@@ -101,6 +101,41 @@ create_suboption_list_map_string(const std::map<std::string, VectorPairStrings>&
 }
 
 std::string 
+XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
+{
+  std::map<std::string, VectorPairStrings> collection = {
+    {"common", _collection}
+  };
+  return create_suboption_list_map_string(collection);
+}
+
+std::string 
+XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollection, 
+                                           bool _addAllOption)
+{
+  VectorPairStrings reportDescriptionCollection;
+
+  // Add the report names and description
+  for (const auto & report : _reportCollection) {
+    // Skip hidden reports
+    if (!XBU::getShowHidden() && report->isHidden()) 
+      continue;
+    reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
+  }
+
+  // 'verbose' option
+  if (_addAllOption) 
+    reportDescriptionCollection.emplace_back("all", "All known reports are produced");
+
+  // Sort the collection
+  sort(reportDescriptionCollection.begin(), reportDescriptionCollection.end(), 
+       [](const std::pair<std::string, std::string> & a, const std::pair<std::string, std::string> & b) -> bool
+       { return (a.first.compare(b.first) < 0); });
+
+  return create_suboption_list_string(reportDescriptionCollection);
+}
+
+std::string 
 XBUtilities::create_suboption_list_map(const std::string& deviceClass,
                                        const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& device_options,
                                        const VectorPairStrings& common_options)

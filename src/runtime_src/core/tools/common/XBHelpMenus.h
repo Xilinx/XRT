@@ -23,6 +23,12 @@ namespace XBUtilities {
                               const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& device_options,
                               const VectorPairStrings& common_options);
 
+  std::string 
+    create_suboption_list_string(const VectorPairStrings &_collection);
+
+  std::string 
+    create_suboption_list_string(const ReportCollection &_reportCollection, bool _addAllOption);
+
   std::string
     create_suboption_list_string(const Report::SchemaDescriptionVector &_formatCollection);
 
