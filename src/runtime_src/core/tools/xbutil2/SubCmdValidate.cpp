@@ -71,12 +71,12 @@ static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
 
 void
-doesTestExist(const std::string& userTestName, const XBU::VectorPairStrings& testNameDescription)
+doesTestExist(const std::string& userTestName, const XBU::VectorPairStrings& testNames)
 {
-  const auto iter = std::find_if( testNameDescription.begin(), testNameDescription.end(),
+  const auto iter = std::find_if( testNames.begin(), testNames.end(),
     [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
 
-  if (iter == testNameDescription.end())
+  if (iter == testNames.end())
     throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
 }
 
@@ -370,9 +370,7 @@ getTestNameDescriptions(bool addAdditionOptions)
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
   // -- Build up the format options
-static const auto formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 static const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
-static const auto formatRunValues = XBU::create_suboption_list_string(testNameDescription);
 
 static boost::program_options::options_description common_options;
 static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
