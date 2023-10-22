@@ -241,7 +241,6 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   }
 
   // Text output
-  oStream << "Hello World!";
   oStream << boost::format("%-26s: [%s]\n") % "Validate Device" % ptTree.get<std::string>("device_id");
   oStream << boost::format("    %-22s: %s\n") % "Platform" % ptTree.get<std::string>("platform");
   oStream << boost::format("    %-22s: %s\n") % "SC Version" % ptTree.get<std::string>("sc_version");
@@ -375,7 +374,12 @@ static const auto formatOptionValues = XBU::create_suboption_list_string(Report:
 static const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
 static const auto formatRunValues = XBU::create_suboption_list_string(testNameDescription);
 
-SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+static boost::program_options::options_description common_options;
+static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
+static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
+static const std::pair<std::string, std::string> quick_test = {"quick", "Only the first 4 tests will be executed"};
+
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("validate",
              "Validates the basic shell acceleration functionality")
     , m_device("")
@@ -393,16 +397,31 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
 
-  m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The device of interest. This is specified as follows:\n"
-                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
+  m_commandConfig = configurations;
+
+  const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
+  jsonOptions = JSONConfigurable::extract_subcmd_config<JSONConfigurable, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
+
+  // -- Build up the format options
+  static const auto formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+  XBUtilities::VectorPairStrings common_tests;
+  common_tests.emplace_back(all_test);
+  common_tests.emplace_back(quick_test);
+  static const auto formatRunValues = XBU::create_suboption_list_map("", jsonOptions, common_tests);
+
+  common_options.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
     ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
     ("param", boost::program_options::value<decltype(m_param)>(&m_param), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
     ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;    
+  ;
+
+  m_commonOptions.add(common_options);
+  m_commonOptions.add_options()
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
+  ;
 }
 
 /*
@@ -447,6 +466,29 @@ extendedKeysOptions()
 }
 
 void
+SubCmdValidate::print_help_internal() const
+{
+  if (m_device.empty()) {
+    printHelp(false, extendedKeysOptions());
+    return;
+  }
+
+  const std::string deviceClass = XBU::get_device_class(m_device, true);
+  auto it = jsonOptions.find(deviceClass);
+
+  XBUtilities::VectorPairStrings help_tests = { all_test };
+  if (it != jsonOptions.end() && it->second.size() > 3)
+    help_tests.emplace_back(quick_test);
+
+  static const std::string testOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, help_tests);
+  std::vector<std::string> tempVec;
+  common_options.add_options()
+    ("report,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + testOptionValues).c_str() )
+  ;
+  printHelp(common_options, m_hiddenOptions, deviceClass, false, extendedKeysOptions());
+}
+
+void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   // Parse sub-command ...
@@ -455,7 +497,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (m_help) {
-    printHelp(false, extendedKeysOptions());
+    print_help_internal();
     return;
   }
 
@@ -525,7 +567,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(false, extendedKeysOptions());
+    print_help_internal();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
