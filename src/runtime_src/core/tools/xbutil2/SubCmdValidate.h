@@ -6,6 +6,7 @@
 #define __SubCmdValidate_h_
 
 #include "tools/common/SubCmd.h"
+#include "tools/common/XBHelpMenus.h"
 
 class SubCmdValidate : public SubCmd {
  public:
@@ -24,6 +25,7 @@ class SubCmdValidate : public SubCmd {
   bool                      m_help;
 
   void print_help_internal() const;
+  XBUtilities::VectorPairStrings getTestNameDescriptions(bool addAdditionOptions) const;
 };
 
 #endif

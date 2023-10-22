@@ -12,7 +12,6 @@
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
 #include "tools/common//reports/ReportPlatforms.h"
-#include "tools/common/XBHelpMenus.h"
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
@@ -345,8 +344,13 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
   return has_failures;
 }
 
-static XBU::VectorPairStrings
-getTestNameDescriptions(bool addAdditionOptions)
+}
+//end anonymous namespace
+
+// ----- C L A S S   M E T H O D S -------------------------------------------
+
+XBU::VectorPairStrings
+SubCmdValidate::getTestNameDescriptions(bool addAdditionOptions) const
 {
   XBU::VectorPairStrings reportDescriptionCollection;
 
@@ -356,8 +360,14 @@ getTestNameDescriptions(bool addAdditionOptions)
     reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
   }
 
+  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
+  const auto testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
+  const std::string deviceClass = XBU::get_device_class(m_device, true);
+  const auto it = testOptionsMap.find(deviceClass);
+  const std::vector<std::shared_ptr<TestRunner>>& testOptions = (it == testOptionsMap.end()) ? testSuite : it->second;
+
   // report names and description
-  for (const auto & test : testSuite) {
+  for (const auto& test : testOptions) {
     std::string testName = boost::algorithm::to_lower_copy(test.get()->getConfigName());
     reportDescriptionCollection.emplace_back(testName, test.get()->get_test_header().get("description", "<no description>"));
   }
@@ -365,13 +375,7 @@ getTestNameDescriptions(bool addAdditionOptions)
   return reportDescriptionCollection;
 }
 
-}
-//end anonymous namespace
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
   // -- Build up the format options
-static const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
-
 static boost::program_options::options_description common_options;
 static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
 static const std::pair<std::string, std::string> all_test = {"all", "All applicable validate tests will be executed (default)"};
@@ -504,6 +508,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> param;
   std::vector<std::string> validatedTests;
   std::string validateXclbinPath = m_xclbin_location;
+  const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
   try {
     // Output Format
     schemaVersion = Report::getSchemaDescription(m_format).schemaVersion;
@@ -580,31 +585,38 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
+  auto testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
+  const std::string deviceClass = XBU::get_device_class(m_device, true);
+  auto it = testOptionsMap.find(deviceClass);
+  if (it == testOptionsMap.end())
+    XBU::throw_cancel(boost::format("Invalid device class %s. Device: %s") % deviceClass % m_device);
+  std::vector<std::shared_ptr<TestRunner>>& testOptions = it->second;
+
   // Collect all of the tests of interests
   std::vector<std::shared_ptr<TestRunner>> testObjectsToRun;
-
-  for (size_t index = 0; index < testSuite.size(); ++index) {
-    std::string testSuiteName = testSuite[index]->get_name();
+  for (size_t index = 0; index < testOptions.size(); ++index) {
+    std::string testSuiteName = testOptions[index]->get_name();
     // The all option enqueues all test suites not marked explicit
     if (validatedTests[0] == "all") {
       // Do not queue test suites that must be explicitly passed in
-      if (testSuite[index]->is_explicit())
+      if (testOptions[index]->is_explicit())
         continue;
-      testObjectsToRun.push_back(testSuite[index]);
+      testObjectsToRun.push_back(testOptions[index]);
       // add custom param to the ptree if available
       if (!param.empty() && boost::equals(param[0], testSuiteName)) {
-        testSuite[index]->set_param(param[1], param[2]);
+        testOptions[index]->set_param(param[1], param[2]);
       }
       if (!validateXclbinPath.empty())
-        testSuite[index]->set_xclbin_path(validateXclbinPath);
+        testOptions[index]->set_xclbin_path(validateXclbinPath);
       continue;
     }
 
     // The quick test option enqueues only the first three test suites
     if (validatedTests[0] == "quick") {
-      testObjectsToRun.push_back(testSuite[index]);
+      testObjectsToRun.push_back(testOptions[index]);
       if (!validateXclbinPath.empty())
-        testSuite[index]->set_xclbin_path(validateXclbinPath);
+        testOptions[index]->set_xclbin_path(validateXclbinPath);
       if (index == 3)
         break;
     }
@@ -613,13 +625,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // Enqueue the matching test suites to be executed
     for (const auto & testName : validatedTests) {
       if (boost::equals(testName, testSuiteName)) {
-        testObjectsToRun.push_back(testSuite[index]);
+        testObjectsToRun.push_back(testOptions[index]);
         // add custom param to the ptree if available
         if (!param.empty() && boost::equals(param[0], testSuiteName)) {
-          testSuite[index]->set_param(param[1], param[2]);
+          testOptions[index]->set_param(param[1], param[2]);
         }
         if (!validateXclbinPath.empty())
-          testSuite[index]->set_xclbin_path(validateXclbinPath);
+          testOptions[index]->set_xclbin_path(validateXclbinPath);
         break;
       }
     }
