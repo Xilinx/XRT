@@ -241,6 +241,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   }
 
   // Text output
+  oStream << "Hello World!";
   oStream << boost::format("%-26s: [%s]\n") % "Validate Device" % ptTree.get<std::string>("device_id");
   oStream << boost::format("    %-22s: %s\n") % "Platform" % ptTree.get<std::string>("platform");
   oStream << boost::format("    %-22s: %s\n") % "SC Version" % ptTree.get<std::string>("sc_version");
