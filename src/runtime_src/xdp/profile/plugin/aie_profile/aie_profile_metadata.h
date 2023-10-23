@@ -56,24 +56,29 @@ namespace xdp {
       std::map <module_type, std::vector<std::string>> metricStrings {
         {
           module_type::core, {
-            "heat_map", "stalls", "execution",
-            "floating_point", "stream_put_get", "write_throughputs",
-            "read_throughputs", "aie_trace", "events"}
+            "heat_map", "stalls", "execution", "floating_point", 
+            "stream_put_get", "aie_trace", "events",
+            "write_throughputs", "read_throughputs", 
+            "s2mm_throughputs", "mm2s_throughputs"}
         },
         {
           module_type::dma, {
             "conflicts", "dma_locks", "dma_stalls_s2mm",
-            "dma_stalls_mm2s", "write_throughputs", "read_throughputs"}
+            "dma_stalls_mm2s", "write_throughputs", "read_throughputs",
+            "s2mm_throughputs", "mm2s_throughputs"}
         },
         { 
-          module_type::shim, {"input_throughputs", "output_throughputs", "packets"}
+          module_type::shim, {"input_throughputs", "output_throughputs", 
+            "s2mm_stalls0", "s2mm_stalls1", "mm2s_stalls0", "mm2s_stalls1", 
+            "packets"}
 
         },
         {
           module_type::mem_tile, {
-            "input_channels", "input_channels_details",
-            "output_channels", "output_channels_details",
-            "memory_stats", "mem_trace"
+            "s2mm_channels", "s2mm_channels_details", "mm2s_channels", 
+            "mm2s_channels_details", "memory_stats", "mem_trace", 
+            "s2mm_throughputs", "mm2s_throughputs", "conflict_stats1",
+            "conflict_stats2", "conflict_stats3", "conflict_stats4"
           }
         }
       };

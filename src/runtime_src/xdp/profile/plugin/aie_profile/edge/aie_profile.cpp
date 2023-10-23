@@ -130,13 +130,9 @@ namespace xdp {
       mMemoryStartEvents["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM,
                                                 XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
       mMemoryStartEvents["s2mm_throughputs"] = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-                                                XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM,
-                                                XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM,
-                                                XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM};
+                                                XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
       mMemoryStartEvents["mm2s_throughputs"] = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
-                                                XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM,
-                                                XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM,
-                                                XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM};
+                                                XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
     }
     mMemoryEndEvents = mMemoryStartEvents;
 
@@ -369,7 +365,7 @@ namespace xdp {
     std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
 
     // Traverse all counters and request monitor ports as needed
-    for (int i=0; i < numCounters; ++i) {
+    for (uint32_t i=0; i < numCounters; ++i) {
       // Ensure applicable event
       auto startEvent = startEvents.at(i);
       auto endEvent = endEvents.at(i);
@@ -634,6 +630,7 @@ namespace xdp {
 
         int numCounters  = 0;
         auto numFreeCtr  = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
+        numFreeCtr = (startEvents.size() < numFreeCtr) ? startEvents.size() : numFreeCtr;
 
         // Specify Sel0/Sel1 for memory tile events 21-44
         auto iter0 = configChannel0.find(tile);
@@ -641,6 +638,17 @@ namespace xdp {
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
         
+        // If memory module, then set correct events based on channel
+        if ((type == module_type::dma) && (channel0 != 0)) {
+          if (metricSet == "s2mm_throughputs")
+            startEvents = {XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM,
+                           XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM};
+          else if (metricSet == "mm2s_throughputs") 
+            startEvents = {XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM,
+                           XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM};
+          endEvents = startEvents;
+        }
+
         configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
         configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtr, 
                                 metricSet, channel0, channel1, startEvents, endEvents);
