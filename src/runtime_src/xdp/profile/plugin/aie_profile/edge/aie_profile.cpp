@@ -650,17 +650,11 @@ namespace xdp {
           auto startEvent    = startEvents.at(i);
           auto endEvent      = endEvents.at(i);
           uint8_t resetEvent = 0;
+          auto portnum       = getPortNumberFromEvent(startEvent);
+          uint8_t channel    = (portnum == 0) ? channel0 : channel1;
 
-          // Channel number is based on monitoring port 0 or 1
-          auto channel = (startEvent <= XAIE_EVENT_PORT_TLAST_0_MEM_TILE) ? channel0 : channel1;
-
+          // Configure group event before reserving and starting counter
           configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet, channel);
-          auto event = configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
-                                               startEvent, metricSet, channel);
-          if (event != startEvent) {
-            endEvent = (endEvent == startEvent) ? event : endEvent;
-            startEvent = event;
-          }
 
           // Request counter from resource manager
           auto perfCounter = xaieModule.perfCounter();
@@ -683,8 +677,6 @@ namespace xdp {
           uint16_t phyEndEvent   = tmpEnd   + mCounterBases[type];
 
           // Get payload for reporting purposes
-          auto portnum = getPortNumberFromEvent(startEvent);
-          uint8_t channel = (portnum == 0) ? channel0 : channel1;
           auto payload = getCounterPayload(aieDevInst, tileMetric.first, type, col, row, 
                                            startEvent, metricSet, channel);
 
