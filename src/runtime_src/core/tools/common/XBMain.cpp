@@ -137,9 +137,6 @@ void  main_(int argc, char** argv,
   if (bHelp)
     subcmd_options.push_back("--help");
 
-  if (sDevice.empty())
-    sDevice = "default";
-
   // Was default device requested?
   if (boost::iequals(sDevice, "default")) {
     sDevice.clear();
