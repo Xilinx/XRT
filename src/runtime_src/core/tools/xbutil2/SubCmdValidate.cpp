@@ -350,7 +350,7 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 XBU::VectorPairStrings
-SubCmdValidate::getTestNameDescriptions(bool addAdditionOptions) const
+SubCmdValidate::getTestNameDescriptions(const bool addAdditionOptions) const
 {
   XBU::VectorPairStrings reportDescriptionCollection;
 
@@ -361,8 +361,8 @@ SubCmdValidate::getTestNameDescriptions(bool addAdditionOptions) const
   }
 
   const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
-  const auto testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string deviceClass = XBU::get_device_class(m_device, true);
+  const auto& testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
+  const std::string& deviceClass = XBU::get_device_class(m_device, true);
   const auto it = testOptionsMap.find(deviceClass);
   const std::vector<std::shared_ptr<TestRunner>>& testOptions = (it == testOptionsMap.end()) ? testSuite : it->second;
 
@@ -587,7 +587,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
   auto testOptionsMap = JSONConfigurable::extract_subcmd_config<TestRunner, TestRunner>(testSuite, configs, getConfigName(), std::string("test"));
-  const std::string deviceClass = XBU::get_device_class(m_device, true);
+  const std::string& deviceClass = XBU::get_device_class(m_device, true);
   auto it = testOptionsMap.find(deviceClass);
   if (it == testOptionsMap.end())
     XBU::throw_cancel(boost::format("Invalid device class %s. Device: %s") % deviceClass % m_device);

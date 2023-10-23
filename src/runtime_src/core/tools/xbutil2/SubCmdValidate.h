@@ -25,7 +25,7 @@ class SubCmdValidate : public SubCmd {
   bool                      m_help;
 
   void print_help_internal() const;
-  XBUtilities::VectorPairStrings getTestNameDescriptions(bool addAdditionOptions) const;
+  XBUtilities::VectorPairStrings getTestNameDescriptions(const bool addAdditionOptions) const;
 };
 
 #endif
