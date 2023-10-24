@@ -318,7 +318,7 @@ namespace xdp {
           // Define stream switch port to monitor core or memory trace
           uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
           //switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
-          XAie_EventSelectStrmPort(aieDevInst, loc, 0, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+          XAie_EventSelectStrmPort(&aieDevInst, loc, 0, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
       
         }
         else if (type == module_type::shim) {
@@ -327,7 +327,7 @@ namespace xdp {
           auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
           auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
           //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
-          XAie_EventSelectStrmPort(aieDevInst, loc, 0, slaveOrMaster, SOUTH, streamPortId);
+          XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, SOUTH, streamPortId);
         }
         else {
           // Memory tiles
@@ -339,7 +339,7 @@ namespace xdp {
             auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
               XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
             //switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
-            XAie_EventSelectStrmPort(aieDevInst, loc, 0, slaveOrMaster, DMA, channel);
+            XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, DMA, channel);
           }
         }
       }
@@ -454,6 +454,7 @@ namespace xdp {
 
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
+    std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
     for (auto& tileMetric : metadata->getConfigMetrics()) {
 
       auto& metricSet = tileMetric.second;
@@ -653,6 +654,7 @@ namespace xdp {
           traceStartEvent = XAIE_EVENT_BROADCAST_8_MEM;
           traceEndEvent = XAIE_EVENT_BROADCAST_9_MEM;
         }
+
         mMemoryModTraceStartEvent = traceStartEvent;
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, traceEndEvent) != XAIE_OK)
           break;
@@ -746,6 +748,7 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, XAIE_MEM_MOD, broadcastEvents[i], &phyEvent);
           cfgTile->memory_trace_config.traced_events[i] = phyEvent;
         }
+        auto numCrossEvents = numMemoryTraceEvents;
         xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
 
         // Configure memory trace events
@@ -756,7 +759,7 @@ namespace xdp {
           //  break;
           //if (TraceE->start() != XAIE_OK)
           //  break;
-          if (XAie_TraceEvent(&aieDevInst, loc, mod, memoryEvents[i], static_cast<uint8_t>(numMemoryTraceEvents+i)) != XAIE_OK)
+          if (XAie_TraceEvent(&aieDevInst, loc, mod, memoryEvents[i], static_cast<uint8_t>(numCrossEvents+i)) != XAIE_OK)
             break;
           numMemoryTraceEvents++;
 
@@ -945,8 +948,8 @@ namespace xdp {
         //  break;
         //if (shimTrace->start() != XAIE_OK)
         //  break;
-        if (XAie_TraceModeConfig(&aieDevInst, loc, mod, XAIE_TRACE_EVENT_TIME) != XAIE_OK)
-          break;
+        // if (XAie_TraceModeConfig(&aieDevInst, loc, mod, XAIE_TRACE_EVENT_TIME) != XAIE_OK)
+        //   break;
         if (XAie_TracePktConfig(&aieDevInst, loc, mod, pkt) != XAIE_OK)
           break;
         if (XAie_TraceStartEvent(&aieDevInst, loc, mod, mInterfaceTileTraceStartEvent) != XAIE_OK)

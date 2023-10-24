@@ -638,6 +638,7 @@ namespace xdp {
   void AieTraceMetadata::getConfigMetricsForInterfaceTiles(const std::vector<std::string>& metricsSettings,
                                                            const std::vector<std::string> graphMetricsSettings)
   {
+    std::cout << "inside get Config Metrics for interface tiles" << std::endl;
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
@@ -754,6 +755,7 @@ namespace xdp {
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
       auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], channelId);
+      std::cout << "Returning tiles.size: " << tiles.size() << std::endl;
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
