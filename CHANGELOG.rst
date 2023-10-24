@@ -1,6 +1,17 @@
 XRT ChangeLog
 -------------
 
+2.17.0 (2024.2.17.x)
+~~~~~~~~~~~~~~~~~~~~
+
+Changed
+.......
+* Building XRT on Linux requires minimum gcc9 per commit 9cf57c4
+
+2.16.0 (202320.2.16.x)
+~~~~~~~~~~~~~~~~~~~~~~
+Changelog items missing
+
 2.15.0 (202310.2.15.x)
 ~~~~~~~~~~~~~~~~~~~~~~
 Added

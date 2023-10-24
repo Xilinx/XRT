@@ -3,6 +3,7 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "trace.h"
 #include "detail/trace.h"
+#include "detail/trace_init.h"
 
 #include "config_reader.h"
 
@@ -10,6 +11,32 @@
 #include <thread>
 
 namespace {
+
+// Static global initialization of trace logging.  
+struct init
+{
+  init()
+  {
+    if (!xrt_core::config::get_trace_logging())
+      return;
+
+    xrt_core::trace::detail::init_trace_logging();
+  }
+
+  ~init()
+  {
+    try {
+      if (!xrt_core::config::get_trace_logging())
+        return;
+
+      xrt_core::trace::detail::deinit_trace_logging();
+    }
+    catch (...) {
+    }
+  }
+};
+
+static init s_init;
 
 // Create specific logger if enabled
 static std::unique_ptr<xrt_core::trace::logger>
