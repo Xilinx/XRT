@@ -137,15 +137,6 @@ void  main_(int argc, char** argv,
   if (bHelp)
     subcmd_options.push_back("--help");
 
-  #ifdef ENABLE_DEFAULT_ONE_DEVICE_OPTION
-  // If the user has NOT specified a device AND the command to be executed
-  // is not the examine command, then automatically add the device.
-  // Note: "examine" produces different reports depending if the user has
-  //       specified the --device option or not.
-  if (sDevice.empty() && (subCommand->isDefaultDeviceValid()))
-    sDevice = "default";
-  #endif
-
   // Was default device requested?
   if (boost::iequals(sDevice, "default")) {
     sDevice.clear();
