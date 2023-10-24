@@ -61,8 +61,6 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-  if (m_isUserDomain)
-    setIsDefaultDevValid(false);
 
   // -- Build up the report & format options
   auto examineDeviceTrees = JSONConfigurable::parse_configuration_tree({getConfigName()}, configurations);
@@ -118,13 +116,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // Determine report level
   std::vector<std::string> reportsToRun(m_reportNames);
   if (reportsToRun.empty()) {
-    if (m_device.empty())
-      reportsToRun.push_back("host");
-    else {
-      reportsToRun.push_back("platform");
-      if (m_isUserDomain)
-        reportsToRun.push_back("dynamic-regions");
-    }
+    reportsToRun.push_back("host");
   }
 
   // DRC check
