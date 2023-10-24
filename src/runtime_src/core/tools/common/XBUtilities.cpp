@@ -405,7 +405,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       check_versal_boot(device);
 
     const std::string device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(device, "");
-    if (device_name.find("IPU") != std::string::npos) {
+    if (device_name.find("Ryzen") != std::string::npos) {
       std::cout << "------------------------------------------------------------\n";
       std::cout << "                        EARLY ACCESS                        \n";
       std::cout << "        This release of xbutil contains early access        \n";
