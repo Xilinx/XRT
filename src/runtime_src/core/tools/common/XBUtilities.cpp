@@ -415,7 +415,7 @@ tempDeviceMapping(const std::string& deviceName)
   if (deviceName.empty())
     return "";
 
-  if (deviceName.find("IPU") != std::string::npos)
+  if (deviceName.find("Ryzen") != std::string::npos)
     return "aie";
 
   return "alveo";
