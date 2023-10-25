@@ -46,7 +46,6 @@ namespace xdp {
       bool valid;
       uint64_t deviceID;
       std::unique_ptr<MLTimelineImpl> implementation;
-      std::shared_ptr<AieConfigMetadata>  aieMetadata;
     };
  
     std::map<void*, AIEData>  handleToAIEData;

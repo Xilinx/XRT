@@ -119,9 +119,8 @@ namespace xdp {
 
 
 #ifdef XDP_MINIMAL_BUILD
-    AIEDataEntry.aieMetadata = std::make_shared<AieConfigMetadata>();
-    AIEDataEntry.aieMetadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
-    AIEDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db, AIEDataEntry.aieMetadata);
+    AIEDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
+    AIEDataEntry.implementation->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
 #endif
     AIEDataEntry.implementation->updateAIEDevice(handle);
   }
