@@ -339,6 +339,21 @@ namespace xdp {
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
+      // One channel specified
+      if (metrics[i].size() == 3) {
+        try {
+          for (auto& e : tiles) {
+            configChannel0[e] = static_cast<uint8_t>(std::stoul(metrics[i][2]));
+          }
+        }
+        catch (...) {
+          std::stringstream msg;
+          msg << "Channel specifications in tile_based_" << modName << "_metrics are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        }
+      }
+
+      // Both channel specified
       if (metrics[i].size() == 4) {
         try {
           for (auto& e : tiles) {
