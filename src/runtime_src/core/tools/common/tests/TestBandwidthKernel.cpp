@@ -39,7 +39,7 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 static bool 
 is_emulation() {
   bool ret = false;
-  char* xcl_mode = getenv("XCL_EMULATION_MODE");
+  char* xcl_mode = std::getenv("XCL_EMULATION_MODE");
   if (xcl_mode != nullptr) {
     ret = true;
   }
@@ -135,7 +135,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
 
       unsigned int vector_size_bytes = data_size;
       std::vector<unsigned char> input_host(data_size);
-      std::vector<unsigned char> output_host[num_kernel_ddr];
+      std::vector<std::vector<unsigned char>> output_host(num_kernel_ddr);
 
       for (int i = 0; i < num_kernel_ddr; i++) {
         output_host[i].resize(data_size);

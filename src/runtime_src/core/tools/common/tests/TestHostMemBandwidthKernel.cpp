@@ -50,7 +50,7 @@ TestHostMemBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 static bool 
 is_emulation() {
   bool ret = false;
-  char* xcl_mode = getenv("XCL_EMULATION_MODE");
+  char* xcl_mode = std::getenv("XCL_EMULATION_MODE");
   if (xcl_mode != nullptr) {
     ret = true;
   }
@@ -167,8 +167,8 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
       output_buffer[i] = xrt::bo(device, vector_size_bytes, xrt::bo::flags::host_only, krnls[i].group_id(1));
     }
 
-    unsigned char* map_input_buffer[num_kernel];
-    unsigned char* map_output_buffer[num_kernel];
+    std::vector<unsigned char*> map_input_buffer(num_kernel);
+    std::vector<unsigned char*> map_output_buffer(num_kernel);
 
     for (int i = 0; i < num_kernel; i++) {
       map_input_buffer[i] = input_buffer[i].map<unsigned char*>();
