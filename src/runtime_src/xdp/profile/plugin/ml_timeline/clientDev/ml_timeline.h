@@ -35,16 +35,10 @@ namespace xdp {
 
       ~MLTimelineClientDevImpl() = default;
 
-      void setHwContext(xrt::hw_context ctx)
-      {
-        hwContext = std::move(ctx);
-      }
-
       XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
 
     private :
       XAie_DevInst aieDevInst = {0};
-      xrt::hw_context hwContext;
   };
 
 }
