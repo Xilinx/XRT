@@ -17,6 +17,7 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_IMPL_H
 
+#include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
@@ -26,6 +27,7 @@ namespace xdp {
 
     protected :
       VPDatabase* db = nullptr;
+      xrt::hw_context hwContext;
 
     public:
       MLTimelineImpl(VPDatabase* dB)
@@ -37,6 +39,11 @@ namespace xdp {
       virtual ~MLTimelineImpl() {}
 
       virtual void finishflushAIEDevice(void*) = 0;
+
+      void setHwContext(xrt::hw_context ctx)
+      {
+        hwContext = std::move(ctx);
+      }
   };
 
 }
