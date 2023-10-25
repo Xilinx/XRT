@@ -36,7 +36,7 @@
 namespace xdp {
 
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
-    : MLTimelineImpl(dB, aieData)
+    : MLTimelineImpl(dB)
   {
   }
 
