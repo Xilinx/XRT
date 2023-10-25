@@ -9,7 +9,6 @@ namespace XBU = XBUtilities;
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <math.h>
-#include <sys/time.h>
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"

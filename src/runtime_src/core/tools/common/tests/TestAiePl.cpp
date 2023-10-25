@@ -24,7 +24,6 @@ namespace XBU = XBUtilities;
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
-#include <unistd.h>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestAiePl::TestAiePl()

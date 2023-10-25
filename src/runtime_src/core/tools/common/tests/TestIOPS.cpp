@@ -104,7 +104,7 @@ void
 TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn, 
                           int threadNumber, int queueLength, unsigned int total, boost::property_tree::ptree& ptree)
 {
-  std::thread threads[threadNumber];
+  std::vector<std::thread> threads(threadNumber);
   std::vector<arg_t> arg(threadNumber);
 
   xrt::device device(dev);
