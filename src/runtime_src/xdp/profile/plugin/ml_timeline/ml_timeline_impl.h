@@ -17,7 +17,6 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_IMPL_H
 
-#include "xdp/profile/plugin/ml_timeline/aie_config_metadata.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
@@ -27,12 +26,10 @@ namespace xdp {
 
     protected :
       VPDatabase* db = nullptr;
-      std::shared_ptr<AieConfigMetadata> aieMetadata;
 
     public:
-      MLTimelineImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> data)
+      MLTimelineImpl(VPDatabase* dB)
         : db(dB)
-         ,aieMetadata(data)
       {}
 
       MLTimelineImpl() = delete;
