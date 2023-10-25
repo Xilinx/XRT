@@ -210,7 +210,6 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     for (int module = 0; module < metadata->getNumModules(); ++module) {
 
-      // int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
       XAie_ModuleType mod = falModuleTypes[module];
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {

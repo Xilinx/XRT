@@ -22,6 +22,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
 #include <regex>
+#include <optional>
 
 #include "aie_util.h"
 
@@ -66,24 +67,20 @@ namespace aie {
 
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta)
   {
-    static int hwGen = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
+    static std::optional<int> hwGen;
+    if (!hwGen.has_value()) {
       hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<int>();
-      gotValue = true;
     }
-    return hwGen;
+    return *hwGen;
   }
 
   uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta)
   {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
+    static std::optional<uint16_t> rowOffset;
+    if (!rowOffset.has_value()) {
       rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
-      gotValue = true;
     }
-    return rowOffset;
+    return *rowOffset;
   }
 
   aiecompiler_options getAIECompilerOptions(const boost::property_tree::ptree& aie_meta)

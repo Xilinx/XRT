@@ -27,7 +27,6 @@
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
@@ -40,7 +39,6 @@ namespace xdp {
     #ifdef XDP_MINIMAL_BUILD
       try {
         pt::read_json("aie_control_config.json", aie_meta);
-        invalidXclbinMetadata = false;
       } catch (...) {
         std::stringstream msg;
         msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
@@ -54,8 +52,7 @@ namespace xdp {
     #else
       auto device = xrt_core::get_userpf_device(handle);
       auto data = device->get_axlf_section(AIE_METADATA);
-      invalidXclbinMetadata = (!data.first || !data.second);
-      read_aie_metadata(data.first, data.second, aie_meta);
+      aie::readAIEMetadata(data.first, data.second, aie_meta);
     #endif
 
     // Verify settings from xrt.ini
@@ -149,42 +146,6 @@ namespace xdp {
     }
   }
 
-  int AieProfileMetadata::getHardwareGen()
-  {
-    static int hwGen = 1;
-    static bool gotValue = false;
-
-    if (!gotValue) {
-      if (invalidXclbinMetadata) {
-        hwGen = 1;
-      } else {
-        hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<int>();
-      }
-
-      gotValue = true;
-    }
-
-    return hwGen;
-  }
-
-  uint16_t AieProfileMetadata::getAIETileRowOffset()
-  {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-
-    if (!gotValue) {
-      if (invalidXclbinMetadata) {
-        rowOffset = 1;
-      } else {
-        rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
-      }
-
-      gotValue = true;
-    }
-
-    return rowOffset;
-  }
-
   std::vector<std::string> AieProfileMetadata::getSettingsVector(std::string settingsString)
   {
     if (settingsString.empty())
@@ -200,164 +161,10 @@ namespace xdp {
     return settingsVector;
   }
 
-  // Find all MEM tiles associated with a graph and kernel
-  //   kernel_name = all      : all tiles in graph
-  //   kernel_name = <kernel> : only tiles used by that specific kernel
-  std::vector<tile_type> AieProfileMetadata::get_mem_tiles(const std::string& graph_name,
-                                                           const std::string& kernel_name)
-  {
-    if (getHardwareGen() == 1)
-      return {};
-
-    if (invalidXclbinMetadata)
-      return {};
-
-    // Grab all shared buffers
-    auto sharedBufferTree = aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
-
-    if (!sharedBufferTree)
-      return {};
-
-    std::vector<tile_type> allTiles;
-
-    std::vector<tile_type> memTiles;
-
-    // Always one row of interface tiles
-    uint16_t rowOffset = 1;
-
-    // Now parse all shared buffers
-    for (auto const& shared_buffer : sharedBufferTree.get()) {
-      auto currGraph = shared_buffer.second.get<std::string>("graph");
-
-      if ((currGraph.find(graph_name) == std::string::npos) && (graph_name.compare("all") != 0))
-        continue;
-
-      if (kernel_name.compare("all") != 0) {
-        std::vector<std::string> names;
-        std::string functionStr = shared_buffer.second.get<std::string>("function");
-        boost::split(names, functionStr, boost::is_any_of("."));
-
-        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
-          continue;
-      }
-
-      tile_type tile;
-      tile.col = shared_buffer.second.get<uint16_t>("column");
-      tile.row = shared_buffer.second.get<uint16_t>("row") + rowOffset;
-      allTiles.emplace_back(std::move(tile));
-    }
-
-    std::unique_copy(allTiles.begin(), allTiles.end(), std::back_inserter(memTiles), tileCompare);
-    return memTiles;
-  }
-
   inline void throw_if_error(bool err, const char* msg)
   {
     if (err)
       throw std::runtime_error(msg);
-  }
-
-  std::vector<tile_type> AieProfileMetadata::get_event_tiles(const std::string& graph_name, module_type type)
-  {
-    if (invalidXclbinMetadata)
-      return {};
-
-    // Interface tiles use different method
-    if (type == module_type::shim)
-      return {};
-
-    const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
-
-    const char* row_name = (type == module_type::core) ? "core_rows" : "dma_rows";
-
-    std::vector<tile_type> tiles;
-
-    auto rowOffset = getAIETileRowOffset();
-
-    int startCount = 0;
-
-    for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
-      auto currGraph = graph.second.get<std::string>("name");
-
-      if ((currGraph.find(graph_name) == std::string::npos) && (graph_name.compare("all") != 0))
-        continue;
-
-      int count = startCount;
-
-      for (auto& node : graph.second.get_child(col_name)) {
-        tiles.push_back(tile_type());
-        auto& t = tiles.at(count++);
-        t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
-      }
-
-      int num_tiles = count;
-      count = startCount;
-
-      for (auto& node : graph.second.get_child(row_name))
-        tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
-
-      throw_if_error(count < num_tiles, "rows < num_tiles");
-      startCount = count;
-    }
-
-    return tiles;
-  }
-
-  // Find all AIE tiles associated with a graph and module type (kernel_name = all)
-  std::vector<tile_type> AieProfileMetadata::get_aie_tiles( const std::string& graph_name, module_type type)
-  {
-    std::vector<tile_type> tiles;
-    tiles = get_event_tiles(graph_name, module_type::core);
-    if (type == module_type::dma) {
-      auto dmaTiles = get_event_tiles(graph_name, module_type::dma);
-      std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), tileCompare);
-    }
-
-    return tiles;
-  }
-
-  std::vector<tile_type> AieProfileMetadata::get_tiles(const std::string& graph_name,
-                                                       module_type type, const std::string& kernel_name)
-  {
-    if (type == module_type::mem_tile)
-      return get_mem_tiles(graph_name, kernel_name);
-    if (kernel_name.compare("all") == 0)
-      return get_aie_tiles(graph_name, type);
-
-    // Now search by graph-kernel pairs
-    if (invalidXclbinMetadata)
-      return {};
-
-    // Grab all kernel to tile mappings
-    auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-    if (!kernelToTileMapping)
-      return {};
-
-    std::vector<tile_type> tiles;
-    auto rowOffset = getAIETileRowOffset();
-
-    for (auto const& mapping : kernelToTileMapping.get()) {
-      auto currGraph = mapping.second.get<std::string>("graph");
-
-      if ((currGraph.find(graph_name) == std::string::npos) && (graph_name.compare("all") != 0))
-        continue;
-
-      if (kernel_name.compare("all") != 0) {
-        std::vector<std::string> names;
-        std::string functionStr = mapping.second.get<std::string>("function");
-        boost::split(names, functionStr, boost::is_any_of("."));
-
-        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
-          continue;
-      }
-
-      tile_type tile;
-      tile.col = mapping.second.get<uint16_t>("column");
-      tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
-      tiles.emplace_back(std::move(tile));
-    }
-
-    return tiles;
   }
 
   // Resolve metrics for AIE or MEM tiles
@@ -368,21 +175,21 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    if ((getHardwareGen() == 1) && (mod == module_type::mem_tile)) {
+    if ((aie::getHardwareGeneration(aie_meta) == 1) && (mod == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
                               "MEM tiles are not available in AIE1. Profile "
                               "settings will be ignored.");
       return;
     }
     
-    uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
+    uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : aie::getAIETileRowOffset(aie_meta);
     auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
     auto allValidGraphs = aie::getValidGraphs(aie_meta);
     auto allValidKernels = aie::getValidKernels(aie_meta);
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = get_tiles("all", mod);
+    auto validTilesVec = aie::getTiles(aie_meta,"all", mod);
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()),
                      tileCompare);
 
@@ -427,7 +234,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = get_tiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
+      auto tiles = aie::getTiles(aie_meta,graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -469,7 +276,7 @@ namespace xdp {
       }
 
       // Capture all tiles in given graph
-      auto tiles = get_tiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
+      auto tiles = aie::getTiles(aie_meta,graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -526,7 +333,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = get_tiles(metrics[i][0], mod);
+      auto tiles = aie::getTiles(aie_meta,metrics[i][0], mod);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
       }
@@ -1003,17 +810,9 @@ namespace xdp {
     }
   }
 
-  void AieProfileMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data, size);
-    pt::read_json(aie_stream, aie_project);
-  }
-
   uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod)
   {
     auto stringVector = metricStrings[mod];
-
     auto itr = std::find(stringVector.begin(), stringVector.end(), metricString);
 
     if (itr != stringVector.cend()) {
