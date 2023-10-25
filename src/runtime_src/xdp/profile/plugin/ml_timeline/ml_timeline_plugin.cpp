@@ -122,7 +122,6 @@ namespace xdp {
     AIEDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
     AIEDataEntry.implementation->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
 #endif
-    AIEDataEntry.implementation->updateAIEDevice(handle);
   }
 
   void MLTimelinePlugin::finishflushAIEDevice(void* handle)

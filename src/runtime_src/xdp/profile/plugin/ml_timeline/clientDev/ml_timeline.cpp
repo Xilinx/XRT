@@ -40,10 +40,6 @@ namespace xdp {
   {
   }
 
-  void MLTimelineClientDevImpl::updateAIEDevice(void* /*handle*/)
-  {
-  }
-
   void MLTimelineClientDevImpl::finishflushAIEDevice(void* /*handle*/)
   {
     xrt::kernel instKernel;

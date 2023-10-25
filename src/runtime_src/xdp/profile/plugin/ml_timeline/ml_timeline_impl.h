@@ -36,7 +36,6 @@ namespace xdp {
 
       virtual ~MLTimelineImpl() {}
 
-      virtual void updateAIEDevice(void*) = 0;
       virtual void finishflushAIEDevice(void*) = 0;
   };
 

@@ -40,7 +40,6 @@ namespace xdp {
         hwContext = std::move(ctx);
       }
 
-      XDP_EXPORT virtual void updateAIEDevice(void* handle);
       XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
 
     private :
