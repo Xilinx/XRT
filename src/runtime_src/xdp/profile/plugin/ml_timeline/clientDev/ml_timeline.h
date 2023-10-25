@@ -17,8 +17,9 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 
+#include "core/include/xrt/xrt_hw_context.h"
+
 #include "xdp/config.h"
-#include "xdp/profile/plugin/ml_timeline/aie_config_metadata.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 
 extern "C" {
@@ -30,15 +31,21 @@ namespace xdp {
   class MLTimelineClientDevImpl : public MLTimelineImpl
   {
     public :
-      XDP_EXPORT MLTimelineClientDevImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> aieData);
+      XDP_EXPORT MLTimelineClientDevImpl(VPDatabase* dB);
 
       ~MLTimelineClientDevImpl() = default;
+
+      void setHwContext(xrt::hw_context ctx)
+      {
+        hwContext = std::move(ctx);
+      }
 
       XDP_EXPORT virtual void updateAIEDevice(void* handle);
       XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
 
     private :
       XAie_DevInst aieDevInst = {0};
+      xrt::hw_context hwContext;
   };
 
 }
