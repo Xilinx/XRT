@@ -2002,7 +2002,6 @@ namespace xdp {
     currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
  
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
-    std::cout << "Setting AIE Generation!" << std::endl;
     setAIEGeneration(deviceId, xrtXclbin);
 
     /* Configure AMs if context monitoring is supported
@@ -2061,7 +2060,6 @@ namespace xdp {
   void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
-    std::cout << "Really setting AIE generation!" << std::endl;
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
 
@@ -2069,16 +2067,12 @@ namespace xdp {
     if (!data.first || !data.second)
       return;
 
-    std::cout << "Got Metadata" << std::endl;
-
     boost::property_tree::ptree aie_meta;
 
     std::stringstream aie_stream;
     aie_stream.write(data.first, data.second);
     boost::property_tree::read_json(aie_stream, aie_meta);
     
-    std::cout << "Readibng metadata!" << std::endl;
-
     try {
       auto hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
       deviceInfo[deviceId]->setAIEGeneration(hwGen);
