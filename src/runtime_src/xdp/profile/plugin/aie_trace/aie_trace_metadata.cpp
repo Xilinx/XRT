@@ -34,6 +34,13 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
+namespace {
+  static bool tileCompare(xdp::tile_type tile1, xdp::tile_type tile2)
+  {
+    return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
+  }
+} // end anonymous namespace
+
 namespace xdp {
   namespace pt = boost::property_tree;
   using severity_level = xrt_core::message::severity_level;
@@ -298,7 +305,7 @@ namespace xdp {
     std::set<tile_type> allValidTiles;
     auto validTilesVec = aie::getTiles(aieMeta, "all", type);
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), 
-                     xdp::aie::tileCompare);
+                     tileCompare);
 
     // STEP 1 : Parse per-graph or per-kernel settings
 
@@ -741,7 +748,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], channelId);
+      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], xdp::aie::AIE_CONTROL_CONFIG, channelId);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
@@ -789,7 +796,7 @@ namespace xdp {
         }
       }
 
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][2], 
+      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][2], xdp::aie::AIE_CONTROL_CONFIG,
                                           channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
@@ -835,7 +842,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], 
+        auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], xdp::aie::AIE_CONTROL_CONFIG,
                                             channelId, true, col, col);
 
         for (auto& t : tiles) {
