@@ -107,6 +107,10 @@ namespace xdp {
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE,      XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, 
           XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}}
     };
+    mMemoryTileEventSets["s2mm_channels"] = mMemoryTileEventSets["input_channels"];
+    mMemoryTileEventSets["s2mm_channels_stalls"] = mMemoryTileEventSets["input_channels_stalls"];
+    mMemoryTileEventSets["mm2s_channels"] = mMemoryTileEventSets["output_channels"];
+    mMemoryTileEventSets["mm2s_channels_stalls"] = mMemoryTileEventSets["output_channels_stalls"];
 
     // Memory tile trace is flushed at end of run
     mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
@@ -135,7 +139,13 @@ namespace xdp {
         {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
-      };
+    };
+    mInterfaceTileEventSets["mm2s_ports"] = mInterfaceTileEventSets["input_ports"];
+    mInterfaceTileEventSets["s2mm_ports"] = mInterfaceTileEventSets["output_ports"];
+    mInterfaceTileEventSets["mm2s_ports_stalls"] = mInterfaceTileEventSets["input_ports_stalls"];
+    mInterfaceTileEventSets["s2mm_ports_stalls"] = mInterfaceTileEventSets["output_ports_stalls"];
+    mInterfaceTileEventSets["mm2s_ports_details"] = mInterfaceTileEventSets["input_ports_details"];
+    mInterfaceTileEventSets["s2mm_ports_details"] = mInterfaceTileEventSets["output_ports_details"];
 
     // Interface tile trace is flushed at end of run
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
@@ -688,7 +698,8 @@ namespace xdp {
           // Record for runtime config file
           cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
           cfgTile->memory_tile_trace_config.port_trace_ids[1] = channel1;
-          if (metricSet.find("input") != std::string::npos) {
+          if ((metricSet.find("input") != std::string::npos)
+              || (metricSet.find("s2mm") != std::string::npos)) {
             cfgTile->memory_tile_trace_config.port_trace_is_master[0] = true;
             cfgTile->memory_tile_trace_config.port_trace_is_master[1] = true;
             cfgTile->memory_tile_trace_config.s2mm_channels[0] = channel0;
@@ -879,9 +890,11 @@ namespace xdp {
         configEventSelections(loc, mod, type, metricSet, channel0, channel1);
 
         // Record for runtime config file
+        // NOTE: input/output designations are different from memory tile channels
         cfgTile->interface_tile_trace_config.port_trace_ids[0] = channel0;
         cfgTile->interface_tile_trace_config.port_trace_ids[1] = channel1;
-        if (metricSet.find("input") != std::string::npos) {
+        if ((metricSet.find("output") != std::string::npos)
+            || (metricSet.find("s2mm") != std::string::npos)) {
           cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
           cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
           cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
