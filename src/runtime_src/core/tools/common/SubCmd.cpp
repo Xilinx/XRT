@@ -1,27 +1,17 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmd.h"
+
 #include <iostream>
 #include <boost/format.hpp>
 
+#include "common/device.h"
 #include "core/common/error.h"
+#include "XBUtilities.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenusCore.h"
 namespace XBU = XBUtilities;
@@ -44,46 +34,46 @@ SubCmd::SubCmd(const std::string & _name,
 }
 
 void
-SubCmd::printHelp(bool removeLongOptDashes,
-                  const std::string& customHelpSection,
-                  const boost::program_options::options_description& common_options) const
+SubCmd::printHelpInternal(const bool removeLongOptDashes,
+                          const std::string& customHelpSection,
+                          const std::string& deviceClass,
+                          const boost::program_options::options_description& commonOptions,
+                          const boost::program_options::options_description& hiddenOptions) const
 {
+  const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
+  const auto& device_suboptions = JSONConfigurable::extract_subcmd_config<JSONConfigurable, OptionOptions>(m_subOptionOptions, configs, m_subCmdName, std::string("suboption"));
+
   XBUtilities::report_subcommand_help(m_executableName,
                                       m_subCmdName,
                                       m_longDescription,
                                       m_exampleSyntax,
-                                      common_options,
-                                      m_hiddenOptions,
+                                      commonOptions,
+                                      hiddenOptions,
                                       m_globalOptions,
                                       m_positionals,
                                       m_subOptionOptions,
                                       removeLongOptDashes,
-                                      customHelpSection);
+                                      customHelpSection,
+                                      device_suboptions,
+                                      deviceClass);
 }
 
 void 
-SubCmd::printHelp(bool removeLongOptDashes, const std::string& customHelpSection) const
-{
-  printHelp(removeLongOptDashes, customHelpSection, m_commonOptions);
-}
-
-void 
-SubCmd::printHelp(const std::string& device_name,
-                  bool /*is_user_domain*/,
-                  bool removeLongOptDashes,
+SubCmd::printHelp(const boost::program_options::options_description& commonOptions,
+                  const boost::program_options::options_description& hiddenOptions,
+                  const std::string& deviceClass,
+                  const bool removeLongOptDashes,
                   const std::string& customHelpSection) const
 {
-  // If no device is specified revert to using the member variable common options
-  if (device_name.empty()) {
-    printHelp(removeLongOptDashes, customHelpSection);
-    return;
-  }
+  printHelpInternal(removeLongOptDashes, customHelpSection, deviceClass, commonOptions, hiddenOptions);
+}
 
-  // If a device is specfied get the device type and validate which reports should be displayed
-  //auto device = XBU::get_device(boost::algorithm::to_lower_copy(device_name), is_user_domain);
-  //auto device_type = device.get_device_type?? This does not exist yet
-  //auto options = m_deviceSpecificOptions.at(device_type);
-  printHelp(removeLongOptDashes, customHelpSection, m_deviceSpecificOptions.at("all"));
+void 
+SubCmd::printHelp(const bool removeLongOptDashes,
+                  const std::string& customHelpSection,
+                  const std::string& deviceClass) const
+{
+  printHelpInternal(removeLongOptDashes, customHelpSection, deviceClass, m_commonOptions, m_hiddenOptions);
 }
 
 std::vector<std::string> 
@@ -157,11 +147,13 @@ SubCmd::addSubOption(std::shared_ptr<OptionOptions> option)
 }
 
 std::shared_ptr<OptionOptions>
-SubCmd::checkForSubOption(const boost::program_options::variables_map& vm) const
+SubCmd::checkForSubOption(const boost::program_options::variables_map& vm, const std::string& deviceClass) const
 {
+  SubOptionOptions all_options = validateConfigurables<OptionOptions>(deviceClass, std::string("suboption"), m_subOptionOptions);
+
   std::shared_ptr<OptionOptions> option;
   // Loop through the available sub options searching for a name match
-  for (auto& subOO : m_subOptionOptions) {
+  for (auto& subOO : all_options) {
     if (vm.count(subOO->longName()) != 0) {
       // Store the matched option if no other match has been found
       if (!option)

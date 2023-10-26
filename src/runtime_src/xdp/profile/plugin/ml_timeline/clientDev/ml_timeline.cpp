@@ -79,13 +79,12 @@ namespace xdp {
       return;
     }
 
-    static const uint32_t SIZE_4K = 0x1000;
-    static const uint32_t MAX_INDEX_IN_SIZE_3K = (0xC00 / (2 * sizeof(uint32_t))) - 1;
+    static constexpr uint32_t size_4K = 0x1000;
 
     // Read Record Timer TS buffer
     xrt::bo resultBO;
     try {
-      resultBO = xrt::bo(hwContext.get_device(), SIZE_4K, XCL_BO_FLAGS_CACHEABLE, instKernel.group_id(1));
+      resultBO = xrt::bo(hwContext.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, instKernel.group_id(1));
     }
     catch (std::exception& e) {
       std::stringstream msg;
@@ -118,14 +117,27 @@ namespace xdp {
 
     // Record Timer TS in JSON
     // Assuming correct Stub has been called and Write Buffer contains valid data
-    while (*ptr < MAX_INDEX_IN_SIZE_3K) {
-      boost::property_tree::ptree ptIdTS;
-      ptIdTS.put("id", *ptr);
-      ptr++;
-      ptIdTS.put("cycle", *ptr);
-      ptr++;
 
-      ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
+    uint32_t numEntries = *ptr;    // First 32bits contains the total num of entries
+
+    /* Each record timer entry has 32bit ID and 32bit AIE Timer low value.
+     * Also, the first 32 bit in the buffer is used to store total number 
+     * of record timer entries written so far. So, max_count_in_size_3K is 1 less 
+     * than total number of entries possible in 3K buffer section.
+     */ 
+    static constexpr uint32_t max_count_in_size_3K = (0x0C00 / (2 * sizeof(uint32_t))) - 1;
+
+    if (numEntries <= max_count_in_size_3K) {
+      ptr++;
+      for (uint32_t i = 0 ; i < numEntries; i++) {
+        boost::property_tree::ptree ptIdTS;
+        ptIdTS.put("id", *ptr);
+        ptr++;
+        ptIdTS.put("cycle", *ptr);
+        ptr++;
+
+        ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
+      }
     }
 
     if (ptRecordTimerTS.empty()) {

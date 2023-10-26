@@ -18,6 +18,7 @@
 
 #include "xdp/profile/database/dynamic_info/host_db.h"
 #include "xdp/profile/database/events/vtf_event.h"
+#include <algorithm>
 
 namespace xdp {
 
@@ -121,17 +122,17 @@ namespace xdp {
 
     std::vector<VTFEvent*> collected;
 
-    for (auto iter = unsortedEvents.begin();
-         iter != unsortedEvents.end();
-         /* Intentionally blank*/) {
-      auto event = *iter;
-      if (filter(event)) {
-        collected.emplace_back(event);
-        iter = unsortedEvents.erase(iter);
-      }
-      else
-        ++iter;
-    }
+    auto newEnd = std::remove_if(unsortedEvents.begin(), unsortedEvents.end(), [&filter, &collected](VTFEvent* event) {
+        if (filter(event)) {
+            collected.push_back(event);
+            return true;  // Mark the event for removal from unsortedEvents vector
+        }
+        return false; // Keep event in the unsortedEvents vector
+    });
+
+    // Resize the UnsortedEvents vector to keep only the remaining unfiltered events
+    unsortedEvents.erase(newEnd, unsortedEvents.end());
+
     return collected;
   }
 
