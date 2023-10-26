@@ -13,6 +13,10 @@ namespace XBU = XBUtilities;
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
+#ifdef _WIN32
+#pragma warning(disable : 4996) //std::getenv
+#endif
+
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestHostMemBandwidthKernel::TestHostMemBandwidthKernel()
@@ -102,7 +106,7 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
     boost::property_tree::read_json(platform_json.string(), load_ptree_root);
     auto temp = load_ptree_root.get_child("total_host_banks");
     num_kernel = temp.get_value<int>();
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     logger(ptree, "Details", "Bad JSON format detected while marshaling build metadata");
     ptree.put("status", test_token_skipped);
     return;
@@ -140,8 +144,8 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
   // Starting at 4K and going up to 1M with increments of power of 2
   // The minimum size of host-mem user can reserve is 4M,
   // The sum of the sizes of buffers can't excess the size of host-mem reserved.
-  for (uint32_t i = 4 * 1024; i <= 1 * 1024 * 1024; i *= 2) {
-    unsigned int data_size = i;
+  for (uint32_t a = 4 * 1024; a <= 1 * 1024 * 1024; a *= 2) {
+    unsigned int data_size = a;
 
     if (is_emulation()) {
       reps = 2; // reducing the repeat count to 2 for emulation flow

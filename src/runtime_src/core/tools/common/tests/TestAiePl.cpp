@@ -163,9 +163,8 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
   m_pl_ctrl.enqueue_disable_aie_cores();
 
   m_pl_ctrl.enqueue_halt();
-  m_pl_ctrl.print_micro_codes();
+  // m_pl_ctrl.print_micro_codes();
 
-  // int ret = 0;   //this ret is unused even in the original host.cpp?
   bool match = false;
   uint32_t mem_size_bytes = 0;
 

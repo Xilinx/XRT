@@ -53,7 +53,7 @@ class plController_aie2 {
     plController_aie2() = delete;
     plController_aie2(const std::string& aie_info_path, const std::string& dma_info_path);
 
-    void enqueue_set_aie_iteration(const std::string& graphName, int num_iter, int ctrl_nm = 1);
+    void enqueue_set_aie_iteration(const std::string& graphName, int num_iter);
 
     void enqueue_enable_aie_cores(int ctrl_nm = 1);
 
@@ -84,7 +84,7 @@ class plController_aie2 {
         memcpy(dst_op, m_opcodeBuffer.m_data, m_opcodeBuffer.m_usedSize * sizeof(uint32_t));
     }
 
-    void print_micro_codes();
+    // void print_micro_codes();
 
    private:
     // re-use this code from "core/edge/common/aie_parser.cpp"

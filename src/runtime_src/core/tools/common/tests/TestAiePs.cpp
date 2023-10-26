@@ -91,8 +91,8 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
   //setting input data
   std::vector<float> golden(SIZE);
   for (int i = 0; i < SIZE; i++){
-      in_bomapped_a[i] = rand() % SIZE;
-      in_bomapped_b[i] = rand() % SIZE;
+    in_bomapped_a[i] = static_cast<float>(rand() % SIZE);
+    in_bomapped_b[i] = static_cast<float>(rand() % SIZE);
   }
   for (int i = 0; i < HEIGHT ; i++) {
       for (int j = 0; j < WIDTH ; j++){

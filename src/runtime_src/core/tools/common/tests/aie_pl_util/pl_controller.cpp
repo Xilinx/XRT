@@ -37,7 +37,7 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
 {
     auto tiles = get_tiles(graphName);
 
-    unsigned int itr_mem_addr = 0;
+    uint64_t itr_mem_addr = 0;
     unsigned int num_tile = 0;
     for (auto& tile : tiles) {
         num_tile++;
@@ -57,7 +57,7 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
     }
     m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SET_AIE_ITERATION));
     m_opcodeBuffer.push_back(num_iter);
-    m_opcodeBuffer.push_back(itr_mem_addr);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(itr_mem_addr));
     // std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
     //                            "itr_mem_addr: %u\n") %
     //                  num_iter % itr_mem_addr;
@@ -138,9 +138,9 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
 
     m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::UPDATE_AIE_RTP));
     m_opcodeBuffer.push_back(rtpVal);
-    m_opcodeBuffer.push_back(m_ping_pong ? rtp.ping_addr : rtp.pong_addr);
+    m_opcodeBuffer.push_back(m_ping_pong ? static_cast<uint32_t>(rtp.ping_addr) : static_cast<uint32_t>(rtp.pong_addr));
 
-    m_opcodeBuffer.push_back(rtp.selector_addr);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(rtp.selector_addr));
     m_opcodeBuffer.push_back(m_ping_pong);
 
     m_ping_pong = !m_ping_pong;
@@ -227,25 +227,25 @@ plController::get_tiles(const std::string& graph_name)
         for (auto& node : graph.second.get_child("core_columns")) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = std::stoul(node.second.data());
+            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child("core_rows"))
-            tiles.at(count++).row = std::stoul(node.second.data());
+            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
         if (count < num_tiles)
             throw std::runtime_error("core_rows < num_tiles");
 
         count = 0;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
+            tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
         if (count < num_tiles)
             throw std::runtime_error("iteration_memory_columns < num_tiles");
 
         count = 0;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
+            tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
         if (count < num_tiles)
             throw std::runtime_error("iteration_memory_rows < num_tiles");
 
@@ -290,7 +290,7 @@ plController::get_buffers(const std::string& port_name)
                     b.row = buff_info.second.get<uint16_t>("Row");
                     b.ch_num = buff_info.second.get<uint16_t>("Channel");
                     b.lock_id = buff_info.second.get<uint16_t>("LockID");
-                    b.bd_num = std::stoul(field.second.data());
+                    b.bd_num = static_cast<uint16_t>(std::stoul(field.second.data()));
                     b.s2mm = true;
                 }
             }
@@ -309,7 +309,7 @@ plController::get_buffers(const std::string& port_name)
                     b.row = buff_info.second.get<uint16_t>("Row");
                     b.ch_num = buff_info.second.get<uint16_t>("Channel");
                     b.lock_id = buff_info.second.get<uint16_t>("LockID");
-                    b.bd_num = std::stoul(field.second.data());
+                    b.bd_num = static_cast<uint16_t>(std::stoul(field.second.data()));
                     b.s2mm = false;
                 }
             }

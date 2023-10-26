@@ -13,6 +13,10 @@ namespace XBU = XBUtilities;
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
+#ifdef _WIN32
+#pragma warning(disable : 4996) //std::getenv
+#endif
+
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestBandwidthKernel::TestBandwidthKernel()
@@ -96,7 +100,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       // As HBM is part of platform, number of ddr kernels is total count reduced by 1(single HBM)
       num_kernel_ddr = num_kernel - 1;
     }
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     logger(ptree, "Error", "Bad JSON format detected while marshaling build metadata");
     ptree.put("status", test_token_skipped);
     return;
@@ -122,8 +126,8 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
   int reps = 10000;
   if (num_kernel_ddr) {
     // Starting at 4K and going up to 16M with increments of power of 2
-    for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
-      unsigned int data_size = i;
+    for (uint32_t a = 4 * 1024; a <= 16 * 1024 * 1024; a *= 2) {
+      unsigned int data_size = a;
 
       if (is_emulation()) {
         reps = 2; // reducing the repeat count to 2 for emulation flow

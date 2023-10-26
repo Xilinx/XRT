@@ -87,7 +87,7 @@ runThread(std::vector<xrt::run>& cmds, unsigned int total, arg_t& arg)
     }
 
     arg.end = Clock::now();
-    return (std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count();
+    return static_cast<double>((std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count());
 }
 
 static void
@@ -151,16 +151,14 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   double duration;
   for (int i = 0; i < threadNumber; i++) {
     if (verbose) {
-      duration =
-          (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start))
-              .count();
+      duration = static_cast<double>((std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count());
       logger(ptree, boost::str(boost::format("Details for Thread %d") % arg[i].thread_id),
                     boost::str(boost::format("Commands: %d IOPS: %f") % total % boost::io::group(std::setprecision(0), std::fixed, (total * 1000000.0 / duration))));
     }
     overallCommands += total;
   }
 
-  duration = (std::chrono::duration_cast<ms_t>(end - start)).count();
+  duration = static_cast<double>((std::chrono::duration_cast<ms_t>(end - start)).count());
   logger(ptree, "Details", boost::str(boost::format("Overall Commands: %d IOPS: %f (%s)")
                 % total % boost::io::group(std::setprecision(0), std::fixed, (overallCommands * 1000000.0 / duration)) % krnl.name));
   ptree.put("status", test_token_passed);

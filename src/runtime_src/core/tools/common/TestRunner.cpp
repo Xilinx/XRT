@@ -278,7 +278,6 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
 
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
 
   if (json_exists()) {
     //map old testcase names to new testcase names

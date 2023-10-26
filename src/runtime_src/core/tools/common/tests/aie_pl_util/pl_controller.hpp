@@ -66,12 +66,12 @@ class plController
      * on
      * this size.
      */
-    unsigned int get_metadata_size() const { return m_metadata.size(); };
+    unsigned int get_metadata_size() const { return static_cast<unsigned int>(m_metadata.size()); };
 
     /* return local microcode buffer size, user use allocate device buffer based
      * on this size.
      */
-    unsigned int get_microcode_size() const { return m_opcodeBuffer.size(); };
+    unsigned int get_microcode_size() const { return static_cast<unsigned int>(m_opcodeBuffer.size()); };
 
     /* copy local buffer to device buffer
      */
