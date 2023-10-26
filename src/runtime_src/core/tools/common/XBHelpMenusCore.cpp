@@ -18,6 +18,7 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <algorithm>
 #include <numeric>
+#include <set>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
@@ -67,6 +68,49 @@ static const uint8_t FGC_OOPTION          = 65;  // 65
 static const uint8_t FGC_OOPTION_BODY     = 70;  // 70
 
 static const uint8_t FGC_EXTENDED_BODY    = 70;  // 70
+
+class FormatHelper {
+private:
+  static FormatHelper* m_instance;
+  FormatHelper() {
+    this->fgc_header       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+    this->fgc_headerBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+    this->fgc_commandBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
+    this->fgc_usageBody    = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+    this->fgc_ooption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION).string();
+    this->fgc_ooptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
+    this->fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
+    this->fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
+    this->fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
+    this->fgc_reset        = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
+    this->fgc_optionName   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OPTION).string();
+    this->fgc_optionBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OPTION_BODY).string();
+  }
+  
+public:
+  std::string fgc_optionName;
+  std::string fgc_optionBody;
+  std::string fgc_header;
+  std::string fgc_headerBody;
+  std::string fgc_commandBody;
+  std::string fgc_usageBody;
+  std::string fgc_ooption;
+  std::string fgc_ooptionBody;
+  std::string fgc_poption;
+  std::string fgc_poptionBody;
+  std::string fgc_extendedBody;
+  std::string fgc_reset;
+
+  static FormatHelper& instance();
+};
+
+FormatHelper* FormatHelper::m_instance = nullptr;
+
+FormatHelper&
+FormatHelper::instance() {
+  static FormatHelper formatHelper;
+  return formatHelper;
+}
 
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
@@ -361,41 +405,188 @@ create_option_format_name(const boost::program_options::option_description * _op
   return optionDisplayName;
 }
 
-void
-XBUtilities::report_option_help( const std::string & _groupName,
-                                 const boost::program_options::options_description& _optionDescription,
-                                 const boost::program_options::positional_options_description & _positionalDescription,
-                                 bool _bReportParameter,
-                                 bool removeLongOptDashes)
+static void
+print_options(std::stringstream& stream,
+              const boost::program_options::options_description& options,
+              const boost::program_options::positional_options_description& positionals,
+              const bool report_param,
+              const bool remove_long_dashes)
 {
-  // Formatting color parameters
-  const std::string fgc_header     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_optionName = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OPTION).string();
-  const std::string fgc_optionBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OPTION_BODY).string();
-  const std::string fgc_reset      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
+  const auto& fh = FormatHelper::instance();
+  boost::format fmtOption(fh.fgc_optionName + "  %-18s " + fh.fgc_optionBody + "- %s\n" + fh.fgc_reset);
+  for (auto & option : options.options()) {
+    if ( ::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
+                         positionals) )  {
+      continue;
+    }
+
+    std::string optionDisplayFormat = create_option_format_name(option.get(), report_param, remove_long_dashes);
+    const unsigned int optionDescTab = 23;
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    stream << fmtOption % optionDisplayFormat % formattedString;
+  }
+}
+
+void
+XBUtilities::report_option_help(const std::string & _groupName,
+                                const boost::program_options::options_description& _optionDescription,
+                                const boost::program_options::positional_options_description& _positionalDescription,
+                                const bool _bReportParameter,
+                                const bool removeLongOptDashes,
+                                const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& all_device_options,
+                                const std::string& deviceClass)
+{
+  const auto& fh = FormatHelper::instance();
 
   // Determine if there is anything to report
   if (_optionDescription.options().empty())
     return;
 
   // Report option group name (if defined)
-  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
+  boost::format fmtHeader(fh.fgc_header + "\n%s:\n" + fh.fgc_reset);
   if ( !_groupName.empty() )
     std::cout << fmtHeader % _groupName;
 
-  // Report the options
-  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
-  for (auto & option : _optionDescription.options()) {
-    if ( ::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
-                         _positionalDescription) )  {
-      continue;
+  bool printAllOptions = false;
+  boost::program_options::options_description common_options(_optionDescription);
+  // If a device is specified only print applicable commands
+  const auto it = all_device_options.find(deviceClass);
+  if (it != all_device_options.end()) {
+    for (const auto& subOption : it->second)
+      common_options.add_options()(subOption->getConfigName().c_str(), subOption->getConfigDescription().c_str());
+  } else if (!all_device_options.empty())
+    printAllOptions = true;
+
+  const auto& commonDeviceOptions = JSONConfigurable::extract_common_options(all_device_options);
+  if (printAllOptions) {
+    for (const auto& subOption : commonDeviceOptions)
+      common_options.add_options()(subOption->getConfigName().c_str(), subOption->getConfigDescription().c_str());
+  }
+
+  // Generate the common options
+  std::stringstream commonOutput;
+  print_options(commonOutput, common_options, _positionalDescription, _bReportParameter, removeLongOptDashes);
+
+  if (!printAllOptions) {
+    std::cout << commonOutput.str();
+    return;
+  }
+
+  if (all_device_options.size() > 1)
+    std::cout << " Common:\n";
+  std::cout << commonOutput.str();
+
+  // Report all device class options
+  for (const auto& [device_class, device_options] : all_device_options) {
+    std::stringstream deviceSpecificOutput;
+    for (const auto& subOption : device_options) {
+      // Skip common options
+      const auto& commonOptionsIt = commonDeviceOptions.find(subOption);
+      if (commonOptionsIt != commonDeviceOptions.end())
+        continue;
+
+      boost::program_options::options_description options;
+      options.add_options()(subOption->getConfigName().c_str(), subOption->getConfigDescription().c_str());
+      print_options(deviceSpecificOutput, options, _positionalDescription, _bReportParameter, removeLongOptDashes);
     }
 
-    std::string optionDisplayFormat = create_option_format_name(option.get(), _bReportParameter, removeLongOptDashes);
-    unsigned int optionDescTab = 23;
-    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth - optionDescTab, false);
-    std::cout << fmtOption % optionDisplayFormat % formattedString;
+    const auto deviceSpecificOutputStr = deviceSpecificOutput.str();
+    if (!deviceSpecificOutputStr.empty()) {
+      auto map_it = JSONConfigurable::device_type_map.find(device_class);
+      const std::string& valid_device_class = (map_it == JSONConfigurable::device_type_map.end()) ? device_class : map_it->second;
+      std::cout << boost::format(" %s:\n%s") % valid_device_class % deviceSpecificOutputStr;
+    }
   }
+}
+
+static std::string
+create_suboption_usage_string(const std::vector<std::shared_ptr<JSONConfigurable>>& subOptions)
+{
+  std::string usage;
+  for (const auto& subOption : subOptions) {
+    if (subOption->getConfigHidden() && !XBU::getShowHidden())
+      continue;
+
+    if (!usage.empty())
+      usage.append(" | ");
+
+    boost::program_options::options_description newOptions;
+    bool tempBool;
+    newOptions.add_options()(subOption->getConfigName().c_str(),
+                          boost::program_options::bool_switch(&tempBool)->required(),
+                          subOption->getConfigDescription().c_str());
+    const auto& option = newOptions.options()[0];
+    const auto optionType = get_option_type(option, boost::program_options::positional_options_description());
+    const auto optionString = create_option_string(optionType, option, false);
+    usage.append(optionString);
+  }
+  return usage;
+}
+
+static std::vector<std::shared_ptr<JSONConfigurable>>
+cast_vector(const std::vector<std::shared_ptr<OptionOptions>>& items)
+{
+  std::vector<std::shared_ptr<JSONConfigurable>> output;
+  for (const auto& item : items)
+    output.push_back(item);
+  return output;
+}
+
+static void
+display_subcommand_options(const std::string& executable,
+                           const std::string& subcommand,
+                           const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& commandConfig,
+                           const boost::program_options::options_description& options,
+                           const boost::program_options::options_description& hiddenOptions,
+                           const boost::program_options::positional_options_description& positionals,
+                           const SubCmd::SubOptionOptions& subOptions,
+                           const std::string& deviceClass
+                           )
+{
+  const auto& fh = FormatHelper::instance();
+
+  const std::string usage = XBU::create_usage_string(options, positionals, false);
+  std::string usageSuboption;
+  if (deviceClass.empty() || commandConfig.empty())
+    usageSuboption = create_suboption_usage_string(cast_vector(subOptions));
+  else {
+    auto it = commandConfig.find(deviceClass);
+    if (it == commandConfig.end())
+      throw_cancel(boost::format("Invalid device class: %s\n") % deviceClass);
+    usageSuboption = create_suboption_usage_string(it->second);
+  }
+
+  if (usageSuboption.empty())
+    std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s %s\n" + fh.fgc_reset) % executable % subcommand % usage;
+  else
+    std::cout << boost::format(fh.fgc_header + "\nUSAGE: " + fh.fgc_usageBody + "%s %s [ %s ] %s\n" + fh.fgc_reset) % executable % subcommand % usageSuboption % usage;
+
+  std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>> commonJsonOptions;
+  if (commandConfig.empty())
+    commonJsonOptions.emplace("", cast_vector(subOptions));
+
+  std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>> hiddenJsonOptions;
+  for (const auto& devicePair : commandConfig) {
+    std::vector<std::shared_ptr<JSONConfigurable>> common;
+    std::vector<std::shared_ptr<JSONConfigurable>> hidden;
+    for (const auto& option : devicePair.second) {
+      if (option->getConfigHidden())
+        hidden.push_back(option);
+      else
+        common.push_back(option);
+    }
+
+    if (!common.empty())
+      commonJsonOptions.emplace(devicePair.first, common);
+
+    if (!hidden.empty())
+      hiddenJsonOptions.emplace(devicePair.first, hidden);
+  }
+
+  report_option_help("OPTIONS", options, positionals, false, false, commonJsonOptions, deviceClass); // Make a new report_option_help that prints the separated by device class?
+
+  if (XBU::getShowHidden())
+    report_option_help("OPTIONS (Hidden)", hiddenOptions, positionals, false, false, hiddenJsonOptions, deviceClass);
 }
 
 void
@@ -408,69 +599,27 @@ XBUtilities::report_subcommand_help(const std::string& _executableName,
                                     const boost::program_options::options_description& _globalOptions,
                                     const boost::program_options::positional_options_description& _positionalDescription,
                                     const SubCmd::SubOptionOptions& _subOptionOptions,
-                                    bool removeLongOptDashes,
-                                    const std::string& customHelpSection)
+                                    bool /*removeLongOptDashes*/,
+                                    const std::string& customHelpSection,
+                                    const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& commandConfig,
+                                    const std::string& deviceClass)
 {
-  // Formatting color parameters
-  const std::string fgc_header       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_commandBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_usageBody    = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_ooption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION).string();
-  const std::string fgc_ooptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
-  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset        = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
+  const auto& fh = FormatHelper::instance();
 
   // -- Command
-  boost::format fmtCommand(fgc_header + "\nCOMMAND: " + fgc_commandBody + "%s\n" + fgc_reset);
+  boost::format fmtCommand(fh.fgc_header + "\nCOMMAND: " + fh.fgc_commandBody + "%s\n" + fh.fgc_reset);
   if (!_subCommand.empty())
     std::cout << fmtCommand % _subCommand;
 
   // -- Command description
   {
     auto formattedString = XBU::wrap_paragraphs(_description, 15, m_maxColumnWidth, false);
-    boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
+    boost::format fmtHeader(fh.fgc_header + "\nDESCRIPTION: " + fh.fgc_headerBody + "%s\n" + fh.fgc_reset);
     if (!formattedString.empty())
       std::cout << fmtHeader % formattedString;
   }
 
-  // -- Usage
-  // Create option usage string before adding suboptions
-  // The suboptions are displayed seperately in the usage string from the normal options
-  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
-
-  boost::program_options::options_description allOptions(_optionDescription);
-  boost::program_options::options_description allHiddenOptions(_optionHidden);
-
-  std::string usageSubCmds;
-  for (const auto& subCmd : _subOptionOptions) {
-    // As we go through the sub options add them into the options description for the list display
-    if (subCmd->isHidden())
-      allHiddenOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
-    else
-      allOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
-
-    if (subCmd->isHidden() && !XBU::getShowHidden())
-      continue;
-
-    if (!usageSubCmds.empty())
-      usageSubCmds.append(" | ");
-
-    const auto& option = subCmd->option();
-    const auto optionType = get_option_type(option, boost::program_options::positional_options_description());
-    const auto optionString = create_option_string(optionType, option, false);
-    usageSubCmds.append(optionString);
-  }
-
-  if (usageSubCmds.empty())
-    std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s %s\n" + fgc_reset) % _executableName % _subCommand % usage;
-  else
-    std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] %s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
-
-  // -- Options
-  report_option_help("OPTIONS", allOptions, _positionalDescription, false);
+  display_subcommand_options(_executableName, _subCommand, commandConfig, _optionDescription, _optionHidden, _positionalDescription, _subOptionOptions, deviceClass);
 
   // -- Custom Section
   std::cout << customHelpSection << "\n";
@@ -478,12 +627,9 @@ XBUtilities::report_subcommand_help(const std::string& _executableName,
   // -- Global Options
   report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
 
-  if (XBU::getShowHidden())
-    report_option_help("OPTIONS (Hidden)", allHiddenOptions, _positionalDescription, false);
-
   // Extended help
   {
-    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" + fgc_reset);
+    boost::format fmtExtHelp(fh.fgc_extendedBody + "\n  %s\n" + fh.fgc_reset);
     auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
     if (!formattedString.empty())
       std::cout << fmtExtHelp % formattedString;

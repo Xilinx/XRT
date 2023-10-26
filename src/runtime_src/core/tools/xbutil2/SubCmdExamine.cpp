@@ -58,7 +58,7 @@
   #endif
   };
 
-SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree configurations)
+SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmdExamineInternal(_isHidden, _isDepricated, _isPreliminary, true /*isUserDomain*/, configurations)
     , m_device("")
     , m_reportNames()

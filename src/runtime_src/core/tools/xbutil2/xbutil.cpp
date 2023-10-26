@@ -30,29 +30,41 @@
 const std::string& command_config = 
 R"(
 [{
-    "name": "cmd_configs",
-    "contents": [{
-        "name": "common",
-        "contents": [{
-            "name": "examine",
-            "contents": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal"]
-        },{
-            "name": "configure",
-            "contents": ["host-mem", "p2p", "performance"]
-        }]
-    },{
-        "name": "alveo",
-        "contents": [{
-            "name": "examine",
-            "contents": ["error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
-        }]
-    },{
-        "name": "aie",
-        "contents": [{
-            "name": "examine",
-            "contents": ["aie", "aiemem", "aieshim", "aie-partitions"]
-        }]
+  "alveo": [{
+    "examine": [{
+      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
     }]
+  },{
+    "configure": [{
+      "suboption": ["host-mem", "p2p"]
+    }]
+  },{
+    "advanced":[{
+      "suboption": ["read-mem", "write-mem"]
+    }]
+  },{
+    "validate": [{
+      "test": ["aux-connection", "pcie-link", "sc-version", "verify", "dma", "iops", "mem-bw", "p2p", "m2m", "hostmem-bw", "bist", "vcu", "aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"]
+    }]
+  }]
+},{
+  "aie": [{
+    "examine": [{
+      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "aie", "aiemem", "aieshim", "aie-partitions"]
+    }]
+  },{
+    "configure": [{
+      "suboption": ["performance"]
+    }]
+  },{
+    "advanced":[{
+      "suboption": ["read-aie-reg", "aie-clock"]
+    }]
+  },{
+    "validate": [{
+      "test": ["verify"]
+    }]
+  }]
 }]
 )";
 
@@ -78,10 +90,10 @@ int main( int argc, char** argv )
     populateSubCommandsFromJSON(subCommands, executable);
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
-    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false, configTree));
 #endif
 
-    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true,  false, true ));
+    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true, false, true, configTree));
   }
 
   for (auto & subCommand : subCommands) {

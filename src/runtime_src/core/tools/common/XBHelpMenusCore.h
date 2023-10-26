@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBHelpMenusCore_h_
 #define __XBHelpMenusCore_h_
@@ -50,16 +37,22 @@ namespace XBUtilities {
                             boost::program_options::positional_options_description(),
                           const SubCmd::SubOptionOptions& _subOptionOptions = SubCmd::SubOptionOptions(),
                           bool removeLongOptDashes = false,
-                          const std::string& customHelpSection = "");
+                          const std::string& customHelpSection = "",
+                          const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& commandConfig =
+                            std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>(),
+                          const std::string& deviceClass = "");
 
-  void 
+  void
     report_option_help( const std::string & _groupName, 
                         const boost::program_options::options_description& _optionDescription,
                         const boost::program_options::positional_options_description & _positionalDescription,
-                        bool _bReportParameter = true,
-                        bool removeLongOptDashes = false);
+                        const bool _bReportParameter = true,
+                        const bool removeLongOptDashes = false,
+                        const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& device_options =
+                          std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>(),
+                        const std::string& deviceClass = "");
 
-  std::string 
+  std::string
     create_usage_string( const boost::program_options::options_description &_od,
                          const boost::program_options::positional_options_description & _pod,
                          bool removeLongOptDashes = false);
