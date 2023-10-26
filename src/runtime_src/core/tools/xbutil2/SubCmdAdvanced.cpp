@@ -22,7 +22,6 @@
 #include "OO_MemRead.h"
 #include "OO_MemWrite.h"
 #include "SubCmdAdvanced.h"
-#include "XBReport.h"
 
 #include "common/device.h"
 #include "common/system.h"

@@ -4,9 +4,11 @@
 #ifndef XRT_CORE_SYSTEM_H
 #define XRT_CORE_SYSTEM_H
 
+// Local - Include files
 #include "config.h"
 #include "device.h"
 
+// 3rd Party Library - Include files
 #include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core {
@@ -26,13 +28,8 @@ protected:
   XRT_CORE_COMMON_EXPORT
   system();
 public:
-  // REMOVE
   virtual void
-  get_xrt_info(boost::property_tree::ptree&) {}
-
-  // REMOVE
-  virtual void
-  get_os_info(boost::property_tree::ptree&) {}
+  get_driver_info(boost::property_tree::ptree&) {}
 
   // REMOVE
   virtual void
@@ -129,19 +126,7 @@ public:
  */
 XRT_CORE_COMMON_EXPORT
 void
-get_xrt_build_info(boost::property_tree::ptree& pt);
-
-/**
- */
-XRT_CORE_COMMON_EXPORT
-void
-get_xrt_info(boost::property_tree::ptree& pt);
-
-/**
- */
-XRT_CORE_COMMON_EXPORT
-void
-get_os_info(boost::property_tree::ptree& pt);
+get_driver_info(boost::property_tree::ptree& pt);
 
 /**
  */

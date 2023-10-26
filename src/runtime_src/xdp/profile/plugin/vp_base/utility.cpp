@@ -25,7 +25,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "core/common/system.h"
+#include "core/common/sysinfo.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -69,7 +69,7 @@ namespace xdp {
       return version;
 
     boost::property_tree::ptree xrtInfo;
-    xrt_core::get_xrt_build_info(xrtInfo);
+    xrt_core::sysinfo::get_xrt_info(xrtInfo);
 
     version = xrtInfo.get<std::string>("version", "N/A");
 
@@ -90,7 +90,7 @@ namespace xdp {
     initialized = true;
 
     boost::property_tree::ptree pt;
-    xrt_core::get_xrt_info(pt);
+    xrt_core::sysinfo::get_xrt_info(pt);
 
     try {
       for (boost::property_tree::ptree::value_type& info : pt.get_child("drivers")) {

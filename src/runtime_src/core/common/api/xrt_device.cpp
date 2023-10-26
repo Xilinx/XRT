@@ -20,6 +20,7 @@
 #include "core/common/sensor.h"
 #include "core/common/system.h"
 #include "core/common/trace.h"
+#include "core/common/sysinfo.h"
 
 #include "device_int.h"
 #include "handle.h"
@@ -185,7 +186,7 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
     return json_str(xrt_core::aie::aie_mem(device), abi);
   case xrt::info::device::host : // std::string
     boost::property_tree::ptree pt;
-    xrt_core::get_xrt_build_info(pt);
+    xrt_core::sysinfo::get_xrt_info(pt);
     return json_str(pt, abi);
   }
 

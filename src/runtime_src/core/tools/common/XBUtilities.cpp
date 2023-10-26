@@ -7,12 +7,12 @@
 #include "XBUtilitiesCore.h"
 
 // Local - Include Files
-#include "core/common/error.h"
-#include "core/common/info_vmr.h"
-#include "core/common/utils.h"
-#include "core/common/message.h"
-
+#include "common/error.h"
+#include "common/info_vmr.h"
+#include "common/utils.h"
+#include "common/message.h"
 #include "common/system.h"
+#include "common/sysinfo.h"
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
@@ -251,7 +251,7 @@ void
 XBUtilities::xrt_version_cmp(bool isUserDomain)
 {
   boost::property_tree::ptree pt_xrt;
-  xrt_core::get_xrt_info(pt_xrt);
+  xrt_core::sysinfo::get_xrt_info(pt_xrt);
   const boost::property_tree::ptree empty_ptree;
 
   std::string xrt_version = pt_xrt.get<std::string>("version", "<unknown>");
@@ -658,7 +658,7 @@ get_xrt_pretty_version()
 {
   std::stringstream ss;
   boost::property_tree::ptree pt_xrt;
-  xrt_core::get_xrt_info(pt_xrt);
+  xrt_core::sysinfo::get_xrt_info(pt_xrt);
   boost::property_tree::ptree empty_ptree;
 
   ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
