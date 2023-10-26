@@ -53,6 +53,7 @@ namespace xdp {
       module_type getTileType(uint16_t row);
       uint16_t getRelativeRow(uint16_t absRow);
       
+      bool isInputSet(const module_type type, const std::string metricSet);
       bool isStreamSwitchPortEvent(const XAie_Events event);
       bool isPortRunningEvent(const XAie_Events event);
       uint8_t getPortNumberFromEvent(XAie_Events event);
@@ -65,7 +66,7 @@ namespace xdp {
                                 const XAie_ModuleType mod, const module_type type, 
                                 const std::string metricSet, const uint8_t channel0,
                                 const uint8_t channel);
-      void configEdgeEvents(const tile_type& tile,
+      void configEdgeEvents(const tile_type& tile, const module_type type,
                             const std::string metricSet, const XAie_Events event);
 
       uint32_t bcIdToEvent(int bcId);

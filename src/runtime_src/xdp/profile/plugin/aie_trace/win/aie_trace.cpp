@@ -105,11 +105,21 @@ namespace xdp {
          {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
           XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE, 
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE,      XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, 
-          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}}
+          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}},
+        {"memory_conflicts1",         
+         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
+        {"memory_conflicts2",         
+         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}} 
     };
-    mMemoryTileEventSets["s2mm_channels"] = mMemoryTileEventSets["input_channels"];
+    mMemoryTileEventSets["s2mm_channels"]        = mMemoryTileEventSets["input_channels"];
     mMemoryTileEventSets["s2mm_channels_stalls"] = mMemoryTileEventSets["input_channels_stalls"];
-    mMemoryTileEventSets["mm2s_channels"] = mMemoryTileEventSets["output_channels"];
+    mMemoryTileEventSets["mm2s_channels"]        = mMemoryTileEventSets["output_channels"];
     mMemoryTileEventSets["mm2s_channels_stalls"] = mMemoryTileEventSets["output_channels_stalls"];
 
     // Memory tile trace is flushed at end of run
@@ -135,17 +145,27 @@ namespace xdp {
         {XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
+        {"input_ports_details_1",
+        {XAIE_EVENT_DMA_MM2S_1_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
+         XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL,
+         XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL}},
         {"output_ports_details",
         {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
+         XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}, 
+        {"output_ports_details_1",
+        {XAIE_EVENT_DMA_S2MM_1_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
+         XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL,
+         XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL}}
     };
-    mInterfaceTileEventSets["mm2s_ports"] = mInterfaceTileEventSets["input_ports"];
-    mInterfaceTileEventSets["s2mm_ports"] = mInterfaceTileEventSets["output_ports"];
-    mInterfaceTileEventSets["mm2s_ports_stalls"] = mInterfaceTileEventSets["input_ports_stalls"];
-    mInterfaceTileEventSets["s2mm_ports_stalls"] = mInterfaceTileEventSets["output_ports_stalls"];
-    mInterfaceTileEventSets["mm2s_ports_details"] = mInterfaceTileEventSets["input_ports_details"];
-    mInterfaceTileEventSets["s2mm_ports_details"] = mInterfaceTileEventSets["output_ports_details"];
+    mInterfaceTileEventSets["mm2s_ports"]           = mInterfaceTileEventSets["input_ports"];
+    mInterfaceTileEventSets["s2mm_ports"]           = mInterfaceTileEventSets["output_ports"];
+    mInterfaceTileEventSets["mm2s_ports_stalls"]    = mInterfaceTileEventSets["input_ports_stalls"];
+    mInterfaceTileEventSets["s2mm_ports_stalls"]    = mInterfaceTileEventSets["output_ports_stalls"];
+    mInterfaceTileEventSets["mm2s_ports_details"]   = mInterfaceTileEventSets["input_ports_details"];
+    mInterfaceTileEventSets["mm2s_ports_details_1"] = mInterfaceTileEventSets["input_ports_details_1"];
+    mInterfaceTileEventSets["s2mm_ports_details"]   = mInterfaceTileEventSets["output_ports_details"];
+    mInterfaceTileEventSets["s2mm_ports_details_1"] = mInterfaceTileEventSets["output_ports_details_1"];
 
     // Interface tile trace is flushed at end of run
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
@@ -234,6 +254,25 @@ namespace xdp {
   inline uint32_t AieTrace_WinImpl::bcIdToEvent(int bcId)
   {
     return bcId + CORE_BROADCAST_EVENT_BASE;
+  }
+
+  bool AieTrace_WinImpl::isInputSet(const module_type type, const std::string metricSet)
+  {
+    // Catch memory tile sets
+    if (type == module_type::mem_tile) {
+      if ((metricSet.find("input") != std::string::npos)
+          || (metricSet.find("s2mm") != std::string::npos))
+        return true;
+      else
+        return false;
+    }
+
+    // Remaining covers interface tiles
+    if ((metricSet.find("input") != std::string::npos)
+        || (metricSet.find("mm2s") != std::string::npos))
+      return true;
+    else
+      return false;
   }
 
   bool AieTrace_WinImpl::isStreamSwitchPortEvent(const XAie_Events event)
@@ -346,8 +385,7 @@ namespace xdp {
           }
           else {
             uint8_t channel = (portnum == 0) ? channel0 : channel1;
-            auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
-              XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             //switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
             XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, DMA, channel);
           }
@@ -384,12 +422,12 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    XAie_DmaDirection dmaDir = isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(&aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(&aieDevInst, loc, 1, dmaDir, channel1);
   }
 
-  void AieTrace_WinImpl::configEdgeEvents(const tile_type& tile,
+  void AieTrace_WinImpl::configEdgeEvents(const tile_type& tile, const module_type type,
                                           const std::string metricSet, const XAie_Events event)
   {
     // For now, only memory tiles are supported
@@ -401,7 +439,7 @@ namespace xdp {
     constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 
     // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
-    uint16_t eventNum = (metricSet.find("input") != std::string::npos)
+    uint16_t eventNum = isInputSet(type, metricSet)
         ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
         : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
 
@@ -466,7 +504,6 @@ namespace xdp {
     // NOTE: rows are stored as absolute as required by resource manager
     std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
     for (auto& tileMetric : metadata->getConfigMetrics()) {
-
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
       auto col        = tile.col;
@@ -475,7 +512,6 @@ namespace xdp {
       auto typeInt    = static_cast<int>(type);
       //auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(static_cast<uint8_t>(col), static_cast<uint8_t>(row));
-
 
       std::stringstream cmsg;
       cmsg << "Configuring tile (" << col << "," << row << ") in module type: " << typeInt << ".";
@@ -544,7 +580,6 @@ namespace xdp {
       int numCoreTraceEvents = 0;
       int numMemoryTraceEvents = 0;
       int numInterfaceTraceEvents = 0;
-      
       
       //
       // 1. Configure Core Trace Events
@@ -703,8 +738,7 @@ namespace xdp {
           // Record for runtime config file
           cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
           cfgTile->memory_tile_trace_config.port_trace_ids[1] = channel1;
-          if ((metricSet.find("input") != std::string::npos)
-              || (metricSet.find("s2mm") != std::string::npos)) {
+          if (isInputSet(type, metricSet)) {
             cfgTile->memory_tile_trace_config.port_trace_is_master[0] = true;
             cfgTile->memory_tile_trace_config.port_trace_is_master[1] = true;
             cfgTile->memory_tile_trace_config.s2mm_channels[0] = channel0;
@@ -778,7 +812,7 @@ namespace xdp {
           numMemoryTraceEvents++;
 
           // Configure edge events (as needed)
-          configEdgeEvents(tile, metricSet, memoryEvents[i]);
+          configEdgeEvents(tile, type, metricSet, memoryEvents[i]);
 
           // Update config file
           // Get Trace slot
@@ -888,32 +922,36 @@ namespace xdp {
         //   return false;
         // }
 
-        // Specify Sel0/Sel1 for interface tile DMA events
+        // Get specified channel numbers
         auto iter0 = configChannel0.find(tile);
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-        configEventSelections(loc, mod, type, metricSet, channel0, channel1);
+        //configEventSelections(loc, mod, type, metricSet, channel0, channel1);
+
+        if ((channel0 > 0) && (metricSet.find("details") != std::string::npos)) {
+          metricSet.append("_1");
+          interfaceEvents = mInterfaceTileEventSets[metricSet];
+        }
 
         // Record for runtime config file
         // NOTE: input/output designations are different from memory tile channels
         cfgTile->interface_tile_trace_config.port_trace_ids[0] = channel0;
         cfgTile->interface_tile_trace_config.port_trace_ids[1] = channel1;
-        if ((metricSet.find("output") != std::string::npos)
-            || (metricSet.find("s2mm") != std::string::npos)) {
-          cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
-          cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
-          cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
-          if (channel0 != channel1)
-            cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
-        } else {
+        if (isInputSet(type, metricSet)) {
           cfgTile->interface_tile_trace_config.port_trace_is_master[0] = false;
           cfgTile->interface_tile_trace_config.port_trace_is_master[1] = false;
           cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
           if (channel0 != channel1)
             cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
+        else {
+          cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
+          cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
+          cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
+          if (channel0 != channel1)
+            cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
         }
-
+        
         configStreamSwitchPorts(tileMetric.first, /*xaieTile,*/ loc, type,
                                 metricSet, channel0, channel1, interfaceEvents);
 
