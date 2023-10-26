@@ -28,16 +28,16 @@
 #endif
 
 namespace {
-static std::string machine_info()
+static std::string 
+machine_info()
 {
   std::string model("unknown");
   std::ifstream stream(MACHINE_NODE_PATH);
-  if (stream.good()) {
+  if (stream.good())
     std::getline(stream, model);
-    stream.close();
-  }
   return model;
 }
+
 static boost::property_tree::ptree
 glibc_info()
 {
@@ -66,19 +66,20 @@ get_os_info(boost::property_tree::ptree &pt)
 
   // The file is a requirement as per latest Linux standards
   std::ifstream ifs("/etc/os-release");
-  if ( ifs.good() ) {
-      boost::property_tree::ptree opt;
-      boost::property_tree::ini_parser::read_ini(ifs, opt);
-      std::string val = opt.get<std::string>("PRETTY_NAME", "");
-      if (val.length()) {
-          if ((val.front() == '"') && (val.back() == '"')) {
-              val.erase(0, 1);
-              val.erase(val.size()-1);
-          }
-          pt.put("distribution", val);
-      }
-      ifs.close();
-  }
+  if (!ifs.good())
+    return;
+
+	boost::property_tree::ptree opt;
+  boost::property_tree::ini_parser::read_ini(ifs, opt);
+	std::string val = opt.get<std::string>("PRETTY_NAME", "");
+	if (val.empty())
+	  return;
+	      
+	if ((val.front() == '"') && (val.back() == '"')) {
+	  val.erase(0, 1);
+	  val.erase(val.size()-1);
+	}
+	pt.put("distribution", val);
 
   // BIOS info
   std::string bios_vendor("unknown");
@@ -87,14 +88,12 @@ get_os_info(boost::property_tree::ptree &pt)
   if (bios_stream.is_open()) {
     getline(bios_stream, bios_vendor);
     pt.put("bios_vendor", bios_vendor);
-    bios_stream.close();
   }
 
   std::ifstream ver_stream("/sys/class/dmi/id/bios_version");
   if (ver_stream.is_open()) {
     getline(ver_stream, bios_version);
     pt.put("bios_version", bios_version);
-    ver_stream.close();
   }
 
   pt.put("model", machine_info());
