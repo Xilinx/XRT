@@ -1307,6 +1307,13 @@ namespace xdp {
     parseXrtIPMetadata(deviceId, device);
   }
 
+
+  void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
+  {
+    xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
+    updateDevice(deviceId, xrtXclbin);
+  }
+
   // Return true if we should reset the device information.
   // Return false if we should not reset device information
   bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
