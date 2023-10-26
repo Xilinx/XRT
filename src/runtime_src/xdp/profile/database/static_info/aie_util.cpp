@@ -20,10 +20,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <optional>
 #include <set>
 
-#include "aie_util.h"
+//#include <memory>
+//#include <regex>
 
+#include "aie_util.h"
 #include "core/common/message.h"
 
 // ***************************************************************
@@ -118,13 +121,11 @@ namespace xdp::aie::handwritten {
   // The physical devices will only have one version of the AIE silicon
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta)
   {
-    static int hwGen = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
+    static std::optional<int> hwGen;
+    if (!hwGen.has_value()) {
       hwGen = aie_meta.get_child("driver_config.hw_gen").get_value<int>();
-      gotValue = true;
     }
-    return hwGen;
+    return *hwGen;
   }
 
   aiecompiler_options
@@ -143,14 +144,11 @@ namespace xdp::aie::handwritten {
   uint16_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta)
   {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-
-    if (!gotValue) {
+    static std::optional<uint16_t> rowOffset;
+    if (!rowOffset.has_value()) {
       rowOffset = aie_meta.get_child("driver_config.aie_tile_row_start").get_value<uint16_t>();
-      gotValue = true;
     }
-    return rowOffset;
+    return *rowOffset;
   }
 
   std::vector<std::string>

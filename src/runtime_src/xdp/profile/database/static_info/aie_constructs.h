@@ -292,7 +292,6 @@ enum class module_type {
   // Used by by IPU profiling/debug on Windows
   typedef struct {
     uint64_t perf_address;
-    uint32_t perf_value;
   } profile_data_t;
 
   typedef struct {

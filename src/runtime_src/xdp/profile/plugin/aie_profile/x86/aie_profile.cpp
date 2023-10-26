@@ -145,6 +145,11 @@ namespace xdp {
         // Store counter info in database
         auto& counter = cfg->counters[i];
         std::string counterName = "AIE Counter " + std::to_string(counter.counterId);
+        if (!metadata->checkModule(counter.moduleName)) {
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Invalid Module Returned from PS Kernel. Data may be invalid.");
+          counter.moduleName = 0;
+        }
+
         (db->getStaticInfo())
             .addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
                            counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload,
