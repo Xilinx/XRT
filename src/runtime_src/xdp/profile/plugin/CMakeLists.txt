@@ -11,6 +11,7 @@ if (XDP_MINIMAL_BUILD STREQUAL "yes")
     add_subdirectory(aie_profile)
     add_subdirectory(aie_trace)
     add_subdirectory(aie_debug)
+    add_subdirectory(ml_timeline)
   endif()
 else()
 

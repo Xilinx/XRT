@@ -116,15 +116,25 @@ namespace xdp {
     if (!handle)
       return;
 
+  /*
+   * handle relates to hw context handle in case of Client XRT
+   */
+    #ifdef XDP_MINIMAL_BUILD
+        xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+        auto device = xrt_core::hw_context_int::get_core_device(context);
+    #else
+        auto device = xrt_core::get_userpf_device(handle);
+    #endif
+
     auto deviceID = getDeviceIDFromHandle(handle);
 
     // Update the static database with information from xclbin
-    (db->getStaticInfo()).updateDevice(deviceID, handle);
-
     {
 #ifdef XDP_MINIMAL_BUILD
+      (db->getStaticInfo()).updateDeviceClient(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
+      (db->getStaticInfo()).updateDevice(deviceID, handle);
       struct xclDeviceInfo2 info;
       if (xclGetDeviceInfo2(handle, &info) == 0) {
         (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
@@ -145,7 +155,7 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
 #ifdef XDP_MINIMAL_BUILD
-    AIEData.metadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
+    AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);

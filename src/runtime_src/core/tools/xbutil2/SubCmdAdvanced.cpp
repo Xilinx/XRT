@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -46,7 +33,7 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("advanced", 
              "Low level command operations")
 {
@@ -58,8 +45,11 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 
   m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
+
+  m_commandConfig = configurations;
 
   addSubOption(std::make_shared<OO_MemRead>("read-mem"));
   addSubOption(std::make_shared<OO_MemWrite>("write-mem"));
@@ -88,7 +78,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // No suboption print help
   if (!optionOption) {
-    printHelp();
+    printHelp(false, "", XBU::get_device_class(m_device, true));
     return;
   }
 

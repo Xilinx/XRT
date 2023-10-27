@@ -944,7 +944,7 @@ namespace xdp {
           cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
           if (channel0 != channel1)
             cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
-        else {
+        } else {
           cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
           cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
           cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;

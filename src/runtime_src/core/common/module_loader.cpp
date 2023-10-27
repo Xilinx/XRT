@@ -20,14 +20,15 @@
 #include "core/common/config_reader.h"
 #include "detail/xilinx_xrt.h"
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <cstdlib>
+#include <cstring>
+#include <filesystem>
 
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
 
-namespace bfs = boost::filesystem;
+namespace sfs = std::filesystem;
 
 namespace {
 
@@ -94,37 +95,86 @@ shim_name()
   throw std::runtime_error("Unexected error creating shim library name");
 }
 
-static bfs::path
+static sfs::path
 get_xilinx_xrt()
 {
-  bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
+  sfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
   if (!xrt.empty())
     return xrt;
 
   return xrt_core::detail::xilinx_xrt();
 }
 
-static bfs::path
+static const sfs::path&
 xilinx_xrt()
 {
-  static bfs::path xrt = get_xilinx_xrt();
+  // Cache Xilinx XRT path
+  static auto xrt = get_xilinx_xrt();
   return xrt;
 }
 
-static bfs::path
+// Get list of xclbin repository paths from ini file and append
+// default repository paths
+std::vector<sfs::path>
+get_xclbin_repo_paths()
+{
+  std::vector<sfs::path> paths;
+  
+  // Get repo path from ini file if anya
+  auto repo = xrt_core::config::get_xclbin_repo();
+  auto token = std::strtok(repo.data(), ":;");
+  while (token) {
+    paths.push_back(token);
+    token = std::strtok(nullptr, ":;");
+  }
+
+  // Append default path(s)
+  paths.emplace_back(xrt_core::detail::xclbin_repo_path());
+  return paths;
+}
+
+static const std::vector<sfs::path>&
+xclbin_repo_paths()
+{
+  // Cache repo paths
+  static std::vector<sfs::path> paths{get_xclbin_repo_paths()};
+  return paths;
+}
+
+// Return the full path to the xclbin file if it exists in an xclbin
+// repository, else throw.
+static sfs::path
+xclbin_repo_path(const std::string& xclbin)
+{
+  for (const auto& path : xclbin_repo_paths()) {
+    auto xpath = path / xclbin;
+    if (sfs::exists(xpath) && sfs::is_regular_file(xpath))
+      return xpath;
+  }
+
+  throw std::runtime_error("No such xclbin '" + xclbin + "'");
+}
+
+// Return the full path to an xclbin file if it exists, else throw.
+// If the specified path is an absolute path then the function
+// returns this path or throws if file does not exist.  If the path
+// is relative, or just a plain file name, then the function checks
+// first in current directory, then in the platform specific xclbin
+// repository.
+static sfs::path
 xclbin_path(const std::string& xclbin)
 {
-  bfs::path xpath(xclbin);
-  if (!xpath.is_absolute())
-    xpath = xrt_core::detail::xclbin_path(xclbin);
-  
-  if (bfs::exists(xpath) && bfs::is_regular_file(xpath))
+  sfs::path xpath{xclbin};
+  if (sfs::exists(xpath) && sfs::is_regular_file(xpath))
     return xpath;
+
+  if (!xpath.is_absolute())
+    return xclbin_repo_path(xclbin);
 
   throw std::runtime_error("No such xclbin '" + xpath.string() + "'");
 }
 
-static bfs::path
+static sfs::path
 module_path(const std::string& module)
 {
   auto path = xilinx_xrt();
@@ -134,14 +184,13 @@ module_path(const std::string& module)
   path /= "lib/xrt/module/lib" + module + ".so";
 #endif
 
-  if (!bfs::exists(path) || !bfs::is_regular_file(path))
+  if (!sfs::exists(path) || !sfs::is_regular_file(path))
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
 }
-
   
-static bfs::path
+static sfs::path
 shim_path()
 {
   auto path = xilinx_xrt();
@@ -153,7 +202,7 @@ shim_path()
   path /= "lib/lib" + name + ".so." + XRT_VERSION_MAJOR;
 #endif
 
-  if (!bfs::exists(path) || !bfs::is_regular_file(path))
+  if (!sfs::exists(path) || !sfs::is_regular_file(path))
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
@@ -163,12 +212,12 @@ static std::vector<std::string>
 driver_plugin_paths()
 {
   std::vector<std::string> ret;
-  bfs::directory_iterator p{shim_path().parent_path()};
+  sfs::directory_iterator p{shim_path().parent_path()};
 
   // All driver plug-ins are in the same directory as shim .so and with below prefix and suffix.
   const std::string pre = "libxrt_driver_";
   const std::string suf = std::string(".so.") + XRT_VERSION_MAJOR;
-  while (p != bfs::directory_iterator{}) {
+  while (p != sfs::directory_iterator{}) {
     const auto name = p->path().filename().string();
     if ((name.size() > (pre.size() + suf.size())) &&
       !name.compare(0, pre.size(), pre) &&
@@ -238,16 +287,22 @@ driver_loader()
 
 namespace environment {
 
-std::string
+const sfs::path&
 xilinx_xrt()
 {
-  return ::xilinx_xrt().string();
+  return ::xilinx_xrt();
 }
 
-std::string
+sfs::path
 xclbin_path(const std::string& xclbin_name)
 {
-  return ::xclbin_path(xclbin_name).string();
+  return ::xclbin_path(xclbin_name);
+}
+
+const std::vector<sfs::path>&
+xclbin_repo_paths()
+{
+  return ::xclbin_repo_paths();
 }
 
 } // environment

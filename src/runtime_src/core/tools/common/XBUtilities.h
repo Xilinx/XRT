@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBUtilities_h_
 #define __XBUtilities_h_
@@ -53,8 +53,9 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
 
-  std::shared_ptr<xrt_core::device> get_device ( const std::string &deviceBDF,
-                                                 bool in_user_domain);
+  std::shared_ptr<xrt_core::device> get_device (const std::string& deviceBDF, bool in_user_domain, bool print_warning = true);
+
+  std::string get_device_class(const std::string& deviceBDF, bool in_user_domain);
 
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);

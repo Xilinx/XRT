@@ -5,7 +5,6 @@
 #define NATIVE_PROFILE_DOT_H
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
-#include "core/common/trace.h"
 #include "core/include/xrt.h"
 
 // This file contains the callback mechanisms for connecting the
@@ -30,7 +29,6 @@ class api_call_logger
  protected:
   uint64_t m_funcid ;
   const char* m_fullname = nullptr ;
-  xrt_core::trace::logger* m_trace_logger = nullptr;
  public:
   explicit api_call_logger(const char* function);
   virtual ~api_call_logger() = default ;
@@ -54,8 +52,7 @@ auto
 profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
   if (xrt_core::config::get_native_xrt_trace()
-      || xrt_core::config::get_host_trace()
-      || xrt_core::config::get_trace_logging()) {
+      || xrt_core::config::get_host_trace()) {
     generic_api_call_logger log_object(function) ;
     return f(std::forward<Args>(args)...) ;
   }

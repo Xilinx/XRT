@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022-2023 Xilinx, Inc. All rights reserved.
 #
 
 find_package(Boost
@@ -16,6 +16,7 @@ file(GLOB XBFLASH_BASE_FILES
   "../common/SubCmd.cpp"
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenusCore.cpp"
+  "../common/JSONConfigurable.cpp"
   "../../pcie/tools/xbflash.qspi/firmware_image.cpp"
   "../../pcie/tools/xbflash.qspi/pcidev.cpp"
   "../../pcie/tools/xbflash.qspi/xqspips.cpp"
