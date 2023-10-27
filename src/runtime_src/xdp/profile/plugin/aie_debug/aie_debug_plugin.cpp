@@ -108,7 +108,7 @@ namespace xdp {
       pt::read_json("aie_control_config.json", aie_meta);
     } catch (...) {
       std::stringstream msg;
-      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
+      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Debug.";
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -196,7 +196,7 @@ namespace xdp {
       mKernel = xrt::kernel(context, "XDP_KERNEL");  
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Profile. " << e.what() ;
+      msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Debug. " << e.what() ;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -212,7 +212,7 @@ namespace xdp {
       instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     } catch (std::exception &e){
       std::stringstream msg;
-      msg << "Unable to create the instruction buffer for polling during AIE Profile. " << e.what() << std::endl;
+      msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -224,31 +224,11 @@ namespace xdp {
       run.wait2();
     } catch (std::exception &e) {
       std::stringstream msg;
-      msg << "Unable to successfully execute AIE Profile polling kernel. " << e.what() << std::endl;
+      msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << std::endl;
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
     }
 
     XAie_ClearTransaction(&aieDevInst);
-
-    auto instrbo_map = instr_bo.map<uint8_t*>();
-    instr_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    
-    // TODO: figure out where the 8 comes from
-    instrbo_map += sizeof(XAie_TxnHeader) + sizeof(XAie_CustomOpHdr) + 8;
-    auto output = reinterpret_cast<aie_profile_op_t*>(instrbo_map);
-
-    for (uint32_t i = 0; i < output->count; i++) {
-      std::stringstream msg;
-      uint64_t addr = output->profile_data[i].perf_address;
-      uint64_t reg = addr & 0xFFFFF;
-      uint64_t col = addr >> 25;
-      uint64_t row = (addr >> 20) & 0x1F;
-      msg << "Debug Register "  << col << "," << row << std::hex 
-        << " 0x" << reg << " :" 
-        << " 0x" << output->profile_data[i].perf_value << std::dec;
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-    }
-
   }
 
 
