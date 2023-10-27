@@ -14,6 +14,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/format.hpp>
 
+#ifdef _WIN32
+# pragma warning (disable : 4996)
+#endif
+
 namespace {
 
 static std::string
@@ -76,18 +80,15 @@ get_bios_version() {
     uint8_t  SMBIOSTableData[1];
   };
 
-  SMBIOSData *bios_data = nullptr;
   DWORD bios_size = GetSystemFirmwareTable('RSMB', 0, NULL, 0);
   if (bios_size > 0) {
-    bios_data = (SMBIOSData*)malloc(bios_size);
+    std::vector<char> bios_vector(bios_size);
+    auto bios_data = reinterpret_cast<SMBIOSData*>(bios_vector.data());
     // Retrieve the SMBIOS table
-    DWORD bytes_retrieved = GetSystemFirmwareTable('RSMB', 0, bios_data, bios_size);
-    if (bytes_retrieved != bios_size) {
-      free(bios_data);
-      bios_data = nullptr;
-    }
+    GetSystemFirmwareTable('RSMB', 0, bios_data, bios_size);
+    return std::to_string(bios_data->SMBIOSMajorVersion) + "." + std::to_string(bios_data->SMBIOSMinorVersion);
   }
-  return std::to_string(bios_data->SMBIOSMajorVersion) + "." + std::to_string(bios_data->SMBIOSMinorVersion);
+  return "unknown";
 }
 
 } //end anonymouse namespace
