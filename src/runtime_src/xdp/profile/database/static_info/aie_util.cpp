@@ -92,41 +92,87 @@ namespace {
   }
 } // end anonymous namespace
 
+// *****************************************************************
+// Parsing functions that are the same for all formats, or just have
+// different roots.
+// *****************************************************************
+namespace {
+  // Hardware generation shouldn't change once execution has started.
+  // The physical devices will only have one version of the AIE silicon
+  static
+  int getHardwareGeneration(const boost::property_tree::ptree& aie_meta,
+                            const std::string& root)
+  {
+    static std::optional<int> hwGen;
+    if (!hwGen.has_value()) {
+      hwGen = aie_meta.get_child(root).get_value<int>();
+    }
+    return *hwGen;
+  }
+
+  static
+  xdp::aie::driver_config
+  getDriverConfig(const boost::property_tree::ptree& aie_meta,
+                  const std::string& root)
+  {
+    xdp::aie::driver_config config;
+    auto meta_config = aie_meta.get_child(root);
+
+    config.hw_gen =
+      meta_config.get_child("hw_gen").get_value<uint8_t>();
+    config.base_address =
+      meta_config.get_child("base_address").get_value<uint64_t>();
+    config.column_shift =
+      meta_config.get_child("column_shift").get_value<uint8_t>();
+    config.row_shift =
+      meta_config.get_child("row_shift").get_value<uint8_t>();
+    config.num_rows =
+      meta_config.get_child("num_rows").get_value<uint8_t>();
+    config.num_columns =
+      meta_config.get_child("num_columns").get_value<uint8_t>();
+    config.shim_row =
+      meta_config.get_child("shim_row").get_value<uint8_t>();
+    config.mem_row_start =
+      meta_config.get_child("mem_row_start").get_value<uint8_t>();
+    config.mem_num_rows =
+      meta_config.get_child("mem_num_rows").get_value<uint8_t>();
+    config.aie_tile_row_start =
+      meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
+    config.aie_tile_num_rows =
+      meta_config.get_child("aie_tile_num_rows").get_value<uint8_t>();
+    return config;
+  }
+
+  static
+  uint16_t
+  getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
+                      const std::string& location)
+  {
+    static std::optional<uint16_t> rowOffset;
+    if (!rowOffset.has_value()) {
+      rowOffset = aie_meta.get_child(location).get_value<uint16_t>();
+    }
+    return *rowOffset;
+  }
+
+  static
+  std::vector<std::string>
+  getValidGraphs(const boost::property_tree::ptree& aie_meta,
+                 const std::string& root)
+  {
+    std::vector<std::string> graphs;
+    for (auto& graph : aie_meta.get_child(root)) {
+      std::string graphName = graph.second.get<std::string>("name");
+      graphs.push_back(graphName);
+    }
+    return graphs;
+  }
+} // end anonymous namespace
+
 // ***************************************************************
 // The implementation specific to our handwritten JSON file format
 // ***************************************************************
 namespace xdp::aie::handwritten {
-
-  driver_config
-  getDriverConfig(const boost::property_tree::ptree& aie_meta)
-  {
-    driver_config config;
-    auto meta_config = aie_meta.get_child("driver_config");
-
-    config.hw_gen = meta_config.get_child("hw_gen").get_value<uint8_t>();
-    config.base_address = meta_config.get_child("base_address").get_value<uint64_t>();
-    config.column_shift = meta_config.get_child("column_shift").get_value<uint8_t>();
-    config.row_shift = meta_config.get_child("row_shift").get_value<uint8_t>();
-    config.num_rows = meta_config.get_child("num_rows").get_value<uint8_t>();
-    config.num_columns = meta_config.get_child("num_columns").get_value<uint8_t>();
-    config.shim_row = meta_config.get_child("shim_row").get_value<uint8_t>();
-    config.mem_row_start = meta_config.get_child("reserved_row_start").get_value<uint8_t>();
-    config.mem_num_rows = meta_config.get_child("reserved_num_rows").get_value<uint8_t>();
-    config.aie_tile_row_start = meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
-    config.aie_tile_num_rows = meta_config.get_child("aie_tile_num_rows").get_value<uint8_t>();
-    return config;
-  }
-
-  // Hardware generation shouldn't change once execution has started.
-  // The physical devices will only have one version of the AIE silicon
-  int getHardwareGeneration(const boost::property_tree::ptree& aie_meta)
-  {
-    static std::optional<int> hwGen;
-    if (!hwGen.has_value()) {
-      hwGen = aie_meta.get_child("driver_config.hw_gen").get_value<int>();
-    }
-    return *hwGen;
-  }
 
   aiecompiler_options
   getAIECompilerOptions(const boost::property_tree::ptree& aie_meta)
@@ -139,27 +185,6 @@ namespace xdp::aie::handwritten {
     aiecompiler_options.event_trace = 
         aie_meta.get("aiecompiler_options.event_trace", "runtime");
     return aiecompiler_options;
-  }
-
-  uint16_t
-  getAIETileRowOffset(const boost::property_tree::ptree& aie_meta)
-  {
-    static std::optional<uint16_t> rowOffset;
-    if (!rowOffset.has_value()) {
-      rowOffset = aie_meta.get_child("driver_config.aie_tile_row_start").get_value<uint16_t>();
-    }
-    return *rowOffset;
-  }
-
-  std::vector<std::string>
-  getValidGraphs(const boost::property_tree::ptree& aie_meta)
-  {
-    std::vector<std::string> graphs;
-    for (auto& graph : aie_meta.get_child("graphs")) {
-      std::string graphName = graph.second.get<std::string>("name");
-      graphs.push_back(graphName);
-    }
-    return graphs;
   }
 
   std::vector<std::string>
@@ -313,37 +338,6 @@ namespace xdp::aie::handwritten {
 // ***************************************************************
 namespace xdp::aie::compiler_report {
 
-  driver_config
-  getDriverConfig(const boost::property_tree::ptree& aie_meta)
-  {
-    driver_config config;
-    auto meta_config = aie_meta.get_child("aie_driver_config");
-
-    config.hw_gen = meta_config.get_child("hw_gen").get_value<uint8_t>();
-    config.base_address = meta_config.get_child("base_address").get_value<uint64_t>();
-    config.column_shift = meta_config.get_child("column_shift").get_value<uint8_t>();
-    config.row_shift = meta_config.get_child("row_shift").get_value<uint8_t>();
-    config.num_rows = meta_config.get_child("num_rows").get_value<uint8_t>();
-    config.num_columns = meta_config.get_child("num_columns").get_value<uint8_t>();
-    config.shim_row = meta_config.get_child("shim_row").get_value<uint8_t>();
-    config.mem_row_start = meta_config.get_child("mem_row_start").get_value<uint8_t>();
-    config.mem_num_rows = meta_config.get_child("mem_num_rows").get_value<uint8_t>();
-    config.aie_tile_row_start = meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
-    config.aie_tile_num_rows = meta_config.get_child("aie_tile_num_rows").get_value<uint8_t>();
-    return config;
-  }
-
-  int getHardwareGeneration(const boost::property_tree::ptree& aie_meta)
-  {
-    static int hwGen = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
-      hwGen = aie_meta.get_child("aie_driver_config.hw_gen").get_value<int>();
-      gotValue = true;
-    }
-    return hwGen;
-  }
-
   // Not currently available in compiler_report.json so just return
   // the defaults.
   aiecompiler_options
@@ -356,29 +350,10 @@ namespace xdp::aie::compiler_report {
     return aiecompiler_options;
   }
 
-  uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta)
-  {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
-      rowOffset = aie_meta.get_child("aie_driver_config.aie_tile_row_start").get_value<uint16_t>();
-      gotValue = true;
-    }
-    return rowOffset;
-  }
-
   std::unordered_map<std::string, io_config>
   getTraceGMIOs(const boost::property_tree::ptree& aie_meta)
   {
     return {};
-  }
-
-  std::vector<std::string>
-  getValidGraphs(const boost::property_tree::ptree& aie_meta)
-  {
-    std::vector<std::string> graphs;
-    graphs.push_back(aie_meta.get<std::string>("id"));
-    return graphs;
   }
 
   std::vector<std::string>
@@ -519,37 +494,6 @@ namespace xdp::aie::aie_control_config {
     return ios;
   }
 
-  driver_config
-  getDriverConfig(const boost::property_tree::ptree& aie_meta)
-  {
-    driver_config config;
-    auto meta_config = aie_meta.get_child("aie_metadata.driver_config");
-
-    config.hw_gen = meta_config.get_child("hw_gen").get_value<uint8_t>();
-    config.base_address = meta_config.get_child("base_address").get_value<uint64_t>();
-    config.column_shift = meta_config.get_child("column_shift").get_value<uint8_t>();
-    config.row_shift = meta_config.get_child("row_shift").get_value<uint8_t>();
-    config.num_rows = meta_config.get_child("num_rows").get_value<uint8_t>();
-    config.num_columns = meta_config.get_child("num_columns").get_value<uint8_t>();
-    config.shim_row = meta_config.get_child("shim_row").get_value<uint8_t>();
-    config.mem_row_start = meta_config.get_child("reserved_row_start").get_value<uint8_t>();
-    config.mem_num_rows = meta_config.get_child("reserved_num_rows").get_value<uint8_t>();
-    config.aie_tile_row_start = meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
-    config.aie_tile_num_rows = meta_config.get_child("aie_tile_num_rows").get_value<uint8_t>();
-    return config;
-  }
-
-  int getHardwareGeneration(const boost::property_tree::ptree& aie_meta)
-  {
-    static int hwGen = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
-      hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<int>();
-      gotValue = true;
-    }
-    return hwGen;
-  }
-
   aiecompiler_options
   getAIECompilerOptions(const boost::property_tree::ptree& aie_meta)
   {
@@ -561,28 +505,6 @@ namespace xdp::aie::aie_control_config {
     aiecompiler_options.event_trace = 
         aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
     return aiecompiler_options;
-  }
-
-  uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta)
-  {
-    static uint16_t rowOffset = 1;
-    static bool gotValue = false;
-    if (!gotValue) {
-      rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
-      gotValue = true;
-    }
-    return rowOffset;
-  }
-
-  std::vector<std::string>
-  getValidGraphs(const boost::property_tree::ptree& aie_meta)
-  {
-    std::vector<std::string> graphs;
-    for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-      std::string graphName = graph.second.get<std::string>("name");
-      graphs.push_back(graphName);
-    }
-    return graphs;
   }
 
   std::vector<std::string>
@@ -745,7 +667,7 @@ namespace xdp::aie::aie_control_config {
   std::vector<tile_type> getAIETiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name)
   {
     std::vector<tile_type> tiles;
-    auto rowOffset = getAIETileRowOffset(aie_meta);
+    auto rowOffset = getAIETileRowOffset(aie_meta, AIE_CONTROL_CONFIG);
     int startCount = 0;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
@@ -846,7 +768,7 @@ namespace xdp::aie::aie_control_config {
       return {};
 
     std::vector<tile_type> tiles;
-    auto rowOffset = getAIETileRowOffset(aie_meta);
+    auto rowOffset = getAIETileRowOffset(aie_meta, AIE_CONTROL_CONFIG);
 
     for (auto const &mapping : kernelToTileMapping.get()) {
       auto currGraph = mapping.second.get<std::string>("graph");
@@ -911,14 +833,14 @@ namespace xdp::aie {
   driver_config
   getDriverConfig(const boost::property_tree::ptree& aie_meta,
                   MetadataFileType type)
-  {
+ {
     switch (type) {
     case COMPILER_REPORT:
-      return compiler_report::getDriverConfig(aie_meta);
+      return ::getDriverConfig(aie_meta, "aie_driver_config");
     case AIE_CONTROL_CONFIG:
-      return aie_control_config::getDriverConfig(aie_meta);
+      return ::getDriverConfig(aie_meta, "aie_metadata.driver_config");
     case HANDWRITTEN:
-      return handwritten::getDriverConfig(aie_meta);
+      return ::getDriverConfig(aie_meta, "driver_config");
     case UNKNOWN_FILE: // fallthrough
     default:
       return {};
@@ -930,11 +852,11 @@ namespace xdp::aie {
   {
     switch (type) {
     case COMPILER_REPORT:
-      return compiler_report::getHardwareGeneration(aie_meta);
+      return ::getHardwareGeneration(aie_meta, "aie_driver_config.hw_gen");
     case AIE_CONTROL_CONFIG:
-      return aie_control_config::getHardwareGeneration(aie_meta);
+      return ::getHardwareGeneration(aie_meta, "aie_metadata.driver_config.hw_gen");
     case HANDWRITTEN:
-      return handwritten::getHardwareGeneration(aie_meta);
+      return ::getHardwareGeneration(aie_meta, "driver_config.hw_gen");
     case UNKNOWN_FILE: // Fallthrough
     default:
       return 1;
@@ -963,11 +885,11 @@ namespace xdp::aie {
   {
     switch (type) {
     case COMPILER_REPORT:
-      return compiler_report::getAIETileRowOffset(aie_meta);
+      return ::getAIETileRowOffset(aie_meta, "aie_driver_config.aie_tile_row_start");
     case AIE_CONTROL_CONFIG:
-      return aie_control_config::getAIETileRowOffset(aie_meta);
+      return ::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
     case HANDWRITTEN:
-      return handwritten::getAIETileRowOffset(aie_meta);
+      return ::getAIETileRowOffset(aie_meta, "driver_config.aie_tile_row_start");
     case UNKNOWN_FILE: // Fallthrough
     default:
       return 0;
@@ -980,11 +902,11 @@ namespace xdp::aie {
   {
     switch (type) {
     case COMPILER_REPORT:
-      return compiler_report::getValidGraphs(aie_meta);
+      return {}; // TBD
     case AIE_CONTROL_CONFIG:
-      return aie_control_config::getValidGraphs(aie_meta);
+      return ::getValidGraphs(aie_meta, "aie_metadata.graphs");
     case HANDWRITTEN:
-      return handwritten::getValidGraphs(aie_meta);
+      return ::getValidGraphs(aie_meta, "graphs");
     case UNKNOWN_FILE: // Fallthrough
     default:
       return {};

@@ -82,7 +82,8 @@ class AieProfileMetadata {
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    boost::property_tree::ptree aie_meta; 
+    boost::property_tree::ptree aie_meta;
+    xdp::aie::MetadataFileType fileType;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -106,7 +107,8 @@ class AieProfileMetadata {
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
-    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+    //boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+    xdp::aie::driver_config getAIEConfigMetadata();
 
     bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
     std::string getModuleName(int module) { return moduleNames[module]; }

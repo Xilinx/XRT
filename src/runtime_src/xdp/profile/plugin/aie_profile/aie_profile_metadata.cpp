@@ -33,26 +33,34 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   namespace pt = boost::property_tree;
 
-  AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle) : deviceID(deviceID), handle(handle)
+  AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle) :
+      deviceID(deviceID)
+    , handle(handle)
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Parsing AIE Profile Metadata.");
+    xrt_core::message::send(severity_level::info,
+                            "XRT", "Parsing AIE Profile Metadata.");
+
     #ifdef XDP_MINIMAL_BUILD
-      try {
-        pt::read_json("aie_control_config.json", aie_meta);
-      } catch (...) {
-        std::stringstream msg;
-        msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      }
+
+    fileType = aie::readAIEMetadata("aie_control_config.json", aie_meta);
+    
+    #else
+
+    auto device = xrt_core::get_userpf_device(handle);
+    auto data = device->get_axlf_section(AIE_METADATA);
+
+    fileType = aie::readAIEMetadata(data.first, data.second, aie_meta);
+
+    #endif
+
+    if (fileType == aie::UNKNOWN_FILE)
+      return;
+
+    #ifdef XDP_MINIMAL_BUILD
     metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
     metricStrings[module_type::dma].insert(metricStrings[module_type::dma].end(), {"s2mm_throughputs", "mm2s_throughputs"});          
     metricStrings[module_type::shim].insert(metricStrings[module_type::shim].end(), {"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls0", "mm2s_stalls0", "s2mm_stalls1", "mm2s_stalls1"});           
-    metricStrings[module_type::mem_tile].insert(metricStrings[module_type::mem_tile].end(), {"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"});             
-
-    #else
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-      aie::readAIEMetadata(data.first, data.second, aie_meta);
+    metricStrings[module_type::mem_tile].insert(metricStrings[module_type::mem_tile].end(), {"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"});
     #endif
 
     // Verify settings from xrt.ini
@@ -175,21 +183,25 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    if ((aie::getHardwareGeneration(aie_meta) == 1) && (mod == module_type::mem_tile)) {
+    if ((aie::getHardwareGeneration(aie_meta, fileType) == 1) && (mod == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
                               "MEM tiles are not available in AIE1. Profile "
                               "settings will be ignored.");
       return;
     }
     
-    uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : aie::getAIETileRowOffset(aie_meta);
+    uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : aie::getAIETileRowOffset(aie_meta, fileType);
     auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
-    auto allValidGraphs = aie::getValidGraphs(aie_meta);
-    auto allValidKernels = aie::getValidKernels(aie_meta);
+    auto allValidGraphs = aie::getValidGraphs(aie_meta, fileType);
+    auto allValidKernels = aie::getValidKernels(aie_meta, fileType);
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = aie::getTiles(aie_meta,"all", mod);
+    auto validTilesVec = aie::getTiles(aie_meta,
+                                       "all",
+                                       mod,
+                                       "all",
+                                       fileType);
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()),
                      tileCompare);
 
@@ -234,7 +246,11 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getTiles(aie_meta,graphMetrics[i][0], mod, graphMetrics[i][1]);
+      auto tiles = aie::getTiles(aie_meta,
+                                 graphMetrics[i][0],
+                                 mod,
+                                 graphMetrics[i][1],
+                                 fileType);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -276,7 +292,11 @@ namespace xdp {
       }
 
       // Capture all tiles in given graph
-      auto tiles = aie::getTiles(aie_meta,graphMetrics[i][0], mod, graphMetrics[i][1]);
+      auto tiles = aie::getTiles(aie_meta,
+                                 graphMetrics[i][0],
+                                 mod,
+                                 graphMetrics[i][1],
+                                 fileType);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -333,7 +353,11 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = aie::getTiles(aie_meta,metrics[i][0], mod);
+      auto tiles = aie::getTiles(aie_meta,
+                                 metrics[i][0],
+                                 mod,
+                                 "all",
+                                 fileType);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
       }
@@ -545,8 +569,8 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    auto allValidGraphs = aie::getValidGraphs(aie_meta);
-    auto allValidPorts = aie::getValidPorts(aie_meta);
+    auto allValidGraphs = aie::getValidGraphs(aie_meta, fileType);
+    auto allValidPorts = aie::getValidPorts(aie_meta, fileType);
 
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -579,8 +603,11 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getInterfaceTiles(aie_meta, graphMetrics[i][0], graphMetrics[i][1],
-                                          graphMetrics[i][2]);
+      auto tiles = aie::getInterfaceTiles(aie_meta,
+                                          graphMetrics[i][0],
+                                          graphMetrics[i][1],
+                                          graphMetrics[i][2],
+                                          fileType);
 
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
@@ -636,8 +663,11 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getInterfaceTiles(aie_meta, graphMetrics[i][0], graphMetrics[i][1],
-                                          graphMetrics[i][2]);
+      auto tiles = aie::getInterfaceTiles(aie_meta,
+                                          graphMetrics[i][0],
+                                          graphMetrics[i][1],
+                                          graphMetrics[i][2],
+                                          fileType);
 
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
@@ -682,7 +712,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], xdp::aie::AIE_CONTROL_CONFIG, channelId);
+      auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], fileType, channelId);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
@@ -735,7 +765,7 @@ namespace xdp {
       }
 
       auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][2],
-                                          xdp::aie::AIE_CONTROL_CONFIG, channelId, true, minCol, maxCol);
+                                          fileType, channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
@@ -782,7 +812,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], xdp::aie::AIE_CONTROL_CONFIG,
+        auto tiles = aie::getInterfaceTiles(aie_meta, "all", "all", metrics[i][1], fileType,
                                             channelId, true, col, col);
 
         for (auto& t : tiles) {
@@ -838,9 +868,10 @@ namespace xdp {
     }
   }
 
-  boost::property_tree::ptree AieProfileMetadata::getAIEConfigMetadata(std::string config_name) {
-    std::string query = "aie_metadata.driver_config." + config_name;
-    return aie_meta.get_child(query);
+  aie::driver_config
+  AieProfileMetadata::getAIEConfigMetadata()
+  {
+    return aie::getDriverConfig(aie_meta, fileType);
   }
 
 }  // namespace xdp
