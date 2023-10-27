@@ -82,6 +82,7 @@ class AieProfileMetadata {
     double clockFreqMhz;
     void* handle;
     xrt::hw_context hwContext;
+    
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;

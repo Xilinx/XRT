@@ -45,6 +45,7 @@ namespace xdp {
     module_type getTileType(uint16_t row);
     uint16_t getRelativeRow(uint16_t absRow);
     module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
+    bool isInputSet(const module_type type, const std::string metricSet);
     bool isStreamSwitchPortEvent(const XAie_Events event);
     bool isPortRunningEvent(const XAie_Events event);
     uint8_t getPortNumberFromEvent(XAie_Events event);
@@ -58,7 +59,8 @@ namespace xdp {
                                const std::string metricSet, const uint8_t channel0,
                                const uint8_t channel);
     void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
-                          const std::string metricSet, const XAie_Events event);
+                          const module_type type, const std::string metricSet, 
+                          const XAie_Events event);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
     void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
