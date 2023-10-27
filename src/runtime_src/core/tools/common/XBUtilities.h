@@ -53,7 +53,7 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
 
-  std::shared_ptr<xrt_core::device> get_device (const std::string& deviceBDF, bool in_user_domain);
+  std::shared_ptr<xrt_core::device> get_device (const std::string& deviceBDF, bool in_user_domain, bool print_warning = true);
 
   std::string get_device_class(const std::string& deviceBDF, bool in_user_domain);
 
