@@ -354,6 +354,68 @@ suse_package_list()
    )
 }
 
+mariner_package_list()
+{
+    MN_LIST=(\
+     binutils \
+     boost-devel \
+     boost-static \
+     cmake \
+     cppcheck \
+     curl \
+     dkms \
+     elfutils-devel \
+     elfutils-libs \
+     gcc \
+     gcc-c++ \
+     gdb \
+     git \
+     glibc-static \
+     gmock-devel \
+     gnuplot \
+     gnutls-devel \
+     gtest-devel \
+     json-glib-devel \
+     libcurl-devel \
+     libdrm-devel \
+     libffi-devel \
+     libjpeg-turbo-devel \
+     libpng12-devel \
+     libstdc++-static \
+     libtiff-devel \
+     libudev-devel \
+     libuuid-devel \
+     libyaml-devel \
+     lm_sensors \
+     lsb-release \
+     make \
+     ncurses-devel \
+     ocl-icd \
+     ocl-icd-devel \
+     opencl-headers \
+     openssl-devel \
+     openssl-static \
+     pciutils \
+     perl \
+     pkgconfig \
+     protobuf-compiler \
+     protobuf-devel \
+     protobuf-static \
+     python3 \
+     python3-pip \
+     python3-devel \
+     rapidjson-devel \
+     rpm-build \
+     strace \
+     unzip \
+     zlib-static \
+    )
+}
+
+         
+               
+         
+
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -364,6 +426,8 @@ update_package_list()
         fd_package_list
     elif [ $FLAVOR == "sles" ]; then
         suse_package_list
+    elif [ $FLAVOR == "mariner" ]; then   
+        mariner_package_list
     else
         echo "unknown OS flavor $FLAVOR"
         exit 1
@@ -396,6 +460,15 @@ validate()
             rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
         fi
     fi
+
+    if [ $FLAVOR == "mariner" ]; then
+        rpm -q "${MN_LIST[@]}"
+        if [ $? == 0 ] ; then
+            # Validate we have OpenCL 2.X headers installed
+            rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
+        fi
+    fi
+
 }
 
 prep_ubuntu()
@@ -506,6 +579,16 @@ prep_amzn()
     yum install -y ocl-icd ocl-icd-devel opencl-headers
 }
 
+prep_mariner()
+{
+    echo "Installing Mariner extended repository ..."
+    dnf install -y mariner-repos-extended
+    # echo "Installing cmake3 from EPEL repository..."
+    # yum install -y cmake3
+    echo "Installing opencl header from Mariner extended repository..."
+    yum install -y ocl-icd ocl-icd-devel opencl-headers
+}
+
 prep_sles()
 {
     echo "Preparing SLES for package dependencies..."
@@ -542,6 +625,8 @@ install()
         prep_rhel
     elif [ $FLAVOR == "amzn" ]; then
         prep_amzn
+    elif [ $FLAVOR == "mariner" ]; then
+        prep_mariner  
     elif [ $FLAVOR == "sles" ]; then
         prep_sles
     fi
@@ -571,9 +656,19 @@ install()
         ${SUDO} zypper install -y "${SUSE_LIST[@]}"
     fi
 
-    # Install/upgrade pybind11 for building the XRT python bindings
-    # We need 2.6.0 minimum version
-    pip3 install -U pybind11
+    if [ $FLAVOR == "mariner" ]; then
+        echo "Installing Mariner packages..."
+        dnf install -y "${MN_LIST[@]}"
+    fi
+
+    if [ $FLAVOR == "mariner" ]; then
+        echo "Installing pybind..."
+        sudo dnf install -y pybind11-devel python3-pybind11
+    else
+        # Install/upgrade pybind11 for building the XRT python bindings
+        # We need 2.6.0 minimum version
+        pip3 install -U pybind11
+    fi
 }
 
 update_package_list
