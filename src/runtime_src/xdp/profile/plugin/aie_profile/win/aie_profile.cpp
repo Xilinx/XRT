@@ -196,13 +196,9 @@ namespace xdp {
       meta_config.mem_num_rows,
       meta_config.aie_tile_row_start,
       meta_config.aie_tile_num_rows,
-      {0}
+      {0} // PartProp
     };
-    /*
-      metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-      {0}                                                   // PartProp
-    };
-    */
+
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK) {
       xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");

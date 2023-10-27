@@ -75,7 +75,7 @@ namespace xdp {
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
     invalidXclbinMetadata = (!data.first || !data.second);
-    aie::readAIEMetadata(data.first, data.second, aieMeta);
+    fileType = aie::readAIEMetadata(data.first, data.second, aieMeta);
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     auto compilerOptions = aie::getAIECompilerOptions(aieMeta);
@@ -748,7 +748,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], xdp::aie::AIE_CONTROL_CONFIG, channelId);
+      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], fileType, channelId);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
@@ -796,7 +796,7 @@ namespace xdp {
         }
       }
 
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][2], xdp::aie::AIE_CONTROL_CONFIG,
+      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][2], fileType,
                                           channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
@@ -842,7 +842,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], xdp::aie::AIE_CONTROL_CONFIG,
+        auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], fileType,
                                             channelId, true, col, col);
 
         for (auto& t : tiles) {

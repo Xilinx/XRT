@@ -23,9 +23,6 @@
 #include <optional>
 #include <set>
 
-//#include <memory>
-//#include <regex>
-
 #include "aie_util.h"
 #include "core/common/message.h"
 
@@ -293,19 +290,7 @@ namespace xdp::aie::handwritten {
                  const std::string& graph_name,
                  const std::string& buffer_name)
   {
-    std::vector<tile_type> memoryTiles;
-
-    for (auto& graph : aie_meta.get_child("graphs")) {
-      std::string name = graph.second.get<std::string>("name");
-      if (graph_name != name && graph_name != "all")
-        continue;
-
-      //      for (auto& tile : graph.second.get_child("memory_tiles")) {
-	//        if (buffer_name == shared_buffers[]) {
-	//        }
-      //      }
-    }
-    return memoryTiles;
+    return {}; // TBD
   }
 
   std::vector<tile_type>

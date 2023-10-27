@@ -107,7 +107,6 @@ class AieProfileMetadata {
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
-    //boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
     xdp::aie::driver_config getAIEConfigMetadata();
 
     bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
