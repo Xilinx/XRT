@@ -53,6 +53,7 @@ usage()
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
+    echo "[-noert]                    Do not treat missing ERT FW as a build error"
     echo "[-noinit]                   Do not initialize Git submodules"
     echo "[-noctest]                  Skip unit tests"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
@@ -98,6 +99,7 @@ nocmake=0
 init_submodule=1
 nobuild=0
 noctest=0
+noert=0
 static_boost=""
 ertbsp=""
 ertfw=""
@@ -115,6 +117,10 @@ while [ $# -gt 0 ]; do
             ;;
         -ci)
             ci=1
+            shift
+            ;;
+        -noert)
+            noert=1
             shift
             ;;
         -dbg)
@@ -277,15 +283,14 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
     export XILINX_VITIS=/proj/xbuilds/2023.1_released/installs/lin64/Vitis/2023.1
     if [[ ! -d ${XILINX_VITIS} ]]; then
         echo "****************************************************************"
-        echo "* XILINX_VITIS is undefined or not accessible                  *"
-        echo "* MicroBlaze firmware will not be built                        *"
+        echo "* XILINX_VITIS is undefined or not accessible.                 *"
+        echo "* MicroBlaze firmware will not be built.                       *"
+        echo "* To treat as a warning use -noert option.                     *"
         echo "****************************************************************"
-
-        # When the build is initiated by CI, it is an error to build
-        # XRT without MicroBlaze firmware. The FW is needed when
-        # platform packages are installed and creates xsabin files.
-        # CI validates install of platform packages with XRT build.
-        if [[ $ci == 1 ]]; then
+        # The ERT FW is needed when platform packages are installed and
+        # creates xsabin files. Without FW the XRT build cannot be used
+        # to install platform packages.
+        if [[ $noert == 0 ]]; then
             exit 1
         fi
     fi

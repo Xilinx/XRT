@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // Sub Commands
 #include "SubCmdAdvanced.h"
@@ -29,17 +29,33 @@
 const std::string& command_config = 
 R"(
 [{
-    "name": "cmd_configs",
-    "contents": [{
-        "name": "common",
-        "contents": [{
-            "name": "examine",
-            "contents": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
-        },{
-            "name": "configure",
-            "contents": ["input", "retention"]
-        }]
+  "alveo": [{
+    "examine": [{
+      "report": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
     }]
+  },{
+    "configure": [{
+      "suboption": ["input", "retention"]
+    }]
+  },{
+    "advanced":[{
+      "suboption": ["hotplug"]
+    }]
+  },{
+    "program":[{
+      "suboption": ["base", "shell", "revert-to-golden", "user", "boot"]
+    }]
+  }]
+},{
+  "aie": [{
+    "examine": [{
+      "report": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
+    }]
+  },{
+    "program":[{
+      "suboption": ["user"]
+    }]
+  }]
 }]
 )";
 
@@ -55,9 +71,9 @@ int main( int argc, char** argv )
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
-    subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
+    subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true, configTree));
     subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false, configTree));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false, configTree));

@@ -210,7 +210,6 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     for (int module = 0; module < metadata->getNumModules(); ++module) {
 
-      // int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
       XAie_ModuleType mod = falModuleTypes[module];
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
@@ -287,7 +286,7 @@ namespace xdp {
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20)});
 
           std::vector<uint64_t> values;
-          values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 1000, payload});
+          values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 0, payload});
           outputValues.push_back(values);
 
           counterId++;

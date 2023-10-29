@@ -264,6 +264,7 @@ namespace xdp {
     XDP_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
+    XDP_EXPORT void updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device);
 
     // *********************************************************
     // ***** Functions related to trace_processor tool *****
