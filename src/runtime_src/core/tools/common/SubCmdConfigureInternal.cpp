@@ -86,10 +86,11 @@ struct config
 };
 
 static po::options_description configHiddenOptions("Hidden Config Options");
+static  boost::property_tree::ptree m_configurations;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree configurations)
+SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
     : SubCmd("configure", 
              _isUserDomain ? "Device and host configuration" : "Advanced options for configuring a device")
     , m_device("")
@@ -113,10 +114,6 @@ SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDeprica
   setIsPreliminary(_isPreliminary);
 
   if (!m_isUserDomain) {
-    m_commonOptions.add_options()
-      ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ;
-
     // Options previously hidden under the config command
     configHiddenOptions.add_options()
       ("daemon", boost::program_options::bool_switch(&m_daemon), "Update the device daemon configuration")
@@ -134,15 +131,14 @@ SubCmdConfigureInternal::SubCmdConfigureInternal(bool _isHidden, bool _isDeprica
   }
 
   m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
-  auto configureDeviceTrees = JSONConfigurable::parse_configuration_tree({getConfigName()}, configurations);
-  auto currentConfigureTrees = JSONConfigurable::extractMatchingConfigurations<OptionOptions>(SubCmdConfigureInternal::optionOptionsCollection, configureDeviceTrees);
-  for (auto it = currentConfigureTrees.begin(); it != currentConfigureTrees.end(); it++) {
-    for (const auto& optionOptionsPtr : it->second)
-      addSubOption(optionOptionsPtr);
-  }
+  for (const auto& option : optionOptionsCollection)
+    addSubOption(option);
+
+  m_commandConfig = configurations;
 }
 
 static config
@@ -328,18 +324,18 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
   // Used for the suboption arguments.
   process_arguments(vm, _options, false);
   // Find the subOption
-  auto optionOption = checkForSubOption(vm);
+  auto optionOption = checkForSubOption(vm, XBU::get_device_class(m_device, m_isUserDomain));
 
   if (!optionOption && m_isUserDomain) {
     // No suboption print help
     if (m_help) {
-      printHelp();
+      printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
       return;
     }
     // If help was not requested and additional options dont match we must throw to prevent
     // invalid positional arguments from passing through without warnings
     std::cerr << "ERROR: Suboption missing" << std::endl;
-    printHelp();
+    printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -428,7 +424,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
 
     if (!is_something_updated) {
       std::cerr << "ERROR: Please specify a valid option to configure the device" << "\n\n";
-      printHelp();
+      printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
       throw xrt_core::error(std::errc::operation_canceled);
     }
   }

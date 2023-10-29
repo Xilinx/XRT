@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __TestRunner_h_
 #define __TestRunner_h_
@@ -27,15 +14,17 @@
 // System - Include Files
 #include <string>
 
-class TestRunner {
+class TestRunner : public JSONConfigurable {
   public:
     virtual boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev) = 0;
     virtual void set_param(const std::string key, const std::string value){}
-    bool is_explicit() { return m_explicit; };
+    bool is_explicit() const { return m_explicit; };
+    virtual bool getConfigHidden() const { return is_explicit(); };
     const void set_xclbin_path(std::string path) { m_xclbin = path; };
     const std::string & get_name() const { return m_name; };
-    boost::property_tree::ptree get_test_header();
     const std::string & getConfigName() const { return get_name(); };
+    virtual const std::string& getConfigDescription() const { return m_description; };
+    boost::property_tree::ptree get_test_header();
     std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
                       boost::property_tree::ptree& _ptTest);
 

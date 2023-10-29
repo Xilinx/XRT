@@ -10,7 +10,8 @@ namespace XBU = XBUtilities;
 TestPsVerify::TestPsVerify()
   : TestRunner("ps-verify", 
                 "Run 'Hello World' PS kernel test", 
-                "ps_validate.xclbin"){}
+                "ps_validate.xclbin",
+                true){}
 
 boost::property_tree::ptree
 TestPsVerify::run(std::shared_ptr<xrt_core::device> dev)

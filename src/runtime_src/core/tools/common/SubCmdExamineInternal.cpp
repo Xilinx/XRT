@@ -27,23 +27,12 @@ namespace po = boost::program_options;
 #include <regex>
 
 static ReportCollection fullReportCollection = {};
-static std::map<std::string, std::vector<std::shared_ptr<Report>>> reportMappings;
-
-void
-SubCmdExamineInternal::create_common_options(boost::program_options::options_description& options, const std::string& report_string)
-{
-  static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-  options.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + report_string).c_str() )
-    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;
-}
+static boost::program_options::options_description common_options;
+static std::map<std::string,std::vector<std::shared_ptr<JSONConfigurable>>> jsonOptions;
+static XBUtilities::VectorPairStrings common_reports;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree configurations)
+SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool _isUserDomain, const boost::property_tree::ptree& configurations)
     : SubCmd("examine", 
              _isUserDomain ? "Status of the system and device" : "Returns detail information for the specified device.")
     , m_device("")
@@ -54,6 +43,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
     , m_help(false)
     , m_isUserDomain(_isUserDomain)
 {
+
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
                                       " generate a report of interest in a text or JSON format.";
   setLongDescription(longDescription);
@@ -62,40 +52,49 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
 
-  // -- Build up the report & format options
-  auto examineDeviceTrees = JSONConfigurable::parse_configuration_tree({getConfigName()}, configurations);
-  reportMappings = JSONConfigurable::extractMatchingConfigurations<Report>(SubCmdExamineInternal::uniqueReportCollection, examineDeviceTrees);
+  m_commandConfig = configurations;
 
-  // Create device specific help menu options
-  for (const auto& report_pair : reportMappings) {
-    // Generate a list of common and relevant mappings for help menu generation
-    ReportCollection reportCollection = report_pair.second;
-    for (const auto& report : reportMappings["common"])
-      reportCollection.push_back(report);
+  for (const auto& option : uniqueReportCollection)
+    fullReportCollection.push_back(option);
 
-    boost::program_options::options_description options;
-    create_common_options(options, XBU::create_suboption_list_string(reportCollection, true));
-    m_deviceSpecificOptions.emplace(report_pair.first, options);
+  const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
+  jsonOptions = JSONConfigurable::extract_subcmd_config<JSONConfigurable, Report>(fullReportCollection, configs, getConfigName(), std::string("report"));
 
-    // Generate complete list of all possible reports
-    for (const auto& report : report_pair.second) {
-      fullReportCollection.push_back(report);
-    }
-  }
+  common_reports.emplace_back("all", "All known reports are produced");
+  static const std::string reportOptionValues = XBU::create_suboption_list_map("", jsonOptions, common_reports);
+  static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+  common_options.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 
-  // Emplace temporary all option until shim upgrade is complete
-  boost::program_options::options_description options;
-  create_common_options(options, XBU::create_suboption_list_string(fullReportCollection, true));
-  m_deviceSpecificOptions.emplace("all", options);
-
-  // Generate the help menu option when a device is not specified
-  static const std::string reportOptionValues = XBU::create_suboption_list_map(reportMappings);
-  create_common_options(m_commonOptions, reportOptionValues);
+  m_commonOptions.add(common_options);
+  m_commonOptions.add_options()
+    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+  ;
   
   if (m_isUserDomain)
     m_hiddenOptions.add_options()
       ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
     ;
+}
+
+void
+SubCmdExamineInternal::print_help_internal() const
+{
+  if (m_device.empty())
+    printHelp();
+  else {
+    const std::string deviceClass = XBU::get_device_class(m_device, m_isUserDomain);
+    static const std::string reportOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, common_reports);
+    std::vector<std::string> tempVec;
+    common_options.add_options()
+      ("report,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+    ;
+    printHelp(common_options, m_hiddenOptions, deviceClass);
+  }
 }
 
 void
@@ -109,7 +108,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested
   if (m_help) {
-    printHelp(m_device, m_isUserDomain);
+    print_help_internal();
     return;
   }
   
@@ -133,7 +132,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   if (schemaVersion == Report::SchemaVersion::unknown) {
     std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % validated_format << std::endl
               << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
-    printHelp(m_device, m_isUserDomain);
+    print_help_internal();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -146,8 +145,12 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
 
+  // Filter out reports that are not compatible for the device
+  const std::string deviceClass = XBU::get_device_class(m_device, m_isUserDomain);
+  ReportCollection runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
+
   // Collect the reports to be processed
-  XBU::collect_and_validate_reports(fullReportCollection, reportsToRun, reportsToProcess);
+  XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;

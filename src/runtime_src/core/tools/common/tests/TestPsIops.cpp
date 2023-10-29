@@ -10,7 +10,8 @@ namespace XBU = XBUtilities;
 TestPsIops::TestPsIops()
   : TestRunner("ps-iops", 
                 "Run IOPS PS test", 
-                "ps_validate.xclbin"){}
+                "ps_validate.xclbin",
+                true){}
 
 boost::property_tree::ptree
 TestPsIops::run(std::shared_ptr<xrt_core::device> dev)
