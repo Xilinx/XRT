@@ -26,7 +26,6 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
