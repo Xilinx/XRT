@@ -28,7 +28,6 @@
 #include "core/common/system.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "core/include/xrt/xrt_hw_context.h"
 
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -40,7 +39,7 @@ namespace xdp {
   {
   }
 
-  void MLTimelineClientDevImpl::finishflushAIEDevice(void* /*handle*/)
+  void MLTimelineClientDevImpl::finishflushDevice(void* /*handle*/)
   {
     xrt::kernel instKernel;
     try {

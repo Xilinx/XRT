@@ -29,7 +29,7 @@ namespace xdp {
 
       ~MLTimelineClientDevImpl() = default;
 
-      XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
+      XDP_EXPORT virtual void finishflushDevice(void* handle);
   };
 
 }
