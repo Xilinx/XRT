@@ -28,6 +28,7 @@
 #include "core/common/system.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #include "xdp/profile/plugin/vp_base/utility.h"

@@ -17,14 +17,8 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 
-#include "core/include/xrt/xrt_hw_context.h"
-
 #include "xdp/config.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
-
-extern "C" {
-#include <xaiengine.h>
-}
 
 namespace xdp {
 
@@ -36,9 +30,6 @@ namespace xdp {
       ~MLTimelineClientDevImpl() = default;
 
       XDP_EXPORT virtual void finishflushAIEDevice(void* handle);
-
-    private :
-      XAie_DevInst aieDevInst = {0};
   };
 
 }
