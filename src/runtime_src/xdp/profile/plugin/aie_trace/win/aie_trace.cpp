@@ -127,7 +127,6 @@ namespace xdp {
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
 
     // **** Interface Tile Trace ****
-    // NOTE: these are placeholders to be replaced by actual port resource event
     mInterfaceTileEventSets = {
         {"input_ports",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
@@ -217,7 +216,37 @@ namespace xdp {
 
   void AieTrace_WinImpl::flushAieTileTraceModule()
   {
-    // TODO: construct transaction to flush trace in all tiles
+    if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty() 
+        && mInterfaceTileTraceFlushLocs.empty())
+      return;
+
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
+      std::stringstream msg;
+      msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size()
+          << " AIE tiles, " << mMemoryTileTraceFlushLocs.size() << " memory tiles, and " 
+          << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+    }
+
+    // Start recording the transaction
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+
+    // Flush trace by forcing end event
+    // NOTE: this informs tiles to output remaining packets (even if partial)
+    for (const auto& loc : mTraceFlushLocs) 
+      XAie_EventGenerate(&aieDevInst, loc, XAIE_CORE_MOD, mCoreTraceEndEvent);
+    for (const auto& loc : mMemoryTileTraceFlushLocs)
+      XAie_EventGenerate(&aieDevInst, loc, XAIE_MEM_MOD, mMemoryTileTraceEndEvent);
+    for (const auto& loc : mInterfaceTileTraceFlushLocs)
+      XAie_EventGenerate(&aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceEndEvent);
+
+    mTraceFlushLocs.clear();
+    mMemoryTileTraceFlushLocs.clear();
+    mInterfaceTileTraceFlushLocs.clear();
+
+    // Must clear aie state
+    XAie_ClearTransaction(&aieDevInst);
+    xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace IPU flushAieTileTraceModule.");
   }
 
   void AieTrace_WinImpl::pollTimers(uint64_t index, void* handle) 
