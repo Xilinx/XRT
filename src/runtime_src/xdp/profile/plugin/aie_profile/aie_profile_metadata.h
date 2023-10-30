@@ -55,16 +55,20 @@ class AieProfileMetadata {
       },
       { 
         module_type::shim, {
-          "input_throughputs", "output_throughputs", "s2mm_stalls0", 
-          "s2mm_stalls1", "mm2s_stalls0", "mm2s_stalls1", "packets"}
+          "input_throughputs", "output_throughputs", 
+          "s2mm_throughputs", "mm2s_throughputs",
+          "s2mm_stalls0", "s2mm_stalls1", "mm2s_stalls0", 
+          "mm2s_stalls1", "packets"}
 
       },
       {
         module_type::mem_tile, {
-          "s2mm_channels", "s2mm_channels_details", "mm2s_channels", 
-          "mm2s_channels_details", "memory_stats", "mem_trace", 
-          "s2mm_throughputs", "mm2s_throughputs", "conflict_stats1",
-          "conflict_stats2", "conflict_stats3", "conflict_stats4"}
+          "input_channels", "input_channels_details", "input_throughputs",
+          "s2mm_channels", "s2mm_channels_details", "s2mm_throughputs", 
+          "output_channels", "output_channels_details", "output_throughputs",
+          "mm2s_channels", "mm2s_channels_details", "mm2s_throughputs",
+          "memory_stats", "mem_trace", "conflict_stats1", "conflict_stats2", 
+          "conflict_stats3", "conflict_stats4"}
       }
     };
 
@@ -82,7 +86,7 @@ class AieProfileMetadata {
     double clockFreqMhz;
     void* handle;
     xrt::hw_context hwContext;
-    
+
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
