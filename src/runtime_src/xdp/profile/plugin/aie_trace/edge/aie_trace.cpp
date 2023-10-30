@@ -1386,7 +1386,8 @@ namespace xdp {
 
   void AieTrace_EdgeImpl::flushAieTileTraceModule()
   {
-    if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty())
+    if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty()
+        && mInterfaceTileTraceFlushLocs.empty())
       return;
 
     auto handle = metadata->getHandle();
@@ -1394,9 +1395,9 @@ namespace xdp {
 
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
       std::stringstream msg;
-      msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size() << " AIE tiles";
-      if (metadata->getHardwareGen() > 1)
-        msg << " and " << mMemoryTileTraceFlushLocs.size() << " memory tiles";
+      msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size()
+          << " AIE tiles, " << mMemoryTileTraceFlushLocs.size() << " memory tiles, and " 
+          << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
 
