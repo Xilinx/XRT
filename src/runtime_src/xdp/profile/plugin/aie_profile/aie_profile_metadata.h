@@ -57,9 +57,8 @@ class AieProfileMetadata {
         module_type::shim, {
           "input_throughputs", "output_throughputs", 
           "s2mm_throughputs", "mm2s_throughputs",
-          "s2mm_stalls0", "s2mm_stalls1", "mm2s_stalls0", 
-          "mm2s_stalls1", "packets"}
-
+          "input_stalls", "output_stalls",
+          "s2mm_stalls", "mm2s_stalls", "packets"}
       },
       {
         module_type::mem_tile, {

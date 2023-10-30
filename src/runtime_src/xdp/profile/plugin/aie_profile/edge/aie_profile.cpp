@@ -141,17 +141,15 @@ namespace xdp {
       {"packets",                 {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
       {"input_throughputs",       {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
       {"output_throughputs",      {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"s2mm_stalls0",            {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL}},
-      {"s2mm_stalls1",            {XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL}},
-      {"mm2s_stalls0",            {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+      {"input_stalls",            {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
                                    XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
-      {"mm2s_stalls1",            {XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL}}
+      {"output_stalls",           {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL}}
     };
     mShimStartEvents["mm2s_throughputs"] = mShimStartEvents["input_throughputs"];
     mShimStartEvents["s2mm_throughputs"] = mShimStartEvents["output_throughputs"];
+    mShimStartEvents["mm2s_stalls"]      = mShimStartEvents["input_stalls"];
+    mShimStartEvents["s2mm_stalls"]      = mShimStartEvents["output_stalls"];
     mShimEndEvents = mShimStartEvents;
 
     // **** Memory Tile Counters ****
@@ -663,14 +661,28 @@ namespace xdp {
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
         
-        // If memory module, then set correct events based on channel
-        if ((type == module_type::dma) && (channel0 != 0)) {
-          if (metricSet == "s2mm_throughputs")
-            startEvents = {XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM,
-                           XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM};
-          else if (metricSet == "mm2s_throughputs") 
-            startEvents = {XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM,
-                           XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM};
+        // Modify events based on channel number
+        if (channel0 > 0) {
+          // Memory modules
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM);
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM);
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM, XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM);
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM,   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM);
+
+          // Interface tiles
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+          std::replace(startEvents.begin(), startEvents.end(), 
+              XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+
           endEvents = startEvents;
         }
 
