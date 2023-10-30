@@ -10,7 +10,6 @@
 
 #include "xocl/api/plugin/xdp/profile_v2.h"
 
-#include <boost/filesystem/operations.hpp>
 #include <vector>
 #include <iostream>
 #include <fstream>

@@ -28,11 +28,11 @@
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <stdexcept>
 
 // System - Include Files
+#include <filesystem>
 #include <iostream>
 #include <set>
 #include <string>
@@ -56,22 +56,22 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
    std::set<std::string> normalizedInputFiles;
 
    for( auto file : _inputFiles) {
-     if ( !boost::filesystem::exists(file)) {
+     if ( !std::filesystem::exists(file)) {
        std::string errMsg = "ERROR: The following input file does not exist: " + file;
        throw std::runtime_error(errMsg);
      }
-     boost::filesystem::path filePath(file);
+     std::filesystem::path filePath(file);
      normalizedInputFiles.insert(canonical(filePath).string());
    }
 
    std::vector<std::string> normalizedOutputFiles;
    for ( auto file : _outputFiles) {
-     if ( boost::filesystem::exists(file)) {
+     if ( std::filesystem::exists(file)) {
        if (_bForce == false) {
          std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
          throw std::runtime_error(errMsg);
        } else {
-         boost::filesystem::path filePath(file);
+         std::filesystem::path filePath(file);
          normalizedOutputFiles.push_back(canonical(filePath).string());
        }
      }

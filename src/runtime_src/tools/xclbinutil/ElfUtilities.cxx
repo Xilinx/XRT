@@ -36,7 +36,7 @@ namespace XUtil = XclBinUtilities;
 static
 auto findExecutablePath(const std::string& executable)
 {
-  boost::filesystem::path executablePath;
+  std::filesystem::path executablePath;
 
 #if 0                       // Only enabled for the Vitis version of xclbinutil
   // -- Check to see if XILINX_VITIS has been set
@@ -46,7 +46,7 @@ auto findExecutablePath(const std::string& executable)
     executablePath = xilinxVitisEnv;
     executablePath = executablePath / "aietools" / "tps" / "lnx64" / "gcc" / "bin" / executable;
     XUtil::TRACE("Step 1: Looking for executable at: '" + executablePath.string() + "'");
-    if (!boost::filesystem::exists(executablePath)) {
+    if (!std::filesystem::exists(executablePath)) {
       executablePath = "";           // Executable doesn't exist
       XUtil::TRACE("Not found");
     }
@@ -57,8 +57,9 @@ auto findExecutablePath(const std::string& executable)
   // -- Check the path
   if (executablePath.string().empty()) {
     XUtil::TRACE("Step 2: Looking for executable path");
-    executablePath = boost::process::search_path(executable);
-    if (!boost::filesystem::exists(executablePath))
+    auto path = boost::process::search_path(executable);
+    executablePath = path.string();
+    if (!std::filesystem::exists(executablePath))
       XUtil::TRACE("Not found");
 
   }
@@ -66,7 +67,7 @@ auto findExecutablePath(const std::string& executable)
 
   // -- Default path /usr/bin
   if (executablePath.string().empty())
-    executablePath = boost::filesystem::path("/usr") / "bin" / executable;
+    executablePath = std::filesystem::path("/usr") / "bin" / executable;
 
   return executablePath;
 }

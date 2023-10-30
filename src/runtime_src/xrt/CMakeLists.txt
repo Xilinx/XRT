@@ -55,7 +55,6 @@ add_library(xrt++_static STATIC
 target_link_libraries(xrt++
   PRIVATE
   xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
 

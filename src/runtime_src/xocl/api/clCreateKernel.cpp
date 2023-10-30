@@ -29,11 +29,10 @@
 
 #include <CL/opencl.h>
 
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
+#include <filesystem>
 #include <fstream>
 
-namespace bfs = boost::filesystem;
+namespace sfs = std::filesystem;
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 4189 4505 )
