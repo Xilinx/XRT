@@ -10,7 +10,8 @@ namespace XBU = XBUtilities;
 TestAiePs::TestAiePs()
   : TestRunner("ps-aie", 
                 "Run PS controlled AIE test", 
-                "ps_aie.xclbin"){}
+                "ps_aie.xclbin",
+                true){}
 
 boost::property_tree::ptree
 TestAiePs::run(std::shared_ptr<xrt_core::device> dev)

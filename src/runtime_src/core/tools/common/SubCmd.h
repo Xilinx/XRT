@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __SubCmd_h_
 #define __SubCmd_h_
@@ -39,7 +26,9 @@ class SubCmd : public JSONConfigurable {
    const std::string &getName() const { return m_subCmdName; };
    const std::string &getConfigName() const { return getName(); };
    const std::string &getShortDescription() const { return m_shortDescription; };
+   const std::string &getConfigDescription() const { return getShortDescription(); };
    bool isHidden() const { return m_isHidden; };
+   bool getConfigHidden() const {return isHidden();};
    bool isDeprecated() const { return m_isDeprecated; };
    bool isPreliminary() const { return m_isPreliminary; };
    bool isDefaultDeviceValid() const { return m_defaultDeviceValid; };
@@ -67,8 +56,14 @@ public:
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string& _exampleSyntax) { m_exampleSyntax = _exampleSyntax; };
-  void printHelp(bool removeLongOptDashes = false, const std::string& customHelpSection = "") const;
-  void printHelp(const std::string& device_name, bool is_user_domain, bool removeLongOptDashes = false, const std::string& customHelpSection = "") const;
+  void printHelp(const bool removeLongOptDashes = false,
+                 const std::string& customHelpSection = "",
+                 const std::string& deviceClass = "") const;
+  void printHelp(const boost::program_options::options_description& commonOptions,
+                 const boost::program_options::options_description& hiddenOptions,
+                 const std::string& deviceClass = "",
+                 const bool removeLongOptDashes = false,
+                 const std::string& customHelpSection = "") const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
                            const SubCmdOptions& _options,
                            const boost::program_options::options_description& common_options,
@@ -82,17 +77,38 @@ public:
   void conflictingOptions( const boost::program_options::variables_map& _vm, 
                            const std::string &_opt1, const std::string &_opt2) const;
   void addSubOption(std::shared_ptr<OptionOptions> option);
-  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm) const;
+  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm, const std::string& deviceClass = "") const;
 
  protected:
   SubOptionOptions m_subOptionOptions;
   boost::program_options::options_description m_commonOptions;
   boost::program_options::options_description m_hiddenOptions;
   boost::program_options::positional_options_description m_positionals;
-  std::map<std::string, boost::program_options::options_description> m_deviceSpecificOptions;
+  boost::property_tree::ptree m_commandConfig;
+
+  template<class T>
+  std::vector<std::shared_ptr<T>>
+  validateConfigurables(const std::string& device_class,
+                        const std::string& target,
+                        const std::vector<std::shared_ptr<T>>& allOptions) const
+  {
+    const auto& configs = JSONConfigurable::parse_configuration_tree(m_commandConfig);
+    const auto& deviceOptions = JSONConfigurable::extract_subcmd_config<T, T>(allOptions, configs, getConfigName(), target);
+
+    std::vector<std::shared_ptr<T>> configurables;
+    auto it = deviceOptions.find(device_class);
+    if (it != deviceOptions.end()) {
+      for (const auto& configurable : it->second)
+        configurables.push_back(configurable);
+    } else { // If an unknown device class is specified allow for the running of any test
+      for (const auto& configurable : allOptions)
+        configurables.push_back(configurable);
+    }
+
+    return configurables;
+  }
 
  private:
-  void printHelp(bool removeLongOptDashes, const std::string& customHelpSection, const boost::program_options::options_description& common_options) const;
   SubCmd() = delete;
 
  // Variables
@@ -103,6 +119,11 @@ public:
   std::string m_longDescription;
   std::string m_exampleSyntax;
   boost::program_options::options_description m_globalOptions;
+  void printHelpInternal(const bool removeLongOptDashes,
+                         const std::string& customHelpSection,
+                         const std::string& deviceClass,
+                         const boost::program_options::options_description& common_options,
+                         const boost::program_options::options_description& hidden_options) const;
 
   bool m_isHidden;
   bool m_isDeprecated;

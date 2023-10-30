@@ -21,7 +21,8 @@ static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
 TestPsPlVerify::TestPsPlVerify()
   : TestRunner("ps-pl-verify", 
                 "Run PS controlled 'Hello World' PL kernel test", 
-                "ps_bandwidth.xclbin"){}
+                "ps_bandwidth.xclbin",
+                true){}
 
 static void
 runTestInternal(std::shared_ptr<xrt_core::device> dev,

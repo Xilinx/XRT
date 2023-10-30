@@ -25,6 +25,7 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "core/common/trace.h"
 #include "core/common/unistd.h"
 #include "core/common/xclbin_parser.h"
 
@@ -1089,6 +1090,7 @@ alloc_nodma(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup
 static std::shared_ptr<xrt::bo_impl>
 alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc);
   xcl_bo_flags xflags{flags};
   auto type = xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
@@ -1125,24 +1127,28 @@ alloc_xbuf(const device_type& device, xcl_buffer_handle xhdl)
 static std::shared_ptr<xrt::bo_impl>
 alloc_userptr(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_userptr);
   return alloc_ubuf(device, userptr, sz, flags, grp);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_import(const device_type& device, xrt::bo_impl::export_handle ehdl)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import);
   return std::make_shared<xrt::buffer_import>(device, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xrt::bo_impl::export_handle ehdl)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import_from_pid);
   return std::make_shared<xrt::buffer_import>(device, pid, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
 {
+  XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_sub);
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
 }
 

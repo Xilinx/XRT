@@ -13,6 +13,7 @@
 #include "OO_UpdateXclbin.h"
 
 #include "core/common/error.h"
+#include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 
 // 3rd Party Library - Include Files
@@ -22,7 +23,7 @@
 #pragma warning(disable : 4996) //std::asctime
 #endif
 
-SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
     : SubCmd("program",
              "Update image(s) for a given device")
     , m_device("")
@@ -40,6 +41,8 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
+
+  m_commandConfig = configurations;
 
   addSubOption(std::make_shared<OO_UpdateBase>("base", "b"));
   addSubOption(std::make_shared<OO_UpdateShell>("shell", "s"));
@@ -74,11 +77,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (m_help) {
-    printHelp();
+    printHelp(false, "", XBUtilities::get_device_class(m_device, true));
     return;
   }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
-  printHelp();
+  printHelp(false, "", XBUtilities::get_device_class(m_device, true));
   throw xrt_core::error(std::errc::operation_canceled);
 }
