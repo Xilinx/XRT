@@ -360,19 +360,10 @@ namespace xdp {
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
     else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
-      // Pass channel and set correct mask 
-      if (isInputSet(type, metricSet)) {
-        if (channel == 0)
-          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_S2MM0_STALL_MASK);
-        else 
-          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_S2MM1_STALL_MASK);
-      }
-      else { 
-        if (channel == 2)
-          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_MM2S0_STALL_MASK);
-        else 
-          XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_SHIM_MM2S1_STALL_MASK);
-      }
+      uint32_t bitMask = isInputSet(type, metricSet) 
+          ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
+          : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
     }
   }
 
