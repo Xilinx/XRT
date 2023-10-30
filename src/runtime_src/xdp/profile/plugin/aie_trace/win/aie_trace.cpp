@@ -244,9 +244,29 @@ namespace xdp {
     mMemoryTileTraceFlushLocs.clear();
     mInterfaceTileTraceFlushLocs.clear();
 
-    // Must clear aie state
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+    xrt::bo instr_bo;
+
+    // Configuration bo
+    try {
+      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    }
+    catch (std::exception &e) {
+      std::stringstream msg;
+      msg << "Unable to create buffer for AIE trace flush transaction. " << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return;
+    }
+
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    run.wait2();
+
     XAie_ClearTransaction(&aieDevInst);
-    xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace IPU flushAieTileTraceModule.");
+    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE trace flush transaction.");
   }
 
   void AieTrace_WinImpl::pollTimers(uint64_t index, void* handle) 
@@ -1077,6 +1097,8 @@ namespace xdp {
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
     xrt::bo instr_bo;
+
+    auto context = metadata->getHwContext();
 
     // Configuration bo
     try {
