@@ -227,6 +227,7 @@ namespace xdp {
           << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
+    auto context = metadata->getHwContext();
 
     // Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -1097,8 +1098,6 @@ namespace xdp {
     op_buf instr_buf;
     instr_buf.addOP(transaction_op(txn_ptr));
     xrt::bo instr_bo;
-
-    auto context = metadata->getHwContext();
 
     // Configuration bo
     try {
