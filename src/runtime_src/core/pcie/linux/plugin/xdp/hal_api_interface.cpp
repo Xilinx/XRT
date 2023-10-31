@@ -20,7 +20,7 @@
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
 
-namespace bfs = boost::filesystem;
+namespace sfs = std::filesystem;
 
 namespace xdphalinterface {
 

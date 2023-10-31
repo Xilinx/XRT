@@ -19,6 +19,7 @@
 #include "xrt.h"
 
 #include <array>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -30,7 +31,6 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 
@@ -46,12 +46,12 @@ get_render_value(const std::string& dir)
   static const std::string render_name = "renderD";
   int instance_num = INVALID_ID; // argh, what is this?
 
-  boost::filesystem::path render_dirs(dir);
-  if (!boost::filesystem::is_directory(render_dirs))
+  std::filesystem::path render_dirs(dir);
+  if (!std::filesystem::is_directory(render_dirs))
     return instance_num;
 
-  boost::filesystem::recursive_directory_iterator end_iter;
-  for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+  std::filesystem::recursive_directory_iterator end_iter;
+  for(std::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
     auto path = iter->path().filename().string();
     if (!path.compare(0, render_name.size(), render_name)) {
       auto sub = path.substr(render_name.size());
@@ -312,15 +312,15 @@ struct sdm_sensor_info
      * hwmon sysfs directory has a sysfs node called "name", and it is decision factor.
      * So, the target hwmon sysfs dir is the one whose name contains target_name.
      */
-    boost::filesystem::path render_dirs(parent_path);
-    if (!boost::filesystem::is_directory(render_dirs))
+    std::filesystem::path render_dirs(parent_path);
+    if (!std::filesystem::is_directory(render_dirs))
       return result_type();
 
     //iterate over list of hwmon syfs directory's directories
-    boost::filesystem::directory_iterator iter(render_dirs);
-    while (iter != boost::filesystem::directory_iterator{})
+    std::filesystem::directory_iterator iter(render_dirs);
+    while (iter != std::filesystem::directory_iterator{})
     {
-      if (!boost::filesystem::is_directory(iter->path()))
+      if (!std::filesystem::is_directory(iter->path()))
       {
         ++iter;
         continue;

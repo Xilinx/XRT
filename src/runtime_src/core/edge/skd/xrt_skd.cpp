@@ -359,13 +359,13 @@ namespace xrt {
 	  return -EINVAL;
       }
 
-      const boost::filesystem::path path(SOFT_KERNEL_FILE_PATH);
+      const std::filesystem::path path(SOFT_KERNEL_FILE_PATH);
       xrt_core::message::send(severity_level::debug, "SKD", path.string());
 
-      boost::filesystem::create_directories(path);
+      std::filesystem::create_directories(path);
 
       // Check if file already exists and is the same size
-      if(boost::filesystem::exists(m_sk_path) && (boost::filesystem::file_size(m_sk_path) == prop.size)) {
+      if(std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == prop.size)) {
 	return 0;
       }
 
@@ -408,7 +408,7 @@ namespace xrt {
    */
   int skd::delete_softkernelfile() const
   {
-    return boost::filesystem::remove(m_sk_path);
+    return std::filesystem::remove(m_sk_path);
   }
 
   // Convert argument to ffi_type 

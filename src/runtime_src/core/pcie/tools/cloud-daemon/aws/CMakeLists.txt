@@ -40,7 +40,6 @@ if(${INTERNAL_TESTING_FOR_AWS})
     xrt_core_static
     xrt_coreutil_static
     uuid
-    ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     pthread
     rt
@@ -55,7 +54,6 @@ else()
     xrt_core_static
     xrt_coreutil_static
     uuid
-    ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     pthread
     rt
