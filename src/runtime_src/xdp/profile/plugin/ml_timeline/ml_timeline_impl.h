@@ -17,7 +17,7 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_IMPL_H
 
-#include "xdp/profile/plugin/ml_timeline/aie_config_metadata.h"
+#include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
@@ -27,20 +27,23 @@ namespace xdp {
 
     protected :
       VPDatabase* db = nullptr;
-      std::shared_ptr<AieConfigMetadata> aieMetadata;
+      xrt::hw_context hwContext;
 
     public:
-      MLTimelineImpl(VPDatabase* dB, std::shared_ptr<AieConfigMetadata> data)
+      MLTimelineImpl(VPDatabase* dB)
         : db(dB)
-         ,aieMetadata(data)
       {}
 
       MLTimelineImpl() = delete;
 
       virtual ~MLTimelineImpl() {}
 
-      virtual void updateAIEDevice(void*) = 0;
-      virtual void finishflushAIEDevice(void*) = 0;
+      virtual void finishflushDevice(void*) = 0;
+
+      void setHwContext(xrt::hw_context ctx)
+      {
+        hwContext = std::move(ctx);
+      }
   };
 
 }

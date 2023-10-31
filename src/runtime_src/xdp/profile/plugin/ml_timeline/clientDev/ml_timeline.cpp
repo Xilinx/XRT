@@ -26,7 +26,6 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -35,38 +34,13 @@
 
 namespace xdp {
 
-  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB, std::shared_ptr<AieConfigMetadata> aieData)
-    : MLTimelineImpl(dB, aieData)
+  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
+    : MLTimelineImpl(dB)
   {
   }
 
-  void MLTimelineClientDevImpl::updateAIEDevice(void* /*handle*/)
+  void MLTimelineClientDevImpl::finishflushDevice(void* /*handle*/)
   {
-    XAie_Config cfg {
-      aieMetadata->getAieConfigMetadata("hw_gen").get_value<uint8_t>(),               //xaie_dev_gen_aie
-      aieMetadata->getAieConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
-      aieMetadata->getAieConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
-      aieMetadata->getAieConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
-      aieMetadata->getAieConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows,
-      aieMetadata->getAieConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols,
-      aieMetadata->getAieConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
-      aieMetadata->getAieConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start,
-      aieMetadata->getAieConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
-      aieMetadata->getAieConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start,
-      aieMetadata->getAieConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-      {0}                                                   // PartProp
-    };
-    auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
-    if (RC != XAIE_OK) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
-      return ;
-    }
-  }
-
-  void MLTimelineClientDevImpl::finishflushAIEDevice(void* /*handle*/)
-  {
-    auto hwContext = aieMetadata->getHwContext();
-
     xrt::kernel instKernel;
     try {
       // Currently this kernel helps in creating XRT BO connected to SRAM memory

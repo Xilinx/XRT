@@ -67,8 +67,8 @@ namespace xdp {
 
   uint64_t MLTimelinePlugin::getDeviceIDFromHandle(void* handle)
   { 
-    auto itr = handleToAIEData.find(handle);
-    if (itr != handleToAIEData.end())
+    auto itr = handleToDeviceData.find(handle);
+    if (itr != handleToDeviceData.end())
       return itr->second.deviceID;
 
 #ifdef XDP_MINIMAL_BUILD
@@ -82,7 +82,7 @@ namespace xdp {
 #endif
   }
 
-  void MLTimelinePlugin::updateAIEDevice(void* handle)
+  void MLTimelinePlugin::updateDevice(void* handle)
   {
     if (!handle)
       return;
@@ -95,14 +95,14 @@ namespace xdp {
 #endif
 
     // Clean out old data every time xclbin gets updated
-    if (handleToAIEData.find(handle) != handleToAIEData.end())
-      handleToAIEData.erase(handle);
+    if (handleToDeviceData.find(handle) != handleToDeviceData.end())
+      handleToDeviceData.erase(handle);
 
     //Setting up struct 
-    auto& AIEDataEntry = handleToAIEData[handle];
+    auto& DeviceDataEntry = handleToDeviceData[handle];
 
-    AIEDataEntry.deviceID = deviceID;
-    AIEDataEntry.valid = true; // initialize struct
+    DeviceDataEntry.deviceID = deviceID;
+    DeviceDataEntry.valid = true; // initialize struct
 
 #ifndef XDP_MINIMAL_BUILD
     // Get Device info // Investigate further (isDeviceReady should be always called??)
@@ -119,42 +119,40 @@ namespace xdp {
 
 
 #ifdef XDP_MINIMAL_BUILD
-    AIEDataEntry.aieMetadata = std::make_shared<AieConfigMetadata>();
-    AIEDataEntry.aieMetadata->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
-    AIEDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db, AIEDataEntry.aieMetadata);
+    DeviceDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
+    DeviceDataEntry.implementation->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
 #endif
-    AIEDataEntry.implementation->updateAIEDevice(handle);
   }
 
-  void MLTimelinePlugin::finishflushAIEDevice(void* handle)
+  void MLTimelinePlugin::finishflushDevice(void* handle)
   {
     if (!handle)
       return;
 
-    auto itr = handleToAIEData.find(handle);
-    if (itr == handleToAIEData.end()) {
+    auto itr = handleToDeviceData.find(handle);
+    if (itr == handleToDeviceData.end()) {
       return;
     }
-    auto& AIEDataEntry = itr->second;
-    if (!AIEDataEntry.valid)
+    auto& DeviceDataEntry = itr->second;
+    if (!DeviceDataEntry.valid)
       return;
 
-    AIEDataEntry.implementation->finishflushAIEDevice(handle);
-    handleToAIEData.erase(handle);
+    DeviceDataEntry.implementation->finishflushDevice(handle);
+    handleToDeviceData.erase(handle);
   }
 
   void MLTimelinePlugin::writeAll(bool /*openNewFiles*/)
   {
-    for (const auto& entry : handleToAIEData) {
-      auto& AIEDataEntry = entry.second;
+    for (const auto& entry : handleToDeviceData) {
+      auto& DeviceDataEntry = entry.second;
 
-      if (!AIEDataEntry.valid) {
+      if (!DeviceDataEntry.valid) {
         continue;
       }
-      AIEDataEntry.implementation->finishflushAIEDevice(entry.first);
-      handleToAIEData.erase(entry.first);
+      DeviceDataEntry.implementation->finishflushDevice(entry.first);
+      handleToDeviceData.erase(entry.first);
     }
-    handleToAIEData.clear();
+    handleToDeviceData.clear();
   }
 
 }

@@ -115,7 +115,7 @@ class AieProfileMetadata {
     module_type getModuleType(int module) { return moduleTypes[module]; }
 
     uint16_t getAIETileRowOffset() { return aie::getAIETileRowOffset(aie_meta);}
-    uint16_t getHardwareGen() { return aie::getHardwareGeneration(aie_meta);}
+    int getHardwareGen() { return aie::getHardwareGeneration(aie_meta);}
 
     double getClockFreqMhz() {return clockFreqMhz;}
     int getNumModules() {return NUM_MODULES;}

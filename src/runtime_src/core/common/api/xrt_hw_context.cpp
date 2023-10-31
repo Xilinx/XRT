@@ -67,6 +67,9 @@ public:
     // shared pointer must already exist to call get_shared_ptr(),
     // which is not true at that time.
     xrt_core::xdp::finish_flush_device(this);
+
+    // Reset within scope of dtor for trace point to measure time to reset
+    m_hdl.reset(); 
   }
 
   void

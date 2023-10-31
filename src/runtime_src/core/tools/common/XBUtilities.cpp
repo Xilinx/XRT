@@ -387,7 +387,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 
   std::shared_ptr<xrt_core::device>
-  XBUtilities::get_device( const std::string &deviceBDF, bool in_user_domain)
+  XBUtilities::get_device( const std::string &deviceBDF, bool in_user_domain, bool print_warning)
   {
     // -- If the deviceBDF is empty then do nothing
     if (deviceBDF.empty())
@@ -405,7 +405,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       check_versal_boot(device);
 
     const std::string device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(device, "");
-    if (device_name.find("Ryzen") != std::string::npos) {
+    if (device_name.find("Ryzen") != std::string::npos && print_warning) {
       std::cout << "------------------------------------------------------------\n";
       std::cout << "                        EARLY ACCESS                        \n";
       std::cout << "        This release of xbutil contains early access        \n";
@@ -436,7 +436,7 @@ XBUtilities::get_device_class(const std::string &deviceBDF, bool in_user_domain)
   if (deviceBDF.empty()) 
     return tempDeviceMapping("");
 
-  std::shared_ptr<xrt_core::device> device = get_device(boost::algorithm::to_lower_copy(deviceBDF), in_user_domain);
+  std::shared_ptr<xrt_core::device> device = get_device(boost::algorithm::to_lower_copy(deviceBDF), in_user_domain, false);
   return tempDeviceMapping(xrt_core::device_query_default<xrt_core::query::rom_vbnv>(device, ""));
 }
 

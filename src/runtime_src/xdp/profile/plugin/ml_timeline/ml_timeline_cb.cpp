@@ -26,14 +26,14 @@ namespace xdp {
   static void updateDeviceMLTmln(void* handle)
   {
     if (MLTimelinePlugin::alive()) {
-      mlTimelinePluginInstance.updateAIEDevice(handle);
+      mlTimelinePluginInstance.updateDevice(handle);
     } 
   } 
 
   static void finishflushDeviceMLTmln(void* handle)
   {
     if (MLTimelinePlugin::alive()) {
-      mlTimelinePluginInstance.finishflushAIEDevice(handle);
+      mlTimelinePluginInstance.finishflushDevice(handle);
     } 
   } 
 
