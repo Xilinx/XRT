@@ -18,16 +18,16 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+
+#include <filesystem>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 4706 4505 )
 #endif
 
 namespace hal = xrt_xocl::hal;
+namespace sfs = std::filesystem;
 namespace hal2 = xrt_xocl::hal2;
-namespace bfs = boost::filesystem;
 
 namespace {
 
@@ -48,9 +48,9 @@ emptyOrValue(const char* cstr)
 }
 
 static void
-directoryOrError(const bfs::path& path)
+directoryOrError(const sfs::path& path)
 {
-  if (!bfs::is_directory(path))
+  if (!sfs::is_directory(path))
     throw std::runtime_error("No such directory '" + path.string() + "'");
 }
 
@@ -68,27 +68,27 @@ versionFunc()
   return sVersionFunc;
 }
 
-static boost::filesystem::path&
+static std::filesystem::path&
 dllExt()
 {
 #ifdef _WIN32
-  static boost::filesystem::path sDllExt(".dll");
+  static std::filesystem::path sDllExt(".dll");
 #else
-  static boost::filesystem::path sDllExt(".so.2");
+  static std::filesystem::path sDllExt(".so.2");
 #endif
   return sDllExt;
 }
 
 inline bool
-isDLL(const bfs::path& path)
+isDLL(const sfs::path& path)
 {
-  return (bfs::exists(path)
-          && bfs::is_regular_file(path)
+  return (sfs::exists(path)
+          && sfs::is_regular_file(path)
           && ends_with(path.string(), dllExt().string()));
 }
 
-boost::filesystem::path
-dllpath(const boost::filesystem::path& root, const std::string& libnm)
+std::filesystem::path
+dllpath(const std::filesystem::path& root, const std::string& libnm)
 {
 #ifdef _WIN32
   return root / "bin" / (libnm + dllExt().string());
@@ -195,11 +195,11 @@ loadDevices()
   hal::device_list devices;
 #ifndef XRT_STATIC_BUILD
   // xrt
-  bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+  sfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
 
 #if defined (__aarch64__) || defined (__arm__)
   if (xrt.empty()) {
-    xrt = bfs::path("/usr");
+    xrt = sfs::path("/usr");
   }
 #endif
 

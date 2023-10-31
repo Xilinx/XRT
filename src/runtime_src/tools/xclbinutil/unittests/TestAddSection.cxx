@@ -2,10 +2,11 @@
 #include "XclBinClass.h"
 #include "globals.h"
 #include <gtest/gtest.h>
-#include <boost/filesystem.hpp>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+#include <filesystem>
 
 // Simple Add Test
 TEST(AddSection, AddClearingBitstream) {
@@ -17,7 +18,7 @@ TEST(AddSection, AddClearingBitstream) {
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
    // Get the file of interest
-   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   std::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
    sampleXclbin /= "sample_1_2018.2.xclbin";
 
    xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
@@ -46,7 +47,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
    // Load the xclbin image of interest
-   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   std::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
    sampleXclbin /= "sample_1_2018.2.xclbin";
    xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
 
@@ -56,7 +57,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
 
    {
       // Add dummy unique data to the "clearning bitstream" section
-      boost::filesystem::path uniqueData1(TestUtilities::getResourceDir());
+      std::filesystem::path uniqueData1(TestUtilities::getResourceDir());
       uniqueData1 /= "unique_data1.bin";
 
       const std::string formattedString = sSection + ":RAW:" + uniqueData1.string();
@@ -74,7 +75,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
 
    {
       // Replace the contents of the CLEARING_BITSTREAM section
-      boost::filesystem::path uniqueData2(TestUtilities::getResourceDir());
+      std::filesystem::path uniqueData2(TestUtilities::getResourceDir());
       uniqueData2 /= "unique_data2.bin";
 
       const std::string formattedString = sSection + ":RAW:" + uniqueData2.string();
@@ -110,7 +111,7 @@ TEST(AddSection, AddMergeIPLayout) {
 
    {
       // Add an IP_LAYOUT section
-      boost::filesystem::path ip_layoutBase(TestUtilities::getResourceDir());
+      std::filesystem::path ip_layoutBase(TestUtilities::getResourceDir());
       ip_layoutBase /= "ip_layout_base.json";
 
       const std::string formattedString = sSection + ":JSON:" + ip_layoutBase.string();
@@ -124,7 +125,7 @@ TEST(AddSection, AddMergeIPLayout) {
 
    {
       // Merge additional data into the IP_LAYOUT seciton
-      boost::filesystem::path ip_layoutMerge(TestUtilities::getResourceDir());
+      std::filesystem::path ip_layoutMerge(TestUtilities::getResourceDir());
       ip_layoutMerge /= "ip_layout_merge.json";
 
       const std::string formattedString = sSection + ":JSON:" + ip_layoutMerge.string();
@@ -150,7 +151,7 @@ TEST(AddSection, AddMergeIPLayout) {
       boost::property_tree::write_json(obuffer, ptOutput);
    }
 
-   boost::filesystem::path ip_layoutMergeExpect(TestUtilities::getResourceDir());
+   std::filesystem::path ip_layoutMergeExpect(TestUtilities::getResourceDir());
    ip_layoutMergeExpect /= "ip_layout_merged_expected.json";
    std::stringstream ebuffer;
    {

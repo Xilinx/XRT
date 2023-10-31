@@ -17,7 +17,7 @@
 #define XDP_SOURCE
 
 #include <cstdlib>
-#include <boost/filesystem/operations.hpp>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <cstdio>
@@ -99,14 +99,14 @@ namespace xdp {
   
   bool KernelDebugManager::exists(const char* filename)
   {
-    return boost::filesystem::exists(filename) ;
+    return std::filesystem::exists(filename) ;
   }
 
   void KernelDebugManager::createDirectory(const char* filename)
   {
     // If this succeeds or fails, just return.
     try {
-      boost::filesystem::create_directory(filename) ;
+      std::filesystem::create_directory(filename) ;
     }
     catch (...) {
     }
