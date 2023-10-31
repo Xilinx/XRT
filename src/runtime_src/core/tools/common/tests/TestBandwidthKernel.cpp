@@ -146,7 +146,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       }
       // Filling up memory with an incremental byte pattern
       for (uint32_t j = 0; j < data_size; j++) {
-        input_host[j] = j % 256;
+        input_host[j] = static_cast<unsigned char>(j % 256);
       }
 
       // Initializing output vectors to zero
@@ -224,7 +224,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       std::vector<unsigned char> output_host(data_size);
 
       for (uint32_t j = 0; j < data_size; j++) {
-        input_host[j] = j % 256;
+        input_host[j] = static_cast<unsigned char>(j % 256);
       }
 
       // Initializing output vectors to zero
