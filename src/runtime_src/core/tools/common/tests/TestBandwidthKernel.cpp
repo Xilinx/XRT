@@ -151,7 +151,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
 
       // Initializing output vectors to zero
       for (int i = 0; i < num_kernel_ddr; i++) {
-        std::fill(output_host[i].begin(), output_host[i].end(), 0);
+        std::fill(output_host[i].begin(), output_host[i].end(), static_cast<unsigned char>(0));
       }
 
       std::vector<xrt::bo> input_buffer(num_kernel_ddr);
@@ -228,7 +228,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       }
 
       // Initializing output vectors to zero
-      std::fill(output_host.begin(), output_host.end(), 0);
+      std::fill(output_host.begin(), output_host.end(), static_cast<unsigned char>(0));
 
       xrt::bo input_buffer, output_buffer;
 

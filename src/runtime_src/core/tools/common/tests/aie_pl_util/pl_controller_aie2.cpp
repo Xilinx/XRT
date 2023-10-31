@@ -75,19 +75,19 @@ void plController_aie2::enqueue_set_aie_iteration(const std::string& graphName, 
 	throw std::runtime_error("Number of iteration < 0: " + std::to_string(num_iter));
     auto tiles = get_tiles(graphName);
 
-    std::unordered_map<int, int> g_map;
+    std::unordered_map<int, uint64_t> g_map;
     unsigned int itr_mem_addr = 0;
     unsigned int num_tile = 0;
 
     for (auto& tile : tiles) {
-        std::unordered_map<int, int>::iterator iter = g_map.find(tile.row);
+        std::unordered_map<int, uint64_t>::iterator iter = g_map.find(tile.row);
         if (iter == g_map.end()) {
             num_tile++;
             m_opcodeBuffer.add(CMD_TYPE::SET_AIE_ITERATION);
             m_opcodeBuffer.add(num_iter);
             m_opcodeBuffer.add(itr_mem_addr);
             m_opcodeBuffer.add(num_tile - 1);
-            g_map.insert(std::pair<int, int>(tile.row, tile.itr_mem_addr));
+            g_map.insert(std::pair<int, uint64_t>(tile.row, tile.itr_mem_addr));
             m_set_num_iter = true;
         }
     }
