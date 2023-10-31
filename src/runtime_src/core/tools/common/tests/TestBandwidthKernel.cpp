@@ -203,7 +203,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       if (mbpersec > max_throughput) 
         max_throughput = mbpersec;
     }
-    logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %f MB/s") % num_kernel_ddr % max_throughput));
+    logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
   }
   if (chk_hbm_mem) {
     max_throughput = 0;
@@ -270,7 +270,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       if (mbpersec > max_throughput) 
         max_throughput = mbpersec;
     }
-    logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HBM) (Bank count: 1) : %f MB/s") % max_throughput));
+    logger(ptree, "Details", boost::str(boost::format("Throughput (Type: HBM) (Bank count: 1) : %.1f MB/s") % max_throughput));
   }
   ptree.put("status", test_token_passed);
 }

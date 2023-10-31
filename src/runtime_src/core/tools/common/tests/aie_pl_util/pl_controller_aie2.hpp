@@ -84,8 +84,6 @@ class plController_aie2 {
         memcpy(dst_op, m_opcodeBuffer.m_data, m_opcodeBuffer.m_usedSize * sizeof(uint32_t));
     }
 
-    // void print_micro_codes();
-
    private:
     // re-use this code from "core/edge/common/aie_parser.cpp"
     void get_rtp();

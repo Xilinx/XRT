@@ -70,82 +70,6 @@ plController_aie2::plController_aie2(const std::string& aie_info_path, const std
     get_rtp();
 }
 
-// void plController_aie2::print_micro_codes() {
-//     int i = 0;
-//     bool last = false;
-
-//     while (!last) {
-//         int op = m_opcodeBuffer.get(i++);
-//         switch (op) {
-//             case CMD_TYPE::SET_AIE_ITERATION: {
-//                 int num_iter = m_opcodeBuffer.get(i++);
-//                 int iter_mem_addr = m_opcodeBuffer.get(i++);
-//                 int ctrl_strm_id = m_opcodeBuffer.get(i++);
-//                 printf("SET_AIE_ITERATION: num_iter=%d, iter_mem_addr=%d, ctrl_strm_id=%d\n", num_iter, iter_mem_addr,
-//                        ctrl_strm_id);
-//                 break;
-//             }
-//             case CMD_TYPE::ENABLE_AIE_CORES: {
-//                 int ctrl_strm_id = m_opcodeBuffer.get(i++);
-//                 printf("ENABLE_AIE_CORES: ctrl_strm_id=%d\n", ctrl_strm_id);
-//                 break;
-//             }
-//             case CMD_TYPE::DISABLE_AIE_CORES: {
-//                 int ctrl_strm_id = m_opcodeBuffer.get(i++);
-//                 printf("DISABLE_AIE_CORES: ctrl_strm_id=%d\n", ctrl_strm_id);
-//                 break;
-//             }
-//             case CMD_TYPE::SYNC: {
-//                 printf("SYNC\n");
-//                 break;
-//             }
-//             case CMD_TYPE::LOOP_BEGIN: {
-//                 int loop_cnt = m_opcodeBuffer.get(i++);
-//                 printf("LOOP_BEGIN: loop_cnt=%d\n", loop_cnt);
-//                 break;
-//             }
-//             case CMD_TYPE::LOOP_END: {
-//                 printf("LOOP_END\n");
-//                 break;
-//             }
-//             case CMD_TYPE::SET_DMA_BD: {
-//                 int bd_nm = m_opcodeBuffer.get(i++);
-//                 int bd_value = m_opcodeBuffer.get(i++);
-//                 int ctrl_strm_id = m_opcodeBuffer.get(i++);
-//                 printf("SET_DMA_BD: bd_nm=%d, bd_value=%d, ctrl_strm_id=%d\n", bd_nm, bd_value, ctrl_strm_id);
-//                 break;
-//             }
-//             case CMD_TYPE::ENQUEUE_DMA_BD: {
-//                 int bd_nm = m_opcodeBuffer.get(i++);
-//                 int ch_nm = m_opcodeBuffer.get(i++);
-//                 int s2mm = m_opcodeBuffer.get(i++);
-//                 int ctrl_strm_id = m_opcodeBuffer.get(i++);
-//                 printf("SET_DMA_BD: bd_nm=%d, ch_nm=%d, s2mm=%d, ctrl_strm_id=%d\n", bd_nm, ch_nm, s2mm, ctrl_strm_id);
-//                 break;
-//             }
-//             case CMD_TYPE::SLEEP: {
-//                 int cnt = m_opcodeBuffer.get(i++);
-//                 printf("SLEEP: cnt=%d\n", cnt);
-//                 break;
-//             }
-//             case CMD_TYPE::HALT: {
-//                 last = true;
-//                 printf("HALT\n");
-//                 break;
-//             }
-//             case CMD_TYPE::UPDATE_AIE_RTP: {
-//                 int rtp_val = m_opcodeBuffer.get(i++);
-//                 int addr = m_opcodeBuffer.get(i++);
-//                 int ctrl_strm_id = m_opcodeBuffer.get(i++);
-//                 printf("UPDATE_AIE_RTP: rtp_val=%d, addr=%di, ctrl_strm_id=%d\n", rtp_val, addr, ctrl_strm_id);
-//                 break;
-//             }
-//             default:
-//                 printf("Not supported opcode %d\n", op);
-//         }
-//     }
-// }
-
 void plController_aie2::enqueue_set_aie_iteration(const std::string& graphName, int num_iter) {
     if (num_iter < 0)
 	throw std::runtime_error("Number of iteration < 0: " + std::to_string(num_iter));
@@ -155,16 +79,10 @@ void plController_aie2::enqueue_set_aie_iteration(const std::string& graphName, 
     unsigned int itr_mem_addr = 0;
     unsigned int num_tile = 0;
 
-    // printf(
-    //     "enqueue_set_aie_iteration(): INFO: cores in same row controlled by "
-    //     "one ctrl_strm via broadcast, cores in different row controlled by "
-    //     "different ctrl_strm");
-
     for (auto& tile : tiles) {
         std::unordered_map<int, int>::iterator iter = g_map.find(tile.row);
         if (iter == g_map.end()) {
             num_tile++;
-            // printf("enqueue_graph_run(): INFO: tile: %d, itr_mem_addr: %ld\n.", num_tile - 1, tile.itr_mem_addr);
             m_opcodeBuffer.add(CMD_TYPE::SET_AIE_ITERATION);
             m_opcodeBuffer.add(num_iter);
             m_opcodeBuffer.add(itr_mem_addr);
@@ -241,11 +159,6 @@ void plController_aie2::enqueue_update_aie_rtp(const std::string& rtpPort, int r
     m_opcodeBuffer.add(rtpVal);
     m_opcodeBuffer.add(static_cast<uint32_t>(rtp.ping_addr));
     m_opcodeBuffer.add(id);
-    // printf(
-    //     "enqueue_graph_rtp_update(): INFO: ping_addr = %ld, pong_addr = %ld, "
-    //     "selector_addr = %ld, ping_locd_id = %d, "
-    //     "pong_lock_id = %d\n",
-    //     rtp.ping_addr, rtp.pong_addr, rtp.selector_addr, rtp.ping_lock_id, rtp.pong_lock_id);
 }
 
 void plController_aie2::enqueue_sleep(unsigned int num_cycles) {
