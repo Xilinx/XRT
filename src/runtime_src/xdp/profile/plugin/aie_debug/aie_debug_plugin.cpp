@@ -139,10 +139,6 @@ namespace xdp {
     int counterId = 0;
     for (int module = 0; module < NUM_MODULES; ++module) {
       auto type = moduleTypes[module];
-
-      if (type == module_type::mem_tile) {
-        continue;
-      }
     
       std::vector<tile_type> tiles;
       if (type == module_type::shim) {
@@ -310,7 +306,11 @@ namespace xdp {
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;
-      msg << "Debug Register address/values: 0x" << std::hex << op->profile_data[i].perf_address << ": " << std::dec << output[i];
+      int col = (op->profile_data[i].perf_address >> 25) & 0x1F;
+      int row = (op->profile_data[i].perf_address >> 20) & 0x1F;
+      int reg = (op->profile_data[i].perf_address) & 0xFFFFF;
+      
+      msg << "Debug tile (" << col << ", " << row << ") " << "address/values: 0x" << std::hex << reg << ": " << std::dec << output[i];
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
     }
 
