@@ -16,6 +16,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/reports/*.cpp"
+  "../common/reports/platform/*.cpp"
   "../common/Report.cpp"
   "../common/ProgressBar.cpp"
   "../common/BusyBar.cpp"

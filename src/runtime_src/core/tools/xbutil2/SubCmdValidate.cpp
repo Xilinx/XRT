@@ -11,7 +11,7 @@
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
-#include "tools/common//reports/ReportPlatforms.h"
+#include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"

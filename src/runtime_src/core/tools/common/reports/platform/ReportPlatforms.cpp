@@ -8,8 +8,8 @@
 
 // Local - Include Files
 #include "ReportPlatforms.h"
-#include "tools/common/reports/ReportAlveoPlatform.h"
-#include "tools/common/reports/ReportRyzenPlatform.h"
+#include "ReportAlveoPlatform.h"
+#include "ReportRyzenPlatform.h"
 #include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
