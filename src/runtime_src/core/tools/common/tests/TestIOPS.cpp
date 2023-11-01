@@ -49,7 +49,9 @@ boost::property_tree::ptree
 TestIOPS::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
+  std::cout << "IOPS runTest start!\n Running..." << std::endl;
   runTest(dev, ptree);
+  std::cout << "IOPS runTest finished!\n Exiting..." << std::endl;
   return ptree;
 }
 

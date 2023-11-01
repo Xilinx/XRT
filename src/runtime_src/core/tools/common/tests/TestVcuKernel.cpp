@@ -16,7 +16,9 @@ boost::property_tree::ptree
 TestVcuKernel::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
+  std::cout << "vcu runTest start!\n Running..." << std::endl;
   runTest(dev, ptree);
+  std::cout << "vcu runTest finished!\n Exiting..." << std::endl;
   return ptree;
 }
 

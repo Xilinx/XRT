@@ -24,7 +24,9 @@ TestPsVerify::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
+  std::cout << "PsVerify runTest start!\n Running..." << std::endl;
   runTest(dev, ptree);
+  std::cout << "PsVerify runTest finished!\n Exiting..." << std::endl;
   return ptree;
 }
 

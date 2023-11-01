@@ -29,6 +29,8 @@ TestHostMemBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
+  std::cout << "HostMemBW runTest start!\nSkipping..." << std::endl;
+
   // TODO: Fix hostmem-bw test. Test will always be skipped for now.
   ptree.put("status", test_token_skipped);
   return ptree;

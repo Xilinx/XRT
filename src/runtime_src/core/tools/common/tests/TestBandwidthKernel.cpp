@@ -36,7 +36,9 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
     ptree.put("status", test_token_failed);
     return ptree;
   }
+  std::cout << "Mem-bw runTest start!\n Running..." << std::endl;
   runTest(dev, ptree);
+  std::cout << "Mem-bw runTest finished!\n Exiting..." << std::endl;
   return ptree;
 }
 
