@@ -14,7 +14,6 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
@@ -24,6 +23,7 @@ namespace po = boost::program_options;
 #include <atomic>
 #include <chrono>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -227,16 +227,24 @@ deployment_path_and_filename(std::string file)
 
   return std::make_pair(dsafile, path);
 }
-
+template <typename TP>
+std::time_t to_time_t(TP tp)
+{
+    using namespace std::chrono;
+    auto sctp = time_point_cast<system_clock::duration>(tp - TP::clock::now()
+              + system_clock::now());
+    return system_clock::to_time_t(sctp);
+}
 // Helper function for header info
 static std::string
 get_file_timestamp(const std::string & _file)
 {
-  boost::filesystem::path p(_file);
-	if (!boost::filesystem::exists(p)) {
+  std::filesystem::path p(_file);
+	if (!std::filesystem::exists(p)) {
 		throw xrt_core::error("Invalid platform path.");
 	}
-  std::time_t ftime = boost::filesystem::last_write_time(boost::filesystem::path(_file));
+  std::filesystem::file_time_type file_time = std::filesystem::last_write_time(std::filesystem::path(_file));
+  std::time_t ftime = to_time_t(file_time);
   std::string timeStr(std::asctime(std::localtime(&ftime)));
   timeStr.pop_back();  // Remove the new-line character that gets inserted by asctime.
   return timeStr;
@@ -608,8 +616,8 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
 
   for (const auto& img : image_list) {
     // Check if the passed in image is absolute path
-    if (boost::filesystem::is_regular_file(img)){
-      if (boost::filesystem::extension(img).compare(".xsabin") != 0) {
+    if (std::filesystem::is_regular_file(img)){
+      if (std::filesystem::path(img).extension() == ".xsabin") {
         std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
         if (!XBU::can_proceed(XBU::getForce()))
           throw xrt_core::error(std::errc::operation_canceled);

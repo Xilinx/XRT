@@ -14,12 +14,12 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -113,7 +113,7 @@ OO_UpdateShell::execute(const SubCmdOptions& _options) const
                             " is installed.");
 
     // Check if file exists
-    if (!boost::filesystem::exists(m_plp))
+    if (!std::filesystem::exists(m_plp))
       throw xrt_core::error("File not found. Please specify the correct path");
 
     DSAInfo dsa(m_plp);
