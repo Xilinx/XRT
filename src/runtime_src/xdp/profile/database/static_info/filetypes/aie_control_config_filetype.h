@@ -28,23 +28,7 @@ namespace xdp::aie {
     class AIEControlConfigFiletype : public BaseFiletypeImpl {
         public:
             AIEControlConfigFiletype(boost::property_tree::ptree& aie_project);
-
-            // // A function to read the JSON from an axlf section inside the xclbin and
-            // // return the type of the file
-            // 
-            // MetadataFileType
-            // readAIEMetadata(const char* data, size_t size,
-            //                 boost::property_tree::ptree& aie_project);
-
-            // // A function to read the JSON from a file on disk and return the type of
-            // // the file
-            // 
-            // MetadataFileType
-            // readAIEMetadata(const char* filename,
-            //                 boost::property_tree::ptree& aie_project);
-
-            // Top level interface used for both file type formats
-            
+      
             virtual driver_config
             getDriverConfig(const boost::property_tree::ptree& aie_meta);
 
@@ -74,7 +58,17 @@ namespace xdp::aie {
             virtual std::unordered_map<std::string, io_config>
             getTraceGMIOs(const boost::property_tree::ptree& aie_meta);
 
+            std::unordered_map<std::string, io_config>
+            getAllIOs(const boost::property_tree::ptree& aie_meta);
+
+            std::unordered_map<std::string, io_config> 
+            getPLIOs(const boost::property_tree::ptree& aie_meta);
+        
+            std::unordered_map<std::string, io_config>
             getChildGMIOs(const boost::property_tree::ptree& aie_meta, const std::string& childStr);
+            
+            std::unordered_map<std::string, io_config>
+            getGMIOs(const boost::property_tree::ptree& aie_meta);
 
             virtual 
             std::vector<tile_type>

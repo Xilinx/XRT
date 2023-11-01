@@ -29,106 +29,131 @@ namespace xdp::aie {
 
   // The file in AIE_METADATA can be one of several different JSON
   // file types.  We have to get the same information from all of them.
-  enum MetadataFileType {
-    COMPILER_REPORT    = 0,
-    AIE_CONTROL_CONFIG = 1,
-    HANDWRITTEN        = 2,
-    UNKNOWN_FILE       = 3
-  };
+  // enum MetadataFileType {
+  //   COMPILER_REPORT    = 0,
+  //   AIE_CONTROL_CONFIG = 1,
+  //   HANDWRITTEN        = 2,
+  //   UNKNOWN_FILE       = 3
+  // };
+
+  XDP_EXPORT
+  bool 
+  tileCompare(xdp::tile_type tile1, xdp::tile_type tile2); 
+
+  XDP_EXPORT 
+  void 
+  throwIfError(bool err, const char* msg);
 
   // A function to read the JSON from an axlf section inside the xclbin and
   // return the type of the file
   XDP_EXPORT
-  MetadataFileType
+  xdp::aie::BaseFiletypeImpl*
   readAIEMetadata(const char* data, size_t size,
                   boost::property_tree::ptree& aie_project);
 
   // A function to read the JSON from a file on disk and return the type of
   // the file
   XDP_EXPORT
-  MetadataFileType
+  xdp::aie::BaseFiletypeImpl*
   readAIEMetadata(const char* filename,
                   boost::property_tree::ptree& aie_project);
 
-  // Top level interface used for both file type formats
-  XDP_EXPORT
-  driver_config
-  getDriverConfig(const boost::property_tree::ptree& aie_meta,
-                  MetadataFileType type = AIE_CONTROL_CONFIG);
-
   XDP_EXPORT
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta,
-                            MetadataFileType type = AIE_CONTROL_CONFIG);
+                          const std::string& root);
 
   XDP_EXPORT
-  aiecompiler_options
-  getAIECompilerOptions(const boost::property_tree::ptree& aie_meta,
-                        MetadataFileType type = AIE_CONTROL_CONFIG);
-
+  xdp::aie::driver_config
+  getDriverConfig(const boost::property_tree::ptree& aie_meta,
+                const std::string& root);
   XDP_EXPORT
-  uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
-                               MetadataFileType type = AIE_CONTROL_CONFIG);
-
+  uint16_t
+  getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
+                    const std::string& location);
   XDP_EXPORT
   std::vector<std::string>
   getValidGraphs(const boost::property_tree::ptree& aie_meta,
-                 MetadataFileType type = AIE_CONTROL_CONFIG);
+                const std::string& root);
 
-  XDP_EXPORT
-  std::vector<std::string>
-  getValidPorts(const boost::property_tree::ptree& aie_meta,
-                MetadataFileType type = AIE_CONTROL_CONFIG);
+  // // Top level interface used for both file type formats
+  // XDP_EXPORT
+  // driver_config
+  // getDriverConfig(const boost::property_tree::ptree& aie_meta,
+  //                 MetadataFileType type = AIE_CONTROL_CONFIG);
 
-  XDP_EXPORT
-  std::vector<std::string>
-  getValidKernels(const boost::property_tree::ptree& aie_meta,
-                  MetadataFileType type = AIE_CONTROL_CONFIG);
+  // XDP_EXPORT
+  // int getHardwareGeneration(const boost::property_tree::ptree& aie_meta,
+  //                           MetadataFileType type = AIE_CONTROL_CONFIG);
 
-  XDP_EXPORT
-  std::unordered_map<std::string, io_config>
-  getTraceGMIOs(const boost::property_tree::ptree& aie_meta,
-                MetadataFileType type = AIE_CONTROL_CONFIG);
+  // XDP_EXPORT
+  // aiecompiler_options
+  // getAIECompilerOptions(const boost::property_tree::ptree& aie_meta,
+  //                       MetadataFileType type = AIE_CONTROL_CONFIG);
 
-  XDP_EXPORT
-  std::vector<tile_type>
-  getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
-                    const std::string& graphName,
-                    const std::string& portName = "all",
-                    const std::string& metricStr = "channels",
-                    MetadataFileType type = AIE_CONTROL_CONFIG,
-                    int16_t channelId = -1,
-                    bool useColumn = false, 
-                    uint32_t minCol = 0, 
-                    uint32_t maxCol = 0);
+  // XDP_EXPORT
+  // uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
+  //                              MetadataFileType type = AIE_CONTROL_CONFIG);
 
-  XDP_EXPORT
-  std::vector<tile_type>
-  getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
-                 const std::string& graphName,
-                 const std::string& bufferName = "all",
-                 MetadataFileType type = AIE_CONTROL_CONFIG);
+  // XDP_EXPORT
+  // std::vector<std::string>
+  // getValidGraphs(const boost::property_tree::ptree& aie_meta,
+  //                MetadataFileType type = AIE_CONTROL_CONFIG);
 
-  XDP_EXPORT
-  std::vector<tile_type>
-  getAIETiles(const boost::property_tree::ptree& aie_meta,
-              const std::string& graphName,
-              MetadataFileType type = AIE_CONTROL_CONFIG);
+  // XDP_EXPORT
+  // std::vector<std::string>
+  // getValidPorts(const boost::property_tree::ptree& aie_meta,
+  //               MetadataFileType type = AIE_CONTROL_CONFIG);
 
-  XDP_EXPORT
-  std::vector<tile_type>
-  getEventTiles(const boost::property_tree::ptree& aie_meta, 
-                const std::string& graph_name,
-                module_type type,
-                MetadataFileType t = AIE_CONTROL_CONFIG);
+  // XDP_EXPORT
+  // std::vector<std::string>
+  // getValidKernels(const boost::property_tree::ptree& aie_meta,
+  //                 MetadataFileType type = AIE_CONTROL_CONFIG);
+
+  // XDP_EXPORT
+  // std::unordered_map<std::string, io_config>
+  // getTraceGMIOs(const boost::property_tree::ptree& aie_meta,
+  //               MetadataFileType type = AIE_CONTROL_CONFIG);
+
+  // XDP_EXPORT
+  // std::vector<tile_type>
+  // getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
+  //                   const std::string& graphName,
+  //                   const std::string& portName = "all",
+  //                   const std::string& metricStr = "channels",
+  //                   MetadataFileType type = AIE_CONTROL_CONFIG,
+  //                   int16_t channelId = -1,
+  //                   bool useColumn = false, 
+  //                   uint32_t minCol = 0, 
+  //                   uint32_t maxCol = 0);
+
+  // XDP_EXPORT
+  // std::vector<tile_type>
+  // getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
+  //                const std::string& graphName,
+  //                const std::string& bufferName = "all",
+  //                MetadataFileType type = AIE_CONTROL_CONFIG);
+
+  // XDP_EXPORT
+  // std::vector<tile_type>
+  // getAIETiles(const boost::property_tree::ptree& aie_meta,
+  //             const std::string& graphName,
+  //             MetadataFileType type = AIE_CONTROL_CONFIG);
+
+  // XDP_EXPORT
+  // std::vector<tile_type>
+  // getEventTiles(const boost::property_tree::ptree& aie_meta, 
+  //               const std::string& graph_name,
+  //               module_type type,
+  //               MetadataFileType t = AIE_CONTROL_CONFIG);
 
 
-  XDP_EXPORT
-  std::vector<tile_type>
-  getTiles(const boost::property_tree::ptree& aie_meta, 
-           const std::string& graph_name,
-           module_type type, 
-           const std::string& kernel_name = "all",
-           MetadataFileType t = AIE_CONTROL_CONFIG);
+  // XDP_EXPORT
+  // std::vector<tile_type>
+  // getTiles(const boost::property_tree::ptree& aie_meta, 
+  //          const std::string& graph_name,
+  //          module_type type, 
+  //          const std::string& kernel_name = "all",
+  //          MetadataFileType t = AIE_CONTROL_CONFIG);
 } // namespace xdp::aie
 
 #endif

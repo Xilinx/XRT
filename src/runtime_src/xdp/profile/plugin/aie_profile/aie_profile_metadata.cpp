@@ -53,7 +53,7 @@ namespace xdp {
 
     #endif
 
-    if (fileType == aie::UNKNOWN_FILE)
+    if (fileType == nullptr)
       return;
 
     #ifdef XDP_MINIMAL_BUILD

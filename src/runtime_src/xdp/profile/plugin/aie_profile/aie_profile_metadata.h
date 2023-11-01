@@ -26,6 +26,8 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+
 
 namespace xdp {
 
@@ -83,7 +85,7 @@ class AieProfileMetadata {
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
     boost::property_tree::ptree aie_meta;
-    xdp::aie::MetadataFileType fileType;
+    BaseFiletypeImpl fileType;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);

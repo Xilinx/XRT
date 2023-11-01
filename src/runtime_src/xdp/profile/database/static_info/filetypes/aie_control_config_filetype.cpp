@@ -16,24 +16,30 @@
 
 #define XDP_SOURCE
 
-#include "aie_control_config_filetype.h"
-#include "aie_util.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
+#include "aie_control_config_filetype.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "core/common/message.h"
 
 
 namespace xdp::aie {
+    namespace pt = boost::property_tree;
+    using severity_level = xrt_core::message::severity_level;
 
     AIEControlConfigFiletype::AIEControlConfigFiletype(boost::property_tree::ptree& aie_project)
     : BaseFiletypeImpl(aie_project) {}
 
     driver_config
-    getDriverConfig(const boost::property_tree::ptree& aie_meta) {
-        return ::getDriverConfig(aie_meta, "aie_metadata.driver_config");
+    AIEControlConfigFiletype::getDriverConfig(const boost::property_tree::ptree& aie_meta) {
+        return xdp::aie::getDriverConfig(aie_meta, "aie_metadata.driver_config");
     }
 
     int 
     AIEControlConfigFiletype::getHardwareGeneration(const boost::property_tree::ptree& aie_meta) {
-        return ::getHardwareGeneration(aie_meta, "aie_metadata.driver_config.hw_gen");
+        return xdp::aie::getHardwareGeneration(aie_meta, "aie_metadata.driver_config.hw_gen");
     }
 
     aiecompiler_options
@@ -50,13 +56,13 @@ namespace xdp::aie {
 
     uint16_t 
     AIEControlConfigFiletype::getAIETileRowOffset(const boost::property_tree::ptree& aie_meta) {
-        return ::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
+        return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
     }
 
     
     std::vector<std::string>
     AIEControlConfigFiletype::getValidGraphs(const boost::property_tree::ptree& aie_meta) {
-        return ::getValidGraphs(aie_meta, "aie_metadata.graphs");
+        return xdp::aie::getValidGraphs(aie_meta, "aie_metadata.graphs");
     }
 
     std::vector<std::string>
@@ -100,6 +106,45 @@ namespace xdp::aie {
     std::unordered_map<std::string, io_config>
     AIEControlConfigFiletype::getTraceGMIOs(const boost::property_tree::ptree& aie_meta){
         return getChildGMIOs(aie_meta, "aie_metadata.TraceGMIOs");
+    }
+
+    std::unordered_map<std::string, io_config> 
+    AIEControlConfigFiletype::getPLIOs(const boost::property_tree::ptree& aie_meta)
+    {
+        std::unordered_map<std::string, io_config> plios;
+
+        for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
+        io_config plio;
+
+        plio.type = 0;
+        plio.id = plio_node.second.get<uint32_t>("id");
+        plio.name = plio_node.second.get<std::string>("name");
+        plio.logicalName = plio_node.second.get<std::string>("logical_name");
+        plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
+        plio.streamId = plio_node.second.get<uint16_t>("stream_id");
+        plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
+        plio.channelNum = 0;
+        plio.burstLength = 0;
+
+        plios[plio.name] = plio;
+        }
+
+        return plios;
+    }
+
+      std::unordered_map<std::string, io_config>
+      AIEControlConfigFiletype::getGMIOs(const boost::property_tree::ptree& aie_meta)
+      {
+        return getChildGMIOs(aie_meta, "aie_metadata.GMIOs");
+      }
+
+    std::unordered_map<std::string, io_config>
+    AIEControlConfigFiletype::getAllIOs(const boost::property_tree::ptree& aie_meta)
+    {
+        auto ios = getPLIOs(aie_meta);
+        auto gmios = getGMIOs(aie_meta);
+        ios.merge(gmios);
+        return ios;
     }
 
     std::unordered_map<std::string, io_config>
@@ -240,7 +285,7 @@ namespace xdp::aie {
         allTiles.emplace_back(std::move(tile));
         }
 
-        std::unique_copy(allTiles.begin(), allTiles.end(), std::back_inserter(memTiles), tileCompare);
+        std::unique_copy(allTiles.begin(), allTiles.end(), std::back_inserter(memTiles), xdp::aie::tileCompare);
         return memTiles;
     }
 
@@ -249,7 +294,7 @@ namespace xdp::aie {
     AIEControlConfigFiletype::getAIETiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name)
     {
         std::vector<tile_type> tiles;
-        auto rowOffset = getAIETileRowOffset(aie_meta, AIE_CONTROL_CONFIG);
+        auto rowOffset = getAIETileRowOffset(aie_meta);
         int startCount = 0;
 
         for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
@@ -268,27 +313,27 @@ namespace xdp::aie {
         count = startCount;
         for (auto& node : graph.second.get_child("core_rows"))
             tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
-        throwIfError(count < num_tiles,"core_rows < num_tiles");
+        xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
             tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
-        throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
+        xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
             tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
-        throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
+        xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_addresses"))
             tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
-        throwIfError(count < num_tiles,"iteration_memory_addresses < num_tiles");
+        xdp::aie::throwIfError(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("multirate_triggers"))
             tiles.at(count++).is_trigger = (node.second.data() == "true");
-        throwIfError(count < num_tiles,"multirate_triggers < num_tiles");
+        xdp::aie::throwIfError(count < num_tiles,"multirate_triggers < num_tiles");
 
         startCount = count;
         }
@@ -324,7 +369,7 @@ namespace xdp::aie {
             count = 0;
             for (auto& node : graph.second.get_child(row_name))
             tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
-            throwIfError(count < num_tiles,"rows < num_tiles");
+            xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
         }
 
         return tiles;
@@ -350,7 +395,7 @@ namespace xdp::aie {
         return {};
 
         std::vector<tile_type> tiles;
-        auto rowOffset = getAIETileRowOffset(aie_meta, AIE_CONTROL_CONFIG);
+        auto rowOffset = getAIETileRowOffset(aie_meta);
 
         for (auto const &mapping : kernelToTileMapping.get()) {
         auto currGraph = mapping.second.get<std::string>("graph");

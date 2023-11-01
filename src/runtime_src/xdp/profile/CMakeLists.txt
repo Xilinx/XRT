@@ -18,6 +18,8 @@ file(GLOB XDP_CORE_FILES
   "${PROFILE_DIR}/database/events/creator/*.cpp"
   "${PROFILE_DIR}/database/static_info/*.h"
   "${PROFILE_DIR}/database/static_info/*.cpp"
+  "${PROFILE_DIR}/database/static_info/filetypes/*.cpp"
+  "${PROFILE_DIR}/database/static_info/filetypes/*.h"
   "${PROFILE_DIR}/device/*.h"
   "${PROFILE_DIR}/device/*.cpp"
   "${PROFILE_DIR}/device/ioctl_monitors/*.h"
