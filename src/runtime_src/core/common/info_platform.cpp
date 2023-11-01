@@ -199,7 +199,6 @@ add_status_info(const xrt_core::device* device, ptree_type& pt)
 
   add_mig_info(device, pt_status);
   add_p2p_info(device, pt_status);
-  add_performance_info(device, pt_status);
   add_host_mem_info(device, pt_status);
 
   pt.put_child("status", pt_status);
@@ -386,16 +385,35 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   ptree_type pt_platform;
   ptree_type pt_platforms;
 
-  add_static_region_info(device, pt_platform);
-  add_board_info(device, pt_platform);
-  add_status_info(device, pt_platform);
-  if (xrt_core::device_query_default<xq::is_versal>(device, false))
-    add_versal_controller_info(device, pt_platform);
-  else
-    add_controller_info(device, pt_platform);
-  add_clock_info(device, pt_platform);
-  add_mac_info(device, pt_platform);
-  add_config_info(device, pt_platform);
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::TYPE::ALVEO);
+  switch (device_class) {
+  case xrt_core::query::device_class::TYPE::ALVEO:
+  {
+    add_static_region_info(device, pt_platform);
+    add_board_info(device, pt_platform);
+    add_status_info(device, pt_platform);
+    if (xrt_core::device_query_default<xq::is_versal>(device, false))
+      add_versal_controller_info(device, pt_platform);
+    else
+      add_controller_info(device, pt_platform);
+    add_clock_info(device, pt_platform);
+    add_mac_info(device, pt_platform);
+    add_config_info(device, pt_platform);
+    break;
+  }
+  case xrt_core::query::device_class::TYPE::RYZEN:
+  {
+    ptree_type static_region;
+    static_region.add("vbnv", xrt_core::device_query<xq::rom_vbnv>(device));
+    pt_platform.put_child("static_region", static_region);
+
+    ptree_type pt_status;
+    add_performance_info(device, pt_status);
+    pt_platform.put_child("status", pt_status);
+
+    add_clock_info(device, pt_platform);
+  }
+  }
 
   pt_platforms.push_back(std::make_pair("", pt_platform));
   pt_platform_array.add_child("platforms", pt_platforms);
