@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // System - Include Files
@@ -20,6 +8,9 @@
 
 // Local - Include Files
 #include "ReportPlatforms.h"
+#include "tools/common/reports/ReportAlveoPlatform.h"
+#include "tools/common/reports/ReportRyzenPlatform.h"
+#include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
@@ -47,66 +38,26 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
 }
 
 void 
-ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
-                              const boost::property_tree::ptree& _pt, 
-                              const std::vector<std::string>& /*_elementsFilter*/,
+ReportPlatforms::writeReport( const xrt_core::device* _pDevice,
+                              const boost::property_tree::ptree& _pt,
+                              const std::vector<std::string>& _elementsFilter,
                               std::ostream & _output) const
 {
-  boost::property_tree::ptree empty_ptree;
-
-  _output << "Platform\n";
-  const boost::property_tree::ptree& platforms = _pt.get_child("platforms", empty_ptree);
-  for(auto& kp : platforms) {
-    const boost::property_tree::ptree& pt_platform = kp.second;
-    const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
-    _output << boost::format("  %-23s: %s \n") % "XSA Name" % pt_static_region.get<std::string>("vbnv");
-    _output << boost::format("  %-23s: %s \n") % "Logic UUID" % pt_static_region.get<std::string>("logic_uuid");
-    _output << boost::format("  %-23s: %s \n") % "FPGA Name" % pt_static_region.get<std::string>("fpga_name");
-    _output << boost::format("  %-23s: %s \n") % "JTAG ID Code" % pt_static_region.get<std::string>("jtag_idcode");
-    
-    const boost::property_tree::ptree& pt_board_info = pt_platform.get_child("off_chip_board_info");
-    _output << boost::format("  %-23s: %s Bytes\n") % "DDR Size" % pt_board_info.get<std::string>("ddr_size_bytes");
-    _output << boost::format("  %-23s: %s \n") % "DDR Count" % pt_board_info.get<std::string>("ddr_count");
-    try {
-      _output << boost::format("  %-23s: %s \n") % "Revision" % pt_board_info.get<std::string>("revision");
-      _output << boost::format("  %-23s: %s \n") % "MFG Date" % pt_board_info.get<std::string>("mfg_date");
-    } catch(...) {
-    }
-    
-    const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
-    _output << boost::format("  %-23s: %s \n") % "Mig Calibrated" % pt_status.get<std::string>("mig_calibrated");
-    _output << boost::format("  %-23s: %s \n") % "P2P Status" % pt_status.get<std::string>("p2p_status");
-    _output << boost::format("  %-23s: %s \n") % "Performance Mode" % pt_status.get<std::string>("performance_mode");
-
-    const boost::property_tree::ptree ptEmpty; 
-    const boost::property_tree::ptree& pt_config = pt_platform.get_child("config.p2p", ptEmpty); 
-    if (!pt_config.empty())
-      _output << boost::format("  %-23s: %s\n") % "P2P IO space required" % pt_config.get<std::string>("exp_bar"); // Units appended when ptree is created
-
-    const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
-    if(!clocks.empty()) {
-      _output << std::endl << "Clocks" << std::endl;
-      for(auto& kc : clocks) {
-        const boost::property_tree::ptree& pt_clock = kc.second;
-        std::string clock_name_type = pt_clock.get<std::string>("id") + " (" + pt_clock.get<std::string>("description") + ")"; 
-        _output << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
-      }
-    }
-
-    const boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
-    if(!macs.empty()) {
-      _output << std::endl;
-      unsigned int macCount = 0;
-
-      for(auto& km : macs) {
-        const boost::property_tree::ptree& pt_mac = km.second;
-        if( macCount++ == 0) 
-          _output << boost::format("%-25s: %s\n") % "Mac Addresses" % pt_mac.get<std::string>("address");
-        else
-          _output << boost::format("  %-23s: %s\n") % "" % pt_mac.get<std::string>("address");
-      }
-    }
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(_pDevice, xrt_core::query::device_class::TYPE::ALVEO);
+  switch (device_class) {
+  case xrt_core::query::device_class::TYPE::ALVEO:
+  {
+    ReportAlveoPlatform alveo_report;
+    alveo_report.writeReport(_pDevice, _pt, _elementsFilter, _output);
+    break;
   }
-  
-  _output << std::endl;
+  case xrt_core::query::device_class::TYPE::RYZEN:
+  {
+    ReportRyzenPlatform ryzen_report;
+    ryzen_report.writeReport(_pDevice, _pt, _elementsFilter, _output);
+    break;
+  }
+  default:
+    XBUtilities::throw_cancel(boost::format("Invalid device class type: %d") % device_class);
+  }
 }

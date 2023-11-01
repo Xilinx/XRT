@@ -125,6 +125,21 @@ struct bdf
   }
 };
 
+// Returns static information about the given device
+struct dev_info
+{
+  static boost::any
+  get(const xrt_core::device* device, key_type key)
+  {
+    switch (key) {
+    case key_type::device_class:
+      return xrt_core::query::device_class::TYPE::ALVEO;
+    default:
+      throw query::no_such_key(key);
+    }
+  }
+};
+
 /*
  * sdm_sensor_info query request used to access sensor information from
  * hwmon sysfs directly. It is a data driven approach.
@@ -1333,6 +1348,7 @@ initialize_query_table()
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
   emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();
+  emplace_func0_request<query::device_class,                   dev_info>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
