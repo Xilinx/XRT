@@ -30,6 +30,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -40,7 +41,6 @@ namespace pt = boost::property_tree;
 
 // System - Include Files
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -199,7 +199,7 @@ void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& 
 
     for(auto &path : jsonPaths)
     {
-        if(std::filesystem::is_regular_file(path))
+        if(boost::filesystem::is_regular_file(path))
             populateSubCommandsFromJSONHelper(subCmds, path, exeName);
     }
 }

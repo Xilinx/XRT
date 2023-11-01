@@ -15,14 +15,14 @@ namespace XBU = XBUtilities;
 #include "common/device.h"
 
 // 3rd Party Library - Include Files
+#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
-#include <fstream>
 #include <iostream>
+#include <fstream>
 
 #include "common/system.h"
 #include "common/device.h"
@@ -252,11 +252,11 @@ remove_daemon_config()
     throw xrt_core::error(std::errc::operation_canceled);
 
   try {
-    if (std::filesystem::remove(config_file))
+    if (boost::filesystem::remove(config_file))
       std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
     else
       std::cout << boost::format("WARNING: Daemon configuration file does not exist.\n");
-  } catch (const std::filesystem::filesystem_error &e) {
+  } catch (const boost::filesystem::filesystem_error &e) {
       std::cerr << boost::format("ERROR: %s\n") % e.what();
       throw xrt_core::error(std::errc::operation_canceled);
   }
