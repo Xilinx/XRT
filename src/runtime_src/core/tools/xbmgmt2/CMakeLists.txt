@@ -76,7 +76,6 @@ if (XRT_STATIC_BUILD)
     PRIVATE
     xrt_coreutil_static
     boost_system
-    boost_filesystem
     boost_program_options
     -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
     uuid

@@ -54,8 +54,10 @@
 #endif
 
 // System - Include Files
+#include <filesystem>
 #include <iostream>
 #include <thread>
+
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -190,16 +192,17 @@ XBUtilities::runScript( const std::string & env,
 
 
 
-boost::filesystem::path
+std::filesystem::path
 findEnvPath(const std::string & env)
 {
-  boost::filesystem::path absPath;
+  std::filesystem::path absPath;
   if (env.compare("python") == 0) {
     // Find the python executable
-    absPath = boost::process::search_path("py");
+    auto path = boost::process::search_path("py");
+    absPath = path.string();
     // Find python3 path on linux
     if (absPath.string().empty()) 
-      absPath = boost::process::search_path("python3");   
+      absPath = boost::process::search_path("python3").string();   
 
     if (absPath.string().empty()) 
       throw std::runtime_error("Error: Python executable not found in search path.");
@@ -219,7 +222,7 @@ XBUtilities::runScript( const std::string & env,
   auto envPath = findEnvPath(env);
   
   // Make sure the script exists
-  if ( !boost::filesystem::exists( script ) ) {
+  if ( !std::filesystem::exists( script ) ) {
     std::string errMsg = (boost::format("Error: Given python script does not exist: '%s'") % script).str();
     throw std::runtime_error(errMsg);
   }
@@ -242,7 +245,7 @@ XBUtilities::runScript( const std::string & env,
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
   boost::process::ipstream ip_stderr;
-  boost::process::child runningProcess( envPath, 
+  boost::process::child runningProcess( envPath.string(), 
                                         cmdArgs, 
                                         boost::process::std_out > ip_stdout,
                                         boost::process::std_err > ip_stderr,

@@ -23,8 +23,8 @@
 #include "XBFMain.h"
 
 // System include files
-#include <boost/filesystem.hpp>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
