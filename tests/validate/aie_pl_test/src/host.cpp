@@ -28,7 +28,7 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
@@ -281,7 +281,7 @@ main(int argc, char* argv[])
     }
 
     std::string aie_control_file = "aie_control_config.json";
-    auto aie_control = boost::filesystem::path(test_path) / aie_control_file;
+    auto aie_control = std::filesystem::path(test_path) / aie_control_file;
 
     std::ifstream aiefile(aie_control.string());
     if (!aiefile.good()) {
@@ -300,7 +300,7 @@ main(int argc, char* argv[])
     if(hw_gen == 1)
 	b_file  = "vck5000_pcie_pl_controller.xclbin.xclbin";
     
-    auto binaryFile = boost::filesystem::path(test_path) / b_file;
+    auto binaryFile = std::filesystem::path(test_path) / b_file;
     std::ifstream infile(binaryFile.string());
 
     if (!infile.good()) {
@@ -319,7 +319,7 @@ main(int argc, char* argv[])
 
     // instance of plController
     std::string dma_lock_file = "dma_lock_report.json";
-    auto dma_lock = boost::filesystem::path(test_path) / dma_lock_file;
+    auto dma_lock = std::filesystem::path(test_path) / dma_lock_file;
 
     bool match = false;
     // Check for AIE Hardware Generation
