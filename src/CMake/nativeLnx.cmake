@@ -171,47 +171,47 @@ include (CMake/lint.cmake)
 
 xrt_add_subdirectory(runtime_src)
 
-#XMA settings START
-set(XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(XMA_INSTALL_DIR "${XRT_INSTALL_DIR}")
-set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
-set(XMA_SOVERSION ${XRT_SOVERSION})
-xrt_add_subdirectory(xma)
-#XMA settings END
+if (NOT ${XCLBINUTIL_ONLY_BUILD})
+   #XMA settings START
+   set(XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+   set(XMA_INSTALL_DIR "${XRT_INSTALL_DIR}")
+   set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
+   set(XMA_SOVERSION ${XRT_SOVERSION})
+   xrt_add_subdirectory(xma)
+   #XMA settings END
 
-# --- Python bindings ---
-xrt_add_subdirectory(python)
+   # --- Python bindings ---
+   xrt_add_subdirectory(python)
 
-# --- Python tests ---
-set(PY_TEST_SRC
-  ../tests/python/22_verify/22_verify.py
-  ../tests/python/utils_binding.py
-  ../tests/python/23_bandwidth/23_bandwidth.py
-  ../tests/python/23_bandwidth/host_mem_23_bandwidth.py
-  ../tests/python/23_bandwidth/versal_23_bandwidth.py)
-install (FILES ${PY_TEST_SRC}
-  PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION ${XRT_INSTALL_DIR}/test)
-
-xrt_add_subdirectory("../tests/validate" "${CMAKE_CURRENT_BINARY_DIR}/validate_build")
-message("-- XRT version: ${XRT_VERSION_STRING}")
-
+   # --- Python tests ---
+   set(PY_TEST_SRC
+     ../tests/python/22_verify/22_verify.py
+     ../tests/python/utils_binding.py
+     ../tests/python/23_bandwidth/23_bandwidth.py
+     ../tests/python/23_bandwidth/host_mem_23_bandwidth.py
+     ../tests/python/23_bandwidth/versal_23_bandwidth.py)
+   install (FILES ${PY_TEST_SRC}
+     PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+     DESTINATION ${XRT_INSTALL_DIR}/test)
+   xrt_add_subdirectory("../tests/validate" "${CMAKE_CURRENT_BINARY_DIR}/validate_build")
+   message("-- XRT version: ${XRT_VERSION_STRING}")
+endif()
 # -- CPack
 include (CMake/cpackLin.cmake)
 
-set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
-
-include (CMake/dkms.cmake)
-include (CMake/dkms-aws.cmake)
-include (CMake/dkms-azure.cmake)
-include (CMake/dkms-container.cmake)
-
-# --- ICD ---
-include (CMake/icd.cmake)
-
-# --- Change Log ---
-include (CMake/changelog.cmake)
-
+if (NOT ${XCLBINUTIL_ONLY_BUILD})
+   set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
+   
+   include (CMake/dkms.cmake)
+   include (CMake/dkms-aws.cmake)
+   include (CMake/dkms-azure.cmake)
+   include (CMake/dkms-container.cmake)
+   # --- ICD ---
+   include (CMake/icd.cmake)
+   
+   # --- Change Log ---
+   include (CMake/changelog.cmake)
+endif()
 # --- Package Config ---
 include (CMake/pkgconfig.cmake)
 

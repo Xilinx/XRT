@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.5.0)
 project(XRT)
 set(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+option(XCLBINUTIL_ONLY_BUILD "Option to enable and disable build only xclbinutil" OFF)
+
+
 # Include utility functions
 include(CMake/utilities.cmake)
 
@@ -126,7 +129,9 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   else()
     include(CMake/nativeLnx.cmake)
   endif()
-  xrt_include(CMake/nativeTests.cmake)
+  if (NOT ${XCLBINUTIL_ONLY_BUILD})
+     xrt_include(CMake/nativeTests.cmake)
+  endif()
 else()
   include(CMake/embedded_system.cmake)
 endif()

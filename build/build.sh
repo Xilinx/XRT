@@ -65,6 +65,7 @@ usage()
     echo "[-ccache]                   Build using RDI's compile cache"
     echo "[-toolchain <file>]         Extra toolchain file to configure CMake"
     echo "[-driver]                   Include building driver code"
+    echo "[-xclbinutil]               Build xclbinutil only"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
     echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
@@ -205,6 +206,10 @@ while [ $# -gt 0 ]; do
             ;;
         -pskernel)
             cmake_flags+=" -DXRT_PSKERNEL_BUILD=ON"
+            shift
+            ;;
+        -xclbinutil)
+            cmake_flags+=" -DXCLBINUTIL_ONLY_BUILD=ON"
             shift
             ;;
         -verbose)
