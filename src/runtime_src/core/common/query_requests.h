@@ -471,7 +471,7 @@ struct device_class : request
     RYZEN
   };
 
-  using result_type = enum TYPE;
+  using result_type = TYPE;
   static const key_type key = key_type::device_class;
   static const char* name() { return "device_class"; }
 
