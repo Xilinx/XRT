@@ -56,7 +56,11 @@ static std::shared_ptr<xrt_core::device>
 alloc_device_index(unsigned int index)
 {
   XRT_TRACE_POINT_SCOPE(xrt_device_alloc_index);
-  return xrt_core::get_userpf_device(index) ;
+  auto dev = xrt_core::get_userpf_device(index);
+
+  dev->get_usage_logger()->log_device_info(index);
+
+  return dev;
 }
 
 static std::shared_ptr<xrt_core::device>

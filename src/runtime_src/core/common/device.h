@@ -14,6 +14,7 @@
 #include "uuid.h"
 
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/usage_metrics.h"
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
@@ -463,6 +464,15 @@ public:
     return {fd, std::bind(&device::close, this, fd)};
   }
 
+  /**
+   * get_usage_logger() - get usage metrics logger
+   */
+  std::shared_ptr<usage_metrics::base_logger>
+  get_usage_logger()
+  {
+    return m_usage_logger;
+  }
+
  private:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
@@ -474,6 +484,7 @@ public:
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
   mutable std::mutex m_mutex;
+  std::shared_ptr<usage_metrics::base_logger> m_usage_logger;
 };
 
 /**

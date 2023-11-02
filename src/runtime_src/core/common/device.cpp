@@ -37,7 +37,7 @@ namespace xrt_core {
 
 device::
 device(id_type device_id)
-  : m_device_id(device_id)
+  : m_device_id(device_id), m_usage_logger(usage_metrics::get_usage_metrics_logger())
 {
   XRT_DEBUGF("xrt_core::device::device(0x%x) idx(%d)\n", this, device_id);
 }

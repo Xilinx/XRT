@@ -998,9 +998,15 @@ alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags fla
   xflags.slot = xgrp.slot;
 
   auto hwctx  = device.get_hwctx_handle();
-  return hwctx
+  auto bo = hwctx
     ? hwctx->alloc_bo(userptr, sz, xflags.all)
     : device->alloc_bo(userptr, sz, xflags.all);
+
+  bo->set_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger());
+  bo->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, 
+      hwctx ? reinterpret_cast<uintptr_t>(hwctx) : 0);
+  
+  return bo;
 }
 
 static std::unique_ptr<xrt_core::buffer_handle>
@@ -1014,9 +1020,15 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
 
   try {
     auto hwctx  = device.get_hwctx_handle();
-    return hwctx
+    auto bo = hwctx
       ? hwctx->alloc_bo(sz, xflags.all)
       : device->alloc_bo(sz, xflags.all);
+    
+    bo->set_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger());
+    bo->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, 
+      hwctx ? reinterpret_cast<uintptr_t>(hwctx) : 0);
+
+    return bo;
   }
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {

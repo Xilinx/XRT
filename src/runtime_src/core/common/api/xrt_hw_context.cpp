@@ -12,6 +12,7 @@
 #include "core/common/device.h"
 #include "core/common/trace.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
 #include <limits>
@@ -32,6 +33,7 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger;
 
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const cfg_param_type& cfg_param)
@@ -40,6 +42,7 @@ public:
     , m_cfg_param(cfg_param)
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
+    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {
   }
 
@@ -48,6 +51,7 @@ public:
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
+    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {}
 
   std::shared_ptr<hw_context_impl>
@@ -114,6 +118,12 @@ public:
   {
     return m_hdl.get();
   }
+
+  std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  get_usage_logger()
+  {
+    return m_usage_logger;
+  }
 };
 
 } // xrt
@@ -170,6 +180,11 @@ alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, cons
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
 
+  handle->get_usage_logger()->log_hw_ctx_info(handle->get_core_device()->get_device_id(),
+      reinterpret_cast<uintptr_t>(handle->get_hwctx_handle()), xclbin_id);
+  
+  std::cout << "hw ctx hdl ptr - " << reinterpret_cast<uintptr_t>(handle->get_hwctx_handle()) << std::endl;
+
   return handle;
 }
 
@@ -184,6 +199,9 @@ alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt
   // The create_hw_context_from_implementation function is then 
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
+
+  handle->get_usage_logger()->log_hw_ctx_info(handle->get_core_device()->get_device_id(),
+      reinterpret_cast<uintptr_t>(handle->get_hwctx_handle()), xclbin_id);
 
   return handle;
 }
