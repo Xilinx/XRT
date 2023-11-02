@@ -242,7 +242,7 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
 
   std::ifstream aiefile(aie_control.string());
   if (!aiefile.good()) {
-    logger(ptree, "Error", boost::str(boost::format("The given file could not be found: %s") % aie_control.string()));
+    logger(ptree, "Details", boost::str(boost::format("The given file could not be found: %s") % aie_control.string()));
     ptree.put("status", test_token_skipped);
     return;
   }
