@@ -20,10 +20,10 @@
 
 // System include files
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
-#include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 

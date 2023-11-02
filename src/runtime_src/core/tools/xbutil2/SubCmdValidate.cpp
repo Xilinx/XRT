@@ -37,13 +37,13 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
 #include <algorithm>
+#include <filesystem>
 #ifdef __linux__
 #include <sys/mman.h> //munmap
 #endif
@@ -516,7 +516,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
-    if (!m_output.empty() && !XBU::getForce() && boost::filesystem::exists(m_output))
+    if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
     if (m_tests_to_run.empty())
@@ -540,10 +540,10 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {
       XBU::verbose("Sub command: --path");
-      if (!boost::filesystem::exists(validateXclbinPath) || !boost::filesystem::is_directory(validateXclbinPath))
+      if (!std::filesystem::exists(validateXclbinPath) || !std::filesystem::is_directory(validateXclbinPath))
         throw xrt_core::error((boost::format("Invalid directory path : '%s'") % validateXclbinPath).str());
       if (validateXclbinPath.compare(".") == 0 || validateXclbinPath.compare("./") == 0)
-        validateXclbinPath = boost::filesystem::current_path().string();
+        validateXclbinPath = std::filesystem::current_path().string();
       if (validateXclbinPath.back() != '/')
         validateXclbinPath.append("/");
     }

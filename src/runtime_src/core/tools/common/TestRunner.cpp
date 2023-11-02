@@ -1,4 +1,4 @@
-/**
+ /**
  * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -27,10 +27,10 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 // System - Include Files
+#include <filesystem>
 #include <iostream>
 #include <regex>
 
@@ -110,8 +110,8 @@ TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
                              boost::property_tree::ptree& _ptTest)
 {
   std::string formatted_fw_path("/opt/xilinx/firmware/");
-  boost::filesystem::path fw_dir(formatted_fw_path);
-  if (!boost::filesystem::is_directory(fw_dir)) {
+  std::filesystem::path fw_dir(formatted_fw_path);
+  if (!std::filesystem::is_directory(fw_dir)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
     _ptTest.put("status", test_token_failed);
@@ -122,15 +122,12 @@ TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
 
   for (const std::string& t : suffix) {
     std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
-    for (boost::filesystem::recursive_directory_iterator iter(fw_dir,
-          boost::filesystem::symlink_option::recurse), end; iter != end;) {
+    for (std::filesystem::recursive_directory_iterator iter(fw_dir, 
+	  std::filesystem::directory_options::follow_directory_symlink ), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
-      if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
-        iter.no_push();
-      }
-      else {
-        iter.no_push(false);
+      if (!std::filesystem::is_directory(std::filesystem::path(name.c_str()))) {
+        iter.disable_recursion_pending();
       }
 
       std::regex_match(name, cm, e);
@@ -148,7 +145,7 @@ TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
           return cm.str(1) + "test/";
         }
       }
-      else if (iter.level() > 4) {
+      else if (iter.depth() > 4) {
         iter.pop();
         continue;
       }
@@ -170,7 +167,7 @@ TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_nam
   const std::string dsapath("/opt/xilinx/dsa/");
   const std::string xsapath(getXsaPath(vendor));
 
-  if (!boost::filesystem::is_directory(dsapath) && !boost::filesystem::is_directory(xsapath)) {
+  if (!std::filesystem::is_directory(dsapath) && !std::filesystem::is_directory(xsapath)) {
     const auto fmt = boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath;
     logger(_ptTest, "Error", boost::str(fmt));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
@@ -181,11 +178,11 @@ TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_nam
   //create possible xclbin paths
   std::string xsaXclbinPath = xsapath + dev_name + "/test/";
   std::string dsaXclbinPath = dsapath + dev_name + "/test/";
-  boost::filesystem::path xsa_xclbin(xsaXclbinPath);
-  boost::filesystem::path dsa_xclbin(dsaXclbinPath);
-  if (boost::filesystem::exists(xsa_xclbin))
+  std::filesystem::path xsa_xclbin(xsaXclbinPath);
+  std::filesystem::path dsa_xclbin(dsaXclbinPath);
+  if (std::filesystem::exists(xsa_xclbin))
     return xsaXclbinPath;
-  else if (boost::filesystem::exists(dsa_xclbin))
+  else if (std::filesystem::exists(dsa_xclbin))
     return dsaXclbinPath;
 
   const std::string fmt = "Platform path not available. Skipping validation";
@@ -214,14 +211,14 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
-  if (!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
+  if (!logic_uuid.empty() && !std::filesystem::exists(xclbinPath)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     return;
   }
 
   // log xclbin test dir for debugging purposes
-  boost::filesystem::path xclbin_path(xclbinPath);
+  std::filesystem::path xclbin_path(xclbinPath);
   auto xclbin_parent_path = xclbin_path.parent_path().string();
   logger(_ptTest, "Xclbin", xclbin_parent_path);
 
@@ -229,7 +226,7 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
   auto json_exists = [platform_path]() {
     const static std::string platform_metadata = "/platform.json";
     std::string platform_json_path(platform_path + platform_metadata);
-    return boost::filesystem::exists(platform_json_path) ? true : false;
+    return std::filesystem::exists(platform_json_path) ? true : false;
   };
 
   // Some testcases require additional binaries to be present on the device
@@ -262,8 +259,8 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
 
     // Parse if the file exists here
     std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
-    boost::filesystem::path xrt_path(xrtTestCasePath);
-    if (!boost::filesystem::exists(xrt_path)) {
+    std::filesystem::path xrt_path(xrtTestCasePath);
+    if (!std::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
       logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
       _ptTest.put("status", test_token_failed);
@@ -303,8 +300,8 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
   else {
     //check if testcase is present
     std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-    boost::filesystem::path xrt_path(xrtTestCasePath);
-    if (!boost::filesystem::exists(xrt_path)) {
+    std::filesystem::path xrt_path(xrtTestCasePath);
+    if (!std::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
       logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
       _ptTest.put("status", test_token_failed);
@@ -432,7 +429,7 @@ TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
 #else
   const auto platform_path = findPlatformPath(_dev, _ptTest);
   xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + xclbin_name;
-  if (!boost::filesystem::exists(xclbin_path)) {
+  if (!std::filesystem::exists(xclbin_path)) {
     const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_path;
     logger(_ptTest, "Details", boost::str(fmt));
     _ptTest.put("status", test_token_skipped);
@@ -446,8 +443,8 @@ TestRunner::findDependencies( const std::string& test_path,
                   const std::string& ps_kernel_name)
 {
     const std::string dependency_json = "/lib/firmware/xilinx/ps_kernels/test_dependencies.json";
-    boost::filesystem::path dep_path(dependency_json);
-    if (!boost::filesystem::exists(dep_path))
+    std::filesystem::path dep_path(dependency_json);
+    if (!std::filesystem::exists(dep_path))
       return {};
 
     std::vector<std::string> dependencies;
