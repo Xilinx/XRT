@@ -73,7 +73,6 @@ if (DEFINED XRT_AIE_BUILD)
     rt
     dl
     uuid
-    ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     xaiengine
     )
@@ -85,7 +84,6 @@ else()
     rt
     dl
     uuid
-    ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     )
 

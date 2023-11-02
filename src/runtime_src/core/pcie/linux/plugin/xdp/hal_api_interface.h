@@ -21,8 +21,7 @@
 #include <iostream>
 #include <atomic>
 #include <mutex>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include "core/include/xclhal2.h"
 #include "core/include/xdp/hal_api.h"
 

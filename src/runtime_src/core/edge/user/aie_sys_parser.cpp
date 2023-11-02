@@ -16,8 +16,9 @@
 
 #include "aie_sys_parser.h"
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+#include <filesystem>
 
 std::fstream aie_sys_parser::sysfs_open_path(const std::string& path,
                                              bool write, bool binary)

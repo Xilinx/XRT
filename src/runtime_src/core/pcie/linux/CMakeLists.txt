@@ -47,7 +47,6 @@ set_target_properties(xrt_core PROPERTIES
 target_link_libraries(xrt_core
   PRIVATE
   xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   pthread
   rt
@@ -63,7 +62,6 @@ target_link_libraries(xrt_core
 target_link_libraries(xrt_core_static
   INTERFACE
   xrt_coreutil_static
-  boost_filesystem
   boost_system
   uuid
   dl

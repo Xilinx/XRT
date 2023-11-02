@@ -530,7 +530,7 @@ namespace xclswemuhal2 {
 
        std::string modelDirectory("");
 
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel"))
+        if (std::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel"))
           modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel";
         else
           modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/generic_pcie/model/genericpciemodel";

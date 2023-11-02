@@ -17,7 +17,6 @@ PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${PROTO_SRC_FILES})
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${BOOST_FILESYSTEM_INCLUDE_DIRS}
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
@@ -49,7 +48,6 @@ set_target_properties(common_em PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 target_link_libraries(common_em
   PRIVATE
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
   xrt_coreutil
