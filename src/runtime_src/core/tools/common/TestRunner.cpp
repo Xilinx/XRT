@@ -446,7 +446,7 @@ TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
                 const std::string dpu_name)
 {
   const static std::string dpu_dir = "DPU_Sequence"; 
-  boost::filesystem::path prefix_path;
+  std::filesystem::path prefix_path;
 
 #ifdef _WIN32
   boost::ignore_unused(_dev);
@@ -454,10 +454,10 @@ TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
 #else
   boost::property_tree::ptree ptree; //ignore
   const auto platform_path = findPlatformPath(_dev, ptree);
-  prefix_path = boost::filesystem::path(platform_path);
+  prefix_path = std::filesystem::path(platform_path);
 #endif
   auto dpu_instr = prefix_path / dpu_dir / dpu_name;
-  if (!boost::filesystem::exists(dpu_instr)) {
+  if (!std::filesystem::exists(dpu_instr)) {
     throw std::runtime_error(boost::str(boost::format("DPU sequence file not found: '%s'") % dpu_instr));
   }
 

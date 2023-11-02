@@ -25,7 +25,7 @@ TestDF_bandwidth::TestDF_bandwidth()
   : TestRunner("df-bw", 
                 "Run bandwidth test on data fabric")
                 {
-                  m_dpu_name = "df_bw.txt";
+                  m_dpu_name = "df_bw_dpu.txt";
                 }
 
 namespace {
