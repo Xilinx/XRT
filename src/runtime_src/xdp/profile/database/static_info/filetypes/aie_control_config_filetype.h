@@ -25,86 +25,71 @@
 // The implementation specific to the aie_control_config.json file
 // ***************************************************************
 namespace xdp::aie {
-    class AIEControlConfigFiletype : public BaseFiletypeImpl {
+    class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         public:
             AIEControlConfigFiletype(boost::property_tree::ptree& aie_project);
-      
-            virtual driver_config
-            getDriverConfig(const boost::property_tree::ptree& aie_meta);
+            ~AIEControlConfigFiletype() = default;
 
-            
-            virtual int getHardwareGeneration(const boost::property_tree::ptree& aie_meta);
+            driver_config
+            getDriverConfig() override;
 
-            
-            virtual aiecompiler_options
-            getAIECompilerOptions(const boost::property_tree::ptree& aie_meta);
+            int getHardwareGeneration() override;
 
-            
-            virtual uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta);
+            aiecompiler_options
+            getAIECompilerOptions() override;
 
-            
-            virtual std::vector<std::string>
-            getValidGraphs(const boost::property_tree::ptree& aie_meta);
+            uint16_t getAIETileRowOffset() override;
 
-            
-            virtual std::vector<std::string>
-            getValidPorts(const boost::property_tree::ptree& aie_meta);
+            std::vector<std::string>
+            getValidGraphs() override;
 
-            
-            virtual std::vector<std::string>
-            getValidKernels(const boost::property_tree::ptree& aie_meta);
+            std::vector<std::string>
+            getValidPorts() override;
 
-            
-            virtual std::unordered_map<std::string, io_config>
-            getTraceGMIOs(const boost::property_tree::ptree& aie_meta);
+            std::vector<std::string>
+            getValidKernels() override;
 
             std::unordered_map<std::string, io_config>
-            getAllIOs(const boost::property_tree::ptree& aie_meta);
+            getTraceGMIOs();
+
+            std::unordered_map<std::string, io_config>
+            getAllIOs();
 
             std::unordered_map<std::string, io_config> 
-            getPLIOs(const boost::property_tree::ptree& aie_meta);
+            getPLIOs();
         
             std::unordered_map<std::string, io_config>
-            getChildGMIOs(const boost::property_tree::ptree& aie_meta, const std::string& childStr);
+            getChildGMIOs(const std::string& childStr);
             
             std::unordered_map<std::string, io_config>
-            getGMIOs(const boost::property_tree::ptree& aie_meta);
+            getGMIOs();
 
-            virtual 
             std::vector<tile_type>
-            getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
-                                const std::string& graphName,
+            getInterfaceTiles(  const std::string& graphName,
                                 const std::string& portName = "all",
                                 const std::string& metricStr = "channels",
                                 int16_t channelId = -1,
                                 bool useColumn = false, 
                                 uint32_t minCol = 0, 
-                                uint32_t maxCol = 0);
+                                uint32_t maxCol = 0) override; 
 
-            
-            virtual 
             std::vector<tile_type>
-            getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
-                            const std::string& graphName,
-                            const std::string& bufferName = "all");
+            getMemoryTiles(const std::string& graphName,
+                           const std::string& bufferName = "all") override;
 
             
-            virtual std::vector<tile_type>
-            getAIETiles(const boost::property_tree::ptree& aie_meta,
-                        const std::string& graphName);
+            std::vector<tile_type>
+            getAIETiles(const std::string& graphName) override;
 
             
-            virtual std::vector<tile_type>
-            getEventTiles(const boost::property_tree::ptree& aie_meta, 
-                            const std::string& graph_name,
-                            module_type type);
+            std::vector<tile_type>
+            getEventTiles( const std::string& graph_name,
+                            module_type type) override;
 
-
-            virtual std::vector<tile_type>
-            getTiles(const boost::property_tree::ptree& aie_meta, 
-                    const std::string& graph_name,
+            std::vector<tile_type>
+            getTiles(const std::string& graph_name,
                     module_type type, 
-                    const std::string& kernel_name = "all");
+                    const std::string& kernel_name = "all") override;
     };
 }
 

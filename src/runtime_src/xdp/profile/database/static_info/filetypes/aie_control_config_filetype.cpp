@@ -33,17 +33,17 @@ namespace xdp::aie {
     : BaseFiletypeImpl(aie_project) {}
 
     driver_config
-    AIEControlConfigFiletype::getDriverConfig(const boost::property_tree::ptree& aie_meta) {
+    AIEControlConfigFiletype::getDriverConfig() {
         return xdp::aie::getDriverConfig(aie_meta, "aie_metadata.driver_config");
     }
 
     int 
-    AIEControlConfigFiletype::getHardwareGeneration(const boost::property_tree::ptree& aie_meta) {
+    AIEControlConfigFiletype::getHardwareGeneration() {
         return xdp::aie::getHardwareGeneration(aie_meta, "aie_metadata.driver_config.hw_gen");
     }
 
     aiecompiler_options
-    AIEControlConfigFiletype::getAIECompilerOptions(const boost::property_tree::ptree& aie_meta) {
+    AIEControlConfigFiletype::getAIECompilerOptions() {
         aiecompiler_options aiecompiler_options;
         aiecompiler_options.broadcast_enable_core = 
             aie_meta.get("aie_metadata.aiecompiler_options.broadcast_enable_core", false);
@@ -55,19 +55,19 @@ namespace xdp::aie {
     }
 
     uint16_t 
-    AIEControlConfigFiletype::getAIETileRowOffset(const boost::property_tree::ptree& aie_meta) {
+    AIEControlConfigFiletype::getAIETileRowOffset() {
         return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
     }
 
     
     std::vector<std::string>
-    AIEControlConfigFiletype::getValidGraphs(const boost::property_tree::ptree& aie_meta) {
+    AIEControlConfigFiletype::getValidGraphs() {
         return xdp::aie::getValidGraphs(aie_meta, "aie_metadata.graphs");
     }
 
     std::vector<std::string>
-    AIEControlConfigFiletype::getValidPorts(const boost::property_tree::ptree& aie_meta) {
-        auto ios = getAllIOs(aie_meta);
+    AIEControlConfigFiletype::getValidPorts() {
+        auto ios = getAllIOs();
         if (ios.empty())
         return {};
 
@@ -85,7 +85,7 @@ namespace xdp::aie {
 
     
     std::vector<std::string>
-    AIEControlConfigFiletype::getValidKernels(const boost::property_tree::ptree& aie_meta) {
+    AIEControlConfigFiletype::getValidKernels() {
         std::vector<std::string> kernels;
 
         // Grab all kernel to tile mappings
@@ -104,12 +104,12 @@ namespace xdp::aie {
     }
 
     std::unordered_map<std::string, io_config>
-    AIEControlConfigFiletype::getTraceGMIOs(const boost::property_tree::ptree& aie_meta){
-        return getChildGMIOs(aie_meta, "aie_metadata.TraceGMIOs");
+    AIEControlConfigFiletype::getTraceGMIOs(){
+        return getChildGMIOs("aie_metadata.TraceGMIOs");
     }
 
     std::unordered_map<std::string, io_config> 
-    AIEControlConfigFiletype::getPLIOs(const boost::property_tree::ptree& aie_meta)
+    AIEControlConfigFiletype::getPLIOs()
     {
         std::unordered_map<std::string, io_config> plios;
 
@@ -132,23 +132,23 @@ namespace xdp::aie {
         return plios;
     }
 
-      std::unordered_map<std::string, io_config>
-      AIEControlConfigFiletype::getGMIOs(const boost::property_tree::ptree& aie_meta)
-      {
-        return getChildGMIOs(aie_meta, "aie_metadata.GMIOs");
-      }
+    std::unordered_map<std::string, io_config>
+    AIEControlConfigFiletype::getGMIOs()
+    {
+    return getChildGMIOs("aie_metadata.GMIOs");
+    }
 
     std::unordered_map<std::string, io_config>
-    AIEControlConfigFiletype::getAllIOs(const boost::property_tree::ptree& aie_meta)
+    AIEControlConfigFiletype::getAllIOs()
     {
-        auto ios = getPLIOs(aie_meta);
-        auto gmios = getGMIOs(aie_meta);
+        auto ios = getPLIOs();
+        auto gmios = getGMIOs();
         ios.merge(gmios);
         return ios;
     }
 
     std::unordered_map<std::string, io_config>
-    AIEControlConfigFiletype::getChildGMIOs(const boost::property_tree::ptree& aie_meta, const std::string& childStr)
+    AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr)
     {
         auto gmiosMetadata = aie_meta.get_child_optional(childStr);
         if (!gmiosMetadata)
@@ -176,7 +176,7 @@ namespace xdp::aie {
     }
 
     std::vector<tile_type>
-    AIEControlConfigFiletype::getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
+    AIEControlConfigFiletype::getInterfaceTiles(
                     const std::string& graphName,
                     const std::string& portName,
                     const std::string& metricStr,
@@ -188,9 +188,9 @@ namespace xdp::aie {
         std::vector<tile_type> tiles;
 
         #ifdef XDP_MINIMAL_BUILD
-        auto ios = getGMIOs(aie_meta);
+        auto ios = getGMIOs();
         #else
-        auto ios = getAllIOs(aie_meta);
+        auto ios = getAllIOs();
         #endif
 
         for (auto& io : ios) {
@@ -251,11 +251,11 @@ namespace xdp::aie {
     }
 
     std::vector<tile_type>
-    AIEControlConfigFiletype::getMemoryTiles(const boost::property_tree::ptree& aie_meta,
+    AIEControlConfigFiletype::getMemoryTiles(
                  const std::string& graph_name,
                  const std::string& buffer_name)
     {
-        if (getHardwareGeneration(aie_meta) == 1) 
+        if (getHardwareGeneration() == 1) 
         return {};
 
         // Grab all shared buffers
@@ -291,10 +291,10 @@ namespace xdp::aie {
 
     // Find all AIE tiles associated with a graph (kernel_name = all)
     std::vector<tile_type> 
-    AIEControlConfigFiletype::getAIETiles(const boost::property_tree::ptree& aie_meta, const std::string& graph_name)
+    AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
     {
         std::vector<tile_type> tiles;
-        auto rowOffset = getAIETileRowOffset(aie_meta);
+        auto rowOffset = getAIETileRowOffset();
         int startCount = 0;
 
         for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
@@ -342,7 +342,7 @@ namespace xdp::aie {
     }
 
     std::vector<tile_type>
-    AIEControlConfigFiletype::getEventTiles(const boost::property_tree::ptree& aie_meta,
+    AIEControlConfigFiletype::getEventTiles(
                 const std::string& graph_name,
                 module_type type)
     {
@@ -379,23 +379,23 @@ namespace xdp::aie {
     //   kernel_name = all      : all tiles in graph
     //   kernel_name = <kernel> : only tiles used by that specific kernel
     std::vector<tile_type>
-    AIEControlConfigFiletype::getTiles(const boost::property_tree::ptree& aie_meta,
+    AIEControlConfigFiletype::getTiles(
             const std::string& graph_name,
             module_type type,
             const std::string& kernel_name)
     {
         if (type == module_type::mem_tile)
-        return getMemoryTiles(aie_meta, graph_name, kernel_name);
+        return getMemoryTiles(graph_name, kernel_name);
 
         // Now search by graph-kernel pairs
         auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
         if (!kernelToTileMapping && kernel_name.compare("all") == 0)
-        return getAIETiles(aie_meta, graph_name);
+        return getAIETiles(graph_name);
         if (!kernelToTileMapping)
         return {};
 
         std::vector<tile_type> tiles;
-        auto rowOffset = getAIETileRowOffset(aie_meta);
+        auto rowOffset = getAIETileRowOffset();
 
         for (auto const &mapping : kernelToTileMapping.get()) {
         auto currGraph = mapping.second.get<std::string>("graph");

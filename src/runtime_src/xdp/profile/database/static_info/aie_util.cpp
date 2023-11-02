@@ -21,6 +21,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <optional>
 #include <set>
+#include <memory>
 
 #include "filetypes/aie_control_config_filetype.h"
 #include "aie_util.h"
@@ -44,7 +45,7 @@ namespace xdp::aie {
       throw std::runtime_error(msg);
   }
 
-xdp::aie::BaseFiletypeImpl*
+std::unique_ptr<xdp::aie::BaseFiletypeImpl>
 determineFileType(boost::property_tree::ptree& aie_project)
 {
   // ****************************************************
@@ -54,7 +55,7 @@ determineFileType(boost::property_tree::ptree& aie_project)
     std::string schema;
     schema = aie_project.get_child("schema").get_value<std::string>();
     if (schema == "MEGraphSchema-0.4")
-      return new xdp::aie::AIEControlConfigFiletype(aie_project);
+      return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
   }
   catch (...) {
     // Something went wrong, so it most likely is not a "compiler_report.json"
@@ -67,7 +68,7 @@ determineFileType(boost::property_tree::ptree& aie_project)
     std::string major;
     major = aie_project.get_child("schema_version.major").get_value<std::string>();
     if (major == "1")
-      return new xdp::aie::AIEControlConfigFiletype(aie_project);
+      return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
   }
   catch(...) {
     // Something went wrong, so it most likely is not an aie_control_config
@@ -79,7 +80,7 @@ determineFileType(boost::property_tree::ptree& aie_project)
   try {
     auto schema = aie_project.get_child("schema").get_value<std::string>();
     if (schema == "handwritten")
-      return new xdp::aie::AIEControlConfigFiletype(aie_project);
+      return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
   }
   catch(...) {
     // Something went wrong, so it most likely is not the handwritten format
@@ -776,7 +777,7 @@ getValidGraphs(const boost::property_tree::ptree& aie_meta,
 // The implementation of the general interface
 
 
-  xdp::aie::BaseFiletypeImpl*
+  std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   readAIEMetadata(const char* data, size_t size, pt::ptree& aie_project)
   {
     std::stringstream aie_stream;
@@ -786,7 +787,7 @@ getValidGraphs(const boost::property_tree::ptree& aie_meta,
     return determineFileType(aie_project);
   }
 
-  xdp::aie::BaseFiletypeImpl*
+  std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   readAIEMetadata(const char* filename, pt::ptree& aie_project)
   {
     try {

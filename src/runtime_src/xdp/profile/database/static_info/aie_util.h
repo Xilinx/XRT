@@ -24,6 +24,7 @@
 
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "filetypes/base_filetype_impl.h"
 
 namespace xdp::aie {
 
@@ -47,14 +48,14 @@ namespace xdp::aie {
   // A function to read the JSON from an axlf section inside the xclbin and
   // return the type of the file
   XDP_EXPORT
-  xdp::aie::BaseFiletypeImpl*
+  std::unique_ptr<BaseFiletypeImpl>
   readAIEMetadata(const char* data, size_t size,
                   boost::property_tree::ptree& aie_project);
 
   // A function to read the JSON from a file on disk and return the type of
   // the file
   XDP_EXPORT
-  xdp::aie::BaseFiletypeImpl*
+  std::unique_ptr<BaseFiletypeImpl>
   readAIEMetadata(const char* filename,
                   boost::property_tree::ptree& aie_project);
 

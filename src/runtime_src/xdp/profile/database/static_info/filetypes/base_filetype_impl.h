@@ -28,73 +28,59 @@ namespace xdp::aie {
         public:
             BaseFiletypeImpl(boost::property_tree::ptree& aie_project) : aie_meta(aie_project) {}
             BaseFiletypeImpl() = delete; 
+            virtual ~BaseFiletypeImpl() {};
 
             // Top level interface used for both file type formats
             
             virtual driver_config
-            getDriverConfig(const boost::property_tree::ptree& aie_meta) = 0;
-
+            getDriverConfig() = 0;
             
-            virtual int getHardwareGeneration(const boost::property_tree::ptree& aie_meta) = 0;
-
+            virtual int getHardwareGeneration() = 0;
             
             virtual aiecompiler_options
-            getAIECompilerOptions(const boost::property_tree::ptree& aie_meta) = 0;
-
+            getAIECompilerOptions() = 0;
             
-            virtual uint16_t getAIETileRowOffset(const boost::property_tree::ptree& aie_meta) = 0;
+            virtual uint16_t getAIETileRowOffset() = 0;
+
+            virtual std::vector<std::string>
+            getValidGraphs() = 0;
 
             
             virtual std::vector<std::string>
-            getValidGraphs(const boost::property_tree::ptree& aie_meta) = 0;
+            getValidPorts() = 0;
 
             
             virtual std::vector<std::string>
-            getValidPorts(const boost::property_tree::ptree& aie_meta) = 0;
-
-            
-            virtual std::vector<std::string>
-            getValidKernels(const boost::property_tree::ptree& aie_meta) = 0;
+            getValidKernels() = 0;
 
             
             virtual std::unordered_map<std::string, io_config>
-            getTraceGMIOs(const boost::property_tree::ptree& aie_meta) = 0;
+            getTraceGMIOs() = 0;
 
-            
             virtual 
             std::vector<tile_type>
-            getInterfaceTiles(const boost::property_tree::ptree& aie_meta,
-                                const std::string& graphName,
-                                const std::string& portNam,
-                                const std::string& metricStr,
-                                int16_t channelId,
-                                bool useColumn, 
-                                uint32_t minCol, 
-                                uint32_t maxCol) = 0;
+            getInterfaceTiles(  const std::string& graphName,
+                                const std::string& portName = "all",
+                                const std::string& metricStr = "channels",
+                                int16_t channelId = -1,
+                                bool useColumn = false, 
+                                uint32_t minCol = 0, 
+                                uint32_t maxCol = 0) = 0; 
 
-            
             virtual 
             std::vector<tile_type>
-            getMemoryTiles(const boost::property_tree::ptree& aie_meta, 
-                            const std::string& graphName,
+            getMemoryTiles(const std::string& graphName,
                             const std::string& bufferName) = 0;
 
-            
             virtual std::vector<tile_type>
-            getAIETiles(const boost::property_tree::ptree& aie_meta,
-                        const std::string& graphName) = 0;
+            getAIETiles(const std::string& graphName) = 0;
 
-            
             virtual std::vector<tile_type>
-            getEventTiles(const boost::property_tree::ptree& aie_meta, 
-                            const std::string& graph_name,
+            getEventTiles(const std::string& graph_name,
                             module_type type) = 0;
 
-
-            
             virtual std::vector<tile_type>
-            getTiles(const boost::property_tree::ptree& aie_meta, 
-                    const std::string& graph_name,
+            getTiles(const std::string& graph_name,
                     module_type type, 
                     const std::string& kernel_name) = 0;
     };

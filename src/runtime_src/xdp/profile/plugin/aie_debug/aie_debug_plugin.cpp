@@ -106,6 +106,7 @@ namespace xdp {
   
     try {
       pt::read_json("aie_control_config.json", aie_meta);
+      filetype = aie::readAIEMetadata("aie_control_config.json", aie_meta);
     } catch (...) {
       std::stringstream msg;
       msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
@@ -114,20 +115,22 @@ namespace xdp {
     }
 
     context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    
+    xdp::aie::driver_config meta_config = getAIEConfigMetadata();
 
-    XAie_Config cfg { 
-      getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),        //xaie_base_addr
-      getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
-      getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
-      getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
-      getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows,
-      getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols,
-      getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
-      getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start,
-      getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
-      getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start,
-      getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-      {0}                                                   // PartProp
+    XAie_Config cfg {
+      meta_config.hw_gen,
+      meta_config.base_address,
+      meta_config.column_shift,
+      meta_config.row_shift,
+      meta_config.num_rows,
+      meta_config.num_columns,
+      meta_config.shim_row,
+      meta_config.mem_row_start,
+      meta_config.mem_num_rows,
+      meta_config.aie_tile_row_start,
+      meta_config.aie_tile_num_rows,
+      {0} // PartProp
     };
 
     auto regValues = parseMetrics();
@@ -142,9 +145,9 @@ namespace xdp {
     
       std::vector<tile_type> tiles;
       if (type == module_type::shim) {
-        tiles = aie::getInterfaceTiles(aie_meta, "all", "all", "", -1);
+        tiles = filetype->getInterfaceTiles("all", "all", "", -1);
       } else {
-        tiles = aie::getTiles(aie_meta,"all", type, "all");
+        tiles = filetype->getTiles("all", type, "all");
       }
 
       if (tiles.empty()) {
@@ -320,6 +323,12 @@ namespace xdp {
   boost::property_tree::ptree AieDebugPlugin::getAIEConfigMetadata(std::string config_name) {
     std::string query = "aie_metadata.driver_config." + config_name;
     return aie_meta.get_child(query);
+  }
+
+  aie::driver_config
+  AieDebugPlugin::getAIEConfigMetadata()
+  {
+    return filetype->getDriverConfig();
   }
 
 }  // end namespace xdp
