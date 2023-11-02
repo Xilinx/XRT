@@ -31,9 +31,7 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
   }
   else {
     ptree = get_test_header();
-    std::cout << "Verify runTest start!\n Running..." << std::endl;
     runTest(dev, ptree);
-    std::cout << "Verify runTest finished!\n Exiting..." << std::endl;
   }
   return ptree;
 }

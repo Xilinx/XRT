@@ -36,9 +36,7 @@ TestAiePl::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("xclbin", "pl_controller_aie.xclbin");
-  std::cout << "AiePl runTest start!\n Running..." << std::endl;
   runTest(dev, ptree);
-  std::cout << "AiePl runTest finished!\n Exiting..." << std::endl;
   return ptree;
 }
 
