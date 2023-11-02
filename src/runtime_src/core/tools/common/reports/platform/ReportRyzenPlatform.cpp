@@ -15,7 +15,7 @@ void
 ReportRyzenPlatform::getPropertyTreeInternal(const xrt_core::device* dev,
                                              boost::property_tree::ptree& pt) const
 {
-  // Defer to the 20202 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
   getPropertyTree20202(dev, pt);
 }
@@ -47,7 +47,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
   for (const auto& kp : platforms) {
     const boost::property_tree::ptree& pt_platform = kp.second;
     const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
-    _output << boost::format("  %-23s: %s \n") % "Name" % pt_static_region.get<std::string>("vbnv");
+    _output << boost::format("  %-23s: %s \n") % "Name" % pt_static_region.get<std::string>("name");
 
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Performance Mode" % pt_status.get<std::string>("performance_mode");
@@ -62,6 +62,6 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
       }
     }
   }
-  
+
   _output << std::endl;
 }

@@ -15,7 +15,7 @@ void
 ReportAlveoPlatform::getPropertyTreeInternal(const xrt_core::device* dev,
                                              boost::property_tree::ptree& pt) const
 {
-  // Defer to the 20202 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
   getPropertyTree20202(dev, pt);
 }
@@ -94,6 +94,6 @@ ReportAlveoPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
       }
     }
   }
-  
+
   _output << std::endl;
 }
