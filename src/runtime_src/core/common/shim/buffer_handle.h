@@ -79,13 +79,13 @@ public:
     return XRT_NULL_BO;
   }
 
-  void
+  inline void
   set_usage_logger(std::shared_ptr<xrt_core::usage_metrics::base_logger> logger)
   {
     m_usage_logger = logger;
   }
 
-  std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  inline std::shared_ptr<xrt_core::usage_metrics::base_logger>
   get_usage_logger()
   {
     return m_usage_logger;

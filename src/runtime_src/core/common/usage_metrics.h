@@ -12,8 +12,19 @@
 #include <unordered_map>
 #include <vector>
 
-//#include "core/include/xrt/xrt_hw_context.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/include/xrt/xrt_hw_context.h"
+
+// forward declaration of xrt_core::device class
+namespace xrt_core {
+class device;
+}
+
+namespace {
+using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
+constexpr tp TP_MIN = std::chrono::high_resolution_clock::time_point::min();
+}
 
 ////////////////////////////////////////////////////////////////
 // namespace xrt_core::usage_metrics
@@ -33,9 +44,7 @@ namespace xrt_core::usage_metrics {
 struct bo_metrics
 {
   uint32_t total_count = 0;
-  uint32_t active_count = 0;
   size_t   total_size_in_bytes = 0;
-  uint32_t peak_count = 0;
   size_t   peak_size_in_bytes = 0;
   size_t   bytes_synced_to_device = 0;
   size_t   bytes_synced_from_device = 0;
@@ -43,19 +52,18 @@ struct bo_metrics
 
 struct kernel_metrics
 {
-  using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
   struct timestamp
   {
-    tp start_time;
-    tp end_time;
+    tp start_time = TP_MIN;
+    tp end_time = TP_MIN;
   };
 
-  std::string kernel_name;
+  std::string name;
   std::vector<uint32_t> cu_index_vec;
-  uint32_t total_runs;
+  uint32_t total_runs = 0;
+  double total_time = 0;
   std::unordered_map<uintptr_t, struct timestamp> exec_times;
-  uint32_t num_args;
+  size_t num_args;
 };
 
 struct hw_ctx_metrics
@@ -68,8 +76,10 @@ struct hw_ctx_metrics
 
 struct device_metrics
 {
-  std::string bdf;
+  std::string bdf = "";
   struct bo_metrics global_bos_met;
+  uint32_t bo_active_count = 0;
+  uint32_t bo_peak_count = 0;
   std::vector<struct hw_ctx_metrics> hw_ctx_vec;
 };
 
@@ -80,12 +90,30 @@ using metrics_map = std::map<std::thread::id, std::map<unsigned int, device_metr
 // when user doesn't set ini option logging should be no op
 class base_logger
 {
-  public:
-    virtual inline void log_device_info(unsigned int) {}
-    //virtual inline void log_hw_ctx_info(xrt::hw_context_impl*) {}
-    virtual inline void log_hw_ctx_info(unsigned int, uintptr_t, const xrt::uuid&) {}
-    virtual inline void log_buffer_info_construct(unsigned int,size_t, uintptr_t) {}
-    virtual inline void log_buffer_info_destruct() {}
+public:
+  virtual void 
+  log_device_info(std::shared_ptr<xrt_core::device>) {}
+
+  virtual void
+  log_hw_ctx_info(void*) {}
+
+  virtual void 
+  log_buffer_info_construct(unsigned int,size_t, void*) {}
+  
+  virtual void 
+  log_buffer_info_destruct(unsigned int) {}
+
+  virtual void
+  log_buffer_sync(unsigned int, void*, size_t, xrt_core::buffer_handle::direction dir) {}
+
+  virtual void
+  log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) {}
+
+  virtual void
+  log_kernel_start_info(void*, void*) {}
+
+  virtual void
+  log_kernel_end_info(void*) {}
 };
 
 // class usage_metrics_logger - class for logging usage metrics
@@ -98,13 +126,32 @@ class usage_metrics_logger : public base_logger
 {
 public:
   usage_metrics_logger();
+
   ~usage_metrics_logger();
 
-  void log_device_info(unsigned int) override;
-  //void log_hw_ctx_info(xrt::hw_context_impl*) override;
-  void log_hw_ctx_info(unsigned int, uintptr_t, const xrt::uuid&) override;
-  void log_buffer_info_construct(unsigned int, size_t, uintptr_t) override;
-  void log_buffer_info_destruct() override;
+  void
+  log_device_info(std::shared_ptr<xrt_core::device>) override;
+
+  void 
+  log_hw_ctx_info(void*) override;
+
+  void 
+  log_buffer_info_construct(unsigned int, size_t, void*) override;
+
+  void 
+  log_buffer_info_destruct(unsigned int) override;
+
+  virtual void
+  log_buffer_sync(unsigned int, void*, size_t, xrt_core::buffer_handle::direction dir) override;
+
+  void
+  log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) override;
+
+  void
+  log_kernel_start_info(void*, void*) override;
+
+  virtual void
+  log_kernel_end_info(void*) override;
 
 private:
   std::map<unsigned int, device_metrics> m_dev_map;

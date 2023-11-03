@@ -467,7 +467,7 @@ public:
   /**
    * get_usage_logger() - get usage metrics logger
    */
-  std::shared_ptr<usage_metrics::base_logger>
+  inline std::shared_ptr<usage_metrics::base_logger>
   get_usage_logger()
   {
     return m_usage_logger;

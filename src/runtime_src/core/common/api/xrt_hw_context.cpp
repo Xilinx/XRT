@@ -119,7 +119,7 @@ public:
     return m_hdl.get();
   }
 
-  std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  inline std::shared_ptr<xrt_core::usage_metrics::base_logger>
   get_usage_logger()
   {
     return m_usage_logger;
@@ -151,6 +151,18 @@ set_exclusive(xrt::hw_context& hwctx)
   hwctx.get_handle()->set_exclusive();
 }
 
+xrt::uuid
+get_xclbin_uuid(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_uuid();
+}
+
+xrt_core::hwctx_handle*
+get_hwctx_handle(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_hwctx_handle();
+}
+
 xrt::hw_context
 create_hw_context_from_implementation(void* hwctx_impl)
 {
@@ -180,10 +192,7 @@ alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, cons
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
 
-  handle->get_usage_logger()->log_hw_ctx_info(handle->get_core_device()->get_device_id(),
-      reinterpret_cast<uintptr_t>(handle->get_hwctx_handle()), xclbin_id);
-  
-  std::cout << "hw ctx hdl ptr - " << reinterpret_cast<uintptr_t>(handle->get_hwctx_handle()) << std::endl;
+  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
 
   return handle;
 }
@@ -200,8 +209,7 @@ alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
 
-  handle->get_usage_logger()->log_hw_ctx_info(handle->get_core_device()->get_device_id(),
-      reinterpret_cast<uintptr_t>(handle->get_hwctx_handle()), xclbin_id);
+  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
 
   return handle;
 }

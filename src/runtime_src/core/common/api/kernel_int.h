@@ -83,6 +83,19 @@ XRT_CORE_COMMON_EXPORT
 size_t
 get_regmap_size(const xrt::kernel& kernel);
 
+std::string
+get_kernel_name(const xrt::kernel& kernel);
+
+xrt::hw_context
+get_hw_ctx(const xrt::kernel& kernel);
+
+// Allows the creation of the kernel object from a void pointer
+// to the kernel implementation. We use a void pointer
+// as we do not want to expose the kernel implementation class.
+// This is used for logging usage mertrics
+xrt::kernel
+create_kernel_from_implementation(void* kernel_impl);
+
 }} // kernel_int, xrt_core
 
 #endif
