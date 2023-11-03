@@ -401,7 +401,7 @@ TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
   //check if a 2RP platform
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
   const auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(_dev, "");
-  if (device_name.find("RyzenAI-Strix") != std::string::npos || device_name.find("RyzenAI-Phoenix") != std::string::npos) {
+  if (device_name.find("Ryzen") != std::string::npos) {
     return "/opt/xilinx/xrt/amdaie/";
   }
   if (!logic_uuid.empty())
