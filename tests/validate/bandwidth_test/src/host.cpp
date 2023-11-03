@@ -15,7 +15,7 @@
 */
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    auto binaryFile = boost::filesystem::path(test_path) / b_file;
+    auto binaryFile = std::filesystem::path(test_path) / b_file;
     std::ifstream infile(binaryFile.string());
     if (flag_s) {
         if (!infile.good()) {
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
     int num_kernel = 0, num_kernel_ddr = 0;
     bool chk_hbm_mem = false;
     std::string filename = "/platform.json";
-    auto platform_json = boost::filesystem::path(test_path) / filename;
+    auto platform_json = std::filesystem::path(test_path) / filename;
     std::vector<std::string> bank_names;
 
     try {

@@ -24,7 +24,6 @@ target_link_libraries(xma2api
   dl
   gcc_s
   stdc++
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
 
