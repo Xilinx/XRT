@@ -320,10 +320,7 @@ namespace xdp {
     free(op);
   }
 
-  boost::property_tree::ptree AieDebugPlugin::getAIEConfigMetadata(std::string config_name) {
-    std::string query = "aie_metadata.driver_config." + config_name;
-    return aie_meta.get_child(query);
-  }
+
 
   aie::driver_config
   AieDebugPlugin::getAIEConfigMetadata()

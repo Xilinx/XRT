@@ -46,7 +46,6 @@ namespace xdp {
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
     void endPoll();
-    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
     std::vector<std::string> getSettingsVector(std::string settingsString);
     std::map<module_type, std::vector<uint64_t>> parseMetrics();
     aie::driver_config getAIEConfigMetadata();
