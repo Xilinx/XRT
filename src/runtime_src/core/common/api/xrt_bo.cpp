@@ -170,6 +170,12 @@ public:
 
 } // namespace
 
+namespace xrt_core {
+buffer_handle::buffer_handle()
+  : m_usage_logger(usage_metrics::get_usage_metrics_logger())
+{}
+} // namespace xrt_core
+
 namespace xrt {
 
 // class bo_impl - Base class for buffer objects
@@ -1003,9 +1009,7 @@ alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags fla
     ? hwctx->alloc_bo(userptr, sz, xflags.all)
     : device->alloc_bo(userptr, sz, xflags.all);
 
-  auto logger = xrt_core::usage_metrics::get_usage_metrics_logger();
-  bo->set_usage_logger(logger);
-  logger->log_buffer_info_construct(device->get_device_id(), sz, hwctx);
+  bo->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, hwctx);
   
   return bo;
 }
@@ -1024,10 +1028,8 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
     auto bo = hwctx
       ? hwctx->alloc_bo(sz, xflags.all)
       : device->alloc_bo(sz, xflags.all);
-    
-    auto logger = xrt_core::usage_metrics::get_usage_metrics_logger();
-    bo->set_usage_logger(logger);
-    logger->log_buffer_info_construct(device->get_device_id(), sz, hwctx);
+
+    bo->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, hwctx);
 
     return bo;
   }

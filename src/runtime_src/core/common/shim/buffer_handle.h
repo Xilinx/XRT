@@ -40,6 +40,9 @@ public:
   };
 
 public:
+  XCL_DRIVER_DLLESPEC
+  buffer_handle();
+
   virtual ~buffer_handle()
   {}
 
@@ -79,20 +82,14 @@ public:
     return XRT_NULL_BO;
   }
 
-  inline void
-  set_usage_logger(std::shared_ptr<xrt_core::usage_metrics::base_logger> logger)
-  {
-    m_usage_logger = logger;
-  }
-
-  inline std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  std::shared_ptr<usage_metrics::base_logger>
   get_usage_logger()
   {
     return m_usage_logger;
   }
 
 private:
-  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger; 
+  std::shared_ptr<usage_metrics::base_logger> m_usage_logger; 
 };
 
 } // xrt_core

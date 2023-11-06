@@ -86,6 +86,7 @@ get_regmap_size(const xrt::kernel& kernel);
 std::string
 get_kernel_name(const xrt::kernel& kernel);
 
+// Get hw ctx using which this kernel is created
 xrt::hw_context
 get_hw_ctx(const xrt::kernel& kernel);
 

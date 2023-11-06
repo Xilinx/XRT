@@ -12,9 +12,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/include/ert.h"
 #include "core/include/xrt.h"
-#include "core/include/xrt/xrt_uuid.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/xrt_uuid.h"
 
 // forward declaration of xrt_core::device class
 namespace xrt_core {
@@ -23,7 +24,6 @@ class device;
 
 namespace {
 using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
-constexpr tp TP_MIN = std::chrono::high_resolution_clock::time_point::min();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -54,15 +54,15 @@ struct kernel_metrics
 {
   struct timestamp
   {
-    tp start_time = TP_MIN;
-    tp end_time = TP_MIN;
+    tp start_time;
+    bool is_valid = false;
   };
 
   std::string name;
   std::vector<uint32_t> cu_index_vec;
   uint32_t total_runs = 0;
-  double total_time = 0;
-  std::unordered_map<uintptr_t, struct timestamp> exec_times;
+  std::chrono::microseconds total_time = {};
+  std::unordered_map<uintptr_t, timestamp> exec_times; // run handle ptr is used for indexing
   size_t num_args;
 };
 
@@ -98,7 +98,7 @@ public:
   log_hw_ctx_info(void*) {}
 
   virtual void 
-  log_buffer_info_construct(unsigned int,size_t, void*) {}
+  log_buffer_info_construct(unsigned int, size_t, void*) {}
   
   virtual void 
   log_buffer_info_destruct(unsigned int) {}
@@ -110,10 +110,7 @@ public:
   log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) {}
 
   virtual void
-  log_kernel_start_info(void*, void*) {}
-
-  virtual void
-  log_kernel_end_info(void*) {}
+  log_kernel_run_info(void*, const void*, bool, ert_cmd_state) {}
 };
 
 // class usage_metrics_logger - class for logging usage metrics
@@ -148,23 +145,20 @@ public:
   log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) override;
 
   void
-  log_kernel_start_info(void*, void*) override;
-
-  virtual void
-  log_kernel_end_info(void*) override;
+  log_kernel_run_info(void*, const void*, bool, ert_cmd_state) override;
 
 private:
   std::map<unsigned int, device_metrics> m_dev_map;
   std::shared_ptr<metrics_map> map_ptr;
 };
 
-// get_logger() - Return trace logger object for current thread
+// get_usage_metrics_logger() - Return logger object for current thread
 //
-// Creates the logger object if necessary as thread local object.
+// Creates the logger object as thread local object.
 // It is undefined behavior to delete the returned object.
 //
-// Access to underlying trace object is to facilitate caching
-// to avoid repeated calls to get_logger() where applicable.
+// Access to underlying logger object is to facilitate caching
+// to avoid repeated calls to get_usage_metrics_logger() where applicable.
 std::shared_ptr<base_logger>
 get_usage_metrics_logger();
 

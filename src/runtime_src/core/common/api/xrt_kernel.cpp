@@ -2348,7 +2348,7 @@ public:
     // This is in critical path, we need to reduce log overhead 
     // as much as possible, passing kernel impl pointer instead of 
     // constructing args in place
-    m_usage_logger->log_kernel_start_info(kernel.get(), this);
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, true, ERT_CMD_STATE_NEW);
     cmd->run();
   }
 
@@ -2429,14 +2429,21 @@ public:
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
+    ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
-      return (cv_status == std::cv_status::timeout)
-        ? ERT_CMD_STATE_TIMEOUT
-        : ert_state;
+      if (cv_status == std::cv_status::timeout)
+        return ERT_CMD_STATE_TIMEOUT;
+
+      state = ert_state;
+    }
+    else {
+      state = cmd->wait();
     }
 
-    return cmd->wait();
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, false, state);
+
+    return state;
   }
 
 
@@ -2459,8 +2466,10 @@ public:
       state = cmd->wait();
     }
 
-    if (state == ERT_CMD_STATE_COMPLETED)
+    if (state == ERT_CMD_STATE_COMPLETED) {
+      m_usage_logger->log_kernel_run_info(kernel.get(), this, false, state);
       return std::cv_status::no_timeout;
+    }
 
     std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
     throw xrt::run::command_error(state, msg);
