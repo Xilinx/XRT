@@ -53,13 +53,9 @@ namespace xdp {
 
     #endif
 
-    std::cout << "reached end!" << std::endl;
-
     if (filetype == nullptr)
       return;
     
-    std::cout << "reached after!" << std::endl;
-
     #ifdef XDP_MINIMAL_BUILD
     metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
     metricStrings[module_type::dma].insert(metricStrings[module_type::dma].end(), {"s2mm_throughputs", "mm2s_throughputs"});          
