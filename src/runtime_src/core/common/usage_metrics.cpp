@@ -9,6 +9,7 @@
 #include "core/common/device.h"
 #include "core/common/query.h"
 #include "core/common/query_requests.h"
+#include "core/common/shim/buffer_handle.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -25,6 +26,7 @@
 # pragma warning ( disable : 4996 )
 #endif
 
+namespace bpt = boost::property_tree;
 namespace {
 
 // global variables
@@ -47,8 +49,8 @@ namespace xrt_core::usage_metrics {
 
 std::shared_ptr<metrics_map> usage_metrics_map = std::make_shared<metrics_map>();
 
-void
-print_json(boost::property_tree::ptree pt)
+static void
+print_json(const bpt::ptree& pt)
 {
   // create json in pwd
   auto current_time = std::chrono::system_clock::now();
@@ -62,7 +64,7 @@ print_json(boost::property_tree::ptree pt)
 
   if (out_file.is_open()) {
     std::ostringstream oss;
-    boost::property_tree::json_parser::write_json(oss, pt);
+    bpt::json_parser::write_json(oss, pt);
 
     out_file << oss.str();
     out_file.close();
@@ -93,10 +95,60 @@ print_json(boost::property_tree::ptree pt)
   }
 }
 
-void
+static bpt::ptree
+get_bos_ptree(const struct bo_metrics& bo_met)
+{
+  bpt::ptree bo_tree;
+
+  bo_tree.add("total_count", bo_met.total_count);
+  bo_tree.add("size", std::to_string(bo_met.total_size_in_bytes) + " bytes");
+  bo_tree.add("avg_size", std::to_string(bo_met.total_size_in_bytes / bo_met.total_count) + "bytes");
+  bo_tree.add("peak_size", std::to_string(bo_met.peak_size_in_bytes) + "bytes");
+  bo_tree.add("bytes_synced_to_device", std::to_string(bo_met.bytes_synced_to_device) + "bytes");
+  bo_tree.add("bytes_synced_from_device", std::to_string(bo_met.bytes_synced_from_device) + "bytes");
+
+  return bo_tree;
+}
+
+static bpt::ptree
+get_hw_ctx_ptree(const std::vector<struct hw_ctx_metrics>&)
+{
+  bpt::ptree hw_ctx_array;
+
+  return hw_ctx_array;
+}
+
+static void
 print_usage_metrics()
 {
-  print_json({});
+  bpt::ptree thread_array;
+
+  uint32_t t_count = 0;
+  // iterate over all threads
+  for (auto thread_it : *usage_metrics_map) {
+    bpt::ptree dev_array;
+    //iterate over all devices
+    for (auto dev_it : thread_it.second) {
+      bpt::ptree dev;
+      dev.put("device index", std::to_string(dev_it.first));
+      dev.put("bdf", dev_it.second.bdf);
+      dev.put("bos_peak_count", std::to_string(dev_it.second.bo_peak_count));
+
+      // add global bos
+      dev.add_child("global_bos", get_bos_ptree(dev_it.second.global_bos_met));
+
+      // add hw ctx info
+      dev.add_child("hw context", get_hw_ctx_ptree(dev_it.second.hw_ctx_vec));
+
+      dev_array.push_back(std::make_pair("device " + std::to_string(dev_it.first), dev));
+    }
+
+    //thread_array.push_back(std::make_pair(std::to_string(thread_count), dev_array));
+    thread_array.add_child("thread " + std::to_string(t_count), dev_array);
+    t_count++;
+  }
+
+  print_json(thread_array);
 }
 
 // Per thread logger object  
@@ -212,7 +264,7 @@ log_buffer_info_destruct(unsigned int)
 
 void
 usage_metrics_logger::
-log_buffer_sync(unsigned int d_id, void* ctx, size_t sz, xrt_core::buffer_handle::direction dir)
+log_buffer_sync(unsigned int dev_id, void* ctx, size_t sz, xclBOSyncDirection dir)
 {
   auto ctx_id = ctx ? reinterpret_cast<uintptr_t>(ctx) : 0;
   struct bo_metrics* bo_met = nullptr;
@@ -230,7 +282,7 @@ log_buffer_sync(unsigned int d_id, void* ctx, size_t sz, xrt_core::buffer_handle
     }
 
     if (bo_met) {
-      if (dir == xrt_core::buffer_handle::direction::host2device)
+      if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
         bo_met->bytes_synced_to_device += sz;
       else
         bo_met->bytes_synced_from_device += sz;

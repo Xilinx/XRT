@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/common/shim/buffer_handle.h"
+#include "core/include/xrt.h"
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/include/xrt/xrt_hw_context.h"
 
@@ -104,7 +104,7 @@ public:
   log_buffer_info_destruct(unsigned int) {}
 
   virtual void
-  log_buffer_sync(unsigned int, void*, size_t, xrt_core::buffer_handle::direction dir) {}
+  log_buffer_sync(unsigned int, void*, size_t, xclBOSyncDirection) {}
 
   virtual void
   log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) {}
@@ -142,7 +142,7 @@ public:
   log_buffer_info_destruct(unsigned int) override;
 
   virtual void
-  log_buffer_sync(unsigned int, void*, size_t, xrt_core::buffer_handle::direction dir) override;
+  log_buffer_sync(unsigned int, void*, size_t, xclBOSyncDirection) override;
 
   void
   log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) override;

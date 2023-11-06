@@ -444,9 +444,8 @@ public:
     // memory, but we still recommend user to perform explicit BO sync
     // operation just in case the HW changes in the future.
     // if (get_flags() != bo::flags::host_only)
-    auto b_dir = static_cast<xrt_core::buffer_handle::direction>(dir);
-    handle->sync(b_dir, sz, offset);
-    handle->get_usage_logger()->log_buffer_sync(device->get_device_id(), device.get_hwctx_handle(), sz, b_dir);
+    handle->sync(static_cast<xrt_core::buffer_handle::direction>(dir), sz, offset);
+    handle->get_usage_logger()->log_buffer_sync(device->get_device_id(), device.get_hwctx_handle(), sz, dir);
   }
 
   virtual uint64_t
