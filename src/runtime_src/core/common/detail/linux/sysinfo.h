@@ -50,10 +50,9 @@ glibc_info()
 } //end anonymous namespace
 
 
-namespace xrt_core::sysinfo {
+namespace xrt_core::sysinfo::detail {
 
-XRT_CORE_COMMON_EXPORT
-inline void
+void
 get_os_info(boost::property_tree::ptree &pt)
 {
   struct utsname sysinfo;

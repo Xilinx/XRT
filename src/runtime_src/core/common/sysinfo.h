@@ -5,7 +5,6 @@
 
 // Local - Include Files
 #include "config.h"
-#include "core/common/detail/sysinfo.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -15,6 +14,10 @@ namespace xrt_core::sysinfo {
 XRT_CORE_COMMON_EXPORT
 void
 get_xrt_info(boost::property_tree::ptree&);
+
+XRT_CORE_COMMON_EXPORT
+void
+get_os_info(boost::property_tree::ptree&);
 
 }
 

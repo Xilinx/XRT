@@ -21,4 +21,10 @@ get_xrt_info(boost::property_tree::ptree& pt)
   xrt_core::get_driver_info(pt);
 }
 
+void
+get_os_info(boost::property_tree::ptree& pt)
+{
+  xrt_core::sysinfo::detail::get_os_info(pt);
+}
+
 } //xrt_core::sysinfo
