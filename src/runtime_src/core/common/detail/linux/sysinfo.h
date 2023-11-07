@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
-// Local - Include files
-#include "core/common/sysinfo.h"
-
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 #include <boost/format.hpp>

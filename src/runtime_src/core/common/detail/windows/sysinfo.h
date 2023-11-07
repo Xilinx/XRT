@@ -2,7 +2,6 @@
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // Local - Include files
-#include "core/common/sysinfo.h"
 #include "core/common/error.h"
 
 // System - Include Files
