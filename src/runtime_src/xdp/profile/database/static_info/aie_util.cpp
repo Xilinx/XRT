@@ -246,6 +246,7 @@ namespace aie {
       auto shimCol     = io.second.shimColumn;
       auto logicalName = io.second.logicalName;
       auto name        = io.second.name;
+      auto type        = io.second.type;
 
       auto namePos     = name.find_last_of(".");
       auto currGraph   = name.substr(0, namePos);
@@ -281,6 +282,7 @@ namespace aie {
       tile_type tile = {0};
       tile.col = shimCol;
       tile.row = 0;
+      tile.subtype = type;
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
       tile.itr_mem_col = isMaster;
       tile.itr_mem_row = streamId;

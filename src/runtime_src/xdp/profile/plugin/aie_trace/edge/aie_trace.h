@@ -61,6 +61,8 @@ namespace xdp {
     void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
                           const module_type type, const std::string metricSet, 
                           const XAie_Events event);
+    void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
+                      uint8_t channel, std::vector<XAie_Events>& events);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
     void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
     bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 

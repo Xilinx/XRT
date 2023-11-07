@@ -56,6 +56,8 @@ namespace xdp {
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
+      void modifyEvents(module_type type, uint16_t subtype, 
+                        uint8_t channel, std::vector<XAie_Events>& events);
       void configGroupEvents(XAie_DevInst* aieDevInst,
                              const XAie_LocType loc,
                              const XAie_ModuleType mod,

@@ -654,6 +654,46 @@ namespace xdp {
     XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, edgeEventsValue);
   }
 
+  void AieTrace_EdgeImpl::modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
+                                       uint8_t channel, std::vector<XAie_Events>& events)
+  {
+    // Only needed for GMIO DMA channel 1
+    if ((type != module_type::shim) || (subtype == 0) || (channel == 0))
+      return;
+
+    // Check type to minimize replacements
+    if (isInputSet(type, metricSet)) {
+      // Input or MM2S
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_1_START_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+    }
+    else {
+      // Output or S2MM
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_DMA_S2MM_1_START_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+    }
+  }
+
   bool AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     if (!metadata->getIsValidMetrics()) {
@@ -695,6 +735,7 @@ namespace xdp {
       auto tile       = tileMetric.first;
       auto col        = tile.col;
       auto row        = tile.row;
+      auto subtype    = tile.subtype;
       auto type       = getTileType(row);
       auto typeInt    = static_cast<int>(type);
       auto& xaieTile  = aieDevice->tile(col, row);
@@ -1131,39 +1172,8 @@ namespace xdp {
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
         configEventSelections(aieDevInst, loc, XAIE_PL_MOD, type, metricSet, channel0, channel1);
 
-        if (channel0 > 0) {
-          // Check type to minimize replacements
-          if (isInputSet(type, metricSet)) {
-            // Input or MM2S
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_1_START_TASK_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
-          }
-          else {
-            // Output or S2MM
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_DMA_S2MM_1_START_TASK_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL);
-            std::replace(interfaceEvents.begin(), interfaceEvents.end(), 
-                XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-          }
-        }
+        // Modify events as needed
+        modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
 
         // Record for runtime config file
         cfgTile->interface_tile_trace_config.port_trace_ids[0] = channel0;
