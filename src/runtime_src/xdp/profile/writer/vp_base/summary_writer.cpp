@@ -18,6 +18,7 @@
 #define XDP_SOURCE
 
 #include "core/common/config_reader.h"
+#include "core/common/sysinfo.h"
 
 #include "xdp/profile/database/static_info/device_info.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
@@ -138,7 +139,7 @@ namespace xdp {
 #endif
 
     boost::property_tree::ptree xrtInfo ;
-    xrt_core::get_xrt_build_info(xrtInfo) ;
+    xrt_core::sysinfo::get_xrt_info(xrtInfo) ;
 
     fout << "Profile Summary\n" ;
     fout << "Generated on: " << getCurrentDateTime() << "\n" ;
