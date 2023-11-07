@@ -28,7 +28,7 @@ class TestRunner : public JSONConfigurable {
     std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
                       boost::property_tree::ptree& _ptTest);
     std::string findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
-                      const std::string dpu_name);
+                              boost::property_tree::ptree& _ptTest, const std::string dpu_name);
 
   // Child class helper methods
   protected:

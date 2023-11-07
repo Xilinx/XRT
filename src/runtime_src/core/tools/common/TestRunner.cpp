@@ -443,6 +443,7 @@ TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
 
 std::string
 TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
+                boost::property_tree::ptree& _ptTest,
                 const std::string dpu_name)
 {
   const static std::string dpu_dir = "DPU_Sequence"; 
@@ -450,7 +451,7 @@ TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
 
 #ifdef _WIN32
   boost::ignore_unused(_dev);
-  prefix_path = xrt_core::environment::xilinx_xrt();
+  prefix_path = xrt_core::environment::xclbin_path(_ptTest.get<std::string>("xclbin", "")).parent_path();
 #else
   boost::property_tree::ptree ptree; //ignore
   const auto platform_path = findPlatformPath(_dev, ptree);

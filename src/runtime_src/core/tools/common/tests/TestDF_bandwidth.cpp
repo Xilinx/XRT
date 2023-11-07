@@ -4,6 +4,7 @@
 // Local - Include Files
 #include "TestDF_bandwidth.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
@@ -17,7 +18,8 @@ namespace XBU = XBUtilities;
 #include <fstream>
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr size_t buffer_size = 1024 * 1024 * 1024; //1 GB
+static constexpr size_t buffer_size_gb = 1;
+static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
 static constexpr size_t word_count = buffer_size/4;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -129,7 +131,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   // Find DPU instruction file
   std::string dpu_instr;
   try {
-    dpu_instr = findDPUPath(dev, m_dpu_name);
+    dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -140,7 +142,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   size_t instr_size = 0;
   try {
-    get_instr_size(dpu_instr); 
+    instr_size = get_instr_size(dpu_instr); 
   }
   catch(const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -164,11 +166,14 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+
   auto start = std::chrono::high_resolution_clock::now();
   try {
-    auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, buffer_size, NULL);
+    auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
     // Wait for kernel to be done
-    run.wait();
+    run.wait2();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
@@ -176,6 +181,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto end = std::chrono::high_resolution_clock::now();
+    busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -190,7 +196,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   //Calculate bandwidth
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-  float bandwidth = buffer_size / elapsedSecs;
+  float bandwidth = buffer_size_gb / elapsedSecs;
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%f' GS/s") % bandwidth));
 
