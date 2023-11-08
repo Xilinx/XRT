@@ -32,15 +32,6 @@ get_core_device_raw(const xrt::hw_context& ctx);
 void
 set_exclusive(xrt::hw_context& ctx);
 
-// Get xclbin uuid associated with this context
-xrt::uuid
-get_xclbin_uuid(const xrt::hw_context& hwctx);
-
-// Get underlying hw ctx handle, this is used to uniquely identify
-// hw ctx when logging info related to it
-xrt_core::hwctx_handle*
-get_hwctx_handle(const xrt::hw_context& hwctx);
-
 // Allows the creation of the hardware context from a void pointer
 // to the hardware context implementation. We use a void pointer
 // because we need to dynamically link to the callbacks that exist in 

@@ -4,7 +4,6 @@
 #define XRT_CORE_BUFFER_HANDLE_H
 
 #include "core/common/shim/shared_handle.h"
-#include "core/common/usage_metrics.h"
 #include "xrt.h"
 
 #include <cstdint>
@@ -40,9 +39,6 @@ public:
   };
 
 public:
-  XCL_DRIVER_DLLESPEC
-  buffer_handle();
-
   virtual ~buffer_handle()
   {}
 
@@ -81,15 +77,6 @@ public:
   {
     return XRT_NULL_BO;
   }
-
-  std::shared_ptr<usage_metrics::base_logger>
-  get_usage_logger()
-  {
-    return m_usage_logger;
-  }
-
-private:
-  std::shared_ptr<usage_metrics::base_logger> m_usage_logger; 
 };
 
 } // xrt_core

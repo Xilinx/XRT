@@ -484,7 +484,7 @@ public:
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
   mutable std::mutex m_mutex;
-  std::shared_ptr<usage_metrics::base_logger> m_usage_logger;
+  std::shared_ptr<usage_metrics::base_logger> m_usage_logger = usage_metrics::get_usage_metrics_logger();
 };
 
 /**

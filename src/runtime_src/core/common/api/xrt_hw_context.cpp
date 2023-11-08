@@ -33,7 +33,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
-  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger;
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const cfg_param_type& cfg_param)
@@ -42,7 +43,6 @@ public:
     , m_cfg_param(cfg_param)
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
-    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {
   }
 
@@ -51,7 +51,6 @@ public:
     , m_xclbin{m_core_device->get_xclbin(xclbin_id)}
     , m_mode{mode}
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
-    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {}
 
   std::shared_ptr<hw_context_impl>
@@ -149,18 +148,6 @@ void
 set_exclusive(xrt::hw_context& hwctx)
 {
   hwctx.get_handle()->set_exclusive();
-}
-
-xrt::uuid
-get_xclbin_uuid(const xrt::hw_context& hwctx)
-{
-  return hwctx.get_handle()->get_uuid();
-}
-
-xrt_core::hwctx_handle*
-get_hwctx_handle(const xrt::hw_context& hwctx)
-{
-  return hwctx.get_handle()->get_hwctx_handle();
 }
 
 xrt::hw_context

@@ -6,7 +6,7 @@
 #include <chrono>
 #include <map>
 #include <memory>
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -15,15 +15,12 @@
 #include "core/include/ert.h"
 #include "core/include/xrt.h"
 #include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include "core/include/xrt/xrt_uuid.h"
 
 // forward declaration of xrt_core::device class
 namespace xrt_core {
 class device;
-}
-
-namespace {
-using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -41,50 +38,6 @@ using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::usage_metrics {
 
-struct bo_metrics
-{
-  uint32_t total_count = 0;
-  size_t   total_size_in_bytes = 0;
-  size_t   peak_size_in_bytes = 0;
-  size_t   bytes_synced_to_device = 0;
-  size_t   bytes_synced_from_device = 0;
-};
-
-struct kernel_metrics
-{
-  struct timestamp
-  {
-    tp start_time;
-    bool is_valid = false;
-  };
-
-  std::string name;
-  std::vector<uint32_t> cu_index_vec;
-  uint32_t total_runs = 0;
-  std::chrono::microseconds total_time = {};
-  std::unordered_map<uintptr_t, timestamp> exec_times; // run handle ptr is used for indexing
-  size_t num_args;
-};
-
-struct hw_ctx_metrics
-{
-  uintptr_t id;  // using hw_ctx handle ptr as unique identifier for logging
-  xrt::uuid xclbin_uuid;
-  struct bo_metrics bos_met;
-  std::vector<struct kernel_metrics> kernel_metrics_vec;
-};
-
-struct device_metrics
-{
-  std::string bdf = "";
-  struct bo_metrics global_bos_met;
-  uint32_t bo_active_count = 0;
-  uint32_t bo_peak_count = 0;
-  std::vector<struct hw_ctx_metrics> hw_ctx_vec;
-};
-
-using metrics_map = std::map<std::thread::id, std::map<unsigned int, device_metrics>>;
-
 // class base_logger - class with no op calls
 //
 // when user doesn't set ini option logging should be no op
@@ -95,61 +48,22 @@ public:
   log_device_info(std::shared_ptr<xrt_core::device>) {}
 
   virtual void
-  log_hw_ctx_info(void*) {}
+  log_hw_ctx_info(const xrt::hw_context_impl*) {}
 
   virtual void 
-  log_buffer_info_construct(unsigned int, size_t, void*) {}
+  log_buffer_info_construct(unsigned int, size_t, const xrt_core::hwctx_handle*) {}
   
   virtual void 
   log_buffer_info_destruct(unsigned int) {}
 
   virtual void
-  log_buffer_sync(unsigned int, void*, size_t, xclBOSyncDirection) {}
+  log_buffer_sync(unsigned int, const xrt_core::hwctx_handle*, size_t, xclBOSyncDirection) {}
 
   virtual void
   log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) {}
 
   virtual void
-  log_kernel_run_info(void*, const void*, bool, ert_cmd_state) {}
-};
-
-// class usage_metrics_logger - class for logging usage metrics
-//
-// Logging objects are created per thread 
-//
-// This class collects metrics from all threads using XRT
-// The metrics are collected in a thread safe manner.
-class usage_metrics_logger : public base_logger
-{
-public:
-  usage_metrics_logger();
-
-  ~usage_metrics_logger();
-
-  void
-  log_device_info(std::shared_ptr<xrt_core::device>) override;
-
-  void 
-  log_hw_ctx_info(void*) override;
-
-  void 
-  log_buffer_info_construct(unsigned int, size_t, void*) override;
-
-  void 
-  log_buffer_info_destruct(unsigned int) override;
-
-  virtual void
-  log_buffer_sync(unsigned int, void*, size_t, xclBOSyncDirection) override;
-
-  void
-  log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) override;
-
-  void
-  log_kernel_run_info(void*, const void*, bool, ert_cmd_state) override;
-
-private:
-  std::map<unsigned int, device_metrics> m_dev_map;
-  std::shared_ptr<metrics_map> map_ptr;
+  log_kernel_run_info(const xrt::kernel_impl*, const xrt::run_impl*, bool, ert_cmd_state) {}
 };
 
 // get_usage_metrics_logger() - Return logger object for current thread

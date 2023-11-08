@@ -1297,7 +1297,8 @@ private:
   size_t num_cumasks = 1;              // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
-  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger;
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
   // Open context of a specific compute unit.
   //
@@ -1521,7 +1522,6 @@ public:
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
     , uid(create_uid())
-    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n" , uid);
 
@@ -2080,7 +2080,8 @@ class run_impl
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
-  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger;
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
 public:
   uint32_t
@@ -2125,7 +2126,6 @@ public:
     , data(initialize_command(cmd.get()))
     , m_header(0)
     , uid(create_uid())
-    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -2145,7 +2145,6 @@ public:
     , m_header(rhs->m_header)
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
-    , m_usage_logger(xrt_core::usage_metrics::get_usage_metrics_logger())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -3199,12 +3198,6 @@ get_regmap_size(const xrt::kernel& kernel)
     return kernel.get_handle()->get_regmap_size();
 }
 
-std::string
-get_kernel_name(const xrt::kernel& kernel)
-{
-  return kernel.get_handle()->get_name();
-}
-
 xrt::hw_context
 get_hw_ctx(const xrt::kernel& kernel)
 {
@@ -3212,13 +3205,12 @@ get_hw_ctx(const xrt::kernel& kernel)
 }
 
 xrt::kernel
-create_kernel_from_implementation(void* kernel_impl)
+create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
 {
   if (!kernel_impl)
     throw std::runtime_error("Invalid kernel context implementation."); 
 
-  xrt::kernel_impl* impl_ptr = static_cast<xrt::kernel_impl*>(kernel_impl);
-  return xrt::kernel(impl_ptr->get_shared_ptr());
+  return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr());
 }
 
 }} // kernel_int, xrt_core

@@ -170,12 +170,6 @@ public:
 
 } // namespace
 
-namespace xrt_core {
-buffer_handle::buffer_handle()
-  : m_usage_logger(usage_metrics::get_usage_metrics_logger())
-{}
-} // namespace xrt_core
-
 namespace xrt {
 
 // class bo_impl - Base class for buffer objects
@@ -217,6 +211,10 @@ private:
     grpid = xflags.bank;
     flags = static_cast<bo::flags>(xflags.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
   }
+
+  // Usage logger for logging buffer stats
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
 protected:
   // deliberately made protected, this is a file-scoped controlled API
@@ -293,6 +291,12 @@ public:
     return handle.get();
   }
 
+  std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  get_usage_logger() const
+  {
+    return m_usage_logger;
+  }
+
   // BOs can be cloned internally by XRT to statisfy kernel
   // connectivity, the lifetime of a cloned BO is tied to the
   // lifetime of the BO from which is was cloned.
@@ -312,6 +316,12 @@ public:
   get_device() const
   {
     return device.get_device();
+  }
+
+  xrt_core::hwctx_handle*
+  get_hwctx_handle() const
+  {
+    return device.get_hwctx_handle();
   }
 
   export_handle
@@ -451,7 +461,7 @@ public:
     // operation just in case the HW changes in the future.
     // if (get_flags() != bo::flags::host_only)
     handle->sync(static_cast<xrt_core::buffer_handle::direction>(dir), sz, offset);
-    handle->get_usage_logger()->log_buffer_sync(device->get_device_id(), device.get_hwctx_handle(), sz, dir);
+    m_usage_logger->log_buffer_sync(device->get_device_id(), device.get_hwctx_handle(), sz, dir);
   }
 
   virtual uint64_t
@@ -1005,13 +1015,9 @@ alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags fla
   xflags.slot = xgrp.slot;
 
   auto hwctx  = device.get_hwctx_handle();
-  auto bo = hwctx
+  return hwctx
     ? hwctx->alloc_bo(userptr, sz, xflags.all)
     : device->alloc_bo(userptr, sz, xflags.all);
-
-  bo->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, hwctx);
-  
-  return bo;
 }
 
 static std::unique_ptr<xrt_core::buffer_handle>
@@ -1025,13 +1031,9 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
 
   try {
     auto hwctx  = device.get_hwctx_handle();
-    auto bo = hwctx
+    return hwctx
       ? hwctx->alloc_bo(sz, xflags.all)
       : device->alloc_bo(sz, xflags.all);
-
-    bo->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, hwctx);
-
-    return bo;
   }
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {
@@ -1050,6 +1052,7 @@ alloc_kbuf(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemory
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_kbuf);
   auto handle = alloc_bo(device, sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_kbuf>(device, std::move(handle), sz);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
   return boh;
 }
 
@@ -1071,6 +1074,7 @@ alloc_ubuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags f
   // driver pins and manages userptr
   auto handle = alloc_bo(device, userptr, sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_ubuf>(device, std::move(handle), sz, userptr);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
   return boh;
 }
 
@@ -1080,6 +1084,7 @@ alloc_hbuf(const device_type& device, xrt_core::aligned_ptr_type&& hbuf, size_t 
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_hbuf);
   auto handle =  alloc_bo(device, hbuf.get(), sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_hbuf>(device, std::move(handle), sz, std::move(hbuf));
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
   return boh;
 }
 
@@ -1089,6 +1094,7 @@ alloc_dbuf(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup 
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_dbuf);
   auto handle = alloc_bo(device, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
   auto boh = std::make_shared<xrt::buffer_dbuf>(device, std::move(handle), sz);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
   return boh;
 }
 
@@ -1104,6 +1110,7 @@ alloc_nodma(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup
   auto hbuf_handle = alloc_bo(device, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
   auto dbuf_handle = alloc_bo(device, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
   auto boh = std::make_shared<xrt::buffer_nodma>(device, std::move(hbuf_handle), std::move(dbuf_handle), sz);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), sz, device.get_hwctx_handle());
   return boh;
 }
 
@@ -1155,21 +1162,31 @@ static std::shared_ptr<xrt::bo_impl>
 alloc_import(const device_type& device, xrt::bo_impl::export_handle ehdl)
 {
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import);
-  return std::make_shared<xrt::buffer_import>(device, ehdl);
+  auto boh = std::make_shared<xrt::buffer_import>(device, ehdl);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(), boh->get_size(), device.get_hwctx_handle());
+  return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xrt::bo_impl::export_handle ehdl)
 {
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_import_from_pid);
-  return std::make_shared<xrt::buffer_import>(device, pid, ehdl);
+  auto boh = std::make_shared<xrt::buffer_import>(device, pid, ehdl);
+  boh->get_usage_logger()->log_buffer_info_construct(device->get_device_id(),
+                                                     boh->get_size(),
+                                                     device.get_hwctx_handle());
+  return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
 alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
 {
   XRT_TRACE_POINT_SCOPE(xrt_bo_alloc_sub);
-  return std::make_shared<xrt::buffer_sub>(parent, size, offset);
+  auto boh = std::make_shared<xrt::buffer_sub>(parent, size, offset);
+  boh->get_usage_logger()->log_buffer_info_construct(boh->get_core_device()->get_device_id(),
+                                                     boh->get_size(),
+                                                     boh->get_hwctx_handle());
+  return boh;
 }
 
 // alloc_clone() - Create a clone of src BO in specified memory bank
@@ -1186,6 +1203,9 @@ alloc_clone(const std::shared_ptr<xrt::bo_impl>& src, xrt::memory_group grp)
 
   // the clone implmentation lifetime is tied to src
   src->add_clone(clone);
+  clone->get_usage_logger()->log_buffer_info_construct(device->get_device_id(),
+                                                       clone->get_size(),
+                                                       clone->get_hwctx_handle());
   return clone;
 }
 
