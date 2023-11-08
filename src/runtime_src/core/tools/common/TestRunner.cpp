@@ -163,8 +163,7 @@ TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
 
   for (const std::string& t : suffix) {
     std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
-    for (std::filesystem::recursive_directory_iterator iter(fw_dir, 
-	  std::filesystem::directory_options::follow_directory_symlink ), end; iter != end;) {
+    for (std::filesystem::recursive_directory_iterator iter(fw_dir), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
       if (!std::filesystem::is_directory(std::filesystem::path(name.c_str()))) {

@@ -79,8 +79,8 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
 
   int num_kernel = 0, num_kernel_ddr = 0;
   bool chk_hbm_mem = false;
-  std::string filename = "/platform.json";
-  auto platform_json = boost::filesystem::path(test_path) / filename;
+  std::string filename = "platform.json";
+  auto platform_json = std::filesystem::path(test_path) / filename;
 
   try {
     boost::property_tree::ptree load_ptree_root;
