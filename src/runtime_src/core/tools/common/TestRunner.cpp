@@ -400,7 +400,10 @@ TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
 {
   //check if a 2RP platform
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
-
+  const auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(_dev, "");
+  if (device_name.find("Ryzen") != std::string::npos) {
+    return "/opt/xilinx/xrt/amdaie/";
+  }
   if (!logic_uuid.empty())
     return searchSSV2Xclbin(logic_uuid.front(), _ptTest);
   else {
@@ -436,6 +439,30 @@ TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
   }
 #endif
   return xclbin_path;
+}
+
+std::string
+TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
+                boost::property_tree::ptree& _ptTest,
+                const std::string dpu_name)
+{
+  const static std::string dpu_dir = "DPU_Sequence"; 
+  std::filesystem::path prefix_path;
+
+#ifdef _WIN32
+  boost::ignore_unused(_dev);
+  prefix_path = xrt_core::environment::xclbin_path(_ptTest.get<std::string>("xclbin", "")).parent_path();
+#else
+  boost::property_tree::ptree ptree; //ignore
+  const auto platform_path = findPlatformPath(_dev, ptree);
+  prefix_path = std::filesystem::path(platform_path);
+#endif
+  auto dpu_instr = prefix_path / dpu_dir / dpu_name;
+  if (!std::filesystem::exists(dpu_instr)) {
+    throw std::runtime_error(boost::str(boost::format("DPU sequence file not found: '%s'") % dpu_instr));
+  }
+
+  return dpu_instr.string();
 }
 
 std::vector<std::string>

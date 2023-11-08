@@ -62,7 +62,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["verify"]
+      "test": ["verify", "df-bw"]
     }]
   }]
 }]
