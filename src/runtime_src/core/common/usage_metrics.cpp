@@ -13,6 +13,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/include/xrt/xrt_uuid.h"
 
 #include <algorithm>
 #include <boost/property_tree/json_parser.hpp>
@@ -22,19 +23,33 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include <thread>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
 #endif
 
 namespace bpt = boost::property_tree;
+
 namespace {
 // global variables
-std::mutex m;
+static std::mutex m;
 static uint32_t thread_count;
-} // namespace
 
-namespace xrt_core::usage_metrics {
+template <typename MetType, typename FindType>
+static MetType*
+get_metrics(std::vector<MetType>& metrics_vec, const FindType& finder)
+{
+  auto it = std::find_if(metrics_vec.begin(), metrics_vec.end(), 
+                        [finder](const auto& met) 
+                        {
+                          return met.handle == finder;
+                        }
+                        );
+  return it == metrics_vec.end()
+    ? nullptr
+    : &(*it);
+}
 
 struct bo_metrics
 {
@@ -45,84 +60,108 @@ struct bo_metrics
   size_t   bytes_synced_from_device = 0;
 };
 
-using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct kernel_metrics
 {
+  using tp = std::chrono::time_point<std::chrono::high_resolution_clock>;
   struct timestamp
   {
     tp start_time;
     bool is_valid = false;
   };
 
-  std::string name;
+  std::string handle; // kernel name is used as handle for identifying kernel
   std::vector<uint32_t> cu_index_vec;
   uint32_t total_runs = 0;
   std::chrono::microseconds total_time = {};
   std::unordered_map<const xrt::run_impl*, timestamp> exec_times; // run handle ptr is used for indexing
   size_t num_args;
+
+  void
+  log_kernel_exec_time(const xrt::run_impl* run_hdl, const tp& tp_now, ert_cmd_state state)
+  {
+    // state ERT_CMD_STATE_NEW indicates kernel start is called
+    if (state == ERT_CMD_STATE_NEW) {
+      // record start everytime because previous run may be finished, timeout, aborted or stopped
+      exec_times[run_hdl].start_time = tp_now;
+      exec_times[run_hdl].is_valid = true;
+    }
+    else {
+      // make start time invalid so we can record for next run, add duration to total time and increment total runs
+      if (exec_times[run_hdl].is_valid && state == ERT_CMD_STATE_COMPLETED) {
+        // valid run increament run
+        total_runs++;
+        total_time += std::chrono::duration_cast<std::chrono::microseconds>(tp_now - exec_times[run_hdl].start_time);
+
+        // invalidate start time, run may be finished, aborted or timed out
+        exec_times[run_hdl].is_valid = false;
+      }
+    }
+  }
 };
 
 struct hw_ctx_metrics
 {
   const xrt_core::hwctx_handle* handle;  // using hw_ctx handle ptr as unique identifier for logging
   xrt::uuid xclbin_uuid;
-  struct bo_metrics bos_met;
-  std::vector<struct kernel_metrics> kernel_metrics_vec;
+  bo_metrics bos_met;
+  std::vector<kernel_metrics> kernel_metrics_vec;
+
+  void
+  log_kernel(const std::string& name, size_t args)
+  {
+    kernel_metrics k;
+    k.handle = name;
+    k.num_args = args;
+    kernel_metrics_vec.emplace_back(k);
+  }
 };
 
 struct device_metrics
 {
   std::string bdf = "";
-  struct bo_metrics global_bos_met;
+  bo_metrics global_bos_met;
   uint32_t bo_active_count = 0;
   uint32_t bo_peak_count = 0;
-  std::vector<struct hw_ctx_metrics> hw_ctx_vec;
+  std::vector<hw_ctx_metrics> hw_ctx_vec;
+
+  void
+  log_hw_ctx(const xrt_core::hwctx_handle* handle, const xrt::uuid& uuid)
+  {
+    hw_ctx_vec.emplace_back(hw_ctx_metrics{handle, uuid, {}, {}});
+  }
 };
 
-using metrics_map = std::map<std::thread::id, std::map<unsigned int, device_metrics>>;
+using metrics_map = std::map<std::thread::id, std::map<device_id, device_metrics>>;
+using device_metrics_map = std::map<device_id, device_metrics>;
 // Global map to store usage metrics of all threads
-std::shared_ptr<metrics_map> usage_metrics_map = std::make_shared<metrics_map>();
+static auto usage_metrics_map = std::make_shared<metrics_map>();
 
-// class usage_metrics_logger - class for logging usage metrics
-//
-// Logging objects are created per thread 
-//
-// This class collects metrics from all threads using XRT
-// The metrics are collected in a thread safe manner.
-class usage_metrics_logger : public base_logger
+// Helper functions to get metrics
+static device_metrics*
+get_device_metrics(device_metrics_map& dev_map, device_id dev_id)
 {
-public:
-  usage_metrics_logger();
+  auto map_it = dev_map.find(dev_id);
+  return map_it == dev_map.end()
+    ? nullptr
+    : &(*map_it).second;
+}
 
-  ~usage_metrics_logger();
+static bo_metrics*
+get_buffer_metrics(device_metrics* dev_metrics, const xrt_core::hwctx_handle* handle)
+{
+  if (!handle) {
+    // global bo
+    return &dev_metrics->global_bos_met;
+  }
+  else {
+    auto hw_ctx_met = get_metrics(dev_metrics->hw_ctx_vec, handle);
+    if (hw_ctx_met != nullptr)
+      return &hw_ctx_met->bos_met;
+  }
+  return nullptr;
+}
 
-  void
-  log_device_info(std::shared_ptr<xrt_core::device>) override;
-
-  void 
-  log_hw_ctx_info(const xrt::hw_context_impl*) override;
-
-  void 
-  log_buffer_info_construct(unsigned int, size_t, const xrt_core::hwctx_handle*) override;
-
-  void 
-  log_buffer_info_destruct(unsigned int) override;
-
-  virtual void
-  log_buffer_sync(unsigned int, const xrt_core::hwctx_handle*, size_t, xclBOSyncDirection) override;
-
-  void
-  log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) override;
-
-  void
-  log_kernel_run_info(const xrt::kernel_impl*, const xrt::run_impl*, bool, ert_cmd_state) override;
-
-private:
-  std::map<unsigned int, device_metrics> m_dev_map;
-  std::shared_ptr<metrics_map> map_ptr;
-};
-
-
+// Helper functions to print usage metrics as json
 static void
 print_json(const bpt::ptree& pt)
 {
@@ -149,7 +188,7 @@ print_json(const bpt::ptree& pt)
 }
 
 static bpt::ptree
-get_bos_ptree(const struct bo_metrics& bo_met)
+get_bos_ptree(const bo_metrics& bo_met)
 {
   bpt::ptree bo_tree;
 
@@ -164,14 +203,14 @@ get_bos_ptree(const struct bo_metrics& bo_met)
 }
 
 static bpt::ptree
-get_kernels_ptree(const std::vector<struct kernel_metrics>& kernels_vec)
+get_kernels_ptree(const std::vector<kernel_metrics>& kernels_vec)
 {
   bpt::ptree kernel_array;
 
-  for (auto &kernel : kernels_vec) {
+  for (const auto& kernel : kernels_vec) {
     bpt::ptree kernel_tree;
 
-    kernel_tree.put("name", kernel.name);
+    kernel_tree.put("name", kernel.handle);
     kernel_tree.put("num_of_args", kernel.num_args);
     kernel_tree.put("num_total_runs", std::to_string(kernel.total_runs));
 
@@ -186,12 +225,12 @@ get_kernels_ptree(const std::vector<struct kernel_metrics>& kernels_vec)
 }
 
 static bpt::ptree
-get_hw_ctx_ptree(const std::vector<struct hw_ctx_metrics>& hw_ctx_vec)
+get_hw_ctx_ptree(const std::vector<hw_ctx_metrics>& hw_ctx_vec)
 {
   bpt::ptree hw_ctx_array;
 
   uint32_t ctx_count = 0;
-  for (const auto &ctx : hw_ctx_vec) {
+  for (const auto& ctx : hw_ctx_vec) {
     bpt::ptree hw_ctx;
     hw_ctx.put("id", std::to_string(ctx_count));
     hw_ctx.put("xclbin_uuid", ctx.xclbin_uuid.to_string());
@@ -216,20 +255,20 @@ print_usage_metrics()
 
   uint32_t t_count = 0;
   // iterate over all threads
-  for (const auto& thread_it : *usage_metrics_map) {
+  for (const auto& [thread_id, dev_metrics_map] : *usage_metrics_map) {
     bpt::ptree dev_array;
     // iterate over all devices
-    for (auto dev_it : thread_it.second) {
+    for (const auto& [dev_id, dev_metrics] : dev_metrics_map) {
       bpt::ptree dev;
-      dev.put("device_index", std::to_string(dev_it.first));
-      dev.put("bdf", dev_it.second.bdf);
-      dev.put("bos_peak_count", std::to_string(dev_it.second.bo_peak_count));
+      dev.put("device_index", std::to_string(dev_id));
+      dev.put("bdf", dev_metrics.bdf);
+      dev.put("bos_peak_count", std::to_string(dev_metrics.bo_peak_count));
 
       // add global bos
-      dev.add_child("global_bos", get_bos_ptree(dev_it.second.global_bos_met));
+      dev.add_child("global_bos", get_bos_ptree(dev_metrics.global_bos_met));
 
       // add hw ctx info
-      dev.add_child("hw_context", get_hw_ctx_ptree(dev_it.second.hw_ctx_vec));
+      dev.add_child("hw_context", get_hw_ctx_ptree(dev_metrics.hw_ctx_vec));
 
       dev_array.push_back(std::make_pair("device", dev));
     }
@@ -241,23 +280,44 @@ print_usage_metrics()
   print_json(thread_array);
 }
 
-// Create specific logger if ini option is enabled
-static std::shared_ptr<base_logger>
-get_logger_object()
+// class usage_metrics_logger - class for logging usage metrics
+//
+// Logging objects are created per thread 
+//
+// This class collects metrics from all threads using XRT
+// The metrics are collected in a thread safe manner.
+class usage_metrics_logger : public xrt_core::usage_metrics::base_logger
 {
-  if (xrt_core::config::get_usage_metrics_logging())
-    return std::make_shared<usage_metrics_logger>();
+public:
+  usage_metrics_logger();
 
-  return std::make_shared<base_logger>();
-}
+  ~usage_metrics_logger();
 
-// Per thread logger object  
-std::shared_ptr<base_logger>
-get_usage_metrics_logger()
-{
-  static thread_local auto usage_logger_object = get_logger_object();
-  return usage_logger_object;
-}
+  void
+  log_device_info(const xrt_core::device*) override;
+
+  void 
+  log_hw_ctx_info(const xrt::hw_context_impl*) override;
+
+  void 
+  log_buffer_info_construct(device_id, size_t, const xrt_core::hwctx_handle*) override;
+
+  void 
+  log_buffer_info_destruct(device_id) override;
+
+  virtual void
+  log_buffer_sync(device_id, const xrt_core::hwctx_handle*, size_t, xclBOSyncDirection) override;
+
+  void
+  log_kernel_info(const xrt_core::device*, const xrt::hw_context&, const std::string&, size_t) override;
+
+  void
+  log_kernel_run_info(const xrt::kernel_impl*, const xrt::run_impl*, ert_cmd_state) override;
+
+private:
+  device_metrics_map m_dev_map;
+  std::shared_ptr<metrics_map> map_ptr;
+};
 
 usage_metrics_logger::
 usage_metrics_logger() : map_ptr(usage_metrics_map)
@@ -285,10 +345,11 @@ usage_metrics_logger::
 
 void
 usage_metrics_logger::
-log_device_info(std::shared_ptr<xrt_core::device> dev)
+log_device_info(const xrt_core::device* dev)
 {
   auto dev_id = dev->get_device_id();
-  if (m_dev_map.find(dev_id) == m_dev_map.end()) {
+  if (!get_device_metrics(m_dev_map, dev_id)) {
+    // initialize map with this device index
     m_dev_map[dev_id] = {};
     try {
       auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
@@ -310,14 +371,14 @@ log_hw_ctx_info(const xrt::hw_context_impl* hwctx_impl)
     auto dev_id = xrt_core::hw_context_int::get_core_device(hw_ctx)->get_device_id();
     auto uuid = hw_ctx.get_xclbin_uuid();
 
-    // this condition is not required as device will be present
-    if (auto map_it = m_dev_map.find(dev_id); map_it != m_dev_map.end()) {
-      if (auto ctx_it = std::find_if(
-          map_it->second.hw_ctx_vec.begin(), map_it->second.hw_ctx_vec.end(), 
-          [hwctx_handle](hw_ctx_metrics& ctx) {return ctx.handle == hwctx_handle;}); ctx_it == map_it->second.hw_ctx_vec.end()) {
-        map_it->second.hw_ctx_vec.emplace_back(hw_ctx_metrics{hwctx_handle, uuid, {}, {}});
-      }
-    }
+    // dont log if device didn't match
+    auto dev_metrics = get_device_metrics(m_dev_map, dev_id);
+    if (!dev_metrics)
+      return;
+
+    // log if this entry is not logged before
+    if (!get_metrics(dev_metrics->hw_ctx_vec, hwctx_handle))
+      dev_metrics->log_hw_ctx(hwctx_handle, uuid);
   }
   catch(...) {
     // dont log anything
@@ -326,37 +387,29 @@ log_hw_ctx_info(const xrt::hw_context_impl* hwctx_impl)
 
 void
 usage_metrics_logger::
-log_buffer_info_construct(unsigned int dev_id, size_t sz, const xrt_core::hwctx_handle* handle)
+log_buffer_info_construct(device_id dev_id, size_t sz, const xrt_core::hwctx_handle* handle)
 {
-  struct bo_metrics* bo_met = nullptr;
+  auto dev_metrics = get_device_metrics(m_dev_map, dev_id);
+  if (!dev_metrics)
+    return;
 
-  if (auto map_it = m_dev_map.find(dev_id); map_it != m_dev_map.end()) {
-    if (!handle) {
-      // global bo
-      bo_met = &map_it->second.global_bos_met;
-    }
+  bo_metrics* bo_met = get_buffer_metrics(dev_metrics, handle);
+  // don't log if bo not found
+  if (!bo_met)
+    return;
 
-    if (auto ctx_it = std::find_if(
-        map_it->second.hw_ctx_vec.begin(), map_it->second.hw_ctx_vec.end(), 
-            [handle](hw_ctx_metrics& ctx) {return ctx.handle == handle;}); ctx_it != map_it->second.hw_ctx_vec.end()) {
-      bo_met = &ctx_it->bos_met;
-    }
-
-    if (bo_met) {
-      bo_met->total_count++;
-      bo_met->total_size_in_bytes += sz;
-      bo_met->peak_size_in_bytes = std::max(bo_met->peak_size_in_bytes, sz);
-      // increase active count in case of global or ctx bound bo
-      map_it->second.bo_active_count++;
-      map_it->second.bo_peak_count = 
-          std::max(map_it->second.bo_peak_count, map_it->second.bo_active_count);
-    }
-  }
+  bo_met->total_count++;
+  bo_met->total_size_in_bytes += sz;
+  bo_met->peak_size_in_bytes = std::max(bo_met->peak_size_in_bytes, sz);
+  // increase active count in case of global or ctx bound bo
+  dev_metrics->bo_active_count++;
+  dev_metrics->bo_peak_count = 
+      std::max(dev_metrics->bo_peak_count, dev_metrics->bo_active_count);
 }
 
 void
 usage_metrics_logger::
-log_buffer_info_destruct(unsigned int)
+log_buffer_info_destruct(device_id)
 {
   // TODO :
   // This call is needed to decrement bo active count
@@ -365,58 +418,48 @@ log_buffer_info_destruct(unsigned int)
 
 void
 usage_metrics_logger::
-log_buffer_sync(unsigned int dev_id, const xrt_core::hwctx_handle* handle, size_t sz, xclBOSyncDirection dir)
+log_buffer_sync(device_id dev_id, const xrt_core::hwctx_handle* handle, size_t sz, xclBOSyncDirection dir)
 {
-  struct bo_metrics* bo_met = nullptr;
+  auto dev_metrics = get_device_metrics(m_dev_map, dev_id);
+  if (!dev_metrics)
+    return;
 
-  if (auto map_it = m_dev_map.find(dev_id); map_it != m_dev_map.end()) {
-    if (!handle) {
-      // global bo
-      bo_met = &map_it->second.global_bos_met;
-    }
+  bo_metrics* bo_met = get_buffer_metrics(dev_metrics, handle);
+  // don't log if bo not found
+  if (!bo_met)
+    return;
 
-    if (auto ctx_it = std::find_if(
-        map_it->second.hw_ctx_vec.begin(), map_it->second.hw_ctx_vec.end(), 
-            [handle](hw_ctx_metrics& ctx) {return ctx.handle == handle;}); ctx_it != map_it->second.hw_ctx_vec.end()) {
-      bo_met = &ctx_it->bos_met;
-    }
-
-    if (bo_met) {
-      if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
-        bo_met->bytes_synced_to_device += sz;
-      else
-        bo_met->bytes_synced_from_device += sz;
-    }
-  }
+  if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+    bo_met->bytes_synced_to_device += sz;
+  else
+    bo_met->bytes_synced_from_device += sz;
 }
 
 void
 usage_metrics_logger::
-log_kernel_info(std::shared_ptr<xrt_core::device> dev, const xrt::hw_context& ctx, const std::string& name, size_t args)
+log_kernel_info(const xrt_core::device* dev, const xrt::hw_context& ctx, const std::string& name, size_t args)
 {
   auto dev_id = dev->get_device_id();
   auto hwctx_handle = static_cast<xrt_core::hwctx_handle*>(ctx);
 
-  // this condition is not required as device will be present
-  if (auto map_it = m_dev_map.find(dev_id); map_it != m_dev_map.end()) {
-    if (auto ctx_it = std::find_if(
-        map_it->second.hw_ctx_vec.begin(), map_it->second.hw_ctx_vec.end(), 
-        [hwctx_handle](hw_ctx_metrics& ctx) {return ctx.handle == hwctx_handle;}); ctx_it != map_it->second.hw_ctx_vec.end()) {
-      if (auto kernel_it = std::find_if(
-          ctx_it->kernel_metrics_vec.begin(), ctx_it->kernel_metrics_vec.end(),
-          [name](kernel_metrics& kernel) {return kernel.name == name;}); kernel_it == ctx_it->kernel_metrics_vec.end()) {
-        struct kernel_metrics k;
-        k.name = name;
-        k.num_args = args;
-        ctx_it->kernel_metrics_vec.emplace_back(k);
-      } 
-    }
+  auto dev_metrics = get_device_metrics(m_dev_map, dev_id);
+  if (!dev_metrics)
+    return;
+
+  auto hw_ctx_met = get_metrics(dev_metrics->hw_ctx_vec, hwctx_handle);
+  // dont log if hw ctx didn't match existing ones
+  if (!hw_ctx_met)
+    return;
+  
+  // log if this entry is not logged before
+  if (!get_metrics(hw_ctx_met->kernel_metrics_vec, name)) {
+    hw_ctx_met->log_kernel(name, args);
   }
 }
 
 void
 usage_metrics_logger::
-log_kernel_run_info(const xrt::kernel_impl* krnl_impl, const xrt::run_impl* run_hdl, bool start, ert_cmd_state state)
+log_kernel_run_info(const xrt::kernel_impl* krnl_impl, const xrt::run_impl* run_hdl, ert_cmd_state state)
 {
   // collecting time at start of call as next calls will be overhead
   auto ts_now = std::chrono::high_resolution_clock::now();
@@ -430,38 +473,44 @@ log_kernel_run_info(const xrt::kernel_impl* krnl_impl, const xrt::run_impl* run_
     auto dev_id = xrt_core::hw_context_int::get_core_device(hw_ctx)->get_device_id();
     auto name = kernel.get_name();
 
-    // this condition is not required as device will be present
-    if (auto map_it = m_dev_map.find(dev_id); map_it != m_dev_map.end()) {
-      if (auto ctx_it = std::find_if(
-          map_it->second.hw_ctx_vec.begin(), map_it->second.hw_ctx_vec.end(), 
-              [hwctx_handle](hw_ctx_metrics& ctx) {return ctx.handle == hwctx_handle;}); ctx_it != map_it->second.hw_ctx_vec.end()) {
-        if (auto kernel_it = std::find_if(
-            ctx_it->kernel_metrics_vec.begin(), ctx_it->kernel_metrics_vec.end(),
-            [name](kernel_metrics& kernel) {return kernel.name == name;}); kernel_it != ctx_it->kernel_metrics_vec.end()) {
-          if (start) {
-            // record start everytime because previous run may be finished, timeout, aborted or stopped
-            kernel_it->exec_times[run_hdl].start_time = ts_now;
-            kernel_it->exec_times[run_hdl].is_valid = true;
-          }
-          else {
-            // make start time invalid so we can record for next run, add duration to total time and increment total runs
-            if (kernel_it->exec_times[run_hdl].is_valid) {
-              if (state == ERT_CMD_STATE_COMPLETED) {
-                // valid run increament run
-                kernel_it->total_runs++;
-                kernel_it->total_time += std::chrono::duration_cast<std::chrono::microseconds>(ts_now - kernel_it->exec_times[run_hdl].start_time);
-              }
-              // invalidate start time, run may be finished, aborted or timed out
-              kernel_it->exec_times[run_hdl].is_valid = false;
-            }
-          }
-        }
-      }
-    }
+    auto dev_metrics = get_device_metrics(m_dev_map, dev_id);
+    if (!dev_metrics)
+      return;
+
+    auto hw_ctx_met = get_metrics(dev_metrics->hw_ctx_vec, hwctx_handle);
+    // dont log if hw ctx didn't match existing ones
+    if (!hw_ctx_met)
+      return;
+  
+    auto kernel_met = get_metrics(hw_ctx_met->kernel_metrics_vec, name);
+    if (!kernel_met)
+      return;
+
+    kernel_met->log_kernel_exec_time(run_hdl, ts_now, state);
   }
   catch(...) {
     // dont log anything
   }
 }
 
+// Create specific logger if ini option is enabled
+static std::shared_ptr<xrt_core::usage_metrics::base_logger>
+get_logger_object()
+{
+  if (xrt_core::config::get_usage_metrics_logging())
+    return std::make_shared<usage_metrics_logger>();
+
+  return std::make_shared<xrt_core::usage_metrics::base_logger>();
+}
+
+} // namespace
+
+namespace xrt_core::usage_metrics {
+// Per thread logger object  
+std::shared_ptr<base_logger>
+get_usage_metrics_logger()
+{
+  static thread_local auto usage_logger_object = get_logger_object();
+  return usage_logger_object;
+}
 } // xrt_core::usage_metrics

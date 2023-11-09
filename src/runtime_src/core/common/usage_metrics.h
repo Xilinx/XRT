@@ -3,24 +3,21 @@
 #ifndef XRT_CORE_USAGE_METRICS_H
 #define XRT_CORE_USAGE_METRICS_H
 
-#include <chrono>
-#include <map>
 #include <memory>
 #include <cstdint>
 #include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
 
-#include "core/include/ert.h"
 #include "core/include/xrt.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "core/include/xrt/xrt_uuid.h"
 
 // forward declaration of xrt_core::device class
 namespace xrt_core {
 class device;
+}
+
+namespace {
+using device_id = unsigned int;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -45,25 +42,25 @@ class base_logger
 {
 public:
   virtual void 
-  log_device_info(std::shared_ptr<xrt_core::device>) {}
+  log_device_info(const xrt_core::device*) {}
 
   virtual void
   log_hw_ctx_info(const xrt::hw_context_impl*) {}
 
   virtual void 
-  log_buffer_info_construct(unsigned int, size_t, const xrt_core::hwctx_handle*) {}
+  log_buffer_info_construct(device_id, size_t, const xrt_core::hwctx_handle*) {}
   
   virtual void 
-  log_buffer_info_destruct(unsigned int) {}
+  log_buffer_info_destruct(device_id) {}
 
   virtual void
-  log_buffer_sync(unsigned int, const xrt_core::hwctx_handle*, size_t, xclBOSyncDirection) {}
+  log_buffer_sync(device_id, const xrt_core::hwctx_handle*, size_t, xclBOSyncDirection) {}
 
   virtual void
-  log_kernel_info(std::shared_ptr<xrt_core::device>, const xrt::hw_context&, const std::string&, size_t) {}
+  log_kernel_info(const xrt_core::device*, const xrt::hw_context&, const std::string&, size_t) {}
 
   virtual void
-  log_kernel_run_info(const xrt::kernel_impl*, const xrt::run_impl*, bool, ert_cmd_state) {}
+  log_kernel_run_info(const xrt::kernel_impl*, const xrt::run_impl*, ert_cmd_state) {}
 };
 
 // get_usage_metrics_logger() - Return logger object for current thread

@@ -1557,7 +1557,7 @@ public:
     // amend args with computed data based on kernel protocol
     amend_args();
 
-    m_usage_logger->log_kernel_info(device->core_device, hwctx, name, args.size());
+    m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
   // Delegating constructor with no module
@@ -2347,7 +2347,8 @@ public:
     // This is in critical path, we need to reduce log overhead 
     // as much as possible, passing kernel impl pointer instead of 
     // constructing args in place
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, true, ERT_CMD_STATE_NEW);
+    // sending state as ERT_CMD_STATE_NEW for kernel start
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
     cmd->run();
   }
 
@@ -2440,7 +2441,7 @@ public:
       state = cmd->wait();
     }
 
-    m_usage_logger->log_kernel_run_info(kernel.get(), this, false, state);
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
 
     return state;
   }
@@ -2466,7 +2467,7 @@ public:
     }
 
     if (state == ERT_CMD_STATE_COMPLETED) {
-      m_usage_logger->log_kernel_run_info(kernel.get(), this, false, state);
+      m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
       return std::cv_status::no_timeout;
     }
 

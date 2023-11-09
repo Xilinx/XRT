@@ -291,10 +291,10 @@ public:
     return handle.get();
   }
 
-  std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  xrt_core::usage_metrics::base_logger*
   get_usage_logger() const
   {
-    return m_usage_logger;
+    return m_usage_logger.get();
   }
 
   // BOs can be cloned internally by XRT to statisfy kernel

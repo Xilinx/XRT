@@ -58,7 +58,7 @@ alloc_device_index(unsigned int index)
   XRT_TRACE_POINT_SCOPE(xrt_device_alloc_index);
   auto dev = xrt_core::get_userpf_device(index);
 
-  dev->get_usage_logger()->log_device_info(dev);
+  dev->get_usage_logger()->log_device_info(dev.get());
 
   return dev;
 }

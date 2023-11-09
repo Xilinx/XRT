@@ -118,10 +118,10 @@ public:
     return m_hdl.get();
   }
 
-  std::shared_ptr<xrt_core::usage_metrics::base_logger>
+  xrt_core::usage_metrics::base_logger*
   get_usage_logger()
   {
-    return m_usage_logger;
+    return m_usage_logger.get();
   }
 };
 
