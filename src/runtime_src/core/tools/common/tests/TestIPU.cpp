@@ -19,12 +19,17 @@ static constexpr size_t buffer_size = 128;
 TestIPU::TestIPU()
   : TestRunner("verify", 
                 "Run 'Hello World' test on IPU",
-                "1x4.xclbin"){}
+                "validate_phx.xclbin"){}
 
 boost::property_tree::ptree
 TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
+
+  auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(dev, "");
+  if (device_name.find("RyzenAI-Strix") != std::string::npos) {
+    ptree.put("xclbin", "validate_stx.xclbin");
+  }
 
   auto xclbin_path = findXclbinPath(dev, ptree);
   if (!std::filesystem::exists(xclbin_path)) {
