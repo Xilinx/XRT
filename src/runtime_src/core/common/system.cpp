@@ -7,11 +7,18 @@
 #include "device.h"
 #include "module_loader.h"
 
+#include "gen/version.h"
+
+
 // System - Include Files
-#include <vector>
+#include <boost/property_tree/ptree.hpp>
+
 #include <map>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace {
 
