@@ -1,4 +1,4 @@
-name: repository-dispatch-mirror
+name: repo-dispatch-mirror
 
 on:
   workflow_dispatch:
