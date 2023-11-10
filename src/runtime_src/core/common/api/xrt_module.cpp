@@ -39,10 +39,7 @@ namespace
 // embedded as ELF metadata in the future.
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 
-// struct instr_buf - represent instruction buffer
-// TODO place holder in case we need special handling
-// TODO merge with ctrlcode?
-struct instr_buf
+struct buf
 {
   std::vector<uint8_t> m_data;
 
@@ -65,52 +62,7 @@ struct instr_buf
   {
     return m_data.data();
   }
-};
-
-// struct control_packet - represent control-packet buffer
-// TODO place holder in case we need special handling
-// TODO merge with ctrlcode?
-struct control_packet
-{
-  std::vector<uint8_t> m_data;
-
-  void
-  append_section_data(ELFIO::section* sec)
-  {
-    auto sz = sec->get_size();
-    auto sdata = sec->get_data();
-    m_data.insert(m_data.end(), sdata, sdata + sz);
-  }
-
-  size_t
-  size() const
-  {
-    return m_data.size();
-  }
-
-  const uint8_t*
-  data() const
-  {
-    return m_data.data();
-  }
-};
-
-// struct ctrlcode - represent control code for column or partition
-//
-// Manage ctrlcode data for a single column or partition with optional
-// padding of pages per ELF spec.
-struct ctrlcode
-{
-  std::vector<uint8_t> m_data;
-
-  void
-  append_section_data(ELFIO::section* sec)
-  {
-    auto sz = sec->get_size();
-    auto sdata = sec->get_data();
-    m_data.insert(m_data.end(), sdata, sdata + sz);
-  }
-
+  
   void
   append_section_data(const uint8_t* userptr, size_t sz)
   {
@@ -130,19 +82,11 @@ struct ctrlcode
 
     m_data.resize(pad);
   }
-
-  size_t
-  size() const
-  {
-    return m_data.size();
-  }
-
-  const uint8_t*
-  data() const
-  {
-    return m_data.data();
-  }
 };
+
+using instr_buf = buf;
+using control_packet = buf;
+using ctrlcode = buf; // represent control code for column or partition
 
 // TODO merge this with pathder (on Turin)
 // struct patchers - patchers for a symbol
