@@ -17,12 +17,12 @@
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
+#include <any>
 #include <cstdint>
 #include <vector>
 #include <string>
 #include <map>
 #include <memory>
-#include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
 
@@ -204,10 +204,10 @@ public:
    * query() - Query the device for specific property
    *
    * @QueryRequestType: Template parameter identifying a specific query request
-   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   * Return: QueryRequestType::result_type value wrapped as std::any.
    */
   template <typename QueryRequestType>
-  boost::any
+  std::any
   query() const
   {
     auto& qr = lookup_query(QueryRequestType::key);
@@ -219,10 +219,10 @@ public:
    *
    * @QueryRequestType: Template parameter identifying a specific query request
    * @args:  Variadic arguments forwarded the QueryRequestType
-   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   * Return: QueryRequestType::result_type value wrapped as std::any.
    */
   template <typename QueryRequestType, typename ...Args>
-  boost::any
+  std::any
   query(Args&&... args) const
   {
     auto& qr = lookup_query(QueryRequestType::key);
@@ -488,7 +488,7 @@ inline typename QueryRequestType::result_type
 device_query(const device* device)
 {
   auto ret = device->query<QueryRequestType>();
-  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+  return std::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
 template <typename QueryRequestType, typename ...Args>
@@ -496,7 +496,7 @@ inline typename QueryRequestType::result_type
 device_query(const device* device, Args&&... args)
 {
   auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
-  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+  return std::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
 template <typename QueryRequestType>
@@ -511,7 +511,7 @@ inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device, Args&&... args)
 {
   auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
-  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+  return std::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
 template <typename QueryRequestType>
