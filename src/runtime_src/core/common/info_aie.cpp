@@ -1,19 +1,7 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+
 #define XRT_CORE_COMMON_SOURCE
 #include "asd_parser.h"
 #include "info_aie.h"
@@ -596,8 +584,7 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
   try {
     boost::property_tree::ptree pt;
     boost::property_tree::ptree empty_pt;
-    auto hw_gen = pt_core.get<uint8_t>("hw_gen");
-    
+
     auto row = tile.get<int>("row");
     auto col = tile.get<int>("column");
     pt = pt_core.get_child("aie_core." + std::to_string(col) + "_" + std::to_string(row));
@@ -637,11 +624,12 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
       addnodelist("event", "events", pt, tile);
 
     // Add BD information to the tiles
-    if (pt.find("bd") != pt.not_found()){
+    if (pt.find("bd") != pt.not_found()) {
+      auto hw_gen = pt_core.get<uint8_t>("hw_gen");
       if (hw_gen == 1)
         populate_core_bd_info_aie(pt, tile);
       else
-	populate_core_bd_info_aieml(pt, tile);
+        populate_core_bd_info_aieml(pt, tile);
     }
   }
   catch (const std::exception& ex) {
@@ -943,6 +931,9 @@ populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree&
     core_info = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::core, tiles_info,
                                                     cols_filled);
 
+    pt.put("schema_version.major", core_info.get<uint32_t>("schema_version.major"));
+    pt.put("schema_version.minor", core_info.get<uint32_t>("schema_version.minor"));
+
     for (uint16_t col = 0; col < tiles_info.cols; col++) {
       // skip this col if not filled
       if (!(cols_filled & (1 << col)))
@@ -962,7 +953,7 @@ populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree&
     // TODO: remove this function
     add_dummy_graphs(pt, tile_array);
   }
-  catch (const std::exception& ex){
+  catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return;
   }
@@ -979,26 +970,23 @@ populate_aie(const xrt_core::device* device, const std::string& desc)
     std::string aie_data = xrt_core::device_query<qr::aie_metadata>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_aie);
-
     populate_aie_from_metadata(device, pt_aie, pt);
-    return pt;
   }
   catch (const qr::no_such_key&) {
-    // pcie platforms dont have aie metadata
+    // Populate aie info for PCIe platforms
+    populate_aie_helper(device, pt);
   }
   catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));
     return pt;
   }
 
-  if (pt_aie.empty()) {
+  if (pt.empty()) {
     // AIE tile not available
     pt.put("error_msg", "AIE information is not available");
     return pt;
   }
 
-  // Populate aie info for PCIe platforms
-  populate_aie_helper(device, pt);
   return pt;
 }
 
