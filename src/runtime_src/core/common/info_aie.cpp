@@ -350,8 +350,6 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
   try {
     boost::property_tree::ptree tile_array;
 
-    auto hw_gen = pt_shim.get<uint8_t>("hw_gen");
-
     // Populate the shim information such as dma, lock, error, events
     // for each tiles.
     for (const auto& as: pt_shim.get_child("aie_shim")) {
@@ -380,10 +378,11 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
         addnodelist("event", "events", oshim, ishim);
 
       if (oshim.find("bd") != oshim.not_found()){
+        auto hw_gen = pt_shim.get<uint8_t>("hw_gen");
         if (hw_gen == 1)
           populate_shim_bd_info_aie(oshim, ishim);
         else
-	  populate_shim_bd_info_aieml(oshim, ishim);
+          populate_shim_bd_info_aieml(oshim, ishim);
       }
 
       tile_array.push_back({"tile" + std::to_string(col), ishim});
