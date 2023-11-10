@@ -7,7 +7,7 @@ on:
 
 jobs:
   run-repository-dispatch:
-    runs-on: self-hosted
+    runs-on: Ubuntu
     steps:
       - name: Trigger Workflow
         run: |
