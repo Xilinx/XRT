@@ -194,13 +194,21 @@ namespace aie {
     for (auto& gmio_node : gmiosMetadata.get()) {
       io_config gmio;
 
+      // Channel is reported as a unique number:
+      //   0 : S2MM channel 0 (master/output)
+      //   1 : S2MM channel 1
+      //   2 : MM2S channel 0 (slave/input)
+      //   3 : MM2S channel 1
+      auto slaveOrMaster = gmio_node.second.get<uint16_t>("type");
+      auto channelNumber = gmio_node.second.get<uint16_t>("channel_number");
+
       gmio.type = 1;
       gmio.id = gmio_node.second.get<uint32_t>("id");
       gmio.name = gmio_node.second.get<std::string>("name");
       gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
-      gmio.slaveOrMaster = gmio_node.second.get<uint16_t>("type");
+      gmio.slaveOrMaster = slaveOrMaster;
       gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
-      gmio.channelNum = gmio_node.second.get<uint16_t>("channel_number");
+      gmio.channelNum = (slaveOrMaster == 0) ? (channelNumber - 2) : channelNumber;
       gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
       gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
@@ -238,6 +246,7 @@ namespace aie {
       auto shimCol     = io.second.shimColumn;
       auto logicalName = io.second.logicalName;
       auto name        = io.second.name;
+      auto type        = io.second.type;
 
       auto namePos     = name.find_last_of(".");
       auto currGraph   = name.substr(0, namePos);
@@ -273,6 +282,7 @@ namespace aie {
       tile_type tile = {0};
       tile.col = shimCol;
       tile.row = 0;
+      tile.subtype = type;
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
       tile.itr_mem_col = isMaster;
       tile.itr_mem_row = streamId;
