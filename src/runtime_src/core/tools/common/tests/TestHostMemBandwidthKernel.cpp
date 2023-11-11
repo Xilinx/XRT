@@ -53,19 +53,12 @@ TestHostMemBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 
 static bool 
 is_emulation() {
-  bool ret = false;
-  char* xcl_mode = std::getenv("XCL_EMULATION_MODE");
-  if (xcl_mode != nullptr) {
-    ret = true;
-  }
-  return ret;
+  return (std::getenv("XCL_EMULATION_MODE") != nullptr) ? true : false;
 }
 
 void
 TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
   const std::string test_path = findPlatformPath(dev, ptree);
   const std::string b_file = findXclbinPath(dev, ptree); // bandwidth.xclbin
   std::string old_b_file = "/slavebridge.xclbin";
@@ -98,7 +91,7 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
   } 
 
   int num_kernel;
-  std::string filename = "platform.json";
+  static const std::string filename = "platform.json";
   auto platform_json = std::filesystem::path(test_path) / filename;
 
   try {

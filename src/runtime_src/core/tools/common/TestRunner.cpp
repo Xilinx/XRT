@@ -36,7 +36,7 @@ namespace XBU = XBUtilities;
 #include <regex>
 #include <thread>
 
-static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
+static constexpr std::chrono::seconds max_test_duration = std::chrono::seconds(60 * 5); //5 minutes
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
@@ -114,7 +114,7 @@ TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
   while (is_thread_running) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     try {
-      busy_bar.check_timeout(MAX_TEST_DURATION);
+      busy_bar.check_timeout(max_test_duration);
     } catch (const std::exception&) {
       test_thread.detach();
       throw;
@@ -319,7 +319,7 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
     }
 
     try {
-      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
       }
@@ -354,9 +354,9 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
       else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
 
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
