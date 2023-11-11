@@ -1506,41 +1506,43 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 ////////////////////////////////////////////////////////////////
 namespace xrt::ext {
 
-static bool
-operator!(xrt::ext::bo::access_mode am)
+static xrt::ext::bo::access_mode
+operator~(xrt::ext::bo::access_mode am)
 {
-  return am == xrt::ext::bo::access_mode::none;
+  return xrt::detail::operator~(am);
 }
 
 static uint32_t
 mode_to_access(xrt::ext::bo::access_mode am)
 {
-  if (!!(am & xrt::ext::bo::access_mode::shared) && !!(am & xrt::ext::bo::access_mode::process))
-    throw xrt_core::error("xrt::ext::bo: invalid access mode");
-
-  // Return access mode per xrt_mem.h
-  if (!!(am & xrt::ext::bo::access_mode::shared))
+  switch (am & ~(xrt::ext::bo::access_mode::read_write)) {
+  case xrt::ext::bo::access_mode::local:
+    return XRT_BO_ACCESS_LOCAL;
+  case xrt::ext::bo::access_mode::shared:
     return XRT_BO_ACCESS_SHARED;
-
-  if (!!(am & xrt::ext::bo::access_mode::process))
-    return XRT_BO_ACCESS_EXPORTED;
-
-  return 0;
+  case xrt::ext::bo::access_mode::process:
+    return XRT_BO_ACCESS_PROCESS;
+  case xrt::ext::bo::access_mode::hybrid:
+    return XRT_BO_ACCESS_HYBRID;
+  default:
+    throw xrt_core::error("xrt::ext::bo: invalid access mode");
+  }
 }
 
 static uint32_t
 mode_to_dir(xrt::ext::bo::access_mode am)
 {
-  if (!am)
+  switch (am & (xrt::ext::bo::access_mode::read_write)) {
+  case xrt::ext::bo::access_mode::none:
+  case xrt::ext::bo::access_mode::read_write:
     return XRT_BO_ACCESS_READ_WRITE;
-
-  uint32_t access = 0;
-  if (!!(am & xrt::ext::bo::access_mode::read))
-    access |= XRT_BO_ACCESS_READ;
-  if (!!(am & xrt::ext::bo::access_mode::write))
-    access |= XRT_BO_ACCESS_WRITE;
-
-  return access;
+  case xrt::ext::bo::access_mode::read:
+    return XRT_BO_ACCESS_READ;
+  case xrt::ext::bo::access_mode::write:
+    return XRT_BO_ACCESS_WRITE;
+  default:
+    throw xrt_core::error("xrt::ext::bo: invalid access mode");
+  }
 }
   
 static xrtBufferFlags
