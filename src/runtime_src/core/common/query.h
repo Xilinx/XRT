@@ -17,7 +17,6 @@
 #ifndef xrt_core_common_query_h
 #define xrt_core_common_query_h
 
-#include <boost/any.hpp>
 #include <boost/format.hpp>
 
 #include <stdexcept>
@@ -71,28 +70,28 @@ struct request
   ~request()
   {}
   
-  virtual boost::any
+  virtual std::any
   get(const device*) const
   { throw std::runtime_error("query request requires arguments"); }
 
-  virtual boost::any
-  get(const device*, const boost::any&) const
+  virtual std::any
+  get(const device*, const std::any&) const
   { throw std::runtime_error("query request does not support one argument"); }
 
-  virtual boost::any
-  get(const device*, const boost::any&, const boost::any&) const
+  virtual std::any
+  get(const device*, const std::any&, const std::any&) const
   { throw std::runtime_error("query does not support two arguments"); }
 
-  virtual boost::any
+  virtual std::any
   get(const device*, modifier, const std::string&) const
   { throw std::runtime_error("query does not support modifier"); }
 
-  virtual boost::any
-  get(const device*, const boost::any&, const boost::any&, const boost::any&) const
+  virtual std::any
+  get(const device*, const std::any&, const std::any&, const std::any&) const
   { throw std::runtime_error("query does not support three argunents"); }
 
   virtual void
-  put(const device*, const boost::any&) const
+  put(const device*, const std::any&) const
   { throw std::runtime_error("query update does not support one argument"); }
 };
 

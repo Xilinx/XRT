@@ -104,7 +104,7 @@ init_device_info(const xrt_core::device* device)
 
 struct dev_info
 {
-  static boost::any
+  static std::any
   get(const xrt_core::device* device,key_type key)
   {
     auto edev = get_edgedev(device);
@@ -436,14 +436,14 @@ struct aie_reg_read
   using result_type = query::aie_reg_read::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& r, const boost::any& c, const boost::any& reg)
+  get(const xrt_core::device* device, key_type key, const std::any& r, const std::any& c, const std::any& reg)
   {
     auto dev = get_edgedev(device);
     uint32_t val = 0;
     // Get the row value and add one since the rows actually start at 1 not zero.
-    const auto row = boost::any_cast<query::aie_reg_read::row_type>(r) + 1;
-    const auto col = boost::any_cast<query::aie_reg_read::col_type>(c);
-    const auto v = boost::any_cast<query::aie_reg_read::reg_type>(reg);
+    const auto row = std::any_cast<query::aie_reg_read::row_type>(r) + 1;
+    const auto col = std::any_cast<query::aie_reg_read::col_type>(c);
+    const auto v = std::any_cast<query::aie_reg_read::reg_type>(reg);
 
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
@@ -570,7 +570,7 @@ struct aie_get_freq
   using result_type = query::aie_get_freq::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
+  get(const xrt_core::device* device, key_type key, const std::any& partition_id)
   {
     result_type freq = 0;
 #if defined(XRT_ENABLE_AIE)
@@ -580,7 +580,7 @@ struct aie_get_freq
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
     struct drm_zocl_aie_freq_scale aie_arg;
-    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.partition_id = std::any_cast<uint32_t>(partition_id);
     aie_arg.freq = 0;
     aie_arg.dir = 0;
 
@@ -600,7 +600,7 @@ struct aie_set_freq
   using result_type = query::aie_set_freq::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
+  get(const xrt_core::device* device, key_type key, const std::any& partition_id, const std::any& freq)
   {
 #if defined(XRT_ENABLE_AIE)
     const std::string zocl_device = "/dev/dri/" + get_render_devname();
@@ -609,8 +609,8 @@ struct aie_set_freq
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
     struct drm_zocl_aie_freq_scale aie_arg;
-    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
-    aie_arg.freq = boost::any_cast<uint64_t>(freq);
+    aie_arg.partition_id = std::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = std::any_cast<uint64_t>(freq);
     aie_arg.dir = 1;
 
     if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
@@ -628,9 +628,9 @@ struct aim_counter
   using result_type = query::aim_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_aim_counter_result(device, dbg_ip_data);
   }
@@ -641,9 +641,9 @@ struct am_counter
   using result_type = query::am_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_am_counter_result(device, dbg_ip_data);
   }
@@ -654,9 +654,9 @@ struct asm_counter
   using result_type = query::asm_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_asm_counter_result(device, dbg_ip_data);
   }
@@ -667,9 +667,9 @@ struct lapc_status
   using result_type = query::lapc_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_lapc_status(device, dbg_ip_data);
   }
@@ -680,9 +680,9 @@ struct spc_status
   using result_type = query::spc_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_spc_status(device, dbg_ip_data);
   }
@@ -693,9 +693,9 @@ struct accel_deadlock_status
   using result_type = query::accel_deadlock_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_accel_deadlock_status(device, dbg_ip_data);
   }
@@ -707,7 +707,7 @@ struct dtbo_path
   using slot_id_type = query::dtbo_path::slot_id_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& slot_id)
+  get(const xrt_core::device* device, key_type key, const std::any& slot_id)
   {
     std::vector<std::string> dtbo_path_vec;
     std::string errmsg;
@@ -733,7 +733,7 @@ struct dtbo_path
       tokenizer::iterator tok_it = tokens.begin();
 
       uint32_t slotId = static_cast<slot_id_type>(std::stoi(std::string(*tok_it++)));
-      if(slotId == boost::any_cast<slot_id_type>(slot_id))
+      if(slotId == std::any_cast<slot_id_type>(slot_id))
         return std::string(*tok_it);
     }
     //if we reach here no matching slot is found
@@ -802,7 +802,7 @@ struct sysfs_get : QueryRequestType
     : entry(e)
   {}
 
-  boost::any
+  std::any
   get(const xrt_core::device* device) const
   {
     return sysfs_fcn<typename QueryRequestType::result_type>
@@ -813,7 +813,7 @@ struct sysfs_get : QueryRequestType
 template <typename QueryRequestType, typename Getter>
 struct function0_get : QueryRequestType
 {
-  boost::any
+  std::any
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;
@@ -824,8 +824,8 @@ struct function0_get : QueryRequestType
 template <typename QueryRequestType, typename Getter>
 struct function2_get : QueryRequestType
 {
-  boost::any
-  get(const xrt_core::device* device, const boost::any& arg1, const boost::any& arg2) const
+  std::any
+  get(const xrt_core::device* device, const std::any& arg1, const std::any& arg2) const
   {
     auto k = QueryRequestType::key;
     return Getter::get(device, k, arg1, arg2);
@@ -835,8 +835,8 @@ struct function2_get : QueryRequestType
 template <typename QueryRequestType, typename Getter>
 struct function3_get : QueryRequestType
 {
-  boost::any
-  get(const xrt_core::device* device, const boost::any& arg1, const boost::any& arg2, const boost::any& arg3) const
+  std::any
+  get(const xrt_core::device* device, const std::any& arg1, const std::any& arg2, const std::any& arg3) const
   {
     auto k = QueryRequestType::key;
     return Getter::get(device, k, arg1, arg2, arg3);
@@ -846,8 +846,8 @@ struct function3_get : QueryRequestType
 template <typename QueryRequestType, typename Getter>
 struct function4_get : virtual QueryRequestType
 {
-  boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const
+  std::any
+  get(const xrt_core::device* device, const std::any& arg1) const
   {
     auto k = QueryRequestType::key;
     return Getter::get(device, k, arg1);
