@@ -748,7 +748,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], fileType, channelId);
+      auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
@@ -796,7 +796,7 @@ namespace xdp {
         }
       }
 
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][2], fileType,
+      auto tiles = filetype->:getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
                                           channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
@@ -842,7 +842,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], fileType,
+        auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1]
                                             channelId, true, col, col);
 
         for (auto& t : tiles) {

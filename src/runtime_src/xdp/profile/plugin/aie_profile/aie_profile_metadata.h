@@ -92,7 +92,7 @@ class AieProfileMetadata {
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
     boost::property_tree::ptree aie_meta;
-    std::unique_ptr<xdp::aie::BaseFiletypeImpl> filetype;
+    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);

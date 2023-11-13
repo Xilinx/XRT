@@ -25,6 +25,8 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+
 #include "core/common/device.h"
 #include "core/common/system.h"
 
@@ -113,7 +115,7 @@ class AieTraceMetadata {
     std::string counterScheme;
     std::string metricSet;
     boost::property_tree::ptree aieMeta;
-    xdp::aie::MetadataFileType fileType;
+    std::unique_ptr<aie::BaseFiletypeImpl> fileType;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
