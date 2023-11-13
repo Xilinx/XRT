@@ -144,7 +144,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
   try {
     int count = 0;
-    for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
+    for (const auto& gr: _pt.get_child("aie_metadata.graphs")) {
       const boost::property_tree::ptree& graph = gr.second;
       _output << boost::format("  GRAPH[%2d] %-10s: %s\n") % graph.get<std::string>("id")
            % "Name" % graph.get<std::string>("name");
@@ -152,7 +152,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       _output << boost::format("    SNo.  %-20s%-30s%-30s\n") % "Core [C:R]"
            % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
 
-      for (auto& node : graph.get_child("tile")) {
+      for (const auto& node : graph.get_child("tile")) {
         const boost::property_tree::ptree& tile = node.second;
 
         if (tile.get<std::string>("memory_column", "") == "")
@@ -269,11 +269,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         const boost::property_tree::ptree& pl_kernel = graph.get_child("pl_kernel");
         if (!pl_kernel.empty()) {
           _output << boost::format("    %s\n") % "Pl Kernel Instances in Graph:";
-          for (auto& node : graph.get_child("pl_kernel"))
+          for (const auto& node : graph.get_child("pl_kernel"))
             _output << boost::format("      %s\n") % node.second.data();
         }
+        _output << std::endl;
       }
-      _output << std::endl;
     }
 
     print_rtps(_pt, _output);
@@ -282,5 +282,4 @@ writeReport(const xrt_core::device* /*_pDevice*/,
   catch (const std::exception& e) {
     _output <<  e.what() << std::endl;
   }
-  _output << std::endl;
 }
