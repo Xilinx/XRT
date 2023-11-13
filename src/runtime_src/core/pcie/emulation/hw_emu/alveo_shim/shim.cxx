@@ -19,6 +19,7 @@
 #include <cctype>
 #include <cerrno>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <set>
@@ -67,7 +68,7 @@ namespace xclhwemhal2 {
     };
 
   namespace pt = boost::property_tree;
-  namespace fs = boost::filesystem;
+  namespace bfs = std::filesystem;
 
   std::map<unsigned int, HwEmShim*> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
@@ -265,7 +266,7 @@ namespace xclhwemhal2 {
     if (pPath)
     {
       std::string deadlockReportFile = simPath + "/kernel_deadlock_diagnosis.rpt";
-      if (boost::filesystem::exists(deadlockReportFile))
+      if (std::filesystem::exists(deadlockReportFile))
       {
         std::string destPath = std::string(path) + "/pl_deadlock_diagnosis.txt";
         systemUtil::makeSystemCall(deadlockReportFile, systemUtil::systemOperation::COPY, destPath, std::to_string(__LINE__));
@@ -729,7 +730,7 @@ namespace xclhwemhal2 {
         sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
         setSimPath(sim_path);
 
-        if (boost::filesystem::exists(sim_path) != false) {
+        if (std::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
           if (simulatorType == "xsim") {
             cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
@@ -743,7 +744,7 @@ namespace xclhwemhal2 {
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
-        if (waveformDebugfilePath != "" && boost::filesystem::exists(waveformDebugfilePath) != false) {
+        if (waveformDebugfilePath != "" && std::filesystem::exists(waveformDebugfilePath) != false) {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         } else {
@@ -784,7 +785,7 @@ namespace xclhwemhal2 {
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-        if (boost::filesystem::exists(waveformDebugfilePath) != false) {
+        if (std::filesystem::exists(waveformDebugfilePath) != false) {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         } else {
@@ -829,7 +830,7 @@ namespace xclhwemhal2 {
         }
 
         // As gdb feature is unsupported for 2021.1, we removed this cross check. We will re-enable it once we have 2 possibilities
-        /*if (boost::filesystem::exists(sim_path) == false)
+        /*if (std::filesystem::exists(sim_path) == false)
         {
           if (lWaveform == xclemulation::debug_mode::gdb) {
             sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
@@ -847,7 +848,7 @@ namespace xclhwemhal2 {
             launcherArgs = launcherArgs + cmdLineOption.str();
             std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
             setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-            if (boost::filesystem::exists(waveformDebugfilePath) != false) {
+            if (std::filesystem::exists(waveformDebugfilePath) != false) {
               setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
               setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
             }
@@ -906,7 +907,7 @@ namespace xclhwemhal2 {
     }
 
     //launch simulation
-    if (boost::filesystem::exists(sim_path) == true) {
+    if (std::filesystem::exists(sim_path) == true) {
 #ifndef _WINDOWS
       // TODO: Windows build support
       //   pid_t, fork, chdir, execl is defined in unistd.h
@@ -971,12 +972,12 @@ namespace xclhwemhal2 {
           //Assuming that we will have only one AIE Kernel, need to
           //update this logic when we have suport for multiple AIE Kernels
 
-          if (fs::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt"))
+          if (bfs::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt"))
           {
             launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
           }
-          else if (fs::exists(sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
+          else if (bfs::exists(sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
             launcherArgs += " -emuData " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
           } else {
@@ -984,36 +985,36 @@ namespace xclhwemhal2 {
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
           }
 
-          if (fs::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
+          if (bfs::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
             launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
           }
 
-          if (fs::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
+          if (bfs::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
             launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
           }
 
-          if (fs::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
+          if (bfs::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
             launcherArgs += " -qspi-low-image " + sim_path + "/emulation_data/qemu_qspi_low.bin";
           }
 
-          if (fs::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
+          if (bfs::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
             launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
           }
 
           // V70 support: Setting this option, launch_emulator does not set the NOCSIM_DRAM_FILE file, it auto sets the
           // NOCSIM_MULTI_DRAM_FILE
-          if (fs::exists(sim_path + "/emulation_data/noc_memory_config.txt")) {
+          if (bfs::exists(sim_path + "/emulation_data/noc_memory_config.txt")) {
             launcherArgs += " -noc-memory-config " + sim_path + "/emulation_data/noc_memory_config.txt";
           }
 
-          if (fs::exists(sim_path + "/emulation_data/qemu_args.txt")) {
+          if (bfs::exists(sim_path + "/emulation_data/qemu_args.txt")) {
             launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
           }
 
-          if (fs::exists(sim_path + "/emulation_data/pmc_args.txt")) {
+          if (bfs::exists(sim_path + "/emulation_data/pmc_args.txt")) {
             launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
           }
-          else if (fs::exists(sim_path + "/emulation_data/pmu_args.txt")) {
+          else if (bfs::exists(sim_path + "/emulation_data/pmu_args.txt")) {
             launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmu_args.txt";
           }
           else {
@@ -1057,7 +1058,7 @@ namespace xclhwemhal2 {
           simMode = launcherArgs.c_str();
 
         //if (!xclemulation::file_exists(sim_file))
-        if (!boost::filesystem::exists(sim_file))
+        if (!std::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
 
         if (mLogStream.is_open() )
@@ -1141,7 +1142,7 @@ namespace xclhwemhal2 {
 
   bool HwEmShim::readEmuSettingsJsonFile(const std::string& emuSettingsFilePath) {
 
-    if (emuSettingsFilePath.empty() || !boost::filesystem::exists(emuSettingsFilePath)) {
+    if (emuSettingsFilePath.empty() || !std::filesystem::exists(emuSettingsFilePath)) {
       return false;
     }
 
@@ -1196,7 +1197,7 @@ namespace xclhwemhal2 {
     if (xclemulation::config::getInstance()->isFastNocDDRAccessEnabled())
     {
       std::string nocMemSpecFilePath = simPath + "/emulation_data/noc_memory_config.txt";
-      if (fs::exists(nocMemSpecFilePath))
+      if (bfs::exists(nocMemSpecFilePath))
         this->mNocFastAccess.init(nocMemSpecFilePath, simPath);
     }
   }
@@ -1225,10 +1226,10 @@ namespace xclhwemhal2 {
 
   void HwEmShim::getDtbs(const std::string& emu_data_path, std::string& qemu_dtb, std::string& pmc_dtb)
   {
-    boost::filesystem::path dts_dir = emu_data_path;
-    boost::filesystem::directory_iterator end_itr;
+    std::filesystem::path dts_dir = emu_data_path;
+    std::filesystem::directory_iterator end_itr;
 
-    for (boost::filesystem::directory_iterator itr(dts_dir); itr != end_itr; ++itr)
+    for (std::filesystem::directory_iterator itr(dts_dir); itr != end_itr; ++itr)
     {
       std::string current_file = itr->path().string();
       std::string file_str = itr->path().filename().string();
@@ -1760,7 +1761,7 @@ namespace xclhwemhal2 {
         // Copy waveform database
         if (lWaveform != xclemulation::debug_mode::off) {
           std::string extension = "wdb";
-          if (boost::filesystem::exists(binaryDirectory+"/msim")) {
+          if (std::filesystem::exists(binaryDirectory+"/msim")) {
             extension = "wlf";
           }
           std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
@@ -2156,22 +2157,22 @@ namespace xclhwemhal2 {
     std::string sim_path4 = binaryDirectory + "/behav_waveform/xcelium";
     std::string sim_path5 = binaryDirectory + "/behav_waveform/vcs";
 
-    if (boost::filesystem::exists(sim_path1) || boost::filesystem::exists(sim_path2)) {
+    if (std::filesystem::exists(sim_path1) || std::filesystem::exists(sim_path2)) {
       simulator = "xsim";
     }
-    else if (boost::filesystem::exists(sim_path3)) {
+    else if (std::filesystem::exists(sim_path3)) {
       simulator = "questa";
     }
-    else if (boost::filesystem::exists(sim_path4)) {
+    else if (std::filesystem::exists(sim_path4)) {
       simulator = "xcelium";
     }
-    else if (boost::filesystem::exists(sim_path5)) {
+    else if (std::filesystem::exists(sim_path5)) {
       simulator = "vcs";
     }
 
-    if (!boost::filesystem::exists(sim_path1) && !boost::filesystem::exists(sim_path2)
-      && !boost::filesystem::exists(sim_path3) && !boost::filesystem::exists(sim_path4)
-      && !boost::filesystem::exists(sim_path5)) {
+    if (!std::filesystem::exists(sim_path1) && !std::filesystem::exists(sim_path2)
+      && !std::filesystem::exists(sim_path3) && !std::filesystem::exists(sim_path4)
+      && !std::filesystem::exists(sim_path5)) {
 
       std::string dMsg = "ERROR: [HW-EMU 11] UNZIP operation failed. Not to able to get the required simulation binaries from xclbin";
       logMessage(dMsg, 0);

@@ -56,7 +56,7 @@ set(const std::string& key, const std::string& value);
  *
  * Throws if key value cannot be changed.
  */
-void
+inline void
 set(const std::string& key, unsigned int value)
 {
   set(key, std::to_string(value));

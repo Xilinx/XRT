@@ -362,6 +362,13 @@ get_trace_logging()
   return value;
 }
 
+inline bool
+get_usage_metrics_logging()
+{
+  static bool value = detail::get_bool_value("Runtime.usage_metrics_logging", false);
+  return value;
+}
+
 inline unsigned int
 get_verbosity()
 {

@@ -17,7 +17,7 @@
 #include "config_reader.h"
 #include "device.h"
 #include "query_requests.h"
-#include "system.h"
+#include "sysinfo.h"
 #include "utils.h"
 #include <atomic>
 #include <cmath>
@@ -53,7 +53,7 @@ std::string
 get_hostname()
 {
   boost::property_tree::ptree pt_os_info;
-  xrt_core::get_os_info(pt_os_info);
+  xrt_core::sysinfo::get_os_info(pt_os_info);
   return pt_os_info.get("hostname", "");
 }
 

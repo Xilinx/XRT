@@ -20,6 +20,7 @@
 #include "core/common/sensor.h"
 #include "core/common/system.h"
 #include "core/common/trace.h"
+#include "core/common/sysinfo.h"
 
 #include "device_int.h"
 #include "handle.h"
@@ -55,7 +56,11 @@ static std::shared_ptr<xrt_core::device>
 alloc_device_index(unsigned int index)
 {
   XRT_TRACE_POINT_SCOPE(xrt_device_alloc_index);
-  return xrt_core::get_userpf_device(index) ;
+  auto dev = xrt_core::get_userpf_device(index);
+
+  dev->get_usage_logger()->log_device_info(dev.get());
+
+  return dev;
 }
 
 static std::shared_ptr<xrt_core::device>
@@ -185,7 +190,7 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
     return json_str(xrt_core::aie::aie_mem(device), abi);
   case xrt::info::device::host : // std::string
     boost::property_tree::ptree pt;
-    xrt_core::get_xrt_build_info(pt);
+    xrt_core::sysinfo::get_xrt_info(pt);
     return json_str(pt, abi);
   }
 

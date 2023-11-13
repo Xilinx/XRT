@@ -47,6 +47,7 @@ namespace xdp {
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       uint16_t getRelativeRow(uint16_t absRow);
       module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
+      bool isInputSet(const module_type type, const std::string metricSet);
       bool isValidType(module_type type, XAie_ModuleType mod);
       bool isStreamSwitchPortEvent(const XAie_Events event);
       bool isPortRunningEvent(const XAie_Events event);
@@ -55,11 +56,15 @@ namespace xdp {
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
+      void modifyEvents(module_type type, uint16_t subtype, 
+                        uint8_t channel, std::vector<XAie_Events>& events);
       void configGroupEvents(XAie_DevInst* aieDevInst,
                              const XAie_LocType loc,
                              const XAie_ModuleType mod,
+                             const module_type type,
+                             const std::string metricSet,
                              const XAie_Events event,
-                             const std::string metricSet);
+                             const uint8_t channel = 0);
       void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
                                    const tile_type& tile,
                                    xaiefal::XAieTile& xaieTile,

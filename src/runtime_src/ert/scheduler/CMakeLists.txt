@@ -53,7 +53,7 @@ function(build_ert_fw version)
   add_custom_command(
    OUTPUT ${version}/bsp.extracted
    COMMAND ${CMAKE_COMMAND} -E make_directory ${version}/bsp
-   COMMAND tar -C ${version}/bsp -jxf ${CMAKE_CURRENT_BINARY_DIR}/${BSP_TAR_NAME}
+   COMMAND tar -C ${version}/bsp -jxomf ${CMAKE_CURRENT_BINARY_DIR}/${BSP_TAR_NAME}
    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/${LSCRIPT_NAME} ${version}/lscript.ld
    COMMAND touch ${version}/bsp.extracted
    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${BSP_TAR_NAME}

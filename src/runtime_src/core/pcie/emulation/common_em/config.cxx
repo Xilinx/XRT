@@ -102,16 +102,16 @@ namespace xclemulation{
     return defaultValue;
   }
 
-  static boost::filesystem::path get_file_absolutepath(const std::string& filename) {
+  static std::filesystem::path get_file_absolutepath(const std::string& filename) {
     
-    boost::filesystem::path exe_parent_path {getExecutablePath()};
+    std::filesystem::path exe_parent_path {getExecutablePath()};
     auto filepath = exe_parent_path / filename;
 
-    if (boost::filesystem::exists(filepath) == false) {
-      auto current_path = boost::filesystem::current_path();
+    if (std::filesystem::exists(filepath) == false) {
+      auto current_path = std::filesystem::current_path();
       filepath = current_path / filename;
-      if (boost::filesystem::exists(filepath) == false)
-        return boost::filesystem::path{};
+      if (std::filesystem::exists(filepath) == false)
+        return std::filesystem::path{};
     }
     return filepath;
 
@@ -400,7 +400,7 @@ namespace xclemulation{
       return pathStr;
     }
 
-    return boost::filesystem::absolute(pathStr.c_str(), absBuildDirStr.c_str()).string();
+    return std::filesystem::absolute(pathStr.c_str()).string();
   }
 
   std::string getExecutablePath()
@@ -423,10 +423,10 @@ namespace xclemulation{
   {
     auto filename{"emconfig.json"};
     auto filepath = get_file_absolutepath(filename);
-    boost::filesystem::path emconfig_env {valueOrEmpty(std::getenv("EMCONFIG_PATH"))};
+    std::filesystem::path emconfig_env {valueOrEmpty(std::getenv("EMCONFIG_PATH"))};
     if (emconfig_env.empty() == false) {
       auto filepath_env_value = emconfig_env / "emconfig.json";
-      if (boost::filesystem::exists(filepath_env_value)) {
+      if (std::filesystem::exists(filepath_env_value)) {
         filepath = filepath_env_value;
       }
     }
@@ -461,7 +461,7 @@ namespace xclemulation{
 
   std::string getEmDebugLogFile()
   {
-    auto self_path = boost::filesystem::current_path();
+    auto self_path = std::filesystem::current_path();
     auto em_debug_file_path = self_path / "emulation_debug.log";
     return em_debug_file_path.string();
   }

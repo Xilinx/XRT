@@ -24,7 +24,9 @@ add_library(core_common_library_objects OBJECT
   thread.cpp
   time.cpp
   trace.cpp
+  usage_metrics.cpp
   utils.cpp
+  sysinfo.cpp
   xclbin_parser.cpp
   xclbin_swemu.cpp
   )
@@ -69,7 +71,6 @@ set_target_properties(xrt_coreutil PROPERTIES
 # Private dependencies for fully resolved dynamic xrt_coreutil
 target_link_libraries(xrt_coreutil
   PRIVATE
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
 
@@ -80,7 +81,6 @@ target_link_libraries(xrt_coreutil
 # libraries of boost
 target_link_libraries(xrt_coreutil_static
   INTERFACE
-  boost_filesystem
   boost_system
   )
 

@@ -11,6 +11,7 @@
 
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/usage_metrics.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/experimental/xrt_ext.h"
@@ -1265,7 +1266,7 @@ namespace xrt {
 // ip_context is constructed by kernel_impl if necessary.  It is
 // shared ownership with other kernel impls, so while ctxmgr appears
 // unused by kernel_impl, the construction and ownership is vital.
-class kernel_impl
+class kernel_impl : public std::enable_shared_from_this<kernel_impl>
 {
 public:
   using property_type = xrt_core::xclbin::kernel_properties;
@@ -1296,6 +1297,8 @@ private:
   size_t num_cumasks = 1;              // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
   // Open context of a specific compute unit.
   //
@@ -1553,12 +1556,20 @@ public:
 
     // amend args with computed data based on kernel protocol
     amend_args();
+
+    m_usage_logger->log_kernel_info(device->core_device.get(), hwctx, name, args.size());
   }
 
   // Delegating constructor with no module
   kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : kernel_impl{std::move(dev), std::move(ctx), {}, nm}
   {}
+
+  std::shared_ptr<kernel_impl>
+  get_shared_ptr()
+  {
+    return shared_from_this();
+  }
 
   ~kernel_impl()
   {
@@ -2069,6 +2080,8 @@ class run_impl
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
 public:
   uint32_t
@@ -2330,6 +2343,12 @@ public:
       xrt_core::module_int::sync(m_module);
 
     prep_start();
+    // log kernel start info
+    // This is in critical path, we need to reduce log overhead 
+    // as much as possible, passing kernel impl pointer instead of 
+    // constructing args in place
+    // sending state as ERT_CMD_STATE_NEW for kernel start
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
     cmd->run();
   }
 
@@ -2410,14 +2429,21 @@ public:
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
+    ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
-      return (cv_status == std::cv_status::timeout)
-        ? ERT_CMD_STATE_TIMEOUT
-        : ert_state;
+      if (cv_status == std::cv_status::timeout)
+        return ERT_CMD_STATE_TIMEOUT;
+
+      state = ert_state;
+    }
+    else {
+      state = cmd->wait();
     }
 
-    return cmd->wait();
+    m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
+
+    return state;
   }
 
 
@@ -2440,8 +2466,10 @@ public:
       state = cmd->wait();
     }
 
-    if (state == ERT_CMD_STATE_COMPLETED)
+    if (state == ERT_CMD_STATE_COMPLETED) {
+      m_usage_logger->log_kernel_run_info(kernel.get(), this, state);
       return std::cv_status::no_timeout;
+    }
 
     std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
     throw xrt::run::command_error(state, msg);
@@ -3169,6 +3197,21 @@ size_t
 get_regmap_size(const xrt::kernel& kernel)
 {
     return kernel.get_handle()->get_regmap_size();
+}
+
+xrt::hw_context
+get_hw_ctx(const xrt::kernel& kernel)
+{
+  return kernel.get_handle()->get_hw_context();
+}
+
+xrt::kernel
+create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
+{
+  if (!kernel_impl)
+    throw std::runtime_error("Invalid kernel context implementation."); 
+
+  return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr());
 }
 
 }} // kernel_int, xrt_core

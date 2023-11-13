@@ -8,13 +8,14 @@
 // file to instead export with same macro as used in libxrt_core.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
-#include "system_windows.h"
 
+// Local - Include files
+#include "system_windows.h"
 #include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
 #include "device_windows.h"
-#include "gen/version.h"
 #include "mgmt.h"
 
+// System - Include files
 #include <chrono>
 #include <ctime>
 #include <map>
@@ -24,70 +25,15 @@
 #include <setupapi.h>
 #include <windows.h>
 
-#include <boost/format.hpp>
-
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
 
 #pragma comment (lib, "Setupapi.lib")
 
-namespace {
-
 // Singleton registers with base class xrt_core::system
 // during static global initialization
 static xrt_core::system_windows singleton;
-
-static std::string
-getmachinename()
-{
-  std::string machine;
-  SYSTEM_INFO sysInfo;
-
-  // Get hardware info
-  ZeroMemory(&sysInfo, sizeof(SYSTEM_INFO));
-  GetSystemInfo(&sysInfo);
-  // Set processor architecture
-  switch (sysInfo.wProcessorArchitecture) {
-  case PROCESSOR_ARCHITECTURE_AMD64:
-	  machine = "x86_64";
-	  break;
-  case PROCESSOR_ARCHITECTURE_IA64:
-	  machine = "ia64";
-	  break;
-  case PROCESSOR_ARCHITECTURE_INTEL:
-	  machine = "x86";
-	  break;
-  case PROCESSOR_ARCHITECTURE_UNKNOWN:
-  default:
-	  machine = "unknown";
-	  break;
-  }
-
-  return machine;
-}
-
-static std::string
-osNameImpl()
-{
-    OSVERSIONINFO vi;
-    vi.dwOSVersionInfoSize = sizeof(vi);
-    if (GetVersionEx(&vi) == 0)
-      throw xrt_core::error("Cannot get OS version information");
-    switch (vi.dwPlatformId)
-    {
-    case VER_PLATFORM_WIN32s:
-        return "Windows 3.x";
-    case VER_PLATFORM_WIN32_WINDOWS:
-        return vi.dwMinorVersion == 0 ? "Windows 95" : "Windows 98";
-    case VER_PLATFORM_WIN32_NT:
-        return "Windows NT";
-    default:
-        return "Unknown";
-    }
-}
-
-}
 
 namespace xrt_core {
 
@@ -99,50 +45,11 @@ system_child_ctor()
 }
 void
 system_windows::
-get_xrt_info(boost::property_tree::ptree& /*pt*/)
+get_driver_info(boost::property_tree::ptree& /*pt*/)
 {
   //TODO
   // _pt.put("xocl",      driver_version("xocl"));
   // _pt.put("xclmgmt",   driver_version("xclmgmt"));
-}
-
-void
-system_windows::
-get_os_info(boost::property_tree::ptree &pt)
-{
-  char value[128];
-  DWORD BufferSize = sizeof value;
-
-  pt.put("sysname", osNameImpl());
-  //Reassign buffer size since it get override with size of value by RegGetValueA() call
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("release", value);
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("version", value);
-
-  pt.put("machine", getmachinename());
-
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("distribution", value);
-
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("model", value);
-
-  
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ComputerName\\ComputerName", "ComputerName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("hostname", value);
-
-  MEMORYSTATUSEX mem;
-  mem.dwLength = sizeof(mem);
-  GlobalMemoryStatusEx(&mem);
-  pt.put("memory_bytes", (boost::format("0x%llx") % mem.ullTotalPhys).str());
-
-  pt.put("cores", std::thread::hardware_concurrency());
 }
 
 std::pair<device::id_type, device::id_type>

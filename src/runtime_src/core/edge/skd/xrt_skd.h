@@ -18,13 +18,13 @@
 #ifndef _XRT_SKD_H_
 #define _XRT_SKD_H_
 
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <chrono>
 #include <cstdarg>
 #include <cstdint>
 #include <dlfcn.h>
 #include <execinfo.h>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -115,7 +115,7 @@ class skd
     xrtDeviceHandle m_xrtdhdl = 0;
     uuid m_xclbin_uuid;
     // Path of PS kernel object file constructed from PS kernel path and PS kernel name
-    const boost::filesystem::path m_sk_path;
+    const std::filesystem::path m_sk_path;
     // PS Kernel instance name
     std::string m_sk_name = "";
     // PS Kernel CU Index assigned from host

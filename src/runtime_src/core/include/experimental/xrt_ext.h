@@ -57,6 +57,8 @@ public:
    *   Access is shared between devices within process
    * @var process
    *   Access is shared between processes and devices
+   * @var hybrid
+   *   Access is shared between drivers (cross-adapter)
    *
    * The access mode is used to specify how the buffer is used by
    * device and process.
@@ -80,18 +82,20 @@ public:
    * is specified.
    *
    * Friend operators are provided for bitwise operations on access
-   * mode.
+   * mode.  It is invalid to combine local, shared, proces, and hybrid.
    */
   enum class access_mode : uint64_t
   {
     none    = 0,
 
-    read  = 1 << 0, 
+    read  = 1 << 0,
     write = 1 << 1,
+    read_write = read | write,
 
     local   = 0,
     shared  = 1 << 2,
     process = 1 << 3,
+    hybrid  = 1 << 4, 
   };
 
   friend constexpr access_mode operator&(access_mode lhs, access_mode rhs)

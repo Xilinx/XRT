@@ -33,17 +33,18 @@
 #include "tools/common/tests/TestPsPlVerify.h"
 #include "tools/common/tests/TestPsVerify.h"
 #include "tools/common/tests/TestPsIops.h"
+#include "tools/common/tests/TestDF_bandwidth.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
 #include <algorithm>
+#include <filesystem>
 #ifdef __linux__
 #include <sys/mman.h> //munmap
 #endif
@@ -96,7 +97,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestAiePs>(),
   std::make_shared<TestPsPlVerify>(),
   std::make_shared<TestPsVerify>(),
-  std::make_shared<TestPsIops>()
+  std::make_shared<TestPsIops>(),
+  std::make_shared<TestDF_bandwidth>()
 };
 
 /*
@@ -140,7 +142,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if supported and xclbin/testcase: verbose
   // if not supported: verbose
   auto redirect_log = [&](const std::string& tag, const std::string& log_str) {
-    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
+    std::vector<std::string> verbose_tags = {"Xclbin", "Testcase", "DPU-Sequence"};
     if (boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if (XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
@@ -516,7 +518,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
-    if (!m_output.empty() && !XBU::getForce() && boost::filesystem::exists(m_output))
+    if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
     if (m_tests_to_run.empty())
@@ -540,10 +542,10 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // check if xclbin folder path is provided
     if (!validateXclbinPath.empty()) {
       XBU::verbose("Sub command: --path");
-      if (!boost::filesystem::exists(validateXclbinPath) || !boost::filesystem::is_directory(validateXclbinPath))
+      if (!std::filesystem::exists(validateXclbinPath) || !std::filesystem::is_directory(validateXclbinPath))
         throw xrt_core::error((boost::format("Invalid directory path : '%s'") % validateXclbinPath).str());
       if (validateXclbinPath.compare(".") == 0 || validateXclbinPath.compare("./") == 0)
-        validateXclbinPath = boost::filesystem::current_path().string();
+        validateXclbinPath = std::filesystem::current_path().string();
       if (validateXclbinPath.back() != '/')
         validateXclbinPath.append("/");
     }

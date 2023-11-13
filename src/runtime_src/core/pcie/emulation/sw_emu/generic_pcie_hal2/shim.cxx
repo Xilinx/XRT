@@ -33,7 +33,7 @@ namespace xclswemuhal2
 
   std::map<std::string, std::string> SwEmuShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
-  namespace bf = boost::filesystem;
+  namespace sf = std::filesystem;
 #define PRINTENDFUNC        \
   if (mLogStream.is_open()) \
     mLogStream << __func__ << " ended " << std::endl;
@@ -433,7 +433,7 @@ namespace xclswemuhal2
 
         std::string modelDirectory("");
 
-        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel"))
+        if (std::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel"))
           modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/generic_pcie/model/genericpciemodel";
         else
           modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/generic_pcie/model/genericpciemodel";
@@ -564,8 +564,8 @@ namespace xclswemuhal2
 
     //Check if device_process.log already exists. Remove if exists.
     auto extIoTxtFile = getDeviceProcessLogPath();
-    if (boost::filesystem::exists(extIoTxtFile))
-      boost::filesystem::remove(extIoTxtFile);
+    if (std::filesystem::exists(extIoTxtFile))
+      std::filesystem::remove(extIoTxtFile);
 
     if (launchDeviceProcess(debuggable, binaryDirectory) == false)
       return -1;
@@ -774,11 +774,11 @@ namespace xclswemuhal2
     if (isVersal)
     {
       std::string aieLibSimPath = binaryDirectory + "/aie/aie.libsim";
-      bf::path fp(aieLibSimPath);
+      sf::path fp(aieLibSimPath);
 
       // Setting the aiesim_sock to null when we have the aie.libsim which is ideally generated only for the x86sim target
       // This determines the whether we are running the sw_emu interacting with the x86sim process or the aiesim process
-      if (bf::exists(fp) && !bf::is_empty(fp))
+      if (sf::exists(fp) && !sf::is_empty(fp))
         aiesim_sock = nullptr;
       else
         aiesim_sock = new unix_socket("AIESIM_SOCKETID");

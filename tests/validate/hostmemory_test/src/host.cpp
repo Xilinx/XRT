@@ -15,7 +15,7 @@
 */
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
@@ -55,10 +55,10 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    auto binary_file = boost::filesystem::path(test_path) / b_file;
+    auto binary_file = std::filesystem::path(test_path) / b_file;
     std::ifstream infile(binary_file.string());
     // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
-    auto old_binary_file = boost::filesystem::path(test_path) / old_b_file;
+    auto old_binary_file = std::filesystem::path(test_path) / old_b_file;
     std::ifstream old_infile(old_binary_file.string());
     if (flag_s) {
         if (!infile.good()) {
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
 
     int num_kernel;
     std::string filename = "/platform.json";
-    auto platform_json = boost::filesystem::path(test_path) / filename;
+    auto platform_json = std::filesystem::path(test_path) / filename;
 
     try {
         boost::property_tree::ptree load_ptree_root;

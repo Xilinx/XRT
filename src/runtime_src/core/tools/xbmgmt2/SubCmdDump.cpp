@@ -15,13 +15,13 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
@@ -180,7 +180,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  if (!m_output.empty() && boost::filesystem::exists(m_output) && !XBU::getForce()) {
+  if (!m_output.empty() && std::filesystem::exists(m_output) && !XBU::getForce()) {
     std::cerr << boost::format("m_output file already exists: '%s'") % m_output << "\n\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }

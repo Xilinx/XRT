@@ -26,10 +26,7 @@ class system_linux : public system_edge
 {
 public:
   void
-  get_xrt_info(boost::property_tree::ptree &pt);
-
-  void
-  get_os_info(boost::property_tree::ptree &pt);
+  get_driver_info(boost::property_tree::ptree &pt);
 
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;

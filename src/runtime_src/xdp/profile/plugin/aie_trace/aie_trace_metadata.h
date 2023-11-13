@@ -128,10 +128,16 @@ class AieTraceMetadata {
       { module_type::core,     {"functions", "functions_partial_stalls", 
                                 "functions_all_stalls", "all"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
-                                "output_channels", "output_channels_stalls"} },
+                                "output_channels", "output_channels_stalls",
+                                "s2mm_channels", "s2mm_channels_stalls", 
+                                "mm2s_channels", "mm2s_channels_stalls",
+                                "memory_conflicts1", "memory_conflicts2"} },
       { module_type::shim,     {"input_ports", "output_ports",
                                 "input_ports_stalls", "output_ports_stalls", 
-                                "input_ports_details", "output_ports_details"} }
+                                "input_ports_details", "output_ports_details",
+                                "mm2s_ports", "s2mm_ports",
+                                "mm2s_ports_stalls", "s2mm_ports_stalls", 
+                                "mms2_ports_details", "s2mm_ports_details"} }
     };
 
     void* handle;

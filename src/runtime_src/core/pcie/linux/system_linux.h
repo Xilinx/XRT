@@ -15,10 +15,7 @@ public:
   system_linux();
 
   void
-  get_xrt_info(boost::property_tree::ptree &pt);
-
-  void
-  get_os_info(boost::property_tree::ptree &pt);
+  get_driver_info(boost::property_tree::ptree &pt);
 
   device::id_type
   get_device_id(const std::string& str) const;

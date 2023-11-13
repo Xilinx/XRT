@@ -31,7 +31,6 @@ target_link_libraries(azure_mpd_plugin
   xrt_core_static
   xrt_coreutil_static
   uuid
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   pthread
   rt

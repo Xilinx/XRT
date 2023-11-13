@@ -28,12 +28,12 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <iomanip>
 #include <thread>
 #include <vector>
 
-#include <boost/filesystem.hpp>
 #include <regex>
 
 #include <fcntl.h>
@@ -549,9 +549,9 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
   }
   else {
     // bitstream is loaded for first time
-    boost::filesystem::directory_iterator end_itr;
+    std::filesystem::directory_iterator end_itr;
     static const std::regex filter{".*_image_[0-9]+"};
-    for (boost::filesystem::directory_iterator itr( dtbo_dir_path ); itr != end_itr; ++itr) {
+    for (std::filesystem::directory_iterator itr( dtbo_dir_path ); itr != end_itr; ++itr) {
       if (!std::regex_match(itr->path().filename().string(), filter))
         continue;
 
@@ -600,8 +600,8 @@ static void
 libdfxClean(const std::string& file_path)
 {
   try {
-    if (boost::filesystem::exists(boost::filesystem::path(file_path)))
-      boost::filesystem::remove_all(boost::filesystem::path(file_path));
+    if (std::filesystem::exists(std::filesystem::path(file_path)))
+      std::filesystem::remove_all(std::filesystem::path(file_path));
   }
   catch(std::exception& ex) {
     xclLog(XRT_WARNING, "%s: unable to remove '%s' folder",__func__,file_path);
@@ -649,7 +649,7 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   }
 
   // save dtbo_path as load is successful
-  dtbo_path = boost::filesystem::path(xclbin_dir_path).filename().string()
+  dtbo_path = std::filesystem::path(xclbin_dir_path).filename().string()
 			+ "_image_" + std::to_string(dtbo_id);
 
   // clean tmp files of libdfx
@@ -663,7 +663,7 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   std::string zocl_drm_device;
   while (count++ < timeout_sec) {
     zocl_drm_device = render_dev_dir + get_render_devname();
-    if (boost::filesystem::exists(boost::filesystem::path(zocl_drm_device)))
+    if (std::filesystem::exists(std::filesystem::path(zocl_drm_device)))
       break;
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
@@ -1918,7 +1918,7 @@ xclProbe()
 
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
   int fd;
-  if (boost::filesystem::exists(zocl_drm_device)) {
+  if (std::filesystem::exists(zocl_drm_device)) {
     fd = open(zocl_drm_device.c_str(), O_RDWR);
     if (fd < 0)
       return 0;

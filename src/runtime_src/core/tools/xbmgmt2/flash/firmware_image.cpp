@@ -22,10 +22,10 @@
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
-#include "boost/filesystem.hpp"
 #include <boost/tokenizer.hpp>
 
 #include <iostream>
+#include <filesystem>
 #include <fstream>
 #include <algorithm>
 #include <climits>
@@ -423,7 +423,7 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
     // Obtain installed DSA info.
     for (auto root : FIRMWARE_DIRS) {
       try {
-        if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
+        if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root))
             continue;
       }
       catch (const std::exception&) {
@@ -432,9 +432,9 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
         continue;
       }
 
-      boost::filesystem::recursive_directory_iterator end_iter;
-      // for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
-      for(boost::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
+      std::filesystem::recursive_directory_iterator end_iter;
+      // for (auto const & iter : std::filesystem::recursive_directory_iterator(root)) {
+      for(std::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
         if ((iter->path().extension() == ".xsabin" || iter->path().extension() == ".dsabin")) {
           DSAInfo dsa(iter->path().string());
           installedDSA.push_back(dsa);

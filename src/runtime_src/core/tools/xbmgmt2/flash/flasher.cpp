@@ -25,12 +25,12 @@
 #include <limits>
 #include <cstddef>
 #include <cassert>
+#include <filesystem>
 #include <vector>
 #include <cstring>
 #include <cstdarg>
 #include "boost/format.hpp"
 #include <boost/algorithm/string.hpp>
-#include "boost/filesystem.hpp"
 
 #define INVALID_ID      0xffff
 
@@ -501,7 +501,7 @@ std::string Flasher::getQspiGolden()
     std::string start = FORMATTED_FW_DIR;
     start += "/";
     start += board_name;
-    boost::filesystem::recursive_directory_iterator dir(start), end;
+    std::filesystem::recursive_directory_iterator dir(start), end;
     while (dir != end) {
         std::string fn = dir->path().filename().string();
         if (!fn.compare(QSPI_GOLDEN_IMAGE)) {

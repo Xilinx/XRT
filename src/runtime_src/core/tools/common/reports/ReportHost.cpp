@@ -20,12 +20,14 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/Table2D.h"
-#include "core/common/system.h"
+#include "core/common/sysinfo.h"
 
 // 3rd Party Library - Include Files
-#include <string>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+
+// System - Include Files
+#include <string>
 
 #define BYTES_TO_MEGABYTES 0x100000ll
 namespace xq = xrt_core::query;
@@ -47,10 +49,10 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
   boost::property_tree::ptree pt_os_info;
   boost::property_tree::ptree pt_xrt_info;
 
-  xrt_core::get_os_info(pt_os_info);
+  xrt_core::sysinfo::get_os_info(pt_os_info);
   pt.add_child("os", pt_os_info);
 
-  xrt_core::get_xrt_info(pt_xrt_info);
+  xrt_core::sysinfo::get_xrt_info(pt_xrt_info);
   pt.add_child("xrt", pt_xrt_info);
 
   auto dev_pt = XBUtilities::get_available_devices(m_is_user);
@@ -86,6 +88,8 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
           % lib.get<std::string>("version", "N/A");
     }
     _output << boost::format("  %-20s : %s\n") % "Model" % _pt.get<std::string>("host.os.model");
+    _output << boost::format("  %-20s : %s\n") % "BIOS vendor" % _pt.get<std::string>("host.os.bios_vendor");
+    _output << boost::format("  %-20s : %s\n") % "BIOS version" % _pt.get<std::string>("host.os.bios_version");
     _output << std::endl;
     _output << "XRT\n";
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");

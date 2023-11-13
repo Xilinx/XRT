@@ -16,8 +16,7 @@
 #include "core/common/api/bo.h"
 #include "core/common/device.h"
 #include <dlfcn.h>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <bitset>
@@ -142,7 +141,7 @@ namespace xma_core {
 namespace xma_core { namespace utils {
 
 constexpr std::uint64_t cu_base_min = 0x1800000;
-namespace bfs = boost::filesystem;
+namespace sfs = std::filesystem;
 
 static const char*
 emptyOrValue(const char* cstr)
@@ -151,26 +150,26 @@ emptyOrValue(const char* cstr)
 }
 
 int32_t
-directoryOrError(const bfs::path& path)
+directoryOrError(const sfs::path& path)
 {
-  if (!bfs::is_directory(path))
+  if (!sfs::is_directory(path))
       return XMA_ERROR;
 
    return XMA_SUCCESS;
 }
 
-static boost::filesystem::path&
+static std::filesystem::path&
 dllExt()
 {
-  static boost::filesystem::path sDllExt(".so");
+  static std::filesystem::path sDllExt(".so");
   return sDllExt;
 }
 
 inline bool
-isDLL(const bfs::path& path)
+isDLL(const sfs::path& path)
 {
-  return (bfs::exists(path)
-          && bfs::is_regular_file(path)
+  return (sfs::exists(path)
+          && sfs::is_regular_file(path)
           && path.extension()==dllExt());
 }
 
@@ -196,10 +195,10 @@ load_libxrt()
     dlerror();    /* Clear any existing error */
 
     // xrt
-    bfs::path xrt(emptyOrValue(std::getenv("XILINX_XRT")));
+    sfs::path xrt(emptyOrValue(std::getenv("XILINX_XRT")));
     if (xrt.empty()) {
         std::cout << "XMA INFO: XILINX_XRT env variable not set. Trying default /opt/xilinx/xrt" << std::endl;
-        xrt = bfs::path("/opt/xilinx/xrt");
+        xrt = sfs::path("/opt/xilinx/xrt");
     }
     if (directoryOrError(xrt) != XMA_SUCCESS) {
         std::cout << "XMA FATAL: XILINX_XRT env variable is not a directory: " << xrt.string() << std::endl;
@@ -207,7 +206,7 @@ load_libxrt()
     }
 
     // Load the xmaplugin library as it is a dependency for all plugins
-    bfs::path xma2plugin_lib(xrt / "lib/libxma2plugin.so");
+    sfs::path xma2plugin_lib(xrt / "lib/libxma2plugin.so");
     if (!isDLL(xma2plugin_lib)) {
         std::cout << "XMA FATAL: xma2plugin lib not found. Lib: " << xma2plugin_lib.string() << std::endl;
         return XMA_ERROR;
@@ -221,7 +220,7 @@ load_libxrt()
     }
 
     if (!isEmulationMode()) {
-        bfs::path p1(xrt / "lib/libxrt_core.so");
+        sfs::path p1(xrt / "lib/libxrt_core.so");
         if (isDLL(p1)) {
             void* xrthandle = dlopen(p1.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
             if (!xrthandle)
@@ -234,7 +233,7 @@ load_libxrt()
             return 1;
         }
 
-        bfs::path p2(xrt / "lib/libxrt_aws.so");
+        sfs::path p2(xrt / "lib/libxrt_aws.so");
         if (isDLL(p2)) {
             void* xrthandle = dlopen(p2.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
             if (!xrthandle)
@@ -269,7 +268,7 @@ load_libxrt()
             return XMA_ERROR;
         }
 
-        bfs::path p2(xrt / "lib/libxrt_swemu.so");
+        sfs::path p2(xrt / "lib/libxrt_swemu.so");
         sw_em_driver = p2.string();
 
         if (isDLL(sw_em_driver)) {
@@ -304,7 +303,7 @@ load_libxrt()
         return XMA_ERROR;
     }
 
-    bfs::path p1(xrt / "lib/libxrt_hwemu.so");
+    sfs::path p1(xrt / "lib/libxrt_hwemu.so");
     hw_em_driver = p1.string();
 
     if (isDLL(hw_em_driver)) {
