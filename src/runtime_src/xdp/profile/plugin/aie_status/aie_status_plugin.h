@@ -68,7 +68,7 @@ namespace xdp {
     static bool live;
     uint32_t mPollingInterval;
     boost::property_tree::ptree mAieMeta;
-    std::unique_ptr<aie::BaseFiletypeImpl> fileType;
+    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
 
     // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
