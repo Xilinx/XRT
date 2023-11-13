@@ -51,14 +51,14 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return aie::getHardwareGeneration(aieMeta);
+      return filetype->getHardwareGeneration();
     }
     uint16_t getRowOffset() {
-      return aie::getAIETileRowOffset(aieMeta);
+      return filetype->getAIETileRowOffset();
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return aie::getTraceGMIOs(aieMeta);
+      return filetype->getTraceGMIOs();
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
