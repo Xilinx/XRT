@@ -26,6 +26,8 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+
 
 namespace xdp {
 
@@ -36,31 +38,38 @@ constexpr unsigned int NUM_MEM_TILE_COUNTERS = 4;
 
 class AieProfileMetadata {
   private:
-    // Currently supporting Core, Memory, Interface Tiles, and MEM Tiles
+    // Currently supporting Core, Memory, Interface Tiles, and Memory Tiles
     static constexpr int NUM_MODULES = 4;
 
     std::map <module_type, std::vector<std::string>> metricStrings {
       {
         module_type::core, {
-          "heat_map", "stalls", "execution",
-          "floating_point", "stream_put_get", "write_throughputs",
-          "read_throughputs", "aie_trace", "events"}
+          "heat_map", "stalls", "execution", "floating_point", 
+          "stream_put_get", "aie_trace", "events",
+          "write_throughputs", "read_throughputs", 
+          "s2mm_throughputs", "mm2s_throughputs"}
       },
       {
         module_type::dma, {
           "conflicts", "dma_locks", "dma_stalls_s2mm",
-          "dma_stalls_mm2s", "write_throughputs", "read_throughputs"}
+          "dma_stalls_mm2s", "write_throughputs", "read_throughputs",
+          "s2mm_throughputs", "mm2s_throughputs"}
       },
       { 
-        module_type::shim, {"input_throughputs", "output_throughputs", "packets"}
-
+        module_type::shim, {
+          "input_throughputs", "output_throughputs", 
+          "s2mm_throughputs", "mm2s_throughputs",
+          "input_stalls", "output_stalls",
+          "s2mm_stalls", "mm2s_stalls", "packets"}
       },
       {
         module_type::mem_tile, {
-          "input_channels", "input_channels_details",
-          "output_channels", "output_channels_details",
-          "memory_stats", "mem_trace"
-        }
+          "input_channels", "input_channels_details", "input_throughputs",
+          "s2mm_channels", "s2mm_channels_details", "s2mm_throughputs", 
+          "output_channels", "output_channels_details", "output_throughputs",
+          "mm2s_channels", "mm2s_channels_details", "mm2s_throughputs",
+          "memory_stats", "mem_trace", "conflict_stats1", "conflict_stats2", 
+          "conflict_stats3", "conflict_stats4"}
       }
     };
 
@@ -82,7 +91,8 @@ class AieProfileMetadata {
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    boost::property_tree::ptree aie_meta; 
+    boost::property_tree::ptree aie_meta;
+    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -106,15 +116,15 @@ class AieProfileMetadata {
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
-    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+    xdp::aie::driver_config getAIEConfigMetadata();
 
     bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
     std::string getModuleName(int module) { return moduleNames[module]; }
     int getNumCountersMod(int module){ return numCountersMod[module]; }
     module_type getModuleType(int module) { return moduleTypes[module]; }
 
-    uint16_t getAIETileRowOffset() { return aie::getAIETileRowOffset(aie_meta);}
-    int getHardwareGen() { return aie::getHardwareGeneration(aie_meta);}
+    uint16_t getAIETileRowOffset() { return filetype->getAIETileRowOffset();}
+    int getHardwareGen() { return filetype->getHardwareGeneration();}
 
     double getClockFreqMhz() {return clockFreqMhz;}
     int getNumModules() {return NUM_MODULES;}

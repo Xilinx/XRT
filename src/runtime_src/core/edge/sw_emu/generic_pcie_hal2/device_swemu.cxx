@@ -58,7 +58,7 @@ struct board_name
 template <typename QueryRequestType, typename Getter>
 struct function0_get : virtual QueryRequestType
 {
-  boost::any
+  std::any
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;

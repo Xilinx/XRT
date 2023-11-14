@@ -24,6 +24,7 @@ add_library(core_common_library_objects OBJECT
   thread.cpp
   time.cpp
   trace.cpp
+  usage_metrics.cpp
   utils.cpp
   sysinfo.cpp
   xclbin_parser.cpp

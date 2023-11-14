@@ -71,7 +71,7 @@ struct flash
 
 struct firewall
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static xcl_firewall
   init_firewall_info(const xrt_core::device* dev)
@@ -123,7 +123,7 @@ struct firewall
 
 struct mig
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static xcl_mig_ecc
   init_mig_ecc_info(const xrt_core::device* dev)
@@ -181,7 +181,7 @@ struct mig
 
 struct board
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
 
   static xcl_board_info
@@ -247,7 +247,7 @@ struct board
 
 struct sensor
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static xcl_sensor
   init_sensor_info(const xrt_core::device* dev)
@@ -410,7 +410,7 @@ struct sensor
 
 struct icap
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static xcl_pr_region
   init_icap_info(const xrt_core::device* dev)
@@ -657,7 +657,7 @@ struct bdf
 
 struct info
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static result_type
   user(const xrt_core::device* device, key_type key)
@@ -738,7 +738,7 @@ struct info
 
 struct xmc
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static result_type
   user(const xrt_core::device*, key_type key)
@@ -781,7 +781,7 @@ struct xmc
 
 struct devinfo
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static result_type
   user(const xrt_core::device*, key_type key)
@@ -867,7 +867,7 @@ struct versal
 
 struct uuid
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static result_type
   user(const xrt_core::device*, key_type key)
@@ -939,7 +939,7 @@ struct flash_bar_offset
 
 struct rom
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static FeatureRomHeader
   init_feature_rom_header(const xrt_core::device* dev)
@@ -1117,7 +1117,7 @@ struct data_retention
 
 struct mailbox
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static xcl_mailbox
   init_mailbox_info(const xrt_core::device* dev)
@@ -1197,9 +1197,9 @@ struct aim_counter
   using result_type = query::aim_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_aim_counter_result(device, dbg_ip_data);
   }
@@ -1210,9 +1210,9 @@ struct am_counter
   using result_type = query::am_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_am_counter_result(device, dbg_ip_data);
   }
@@ -1223,9 +1223,9 @@ struct asm_counter
   using result_type = query::asm_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_asm_counter_result(device, dbg_ip_data);
   }
@@ -1236,9 +1236,9 @@ struct lapc_status
   using result_type = query::lapc_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_lapc_status(device, dbg_ip_data);
   }
@@ -1249,9 +1249,9 @@ struct spc_status
   using result_type = query::spc_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_spc_status(device, dbg_ip_data);
   }
@@ -1262,9 +1262,9 @@ struct accel_deadlock_status
   using result_type = query::accel_deadlock_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const std::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto dbg_ip_data = std::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_accel_deadlock_status(device, dbg_ip_data);
   }
@@ -1275,11 +1275,11 @@ template <typename QueryRequestType, typename Getter>
 struct function0_getput : QueryRequestType
 {
   static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
-    || std::is_same<Getter::result_type, boost::any>::value, "get type mismatch");
+    || std::is_same<Getter::result_type, std::any>::value, "get type mismatch");
   static_assert(std::is_same<Getter::value_type, QueryRequestType::result_type>::value
-    || std::is_same<Getter::value_type, boost::any>::value, "value type mismatch");
+    || std::is_same<Getter::value_type, std::any>::value, "value type mismatch");
 
-  boost::any
+  std::any
   get(const xrt_core::device* device) const
   {
     if (device->get_mgmt_handle())
@@ -1290,9 +1290,9 @@ struct function0_getput : QueryRequestType
   }
 
   void
-  put(const xrt_core::device* device, const boost::any& any) const
+  put(const xrt_core::device* device, const std::any& any) const
   {
-    auto val = boost::any_cast<typename QueryRequestType::value_type>(any);
+    auto val = std::any_cast<typename QueryRequestType::value_type>(any);
     if (device->get_mgmt_handle())
       Getter::mgmt_put(device, val);
     else if (device->get_user_handle())
@@ -1306,9 +1306,9 @@ template <typename QueryRequestType, typename Getter>
 struct function0_getter : QueryRequestType
 {
   static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
-             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
+             || std::is_same<Getter::result_type, std::any>::value, "type mismatch");
 
-  boost::any
+  std::any
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;
@@ -1325,10 +1325,10 @@ template <typename QueryRequestType, typename Getter>
 struct function1_getter : QueryRequestType
 {
   static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
-             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
+             || std::is_same<Getter::result_type, std::any>::value, "type mismatch");
 
-  boost::any
-  get(const xrt_core::device* device, const boost::any& any) const
+  std::any
+  get(const xrt_core::device* device, const std::any& any) const
   {
     auto k = QueryRequestType::key;
     if (auto mhdl = device->get_mgmt_handle())
@@ -1344,9 +1344,9 @@ template <typename QueryRequestType, typename Getter>
 struct function2_getter : QueryRequestType
 {
   static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
-             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
+             || std::is_same<Getter::result_type, std::any>::value, "type mismatch");
 
-  boost::any
+  std::any
   get(const xrt_core::device* device, query::request::modifier m, const std::string& v) const
   {
     auto k = QueryRequestType::key;
@@ -1363,8 +1363,8 @@ struct function2_getter : QueryRequestType
 template <typename QueryRequestType, typename Getter>
 struct function4_get : virtual QueryRequestType
 {
-  boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const
+  std::any
+  get(const xrt_core::device* device, const std::any& arg1) const
   {
     auto k = QueryRequestType::key;
     return Getter::get(device, k, arg1);

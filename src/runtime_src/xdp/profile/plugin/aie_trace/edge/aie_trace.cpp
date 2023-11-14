@@ -79,14 +79,16 @@ namespace xdp {
     //
     // **** Core Module Trace ****
     // NOTE: these are supplemented with counter events as those are dependent on counter #
-    mCoreEventSets = {{"functions", 
-                       {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}},
-                      {"functions_partial_stalls", 
-                       {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}},
-                      {"functions_all_stalls", 
-                       {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}},
-                      {"all", 
-                       {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}}};
+    mCoreEventSets = {
+        {"functions", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"functions_partial_stalls", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"functions_all_stalls", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"all", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}}
+    };
 
     // These are also broadcast to memory module
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
@@ -97,17 +99,22 @@ namespace xdp {
     // NOTE 2: These are supplemented with counter events as those are dependent on counter # 
     // NOTE 3: For now, 'all' is the same as 'functions_all_stalls'.
     // Combo events (required for all) have limited support in the resource manager.
-    mMemoryEventSets = {{"functions", 
-                         {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}},
-                        {"functions_partial_stalls",
-                         {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE, XAIE_EVENT_STREAM_STALL_CORE,
-                          XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}},
-                        {"functions_all_stalls",
-                         {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE, XAIE_EVENT_MEMORY_STALL_CORE,
-                          XAIE_EVENT_STREAM_STALL_CORE, XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}},
-                        {"all",
-                         {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE, XAIE_EVENT_MEMORY_STALL_CORE,
-                          XAIE_EVENT_STREAM_STALL_CORE, XAIE_EVENT_CASCADE_STALL_CORE, XAIE_EVENT_LOCK_STALL_CORE}}};
+    mMemoryEventSets = {
+        {"functions", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"functions_partial_stalls",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
+          XAIE_EVENT_STREAM_STALL_CORE,                    XAIE_EVENT_CASCADE_STALL_CORE, 
+          XAIE_EVENT_LOCK_STALL_CORE}},
+        {"functions_all_stalls",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
+          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
+          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}},
+        {"all",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
+          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
+          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}}
+    };
 
     // Core/memory module counters
     // NOTE 1: Only applicable to AIE1 devices
@@ -156,48 +163,71 @@ namespace xdp {
          {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
           XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE, 
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE,      XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, 
-          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}}};
+          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}},
+        {"memory_conflicts1",         
+         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
+        {"memory_conflicts2",         
+         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+          XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
+    };
+    mMemoryTileEventSets["s2mm_channels"]        = mMemoryTileEventSets["input_channels"];
+    mMemoryTileEventSets["s2mm_channels_stalls"] = mMemoryTileEventSets["input_channels_stalls"];
+    mMemoryTileEventSets["mm2s_channels"]        = mMemoryTileEventSets["output_channels"];
+    mMemoryTileEventSets["mm2s_channels_stalls"] = mMemoryTileEventSets["output_channels_stalls"];
 
     // Memory tile trace is flushed at end of run
     mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
 
     // **** Interface Tile Trace ****
-    // NOTE: these are placeholders to be replaced by actual port resource event
-    mInterfaceTileEventSets = {{"input_ports",
-                                {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_1_PL,
-                                 XAIE_EVENT_PORT_RUNNING_2_PL, XAIE_EVENT_PORT_RUNNING_3_PL}},
-                               {"output_ports",
-                                {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_RUNNING_1_PL,
-                                 XAIE_EVENT_PORT_RUNNING_2_PL, XAIE_EVENT_PORT_RUNNING_3_PL}},
-                               {"input_ports_stalls",
-                                {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL,
-                                 XAIE_EVENT_PORT_RUNNING_1_PL, XAIE_EVENT_PORT_STALLED_1_PL}},
-                               {"output_ports_stalls",
-                                {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL,
-                                 XAIE_EVENT_PORT_RUNNING_1_PL, XAIE_EVENT_PORT_STALLED_1_PL}}};
+    mInterfaceTileEventSets = {
+        {"input_ports",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
+        {"output_ports",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
+        {"input_ports_stalls",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_STALLED_0_PL,
+          XAIE_EVENT_PORT_RUNNING_1_PL,                    XAIE_EVENT_PORT_STALLED_1_PL}},
+        {"output_ports_stalls",
+        {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
+         XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}}
+    };
 
     if (metadata->getHardwareGen() == 1) {
       mInterfaceTileEventSets["input_ports_details"] = {
-          XAIE_EVENT_DMA_MM2S_0_START_BD_PL,   XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_MM2S_0_START_BD_PL,               XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_PL,
-          XAIE_EVENT_DMA_MM2S_1_START_BD_PL,   XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_MM2S_1_START_BD_PL,               XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
           XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_PL};
       mInterfaceTileEventSets["output_ports_details"] = {
-          XAIE_EVENT_DMA_S2MM_0_START_BD_PL,   XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_S2MM_0_START_BD_PL,               XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_PL,
-          XAIE_EVENT_DMA_S2MM_1_START_BD_PL,   XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_S2MM_1_START_BD_PL,               XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
           XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
     } else {
       mInterfaceTileEventSets["input_ports_details"] = {
-          XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
-          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
+          XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,             XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,    XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
       mInterfaceTileEventSets["output_ports_details"] = {
-          XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,        XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,     XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
-          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL, XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
+          XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,             XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
+          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,      XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
     }
+
+    mInterfaceTileEventSets["mm2s_ports"]           = mInterfaceTileEventSets["input_ports"];
+    mInterfaceTileEventSets["s2mm_ports"]           = mInterfaceTileEventSets["output_ports"];
+    mInterfaceTileEventSets["mm2s_ports_stalls"]    = mInterfaceTileEventSets["input_ports_stalls"];
+    mInterfaceTileEventSets["s2mm_ports_stalls"]    = mInterfaceTileEventSets["output_ports_stalls"];
+    mInterfaceTileEventSets["mm2s_ports_details"]   = mInterfaceTileEventSets["input_ports_details"];
+    mInterfaceTileEventSets["s2mm_ports_details"]   = mInterfaceTileEventSets["output_ports_details"];
 
     // Interface tile trace is flushed at end of run
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
@@ -432,6 +462,25 @@ namespace xdp {
     return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
   }
 
+  bool AieTrace_EdgeImpl::isInputSet(const module_type type, const std::string metricSet)
+  {
+    // Catch memory tile sets
+    if (type == module_type::mem_tile) {
+      if ((metricSet.find("input") != std::string::npos)
+          || (metricSet.find("s2mm") != std::string::npos))
+        return true;
+      else
+        return false;
+    }
+
+    // Remaining covers interface tiles
+    if ((metricSet.find("input") != std::string::npos)
+        || (metricSet.find("mm2s") != std::string::npos))
+      return true;
+    else
+      return false;
+  }
+
   bool AieTrace_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
   {
     // AIE tiles
@@ -536,8 +585,7 @@ namespace xdp {
           }
           else {
             uint8_t channel = (portnum == 0) ? channel0 : channel1;
-            auto slaveOrMaster = (metricSet.find("output") != std::string::npos) ?
-              XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
           }
         }
@@ -571,13 +619,14 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    XAie_DmaDirection dmaDir = isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
 
   void AieTrace_EdgeImpl::configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
-                                           const std::string metricSet, const XAie_Events event)
+                                           const module_type type, const std::string metricSet, 
+                                           const XAie_Events event)
   {
     // For now, only memory tiles are supported
     if ((event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE)
@@ -588,7 +637,7 @@ namespace xdp {
     constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 
     // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
-    uint16_t eventNum = (metricSet.find("input") != std::string::npos)
+    uint16_t eventNum = isInputSet(type, metricSet)
         ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
         : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
 
@@ -603,6 +652,46 @@ namespace xdp {
 
     auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
     XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, edgeEventsValue);
+  }
+
+  void AieTrace_EdgeImpl::modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
+                                       uint8_t channel, std::vector<XAie_Events>& events)
+  {
+    // Only needed for GMIO DMA channel 1
+    if ((type != module_type::shim) || (subtype == 0) || (channel == 0))
+      return;
+
+    // Check type to minimize replacements
+    if (isInputSet(type, metricSet)) {
+      // Input or MM2S
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_1_START_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+    }
+    else {
+      // Output or S2MM
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_DMA_S2MM_1_START_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+    }
   }
 
   bool AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
@@ -646,6 +735,7 @@ namespace xdp {
       auto tile       = tileMetric.first;
       auto col        = tile.col;
       auto row        = tile.row;
+      auto subtype    = tile.subtype;
       auto type       = getTileType(row);
       auto typeInt    = static_cast<int>(type);
       auto& xaieTile  = aieDevice->tile(col, row);
@@ -922,13 +1012,14 @@ namespace xdp {
           // Record for runtime config file
           cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
           cfgTile->memory_tile_trace_config.port_trace_ids[1] = channel1;
-          if (metricSet.find("input") != std::string::npos) {
+          if (isInputSet(type, metricSet)) {
             cfgTile->memory_tile_trace_config.port_trace_is_master[0] = true;
             cfgTile->memory_tile_trace_config.port_trace_is_master[1] = true;
             cfgTile->memory_tile_trace_config.s2mm_channels[0] = channel0;
             if (channel0 != channel1)
               cfgTile->memory_tile_trace_config.s2mm_channels[1] = channel1;
-          } else {
+          } 
+          else {
             cfgTile->memory_tile_trace_config.port_trace_is_master[0] = false;
             cfgTile->memory_tile_trace_config.port_trace_is_master[1] = false;
             cfgTile->memory_tile_trace_config.mm2s_channels[0] = channel0;
@@ -981,7 +1072,7 @@ namespace xdp {
           numMemoryTraceEvents++;
 
           // Configure edge events (as needed)
-          configEdgeEvents(aieDevInst, tile, metricSet, memoryEvents[i]);
+          configEdgeEvents(aieDevInst, tile, type, metricSet, memoryEvents[i]);
 
           // Update config file
           // Get Trace slot
@@ -1081,21 +1172,25 @@ namespace xdp {
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
         configEventSelections(aieDevInst, loc, XAIE_PL_MOD, type, metricSet, channel0, channel1);
 
+        // Modify events as needed
+        modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
+
         // Record for runtime config file
         cfgTile->interface_tile_trace_config.port_trace_ids[0] = channel0;
         cfgTile->interface_tile_trace_config.port_trace_ids[1] = channel1;
-        if (metricSet.find("input") != std::string::npos) {
-          cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
-          cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
-          cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
-          if (channel0 != channel1)
-            cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
-        } else {
+        if (isInputSet(type, metricSet)) {
           cfgTile->interface_tile_trace_config.port_trace_is_master[0] = false;
           cfgTile->interface_tile_trace_config.port_trace_is_master[1] = false;
           cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
           if (channel0 != channel1)
             cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
+        } 
+        else {
+          cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
+          cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
+          cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
+          if (channel0 != channel1)
+            cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
         }
 
         configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
@@ -1301,7 +1396,8 @@ namespace xdp {
 
   void AieTrace_EdgeImpl::flushAieTileTraceModule()
   {
-    if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty())
+    if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty()
+        && mInterfaceTileTraceFlushLocs.empty())
       return;
 
     auto handle = metadata->getHandle();
@@ -1309,9 +1405,9 @@ namespace xdp {
 
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
       std::stringstream msg;
-      msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size() << " AIE tiles";
-      if (metadata->getHardwareGen() > 1)
-        msg << " and " << mMemoryTileTraceFlushLocs.size() << " memory tiles";
+      msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size()
+          << " AIE tiles, " << mMemoryTileTraceFlushLocs.size() << " memory tiles, and " 
+          << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
 

@@ -25,6 +25,8 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+
 #include "core/common/device.h"
 #include "core/common/system.h"
 
@@ -49,14 +51,14 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return aie::getHardwareGeneration(aieMeta);
+      return filetype->getHardwareGeneration();
     }
     uint16_t getRowOffset() {
-      return aie::getAIETileRowOffset(aieMeta);
+      return filetype->getAIETileRowOffset();
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return aie::getTraceGMIOs(aieMeta);
+      return filetype->getTraceGMIOs();
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -113,6 +115,7 @@ class AieTraceMetadata {
     std::string counterScheme;
     std::string metricSet;
     boost::property_tree::ptree aieMeta;
+    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
@@ -127,10 +130,16 @@ class AieTraceMetadata {
       { module_type::core,     {"functions", "functions_partial_stalls", 
                                 "functions_all_stalls", "all"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
-                                "output_channels", "output_channels_stalls"} },
+                                "output_channels", "output_channels_stalls",
+                                "s2mm_channels", "s2mm_channels_stalls", 
+                                "mm2s_channels", "mm2s_channels_stalls",
+                                "memory_conflicts1", "memory_conflicts2"} },
       { module_type::shim,     {"input_ports", "output_ports",
                                 "input_ports_stalls", "output_ports_stalls", 
-                                "input_ports_details", "output_ports_details"} }
+                                "input_ports_details", "output_ports_details",
+                                "mm2s_ports", "s2mm_ports",
+                                "mm2s_ports_stalls", "s2mm_ports_stalls", 
+                                "mms2_ports_details", "s2mm_ports_details"} }
     };
 
     void* handle;

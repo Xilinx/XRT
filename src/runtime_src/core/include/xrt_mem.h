@@ -100,8 +100,10 @@ struct xcl_bo_flags
 /**
  * Shim level BO Flags for extension
  */
-#define XRT_BO_ACCESS_SHARED 1
-#define XRT_BO_ACCESS_EXPORTED 2
+#define XRT_BO_ACCESS_LOCAL         0
+#define XRT_BO_ACCESS_SHARED        1
+#define XRT_BO_ACCESS_PROCESS       2
+#define XRT_BO_ACCESS_HYBRID        3
 
 /**
  * Shim level BO Flags for direction of data transfer

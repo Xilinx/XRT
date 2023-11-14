@@ -20,7 +20,6 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 #include "xrt.h"
-#include <boost/any.hpp>
 #include <map>
 #include <mutex>
 #include <string>
@@ -35,7 +34,7 @@ using qtype = std::underlying_type<key_type>::type;
 // query requests contained within xclDeviceInfo2
 struct device_info
 {
-  using result_type = boost::any;
+  using result_type = std::any;
 
   static xclDeviceInfo2
   init_device_info(const xrt_core::device* device)

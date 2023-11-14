@@ -34,6 +34,13 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
+namespace {
+  static bool tileCompare(xdp::tile_type tile1, xdp::tile_type tile2)
+  {
+    return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
+  }
+} // end anonymous namespace
+
 namespace xdp {
   namespace pt = boost::property_tree;
   using severity_level = xrt_core::message::severity_level;
@@ -68,10 +75,10 @@ namespace xdp {
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
     invalidXclbinMetadata = (!data.first || !data.second);
-    aie::readAIEMetadata(data.first, data.second, aieMeta);
+    filetype = aie::readAIEMetadata(data.first, data.second, aieMeta);
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    auto compilerOptions = aie::getAIECompilerOptions(aieMeta);
+    auto compilerOptions = filetype->getAIECompilerOptions();
     setRuntimeMetrics(compilerOptions.event_trace == "runtime");
 
     if (!getRuntimeMetrics()) {
@@ -292,13 +299,13 @@ namespace xdp {
     uint16_t rowOffset = (type == module_type::mem_tile) ? 1 : getRowOffset();
     auto tileName = (type == module_type::mem_tile) ? "memory" : "aie";
 
-    auto allValidGraphs = aie::getValidGraphs(aieMeta);
-    auto allValidKernels = aie::getValidKernels(aieMeta);
+    auto allValidGraphs = filetype->getValidGraphs();
+    auto allValidKernels = filetype->getValidKernels();
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = aie::getTiles(aieMeta, "all", type);
+    auto validTilesVec = filetype->getTiles("all", type, "all");
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), 
-                     xdp::aie::tileCompare);
+                     tileCompare);
 
     // STEP 1 : Parse per-graph or per-kernel settings
 
@@ -336,7 +343,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getTiles(aieMeta, graphMetrics[i][0], type, graphMetrics[i][1]);
+      auto tiles = filetype->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -374,7 +381,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getTiles(aieMeta, graphMetrics[i][0], type, graphMetrics[i][1]);
+      auto tiles = filetype->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -425,7 +432,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = aie::getTiles(aieMeta, metrics[i][0], type);
+      auto tiles = filetype->getTiles(metrics[i][0], type, "all");
       for (auto &e : tiles) {
         configMetrics[e] = metrics[i][1];
       }
@@ -629,8 +636,8 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    auto allValidGraphs = aie::getValidGraphs(aieMeta);
-    auto allValidPorts  = aie::getValidPorts(aieMeta);
+    auto allValidGraphs = filetype->getValidGraphs();
+    auto allValidPorts  = filetype->getValidPorts();
     
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -660,7 +667,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getInterfaceTiles(aieMeta, graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
+      auto tiles = filetype->getInterfaceTiles(graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -698,7 +705,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = aie::getInterfaceTiles(aieMeta, graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
+      auto tiles = filetype->getInterfaceTiles(graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -741,7 +748,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], channelId);
+      auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
@@ -789,7 +796,7 @@ namespace xdp {
         }
       }
 
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][2], 
+      auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
                                           channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
@@ -835,7 +842,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], 
+        auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
                                             channelId, true, col, col);
 
         for (auto& t : tiles) {

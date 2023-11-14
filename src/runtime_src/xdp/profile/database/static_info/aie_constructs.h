@@ -24,13 +24,32 @@
 #include <vector>
 #include "xdp/profile/device/tracedefs.h"
 
-namespace xdp {
+namespace xdp::aie {
   struct aiecompiler_options
   {
     bool broadcast_enable_core;
     bool graph_iterator_event;
     std::string event_trace;
   };
+
+  struct driver_config
+  {
+    uint8_t hw_gen;
+    uint64_t base_address;
+    uint8_t column_shift;
+    uint8_t row_shift;
+    uint8_t num_rows;
+    uint8_t num_columns;
+    uint8_t shim_row;
+    uint8_t mem_row_start;
+    uint8_t mem_num_rows;
+    uint8_t aie_tile_row_start;
+    uint8_t aie_tile_num_rows;
+  };
+}
+
+namespace xdp {
+
 
 enum class module_type {
     core = 0,
@@ -44,6 +63,7 @@ enum class module_type {
   { 
     uint16_t row;
     uint16_t col;
+    uint16_t subtype;
     uint16_t itr_mem_row;
     uint16_t itr_mem_col;
     uint64_t itr_mem_addr;
