@@ -17,3 +17,4 @@ jobs:
           -H "Authorization: Bearer ${{ secrets.CI_DOMAIN_TOKEN }}" \
           "https://${{ secrets.CI_DOMAIN_URL }}/api/v3/repos/${{ secrets.CI_DOMAIN_OWNER }}/${{ secrets.CI_DOMAIN_REPO }}/actions/workflows/${{ secrets.CI_DOMAIN_WORKFLOW }}/dispatches" \
           -d '{"ref": "main", inputs: { branch_name: ${{ github.event.pull_request.ref }} }}'
+          
