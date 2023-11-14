@@ -981,33 +981,22 @@ class module_sram : public module_impl
   void
   sync_if_dirty() override
   {
-#if 0
-    if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
-      auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
-        % m_parent->number_of_arg_patchers() % m_patched_args.size();
-      throw std::runtime_error{ fmt.str() };
-    }
-#endif
-
     if (!m_dirty)
       return;
 
     auto os_abi = m_parent.get()->get_os_abi();
-    if (os_abi == 66) {
+    if (os_abi != 66) {
+      if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
+        auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
+            % m_parent->number_of_arg_patchers() % m_patched_args.size();
+        throw std::runtime_error{ fmt.str() };
+      }
+      m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    }
+    else {
       m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
       m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
-    else
-      m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
-#if 0
-    // debug code to save patched buffer onto disk
-    uint32_t* p = reinterpret_cast<uint32_t*>(m_ctrlpkt_buf.map<char*>());
-    auto buff = reinterpret_cast<char*>(p);
-    std::ofstream outdata("./xrt_patched", std::ios::out | std::ios::binary);
-    outdata.write(buff, 4096);
-    outdata.close();
-#endif
 
     m_dirty = false;
   }
@@ -1044,31 +1033,31 @@ public:
 ////////////////////////////////////////////////////////////////
 // XRT implmentation access to internal module APIs
 ////////////////////////////////////////////////////////////////
-namespace xrt_core::module_int
+namespace xrt_core::module_int {
+
+const std::vector<std::pair<uint64_t, uint64_t>>&
+get_ctrlcode_addr_and_size(const xrt::module& module)
 {
-  const std::vector<std::pair<uint64_t, uint64_t>>&
-  get_ctrlcode_addr_and_size(const xrt::module& module)
-  {
-    return module.get_handle()->get_ctrlcode_addr_and_size();
-  }
+  return module.get_handle()->get_ctrlcode_addr_and_size();
+}
 
-  void
-  patch(const xrt::module& module, const std::string& argnm, const xrt::bo& bo)
-  {
-    module.get_handle()->patch(argnm, bo);
-  }
+void
+patch(const xrt::module& module, const std::string& argnm, const xrt::bo& bo)
+{
+  module.get_handle()->patch(argnm, bo);
+}
 
-  void
-  patch(const xrt::module& module, const std::string& argnm, const void* value, size_t size)
-  {
-    module.get_handle()->patch(argnm, value, size);
-  }
+void
+patch(const xrt::module& module, const std::string& argnm, const void* value, size_t size)
+{
+  module.get_handle()->patch(argnm, value, size);
+}
 
-  void
-  sync(const xrt::module& module)
-  {
-    module.get_handle()->sync_if_dirty();
-  }
+void
+sync(const xrt::module& module)
+{
+  module.get_handle()->sync_if_dirty();
+}
 
 } // xrt_core::module_int
 
@@ -1077,33 +1066,33 @@ namespace xrt_core::module_int
 ////////////////////////////////////////////////////////////////
 namespace xrt
 {
-  module::
-  module(const xrt::elf& elf)
-    : detail::pimpl<module_impl>{ std::make_shared<module_elf>(elf) }
-  {}
+module::
+module(const xrt::elf& elf)
+: detail::pimpl<module_impl>{ std::make_shared<module_elf>(elf) }
+{}
 
-  module::
-  module(void* userptr, size_t sz, const xrt::uuid& uuid)
-    : detail::pimpl<module_impl>{ std::make_shared<module_userptr>(userptr, sz, uuid) }
-  {}
+module::
+module(void* userptr, size_t sz, const xrt::uuid& uuid)
+: detail::pimpl<module_impl>{ std::make_shared<module_userptr>(userptr, sz, uuid) }
+{}
 
-  module::
-  module(const xrt::module& parent, const xrt::hw_context& hwctx)
-    : detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx) }
-  {}
+module::
+module(const xrt::module& parent, const xrt::hw_context& hwctx)
+: detail::pimpl<module_impl>{ std::make_shared<module_sram>(parent.handle, hwctx) }
+{}
 
-  xrt::uuid
-  module::
-  get_cfg_uuid() const
-  {
-    return handle->get_cfg_uuid();
-  }
+xrt::uuid
+module::
+get_cfg_uuid() const
+{
+  return handle->get_cfg_uuid();
+}
 
-  xrt::hw_context
-  module::
-  get_hw_context() const
-  {
-    return handle->get_hw_context();
-  }
+xrt::hw_context
+module::
+get_hw_context() const
+{
+  return handle->get_hw_context();
+}
 
 } // namespace xrt
