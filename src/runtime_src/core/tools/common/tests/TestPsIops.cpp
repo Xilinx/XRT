@@ -61,58 +61,58 @@ TestPsIops::run(std::shared_ptr<xrt_core::device> dev)
 static double
 runThread(std::vector<xrt::run>& cmds, unsigned int total, arg_t& arg)
 {
-    int i = 0;
-    unsigned int issued = 0, completed = 0;
-    arg.start = Clock::now();
+  int i = 0;
+  unsigned int issued = 0, completed = 0;
+  arg.start = Clock::now();
 
-    for (auto& cmd : cmds) {
-      cmd.start();
+  for (auto& cmd : cmds) {
+    cmd.start();
+    issued++;
+    if (issued == total)
+      break;
+  }
+
+  while (completed < total) {
+    cmds[i].wait();
+
+    completed++;
+    if (issued < total) {
+      cmds[i].start();
       issued++;
-      if (issued == total)
-        break;
     }
 
-    while (completed < total) {
-      cmds[i].wait();
+    i++;
+    if (static_cast<long unsigned int>(i) == cmds.size())
+      i = 0;
+  }
 
-      completed++;
-      if (issued < total) {
-        cmds[i].start();
-        issued++;
-      }
-
-      i++;
-      if (static_cast<long unsigned int>(i) == cmds.size())
-        i = 0;
-    }
-
-    arg.end = Clock::now();
-    return static_cast<double>((std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count());
+  arg.end = Clock::now();
+  return static_cast<double>((std::chrono::duration_cast<ms_t>(arg.end - arg.start)).count());
 }
 
 static void
 runTestThread(const xrt::device& device, const xrt::kernel& hello_world,
               arg_t& arg)
 {
-    std::vector<xrt::run> cmds;
-    std::vector<xrt::bo> bos;
+  std::vector<xrt::run> cmds;
+  std::vector<xrt::bo> bos;
 
-    for (int i = 0; i < arg.queueLength; i++) {
-      auto run = xrt::run(hello_world);
-      auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
-      run.set_arg(0, bo0);
-      bos.push_back(std::move(bo0));
-      auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
-      run.set_arg(1, bo1);
-      bos.push_back(std::move(bo1));
-      run.set_arg(2, COUNT);
-      cmds.push_back(std::move(run));
-    }
-    barrier.wait();
+  for (int i = 0; i < arg.queueLength; i++) {
+    auto run = xrt::run(hello_world);
+    auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+    run.set_arg(0, bo0);
+    bos.push_back(std::move(bo0));
+    auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
+    run.set_arg(1, bo1);
+    bos.push_back(std::move(bo1));
+    run.set_arg(2, COUNT);
+    cmds.push_back(std::move(run));
+  }
+  barrier.wait();
 
-    runThread(cmds, arg.total, arg);
+  runThread(cmds, arg.total, arg);
 
-    barrier.wait();
+  barrier.wait();
 }
 
 void
@@ -129,10 +129,10 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   barrier.init(threadNumber + 1);
 
   for (int i = 0; i < threadNumber; i++) {
-      arg[i].thread_id = i;
-      arg[i].queueLength = queueLength;
-      arg[i].total = total;
-      threads[i] = std::thread([&](int i){ runTestThread(device, hello_world, arg[i]); }, i);
+    arg[i].thread_id = i;
+    arg[i].queueLength = queueLength;
+    arg[i].total = total;
+    threads[i] = std::thread([&](int i){ runTestThread(device, hello_world, arg[i]); }, i);
   }
 
   /* Wait threads to prepare to start */
@@ -144,7 +144,7 @@ TestPsIops::testMultiThreads(const std::string& dev, const std::string& xclbin_f
   auto end = Clock::now();
 
   for (int i = 0; i < threadNumber; i++)
-      threads[i].join();
+    threads[i].join();
 
   /* calculate performance */
   int overallCommands = 0;
@@ -171,19 +171,10 @@ TestPsIops::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree:
   ptree.put("status", test_token_skipped);
   return;
 
-  int threadNumber = 2;
-  int queueLength = 128;
-  int total = 50000;
-
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
-  const std::string test_path = findPlatformPath(dev, ptree);
-  const std::string b_file = findXclbinPath(dev, ptree); // "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin"
-  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
-  bool flag_s = false;
-
   xrt::device device(dev->get_device_id());
 
+  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   // Validate dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
     auto retVal = validate_binary_file(path);
@@ -198,19 +189,20 @@ TestPsIops::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree:
     // device.load_xclbin(path);
   }
 
-  // Load ps kernel onto device
+  const std::string b_file = findXclbinPath(dev, ptree); // "/lib/firmware/xilinx/ps_kernels/ps_bandwidth.xclbin"
   auto retVal = validate_binary_file(b_file);
-  if (flag_s || retVal == EOPNOTSUPP) {
+  if (retVal == EOPNOTSUPP) {
     ptree.put("status", test_token_skipped);
-    return;
-  } else if (retVal != EXIT_SUCCESS) {
-    logger(ptree, "Error", "Unknown error validating ps kernel xclbin");
-    ptree.put("status", test_token_failed);
     return;
   }
 
   krnl.new_style = true;
+  const int threadNumber = 2;
+  const int queueLength = 128;
+  const int total = 50000;
 
+  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
+  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
   try {
     // TODO need to add processing for dependency paths
     testMultiThreads(bdf, b_file, threadNumber, queueLength, total, ptree);

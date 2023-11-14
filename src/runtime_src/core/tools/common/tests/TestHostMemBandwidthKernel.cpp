@@ -17,6 +17,7 @@ namespace XBU = XBUtilities;
 #pragma warning(disable : 4996) //std::getenv
 #endif
 
+static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestHostMemBandwidthKernel::TestHostMemBandwidthKernel()
@@ -51,44 +52,31 @@ TestHostMemBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
   return ptree;
 }
 
-static bool 
-is_emulation() {
-  return (std::getenv("XCL_EMULATION_MODE") != nullptr) ? true : false;
-}
-
 void
 TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const std::string test_path = findPlatformPath(dev, ptree);
-  const std::string b_file = findXclbinPath(dev, ptree); // bandwidth.xclbin
-  std::string old_b_file = "/slavebridge.xclbin";
-  bool flag_s = false;
-
   xrt::device device(dev->get_device_id());
 
+  const std::string test_path = findPlatformPath(dev, ptree);
   if (test_path.empty()) {
     logger(ptree, "Error", "Platform test path was not found.");
     ptree.put("status", test_token_failed);
     return;
   }
 
+  const std::string b_file = findXclbinPath(dev, ptree); // bandwidth.xclbin
+  std::string old_b_file = "/slavebridge.xclbin";
   auto retVal = validate_binary_file(b_file);
   // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
   auto old_binary_file = boost::filesystem::path(test_path) / old_b_file;
   auto check_old_b_file = validate_binary_file(old_binary_file.string());
-  if (flag_s || retVal == EOPNOTSUPP) {
+  if (retVal == EOPNOTSUPP) {
     if (check_old_b_file == EOPNOTSUPP) {
       logger(ptree, "Details", "Test is not supported on this device.");
       ptree.put("status", test_token_skipped);
       return;
     }
-  } else if (retVal != EXIT_SUCCESS) {
-    if (check_old_b_file != EXIT_SUCCESS) {
-      logger(ptree, "Error", "Unknown error validating bandwidth xclbin");
-      ptree.put("status", test_token_failed);
-      return;
-    }
-  } 
+  }
 
   int num_kernel;
   static const std::string filename = "platform.json";
@@ -132,7 +120,6 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
   }
 
   double max_throughput = 0;
-  int reps = 10000;
 
   // Starting at 4K and going up to 1M with increments of power of 2
   // The minimum size of host-mem user can reserve is 4M,
@@ -140,21 +127,15 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
   for (uint32_t a = 4 * 1024; a <= 1 * 1024 * 1024; a *= 2) {
     unsigned int data_size = a;
 
-    if (is_emulation()) {
-      reps = 2; // reducing the repeat count to 2 for emulation flow
-      // Running only upto 8K for emulation flow
-      if (data_size > 8 * 1024) {
-        break;
-      }
-    }
+    if ((std::getenv("XCL_EMULATION_MODE") != nullptr) && (data_size > 8 * 1024))
+      break; // Running only up to 8K for emulation flow
 
     unsigned int vector_size_bytes = data_size;
     std::vector<unsigned char> input_host(data_size);
 
     // Filling up memory with an incremental byte pattern
-    for (uint32_t j = 0; j < data_size; j++) {
-        input_host[j] = j % 256;
-    }
+    for (uint32_t j = 0; j < data_size; j++)
+      input_host[j] = j % 256;
 
     std::vector<xrt::bo> input_buffer(num_kernel);
     std::vector<xrt::bo> output_buffer(num_kernel);
@@ -167,9 +148,8 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
     std::vector<unsigned char*> map_input_buffer(num_kernel);
     std::vector<unsigned char*> map_output_buffer(num_kernel);
 
-    for (int i = 0; i < num_kernel; i++) {
+    for (int i = 0; i < num_kernel; i++)
       map_input_buffer[i] = input_buffer[i].map<unsigned char*>();
-    }
 
     /* prepare data to be written to the device */
     for (int i = 0; i < num_kernel; i++) {

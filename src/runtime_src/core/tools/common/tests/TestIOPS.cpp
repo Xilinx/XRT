@@ -152,14 +152,11 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
 void
 TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
   const std::string test_path = findPlatformPath(dev, ptree);
   std::string b_file = findXclbinPath(dev, ptree); // verify.xclbin
-  int threadNumber = 2;
-  int queueLength = 128;
-  int total = 50000;
-  bool flag_s = false;
+  const int threadNumber = 2;
+  const int queueLength = 128;
+  const int total = 50000;
 
   if (b_file.empty()) {
     if (test_path.empty()) {
@@ -175,15 +172,13 @@ TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::p
 
   const std::string xclbin_fn = b_file;
   auto retVal = validate_binary_file(xclbin_fn);
-  if (flag_s || retVal == EOPNOTSUPP) {
+  if (retVal == EOPNOTSUPP) {
     ptree.put("status", test_token_skipped);
-    return;
-  } else if (retVal != EXIT_SUCCESS) {
-    logger(ptree, "Error", "Unknown error validating xclbin");
-    ptree.put("status", test_token_failed);
     return;
   }
 
+  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
+  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
   try {
     testMultiThreads(bdf, xclbin_fn, threadNumber, queueLength, total, ptree);
     return;

@@ -33,42 +33,29 @@ TestAiePs::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
-  const std::string test_path = findPlatformPath(dev, ptree);
-  const std::string b_file = findXclbinPath(dev, ptree);
-  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
-  bool flag_s = false;
-
   xrt::device device(dev->get_device_id());
 
   logger(ptree, "Details", "Test not supported.");
   ptree.put("status", test_token_skipped);
   return;
 
+  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-      auto retVal = validate_binary_file(path);
-      if (retVal == EOPNOTSUPP) {
-        ptree.put("status", test_token_skipped);
-        return;
-      } else if (retVal != EXIT_SUCCESS) {
-        logger(ptree, "Error", "Unknown error validating depedencies");
-        ptree.put("status", test_token_failed);
-        return;
-      }
-
-      device.load_xclbin(path);
+    auto retVal = validate_binary_file(path);
+    if (retVal == EOPNOTSUPP) {
+      ptree.put("status", test_token_skipped);
+      return;
+    }
+    device.load_xclbin(path);
   }
 
+  const std::string b_file = findXclbinPath(dev, ptree);
   // Load ps kernel onto device
   auto retVal = validate_binary_file(b_file);
-  if (flag_s || retVal == EOPNOTSUPP) {
+  if (retVal == EOPNOTSUPP) {
     ptree.put("status", test_token_skipped);
-    return;
-  } else if (retVal != EXIT_SUCCESS) {
-    logger(ptree, "Error", "Unknown error validating ps kernel xclbin");
-    ptree.put("status", test_token_failed);
     return;
   }
 
@@ -95,11 +82,11 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
     in_bomapped_b[i] = static_cast<float>(rand() % SIZE);
   }
   for (int i = 0; i < HEIGHT ; i++) {
-      for (int j = 0; j < WIDTH ; j++){
-          golden[i*WIDTH+j] = 0;
-          for (int k=0; k <WIDTH; k++)
-      golden[i*WIDTH+j] += in_bomapped_a[i*WIDTH + k] * in_bomapped_b[k+WIDTH * j];
-      }
+    for (int j = 0; j < WIDTH ; j++){
+        golden[i*WIDTH+j] = 0;
+        for (int k=0; k <WIDTH; k++)
+    golden[i*WIDTH+j] += in_bomapped_a[i*WIDTH + k] * in_bomapped_b[k+WIDTH * j];
+    }
   } 
 
   in_bo_a.sync(XCL_BO_SYNC_BO_TO_DEVICE, input_size_in_bytes, 0);
@@ -110,17 +97,13 @@ TestAiePs::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
 
   out_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, output_size_in_bytes, 0);
   
-  int match = 0;
   for (int i = 0; i < SIZE; i++) {
-      if (out_bomapped[i] != golden[i]) {
-          logger(ptree, "Error", boost::str(boost::format("Error found in sample %d: golden: %f, hardware: %f") % i % golden[i] % out_bomapped[i]));
-          match = 1;
-          break;
-      }
+    if (out_bomapped[i] != golden[i]) {
+      logger(ptree, "Error", boost::str(boost::format("Error found in sample %d: golden: %f, hardware: %f") % i % golden[i] % out_bomapped[i]));
+      ptree.put("status", test_token_failed);
+      return;
+    }
   }
 
-  if (match) 
-    ptree.put("status", test_token_failed);
-  else
-    ptree.put("status", test_token_passed);
+  ptree.put("status", test_token_passed);
 }

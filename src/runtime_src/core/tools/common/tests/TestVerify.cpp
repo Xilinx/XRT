@@ -39,21 +39,16 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
-  const std::string test_path = findPlatformPath(dev, ptree);
-  const std::string b_file = findXclbinPath(dev, ptree);
-  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
-  // bool flag_s = false;
-
   xrt::device device(dev->get_device_id());
 
+  const std::string test_path = findPlatformPath(dev, ptree);
   if (test_path.empty()) {
     logger(ptree, "Error", "Platform test path was not found.");
     ptree.put("status", test_token_failed);
     return;
   }
 
+  const std::string b_file = findXclbinPath(dev, ptree);
   auto xclbin_uuid = device.load_xclbin(b_file);
 
   auto krnl = xrt::kernel(device, xclbin_uuid, "verify");

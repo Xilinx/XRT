@@ -31,38 +31,25 @@ TestPsVerify::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestPsVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
-  const std::string test_path = findPlatformPath(dev, ptree);
-  const std::string b_file = findXclbinPath(dev, ptree);
-  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
-  bool flag_s = false;
-
   xrt::device device(dev->get_device_id());
 
+  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {
-      auto retVal = validate_binary_file(path);
-      if (retVal == EOPNOTSUPP) {
-        ptree.put("status", test_token_skipped);
-        return;
-      } else if (retVal != EXIT_SUCCESS) {
-        logger(ptree, "Error", "Unknown error validating depedencies");
-        ptree.put("status", test_token_failed);
-        return;
-      }
-
-      device.load_xclbin(path);
+    auto retVal = validate_binary_file(path);
+    if (retVal == EOPNOTSUPP) {
+      ptree.put("status", test_token_skipped);
+      return;
+    }
+    device.load_xclbin(path);
   }
 
+  const std::string b_file = findXclbinPath(dev, ptree);
   // Load ps kernel onto device
   auto retVal = validate_binary_file(b_file);
-  if (flag_s || retVal == EOPNOTSUPP) {
+  if (retVal == EOPNOTSUPP) {
     ptree.put("status", test_token_skipped);
-    return;
-  } else if (retVal != EXIT_SUCCESS) {
-    logger(ptree, "Error", "Unknown error validating ps kernel xclbin");
-    ptree.put("status", test_token_failed);
     return;
   }
 

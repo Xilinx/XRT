@@ -230,15 +230,11 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
 void
 TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  const auto bdf_tuple = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
-  const std::string bdf = xrt_core::query::pcie_bdf::to_string(bdf_tuple);
-  const std::string test_path = findPlatformPath(dev, ptree);
-  // bool flag_s = false;
-
   xrt::device device(dev->get_device_id());
 
-  std::string aie_control_file = "aie_control_config.json";
-  auto aie_control = boost::filesystem::path(test_path) / aie_control_file;
+  const std::string test_path = findPlatformPath(dev, ptree);
+  const std::string aie_control_file = "aie_control_config.json";
+  auto aie_control = std::filesystem::path(test_path) / aie_control_file;
 
   std::ifstream aiefile(aie_control.string());
   if (!aiefile.good()) {
