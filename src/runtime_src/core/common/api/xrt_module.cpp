@@ -38,6 +38,8 @@ namespace
 // 0 if no padding is required.   The page size should be
 // embedded as ELF metadata in the future.
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
+static constexpr uint8_t Elf_Amd_Aie2p = 66;
+static constexpr uint8_t Elf_Amd_Aie2s = 64;
 
 struct buf
 {
@@ -88,7 +90,7 @@ using instr_buf = buf;
 using control_packet = buf;
 using ctrlcode = buf; // represent control code for column or partition
 
-// TODO merge this with pathder (on Turin)
+// TODO merge this with patcher
 // struct patchers - patchers for a symbol
 //
 // Manage patching of a symbol in the control code.  The symbol
@@ -423,11 +425,10 @@ class module_elf : public module_impl
 
   // Extract instruction buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
-  static instr_buf
+  instr_buf
   initialize_instr_buf(const ELFIO::elfio& elf)
   {
-    auto os_abi = elf.get_os_abi();
-    if (os_abi != 66) {
+    if (m_os_abi != Elf_Amd_Aie2p) {
       XRT_PRINTF("module_elf::initialize_instr_buf(), not AIE2/AIE2P, skip...\n");
       return {};
     }
@@ -451,11 +452,10 @@ class module_elf : public module_impl
 
   // Extract control-packet buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
-  static control_packet
+  control_packet
   initialize_ctrl_packet(const ELFIO::elfio& elf)
   {
-    auto os_abi = elf.get_os_abi();
-    if (os_abi != 66) {
+    if (m_os_abi != Elf_Amd_Aie2p) {
       XRT_PRINTF("module_elf::initialize_ctrl_packet(), not AIE2/AIE2P, skip...\n");
       return {};
     }
@@ -464,7 +464,7 @@ class module_elf : public module_impl
 
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      // Instruction buffer is in .ctrltext section.
+      // Control Packet is in .ctrldata section.
       if (name.find(".ctrldata") != std::string::npos) {
         ctrldata = sec.get();
         break;
@@ -481,11 +481,10 @@ class module_elf : public module_impl
   // about order of sections in the ELF file.  Build helper data
   // structures that manages the control code data for each column and
   // page, then create ctrlcode objects from the data.
-  static std::vector<ctrlcode>
+  std::vector<ctrlcode>
   initialize_column_ctrlcode(const ELFIO::elfio& elf)
   {
-    auto os_abi = elf.get_os_abi();
-    if (os_abi != ELFIO::ELFOSABI_ARM)
+    if (m_os_abi != Elf_Amd_Aie2s)
     {
       XRT_PRINTF("module_elf::initialize_column_ctrlcode(), not AIE2S, skip...\n");
       return {};
@@ -550,11 +549,10 @@ class module_elf : public module_impl
     return ctrlcodes;
   }
 
-  static std::map<std::string, patchers>
+  std::map<std::string, patchers>
   initialize_arg_patchers(const ELFIO::elfio& elf, const instr_buf& instrbuf, const control_packet& ctrlpkt)
   {
-    auto os_abi = elf.get_os_abi();
-    if (os_abi != 66) {
+    if (m_os_abi != Elf_Amd_Aie2p) {
       XRT_PRINTF("module_elf::initialize_arg_patchers(), not AIE2/AIE2P, skip...\n");
       return {};
     }
@@ -618,11 +616,10 @@ class module_elf : public module_impl
     return arg2patchers;
   }
 
-  static std::map<std::string, patcher>
+  std::map<std::string, patcher>
   initialize_arg_patchers(const ELFIO::elfio& elf, const std::vector<ctrlcode>& ctrlcodes)
   {
-    auto os_abi = elf.get_os_abi();
-    if (os_abi != ELFIO::ELFOSABI_ARM) {
+    if (m_os_abi != Elf_Amd_Aie2s) {
       XRT_PRINTF("module_elf::initialize_arg_patchers(), not AIE2S, skip...\n");
       return {};
     }
@@ -950,7 +947,7 @@ class module_sram : public module_impl
   void
   patch_value(const std::string& argnm, uint64_t value)
   {
-    if (m_parent->get_os_abi() == 66) {
+    if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       if (!m_parent->patches(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value))
         return;
     }
@@ -985,7 +982,7 @@ class module_sram : public module_impl
       return;
 
     auto os_abi = m_parent.get()->get_os_abi();
-    if (os_abi != 66) {
+    if (os_abi != Elf_Amd_Aie2p) {
       if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
         auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
             % m_parent->number_of_arg_patchers() % m_patched_args.size();
@@ -1009,7 +1006,7 @@ public:
   {
     auto os_abi = m_parent.get()->get_os_abi();
 
-    if (os_abi == 66) {
+    if (os_abi == Elf_Amd_Aie2p) {
       create_instr_buf(m_parent.get());
       create_ctrlpkt_buf(m_parent.get());
 
