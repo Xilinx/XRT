@@ -245,8 +245,8 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   oStream << boost::format("%-26s: [%s]\n") % "Validate Device" % ptTree.get<std::string>("device_id");
   oStream << boost::format("    %-22s: %s\n") % "Platform" % ptTree.get<std::string>("platform");
 
-  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::TYPE::ALVEO);
-  if (device_class == xrt_core::query::device_class::TYPE::ALVEO) {
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  if (device_class == xrt_core::query::device_class::type::alveo) {
     oStream << boost::format("    %-22s: %s\n") % "SC Version" % ptTree.get<std::string>("sc_version");
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % ptTree.get<std::string>("platform_id");
   }

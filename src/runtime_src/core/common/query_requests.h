@@ -466,16 +466,28 @@ struct edge_vendor : request
 
 struct device_class : request
 {
-  enum TYPE {
-    ALVEO,
-    RYZEN
+  enum class type {
+    alveo,
+    ryzen
   };
 
-  using result_type = TYPE;
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::alveo:
+        return "Alveo";
+      case type::ryzen:
+        return "Ryzen";
+    }
+    return "unknown";
+  }
+
+  using result_type = type;
   static const key_type key = key_type::device_class;
   static const char* name() { return "device_class"; }
 
-  virtual boost::any
+  virtual std::any
   get(const device*) const = 0;
 };
 

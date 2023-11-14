@@ -20,9 +20,9 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type static_region;
 
-  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::TYPE::ALVEO);
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
   switch (device_class) {
-  case xrt_core::query::device_class::TYPE::ALVEO:
+  case xrt_core::query::device_class::type::alveo:
   {
     static_region.add("vbnv", xrt_core::device_query<xq::rom_vbnv>(device));
     std::vector<std::string> logic_uuids;
@@ -57,7 +57,7 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
     }
     break;
   }
-  case xrt_core::query::device_class::TYPE::RYZEN:
+  case xrt_core::query::device_class::type::ryzen:
   {
     static_region.add("name", xrt_core::device_query<xq::rom_vbnv>(device));
     break;
@@ -196,16 +196,16 @@ add_status_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_status;
 
-  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::TYPE::ALVEO);
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
   switch (device_class) {
-  case xrt_core::query::device_class::TYPE::ALVEO:
+  case xrt_core::query::device_class::type::alveo:
   {
     add_mig_info(device, pt_status);
     add_p2p_info(device, pt_status);
     add_host_mem_info(device, pt_status);
     break;
   }
-  case xrt_core::query::device_class::TYPE::RYZEN:
+  case xrt_core::query::device_class::type::ryzen:
   {
     add_performance_info(device, pt_status);
     break;
@@ -400,9 +400,9 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_clock_info(device, pt_platform);
   add_status_info(device, pt_platform);
 
-  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::TYPE::ALVEO);
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
   switch (device_class) {
-  case xrt_core::query::device_class::TYPE::ALVEO:
+  case xrt_core::query::device_class::type::alveo:
   {
     add_board_info(device, pt_platform);
     if (xrt_core::device_query_default<xq::is_versal>(device, false))

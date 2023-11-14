@@ -43,21 +43,21 @@ ReportPlatforms::writeReport( const xrt_core::device* _pDevice,
                               const std::vector<std::string>& _elementsFilter,
                               std::ostream & _output) const
 {
-  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(_pDevice, xrt_core::query::device_class::TYPE::ALVEO);
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(_pDevice, xrt_core::query::device_class::type::alveo);
   switch (device_class) {
-  case xrt_core::query::device_class::TYPE::ALVEO:
+  case xrt_core::query::device_class::type::alveo:
   {
     ReportAlveoPlatform alveo_report;
     alveo_report.writeReport(_pDevice, _pt, _elementsFilter, _output);
     break;
   }
-  case xrt_core::query::device_class::TYPE::RYZEN:
+  case xrt_core::query::device_class::type::ryzen:
   {
     ReportRyzenPlatform ryzen_report;
     ryzen_report.writeReport(_pDevice, _pt, _elementsFilter, _output);
     break;
   }
   default:
-    XBUtilities::throw_cancel(boost::format("Invalid device class type: %d") % device_class);
+    XBUtilities::throw_cancel(boost::format("Invalid device class type: %d") % xrt_core::query::device_class::enum_to_str(device_class));
   }
 }

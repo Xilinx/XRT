@@ -128,12 +128,12 @@ struct bdf
 // Returns static information about the given device
 struct dev_info
 {
-  static boost::any
+  static std::any
   get(const xrt_core::device* device, key_type key)
   {
     switch (key) {
     case key_type::device_class:
-      return xrt_core::query::device_class::TYPE::ALVEO;
+      return xrt_core::query::device_class::type::alveo;
     default:
       throw query::no_such_key(key);
     }
