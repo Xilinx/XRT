@@ -68,7 +68,7 @@ class AieTraceMetadata {
         return metricSets[module_type::core][0];
     }
 
-    boost::property_tree::ptree getAIEConfigMetadata(std::string config_name);
+    xdp::aie::driver_config getAIEConfigMetadata();
 
 
     bool getUseDelay(){return useDelay;}
@@ -123,7 +123,7 @@ class AieTraceMetadata {
     
     std::string counterScheme;
     std::string metricSet;
-    boost::property_tree::ptree aieMeta;
+    boost::property_tree::ptree aie_meta;
     std::unique_ptr<aie::BaseFiletypeImpl> filetype;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;

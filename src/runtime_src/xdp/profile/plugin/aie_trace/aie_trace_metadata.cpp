@@ -759,12 +759,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-<<<<<<< HEAD
-      auto tiles = aie::getInterfaceTiles(aieMeta, metrics[i][0], "all", metrics[i][1], channelId);
-      std::cout << "Returning tiles.size: " << tiles.size() << std::endl;
-=======
       auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
->>>>>>> upstream/master
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
@@ -902,9 +897,10 @@ namespace xdp {
     }
   }
 
-  boost::property_tree::ptree AieTraceMetadata::getAIEConfigMetadata(std::string config_name) {
-    std::string query = "aie_metadata.driver_config." + config_name;
-    return aieMeta.get_child(query);
+  aie::driver_config 
+  AieTraceMetadata::getAIEConfigMetadata() 
+  {
+    return filetype->getDriverConfig();
   }
   
 }

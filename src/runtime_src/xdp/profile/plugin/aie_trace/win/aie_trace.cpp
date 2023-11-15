@@ -170,19 +170,21 @@ namespace xdp {
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
     mInterfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_PL;
 
-    XAie_Config cfg { 
-      metadata->getAIEConfigMetadata("hw_gen").get_value<uint8_t>(),               //hw_gen
-      metadata->getAIEConfigMetadata("base_address").get_value<uint64_t>(),        //xaie_base_addr
-      metadata->getAIEConfigMetadata("column_shift").get_value<uint8_t>(),         //xaie_col_shift
-      metadata->getAIEConfigMetadata("row_shift").get_value<uint8_t>(),            //xaie_row_shift
-      metadata->getAIEConfigMetadata("num_rows").get_value<uint8_t>(),             //xaie_num_rows,
-      metadata->getAIEConfigMetadata("num_columns").get_value<uint8_t>(),          //xaie_num_cols,
-      metadata->getAIEConfigMetadata("shim_row").get_value<uint8_t>(),             //xaie_shim_row,
-      metadata->getAIEConfigMetadata("reserved_row_start").get_value<uint8_t>(),   //xaie_res_tile_row_start,
-      metadata->getAIEConfigMetadata("reserved_num_rows").get_value<uint8_t>(),    //xaie_res_tile_num_rows,
-      metadata->getAIEConfigMetadata("aie_tile_row_start").get_value<uint8_t>(),   //xaie_aie_tile_row_start,
-      metadata->getAIEConfigMetadata("aie_tile_num_rows").get_value<uint8_t>(),    //xaie_aie_tile_num_rows
-      {0}                                                                          //PartProp
+    xdp::aie::driver_config meta_config = metadata->getAIEConfigMetadata();
+
+    XAie_Config cfg {
+      meta_config.hw_gen,
+      meta_config.base_address,
+      meta_config.column_shift,
+      meta_config.row_shift,
+      meta_config.num_rows,
+      meta_config.num_columns,
+      meta_config.shim_row,
+      meta_config.mem_row_start,
+      meta_config.mem_num_rows,
+      meta_config.aie_tile_row_start,
+      meta_config.aie_tile_num_rows,
+      {0} // PartProp
     };
 
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
