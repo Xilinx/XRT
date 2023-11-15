@@ -14,12 +14,12 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -74,7 +74,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
     //-- Output file
-    if (!m_outputFile.empty() && boost::filesystem::exists(m_outputFile) && !XBU::getForce())
+    if (!m_outputFile.empty() && std::filesystem::exists(m_outputFile) && !XBU::getForce())
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_outputFile).str());
 
   } catch (const xrt_core::error&) {

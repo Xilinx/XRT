@@ -25,6 +25,8 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+
 #include "core/common/device.h"
 #include "core/common/system.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -50,14 +52,14 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return aie::getHardwareGeneration(aieMeta);
+      return filetype->getHardwareGeneration();
     }
     uint16_t getRowOffset() {
-      return aie::getAIETileRowOffset(aieMeta);
+      return filetype->getAIETileRowOffset();
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return aie::getTraceGMIOs(aieMeta);
+      return filetype->getTraceGMIOs();
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -122,6 +124,7 @@ class AieTraceMetadata {
     std::string counterScheme;
     std::string metricSet;
     boost::property_tree::ptree aieMeta;
+    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;

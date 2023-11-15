@@ -37,6 +37,7 @@
 #include <sys/wait.h>
 
 #include <atomic>
+#include <filesystem>
 #include <thread>
 #include <tuple>
 #include <utility>
@@ -820,7 +821,7 @@ namespace xclswemuhal2
     {
       if (!mFileExists)
       {
-        if (boost::filesystem::exists(mFileName))
+        if (std::filesystem::exists(mFileName))
         {
           file.open(mFileName,std::ios::in);
           if (file.is_open())

@@ -39,9 +39,9 @@ template <typename QueryRequestType, typename Getter>
 struct function0_getter : QueryRequestType
 {
   static_assert(std::is_same<typename Getter::result_type, typename QueryRequestType::result_type>::value
-             || std::is_same<typename Getter::result_type, boost::any>::value, "type mismatch");
+             || std::is_same<typename Getter::result_type, std::any>::value, "type mismatch");
 
-  boost::any
+  std::any
   get(const xrt_core::device* device) const
   {
     auto k = QueryRequestType::key;

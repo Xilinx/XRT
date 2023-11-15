@@ -103,7 +103,7 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
     SET(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS})
   endif()
 
-elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
+elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|mariner)")
   execute_process(
     COMMAND uname -m
     OUTPUT_VARIABLE CPACK_ARCH
@@ -129,10 +129,12 @@ elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
   SET(CPACK_RPM_AZURE_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/azure/prerm")
   SET(CPACK_RPM_CONTAINER_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/postinst")
   SET(CPACK_RPM_CONTAINER_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
-  SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware")
+  SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware" "/usr/share/pkgconfig")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
   if (${LINUX_FLAVOR} MATCHES "^(sles)")
     SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, dkms >= 2.2.0, python3 >= 3.6")
+  elseif (${LINUX_FLAVOR} MATCHES "^(mariner)")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, dkms >= 2.5.0, python3 >= 3.6")
   else()
     SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, dkms >= 2.5.0, python3 >= 3.6")
   endif()

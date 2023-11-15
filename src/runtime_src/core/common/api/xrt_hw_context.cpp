@@ -12,6 +12,7 @@
 #include "core/common/device.h"
 #include "core/common/trace.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/usage_metrics.h"
 #include "core/common/xdp/profile.h"
 
 #include <limits>
@@ -32,6 +33,8 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
   cfg_param_type m_cfg_param;
   access_mode m_mode;
   std::unique_ptr<xrt_core::hwctx_handle> m_hdl;
+  std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
+      xrt_core::usage_metrics::get_usage_metrics_logger();
 
 public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const cfg_param_type& cfg_param)
@@ -67,6 +70,9 @@ public:
     // shared pointer must already exist to call get_shared_ptr(),
     // which is not true at that time.
     xrt_core::xdp::finish_flush_device(this);
+
+    // Reset within scope of dtor for trace point to measure time to reset
+    m_hdl.reset(); 
   }
 
   void
@@ -110,6 +116,12 @@ public:
   get_hwctx_handle()
   {
     return m_hdl.get();
+  }
+
+  xrt_core::usage_metrics::base_logger*
+  get_usage_logger()
+  {
+    return m_usage_logger.get();
   }
 };
 
@@ -167,6 +179,8 @@ alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, cons
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
 
+  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
+
   return handle;
 }
 
@@ -181,6 +195,8 @@ alloc_hwctx_from_mode(const xrt::device& device, const xrt::uuid& xclbin_id, xrt
   // The create_hw_context_from_implementation function is then 
   // called in XDP create a hw_context to the underlying implementation
   xrt_core::xdp::update_device(handle.get());
+
+  handle->get_usage_logger()->log_hw_ctx_info(handle.get());
 
   return handle;
 }

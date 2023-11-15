@@ -30,8 +30,8 @@ namespace xdp {
     XDP_EXPORT MLTimelinePlugin();
     XDP_EXPORT ~MLTimelinePlugin();
 
-    XDP_EXPORT void updateAIEDevice(void* handle);
-    XDP_EXPORT void finishflushAIEDevice(void* handle);
+    XDP_EXPORT void updateDevice(void* handle);
+    XDP_EXPORT void finishflushDevice(void* handle);
     XDP_EXPORT void writeAll(bool openNewFiles);
 
     XDP_EXPORT static bool alive();
@@ -42,14 +42,13 @@ namespace xdp {
     private:
     static bool live;
 
-    struct AIEData {
+    struct DeviceData {
       bool valid;
       uint64_t deviceID;
       std::unique_ptr<MLTimelineImpl> implementation;
-      std::shared_ptr<AieConfigMetadata>  aieMetadata;
     };
  
-    std::map<void*, AIEData>  handleToAIEData;
+    std::map<void*, DeviceData>  handleToDeviceData;
 
   };
 

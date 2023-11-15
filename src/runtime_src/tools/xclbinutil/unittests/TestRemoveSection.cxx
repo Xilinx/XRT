@@ -4,7 +4,7 @@
 #include "globals.h"
 
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 TEST(RemoveSection, RemoveBitstream) {
    XclBin xclBin;
@@ -15,7 +15,7 @@ TEST(RemoveSection, RemoveBitstream) {
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
    // Get the file of interest
-   boost::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   std::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
    sampleXclbin /= "sample_1_2018.2.xclbin";
 
    xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);

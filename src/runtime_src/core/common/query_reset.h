@@ -23,7 +23,6 @@
 #include <sstream>
 #include <iomanip>
 #include <stdexcept>
-#include <boost/any.hpp>
 #include <boost/format.hpp>
 
 namespace xrt_core {

@@ -22,7 +22,7 @@
 
 #include "core/include/xdp/hal_api.h"
 
-namespace bfs = boost::filesystem;
+namespace sfs = std::filesystem;
 
 namespace xdphalinterface {
 

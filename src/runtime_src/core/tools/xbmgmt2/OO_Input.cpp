@@ -11,11 +11,11 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 namespace po = boost::program_options;
 
+#include <filesystem>
 #include <iostream> 
 
 OO_Input::OO_Input( const std::string &_longName, bool _isHidden )
@@ -137,12 +137,12 @@ OO_Input::execute(const SubCmdOptions& _options) const
   // Load Config commands
   // -- process "input" option -----------------------------------------------
   if (!m_path.empty()) {
-    if (!boost::filesystem::exists(m_path)) {
+    if (!std::filesystem::exists(m_path)) {
       std::cerr << boost::format("ERROR: Input file does not exist: '%s'") % m_path << "\n\n";
       throw xrt_core::error(std::errc::operation_canceled);
     }
 
-    if (boost::filesystem::extension(m_path).compare(".ini") != 0) {
+    if (std::filesystem::path(m_path).extension().string() == ".ini") {
       std::cerr << boost::format("ERROR: Input file should be an INI file: '%s'") % m_path << "\n\n";
       throw xrt_core::error(std::errc::operation_canceled);
     }

@@ -19,7 +19,7 @@
 #include <netinet/in.h>
 #include <libudev.h>
 #include <boost/algorithm/string.hpp>
-#include "boost/filesystem.hpp"
+#include <filesystem>
 
 #include <fstream>
 #include <vector>
@@ -109,7 +109,7 @@ std::string Mpd::get_xocl_major_minor(const std::string &sysfs_name)
     if (!file_exist(sysfs_base + sysfs_name + "/drm"))
             return "";
 
-    boost::filesystem::directory_iterator dir(sysfs_base + sysfs_name + "/drm"), end;
+    std::filesystem::directory_iterator dir(sysfs_base + sysfs_name + "/drm"), end;
     while (dir != end) {
         std::string fn = dir->path().filename().string();
         if (fn.find("render") != std::string::npos) {
@@ -169,7 +169,7 @@ bool Mpd::device_in_container(const std::string major_minor, std::string &path)
     for (auto &t : folder) {
         if (!file_exist(cgroup_base + t))
             continue;
-        boost::filesystem::recursive_directory_iterator dir(cgroup_base + t), end;
+        std::filesystem::recursive_directory_iterator dir(cgroup_base + t), end;
         while (dir != end) {
             std::string fn = dir->path().filename().string();
             if (!fn.compare(target)) {

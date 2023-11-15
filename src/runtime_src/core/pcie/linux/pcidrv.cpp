@@ -2,7 +2,7 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidrv.h"
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace xrt_core { namespace pci {
 
@@ -11,15 +11,15 @@ drv::
 scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
              std::vector<std::shared_ptr<dev>>& nonready_list) const
 {
-  namespace bfs = boost::filesystem;
+  namespace sfs = std::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";
   const std::string drvpath = drv_root + name();
 
-  if (!bfs::exists(drvpath))
+  if (!sfs::exists(drvpath))
     return;
 
   // Gather all sysfs directory and sort
-  std::vector<bfs::path> vec{ bfs::directory_iterator(drvpath), bfs::directory_iterator() };
+  std::vector<sfs::path> vec{ sfs::directory_iterator(drvpath), sfs::directory_iterator() };
   std::sort(vec.begin(), vec.end());
 
   for (auto& path : vec) {
@@ -28,7 +28,7 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
 
       // In docker, all host sysfs nodes are available. So, we need to check
       // devnode to make sure the device is really assigned to docker.
-      if (!bfs::exists(pf->get_subdev_path("", -1)))
+      if (!sfs::exists(pf->get_subdev_path("", -1)))
         continue;
 
       // Insert detected device into proper list.

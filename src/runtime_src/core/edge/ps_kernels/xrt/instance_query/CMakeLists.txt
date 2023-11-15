@@ -14,7 +14,6 @@ set_target_properties(instance_query PROPERTIES
 
 target_link_libraries(instance_query
   PRIVATE
-  ${Boost_FILESYSTEM_LIBRARY}
   )
 
 install (TARGETS instance_query 

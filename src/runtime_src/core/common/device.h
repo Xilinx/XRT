@@ -14,15 +14,16 @@
 #include "uuid.h"
 
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/usage_metrics.h"
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
+#include <any>
 #include <cstdint>
 #include <vector>
 #include <string>
 #include <map>
 #include <memory>
-#include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
 
@@ -204,10 +205,10 @@ public:
    * query() - Query the device for specific property
    *
    * @QueryRequestType: Template parameter identifying a specific query request
-   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   * Return: QueryRequestType::result_type value wrapped as std::any.
    */
   template <typename QueryRequestType>
-  boost::any
+  std::any
   query() const
   {
     auto& qr = lookup_query(QueryRequestType::key);
@@ -219,10 +220,10 @@ public:
    *
    * @QueryRequestType: Template parameter identifying a specific query request
    * @args:  Variadic arguments forwarded the QueryRequestType
-   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   * Return: QueryRequestType::result_type value wrapped as std::any.
    */
   template <typename QueryRequestType, typename ...Args>
-  boost::any
+  std::any
   query(Args&&... args) const
   {
     auto& qr = lookup_query(QueryRequestType::key);
@@ -463,6 +464,15 @@ public:
     return {fd, std::bind(&device::close, this, fd)};
   }
 
+  /**
+   * get_usage_logger() - get usage metrics logger
+   */
+  usage_metrics::base_logger*
+  get_usage_logger()
+  {
+    return m_usage_logger.get();
+  }
+
  private:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
@@ -474,6 +484,7 @@ public:
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
   mutable std::mutex m_mutex;
+  std::shared_ptr<usage_metrics::base_logger> m_usage_logger = usage_metrics::get_usage_metrics_logger();
 };
 
 /**
@@ -488,7 +499,7 @@ inline typename QueryRequestType::result_type
 device_query(const device* device)
 {
   auto ret = device->query<QueryRequestType>();
-  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+  return std::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
 template <typename QueryRequestType, typename ...Args>
@@ -496,7 +507,7 @@ inline typename QueryRequestType::result_type
 device_query(const device* device, Args&&... args)
 {
   auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
-  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+  return std::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
 template <typename QueryRequestType>
@@ -511,7 +522,7 @@ inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device, Args&&... args)
 {
   auto ret = device->query<QueryRequestType>(std::forward<Args>(args)...);
-  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+  return std::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
 template <typename QueryRequestType>
