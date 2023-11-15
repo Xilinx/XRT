@@ -37,7 +37,6 @@ void AIETraceDataLogger::addAIETraceData(uint64_t strmIndex, void* buffer, uint6
     return;
   }
   db->getDynamicInfo().addAIETraceData(deviceId, strmIndex, buffer, bufferSz, copy);
-  std::cout << "finished adding trace data!" << std::endl;
 }
 
 }

@@ -643,7 +643,6 @@ namespace xdp {
   void AieTraceMetadata::getConfigMetricsForInterfaceTiles(const std::vector<std::string>& metricsSettings,
                                                            const std::vector<std::string> graphMetricsSettings)
   {
-    std::cout << "inside get Config Metrics for interface tiles" << std::endl;
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
