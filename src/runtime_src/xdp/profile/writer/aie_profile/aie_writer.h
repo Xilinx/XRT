@@ -29,11 +29,13 @@ namespace xdp {
                        uint64_t deviceIndex);
     ~AIEProfilingWriter();
 
+    virtual void writeHeader();
     virtual bool write(bool openNewFile = true);
     
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;
+    bool mHeaderWritten;
   };
 
 } // end namespace xdp

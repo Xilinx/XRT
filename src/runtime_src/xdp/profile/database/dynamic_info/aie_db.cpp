@@ -18,6 +18,8 @@
 
 #include <cstring>
 
+#include "core/common/message.h"
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/dynamic_info/aie_db.h"
 
 namespace xdp {
@@ -64,6 +66,16 @@ namespace xdp {
     auto data = traceData[strmIndex];
     traceData[strmIndex] = new aie::TraceDataType;
     return data;
+  }
+
+  void AIEDB::addAIESample(double timestamp, const std::vector<uint64_t>& values)
+  {
+      samples.addSample({timestamp, values});
+      if (samples.getSamplesSize() > sampleThreshold) {
+        std::string msg = "AIE profile threshold reached, initiiate aie_profile write!";
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+        VPDatabase::Instance()->broadcast(VPDatabase::DUMP_AIE_PROFILE);
+      }
   }
 
 } // end namespace xdp

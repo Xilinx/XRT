@@ -16,6 +16,7 @@
 
 #define XDP_CORE_SOURCE
 
+#include "core/common/message.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/dynamic_info/pl_db.h"
 #include "xdp/profile/database/events/vtf_event.h"
@@ -34,8 +35,9 @@ namespace xdp {
       if (events.size() > eventThreshold)
         overLimit = true;
     }
-    if (overLimit)
+    if (overLimit) {
       VPDatabase::Instance()->broadcast(VPDatabase::DUMP_TRACE);
+    }
   }
 
   bool PLDB::eventsExist()

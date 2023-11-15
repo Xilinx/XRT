@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include "core/common/message.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
@@ -27,7 +28,7 @@ namespace xdp {
                                          const char* deviceName, uint64_t deviceIndex) :
     VPWriter(fileName),
     mDeviceName(deviceName),
-    mDeviceIndex(deviceIndex)
+    mDeviceIndex(deviceIndex), mHeaderWritten(false)
   {
   }
 
@@ -35,11 +36,12 @@ namespace xdp {
   {    
   }
 
-  bool AIEProfilingWriter::write(bool)
+
+  void AIEProfilingWriter::writeHeader()
   {
     // Report HW generation to inform analysis how to interpret event IDs
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
-    
+
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
@@ -50,15 +52,23 @@ namespace xdp {
     fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "timestamp"    << ","
-         << "column"       << ","
-         << "row"          << ","
-         << "start"        << ","
-         << "end"          << ","
-         << "reset"        << ","
-         << "value"        << ","
-         << "timer"        << ","
-         << "payload"      << ",\n";
+        << "column"       << ","
+        << "row"          << ","
+        << "start"        << ","
+        << "end"          << ","
+        << "reset"        << ","
+        << "value"        << ","
+        << "timer"        << ","
+        << "payload"      << ",\n";
+  }
 
+  bool AIEProfilingWriter::write(bool)
+  {
+    if(!mHeaderWritten) {
+      this->writeHeader();
+      this->mHeaderWritten = true;
+    }
+    
     // Write all data elements
     std::vector<counters::Sample> samples =
       db->getDynamicInfo().getAIESamples(mDeviceIndex);
@@ -70,7 +80,6 @@ namespace xdp {
       }
       fout << "\n";
     }
-
     fout.flush();
     return true;
   }
