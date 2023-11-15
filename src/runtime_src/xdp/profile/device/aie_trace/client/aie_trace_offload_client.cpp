@@ -26,245 +26,223 @@
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
 #include "xdp/profile/device/device_intf.h"
-#include "core/common/message.h"
 
-
-#include "xdp/profile/plugin/aie_trace/win/transactions/op_types.h"
 #include "xdp/profile/plugin/aie_trace/win/transactions/op_buf.hpp"
 #include "xdp/profile/plugin/aie_trace/win/transactions/op_init.hpp"
+#include "xdp/profile/plugin/aie_trace/win/transactions/op_types.h"
 
 constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
 namespace xdp {
-using severity_level = xrt_core::message::severity_level;
+  using severity_level = xrt_core::message::severity_level;
 
-AIETraceOffload::AIETraceOffload
-  ( void* handle, uint64_t id
-  , DeviceIntf* dInt
-  , AIETraceLogger* logger
-  , bool isPlio
-  , uint64_t totalSize
-  , uint64_t numStrm
-  , xrt::hw_context context
-  , std::shared_ptr<AieTraceMetadata>(metadata)
-  )
-  : deviceHandle(handle)
-  , deviceId(id)
-  , deviceIntf(dInt)
-  , traceLogger(logger)
-  , isPLIO(isPlio)
-  , totalSz(totalSize)
-  , numStream(numStrm)
-  , traceContinuous(false)
-  , offloadIntervalUs(0)
-  , bufferInitialized(false)
-  , offloadStatus(AIEOffloadThreadStatus::IDLE)
-  , mEnCircularBuf(false)
-  , mCircularBufOverwrite(false)
-  , context(context)
-  , metadata(metadata)
-{
-  bufAllocSz = deviceIntf->getAlignedTraceBufSize(totalSz, static_cast<unsigned int>(numStream));
-  mReadTrace = std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
-}
-
-bool
-AIETraceOffload::
-initReadTrace()
-{
-  buffers.clear();
-  buffers.resize(numStream);
-
-  constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
-  
-  try {
-    mKernel = xrt::kernel(context, "XDP_KERNEL");  
-  } catch (std::exception &e){
-    std::stringstream msg;
-    msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to configure AIE Trace Offloading." << e.what() ;
-    xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-    return false;
+  AIETraceOffload::AIETraceOffload(void* handle, uint64_t id, DeviceIntf* dInt,
+                                   AIETraceLogger* logger, bool isPlio,
+                                   uint64_t totalSize, uint64_t numStrm,
+                                   xrt::hw_context context,
+                                   std::shared_ptr<AieTraceMetadata>(metadata))
+    : deviceHandle(handle), deviceId(id), deviceIntf(dInt), traceLogger(logger),
+      isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
+      traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
+      offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
+      mCircularBufOverwrite(false), context(context), metadata(metadata)
+  {
+    bufAllocSz = deviceIntf->getAlignedTraceBufSize(
+                   totalSz, static_cast<unsigned int>(numStream));
+    mReadTrace =
+      std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
   }
 
-  xdp::aie::driver_config meta_config = metadata->getAIEConfigMetadata();
+  bool AIETraceOffload::initReadTrace()
+  {
+    buffers.clear();
+    buffers.resize(numStream);
 
-  XAie_Config cfg {
-    meta_config.hw_gen,
-    meta_config.base_address,
-    meta_config.column_shift,
-    meta_config.row_shift,
-    meta_config.num_rows,
-    meta_config.num_columns,
-    meta_config.shim_row,
-    meta_config.mem_row_start,
-    meta_config.mem_num_rows,
-    meta_config.aie_tile_row_start,
-    meta_config.aie_tile_num_rows,
-    {0} // PartProp
-  };
+    constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
 
-  auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
-  if (RC != XAIE_OK) {
-    xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
-    return false;
-  }
-  for (uint64_t i = 0; i < numStream; ++i) {
-    VPDatabase* db = VPDatabase::Instance();
-    TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
-
-    std::string tracemsg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", tracemsg.c_str());
-    xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz, XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0)));
-    
-
-    //Start recording the transaction
-    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-
-    // AieRC RC;
-    // Todo: get this from aie metadata
-    XAie_LocType loc;
-    XAie_DmaDesc DmaDesc;
-    loc = XAie_TileLoc(static_cast<uint8_t>(traceGMIO->shimColumn), 0);
-    uint8_t s2mm_ch_id = static_cast<uint8_t>(traceGMIO->channelNumber);
-    uint8_t s2mm_bd_id = 15; /* for now use last bd */
-
-    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
- 
-    // S2MM BD
-    RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc, loc);
-    RC = XAie_DmaSetAddrLen(&DmaDesc, xrt_bos[i].address() + DDR_AIE_ADDR_OFFSET, static_cast<uint32_t>(bufAllocSz));
-    RC = XAie_DmaEnableBd(&DmaDesc);
-    RC = XAie_DmaSetAxi(&DmaDesc, 0U, 8U, 0U, 0U, 0U);
-    RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
-
-    //printf("Enabling channels....\n");
-    RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM, s2mm_bd_id);
-    RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
-
-    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    op_buf instr_buf;
-    instr_buf.addOP(transaction_op(txn_ptr));
-    xrt::bo instr_bo;
-
-    // Configuration bo
     try {
-      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e){
+      mKernel = xrt::kernel(context, "XDP_KERNEL");
+    }
+    catch (std::exception& e) {
       std::stringstream msg;
-      msg << "Unable to create instruction buffer for AIE Trace transaction. Not configuring AIE Trace Offloading. " << e.what() << std::endl;
+      msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to "
+          "configure AIE Trace Offloading."
+          << e.what();
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return false;
     }
 
-    instr_bo.write(instr_buf.ibuf_.data());
-    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    run.wait2();
+    xdp::aie::driver_config meta_config = metadata->getAIEConfigMetadata();
 
-    xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Trace Offloading Transaction Buffer.");
+    XAie_Config cfg{
+      meta_config.hw_gen,
+      meta_config.base_address,
+      meta_config.column_shift,
+      meta_config.row_shift,
+      meta_config.num_rows,
+      meta_config.num_columns,
+      meta_config.shim_row,
+      meta_config.mem_row_start,
+      meta_config.mem_num_rows,
+      meta_config.aie_tile_row_start,
+      meta_config.aie_tile_num_rows,
+      {0} // PartProp
+    };
 
-    // Must clear aie state
-    XAie_ClearTransaction(&aieDevInst);
-    
+    auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
+
+    if (RC != XAIE_OK) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+                              "AIE Driver Initialization Failed.");
+      return false;
+    }
+
+    for (uint64_t i = 0; i < numStream; ++i) {
+      VPDatabase* db = VPDatabase::Instance();
+      TraceGMIO* traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
+
+      std::string tracemsg = "Allocating trace buffer of size " +
+                             std::to_string(bufAllocSz) + " for AIE Stream " +
+                             std::to_string(i);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                              tracemsg.c_str());
+      xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz,
+                                   XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0)));
+
+      // Start recording the transaction
+      XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+
+      // AieRC RC;
+      // Todo: get this from aie metadata
+      XAie_LocType loc;
+      XAie_DmaDesc DmaDesc;
+      loc = XAie_TileLoc(static_cast<uint8_t>(traceGMIO->shimColumn), 0);
+      uint8_t s2mm_ch_id = static_cast<uint8_t>(traceGMIO->channelNumber);
+      uint8_t s2mm_bd_id = 15; /* for now use last bd */
+
+      // S2MM BD
+      RC = XAie_DmaDescInit(&aieDevInst, &DmaDesc, loc);
+      RC =
+        XAie_DmaSetAddrLen(&DmaDesc, xrt_bos[i].address() + DDR_AIE_ADDR_OFFSET,
+                           static_cast<uint32_t>(bufAllocSz));
+      RC = XAie_DmaEnableBd(&DmaDesc);
+      RC = XAie_DmaSetAxi(&DmaDesc, 0U, 8U, 0U, 0U, 0U);
+      RC = XAie_DmaWriteBd(&aieDevInst, &DmaDesc, loc, s2mm_bd_id);
+
+      // printf("Enabling channels....\n");
+      RC = XAie_DmaChannelPushBdToQueue(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM,
+                                        s2mm_bd_id);
+      RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
+
+      uint8_t* txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+      op_buf instr_buf;
+      instr_buf.addOP(transaction_op(txn_ptr));
+      xrt::bo instr_bo;
+
+      // Configuration bo
+      try {
+        instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(),
+                           XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+      }
+      catch (std::exception& e) {
+        std::stringstream msg;
+        msg << "Unable to create instruction buffer for AIE Trace transaction. "
+            "Not configuring AIE Trace Offloading. "
+            << e.what() << std::endl;
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        return false;
+      }
+
+      instr_bo.write(instr_buf.ibuf_.data());
+      instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      auto run = mKernel(CONFIGURE_OPCODE, instr_bo,
+                         instr_bo.size() / sizeof(int), 0, 0, 0, 0);
+      run.wait2();
+
+      xrt_core::message::send(
+        severity_level::info, "XRT",
+        "Successfully scheduled AIE Trace Offloading Transaction Buffer.");
+
+      // Must clear aie state
+      XAie_ClearTransaction(&aieDevInst);
+    }
+
+    bufferInitialized = true;
+    return bufferInitialized;
   }
-  bufferInitialized = true;
-  return bufferInitialized;
-}
 
-void
-AIETraceOffload::
-readTraceGMIO(bool /*final*/)
-{
-  for (int index = 0; index < numStream; index++) {
-    syncAndLog(index);
-  }
-}
-
-uint64_t
-AIETraceOffload::
-syncAndLog(uint64_t index)
-{
-  xrt_bos[index].sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-  auto in_bo_map = xrt_bos[index].map<uint32_t*>();
-  if (!in_bo_map)
-    return 0;
-
-  uint64_t nBytes = searchWrittenBytes((void*)in_bo_map, bufAllocSz);
-
-  // Log nBytes of trace
-  traceLogger->addAIETraceData(index, (void*)in_bo_map, nBytes, true);
-  return xrt_bos[index].size();
-}
-
-/*
- * Implement these later for continuous offload
- */
-
-AIETraceOffload::
-~AIETraceOffload()
-{}
-
-void
-AIETraceOffload::
-startOffload()
-{}
-
-bool
-AIETraceOffload::
-keepOffloading()
-{
-  return false;
-}
-
-void
-AIETraceOffload::
-stopOffload()
-{}
-
-void
-AIETraceOffload::
-offloadFinished()
-{}
-
-void
-AIETraceOffload::
-endReadTrace()
-{}
-
-uint64_t
-AIETraceOffload::
-searchWrittenBytes(void* buf, uint64_t bytes)
-{
-  /*
-   * Look For trace boundary using binary search.
-   * Use Dword to be safe
-   */
-  auto words = static_cast<uint64_t *>(buf);
-  uint64_t wordcount = bytes / TRACE_PACKET_SIZE;
-
-  // indices
-  int64_t low = 0;
-  int64_t high = static_cast<int64_t>(wordcount) - 1;
-
-  // Boundary at which trace ends and 0s begin
-  uint64_t boundary = wordcount;
-
-  while (low <= high) {
-    int64_t mid = low + (high - low) / 2;
-    if (!words[mid]) {
-      boundary = mid;
-      high = mid - 1;
-    } else {
-      low = mid + 1;
+  void AIETraceOffload::readTraceGMIO(bool /*final*/)
+  {
+    for (int index = 0; index < numStream; index++) {
+      syncAndLog(index);
     }
   }
 
-  uint64_t written = boundary * TRACE_PACKET_SIZE;
+  uint64_t AIETraceOffload::syncAndLog(uint64_t index)
+  {
+    xrt_bos[index].sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    auto in_bo_map = xrt_bos[index].map<uint32_t*>();
 
-  debug_stream
-    << "Found Boundary at 0x" << std::hex << written << std::dec << std::endl;
+    if (!in_bo_map)
+      return 0;
 
-  return written;
-}
+    uint64_t nBytes = searchWrittenBytes((void*)in_bo_map, bufAllocSz);
 
-}
+    // Log nBytes of trace
+    traceLogger->addAIETraceData(index, (void*)in_bo_map, nBytes, true);
+    return xrt_bos[index].size();
+  }
+
+  /*
+   * Implement these later for continuous offload
+   */
+
+  AIETraceOffload::~AIETraceOffload() {}
+
+  void AIETraceOffload::startOffload() {}
+
+  bool AIETraceOffload::keepOffloading() { return false; }
+
+  void AIETraceOffload::stopOffload() {}
+
+  void AIETraceOffload::offloadFinished() {}
+
+  void AIETraceOffload::endReadTrace() {}
+
+  uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
+  {
+    /*
+     * Look For trace boundary using binary search.
+     * Use Dword to be safe
+     */
+    auto words = static_cast<uint64_t*>(buf);
+    uint64_t wordcount = bytes / TRACE_PACKET_SIZE;
+
+    // indices
+    int64_t low = 0;
+    int64_t high = static_cast<int64_t>(wordcount) - 1;
+
+    // Boundary at which trace ends and 0s begin
+    uint64_t boundary = wordcount;
+
+    while (low <= high) {
+      int64_t mid = low + (high - low) / 2;
+
+      if (!words[mid]) {
+        boundary = mid;
+        high = mid - 1;
+      }
+      else {
+        low = mid + 1;
+      }
+    }
+
+    uint64_t written = boundary * TRACE_PACKET_SIZE;
+
+    debug_stream << "Found Boundary at 0x" << std::hex << written << std::dec
+                 << std::endl;
+
+    return written;
+  }
+
+} // namespace xdp
