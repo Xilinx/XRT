@@ -179,8 +179,6 @@ namespace xdp {
 
     // Check if trace streams are available TODO
     AIEData.metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
-    // AIEData.metadata->setNumStreams(1);
-    std::cout << "Num Streams: " << AIEData.metadata->getNumStreams() << std::endl;
 
     if (AIEData.metadata->getNumStreams() == 0) {
       AIEData.valid = false;
@@ -272,8 +270,6 @@ namespace xdp {
       offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
     }
 
-    std::cout << "About to schedule offloader!" << std::endl;
-
     try {
       if (!offloader->initReadTrace()) {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
@@ -341,13 +337,10 @@ namespace xdp {
 
   void AieTracePluginUnified::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn)
   {
-    std::cout << "Flushing offloaders" << std::endl;
     if (offloader->continuousTrace()) {
-      std::cout << "In continuous trace!" << std::endl;;
       offloader->stopOffload();
       while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
     } else {
-      std::cout << "Calling Offloader read trace" << std::endl;
       offloader->readTrace(true);
       offloader->endReadTrace();
     } 
@@ -409,16 +402,13 @@ namespace xdp {
     for (const auto& kv : handleToAIEData) {
       // End polling thread
       endPollforDevice(kv.first);
-      std::cout << "Finished End pOll!" << std::endl;
 
       auto& AIEData = kv.second;
       if (AIEData.valid) {
-        std::cout << "Flushing offloaders!!!" << std::endl;
         AIEData.implementation->flushAieTileTraceModule();
         flushOffloader(AIEData.offloader, true);
       }
     }
-    std::cout << "Finished flushing!" << std::endl;
 
     XDPPlugin::endWrite();
     handleToAIEData.clear();
@@ -431,7 +421,6 @@ namespace xdp {
 
   void AieTracePluginUnified::endPollforDevice(void* handle)
   {
-    std::cout << "Inside End Poll For Device!" << std::endl;
     auto itr = handleToAIEData.find(handle);
     if (itr == handleToAIEData.end())
       return;
@@ -443,7 +432,6 @@ namespace xdp {
     if (AIEData.thread.joinable())
       AIEData.thread.join();
     AIEData.implementation->freeResources();
-    std::cout << "Finished End Poll For Device!" << std::endl;
   }
 
   void AieTracePluginUnified::endPoll()

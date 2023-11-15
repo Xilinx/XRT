@@ -72,7 +72,6 @@ bool
 AIETraceOffload::
 initReadTrace()
 {
-  std::cout << "Inside init read trace!" << std::endl;
   buffers.clear();
   buffers.resize(numStream);
 
