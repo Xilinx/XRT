@@ -72,7 +72,7 @@ namespace xdp {
   {
       samples.addSample({timestamp, values});
       if (samples.getSamplesSize() > sampleThreshold) {
-        std::string msg = "AIE profile threshold reached, initiiate aie_profile write!";
+        std::string msg = "AIE profiling sample limit reached, writing data to disk.";
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
         VPDatabase::Instance()->broadcast(VPDatabase::DUMP_AIE_PROFILE);
       }

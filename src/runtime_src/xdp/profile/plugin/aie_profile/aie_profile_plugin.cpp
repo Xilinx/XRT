@@ -197,7 +197,6 @@ auto time = std::time(nullptr);
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(), deviceName.c_str(), mIndex);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
-    xrt_core::message::send(severity_level::warning, "XRT", "AIEProfile writer was created!");
 
   // Start the AIE profiling thread
   #ifdef XDP_MINIMAL_BUILD
@@ -215,7 +214,6 @@ auto time = std::time(nullptr);
 
   void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
   {
-    xrt_core::message::send(severity_level::warning, "XRT", "AIEProfile: polling thread has started!");
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())
       return;
@@ -286,13 +284,11 @@ auto time = std::time(nullptr);
     handleToAIEData.clear();
   }
 
-  void AieProfilePlugin::broadcast(VPDatabase::MessageType msg, void* blob)
+  void AieProfilePlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
   {
      switch(msg) {
       case VPDatabase::MessageType::DUMP_AIE_PROFILE:
         {
-          std::string logMsg = "AIE profile plugin: broadcast msg received & re-broadcasting aie_profile msg type!";
-          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", logMsg);
           XDPPlugin::trySafeWrite("AIE_PROFILE", false);
         }
         break;

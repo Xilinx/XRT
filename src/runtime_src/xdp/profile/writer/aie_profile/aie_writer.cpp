@@ -17,7 +17,6 @@
 
 #include <vector>
 
-#include "core/common/message.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
@@ -52,14 +51,14 @@ namespace xdp {
     fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "timestamp"    << ","
-        << "column"       << ","
-        << "row"          << ","
-        << "start"        << ","
-        << "end"          << ","
-        << "reset"        << ","
-        << "value"        << ","
-        << "timer"        << ","
-        << "payload"      << ",\n";
+         << "column"       << ","
+         << "row"          << ","
+         << "start"        << ","
+         << "end"          << ","
+         << "reset"        << ","
+         << "value"        << ","
+         << "timer"        << ","
+         << "payload"      << ",\n";
   }
 
   bool AIEProfilingWriter::write(bool)
