@@ -111,7 +111,7 @@ namespace xdp {
       
       if (!xrt_bos.empty()) {
         auto bo_map = xrt_bos.back().map<uint8_t*>();
-        memset(outbo_map, 0, bufAllocSz);
+        memset(bo_map, 0, bufAllocSz);
       }
       // Start recording the transaction
       XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
