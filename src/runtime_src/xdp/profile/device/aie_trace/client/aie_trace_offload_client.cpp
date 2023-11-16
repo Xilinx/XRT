@@ -108,7 +108,11 @@ namespace xdp {
                               tracemsg.c_str());
       xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz,
                                    XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0)));
-
+      
+      if (!xrt_bos.empty()) {
+        auto bo_map = xrt_bos.back().map<uint8_t*>();
+        memset(outbo_map, 0, bufAllocSz);
+      }
       // Start recording the transaction
       XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 

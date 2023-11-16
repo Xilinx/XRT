@@ -52,14 +52,14 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return filetype->getHardwareGeneration();
+      return metadataReader->getHardwareGeneration();
     }
     uint16_t getRowOffset() {
-      return filetype->getAIETileRowOffset();
+      return metadataReader->getAIETileRowOffset();
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return filetype->getTraceGMIOs();
+      return metadataReader->getTraceGMIOs();
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -124,7 +124,7 @@ class AieTraceMetadata {
     std::string counterScheme;
     std::string metricSet;
     boost::property_tree::ptree aie_meta;
-    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
