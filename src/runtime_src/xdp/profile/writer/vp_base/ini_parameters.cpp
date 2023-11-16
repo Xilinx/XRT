@@ -63,7 +63,6 @@ namespace xdp {
                  "Generation of lower overhead OpenCL trace. Should not be used with other OpenCL options.");
     addParameter("debug_mode", xrt_core::config::get_launch_waveform(),
                  "Debug mode (emulation only)");
-#ifndef SKIP_AIE_INI
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
@@ -151,7 +150,6 @@ namespace xdp {
     addParameter("AIE_trace_settings.poll_timers_interval_us",
                  xrt_core::config::get_aie_trace_settings_poll_timers_interval_us(),
                  "Interval for polling AI Engine timers (in us)");
-#endif
   }
 
   IniParameters::~IniParameters()
