@@ -38,8 +38,8 @@ namespace
 // 0 if no padding is required.   The page size should be
 // embedded as ELF metadata in the future.
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
-static constexpr uint8_t Elf_Amd_Aie2p = 66;
-static constexpr uint8_t Elf_Amd_Aie2s = 64;
+static constexpr uint8_t Elf_Amd_Aie2p  = 66;
+static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
 struct buf
 {
@@ -484,7 +484,7 @@ class module_elf : public module_impl
   std::vector<ctrlcode>
   initialize_column_ctrlcode(const ELFIO::elfio& elf)
   {
-    if (m_os_abi != Elf_Amd_Aie2s)
+    if (m_os_abi != Elf_Amd_Aie2ps)
     {
       XRT_PRINTF("module_elf::initialize_column_ctrlcode(), not AIE2S, skip...\n");
       return {};
@@ -619,7 +619,7 @@ class module_elf : public module_impl
   std::map<std::string, patcher>
   initialize_arg_patchers(const ELFIO::elfio& elf, const std::vector<ctrlcode>& ctrlcodes)
   {
-    if (m_os_abi != Elf_Amd_Aie2s) {
+    if (m_os_abi != Elf_Amd_Aie2ps) {
       XRT_PRINTF("module_elf::initialize_arg_patchers(), not AIE2S, skip...\n");
       return {};
     }
