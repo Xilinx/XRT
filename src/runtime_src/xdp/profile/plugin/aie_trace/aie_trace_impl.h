@@ -33,10 +33,6 @@ namespace xdp {
   class AieTraceImpl
   {
 
-  protected:
-    VPDatabase* db = nullptr;
-    std::shared_ptr<AieTraceMetadata> metadata;
-
   public:
     AieTraceImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       :db(database), metadata(metadata) {}
@@ -44,16 +40,47 @@ namespace xdp {
     AieTraceImpl() = delete;
     virtual ~AieTraceImpl() {};
 
+  protected:
+    /****************************************************************************
+     * Database for configuration and results
+     ***************************************************************************/
+    VPDatabase* db = nullptr;
+
+    /****************************************************************************
+     * Trace metadata parsed from user settings
+     ***************************************************************************/
+    std::shared_ptr<AieTraceMetadata> metadata;
+
+  public:
+    /****************************************************************************
+     * Update device (e.g., after loading xclbin)
+     ***************************************************************************/
     virtual void updateDevice() = 0;
+
+    /****************************************************************************
+     * Stop and release resources (e.g., counters, ports)
+     ***************************************************************************/
     virtual void freeResources() = 0;
-    virtual void pollTimers(uint32_t index, void* handle) = 0;
+
+    /****************************************************************************
+     * Poll AIE timers (for system timeline only)
+     ***************************************************************************/
+    virtual void pollTimers(uint64_t index, void* handle) = 0;
+
+    /****************************************************************************
+     * Verify correctness of trace buffer size
+     ***************************************************************************/
     virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
-    /*
-     * If trace module is running, it might buffer partial trace.
-     * This leftover trace needs to be force flushed at the end using a custom end event.
-     * This applies to trace windowing on AIE1 and all scenarios on AIE2.
-     */
-    virtual void flushAieTileTraceModule() = 0;
+
+    /****************************************************************************
+     * Flush trace modules by forcing end events
+     *
+     * Trace modules buffer partial packets. At end of run, these need to be 
+     * flushed using a custom end event. This applies to trace windowing and 
+     * passive tiles like memory and interface.
+     *
+     ***************************************************************************/
+    virtual void flushTraceModules() = 0;
   };
 
 } // namespace xdp

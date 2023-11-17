@@ -322,7 +322,7 @@ namespace xdp {
       return;
 
     // Flush AIE then datamovers
-    AIEData.implementation->flushAieTileTraceModule();
+    AIEData.implementation->flushTraceModules();
     flushOffloader(AIEData.offloader, false);
   }
 
@@ -341,7 +341,7 @@ namespace xdp {
     endPollforDevice(handle);
 
     // Flush AIE then datamovers
-    AIEData.implementation->flushAieTileTraceModule();
+    AIEData.implementation->flushTraceModules();
     flushOffloader(AIEData.offloader, true);
     XDPPlugin::endWrite();
     (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
@@ -357,7 +357,7 @@ namespace xdp {
 
       auto& AIEData = kv.second;
       if (AIEData.valid) {
-        AIEData.implementation->flushAieTileTraceModule();
+        AIEData.implementation->flushTraceModules();
         flushOffloader(AIEData.offloader, true);
       }
     }
