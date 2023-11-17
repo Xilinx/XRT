@@ -195,8 +195,10 @@ get_bos_ptree(const bo_metrics& bo_met)
 
   bo_tree.add("total_count", bo_met.total_count);
   bo_tree.add("size", std::to_string(bo_met.total_size_in_bytes) + " bytes");
-  if (bo_met.total_count > 0)
-    bo_tree.add("avg_size", std::to_string(bo_met.total_size_in_bytes / bo_met.total_count) + " bytes");
+
+  auto avg_size = (bo_met.total_count > 0) ? (bo_met.total_size_in_bytes / bo_met.total_count) : 0;
+  bo_tree.add("avg_size", std::to_string(avg_size) + " bytes");
+
   bo_tree.add("peak_size", std::to_string(bo_met.peak_size_in_bytes) + " bytes");
   bo_tree.add("bytes_synced_to_device", std::to_string(bo_met.bytes_synced_to_device) + " bytes");
   bo_tree.add("bytes_synced_from_device", std::to_string(bo_met.bytes_synced_from_device) + " bytes");
@@ -216,10 +218,9 @@ get_kernels_ptree(const std::vector<kernel_metrics>& kernels_vec)
     kernel_tree.put("num_of_args", kernel.num_args);
     kernel_tree.put("num_total_runs", std::to_string(kernel.total_runs));
 
-    if (kernel.total_runs > 0) {
-      auto avg_run_time = (kernel.total_time.count()) / kernel.total_runs;
-      kernel_tree.put("avg_run_time", std::to_string(avg_run_time) + " us");
-    }
+    auto avg_run_time = (kernel.total_runs > 0) ? (kernel.total_time.count() / kernel.total_runs) : 0;
+    kernel_tree.put("avg_run_time", std::to_string(avg_run_time) + " us");
+
     kernel_array.push_back(std::make_pair("", kernel_tree));
   }
 
