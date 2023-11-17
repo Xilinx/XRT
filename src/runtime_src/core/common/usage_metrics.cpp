@@ -195,7 +195,8 @@ get_bos_ptree(const bo_metrics& bo_met)
 
   bo_tree.add("total_count", bo_met.total_count);
   bo_tree.add("size", std::to_string(bo_met.total_size_in_bytes) + " bytes");
-  bo_tree.add("avg_size", std::to_string(bo_met.total_size_in_bytes / bo_met.total_count) + " bytes");
+  if (bo_met.total_count > 0)
+    bo_tree.add("avg_size", std::to_string(bo_met.total_size_in_bytes / bo_met.total_count) + " bytes");
   bo_tree.add("peak_size", std::to_string(bo_met.peak_size_in_bytes) + " bytes");
   bo_tree.add("bytes_synced_to_device", std::to_string(bo_met.bytes_synced_to_device) + " bytes");
   bo_tree.add("bytes_synced_from_device", std::to_string(bo_met.bytes_synced_from_device) + " bytes");
