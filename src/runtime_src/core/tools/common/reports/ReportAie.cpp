@@ -1,19 +1,6 @@
-/*
-  Copyright (C) 2020-2022 Xilinx, Inc
-  Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- 
-  Licensed under the Apache License, Version 2.0 (the "License"). You may
-  not use this file except in compliance with the License. A copy of the
-  License is located at
- 
-      http://www.apache.org/licenses/LICENSE-2.0
- 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-  License for the specific language governing permissions and limitations
-  under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -59,6 +46,65 @@ getPropertyTree20202(const xrt_core::device * _pDevice,
   _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
 }
 
+static void
+print_rtps(const boost::property_tree::ptree& _pt,
+           std::ostream& _output)
+{
+  if (!_pt.get_child_optional("aie_metadata.rtps"))
+    return;
+
+  int count = 0;
+  for (const auto& rtp_node : _pt.get_child("aie_metadata.rtps")) {
+    _output << boost::format("  %-3s:[%2d]\n") % "RTP" % count;
+    _output << fmtCommon("%s") % "Port Name" % rtp_node.second.get<std::string>("port_name");
+    _output << fmtCommon("%d") % "Selector Row" % rtp_node.second.get<uint16_t>("selector_row");
+    _output << fmtCommon("%d") % "Selector Column" % rtp_node.second.get<uint16_t>("selector_column");
+    _output << fmtCommon("%d") % "Selector Lock Id" % rtp_node.second.get<uint16_t>("selector_lock_id");
+    _output << fmtCommon("0x%x") % "Selector Address" %  rtp_node.second.get<uint64_t>("selector_address");
+    _output << fmtCommon("%d") % "Ping Buffer Row" % rtp_node.second.get<uint16_t>("ping_buffer_row");
+    _output << fmtCommon("%d") % "Ping Buffer Column" % rtp_node.second.get<uint16_t>("ping_buffer_column");
+    _output << fmtCommon("%d") % "Ping Buffer Lock Id" % rtp_node.second.get<uint16_t>("ping_buffer_lock_id");
+    _output << fmtCommon("0x%x") % "Ping Buffer Address" % rtp_node.second.get<uint64_t>("ping_buffer_address");
+    _output << fmtCommon("%d") % "Pong Buffer Row" % rtp_node.second.get<uint16_t>("pong_buffer_row");
+    _output << fmtCommon("%d") % "Pong Buffer Column" % rtp_node.second.get<uint16_t>("pong_buffer_column");
+    _output << fmtCommon("%d") % "Pong Buffer Lock Id" % rtp_node.second.get<uint16_t>("pong_buffer_lock_id");
+    _output << fmtCommon("0x%x") % "Pong Buffer Address" % rtp_node.second.get<uint64_t>("pong_buffer_address");
+    _output << fmtCommon("%b") % "Is Plrtp" % rtp_node.second.get<bool>("is_pl_rtp");
+    _output << fmtCommon("%b") % "Is Input" % rtp_node.second.get<bool>("is_input");
+    _output << fmtCommon("%b") % "Is Async" % rtp_node.second.get<bool>("is_asynchronous");
+    _output << fmtCommon("%b") % "Is Connected" % rtp_node.second.get<bool>("is_connected");
+    _output << fmtCommon("%b") % "Require Lock" % rtp_node.second.get<bool>("requires_lock");
+    count++;
+    _output << std::endl;
+  }
+  _output << std::endl;
+}
+
+static void
+print_gmios(const boost::property_tree::ptree& _pt,
+            std::ostream& _output)
+{
+  if (!_pt.get_child_optional("aie_metadata.gmios"))
+    return;
+
+  int count = 0;
+  for (const auto &gmio_node : _pt.get_child("aie_metadata.gmios")) {
+    _output << boost::format("  %-4s: [%2d]\n") % "GMIO" % count;
+    _output << fmtCommon("%s") % "Id" % gmio_node.second.get<std::string>("id");
+    _output << fmtCommon("%s") % "Name" %gmio_node.second.get<std::string>("name");
+    _output << fmtCommon("%s") % "Logical Name" % gmio_node.second.get<std::string>("logical_name");
+    _output << fmtCommon("%d") % "Type" % gmio_node.second.get<uint16_t>("type");
+    _output << fmtCommon("%d") % "Shim column" % gmio_node.second.get<uint16_t>("shim_column");
+    _output << fmtCommon("%d") % "Channel Number" % gmio_node.second.get<uint16_t>("channel_number");
+    _output << fmtCommon("%d") % "Stream Id" % gmio_node.second.get<uint16_t>("stream_id");
+    _output << fmtCommon("%d") % "Burst Length in 16byte" % gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+    _output << fmtCommon("%s") % "PL Port Name" % gmio_node.second.get<std::string>("pl_port_name");
+    _output << fmtCommon("%s") % "PL Parameter Name" % gmio_node.second.get<std::string>("pl_parameter_name");
+    count++;
+    _output << std::endl;
+  }
+}
+
 void
 ReportAie::
 writeReport(const xrt_core::device* /*_pDevice*/,
@@ -98,7 +144,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
   try {
     int count = 0;
-    for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
+    for (const auto& gr: _pt.get_child("aie_metadata.graphs")) {
       const boost::property_tree::ptree& graph = gr.second;
       _output << boost::format("  GRAPH[%2d] %-10s: %s\n") % graph.get<std::string>("id")
            % "Name" % graph.get<std::string>("name");
@@ -106,7 +152,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       _output << boost::format("    SNo.  %-20s%-30s%-30s\n") % "Core [C:R]"
            % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
 
-      for (auto& node : graph.get_child("tile")) {
+      for (const auto& node : graph.get_child("tile")) {
         const boost::property_tree::ptree& tile = node.second;
 
         if (tile.get<std::string>("memory_column", "") == "")
@@ -207,72 +253,33 @@ writeReport(const xrt_core::device* /*_pDevice*/,
           }
           _output << std::endl;
         }
-	
+
         if (tile.second.find("bd_info") != tile.second.not_found()) {
-	  _output << boost::format("    %s:\n") % "BDs";
-	  for (const auto& bd_info : tile.second.get_child("bd_info")) {
+          _output << boost::format("    %s:\n") % "BDs";
+          for (const auto& bd_info : tile.second.get_child("bd_info")) {
             _output << fmt8("%s") %  "bd_num: " % bd_info.second.get<std::string>("bd_num");
             for (const auto& bd_detail : bd_info.second.get_child("bd_details")) 
               _output<< fmt8("%s") % bd_detail.second.get<std::string>("name") % bd_detail.second.get<std::string>("value");
             _output << std::endl;
-	  }
+          }
         }
       }
 
-      const boost::property_tree::ptree& pl_kernel = graph.get_child("pl_kernel");
-      if (!pl_kernel.empty()) {
-        _output << boost::format("    %s\n") % "Pl Kernel Instances in Graph:";
-        for (auto& node : graph.get_child("pl_kernel"))
-          _output << boost::format("      %s\n") % node.second.data();
+      if (graph.get_child_optional("pl_kernel")) {
+        const boost::property_tree::ptree& pl_kernel = graph.get_child("pl_kernel");
+        if (!pl_kernel.empty()) {
+          _output << boost::format("    %s\n") % "Pl Kernel Instances in Graph:";
+          for (const auto& node : graph.get_child("pl_kernel"))
+            _output << boost::format("      %s\n") % node.second.data();
+        }
+        _output << std::endl;
       }
-      _output << std::endl;
     }
 
-    count = 0;
-    for (const auto& rtp_node : _pt.get_child("aie_metadata.rtps")) {
-      _output << boost::format("  %-3s:[%2d]\n") % "RTP" % count;
-      _output << fmtCommon("%s") % "Port Name" % rtp_node.second.get<std::string>("port_name");
-      _output << fmtCommon("%d") % "Selector Row" % rtp_node.second.get<uint16_t>("selector_row");
-      _output << fmtCommon("%d") % "Selector Column" % rtp_node.second.get<uint16_t>("selector_column");
-      _output << fmtCommon("%d") % "Selector Lock Id" % rtp_node.second.get<uint16_t>("selector_lock_id");
-      _output << fmtCommon("0x%x") % "Selector Address" %  rtp_node.second.get<uint64_t>("selector_address");
-      _output << fmtCommon("%d") % "Ping Buffer Row" % rtp_node.second.get<uint16_t>("ping_buffer_row");
-      _output << fmtCommon("%d") % "Ping Buffer Column" % rtp_node.second.get<uint16_t>("ping_buffer_column");
-      _output << fmtCommon("%d") % "Ping Buffer Lock Id" % rtp_node.second.get<uint16_t>("ping_buffer_lock_id");
-      _output << fmtCommon("0x%x") % "Ping Buffer Address" % rtp_node.second.get<uint64_t>("ping_buffer_address");
-      _output << fmtCommon("%d") % "Pong Buffer Row" % rtp_node.second.get<uint16_t>("pong_buffer_row");
-      _output << fmtCommon("%d") % "Pong Buffer Column" % rtp_node.second.get<uint16_t>("pong_buffer_column");
-      _output << fmtCommon("%d") % "Pong Buffer Lock Id" % rtp_node.second.get<uint16_t>("pong_buffer_lock_id");
-      _output << fmtCommon("0x%x") % "Pong Buffer Address" % rtp_node.second.get<uint64_t>("pong_buffer_address");
-      _output << fmtCommon("%b") % "Is Plrtp" % rtp_node.second.get<bool>("is_pl_rtp");
-      _output << fmtCommon("%b") % "Is Input" % rtp_node.second.get<bool>("is_input");
-      _output << fmtCommon("%b") % "Is Async" % rtp_node.second.get<bool>("is_asynchronous");
-      _output << fmtCommon("%b") % "Is Connected" % rtp_node.second.get<bool>("is_connected");
-      _output << fmtCommon("%b") % "Require Lock" % rtp_node.second.get<bool>("requires_lock");
-      count++;
-      _output << std::endl;
-    }
-    _output << std::endl;
-
-    count = 0;
-    for (auto& gmio_node : _pt.get_child("aie_metadata.gmios")) {
-      _output << boost::format("  %-4s: [%2d]\n") % "GMIO" % count;
-      _output << fmtCommon("%s") % "Id" % gmio_node.second.get<std::string>("id");
-      _output << fmtCommon("%s") % "Name" %gmio_node.second.get<std::string>("name");
-      _output << fmtCommon("%s") % "Logical Name" % gmio_node.second.get<std::string>("logical_name");
-      _output << fmtCommon("%d") % "Type" % gmio_node.second.get<uint16_t>("type");
-      _output << fmtCommon("%d") % "Shim column" % gmio_node.second.get<uint16_t>("shim_column");
-      _output << fmtCommon("%d") % "Channel Number" % gmio_node.second.get<uint16_t>("channel_number");
-      _output << fmtCommon("%d") % "Stream Id" % gmio_node.second.get<uint16_t>("stream_id");
-      _output << fmtCommon("%d") % "Burst Length in 16byte" % gmio_node.second.get<uint16_t>("burst_length_in_16byte");
-      _output << fmtCommon("%s") % "PL Port Name" % gmio_node.second.get<std::string>("pl_port_name");
-      _output << fmtCommon("%s") % "PL Parameter Name" % gmio_node.second.get<std::string>("pl_parameter_name");
-      count++;
-      _output << std::endl;
-    }
+    print_rtps(_pt, _output);
+    print_gmios(_pt, _output);
   }
   catch (const std::exception& e) {
     _output <<  e.what() << std::endl;
   }
-  _output << std::endl;
 }
