@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -43,18 +44,18 @@ namespace xdp {
     void updateOpenCLInfo(uint64_t deviceId) ;
     void updateSWEmulationGuidance() ;
 
-    XDP_EXPORT virtual void readTrace() override;
+    XDP_PLUGIN_EXPORT virtual void readTrace() override;
 
   public:
-    XDP_EXPORT OpenCLDeviceInfoPlugin() ;
-    XDP_EXPORT virtual ~OpenCLDeviceInfoPlugin() override ;
+    XDP_PLUGIN_EXPORT OpenCLDeviceInfoPlugin() ;
+    XDP_PLUGIN_EXPORT virtual ~OpenCLDeviceInfoPlugin() override ;
 
     // Virtual functions from XDPPlugin
-    XDP_EXPORT virtual void writeAll(bool openNewFiles) override;
+    XDP_PLUGIN_EXPORT virtual void writeAll(bool openNewFiles) override;
 
     // Virtual functions from DeviceOffloadPlugin
-    XDP_EXPORT virtual void flushDevice(void* device) override;
-    XDP_EXPORT virtual void updateDevice(void* device) override;
+    XDP_PLUGIN_EXPORT virtual void flushDevice(void* device) override;
+    XDP_PLUGIN_EXPORT virtual void updateDevice(void* device) override;
   } ;
 
 } // end namespace xdp

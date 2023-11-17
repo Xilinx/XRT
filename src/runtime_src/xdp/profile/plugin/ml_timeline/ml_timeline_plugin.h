@@ -27,14 +27,14 @@ namespace xdp {
   {
     public:
 
-    XDP_EXPORT MLTimelinePlugin();
-    XDP_EXPORT ~MLTimelinePlugin();
+    XDP_PLUGIN_EXPORT MLTimelinePlugin();
+    XDP_PLUGIN_EXPORT ~MLTimelinePlugin();
 
-    XDP_EXPORT void updateDevice(void* handle);
-    XDP_EXPORT void finishflushDevice(void* handle);
-    XDP_EXPORT void writeAll(bool openNewFiles);
+    XDP_PLUGIN_EXPORT void updateDevice(void* handle);
+    XDP_PLUGIN_EXPORT void finishflushDevice(void* handle);
+    XDP_PLUGIN_EXPORT void writeAll(bool openNewFiles);
 
-    XDP_EXPORT static bool alive();
+    XDP_PLUGIN_EXPORT static bool alive();
 
     private:
     uint64_t getDeviceIDFromHandle(void* handle);

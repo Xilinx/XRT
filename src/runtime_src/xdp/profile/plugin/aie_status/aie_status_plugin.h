@@ -47,12 +47,12 @@ namespace xdp {
     AIEStatusPlugin();
     ~AIEStatusPlugin();
 
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     void updateAIEDevice(void* handle);
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     void endPollforDevice(void* handle);
 
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     static bool alive();
 
   private:

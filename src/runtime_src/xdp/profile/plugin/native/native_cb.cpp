@@ -18,7 +18,7 @@
 #include <map>
 #include <mutex>
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "core/common/time.h"
 #include "xdp/profile/database/dynamic_info/types.h"

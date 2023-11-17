@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -61,22 +61,22 @@ namespace xdp {
 
     std::map<uint64_t, DeviceData> offloaders;
 
-    XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
-    XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_EXPORT void configureFa(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_EXPORT void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
-    XDP_EXPORT void startContinuousThreads(uint64_t deviceId) ;
+    XDP_PLUGIN_EXPORT void addDevice(const std::string& sysfsPath) ;
+    XDP_PLUGIN_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
+    XDP_PLUGIN_EXPORT void configureFa(uint64_t deviceId, DeviceIntf* devInterface) ;
+    XDP_PLUGIN_EXPORT void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
+    XDP_PLUGIN_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
+    XDP_PLUGIN_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
+    XDP_PLUGIN_EXPORT void startContinuousThreads(uint64_t deviceId) ;
 
-    XDP_EXPORT void readCounters() ;
-    XDP_EXPORT virtual void readTrace() = 0 ;
-    XDP_EXPORT void checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId) ;
-    XDP_EXPORT bool flushTraceOffloader(DeviceTraceOffload* offloader);
+    XDP_PLUGIN_EXPORT void readCounters() ;
+    XDP_PLUGIN_EXPORT virtual void readTrace() = 0 ;
+    XDP_PLUGIN_EXPORT void checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId) ;
+    XDP_PLUGIN_EXPORT bool flushTraceOffloader(DeviceTraceOffload* offloader);
 
   public:
-    XDP_EXPORT DeviceOffloadPlugin() ;
-    XDP_EXPORT virtual ~DeviceOffloadPlugin() = default ;
+    XDP_PLUGIN_EXPORT DeviceOffloadPlugin() ;
+    XDP_PLUGIN_EXPORT virtual ~DeviceOffloadPlugin() = default ;
 
     virtual void writeAll(bool openNewFiles) ;
 

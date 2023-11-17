@@ -19,7 +19,7 @@
 #include <thread>
 #include <iostream>
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/statistics_database.h"
 

@@ -42,7 +42,7 @@ namespace xdp {
 
   public:
     AIEDB() = default;
-    XDP_EXPORT ~AIEDB();
+    XDP_CORE_EXPORT ~AIEDB();
 
     void addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz,
                          bool copy, uint64_t numTraceStreams);

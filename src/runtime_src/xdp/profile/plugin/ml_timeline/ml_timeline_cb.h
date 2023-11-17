@@ -21,8 +21,8 @@
 
 extern "C" {
 
-  XDP_EXPORT void updateDeviceMLTmln(void* handle);
-  XDP_EXPORT void finishflushDeviceMLTmln(void* handle);
+  XDP_PLUGIN_EXPORT void updateDeviceMLTmln(void* handle);
+  XDP_PLUGIN_EXPORT void finishflushDeviceMLTmln(void* handle);
 
 }
 #endif

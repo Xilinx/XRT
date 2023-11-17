@@ -74,7 +74,7 @@ namespace xdp {
 
   public:
     HostDB() = default;
-    XDP_EXPORT ~HostDB();
+    XDP_CORE_EXPORT ~HostDB();
 
     // Functions to add host events to the database
     void addSortedEvent(VTFEvent* event);

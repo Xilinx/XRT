@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,10 +37,10 @@ namespace xdp {
 
   public:
     virtual bool isUserEvent() { return true ; } 
-    XDP_EXPORT UserMarker(uint64_t s_id, double ts, uint64_t l = 0) ;
-    XDP_EXPORT ~UserMarker() ;
+    XDP_CORE_EXPORT UserMarker(uint64_t s_id, double ts, uint64_t l = 0) ;
+    XDP_CORE_EXPORT ~UserMarker() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class UserRange : public VTFEvent
@@ -55,11 +56,11 @@ namespace xdp {
   public:
     virtual bool isUserEvent() { return true ; } 
 
-    XDP_EXPORT UserRange(uint64_t s_id, double ts, bool s, 
+    XDP_CORE_EXPORT UserRange(uint64_t s_id, double ts, bool s, 
 			 uint64_t l = 0, uint64_t tt = 0) ;
-    XDP_EXPORT ~UserRange() ;
+    XDP_CORE_EXPORT ~UserRange() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
 } // end namespace xdp

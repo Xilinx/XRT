@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -261,20 +261,20 @@ namespace xdp {
     inline void addASM(uint32_t id, bool trace = false)
       { asmIds.push_back(id) ; if (trace) asmIdsWithTrace.push_back(id) ; }
 
-    XDP_EXPORT std::string getDim() ; // Construct a string from the dimensions
-    XDP_EXPORT void addConnection(int32_t argIdx, int32_t memIdx) ;
+    XDP_CORE_EXPORT std::string getDim() ; // Construct a string from the dimensions
+    XDP_CORE_EXPORT void addConnection(int32_t argIdx, int32_t memIdx) ;
 
-    XDP_EXPORT void addPort(const std::string& n, int32_t w);
-    XDP_EXPORT void addArgToPort(const std::string& arg,
+    XDP_CORE_EXPORT void addPort(const std::string& n, int32_t w);
+    XDP_CORE_EXPORT void addArgToPort(const std::string& arg,
                                  const std::string& portName);
-    XDP_EXPORT void addMemoryToPort(Memory* mem, const std::string& portName);
-    XDP_EXPORT void connectArgToMemory(const std::string& portName,
+    XDP_CORE_EXPORT void addMemoryToPort(Memory* mem, const std::string& portName);
+    XDP_CORE_EXPORT void connectArgToMemory(const std::string& portName,
                                        const std::string& arg,
                                        Memory* mem);
-    XDP_EXPORT Port* getPort(const std::string& portName);
+    XDP_CORE_EXPORT Port* getPort(const std::string& portName);
 
-    XDP_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
-    XDP_EXPORT ~ComputeUnitInstance() = default ;
+    XDP_CORE_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
+    XDP_CORE_EXPORT ~ComputeUnitInstance() = default ;
   } ;
 
   // The Memory struct collects all of the information on a single

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,13 +37,13 @@ namespace xdp {
     //  to keep track of when we create new writers.
     std::set<uint64_t> devicesSeen ;
 
-    XDP_EXPORT virtual void readTrace() override ;
+    XDP_PLUGIN_EXPORT virtual void readTrace() override ;
   public:
-    XDP_EXPORT HWEmuDeviceOffloadPlugin() ;
-    XDP_EXPORT ~HWEmuDeviceOffloadPlugin() override ;
+    XDP_PLUGIN_EXPORT HWEmuDeviceOffloadPlugin() ;
+    XDP_PLUGIN_EXPORT ~HWEmuDeviceOffloadPlugin() override ;
 
-    XDP_EXPORT virtual void flushDevice(void* device) override ;
-    XDP_EXPORT virtual void updateDevice(void* device) override ;
+    XDP_PLUGIN_EXPORT virtual void flushDevice(void* device) override ;
+    XDP_PLUGIN_EXPORT virtual void updateDevice(void* device) override ;
   } ;
 
 } // end namespace xdp

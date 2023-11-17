@@ -37,11 +37,11 @@ namespace xdp {
   class AieDebugPlugin : public XDPPlugin
   {
   public:
-    XDP_EXPORT AieDebugPlugin();
-    XDP_EXPORT ~AieDebugPlugin();
-    XDP_EXPORT void updateAIEDevice(void* handle);
-    XDP_EXPORT void endAIEDebugRead(void* handle);
-    XDP_EXPORT static bool alive();
+    XDP_PLUGIN_EXPORT AieDebugPlugin();
+    XDP_PLUGIN_EXPORT ~AieDebugPlugin();
+    XDP_PLUGIN_EXPORT void updateAIEDevice(void* handle);
+    XDP_PLUGIN_EXPORT void endAIEDebugRead(void* handle);
+    XDP_PLUGIN_EXPORT static bool alive();
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);

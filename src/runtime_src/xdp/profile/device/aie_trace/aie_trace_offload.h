@@ -90,7 +90,7 @@ enum class AIEOffloadThreadStatus {
 class AIETraceOffload 
 {
   public:
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     AIETraceOffload(void* handle, uint64_t id,
                     DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
@@ -98,19 +98,19 @@ class AIETraceOffload
                     uint64_t numStrm
                    );
 
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     virtual ~AIETraceOffload();
 
 public:
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     bool initReadTrace();
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     void endReadTrace();
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     bool isTraceBufferFull();
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     void startOffload();
-    XDP_EXPORT
+    XDP_PLUGIN_EXPORT
     void stopOffload();
 
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }

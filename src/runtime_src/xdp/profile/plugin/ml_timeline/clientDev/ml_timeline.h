@@ -25,11 +25,11 @@ namespace xdp {
   class MLTimelineClientDevImpl : public MLTimelineImpl
   {
     public :
-      XDP_EXPORT MLTimelineClientDevImpl(VPDatabase* dB);
+      XDP_PLUGIN_EXPORT MLTimelineClientDevImpl(VPDatabase* dB);
 
       ~MLTimelineClientDevImpl() = default;
 
-      XDP_EXPORT virtual void finishflushDevice(void* handle);
+      XDP_PLUGIN_EXPORT virtual void finishflushDevice(void* handle);
   };
 
 }
