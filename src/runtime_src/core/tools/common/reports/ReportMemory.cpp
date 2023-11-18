@@ -21,9 +21,9 @@
 #include "core/common/utils.h"
 
 #include <map>
+#include <string>
 
 // 3rd Party Library - Include Files
-#include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
@@ -32,20 +32,19 @@ constexpr int      invalid_sensor_value = 0;
 
 // ------ S T A T I C   F U N C T I O N S -------------------------------------
 namespace {
-template <typename T>
-inline std::string pretty(const T &val, const std::string &default_val = "N/A", bool isHex = false)
+inline std::string
+pretty(unsigned int val, const std::string &default_val = "N/A", bool isHex = false)
 {   
-  if (typeid(val).name() != typeid(std::string).name()){
-    if (val >= std::numeric_limits<T>::max() || val == 0)
-      return default_val;
+  if (val >= std::numeric_limits<unsigned int>::max() || val == 0)
+    return default_val;
 
-    if (isHex){
-      std::stringstream ss;
-      ss << "0x" << std::hex << val;
-      return ss.str();
-    }
+  if (isHex) {
+    std::stringstream ss;
+    ss << "0x" << std::hex << val;
+    return ss.str();
   }
-  return boost::lexical_cast<std::string>(val);
+
+  return std::to_string(val);
 }
 
 } //unnamed namespace
@@ -140,7 +139,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
             tag = subv.second.get_value<std::string>();
           } else if (subv.first == "extended_info") {
             unsigned int t = subv.second.get<unsigned int>("temperature_C", invalid_sensor_value);
-            temp = pretty<unsigned int>(t == invalid_sensor_value ? no_sensor_dev : t, "N/A");
+            temp = pretty(t == invalid_sensor_value ? no_sensor_dev : t, "N/A");
           } else if (subv.first == "range_bytes") {
             size = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
           } else if (subv.first == "base_address") {
