@@ -17,7 +17,8 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/edge/aie_trace.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_util.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
 #include <boost/algorithm/string.hpp>
@@ -78,162 +79,30 @@ namespace xdp {
   AieTrace_EdgeImpl::AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       : AieTraceImpl(database, metadata)
   {
-    //
-    // Pre-defined metric sets
-    //
-    // **** Core Module Trace ****
-    // NOTE: these are supplemented with counter events as those are dependent on counter #
-    mCoreEventSets = {
-        {"functions", 
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
-        {"functions_partial_stalls", 
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
-        {"functions_all_stalls", 
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
-        {"all", 
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}}
-    };
+    auto hwGen = metadata->getHardwareGen();
+    auto counterScheme = metadata->getCounterScheme();
 
-    // These are also broadcast to memory module
+    // Pre-defined metric sets
+    mCoreEventSets = aie::trace::getCoreEventSets();
+    mMemoryEventSets = aie::trace::getMemoryEventSets();
+    mMemoryTileEventSets = aie::trace::getMemoryTileEventSets();
+    mInterfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
+
+    // Core/memory module counters
+    mCoreCounterStartEvents = aie::trace::getCoreCounterStartEvents(hwGen, counterScheme);
+    mCoreCounterEndEvents = aie::trace::getCoreCounterEndEvents(hwGen, counterScheme);
+    mCoreCounterEventValues = aie::trace::getCoreCounterEventValues(hwGen, counterScheme);
+    mMemoryCounterStartEvents = aie::trace::getMemoryCounterStartEvents(hwGen, counterScheme);
+    mMemoryCounterEndEvents = aie::trace::getMemoryCounterEndEvents(hwGen, counterScheme);
+    mMemoryCounterEventValues = aie::trace::getMemoryCounterEventValues(hwGen, counterScheme);
+
+    // Core trace start/end: these are also broadcast to memory module
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     mCoreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
 
-    // **** Memory Module Trace ****
-    // NOTE 1: Core events listed here are broadcast by the resource manager
-    // NOTE 2: These are supplemented with counter events as those are dependent on counter # 
-    // NOTE 3: For now, 'all' is the same as 'functions_all_stalls'.
-    // Combo events (required for all) have limited support in the resource manager.
-    mMemoryEventSets = {
-        {"functions", 
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
-        {"functions_partial_stalls",
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
-          XAIE_EVENT_STREAM_STALL_CORE,                    XAIE_EVENT_CASCADE_STALL_CORE, 
-          XAIE_EVENT_LOCK_STALL_CORE}},
-        {"functions_all_stalls",
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
-          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
-          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}},
-        {"all",
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
-          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
-          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}}
-    };
-
-    // Core/memory module counters
-    // NOTE 1: Only applicable to AIE1 devices
-    // NOTE 2: Reset events are dependent on actual profile counter reserved.
-    // NOTE 3: These counters are required HW workarounds with thresholds chosen
-    //         to produce events before hitting the bug. For example, sync packets
-    //         occur after 1024 cycles and with no events, is incorrectly repeated.
-    if (metadata->getHardwareGen() == 1) {
-      auto counterScheme = metadata->getCounterScheme();
-
-      if (counterScheme == "es1") {
-        mCoreCounterStartEvents = {XAIE_EVENT_ACTIVE_CORE, XAIE_EVENT_ACTIVE_CORE};
-        mCoreCounterEndEvents = {XAIE_EVENT_DISABLED_CORE, XAIE_EVENT_DISABLED_CORE};
-        mCoreCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
-
-        mMemoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM, XAIE_EVENT_TRUE_MEM};
-        mMemoryCounterEndEvents = {XAIE_EVENT_NONE_MEM, XAIE_EVENT_NONE_MEM};
-        mMemoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
-      } else if (counterScheme == "es2") {
-        mCoreCounterStartEvents = {XAIE_EVENT_ACTIVE_CORE};
-        mCoreCounterEndEvents = {XAIE_EVENT_DISABLED_CORE};
-        mCoreCounterEventValues = {ES2_TRACE_COUNTER};
-
-        mMemoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
-        mMemoryCounterEndEvents = {XAIE_EVENT_NONE_MEM};
-        mMemoryCounterEventValues = {ES2_TRACE_COUNTER};
-      }
-    }
-
-    // **** Memory Tile Trace ****
-    mMemoryTileEventSets = {
-        {"input_channels",
-         {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_S2MM_SEL1_START_TASK_MEM_TILE,
-          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,   XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_BD_MEM_TILE,
-          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_TASK_MEM_TILE}},
-        {"input_channels_stalls",
-         {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,
-          XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
-          XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE,      XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE, 
-          XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE}},
-        {"output_channels",
-         {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_MM2S_SEL1_START_TASK_MEM_TILE,
-          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,   XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_BD_MEM_TILE,
-          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_TASK_MEM_TILE}},
-        {"output_channels_stalls",
-         {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
-          XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE, 
-          XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE,      XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, 
-          XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}},
-        {"memory_conflicts1",         
-         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
-          XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE,
-          XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
-          XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
-        {"memory_conflicts2",         
-         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,          XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
-          XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE,
-          XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-          XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,         XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
-    };
-    mMemoryTileEventSets["s2mm_channels"]        = mMemoryTileEventSets["input_channels"];
-    mMemoryTileEventSets["s2mm_channels_stalls"] = mMemoryTileEventSets["input_channels_stalls"];
-    mMemoryTileEventSets["mm2s_channels"]        = mMemoryTileEventSets["output_channels"];
-    mMemoryTileEventSets["mm2s_channels_stalls"] = mMemoryTileEventSets["output_channels_stalls"];
-
-    // Memory tile trace is flushed at end of run
+    // Memory/interface tile trace is flushed at end of run
     mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
-
-    // **** Interface Tile Trace ****
-    mInterfaceTileEventSets = {
-        {"input_ports",
-         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
-          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
-        {"output_ports",
-         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
-          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
-        {"input_ports_stalls",
-         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_STALLED_0_PL,
-          XAIE_EVENT_PORT_RUNNING_1_PL,                    XAIE_EVENT_PORT_STALLED_1_PL}},
-        {"output_ports_stalls",
-        {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
-         XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}}
-    };
-
-    if (metadata->getHardwareGen() == 1) {
-      mInterfaceTileEventSets["input_ports_details"] = {
-          XAIE_EVENT_DMA_MM2S_0_START_BD_PL,               XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_PL,
-          XAIE_EVENT_DMA_MM2S_1_START_BD_PL,               XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_PL};
-      mInterfaceTileEventSets["output_ports_details"] = {
-          XAIE_EVENT_DMA_S2MM_0_START_BD_PL,               XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_PL,
-          XAIE_EVENT_DMA_S2MM_1_START_BD_PL,               XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_PL};
-    } else {
-      mInterfaceTileEventSets["input_ports_details"] = {
-          XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,             XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
-          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,    XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
-      mInterfaceTileEventSets["output_ports_details"] = {
-          XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,             XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
-          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,      XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
-    }
-
-    mInterfaceTileEventSets["mm2s_ports"]           = mInterfaceTileEventSets["input_ports"];
-    mInterfaceTileEventSets["s2mm_ports"]           = mInterfaceTileEventSets["output_ports"];
-    mInterfaceTileEventSets["mm2s_ports_stalls"]    = mInterfaceTileEventSets["input_ports_stalls"];
-    mInterfaceTileEventSets["s2mm_ports_stalls"]    = mInterfaceTileEventSets["output_ports_stalls"];
-    mInterfaceTileEventSets["mm2s_ports_details"]   = mInterfaceTileEventSets["input_ports_details"];
-    mInterfaceTileEventSets["s2mm_ports_details"]   = mInterfaceTileEventSets["output_ports_details"];
-
-    // Interface tile trace is flushed at end of run
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
     mInterfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_PL;
   }
@@ -457,7 +326,7 @@ namespace xdp {
       auto col        = tile.col;
       auto row        = tile.row;
       auto subtype    = tile.subtype;
-      auto type       = aie::trace::getModuleType(row, metadata->getRowOffset());
+      auto type       = aie::getModuleType(row, metadata->getRowOffset());
       auto typeInt    = static_cast<int>(type);
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
@@ -736,7 +605,7 @@ namespace xdp {
           // Record for runtime config file
           cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
           cfgTile->memory_tile_trace_config.port_trace_ids[1] = channel1;
-          if (aie::trace::isInputSet(type, metricSet)) {
+          if (aie::isInputSet(type, metricSet)) {
             cfgTile->memory_tile_trace_config.port_trace_is_master[0] = true;
             cfgTile->memory_tile_trace_config.port_trace_is_master[1] = true;
             cfgTile->memory_tile_trace_config.s2mm_channels[0] = channel0;
@@ -781,7 +650,7 @@ namespace xdp {
             cfgTile->memory_tile_trace_config.traced_events[S] = phyEvent;
           } else {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-            cfgTile->memory_trace_config.traced_events[S] = aie::trace::bcIdToEvent(bcId);
+            cfgTile->memory_trace_config.traced_events[S] = aie::bcIdToEvent(bcId);
           }
         }
 
@@ -827,7 +696,7 @@ namespace xdp {
             cfgTile->memory_tile_trace_config.start_event = phyEvent;
           } else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
-            cfgTile->memory_trace_config.start_event = aie::trace::bcIdToEvent(bcId);
+            cfgTile->memory_trace_config.start_event = aie::bcIdToEvent(bcId);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
           }
           // Stop
@@ -839,7 +708,7 @@ namespace xdp {
             cfgTile->memory_tile_trace_config.stop_event = phyEvent;
           } else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
-            cfgTile->memory_trace_config.stop_event = aie::trace::bcIdToEvent(bcId);
+            cfgTile->memory_trace_config.stop_event = aie::bcIdToEvent(bcId);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
 
             // Odd absolute rows change east mask end even row change west mask
@@ -903,7 +772,7 @@ namespace xdp {
         // Record for runtime config file
         cfgTile->interface_tile_trace_config.port_trace_ids[0] = channel0;
         cfgTile->interface_tile_trace_config.port_trace_ids[1] = channel1;
-        if (aie::trace::isInputSet(type, metricSet)) {
+        if (aie::isInputSet(type, metricSet)) {
           cfgTile->interface_tile_trace_config.port_trace_is_master[0] = false;
           cfgTile->interface_tile_trace_config.port_trace_is_master[1] = false;
           cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
@@ -1057,7 +926,7 @@ namespace xdp {
 
     static auto tile   = tileMetrics.begin()->first;
     auto loc           = XAie_TileLoc(tile.col, tile.row);
-    auto moduleType    = aie::trace::getModuleType(tile.row, metadata->getRowOffset());
+    auto moduleType    = aie::getModuleType(tile.row, metadata->getRowOffset());
     auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
                        : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
                        : XAIE_MEM_MOD);
@@ -1069,7 +938,7 @@ namespace xdp {
     
     std::vector<uint64_t> values;
     values.push_back(tile.col);
-    values.push_back( aie::trace::getRelativeRow(tile.row, metadata->getRowOffset()) );
+    values.push_back( aie::getRelativeRow(tile.row, metadata->getRowOffset()) );
     values.push_back(timerValue);
 
     db->getDynamicInfo().addAIETimerSample(index, timestamp1, timestamp2, values);

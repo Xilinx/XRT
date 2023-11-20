@@ -22,16 +22,22 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp::aie::trace {
-  bool isInputSet(const module_type type, const std::string metricSet);
+  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(int hwGen);
+
+  std::vector<XAie_Events> getCoreCounterStartEvents(int hwGen, std::string scheme);
+  std::vector<XAie_Events> getCoreCounterEndEvents(int hwGen, std::string scheme);
+  std::vector<uint32_t> getCoreCounterEventValues(int hwGen, std::string scheme);
+  std::vector<XAie_Events> getMemoryCounterStartEvents(int hwGen, std::string scheme);
+  std::vector<XAie_Events> getMemoryCounterEndEvents(int hwGen, std::string scheme);
+  std::vector<uint32_t> getMemoryCounterEventValues(int hwGen, std::string scheme);
+
   bool isStreamSwitchPortEvent(const XAie_Events event);
   bool isPortRunningEvent(const XAie_Events event);
-  
-  uint16_t getRelativeRow(uint16_t absRow, uint16_t rowOffset);
-  module_type getModuleType(uint16_t absRow, uint16_t rowOffset);
   uint8_t getPortNumberFromEvent(XAie_Events event);
-  uint32_t bcIdToEvent(int bcId);
-  std::string getModuleName(module_type mod);
-
+  
   void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
   void printTraceEventStats(int m, int numTiles[]);
   void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
