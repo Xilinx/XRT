@@ -20,7 +20,7 @@ namespace XBU = XBUtilities;
 #include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
@@ -256,8 +256,8 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
     ptree.put("xclbin", "vck5000_pcie_pl_controller.xclbin.xclbin");
   }
   
-  auto binaryFile = boost::filesystem::path(test_path) / b_file;
-  ptree.put("xclbin_directory", boost::filesystem::path(test_path));
+  auto binaryFile = std::filesystem::path(test_path) / b_file;
+  ptree.put("xclbin_directory", std::filesystem::path(test_path));
   std::ifstream infile(binaryFile.string());
 
   if (!infile.good()) {
@@ -270,7 +270,7 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
 
   // instance of plController
   std::string dma_lock_file = "dma_lock_report.json";
-  auto dma_lock = boost::filesystem::path(test_path) / dma_lock_file;
+  auto dma_lock = std::filesystem::path(test_path) / dma_lock_file;
 
   bool match = false;
   // Check for AIE Hardware Generation

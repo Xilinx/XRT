@@ -7,7 +7,7 @@
 namespace XBU = XBUtilities;
 
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <math.h>
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -68,7 +68,7 @@ TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost
   std::string old_b_file = "/slavebridge.xclbin";
   auto retVal = validate_binary_file(b_file);
   // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
-  auto old_binary_file = boost::filesystem::path(test_path) / old_b_file;
+  auto old_binary_file = std::filesystem::path(test_path) / old_b_file;
   auto check_old_b_file = validate_binary_file(old_binary_file.string());
   if (retVal == EOPNOTSUPP) {
     if (check_old_b_file == EOPNOTSUPP) {

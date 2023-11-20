@@ -11,7 +11,7 @@ namespace XBU = XBUtilities;
 #include <vector>
 #include <chrono>
 #include <thread>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <boost/format.hpp>
 
 #include "xrt_iops_util/xilutil.hpp"
@@ -164,7 +164,7 @@ TestIOPS::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::p
       ptree.put("status", test_token_failed);
       return;
     }
-    b_file = (boost::filesystem::path(test_path) / "verify.xclbin").string();
+    b_file = (std::filesystem::path(test_path) / "verify.xclbin").string();
   }
 
   krnl.name = "verify";
