@@ -603,13 +603,11 @@ public:
     , m_elf(std::move(elf))
     , m_os_abi{ xrt_core::elf_int::get_elfio(m_elf).get_os_abi() }
   {
-    if ( m_os_abi == Elf_Amd_Aie2ps)
-    {
+    if ( m_os_abi == Elf_Amd_Aie2ps) {
       m_ctrlcodes = initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes);
     }
-    else if ( m_os_abi == Elf_Amd_Aie2p)
-    {
+    else if ( m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
       m_ctrl_packet = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_instr_buf, m_ctrl_packet);
