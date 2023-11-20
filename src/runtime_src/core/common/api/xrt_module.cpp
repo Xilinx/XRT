@@ -115,9 +115,9 @@ struct patcher
   // The base address is passed in as a parameter to patch()
   std::vector<uint64_t> m_ctrlcode_offset;
 
-  patcher(symbol_type type, const std::vector<uint64_t>& ctrlcode_offset)
+  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset)
     : m_symbol_type(type)
-    , m_ctrlcode_offset(ctrlcode_offset)
+    , m_ctrlcode_offset(std::move(ctrlcode_offset))
   {}
 
   void
@@ -507,7 +507,9 @@ class module_elf : public module_impl
           search->second.m_ctrlcode_offset.emplace_back(offset);
         else {
           auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, {offset} });
+          std::vector<uint64_t> offsets;
+          offsets.push_back(offset);
+          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets) });
         }
       }
     }
