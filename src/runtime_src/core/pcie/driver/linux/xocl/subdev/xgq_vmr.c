@@ -186,7 +186,6 @@ struct xocl_xgq_vmr {
 
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
-static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
 static uint64_t xgq_get_data(struct platform_device *pdev,
 	enum data_kind kind);
 
@@ -2231,8 +2230,13 @@ static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
 	u32 length = 0;
 	int ret = 0;
 	int id = 0;
+	struct xgq_cmd_cq_vmr_payload *vmr_status = (struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
 
-	if (!vmr_check_sc_is_ready(xgq)) {
+    ret = vmr_status_query(xgq->xgq_pdev);
+	if (ret)
+		XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
+
+	if (!vmr_status->sc_is_ready) {
 		XGQ_ERR(xgq, "SC is not ready, skipping sensors request command");
 		return -EAGAIN;
 	}
@@ -3385,31 +3389,28 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
-{
-	struct xgq_cmd_cq_vmr_payload *vmr_status =
-		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
-	int ret = vmr_status_query(xgq->xgq_pdev);
-
-	if (ret)
-		XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
-
-	if (vmr_status->sc_is_ready)
-		return true;
-
-	return false;
-}
-
 /* Wait for SC is fully ready during driver init (in reset) */
 static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 {
 	const unsigned int loop_counter = vmr_sc_ready_timeout *
 		(1000 / SC_WAIT_INTERVAL_MSEC);
 	unsigned int i = 0;
+	struct xgq_cmd_cq_vmr_payload *vmr_status = (struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+	int ret = 0;
+
+	vmr_status_query(xgq->xgq_pdev);
+	if (ret)
+		XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
+
+	if (!vmr_status->has_ext_scfw)
+	{
+		XGQ_ERR(xgq, "No SC firmware as part of ext fpt");
+		return false;
+	}
 
 	for (i = 1; i <= loop_counter; i++) {
 		msleep(SC_WAIT_INTERVAL_MSEC);
-		if (vmr_check_sc_is_ready(xgq)) {
+	if (vmr_status->sc_is_ready) {
 			XGQ_INFO(xgq, "SC is ready after %d sec", i);
 			return true;
 		}
@@ -3471,7 +3472,7 @@ static int vmr_services_probe(struct platform_device *pdev)
 		if (ret)
 			XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
 	} else {
-		XGQ_ERR(xgq, "SC is not ready and inactive, some user functions may not work properly");
+		XGQ_ERR(xgq, "No communication established with SC, some user functions may not work properly");
 	}
 
 	return 0;
