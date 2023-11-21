@@ -30,10 +30,10 @@ namespace xdp {
       AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
       ~AieTrace_x86Impl() = default;
       virtual void updateDevice();
-      virtual void flushAieTileTraceModule();
+      virtual void flushTraceModules();
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
-      void pollTimers(uint32_t index, void* handle);
+      void pollTimers(uint64_t index, void* handle);
       void parseMessages(uint8_t* messages);
       module_type getTileType(uint16_t absRow);
       void freeResources();

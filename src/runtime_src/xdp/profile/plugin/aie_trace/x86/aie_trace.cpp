@@ -96,7 +96,7 @@ namespace xdp {
     return module_type::core;
   }
 
-  void AieTrace_x86Impl::pollTimers(uint32_t index, void* handle) 
+  void AieTrace_x86Impl::pollTimers(uint64_t index, void* handle) 
   {
     // TBD: poll AIE timers similar to Edge implementation
   }
@@ -288,7 +288,7 @@ namespace xdp {
     return true;  // placeholder
   }
 
-  void AieTrace_x86Impl::flushAieTileTraceModule ()
+  void AieTrace_x86Impl::flushTraceModules()
   {
     try {
       // input bo
