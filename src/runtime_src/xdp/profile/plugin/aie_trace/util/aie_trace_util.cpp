@@ -25,6 +25,7 @@
 #include <iostream>
 #include <memory>
 #include <regex>
+#include <set>
 
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -44,10 +45,10 @@ namespace xdp::aie::trace {
    * NOTE: Depending on hardware generation, these sets can be supplemented 
    *       with counter events as those are dependent on counter #.
    ***************************************************************************/
-  std::map<std::string, std::vector<EventType>> 
+  std::map<std::string, std::vector<XAie_Events>> 
   getCoreEventSets()
   {
-    std::map<std::string, std::vector<EventType>> eventSets;
+    std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"functions", 
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
@@ -69,10 +70,10 @@ namespace xdp::aie::trace {
    *         on counter #.
    * NOTE 3: For now, 'all' is the same as 'functions_all_stalls'.
    ***************************************************************************/
-  std::map<std::string, std::vector<EventType>> 
+  std::map<std::string, std::vector<XAie_Events>> 
   getMemoryEventSets()
   {
-    std::map<std::string, std::vector<EventType>> eventSets;
+    std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"functions", 
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
@@ -95,10 +96,10 @@ namespace xdp::aie::trace {
   /****************************************************************************
    * Get metric sets for memory tiles
    ***************************************************************************/
-  std::map<std::string, std::vector<EventType>> 
+  std::map<std::string, std::vector<XAie_Events>> 
   getMemoryTileEventSets()
   {
-    std::map<std::string, std::vector<EventType>> eventSets;
+    std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"input_channels",
          {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    XAIE_EVENT_DMA_S2MM_SEL1_START_TASK_MEM_TILE,
@@ -140,10 +141,10 @@ namespace xdp::aie::trace {
   /****************************************************************************
    * Get metric sets for memory module
    ***************************************************************************/
-  std::map<std::string, std::vector<EventType>> 
+  std::map<std::string, std::vector<XAie_Events>> 
   getInterfaceTileEventSets(int hwGen)
   {
-    std::map<std::string, std::vector<EventType>> eventSets;
+    std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"input_ports",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
@@ -201,7 +202,7 @@ namespace xdp::aie::trace {
     std::vector<XAie_Events> startEvents;
     if (scheme == "es1")
       startEvents = {XAIE_EVENT_ACTIVE_CORE, XAIE_EVENT_ACTIVE_CORE};
-    else if (counterScheme == "es2")
+    else if (scheme == "es2")
       startEvents = {XAIE_EVENT_ACTIVE_CORE};
     return startEvents;
   }
@@ -217,7 +218,7 @@ namespace xdp::aie::trace {
     std::vector<XAie_Events> endEvents;
     if (scheme == "es1")
       endEvents = {XAIE_EVENT_DISABLED_CORE, XAIE_EVENT_DISABLED_CORE};
-    else if (counterScheme == "es2")
+    else if (scheme == "es2")
       endEvents = {XAIE_EVENT_DISABLED_CORE};
     return endEvents;
   }
@@ -237,7 +238,7 @@ namespace xdp::aie::trace {
     std::vector<uint32_t> eventValues;
     if (scheme == "es1")
       eventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
-    else if (counterScheme == "es2") {
+    else if (scheme == "es2")
       eventValues = {ES2_TRACE_COUNTER};
     return eventValues;
   }
@@ -253,7 +254,7 @@ namespace xdp::aie::trace {
     std::vector<XAie_Events> startEvents;
     if (scheme == "es1")
       startEvents = {XAIE_EVENT_TRUE_MEM, XAIE_EVENT_TRUE_MEM};
-    else if (counterScheme == "es2")
+    else if (scheme == "es2")
       startEvents = {XAIE_EVENT_TRUE_MEM};
     return startEvents;
   }
@@ -269,7 +270,7 @@ namespace xdp::aie::trace {
     std::vector<XAie_Events> endEvents;
     if (scheme == "es1") 
       endEvents = {XAIE_EVENT_NONE_MEM, XAIE_EVENT_NONE_MEM};
-    else if (counterScheme == "es2")
+    else if (scheme == "es2")
       endEvents = {XAIE_EVENT_NONE_MEM};
     return endEvents;
   }
@@ -289,7 +290,7 @@ namespace xdp::aie::trace {
     std::vector<uint32_t> eventValues;
     if (scheme == "es1")
       eventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
-    else if (counterScheme == "es2")
+    else if (scheme == "es2")
       eventValues = {ES2_TRACE_COUNTER};
     return eventValues;
   }

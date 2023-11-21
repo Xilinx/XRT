@@ -21,6 +21,8 @@ file(GLOB AIE_TRACE_PLUGIN_FILES
   "${PROFILE_DIR}/device/hal_device/*.cpp"
   "${PROFILE_DIR}/plugin/aie_trace/*.h"
   "${PROFILE_DIR}/plugin/aie_trace/*.cpp"
+  "${PROFILE_DIR}/plugin/aie_trace/util/*.h"
+  "${PROFILE_DIR}/plugin/aie_trace/util/*.cpp"
   "${PROFILE_DIR}/writer/aie_trace/*.h"
   "${PROFILE_DIR}/writer/aie_trace/*.cpp"
   "${IMPL_DIR}/*.h"

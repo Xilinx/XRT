@@ -502,9 +502,9 @@ namespace xdp {
         if ((numCoreCounters < mCoreCounterStartEvents.size()) ||
             (numMemoryCounters < mMemoryCounterStartEvents.size())) {
           std::stringstream msg;
-          msg << "Unable to reserve " << mCoreCounterStartEvents.size() << " core counters"
-              << " and " << mMemoryCounterStartEvents.size() << " memory counters"
-              << " for AIE tile (" << col << "," << row << ") required for trace.";
+          msg << "Unable to reserve " << mCoreCounterStartEvents.size() 
+              << " core counters and " << mMemoryCounterStartEvents.size() 
+              << " memory counters for " << tileName << " required for trace.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           freeResources();
@@ -547,7 +547,7 @@ namespace xdp {
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
           std::stringstream msg;
-          msg << "Unable to reserve core module trace control for AIE tile (" << col << "," << row << ").";
+          msg << "Unable to reserve core module trace control for " << tileName;
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           freeResources();
@@ -611,7 +611,7 @@ namespace xdp {
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
           std::stringstream msg;
-          msg << "Unable to reserve memory trace control for AIE tile (" << col << "," << row << ").";
+          msg << "Unable to reserve memory trace control for " << tileName;
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           freeResources();
@@ -782,7 +782,7 @@ namespace xdp {
         auto ret = shimTrace->reserve();
         if (ret != XAIE_OK) {
           std::stringstream msg;
-          msg << "Unable to reserve trace control for interface tile (" << col << "," << row << ").";
+          msg << "Unable to reserve trace control for " << tileName;
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           freeResources();
@@ -881,8 +881,7 @@ namespace xdp {
           msg << numMemoryTraceEvents << " memory tile";
         else if (type == module_type::shim)
           msg << numInterfaceTraceEvents << " interface tile";
-        msg << " trace events for tile (" << col << "," << row 
-            << "). Adding tile to static database.";
+        msg << " trace events for " << tileName << ". Adding tile to static database.";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
 
