@@ -111,32 +111,49 @@ xdp::aie::driver_config
 getDriverConfig(const boost::property_tree::ptree& aie_meta,
               const std::string& root)
 {
-xdp::aie::driver_config config;
-auto meta_config = aie_meta.get_child(root);
+  xdp::aie::driver_config config;
+  auto meta_config = aie_meta.get_child(root);
 
-config.hw_gen =
-  meta_config.get_child("hw_gen").get_value<uint8_t>();
-config.base_address =
-  meta_config.get_child("base_address").get_value<uint64_t>();
-config.column_shift =
-  meta_config.get_child("column_shift").get_value<uint8_t>();
-config.row_shift =
-  meta_config.get_child("row_shift").get_value<uint8_t>();
-config.num_rows =
-  meta_config.get_child("num_rows").get_value<uint8_t>();
-config.num_columns =
-  meta_config.get_child("num_columns").get_value<uint8_t>();
-config.shim_row =
-  meta_config.get_child("shim_row").get_value<uint8_t>();
-config.mem_row_start =
-  meta_config.get_child("mem_row_start").get_value<uint8_t>();
-config.mem_num_rows =
-  meta_config.get_child("mem_num_rows").get_value<uint8_t>();
-config.aie_tile_row_start =
-  meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
-config.aie_tile_num_rows =
-  meta_config.get_child("aie_tile_num_rows").get_value<uint8_t>();
-return config;
+  config.hw_gen =
+    meta_config.get_child("hw_gen").get_value<uint8_t>();
+  config.base_address =
+    meta_config.get_child("base_address").get_value<uint64_t>();
+  config.column_shift =
+    meta_config.get_child("column_shift").get_value<uint8_t>();
+  config.row_shift =
+    meta_config.get_child("row_shift").get_value<uint8_t>();
+  config.num_rows =
+    meta_config.get_child("num_rows").get_value<uint8_t>();
+  config.num_columns =
+    meta_config.get_child("num_columns").get_value<uint8_t>();
+  config.shim_row =
+    meta_config.get_child("shim_row").get_value<uint8_t>();
+
+  // For backward compatability, look for both the old and new fields
+  bool found = false;
+  try {
+    config.mem_row_start =
+      meta_config.get_child("mem_tile_row_start").get_value<uint8_t>();
+    config.mem_num_rows =
+      meta_config.get_child("mem_tile_num_rows").get_value<uint8_t>();
+    found = true;
+  }
+  catch (std::exception& /*e*/) {
+    // For older xclbins, it is not an error if we don't find the
+    // mem_tile entries, so just catch the exception and ignore it.
+  }
+  if (!found) {
+    config.mem_row_start =
+      meta_config.get_child("reserved_row_start").get_value<uint8_t>();
+    config.mem_num_rows =
+      meta_config.get_child("reserved_num_rows").get_value<uint8_t>();
+  }
+
+  config.aie_tile_row_start =
+    meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
+  config.aie_tile_num_rows =
+    meta_config.get_child("aie_tile_num_rows").get_value<uint8_t>();
+  return config;
 }
 
 uint16_t
