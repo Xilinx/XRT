@@ -70,24 +70,25 @@ namespace xdp::aie {
                 const std::string& root);
 
   XDP_EXPORT
-  bool 
-  isInputSet(const module_type type, const std::string metricSet);
+  bool isInfoVerbosity();
+
+  XDP_EXPORT
+  bool isDebugVerbosity();
+
+  XDP_EXPORT
+  bool isInputSet(const module_type type, const std::string metricSet);
   
   XDP_EXPORT
-  uint16_t 
-  getRelativeRow(uint16_t absRow, uint16_t rowOffset);
+  uint16_t getRelativeRow(uint16_t absRow, uint16_t rowOffset);
   
   XDP_EXPORT
-  module_type 
-  getModuleType(uint16_t absRow, uint16_t rowOffset);
+  module_type getModuleType(uint16_t absRow, uint16_t rowOffset);
   
   XDP_EXPORT
-  uint32_t 
-  bcIdToEvent(int bcId);
+  uint32_t bcIdToEvent(int bcId);
   
   XDP_EXPORT
-  std::string 
-  getModuleName(module_type mod);
+  std::string getModuleName(module_type mod);
 
 } // namespace xdp::aie
 

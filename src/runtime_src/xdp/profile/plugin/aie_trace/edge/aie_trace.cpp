@@ -313,9 +313,7 @@ namespace xdp {
         mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
       mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
       useTraceFlush = true;
-
-      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info))
-        xrt_core::message::send(severity_level::info, "XRT", "Enabling trace flush");
+      xrt_core::message::send(severity_level::info, "XRT", "Enabling trace flush");
     }
 
     // Iterate over all used/specified tiles
@@ -330,6 +328,10 @@ namespace xdp {
       auto typeInt    = static_cast<int>(type);
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
+      
+      std::string tileName = (type == module_type::mem_tile) ? "memory" 
+                           : ((type == module_type::shim) ? "interface" : "AIE");
+      tileName.append(" tile (" + std::to_string(col) + "," + std::to_string(row) + ")");
 
       xaiefal::XAieMod core;
       xaiefal::XAieMod memory;
@@ -374,12 +376,9 @@ namespace xdp {
         interfaceEvents = mInterfaceTileEventSets[metricSet];
       }
 
-      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
+      if (aie::isInfoVerbosity()) {
         std::stringstream infoMsg;
-        auto tileName = (type == module_type::mem_tile) ? "memory" 
-            : ((type == module_type::shim) ? "interface" : "AIE");
-        infoMsg << "Configuring " << tileName << " tile (" << col << "," << row 
-                << ") for trace using metric set " << metricSet;
+        infoMsg << "Configuring " << tileName << " for trace using metric set " << metricSet;
         xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
       }
 
@@ -400,7 +399,14 @@ namespace xdp {
       //
       // 1. Reserve and start core module counters (as needed)
       //
-      if (type == module_type::core) {
+      if ((type == module_type::core) && (mCoreCounterStartEvents.size() > 0)) {
+        if (aie::isInfoVerbosity()) {
+          std::stringstream msg;
+          msg << "Reserving " << mCoreCounterStartEvents.size() 
+              << " core counters for " << tileName;
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+
         XAie_ModuleType mod = XAIE_CORE_MOD;
 
         for (int i = 0; i < mCoreCounterStartEvents.size(); ++i) {
@@ -447,7 +453,14 @@ namespace xdp {
       //
       // 2. Reserve and start memory module counters (as needed)
       //
-      if (type == module_type::core) {
+      if ((type == module_type::core) && (mMemoryCounterStartEvents.size() > 0)) {
+        if (aie::isInfoVerbosity()) {
+          std::stringstream msg;
+          msg << "Reserving " << mMemoryCounterStartEvents.size() 
+              << " memory counters for " << tileName;
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+
         XAie_ModuleType mod = XAIE_MEM_MOD;
 
         for (int i = 0; i < mMemoryCounterStartEvents.size(); ++i) {
@@ -505,6 +518,12 @@ namespace xdp {
       // 3. Configure Core Tracing Events
       //
       if (type == module_type::core) {
+        if (aie::isInfoVerbosity()) {
+          std::stringstream msg;
+          msg << "Reserving " << coreEvents.size() << " core trace events for " << tileName;
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+
         XAie_ModuleType mod = XAIE_CORE_MOD;
         uint8_t phyEvent = 0;
         auto coreTrace = core.traceControl();
@@ -549,6 +568,7 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
           cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
+
         // Update config file
         XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
         cfgTile->core_trace_config.start_event = phyEvent;
@@ -573,6 +593,13 @@ namespace xdp {
       // NOTE: this is applicable for memory modules in AIE tiles or memory tiles
       uint32_t coreToMemBcMask = 0;
       if ((type == module_type::core) || (type == module_type::mem_tile)) {
+        if (aie::isInfoVerbosity()) {
+          std::stringstream msg;
+          msg << "Reserving " << memoryCrossEvents.size() << " + " << memoryEvents.size() 
+              << " memory trace events for " << tileName;
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+
         auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
         // Wendy said this should be done first
@@ -742,6 +769,12 @@ namespace xdp {
       // 5. Configure Interface Tile Tracing Events
       //
       if (type == module_type::shim) {
+        if (aie::isInfoVerbosity()) {
+          std::stringstream msg;
+          msg << "Reserving " << interfaceEvents.size() << " trace events for " << tileName;
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+
         auto shimTrace = shim.traceControl();
         if (shimTrace->setCntrEvent(mInterfaceTileTraceStartEvent, mInterfaceTileTraceEndEvent) != XAIE_OK)
           break;
@@ -839,7 +872,7 @@ namespace xdp {
         cfgTile->interface_tile_trace_config.packet_type = packetType;
       } // interface tiles
 
-      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
+      if (aie::isDebugVerbosity()) {
         std::stringstream msg;
         msg << "Reserved ";
         if (type == module_type::core)
@@ -884,7 +917,7 @@ namespace xdp {
     auto handle = metadata->getHandle();
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
-    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
+    if (aie::isInfoVerbosity()) {
       std::stringstream msg;
       msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size()
           << " AIE tiles, " << mMemoryTileTraceFlushLocs.size() << " memory tiles, and " 

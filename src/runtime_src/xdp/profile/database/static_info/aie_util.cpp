@@ -190,6 +190,24 @@ namespace xdp::aie {
   }
 
   /****************************************************************************
+   * Check if verbosity is at least info level
+   ***************************************************************************/
+  bool isInfoVerbosity()
+  {
+    return (xrt_core::config::get_verbosity() >= 
+            static_cast<uint32_t>(severity_level::info));
+  }
+
+  /****************************************************************************
+   * Check if verbosity is at least debug level
+   ***************************************************************************/
+  bool isDebugVerbosity()
+  {
+    return (xrt_core::config::get_verbosity() >= 
+            static_cast<uint32_t>(severity_level::debug));
+  }
+
+  /****************************************************************************
    * Check if input-based metric set
    ***************************************************************************/
   bool isInputSet(const module_type type, const std::string metricSet)
