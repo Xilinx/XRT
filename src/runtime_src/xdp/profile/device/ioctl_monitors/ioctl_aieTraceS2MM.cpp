@@ -85,6 +85,8 @@ void IOCtlAIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
   struct ts2mm_config cfg = { bo_size, static_cast<uint64_t>(bufaddr), circular };
   ioctl(driver_FD, TR_S2MM_IOC_START, &cfg);
+  // TEMPORARY: apply second start (CR-1181692)
+  ioctl(driver_FD, TR_S2MM_IOC_START, &cfg);
 }
 
 void IOCtlAIETraceS2MM::reset()
