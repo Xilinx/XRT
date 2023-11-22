@@ -21,7 +21,7 @@
 
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_config.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 
 namespace xdp {
 

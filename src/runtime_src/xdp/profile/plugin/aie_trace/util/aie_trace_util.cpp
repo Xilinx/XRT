@@ -16,7 +16,7 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/plugin/aie_trace/aie_trace_util.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
 #include <boost/algorithm/string.hpp>
