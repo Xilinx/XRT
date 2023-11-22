@@ -349,14 +349,12 @@ class module_elf : public module_impl
   initialize_instr_buf(const ELFIO::elfio& elf)
   {
     instr_buf instrbuf;
-    ELFIO::section* ctrltext = nullptr;
 
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Instruction buffer is in .ctrltext section.
       if (name.find(".ctrltext") != std::string::npos) {
-        ctrltext = sec.get();
-        instrbuf.append_section_data(ctrltext);
+        instrbuf.append_section_data(sec.get());
         break;
       }
     }
@@ -370,14 +368,12 @@ class module_elf : public module_impl
   initialize_ctrl_packet(const ELFIO::elfio& elf)
   {
     control_packet ctrlpacket;
-    ELFIO::section* ctrldata = nullptr;
 
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Control Packet is in .ctrldata section
       if (name.find(".ctrldata") != std::string::npos) {
-        ctrldata = sec.get();
-        ctrlpacket.append_section_data(ctrldata);
+        ctrlpacket.append_section_data(sec.get());
         break;
       }
     }
