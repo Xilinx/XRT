@@ -400,11 +400,11 @@ namespace xdp {
       // 1. Reserve and start core module counters (as needed)
       //
       if ((type == module_type::core) && (mCoreCounterStartEvents.size() > 0)) {
-        if (aie::isInfoVerbosity()) {
+        if (aie::isDebugVerbosity()) {
           std::stringstream msg;
           msg << "Reserving " << mCoreCounterStartEvents.size() 
               << " core counters for " << tileName;
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         XAie_ModuleType mod = XAIE_CORE_MOD;
@@ -454,11 +454,11 @@ namespace xdp {
       // 2. Reserve and start memory module counters (as needed)
       //
       if ((type == module_type::core) && (mMemoryCounterStartEvents.size() > 0)) {
-        if (aie::isInfoVerbosity()) {
+        if (aie::isDebugVerbosity()) {
           std::stringstream msg;
           msg << "Reserving " << mMemoryCounterStartEvents.size() 
               << " memory counters for " << tileName;
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         XAie_ModuleType mod = XAIE_MEM_MOD;
@@ -518,10 +518,10 @@ namespace xdp {
       // 3. Configure Core Tracing Events
       //
       if (type == module_type::core) {
-        if (aie::isInfoVerbosity()) {
+        if (aie::isDebugVerbosity()) {
           std::stringstream msg;
           msg << "Reserving " << coreEvents.size() << " core trace events for " << tileName;
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         XAie_ModuleType mod = XAIE_CORE_MOD;
@@ -593,11 +593,11 @@ namespace xdp {
       // NOTE: this is applicable for memory modules in AIE tiles or memory tiles
       uint32_t coreToMemBcMask = 0;
       if ((type == module_type::core) || (type == module_type::mem_tile)) {
-        if (aie::isInfoVerbosity()) {
+        if (aie::isDebugVerbosity()) {
           std::stringstream msg;
           msg << "Reserving " << memoryCrossEvents.size() << " + " << memoryEvents.size() 
               << " memory trace events for " << tileName;
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         auto memoryTrace = memory.traceControl();
@@ -769,10 +769,10 @@ namespace xdp {
       // 5. Configure Interface Tile Tracing Events
       //
       if (type == module_type::shim) {
-        if (aie::isInfoVerbosity()) {
+        if (aie::isDebugVerbosity()) {
           std::stringstream msg;
           msg << "Reserving " << interfaceEvents.size() << " trace events for " << tileName;
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         auto shimTrace = shim.traceControl();
@@ -916,12 +916,12 @@ namespace xdp {
     auto handle = metadata->getHandle();
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
-    if (aie::isInfoVerbosity()) {
+    if (aie::isDebugVerbosity()) {
       std::stringstream msg;
       msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size()
           << " AIE tiles, " << mMemoryTileTraceFlushLocs.size() << " memory tiles, and " 
           << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
     // Flush trace by forcing end event

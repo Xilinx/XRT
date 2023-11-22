@@ -74,7 +74,7 @@ namespace xdp::aie::trace {
           uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
           std::string msg = "Configuring core module stream switch to monitor trace port " 
                           + std::to_string(traceSelect);
-          xrt_core::message::send(severity_level::info, "XRT", msg);
+          xrt_core::message::send(severity_level::debug, "XRT", msg);
           switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
         }
         else if (type == module_type::shim) {
@@ -85,13 +85,13 @@ namespace xdp::aie::trace {
           auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " stream port " + std::to_string(streamPortId);
-          xrt_core::message::send(severity_level::info, "XRT", msg);
+          xrt_core::message::send(severity_level::debug, "XRT", msg);
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
         }
         else {
           // Memory tiles
           if (metricSet.find("trace") != std::string::npos) {
-            xrt_core::message::send(severity_level::info, "XRT", 
+            xrt_core::message::send(severity_level::debug, "XRT", 
               "Configuring memory tile stream switch to monitor trace port 0");
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
           }
@@ -101,7 +101,7 @@ namespace xdp::aie::trace {
             std::string typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
             std::string msg = "Configuring memory tile stream switch to monitor " 
                             + typeName + " stream port " + std::to_string(channel);
-            xrt_core::message::send(severity_level::info, "XRT", msg);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
           }
         }
@@ -140,11 +140,14 @@ namespace xdp::aie::trace {
       return;
 
     XAie_DmaDirection dmaDir = isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
-    std::string typeName = (dmaDir == DMA_S2MM) ? "S2MM" : "MM2S";
-    std::string msg = "Configuring memory tile event selections to DMA " 
-                    + typeName + " channels " + std::to_string(channel0) 
-                    + " and " + std::to_string(channel1);
-    xrt_core::message::send(severity_level::info, "XRT", msg);
+
+    if (aie::isDebugVerbosity()) {
+      std::string typeName = (dmaDir == DMA_S2MM) ? "S2MM" : "MM2S";
+      std::string msg = "Configuring memory tile event selections to DMA " 
+                      + typeName + " channels " + std::to_string(channel0) 
+                      + " and " + std::to_string(channel1);
+      xrt_core::message::send(severity_level::debug, "XRT", msg);
+    }
 
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
@@ -181,7 +184,7 @@ namespace xdp::aie::trace {
 
     std::string msg = "Configuring memory tile edge events to detect rise and fall of event " 
                     + std::to_string(eventNum);
-    xrt_core::message::send(severity_level::info, "XRT", msg);
+    xrt_core::message::send(severity_level::debug, "XRT", msg);
 
     auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
     XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, edgeEventsValue);
@@ -270,10 +273,8 @@ namespace xdp::aie::trace {
     if (pc->reserve() != XAIE_OK)
       return false;
 
-    if (isDebugVerbosity()) {
-      xrt_core::message::send(severity_level::debug, "XRT", 
-          "Configuring AIE trace to start on iteration " + std::to_string(iteration));
-    }
+    xrt_core::message::send(severity_level::debug, "XRT", 
+        "Configuring AIE trace to start on iteration " + std::to_string(iteration));
 
     pc->changeThreshold(iteration);
     
