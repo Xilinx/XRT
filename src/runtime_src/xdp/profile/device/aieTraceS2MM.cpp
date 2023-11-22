@@ -15,8 +15,11 @@
  */
 
 #include "aieTraceS2MM.h"
+#include "core/common/message.h"
+#include <sstream>
 
 namespace xdp {
+using severity_level = xrt_core::message::severity_level;
 
 void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
@@ -42,6 +45,24 @@ void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
     // Start Data Mover
     write32(TS2MM_AP_CTRL, TS2MM_AP_START);
+
+    // TEMPORARY: apply second start (CR-1181692)
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
+      uint32_t regValue = 0;
+      read(TS2MM_AP_CTRL, BYTES_PER_WORD, &regValue);
+      std::stringstream msg;
+      msg << "AIE TraceS2MM AP control register after first start: 0x" << std::hex << regValue;
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }
+    write32(TS2MM_AP_CTRL, TS2MM_AP_START);
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
+      uint32_t regValue = 0;
+      read(TS2MM_AP_CTRL, BYTES_PER_WORD, &regValue);
+      std::stringstream msg;
+      msg << "AIE TraceS2MM AP control register after first start: 0x" << std::hex << regValue;
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }
+    // End of temporary code
 }
 
 uint64_t AIETraceS2MM::getWordCount(bool final)

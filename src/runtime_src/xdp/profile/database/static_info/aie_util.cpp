@@ -35,23 +35,32 @@ namespace xdp::aie {
   namespace pt = boost::property_tree;
   using severity_level = xrt_core::message::severity_level;
 
+  /****************************************************************************
+   * Compare two tiles (used for sorting)
+   ***************************************************************************/
   bool tileCompare(xdp::tile_type tile1, xdp::tile_type tile2) 
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
+  /****************************************************************************
+   * Throw runtime error (only if err is set)
+   ***************************************************************************/
   void throwIfError(bool err, const char* msg)
   {
     if (err)
       throw std::runtime_error(msg);
   }
 
+  /****************************************************************************
+   * Determine type of metadata file
+   ***************************************************************************/
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   determineFileType(boost::property_tree::ptree& aie_project)
   {
-    // ****************************************************
+    //
     // Check if it is the known compiler_report.json format
-    // ****************************************************
+    //
     try {
       std::string schema;
       schema = aie_project.get_child("schema").get_value<std::string>();
@@ -62,9 +71,9 @@ namespace xdp::aie {
       // Something went wrong, so it most likely is not a "compiler_report.json"
     }
 
-    // *******************************************************
+    //
     // Check if it is the known aie_control_config.json format
-    // *******************************************************
+    //
     try {
       std::string major;
       major = aie_project.get_child("schema_version.major").get_value<std::string>();
@@ -75,9 +84,9 @@ namespace xdp::aie {
       // Something went wrong, so it most likely is not an aie_control_config
     }
 
-    // *******************************************************
+    //
     // Check if it is the known handwritten format
-    // *******************************************************
+    //
     try {
       auto schema = aie_project.get_child("schema").get_value<std::string>();
       if (schema == "handwritten")
@@ -107,6 +116,9 @@ namespace xdp::aie {
     return *hwGen;
   }
 
+  /****************************************************************************
+   * Get metadata required to configure driver
+   ***************************************************************************/
   xdp::aie::driver_config
   getDriverConfig(const boost::property_tree::ptree& aie_meta,
                 const std::string& root)
@@ -128,10 +140,27 @@ namespace xdp::aie {
       meta_config.get_child("num_columns").get_value<uint8_t>();
     config.shim_row =
       meta_config.get_child("shim_row").get_value<uint8_t>();
-    config.mem_row_start =
-      meta_config.get_child("mem_row_start").get_value<uint8_t>();
-    config.mem_num_rows =
-      meta_config.get_child("mem_num_rows").get_value<uint8_t>();
+
+    // For backward compatability, look for both the old and new fields
+    bool found = false;
+    try {
+      config.mem_row_start =
+        meta_config.get_child("mem_tile_row_start").get_value<uint8_t>();
+      config.mem_num_rows =
+        meta_config.get_child("mem_tile_num_rows").get_value<uint8_t>();
+      found = true;
+    }
+    catch (std::exception& /*e*/) {
+      // For older xclbins, it is not an error if we don't find the
+      // mem_tile entries, so just catch the exception and ignore it.
+    }
+    if (!found) {
+      config.mem_row_start =
+        meta_config.get_child("reserved_row_start").get_value<uint8_t>();
+      config.mem_num_rows =
+        meta_config.get_child("reserved_num_rows").get_value<uint8_t>();
+    }
+
     config.aie_tile_row_start =
       meta_config.get_child("aie_tile_row_start").get_value<uint8_t>();
     config.aie_tile_num_rows =
@@ -139,6 +168,9 @@ namespace xdp::aie {
     return config;
   }
 
+  /****************************************************************************
+   * Get first row offset of AIE tiles in array
+   ***************************************************************************/
   uint16_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
                     const std::string& location)
@@ -150,6 +182,9 @@ namespace xdp::aie {
     return *rowOffset;
   }
 
+  /****************************************************************************
+   * Get all valid graph names from metadata
+   ***************************************************************************/
   std::vector<std::string>
   getValidGraphs(const boost::property_tree::ptree& aie_meta,
                 const std::string& root)
@@ -162,6 +197,9 @@ namespace xdp::aie {
     return graphs;
   }
 
+  /****************************************************************************
+   * Read AIE metadata from ptree
+   ***************************************************************************/
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   readAIEMetadata(const char* data, size_t size, pt::ptree& aie_project)
   {
@@ -172,6 +210,9 @@ namespace xdp::aie {
     return determineFileType(aie_project);
   }
 
+  /****************************************************************************
+   * Read AIE metadata from file
+   ***************************************************************************/
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   readAIEMetadata(const char* filename, pt::ptree& aie_project)
   {
@@ -185,8 +226,6 @@ namespace xdp::aie {
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return nullptr;
     }
-
-    return determineFileType(aie_project);
   }
 
   /****************************************************************************
