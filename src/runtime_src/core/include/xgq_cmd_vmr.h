@@ -132,14 +132,14 @@ enum xgq_cmd_log_page_type {
 };
 
 /*
- * VMR SC status defines
+ * XGQ VMR SC status defines
  */
-typedef enum _VMR_CMD_SC_STATUS
+typedef enum _xgq_cmd_sc_status
 {
-    VMR_CMD_SC_PENDING     = 0x0,
-    VMR_CMD_SC_UNAVAILABLE = 0x1,
-    VMR_CMD_SC_READY       = 0x2,
-} VMR_CMD_SC_STATUS;
+    XGQ_CMD_SC_PENDING     = 0x0,
+    XGQ_CMD_SC_UNAVAILABLE = 0x1,
+    XGQ_CMD_SC_READY       = 0x2,
+} xgq_cmd_sc_status;
 
 /**
  * struct xgq_cmd_log_payload: log_page request command
