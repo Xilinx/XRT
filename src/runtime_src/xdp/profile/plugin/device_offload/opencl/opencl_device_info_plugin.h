@@ -22,7 +22,6 @@
 
 #include "xocl/core/platform.h"
 
-#include "xdp/config.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
 
 namespace xdp {
@@ -44,18 +43,18 @@ namespace xdp {
     void updateOpenCLInfo(uint64_t deviceId) ;
     void updateSWEmulationGuidance() ;
 
-    XDP_PLUGIN_EXPORT virtual void readTrace() override;
+    virtual void readTrace() override;
 
   public:
-    XDP_PLUGIN_EXPORT OpenCLDeviceInfoPlugin() ;
-    XDP_PLUGIN_EXPORT virtual ~OpenCLDeviceInfoPlugin() override ;
+    OpenCLDeviceInfoPlugin() ;
+    virtual ~OpenCLDeviceInfoPlugin() override ;
 
     // Virtual functions from XDPPlugin
-    XDP_PLUGIN_EXPORT virtual void writeAll(bool openNewFiles) override;
+    virtual void writeAll(bool openNewFiles) override;
 
     // Virtual functions from DeviceOffloadPlugin
-    XDP_PLUGIN_EXPORT virtual void flushDevice(void* device) override;
-    XDP_PLUGIN_EXPORT virtual void updateDevice(void* device) override;
+    virtual void flushDevice(void* device) override;
+    virtual void updateDevice(void* device) override;
   } ;
 
 } // end namespace xdp

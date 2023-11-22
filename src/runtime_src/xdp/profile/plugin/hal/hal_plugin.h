@@ -27,13 +27,9 @@ namespace xdp {
   private:
     static bool live;
   public:
-    XDP_PLUGIN_EXPORT
     HALPlugin() ;
-
-    XDP_PLUGIN_EXPORT
     ~HALPlugin() ;
 
-    XDP_PLUGIN_EXPORT
     virtual void writeAll(bool openNewFiles) ;
 
     static bool alive() { return HALPlugin::live; }

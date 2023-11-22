@@ -61,22 +61,22 @@ namespace xdp {
 
     std::map<uint64_t, DeviceData> offloaders;
 
-    XDP_PLUGIN_EXPORT void addDevice(const std::string& sysfsPath) ;
-    XDP_PLUGIN_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_PLUGIN_EXPORT void configureFa(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_PLUGIN_EXPORT void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_PLUGIN_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
-    XDP_PLUGIN_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
-    XDP_PLUGIN_EXPORT void startContinuousThreads(uint64_t deviceId) ;
+    void addDevice(const std::string& sysfsPath) ;
+    void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
+    void configureFa(uint64_t deviceId, DeviceIntf* devInterface) ;
+    void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
+    void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
+    void configureTraceIP(DeviceIntf* devInterface) ;
+    void startContinuousThreads(uint64_t deviceId) ;
 
-    XDP_PLUGIN_EXPORT void readCounters() ;
-    XDP_PLUGIN_EXPORT virtual void readTrace() = 0 ;
-    XDP_PLUGIN_EXPORT void checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId) ;
-    XDP_PLUGIN_EXPORT bool flushTraceOffloader(DeviceTraceOffload* offloader);
+    void readCounters() ;
+    virtual void readTrace() = 0 ;
+    void checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId) ;
+    bool flushTraceOffloader(DeviceTraceOffload* offloader);
 
   public:
-    XDP_PLUGIN_EXPORT DeviceOffloadPlugin() ;
-    XDP_PLUGIN_EXPORT virtual ~DeviceOffloadPlugin() = default ;
+    DeviceOffloadPlugin() ;
+    virtual ~DeviceOffloadPlugin() = default ;
 
     virtual void writeAll(bool openNewFiles) ;
 

@@ -23,7 +23,6 @@
 #include <thread>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/config.h"
 
 namespace xdp {
 
@@ -45,7 +44,7 @@ namespace xdp {
     PowerProfilingPlugin() ;
     ~PowerProfilingPlugin() ;
 
-    XDP_PLUGIN_EXPORT void addDevice(void* handle) ;
+    void addDevice(void* handle) ;
   } ;
 
 } // end namespace xdp

@@ -38,7 +38,7 @@ namespace xdp {
     std::vector<void*> deviceHandles ;
     std::map<uint64_t, void*> deviceIdToHandle ;
 
-    XDP_PLUGIN_EXPORT virtual void readTrace() ;
+    virtual void readTrace() ;
 
     // When trying to determine the path to the debug_ip_layout file,
     //  we need to call the C-interface function xclGetDebugIPlayoutPath
@@ -46,12 +46,12 @@ namespace xdp {
     constexpr static int maxPathLength = 512 ;
 
   public:
-    XDP_PLUGIN_EXPORT HALDeviceOffloadPlugin() ;
-    XDP_PLUGIN_EXPORT ~HALDeviceOffloadPlugin() ;
+    HALDeviceOffloadPlugin() ;
+    ~HALDeviceOffloadPlugin() ;
 
     // Virtual functions from DeviceOffloadPlugin
-    XDP_PLUGIN_EXPORT virtual void flushDevice(void* device) ;
-    XDP_PLUGIN_EXPORT virtual void updateDevice(void* device) ;
+    virtual void flushDevice(void* device) ;
+    virtual void updateDevice(void* device) ;
   } ;
 
 } // end namespace xdp

@@ -29,8 +29,6 @@
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
-#include "xdp/config.h"
-
 #include "core/common/device.h"
 #include "xaiefal/xaiefal.hpp"
 
@@ -47,12 +45,9 @@ namespace xdp {
     AIEStatusPlugin();
     ~AIEStatusPlugin();
 
-    XDP_PLUGIN_EXPORT
     void updateAIEDevice(void* handle);
-    XDP_PLUGIN_EXPORT
     void endPollforDevice(void* handle);
 
-    XDP_PLUGIN_EXPORT
     static bool alive();
 
   private:

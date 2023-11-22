@@ -20,7 +20,6 @@
 
 #include <set>
 
-#include "xdp/config.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
 
 namespace xdp {
@@ -37,13 +36,13 @@ namespace xdp {
     //  to keep track of when we create new writers.
     std::set<uint64_t> devicesSeen ;
 
-    XDP_PLUGIN_EXPORT virtual void readTrace() override ;
+    virtual void readTrace() override ;
   public:
-    XDP_PLUGIN_EXPORT HWEmuDeviceOffloadPlugin() ;
-    XDP_PLUGIN_EXPORT ~HWEmuDeviceOffloadPlugin() override ;
+    HWEmuDeviceOffloadPlugin() ;
+    ~HWEmuDeviceOffloadPlugin() override ;
 
-    XDP_PLUGIN_EXPORT virtual void flushDevice(void* device) override ;
-    XDP_PLUGIN_EXPORT virtual void updateDevice(void* device) override ;
+    virtual void flushDevice(void* device) override ;
+    virtual void updateDevice(void* device) override ;
   } ;
 
 } // end namespace xdp

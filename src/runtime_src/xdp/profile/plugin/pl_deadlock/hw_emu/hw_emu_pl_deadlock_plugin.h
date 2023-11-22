@@ -25,11 +25,10 @@ namespace xdp {
 class HwEmuPLDeadlockPlugin : public XDPPlugin {
 
   public:
-    XDP_PLUGIN_EXPORT HwEmuPLDeadlockPlugin();
-    XDP_PLUGIN_EXPORT ~HwEmuPLDeadlockPlugin();
-    XDP_PLUGIN_EXPORT virtual void updateDevice(void* handle);
-    XDP_PLUGIN_EXPORT virtual void writeAll(bool openNewFiles);
-
+    HwEmuPLDeadlockPlugin();
+    ~HwEmuPLDeadlockPlugin();
+    virtual void updateDevice(void* handle);
+    virtual void writeAll(bool openNewFiles);
   };
 
 }

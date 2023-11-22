@@ -27,10 +27,8 @@ namespace xdp {
   private:
 
   public:
-    XDP_PLUGIN_EXPORT
     VARTPlugin();
 
-    XDP_PLUGIN_EXPORT
     ~VARTPlugin();
   };
   

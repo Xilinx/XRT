@@ -18,7 +18,6 @@
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
 
-#include "xdp/config.h"
 #include "xdp/profile/device/tracedefs.h"
 
 /*
@@ -90,7 +89,6 @@ enum class AIEOffloadThreadStatus {
 class AIETraceOffload 
 {
   public:
-    XDP_PLUGIN_EXPORT
     AIETraceOffload(void* handle, uint64_t id,
                     DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
@@ -98,19 +96,13 @@ class AIETraceOffload
                     uint64_t numStrm
                    );
 
-    XDP_PLUGIN_EXPORT
     virtual ~AIETraceOffload();
 
 public:
-    XDP_PLUGIN_EXPORT
     bool initReadTrace();
-    XDP_PLUGIN_EXPORT
     void endReadTrace();
-    XDP_PLUGIN_EXPORT
     bool isTraceBufferFull();
-    XDP_PLUGIN_EXPORT
     void startOffload();
-    XDP_PLUGIN_EXPORT
     void stopOffload();
 
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }

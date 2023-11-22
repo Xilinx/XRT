@@ -28,7 +28,7 @@ namespace xdp {
   class PLDeadlockPlugin : public XDPPlugin
   {
   private:
-    XDP_PLUGIN_EXPORT virtual void pollDeadlock(void* handle, uint64_t index);
+    virtual void pollDeadlock(void* handle, uint64_t index);
     void forceWrite();
   
   private:
@@ -39,14 +39,14 @@ namespace xdp {
     std::mutex writeLock;
 
   public:
-    XDP_PLUGIN_EXPORT PLDeadlockPlugin();
-    XDP_PLUGIN_EXPORT ~PLDeadlockPlugin();
+    PLDeadlockPlugin();
+    ~PLDeadlockPlugin();
 
-    XDP_PLUGIN_EXPORT virtual void updateDevice(void* handle);
-    XDP_PLUGIN_EXPORT virtual void flushDevice(void* handle);
+    virtual void updateDevice(void* handle);
+    virtual void flushDevice(void* handle);
 
     // Virtual functions from XDPPlugin
-    XDP_PLUGIN_EXPORT virtual void writeAll(bool openNewFiles);
+    virtual void writeAll(bool openNewFiles);
   };
 
 } // end namespace xdp
