@@ -131,6 +131,16 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_BACKUP_FPT		 = 0xc,
 };
 
+/*
+ * XGQ VMR SC status defines
+ */
+typedef enum _xgq_cmd_sc_status
+{
+    XGQ_CMD_SC_PENDING     = 0x0,
+    XGQ_CMD_SC_UNAVAILABLE = 0x1,
+    XGQ_CMD_SC_READY       = 0x2,
+} xgq_cmd_sc_status;
+
 /**
  * struct xgq_cmd_log_payload: log_page request command
  *
