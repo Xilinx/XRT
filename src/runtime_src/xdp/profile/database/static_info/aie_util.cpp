@@ -226,6 +226,8 @@ namespace xdp::aie {
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return nullptr;
     }
+
+    return determineFileType(aie_project);
   }
 
   /****************************************************************************
