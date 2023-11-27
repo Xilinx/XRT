@@ -92,8 +92,8 @@ namespace xdp {
     void dumpType(std::ofstream& fout, bool humanReadable) ;
 
   public:
-    XDP_EXPORT VTFEvent(uint64_t s_id, double ts, VTFEventType ty) ;
-    XDP_EXPORT virtual ~VTFEvent() ;
+    XDP_CORE_EXPORT VTFEvent(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_CORE_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
     inline double       getTimestamp()    const { return timestamp ; }
@@ -133,8 +133,8 @@ namespace xdp {
 	                                    type == LOP_KERNEL_ENQUEUE ; }
 
     virtual uint64_t getDevice() { return 0 ; } // CHECK
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
-    XDP_EXPORT virtual void dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/) {};
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/) {};
   } ;
 
   // Used so the database can sort based on timestamp order
@@ -154,8 +154,8 @@ namespace xdp {
 
     APICall() = delete ;
   public:
-    XDP_EXPORT APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty);
-    XDP_EXPORT ~APICall() ;
+    XDP_CORE_EXPORT APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty);
+    XDP_CORE_EXPORT ~APICall() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;

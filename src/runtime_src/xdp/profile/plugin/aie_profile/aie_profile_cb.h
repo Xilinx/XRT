@@ -20,11 +20,11 @@
 #include "xdp/config.h"
 
 extern "C"
-XDP_EXPORT
+XDP_PLUGIN_EXPORT
 void updateAIECtrDevice(void* handle);
 
 extern "C"
-XDP_EXPORT
+XDP_PLUGIN_EXPORT
 void endAIECtrPoll(void* handle);
 
 #endif

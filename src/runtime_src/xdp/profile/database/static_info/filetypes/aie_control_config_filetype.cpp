@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>

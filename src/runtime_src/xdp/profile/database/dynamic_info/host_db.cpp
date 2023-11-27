@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/dynamic_info/host_db.h"
 #include "xdp/profile/database/events/vtf_event.h"

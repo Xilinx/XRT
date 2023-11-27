@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,7 +17,7 @@
 
 #include <cstdio>
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/writer/vp_base/vp_summary_writer.h"
 #include "core/common/message.h"

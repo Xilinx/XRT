@@ -43,11 +43,11 @@ namespace xdp {
     virtual void dumpTimestamp(std::ofstream& fout) ;
 
   public:
-    XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty,
                               uint64_t devId, uint32_t monId);
-    XDP_EXPORT ~VTFDeviceEvent() ;
+    XDP_CORE_EXPORT ~VTFDeviceEvent() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
 
     virtual bool     isDeviceEvent() { return true ; }
     virtual uint64_t getDevice()     { return deviceId ; }
@@ -66,12 +66,12 @@ namespace xdp {
 
     KernelEvent() = delete ;
   public:
-    XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
-    XDP_EXPORT ~KernelEvent();
+    XDP_CORE_EXPORT ~KernelEvent();
 
-    XDP_EXPORT virtual int32_t getCUId() { return cuId; }
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual int32_t getCUId() { return cuId; }
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   };
 
   class KernelStall : public KernelEvent
@@ -81,10 +81,10 @@ namespace xdp {
 
     KernelStall() = delete ;
   public:
-    XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx);
-    XDP_EXPORT ~KernelStall();
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
+    XDP_CORE_EXPORT ~KernelStall();
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
   } ;
 
   class DeviceMemoryAccess : public VTFDeviceEvent
@@ -99,12 +99,12 @@ namespace xdp {
 
     DeviceMemoryAccess() = delete ;
   public:
-    XDP_EXPORT DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
                                   uint64_t devId, uint32_t monId, int32_t cuIdx = -1,
                                   uint64_t memStrId = 0);
-    XDP_EXPORT ~DeviceMemoryAccess();
+    XDP_CORE_EXPORT ~DeviceMemoryAccess();
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
 
     virtual int32_t getCUId() { return cuId; }
 
@@ -121,9 +121,9 @@ namespace xdp {
 
     DeviceStreamAccess() = delete ;
   public:
-    XDP_EXPORT DeviceStreamAccess(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT DeviceStreamAccess(uint64_t s_id, double ts, VTFEventType ty,
                                   uint64_t devId, uint32_t monId, int32_t cuIdx = -1);
-    XDP_EXPORT ~DeviceStreamAccess();
+    XDP_CORE_EXPORT ~DeviceStreamAccess();
 
     virtual int32_t getCUId() { return cuId; }
   } ;
@@ -133,8 +133,8 @@ namespace xdp {
   private:
     HostRead() = delete ;
   public:
-    XDP_EXPORT HostRead(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
-    XDP_EXPORT ~HostRead() ;
+    XDP_CORE_EXPORT HostRead(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
+    XDP_CORE_EXPORT ~HostRead() ;
   } ;
 
   class HostWrite : public VTFDeviceEvent
@@ -142,8 +142,8 @@ namespace xdp {
   private:
     HostWrite() = delete ;
   public:
-    XDP_EXPORT HostWrite(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
-    XDP_EXPORT ~HostWrite() ;
+    XDP_CORE_EXPORT HostWrite(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
+    XDP_CORE_EXPORT ~HostWrite() ;
   } ;
 
   class XclbinEnd : public VTFDeviceEvent
@@ -151,8 +151,8 @@ namespace xdp {
   private:
     XclbinEnd() = delete ;
   public:
-    XDP_EXPORT XclbinEnd(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
-    XDP_EXPORT ~XclbinEnd() ;
+    XDP_CORE_EXPORT XclbinEnd(uint64_t s_id, double ts, uint64_t devId, uint32_t monId) ;
+    XDP_CORE_EXPORT ~XclbinEnd() ;
   } ;
 
 } // end namespace xdp

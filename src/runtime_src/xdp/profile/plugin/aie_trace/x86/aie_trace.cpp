@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "aie_trace.h"
 

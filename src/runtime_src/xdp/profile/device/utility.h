@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,13 +25,13 @@
 
 namespace xdp {
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   uint64_t getAIMSlotId(uint64_t idx);
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   uint64_t getAMSlotId(uint64_t idx);
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   uint64_t getASMSlotId(uint64_t idx);
 
   // At compile time, each monitor inserted in the PL region is given a set 

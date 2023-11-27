@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -38,8 +38,8 @@ namespace xdp {
     StringTable() = default;
     ~StringTable() = default;
 
-    XDP_EXPORT uint64_t addString(const std::string& value);
-    XDP_EXPORT void dumpTable(std::ofstream& fout);
+    XDP_CORE_EXPORT uint64_t addString(const std::string& value);
+    XDP_CORE_EXPORT void dumpTable(std::ofstream& fout);
   };
 
 } // end namespace xdp

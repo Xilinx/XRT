@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,7 +23,6 @@
 #include <thread>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/config.h"
 
 namespace xdp {
 
@@ -44,7 +44,7 @@ namespace xdp {
     PowerProfilingPlugin() ;
     ~PowerProfilingPlugin() ;
 
-    XDP_EXPORT void addDevice(void* handle) ;
+    void addDevice(void* handle) ;
   } ;
 
 } // end namespace xdp

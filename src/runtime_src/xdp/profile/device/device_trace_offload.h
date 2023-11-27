@@ -109,24 +109,24 @@ if(!m_debug); else std::cout
 
 class DeviceTraceOffload {
 public:
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz);
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   virtual ~DeviceTraceOffload();
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   void start_offload(OffloadThreadType type);
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   void stop_offload();
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   virtual bool read_trace_init(bool circ_buf, const std::vector<uint64_t>&);
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   virtual void read_trace_end();
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   void train_clock();
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   void process_trace();
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   bool trace_buffer_full();
 
 public:

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -58,14 +59,14 @@ namespace xdp {
     VPWriter() = delete ;
 
     inline const char* getRawBasename() { return basename.c_str() ; } 
-    XDP_EXPORT virtual void switchFiles() ;
-    XDP_EXPORT virtual void refreshFile() ;
+    XDP_CORE_EXPORT virtual void switchFiles() ;
+    XDP_CORE_EXPORT virtual void refreshFile() ;
   public:
-    XDP_EXPORT VPWriter(const char* filename) ;
-    XDP_EXPORT VPWriter(const char* filename, VPDatabase* inst, bool useDir = true) ;
-    XDP_EXPORT virtual ~VPWriter() ;
+    XDP_CORE_EXPORT VPWriter(const char* filename) ;
+    XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst, bool useDir = true) ;
+    XDP_CORE_EXPORT virtual ~VPWriter() ;
 
-    XDP_EXPORT virtual std::string getcurrentFileName() ;
+    XDP_CORE_EXPORT virtual std::string getcurrentFileName() ;
 
     virtual bool isRunSummaryWriter() { return false ; }
     // Return false to indicate no data was written

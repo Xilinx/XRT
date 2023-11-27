@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/database/database.h"
 

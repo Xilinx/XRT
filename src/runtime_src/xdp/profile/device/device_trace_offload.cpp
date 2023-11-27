@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"

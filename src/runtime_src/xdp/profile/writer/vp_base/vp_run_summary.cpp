@@ -22,7 +22,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #ifdef _WIN32
 #include <direct.h>
