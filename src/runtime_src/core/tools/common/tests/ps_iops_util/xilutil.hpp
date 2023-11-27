@@ -35,8 +35,8 @@ class barrier
 
     public:
     barrier()
-        : m_generation(0)
-        , m_count(1)
+        : m_count(1)
+        , m_generation(0)
         , m_count_reset_val(1)
     {}
 
@@ -62,7 +62,7 @@ class barrier
             return;
         }
 
-        while (gen == m_generation)
+        while (static_cast<long unsigned int>(gen) == m_generation)
             m_cv.wait(lk);
     }
 

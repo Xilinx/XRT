@@ -6,7 +6,6 @@
 #include "core/common/utils.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
-#include "core/tools/common/BusyBar.h"
 
 #include "core/pcie/common/dmatest.h"
 namespace XBU = XBUtilities;
@@ -24,8 +23,6 @@ boost::property_tree::ptree
 TestDMA::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  XBU::BusyBar busy_bar("Running Test", std::cout);
-  busy_bar.start(XBU::is_escape_codes_disabled());
 
   ptree.put("status", test_token_skipped);
   if (!search_and_program_xclbin(dev, ptree))
@@ -85,7 +82,6 @@ TestDMA::run(std::shared_ptr<xrt_core::device> dev)
       logger(ptree, "Error", ex.what());
     }
   }
-  busy_bar.finish();
   return ptree;
 }
 
