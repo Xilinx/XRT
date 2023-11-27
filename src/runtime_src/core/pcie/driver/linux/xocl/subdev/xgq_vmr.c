@@ -3419,7 +3419,7 @@ static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 		msleep(SC_WAIT_INTERVAL_MSEC);
 		sc_status = vmr_get_sc_status(xgq);
 		if(sc_status == XGQ_CMD_SC_UNAVAILABLE) {
-		    XGQ_ERR(xgq, "No SC firmware as part of ext fpt");
+			XGQ_ERR(xgq, "No SC firmware as part of ext fpt");
 			return false;
 		}
 		if (sc_status == XGQ_CMD_SC_READY) {
