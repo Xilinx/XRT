@@ -30,7 +30,7 @@
 # configuration of the components and hence we want to handle the configuration
 # in postinst script.
 
-nm /opt/xilinx/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
+nm @XRT_INSTALL_PREFIX@/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
 if [ $? -eq 1 ]; then
     echo "Unloading old AWS Linux kernel modules"
     modprobe -r awsmgmt
@@ -52,7 +52,7 @@ if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
 fi
 
 echo "Remove mpd plugin"
-rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
+rm -rf @XRT_INSTALL_PREFIX@/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
 systemctl disable mpd > /dev/null 2>&1
 systemctl stop mpd > /dev/null 2>&1
 

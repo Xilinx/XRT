@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 3.5.0)
 
 if (NOT WIN32)
   if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "/opt/xilinx" CACHE PATH "..." FORCE)
     message("-- Install prefix is default initialized to ${CMAKE_INSTALL_PREFIX}")
   endif()
 else()
@@ -13,9 +12,6 @@ else()
     message("-- Install prefix is default initialized to ${CMAKE_INSTALL_PREFIX}")
   endif()
 endif()
-
-message("-- CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
-
 
 # Enable testing for this directory and below.  This command should be
 # in the source directory root because ctest expects to find a test
