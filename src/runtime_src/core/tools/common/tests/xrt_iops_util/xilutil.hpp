@@ -25,8 +25,8 @@ class barrier
     {}
 
     barrier(int count)
-        : m_count(check_counter(count))
-          , m_generation(0)
+        : m_generation(0)
+          , m_count(check_counter(count))
           , m_count_reset_val(count)
     {}
 
@@ -46,15 +46,15 @@ class barrier
             return;
         }
 
-        while (gen == m_generation)
+        while (static_cast<long unsigned int>(gen) == m_generation)
             m_cv.wait(lk);
     }
 
     private:
     std::mutex m_mutex;
     std::condition_variable m_cv;
-    unsigned int m_count;
     unsigned int m_generation;
+    unsigned int m_count;
     unsigned int m_count_reset_val;
 };
 

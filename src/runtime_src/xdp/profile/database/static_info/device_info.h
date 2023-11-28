@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -85,71 +85,71 @@ namespace xdp {
     ~DeviceInfo() ;
 
     // ****** Functions for information on the device ******
-    XDP_EXPORT std::string getUniqueDeviceName() const ;
-    XDP_EXPORT xrt_core::uuid currentXclbinUUID() ;
+    XDP_CORE_EXPORT std::string getUniqueDeviceName() const ;
+    XDP_CORE_EXPORT xrt_core::uuid currentXclbinUUID() ;
     inline std::vector<XclbinInfo*> getLoadedXclbins() { return loadedXclbins ;}
-    XDP_EXPORT void cleanCurrentXclbinInfo() ;
+    XDP_CORE_EXPORT void cleanCurrentXclbinInfo() ;
     inline bool isNoDMA() const { return isNoDMADevice ; }
     double getMaxClockRatePLMHz();
 
-    XDP_EXPORT void setAIEGeneration(uint8_t hw_gen) { aieGeneration = hw_gen; }
+    XDP_CORE_EXPORT void setAIEGeneration(uint8_t hw_gen) { aieGeneration = hw_gen; }
     inline uint8_t getAIEGeneration() const { return aieGeneration ; }
 
     // ****** Functions for information on the currently loaded xclbin *******
-    XDP_EXPORT XclbinInfo* currentXclbin() ;
-    XDP_EXPORT void addXclbin(XclbinInfo* xclbin) ;
-    XDP_EXPORT bool hasDMAMonitor() ;
-    XDP_EXPORT bool hasDMABypassMonitor() ;
-    XDP_EXPORT bool hasKDMAMonitor() ;
-    XDP_EXPORT bool hasAIMNamed(const std::string& name) ;
+    XDP_CORE_EXPORT XclbinInfo* currentXclbin() ;
+    XDP_CORE_EXPORT void addXclbin(XclbinInfo* xclbin) ;
+    XDP_CORE_EXPORT bool hasDMAMonitor() ;
+    XDP_CORE_EXPORT bool hasDMABypassMonitor() ;
+    XDP_CORE_EXPORT bool hasKDMAMonitor() ;
+    XDP_CORE_EXPORT bool hasAIMNamed(const std::string& name) ;
 
     // ****** Functions for PL information on a specific xclbin ******
-    XDP_EXPORT bool hasFloatingAIMWithTrace(XclbinInfo* xclbin) const ;
-    XDP_EXPORT bool hasFloatingASMWithTrace(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumAM(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumUserAMWithTrace(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumAIM(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumUserAIM(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumASM(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumUserASM(XclbinInfo* xclbin) const ;
-    XDP_EXPORT uint64_t getNumUserASMWithTrace(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT bool hasFloatingAIMWithTrace(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT bool hasFloatingASMWithTrace(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumAM(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumUserAMWithTrace(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumAIM(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumUserAIM(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumASM(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumUserASM(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT uint64_t getNumUserASMWithTrace(XclbinInfo* xclbin) const ;
 
     // Functions that get specific information on monitors
-    XDP_EXPORT Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
-    XDP_EXPORT Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
-    XDP_EXPORT Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
+    XDP_CORE_EXPORT Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
+    XDP_CORE_EXPORT Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
+    XDP_CORE_EXPORT Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
 
-    XDP_EXPORT std::vector<Monitor*>* getAIMonitors(XclbinInfo* xclbin) ;
-    XDP_EXPORT std::vector<Monitor*>* getASMonitors(XclbinInfo* xclbin) ;
-    XDP_EXPORT std::vector<Monitor*> getUserAIMsWithTrace(XclbinInfo* xclbin) ;
-    XDP_EXPORT std::vector<Monitor*> getUserASMsWithTrace(XclbinInfo* xclbin) ;
+    XDP_CORE_EXPORT std::vector<Monitor*>* getAIMonitors(XclbinInfo* xclbin) ;
+    XDP_CORE_EXPORT std::vector<Monitor*>* getASMonitors(XclbinInfo* xclbin) ;
+    XDP_CORE_EXPORT std::vector<Monitor*> getUserAIMsWithTrace(XclbinInfo* xclbin) ;
+    XDP_CORE_EXPORT std::vector<Monitor*> getUserASMsWithTrace(XclbinInfo* xclbin) ;
     
     // ****** Functions for AIE information on a specific xclbin ******
-    XDP_EXPORT uint64_t getNumNOC(XclbinInfo* xclbin) const ;
-    XDP_EXPORT NoCNode* getNOC(XclbinInfo* xclbin, uint64_t idx) ;
+    XDP_CORE_EXPORT uint64_t getNumNOC(XclbinInfo* xclbin) const ;
+    XDP_CORE_EXPORT NoCNode* getNOC(XclbinInfo* xclbin, uint64_t idx) ;
 
     // ****** Functions for AIE information on the current xclbin ******
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addTraceGMIO(uint32_t i, uint16_t col, uint16_t num, uint16_t stream,
                       uint16_t len) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
                        uint16_t start, uint16_t end, uint8_t reset,
                        uint32_t load, double freq, const std::string& mod,
                        const std::string& aieName) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIECounterResources(uint32_t numCounters, uint32_t numTiles,
                                 uint8_t moduleType) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIECoreEventResources(uint32_t numEvents, uint32_t numTiles) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIEMemoryEventResources(uint32_t numEvents, uint32_t numTiles) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIEShimEventResources(uint32_t numEvents, uint32_t numTiles) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIEMemTileEventResources(uint32_t numEvents, uint32_t numTiles) ;
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) ;
   } ;
 

@@ -21,7 +21,7 @@
 #include "core/include/xclbin.h"
 
 extern "C" {
-  XDP_EXPORT void cb_debug_reset(const axlf* xclbin) ;
+  XDP_PLUGIN_EXPORT void cb_debug_reset(const axlf* xclbin) ;
 }
 
 #endif

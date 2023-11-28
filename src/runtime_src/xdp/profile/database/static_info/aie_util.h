@@ -28,66 +28,66 @@
 
 namespace xdp::aie {
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   bool 
   tileCompare(xdp::tile_type tile1, xdp::tile_type tile2); 
 
-  XDP_EXPORT 
+  XDP_CORE_EXPORT 
   void 
   throwIfError(bool err, const char* msg);
 
   // A function to read the JSON from an axlf section inside the xclbin and
   // return the type of the file
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   std::unique_ptr<BaseFiletypeImpl>
   readAIEMetadata(const char* data, size_t size,
                   boost::property_tree::ptree& aie_project);
 
   // A function to read the JSON from a file on disk and return the type of
   // the file
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   std::unique_ptr<BaseFiletypeImpl>
   readAIEMetadata(const char* filename,
                   boost::property_tree::ptree& aie_project);
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   int getHardwareGeneration(const boost::property_tree::ptree& aie_meta,
                           const std::string& root);
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   xdp::aie::driver_config
   getDriverConfig(const boost::property_tree::ptree& aie_meta,
                 const std::string& root);
-
-  XDP_EXPORT
+  
+  XDP_CORE_EXPORT
   uint16_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
                     const std::string& location);
   
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   std::vector<std::string>
   getValidGraphs(const boost::property_tree::ptree& aie_meta,
                 const std::string& root);
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   bool isInfoVerbosity();
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   bool isDebugVerbosity();
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   bool isInputSet(const module_type type, const std::string metricSet);
   
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   uint16_t getRelativeRow(uint16_t absRow, uint16_t rowOffset);
   
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   module_type getModuleType(uint16_t absRow, uint16_t rowOffset);
   
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   uint32_t bcIdToEvent(int bcId);
   
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   std::string getModuleName(module_type mod);
 
 } // namespace xdp::aie

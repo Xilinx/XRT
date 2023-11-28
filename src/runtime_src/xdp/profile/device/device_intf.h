@@ -52,7 +52,7 @@ namespace xdp {
 
 // Helper methods
 
-XDP_EXPORT
+XDP_CORE_EXPORT
 uint64_t GetTS2MMBufSize(bool isAIETrace = false);
 
 
@@ -61,24 +61,24 @@ class DeviceIntf {
 
     DeviceIntf() {}
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     ~DeviceIntf();
 
   public:
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void setDevice(xdp::Device* );
 
     // Debug IP layout
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void readDebugIPlayout();
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint32_t getNumMonitors(xdp::MonitorType type);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     std::string getMonitorName(xdp::MonitorType type, uint32_t index);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint64_t getFifoSize();
 
     // Axi Interface Monitor
@@ -95,46 +95,46 @@ class DeviceIntf {
     }
 
     // Counters
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t startCounters();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t stopCounters();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t readCounters(xdp::CounterResults& counterResults);
 
     // Accelerator Monitor
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void configureDataflow(bool* ipConfig);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void configureFa(bool* ipConfig);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void configAmContext(const std::string& ctx_info);
 
     // Underlying Device APIs
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void freeTraceBuf(size_t id);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void* syncTraceBuf(size_t id ,uint64_t offset, uint64_t bytes);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     xclBufferExportHandle exportTraceBuf(size_t id);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint64_t getTraceBufDeviceAddr(size_t id);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint64_t getAlignedTraceBufSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
     bool hasFIFO() {return (mFifoCtrl != nullptr);};
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint32_t getTraceCount();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t startTrace(uint32_t startTrigger);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void clockTraining(bool force = true);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t stopTrace();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     size_t readTrace(uint32_t*& traceData) ;
 
     /** Trace S2MM Management
@@ -165,53 +165,53 @@ class DeviceIntf {
       return false;
     }
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void resetTS2MM(uint64_t index);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint64_t getWordCountTs2mm(uint64_t index, bool final);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
       void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector);
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void resetAIETs2mm(uint64_t index);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index, bool circular);
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint64_t getWordCountAIETs2mm(uint64_t index, bool final);
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint8_t  getAIETs2mmMemIndex(uint64_t index);
     
     double getHostMaxBwRead() const {return mHostMaxReadBW;}
     double getHostMaxBwWrite() const {return mHostMaxWriteBW;}
     double getKernelMaxBwRead() const {return mKernelMaxReadBW;}
     double getKernelMaxBwWrite() const {return mKernelMaxWriteBW;}
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void setHostMaxBwRead();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void setHostMaxBwWrite();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void setKernelMaxBwRead();
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void setKernelMaxBwWrite();
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     uint32_t getDeadlockStatus();
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     void createXrtIP
     (
       const std::unique_ptr<ip_metadata>& ip_metadata_section,
       const std::string& fullname
     );
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     std::string getDeadlockDiagnosis(bool print);
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 

@@ -22,7 +22,7 @@
  * It defines lambda functions that are attached as debug action with the cl_event
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "xdp/appdebug/appdebug.h"
 #include "xdp/appdebug/appdebug_track.h"

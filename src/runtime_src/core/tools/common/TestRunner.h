@@ -17,6 +17,7 @@
 class TestRunner : public JSONConfigurable {
   public:
     virtual boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev) = 0;
+    boost::property_tree::ptree startTest(std::shared_ptr<xrt_core::device> dev);
     virtual void set_param(const std::string key, const std::string value){}
     bool is_explicit() const { return m_explicit; };
     virtual bool getConfigHidden() const { return is_explicit(); };

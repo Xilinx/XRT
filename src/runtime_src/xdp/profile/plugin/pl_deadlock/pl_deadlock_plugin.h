@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,7 +28,7 @@ namespace xdp {
   class PLDeadlockPlugin : public XDPPlugin
   {
   private:
-    XDP_EXPORT virtual void pollDeadlock(void* handle, uint64_t index);
+    virtual void pollDeadlock(void* handle, uint64_t index);
     void forceWrite();
   
   private:
@@ -38,14 +39,14 @@ namespace xdp {
     std::mutex writeLock;
 
   public:
-    XDP_EXPORT PLDeadlockPlugin();
-    XDP_EXPORT ~PLDeadlockPlugin();
+    PLDeadlockPlugin();
+    ~PLDeadlockPlugin();
 
-    XDP_EXPORT virtual void updateDevice(void* handle);
-    XDP_EXPORT virtual void flushDevice(void* handle);
+    virtual void updateDevice(void* handle);
+    virtual void flushDevice(void* handle);
 
     // Virtual functions from XDPPlugin
-    XDP_EXPORT virtual void writeAll(bool openNewFiles);
+    virtual void writeAll(bool openNewFiles);
   };
 
 } // end namespace xdp

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -37,7 +38,7 @@ namespace xdp {
     std::vector<void*> deviceHandles ;
     std::map<uint64_t, void*> deviceIdToHandle ;
 
-    XDP_EXPORT virtual void readTrace() ;
+    virtual void readTrace() ;
 
     // When trying to determine the path to the debug_ip_layout file,
     //  we need to call the C-interface function xclGetDebugIPlayoutPath
@@ -45,12 +46,12 @@ namespace xdp {
     constexpr static int maxPathLength = 512 ;
 
   public:
-    XDP_EXPORT HALDeviceOffloadPlugin() ;
-    XDP_EXPORT ~HALDeviceOffloadPlugin() ;
+    HALDeviceOffloadPlugin() ;
+    ~HALDeviceOffloadPlugin() ;
 
     // Virtual functions from DeviceOffloadPlugin
-    XDP_EXPORT virtual void flushDevice(void* device) ;
-    XDP_EXPORT virtual void updateDevice(void* device) ;
+    virtual void flushDevice(void* device) ;
+    virtual void updateDevice(void* device) ;
   } ;
 
 } // end namespace xdp

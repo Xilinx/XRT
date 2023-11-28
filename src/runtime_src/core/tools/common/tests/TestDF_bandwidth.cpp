@@ -12,10 +12,10 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 
 // System - Include Files
 #include <fstream>
+#include <filesystem>
 
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size_gb = 1;
@@ -88,7 +88,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   auto xclbin_path = findXclbinPath(dev, ptree);
-  if (!boost::filesystem::exists(xclbin_path)) {
+  if (!std::filesystem::exists(xclbin_path)) {
     return ptree;
   }
   // log xclbin test dir for debugging purposes

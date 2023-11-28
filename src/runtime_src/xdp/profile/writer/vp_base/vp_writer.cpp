@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/writer/vp_base/vp_writer.h"

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,10 +27,8 @@ namespace xdp {
   private:
 
   public:
-    XDP_EXPORT
     VARTPlugin();
 
-    XDP_EXPORT
     ~VARTPlugin();
   };
   

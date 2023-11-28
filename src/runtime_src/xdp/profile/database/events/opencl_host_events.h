@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -42,19 +43,19 @@ namespace xdp {
 
     KernelEnqueue() = delete ;
   public:
-    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
+    XDP_CORE_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
 			     uint64_t dName, uint64_t bName, uint64_t kName,
 			     uint64_t wgc, size_t wgs,
 			     const char* enqueueId) ;
 
-    XDP_EXPORT ~KernelEnqueue() ;
+    XDP_CORE_EXPORT ~KernelEnqueue() ;
 
     inline std::string getIdentifier() { return identifier ; }
 
     virtual bool isHostEvent() { return true ; }
     virtual bool isOpenCLHostEvent() { return true ; }
     
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class LOPKernelEnqueue : public VTFEvent
@@ -62,13 +63,13 @@ namespace xdp {
   private:
     LOPKernelEnqueue() = delete ;
   public:
-    XDP_EXPORT LOPKernelEnqueue(uint64_t s_id, double ts) ;
-    XDP_EXPORT ~LOPKernelEnqueue() ;
+    XDP_CORE_EXPORT LOPKernelEnqueue(uint64_t s_id, double ts) ;
+    XDP_CORE_EXPORT ~LOPKernelEnqueue() ;
 
     virtual bool isHostEvent() { return true ; }
     virtual bool isLOPHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   /*
@@ -87,8 +88,8 @@ namespace xdp {
 
     CUEnqueue() = delete ;
   public:
-    XDP_EXPORT CUEnqueue(uint64_t s_id, double ts) ;
-    XDP_EXPORT ~CUEnqueue() ;
+    XDP_CORE_EXPORT CUEnqueue(uint64_t s_id, double ts) ;
+    XDP_CORE_EXPORT ~CUEnqueue() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;
@@ -100,13 +101,13 @@ namespace xdp {
 
     BufferTransfer() = delete ;
   public:
-    XDP_EXPORT BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
                               size_t bufSz = 0);
-    XDP_EXPORT ~BufferTransfer() ;
+    XDP_CORE_EXPORT ~BufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; } 
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class OpenCLBufferTransfer : public VTFEvent
@@ -119,15 +120,15 @@ namespace xdp {
 
     OpenCLBufferTransfer() = delete ;
   public:
-    XDP_EXPORT OpenCLBufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT OpenCLBufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
 				    uint64_t address, uint64_t resource,
 				    size_t size) ;
-    XDP_EXPORT ~OpenCLBufferTransfer() ;
+    XDP_CORE_EXPORT ~OpenCLBufferTransfer() ;
 
     virtual bool isHostEvent()       { return true ; }
     virtual bool isOpenCLHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class OpenCLCopyBuffer : public VTFEvent
@@ -142,16 +143,16 @@ namespace xdp {
 
     OpenCLCopyBuffer() = delete ;
   public:
-    XDP_EXPORT OpenCLCopyBuffer(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_CORE_EXPORT OpenCLCopyBuffer(uint64_t s_id, double ts, VTFEventType ty,
 				uint64_t srcAddress, uint64_t srcResource,
 				uint64_t dstAddress, uint64_t dstResource,
 				size_t size) ;
-    XDP_EXPORT ~OpenCLCopyBuffer() ;
+    XDP_CORE_EXPORT ~OpenCLCopyBuffer() ;
 
     virtual bool isHostEvent()       { return true ; }
     virtual bool isOpenCLHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class LOPBufferTransfer : public VTFEvent
@@ -159,13 +160,13 @@ namespace xdp {
   private:
     std::thread::id threadId ;
   public:
-    XDP_EXPORT LOPBufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
-    XDP_EXPORT ~LOPBufferTransfer() ;
+    XDP_CORE_EXPORT LOPBufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_CORE_EXPORT ~LOPBufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; }
     virtual bool isLOPHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class StreamRead : public VTFEvent
@@ -173,8 +174,8 @@ namespace xdp {
   private:
     StreamRead() = delete ;
   public:
-    XDP_EXPORT StreamRead(uint64_t s_id, double ts) ;
-    XDP_EXPORT ~StreamRead() ;
+    XDP_CORE_EXPORT StreamRead(uint64_t s_id, double ts) ;
+    XDP_CORE_EXPORT ~StreamRead() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;
@@ -184,8 +185,8 @@ namespace xdp {
   private:
     StreamWrite() = delete ;
   public:
-    XDP_EXPORT StreamWrite(uint64_t s_id, double ts) ;
-    XDP_EXPORT ~StreamWrite() ;
+    XDP_CORE_EXPORT StreamWrite(uint64_t s_id, double ts) ;
+    XDP_CORE_EXPORT ~StreamWrite() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;

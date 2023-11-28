@@ -4,7 +4,6 @@
 // Local - Include Files
 #include "TestPsPlVerify.h"
 
-#include "tools/common/BusyBar.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "xrt/xrt_bo.h"
@@ -15,7 +14,6 @@ namespace XBU = XBUtilities;
 #include <thread>
 
 static const int COUNT = 1024;
-static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestPsPlVerify::TestPsPlVerify()
@@ -24,42 +22,12 @@ TestPsPlVerify::TestPsPlVerify()
                 "ps_bandwidth.xclbin",
                 true){}
 
-static void
-runTestInternal(std::shared_ptr<xrt_core::device> dev,
-                boost::property_tree::ptree& ptree,
-                TestPsPlVerify* test,
-                bool& is_thread_running)
-{
-  test->runTest(dev, ptree);
-  is_thread_running = false;
-}
-
 boost::property_tree::ptree
 TestPsPlVerify::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   ptree.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
-
-  XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
-  bool is_thread_running = true;
-
-  // Start the test process
-  // std::thread test_thread(run_script, cmd, std::ref(os_stdout), std::ref(os_stderr), std::ref(is_thread_running));
-  std::thread test_thread([&] { runTestInternal(dev, ptree, this, is_thread_running); });
-  // Wait for the test process to finish
-  while (is_thread_running) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    try {
-      busy_bar.check_timeout(MAX_TEST_DURATION);
-    } catch (const std::exception&) {
-      test_thread.detach();
-      throw;
-    }
-  }
-  test_thread.join();
-  busy_bar.finish();
-
+  runTest(dev, ptree);
   return ptree;
 }
 

@@ -37,9 +37,7 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
 {
     auto tiles = get_tiles(graphName);
 
-    unsigned int metadata_offset = m_metadata.size();
-
-    unsigned int itr_mem_addr = 0;
+    uint64_t itr_mem_addr = 0;
     unsigned int num_tile = 0;
     for (auto& tile : tiles) {
         num_tile++;
@@ -52,18 +50,17 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
                     "iter_mem_addr to be same to make sure broadcast is "
                     "correct");
         }
-        std::cout
-            << boost::format(
-                   "enqueue_graph_run(): INFO: tile: %u, itr_mem_addr: %u\n") %
-                   (num_tile - 1) % tile.itr_mem_addr;
+        // std::cout
+        //     << boost::format(
+        //            "enqueue_graph_run(): INFO: tile: %u, itr_mem_addr: %u\n") %
+        //            (num_tile - 1) % tile.itr_mem_addr;
     }
-    uint32_t metadata_num = num_tile;
     m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::SET_AIE_ITERATION));
     m_opcodeBuffer.push_back(num_iter);
-    m_opcodeBuffer.push_back(itr_mem_addr);
-    std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
-                               "itr_mem_addr: %u\n") %
-                     num_iter % itr_mem_addr;
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(itr_mem_addr));
+    // std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
+    //                            "itr_mem_addr: %u\n") %
+    //                  num_iter % itr_mem_addr;
 }
 
 void
@@ -106,7 +103,7 @@ plController::enqueue_set_and_enqueue_dma_bd(const std::string& portName,
     if (buffers.empty())
         throw std::runtime_error("Cannot find port: '" + portName + "'");
 
-    if (idx > buffers.size() - 1)
+    if (static_cast<long unsigned int>(idx) > buffers.size() - 1)
         throw std::runtime_error("port idx '" + std::to_string(idx) +
                                  "' is out of range");
 
@@ -141,18 +138,18 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
 
     m_opcodeBuffer.push_back(static_cast<uint32_t>(CMD_TYPE::UPDATE_AIE_RTP));
     m_opcodeBuffer.push_back(rtpVal);
-    m_opcodeBuffer.push_back(m_ping_pong ? rtp.ping_addr : rtp.pong_addr);
+    m_opcodeBuffer.push_back(m_ping_pong ? static_cast<uint32_t>(rtp.ping_addr) : static_cast<uint32_t>(rtp.pong_addr));
 
-    m_opcodeBuffer.push_back(rtp.selector_addr);
+    m_opcodeBuffer.push_back(static_cast<uint32_t>(rtp.selector_addr));
     m_opcodeBuffer.push_back(m_ping_pong);
 
-    m_ping_pong = ~m_ping_pong;
-    std::cout << boost::format(
-                     "enqueue_graph_rtp_update(): INFO: ping_addr = %u"
-                     ", pong_addr = %u, selector_addr = %u"
-                     ", ping_locd_id = %u, pong_lock_id = %u\n") %
-                     rtp.ping_addr % rtp.pong_addr % rtp.selector_addr %
-                     rtp.ping_lock_id % rtp.pong_lock_id;
+    m_ping_pong = !m_ping_pong;
+    // std::cout << boost::format(
+    //                  "enqueue_graph_rtp_update(): INFO: ping_addr = %u"
+    //                  ", pong_addr = %u, selector_addr = %u"
+    //                  ", ping_locd_id = %u, pong_lock_id = %u\n") %
+    //                  rtp.ping_addr % rtp.pong_addr % rtp.selector_addr %
+    //                  rtp.ping_lock_id % rtp.pong_lock_id;
 }
 
 void
@@ -173,7 +170,6 @@ void
 plController::get_rtp()
 {
     boost::property_tree::ptree aie_meta;
-    std::cout << "aie_info_path " << m_aie_info_path << std::endl;
     std::ifstream jsonFile(m_aie_info_path);
     if (!jsonFile.good())
         throw std::runtime_error("get_rtp():ERROR:No aie info file specified");
@@ -231,25 +227,25 @@ plController::get_tiles(const std::string& graph_name)
         for (auto& node : graph.second.get_child("core_columns")) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = std::stoul(node.second.data());
+            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child("core_rows"))
-            tiles.at(count++).row = std::stoul(node.second.data());
+            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
         if (count < num_tiles)
             throw std::runtime_error("core_rows < num_tiles");
 
         count = 0;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
+            tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
         if (count < num_tiles)
             throw std::runtime_error("iteration_memory_columns < num_tiles");
 
         count = 0;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
+            tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
         if (count < num_tiles)
             throw std::runtime_error("iteration_memory_rows < num_tiles");
 
@@ -294,7 +290,7 @@ plController::get_buffers(const std::string& port_name)
                     b.row = buff_info.second.get<uint16_t>("Row");
                     b.ch_num = buff_info.second.get<uint16_t>("Channel");
                     b.lock_id = buff_info.second.get<uint16_t>("LockID");
-                    b.bd_num = std::stoul(field.second.data());
+                    b.bd_num = static_cast<uint16_t>(std::stoul(field.second.data()));
                     b.s2mm = true;
                 }
             }
@@ -313,7 +309,7 @@ plController::get_buffers(const std::string& port_name)
                     b.row = buff_info.second.get<uint16_t>("Row");
                     b.ch_num = buff_info.second.get<uint16_t>("Channel");
                     b.lock_id = buff_info.second.get<uint16_t>("LockID");
-                    b.bd_num = std::stoul(field.second.data());
+                    b.bd_num = static_cast<uint16_t>(std::stoul(field.second.data()));
                     b.s2mm = false;
                 }
             }

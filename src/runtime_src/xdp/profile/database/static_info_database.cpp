@@ -40,7 +40,7 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/include/xclbin.h"
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/device_info.h"

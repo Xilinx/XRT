@@ -66,12 +66,12 @@ class plController
      * on
      * this size.
      */
-    unsigned int get_metadata_size() const { return m_metadata.size(); };
+    unsigned int get_metadata_size() const { return static_cast<unsigned int>(m_metadata.size()); };
 
     /* return local microcode buffer size, user use allocate device buffer based
      * on this size.
      */
-    unsigned int get_microcode_size() const { return m_opcodeBuffer.size(); };
+    unsigned int get_microcode_size() const { return static_cast<unsigned int>(m_opcodeBuffer.size()); };
 
     /* copy local buffer to device buffer
      */
@@ -93,10 +93,10 @@ class plController
     std::unordered_map<std::string, rtp_type> m_rtps;
     std::vector<uint32_t> m_opcodeBuffer;
     std::vector<uint32_t> m_metadata;
-    uint32_t m_outputSize;
 
-    std::string m_dma_info_path;
     std::string m_aie_info_path;
+    std::string m_dma_info_path;
+    uint32_t m_outputSize;
     bool m_ping_pong;
 };
 
