@@ -5,7 +5,7 @@
 # Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Script to setup environment for XRT
-# This script is installed in /opt/xilinx/xrt and must
+# This script is installed in xrt install location, e.g. /opt/xilinx/xrt and must
 # be sourced from that location
 
 # Check OS version requirement
@@ -40,7 +40,12 @@ else
     return 1
 fi
 
-if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
+xrt_install_prefix="/opt/xilinx"
+if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
+    xrt_install_prefix=${XRT_INSTALL_PREFIX}
+fi
+
+if [[ $XILINX_XRT != *"${xrt_install_prefix}/xrt" ]]; then
     echo "Invalid location: $XILINX_XRT"
     echo "This script must be sourced from XRT install directory"
     return 1
