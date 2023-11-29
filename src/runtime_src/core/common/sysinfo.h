@@ -17,6 +17,10 @@ get_xrt_info(boost::property_tree::ptree&);
 
 XRT_CORE_COMMON_EXPORT
 void
+get_xrt_build_info(boost::property_tree::ptree&);
+
+XRT_CORE_COMMON_EXPORT
+void
 get_os_info(boost::property_tree::ptree&);
 
 }
