@@ -40,7 +40,12 @@ install (TARGETS xdp_appdebug_plugin
 # Only install these files for PCIe device for now, which is native build
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 
-set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
+if (DEFINED XRT_INSTALL_PREFIX)
+    set (APPDEBUG_INSTALL_PREFIX "${XRT_INSTALL_PREFIX}/xrt/share/appdebug")
+else()
+    set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
+endif()
+
 install (FILES
     ${APPDEBUG_DIR}/appdebug.py
     ${APPDEBUG_DIR}/appdebugint.py

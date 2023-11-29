@@ -354,9 +354,13 @@ cd $ROOT_DIR
 
 #-- setup.sh
 echo "Generating SDAccel runtime environment setup script, setup.sh for bash"
+xrt_install_prefix="/opt/xilinx"
+if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
+    xrt_install_prefix=${XRT_INSTALL_PREFIX}
+fi
 if [ $INSTALL_PKG == 1 ]; then
 cat <<EOF > setup.sh
-export XILINX_XRT=/opt/xilinx/xrt
+export XILINX_XRT=${xrt_install_prefix}/xrt
 export LD_LIBRARY_PATH=\$XILINX_XRT/lib:\$LD_LIBRARY_PATH
 export PATH=\$XILINX_XRT/bin:\$PATH
 unset XILINX_SDACCEL
@@ -379,7 +383,7 @@ fi
 echo "Generating SDAccel runtime environment setup script, setup.csh for (t)csh"
 if [ $INSTALL_PKG == 1 ]; then
 cat <<EOF >setup.csh
-setenv XILINX_XRT /opt/xilinx/xrt
+setenv XILINX_XRT "${xrt_install_prefix}/xrt"
 if ( ! \$?LD_LIBRARY_PATH ) then
    setenv LD_LIBRARY_PATH \$XILINX_XRT/lib
 else

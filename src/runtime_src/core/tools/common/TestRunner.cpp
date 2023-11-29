@@ -150,7 +150,12 @@ std::string
 TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
                              boost::property_tree::ptree& _ptTest)
 {
-  std::string formatted_fw_path("/opt/xilinx/firmware/");
+#ifdef XRT_INSTALL_PREFIX
+  #define FW_DIR XRT_INSTALL_PREFIX "/firmware/"
+#else
+  #define FW_DIR "/opt/xilinx/firmware/"
+#endif
+  std::string formatted_fw_path(FW_DIR);
   std::filesystem::path fw_dir(formatted_fw_path);
   if (!std::filesystem::is_directory(fw_dir)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
@@ -204,7 +209,12 @@ std::string
 TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name,
                     boost::property_tree::ptree& _ptTest)
 {
-  const std::string dsapath("/opt/xilinx/dsa/");
+#ifdef XRT_INSTALL_PREFIX
+  #define DSA_DIR XRT_INSTALL_PREFIX "/dsa/"
+#else
+  #define DSA_DIR "/opt/xilinx/dsa/"
+#endif
+  const std::string dsapath(DSA_DIR);
   const std::string xsapath(getXsaPath(vendor));
 
   if (!std::filesystem::is_directory(dsapath) && !std::filesystem::is_directory(xsapath)) {
@@ -277,6 +287,12 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
 
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
+  
+#ifdef XRT_INSTALL_PREFIX
+    #define XRT_TEST_CASE_DIR XRT_INSTALL_PREFIX "/xrt/test/"
+#else
+    #define XRT_TEST_CASE_DIR "/opt/xilinx/xrt/test/"
+#endif
 
   if (json_exists()) {
     //map old testcase names to new testcase names
@@ -297,7 +313,7 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
       test_name = test_map.find(py)->second;
 
     // Parse if the file exists here
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
+    std::string  xrtTestCasePath = XRT_TEST_CASE_DIR + test_name;
     std::filesystem::path xrt_path(xrtTestCasePath);
     if (!std::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -338,7 +354,7 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
   }
   else {
     //check if testcase is present
-    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+    std::string xrtTestCasePath = XRT_TEST_CASE_DIR + py;
     std::filesystem::path xrt_path(xrtTestCasePath);
     if (!std::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
