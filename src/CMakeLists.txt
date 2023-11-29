@@ -69,9 +69,10 @@ if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
-if (${XRT_NATIVE_BUILD} STREQUAL "no")
-  set (CMAKE_INSTALL_PREFIX "/usr")
+if (DEFINED XRT_INSTALL_PREFIX)
+  set(CMAKE_INSTALL_PREFIX ${XRT_INSTALL_PREFIX} CACHE PATH "..." FORCE)
+  message("-- Install prefix is initialized to ${CMAKE_INSTALL_PREFIX}")
+  set(ENV{XRT_INSTALL_PREFIX} ${XRT_INSTALL_PREFIX})  
 endif()
 
 # Enable AIE even on x86.  This is POC, once

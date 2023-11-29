@@ -7,6 +7,10 @@
 #set called=($_)
 set script_path=""
 set xrt_dir=""
+set xrt_install_prefix="/opt/xilinx"
+if $?XRT_INSTALL_PREFIX then
+    set xrt_install_prefix=$XRT_INSTALL_PREFIX
+endif
 
 # revisit if there is a better way than lsof to obtain the script path
 # in non-interactive mode.  If lsof is needed, then revisit why
@@ -23,10 +27,10 @@ foreach x ($called)
         set script_path=`readlink -f $x`
         set xrt_dir=`dirname $script_path`
     endif
-    if ( $xrt_dir =~ */opt/xilinx/xrt ) break
+    if ( $xrt_dir =~ *"$xrt_install_prefix"/xrt ) break
 end
 
-if ( $xrt_dir !~ */opt/xilinx/xrt ) then
+if ( $xrt_dir !~ *"$xrt_install_prefix"/xrt ) then
     echo "Invalid location: $xrt_dir"
     echo "This script must be sourced from XRT install directory"
     exit 1

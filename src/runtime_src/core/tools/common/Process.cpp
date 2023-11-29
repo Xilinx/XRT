@@ -144,7 +144,12 @@ XBUtilities::runScript( const std::string & env,
                         std::ostringstream & os_stderr)
 {
   // Fix environment variables before running test case
+#ifdef XRT_INSTALL_PREFIX
+  #define XILINX_XRT XRT_INSTALL_PREFIX "/xrt"
+  setenv("XILINX_XRT", XILINX_XRT, 0);
+#else
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+#endif  
   setShellPathEnv("PYTHONPATH", "/python");
   setShellPathEnv("LD_LIBRARY_PATH", "/lib");
   setShellPathEnv("PATH", "/bin");
