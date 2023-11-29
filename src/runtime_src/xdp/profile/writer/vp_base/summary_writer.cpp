@@ -139,7 +139,7 @@ namespace xdp {
 #endif
 
     boost::property_tree::ptree xrtInfo ;
-    xrt_core::sysinfo::get_xrt_info(xrtInfo) ;
+    xrt_core::sysinfo::get_xrt_build_info(xrtInfo) ;
 
     fout << "Profile Summary\n" ;
     fout << "Generated on: " << getCurrentDateTime() << "\n" ;
