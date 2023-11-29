@@ -19,8 +19,13 @@ ROOT = ${PWD}/../../../../../..
 #INCLUDES = -I${ROOT}/src/runtime_src -I${ROOT}/src/runtime_src/core/include -I${ROOT}/build/Debug/opt/xilinx/xrt/include
 #LIBRARIES = -L${ROOT}/build/Debug/opt/xilinx/xrt/lib -lxdp_core -lxrt_coreutil -L${ROOT}/build/Debug/opt/xilinx/xrt/lib/xrt/module -lxdp_device_offload_plugin
 
-INCLUDES = -I${ROOT}/src/runtime_src -I${ROOT}/src/runtime_src/core/include -I${ROOT}/build/Release/opt/xilinx/xrt/include
-LIBRARIES = -L${ROOT}/build/Release/opt/xilinx/xrt/lib -lxdp_core -lxrt_coreutil -L${ROOT}/build/Release/opt/xilinx/xrt/lib/xrt/module -lxdp_device_offload_plugin
+xrt_install_prefix := "/opt/xilinx"
+ifdef XRT_INSTALL_PREFIX
+	xrt_install_prefix := ${XRT_INSTALL_PREFIX}
+endif
+
+INCLUDES = -I${ROOT}/src/runtime_src -I${ROOT}/src/runtime_src/core/include -I${ROOT}/build/Release${xrt_install_prefix}/xrt/include
+LIBRARIES = -L${ROOT}/build/Release${xrt_install_prefix}/xrt/lib -lxdp_core -lxrt_coreutil -L${ROOT}/build/Release${xrt_install_prefix}/xrt/lib/xrt/module -lxdp_device_offload_plugin
 
 
 all: trace_processor

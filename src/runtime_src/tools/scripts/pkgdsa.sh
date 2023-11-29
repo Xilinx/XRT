@@ -204,8 +204,12 @@ SatelliteControllerFamily=""
 CardMgmtControllerFamily=""
 SchedulerFamily=""
 
+xrt_install_prefix="/opt/xilinx"
+if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
+    xrt_install_prefix=${XRT_INSTALL_PREFIX}
+fi
 
-XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
+XBMGMT="${xrt_install_prefix}/xrt/bin/xbmgmt"
 post_inst_msg="DSA package installed successfully.
 Please flash card manually by running below command:
 sudo ${XBMGMT} flash --update --shell ${opt_dsa}"
@@ -725,27 +729,27 @@ Maintainer: Xilinx Inc
 Section: devel
 EOF
 
-    mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/hw
-    mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/sw
+    mkdir -p $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/hw
+    mkdir -p $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/sw
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
-	  mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/license
-	  cp -f ${license_dir}/*  $pkgdir/opt/xilinx/platforms/$opt_dsa/license
+	  mkdir -p $pkgdir/${xrt_install_prefix}/platforms/$opt_dsa/license
+	  cp -f ${license_dir}/*  $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/license
 	fi
     fi
     
-    rsync -avz $opt_dsadir/$opt_dsa.xpfm $pkgdir/opt/xilinx/platforms/$opt_dsa/
-    rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $pkgdir/opt/xilinx/platforms/$opt_dsa/hw/
-    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/
+    rsync -avz $opt_dsadir/$opt_dsa.xpfm $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/
+    rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/hw/
+    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/sw/
 
     # Support the ERT directory
     if [ -d ${opt_dsadir}/sw/ert ] ; then
-       mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/ert
-       rsync -avz ${opt_dsadir}/sw/ert/ $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/ert
+       mkdir -p $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/sw/ert
+       rsync -avz ${opt_dsadir}/sw/ert/ $pkgdir${xrt_install_prefix}/platforms/$opt_dsa/sw/ert
     fi
 
-    chmod -R +r $pkgdir/opt/xilinx/platforms/$opt_dsa
-    chmod -R o=g $pkgdir/opt/xilinx/platforms/$opt_dsa
+    chmod -R +r $pkgdir${xrt_install_prefix}/platforms/$opt_dsa
+    chmod -R o=g $pkgdir${xrt_install_prefix}/platforms/$opt_dsa
     dpkg-deb --build $pkgdir
 
     echo "================================================================"
@@ -785,21 +789,21 @@ EOF
     mkdir -p $pkgdir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
-	  mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/license
-	  cp -f ${license_dir}/*  $pkgdir/opt/xilinx/dsa/$opt_dsa/license
+	  mkdir -p $pkgdir${xrt_install_prefix}/dsa/$opt_dsa/license
+	  cp -f ${license_dir}/*  $pkgdir${xrt_install_prefix}/dsa/$opt_dsa/license
 	fi
     fi
    
     rsync -avz $opt_pkgdir/dsabin/firmware/ $pkgdir/lib/firmware/xilinx
-    mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/test
+    mkdir -p $pkgdir${xrt_install_prefix}/dsa/$opt_dsa/test
 
     # Are there any verification tests
     if [ -d ${opt_dsadir}/test ] ; then
-       rsync -avz ${opt_dsadir}/test/ $pkgdir/opt/xilinx/dsa/$opt_dsa/test
+       rsync -avz ${opt_dsadir}/test/ $pkgdir${xrt_install_prefix}/dsa/$opt_dsa/test
     fi
 
-    chmod -R +r $pkgdir/opt/xilinx/dsa/$opt_dsa
-    chmod -R o=g $pkgdir/opt/xilinx/dsa/$opt_dsa
+    chmod -R +r $pkgdir${xrt_install_prefix}/dsa/$opt_dsa
+    chmod -R o=g $pkgdir${xrt_install_prefix}/dsa/$opt_dsa
     chmod -R o=g $pkgdir/lib/firmware/xilinx
     dpkg-deb --build $pkgdir
 
@@ -840,29 +844,29 @@ Xilinx $dsa development DSA. Built on $build_date.
 %post
 
 %install
-mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw
-mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw
-rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/
-rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw/
-rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/
+mkdir -p %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/hw
+mkdir -p %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/sw
+rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/
+rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/hw/
+rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/sw/
 
 # Support the ERT directory
   if [ -d ${opt_dsadir}/sw/ert ] ; then
-    mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/ert
-    rsync -avz ${opt_dsadir}/sw/ert/ %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/ert
+    mkdir -p %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/sw/ert
+    rsync -avz ${opt_dsadir}/sw/ert/ %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/sw/ert
 fi
 
 if [ "${license_dir}" != "" ] ; then
   if [ -d ${license_dir} ] ; then
-    mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/license
-    cp -f ${license_dir}/*  %{buildroot}/opt/xilinx/platforms/$opt_dsa/license/
+    mkdir -p %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/license
+    cp -f ${license_dir}/*  %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa/license/
   fi
 fi
-chmod -R o=g %{buildroot}/opt/xilinx/platforms/$opt_dsa
+chmod -R o=g %{buildroot}${xrt_install_prefix}/platforms/$opt_dsa
 
 %files
 %defattr(-,root,root,-)
-/opt/xilinx/platforms/$opt_dsa/
+${xrt_install_prefix}/platforms/$opt_dsa/
 
 %changelog
 * $build_date Xilinx Inc - 5.1-1
@@ -910,26 +914,26 @@ echo "${post_inst_msg}"
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
 
-mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa
+mkdir -p %{buildroot}${xrt_install_prefix}/dsa/$opt_dsa
 
 if [ -d ${opt_dsadir}/test ] ; then
-  mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
-  cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
+  mkdir -p %{buildroot}${xrt_install_prefix}/dsa/$opt_dsa/test
+  cp ${opt_dsadir}/test/* %{buildroot}${xrt_install_prefix}/dsa/$opt_dsa/test
 fi
 
 if [ "${license_dir}" != "" ] ; then
   if [ -d ${license_dir} ] ; then
-    mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/license
-    cp -f ${license_dir}/*  %{buildroot}/opt/xilinx/dsa/$opt_dsa/license/
+    mkdir -p %{buildroot}${xrt_install_prefix}/dsa/$opt_dsa/license
+    cp -f ${license_dir}/*  %{buildroot}${xrt_install_prefix}/dsa/$opt_dsa/license/
   fi
 fi
-chmod -R o=g %{buildroot}/opt/xilinx/dsa/$opt_dsa
+chmod -R o=g %{buildroot}${xrt_install_prefix}/dsa/$opt_dsa
 chmod -R o=g %{buildroot}/lib/firmware/xilinx
 
 %files
 %defattr(-,root,root,-)
 /lib/firmware/xilinx
-/opt/xilinx/dsa/$opt_dsa/
+${xrt_install_prefix}/dsa/$opt_dsa/
 
 
 %changelog

@@ -10,7 +10,9 @@ XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 # Environment
 ################################################################
 xrt=$XRTBUILD/Release/opt/xilinx/xrt
-
+if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
+    xrt="$XRTBUILD/Release"$XRT_INSTALL_PREFIX"/xrt"
+fi
 board=vcu1525
 keep=1
 sync=0
