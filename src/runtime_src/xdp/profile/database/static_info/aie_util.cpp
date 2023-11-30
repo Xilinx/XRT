@@ -262,7 +262,7 @@ namespace xdp::aie {
         return false;
     }
 
-    // Remaining covers interface tiles
+    // Remaining covers all other tile types (i.e., AIE, interface)
     if ((metricSet.find("input") != std::string::npos)
         || (metricSet.find("mm2s") != std::string::npos))
       return true;
