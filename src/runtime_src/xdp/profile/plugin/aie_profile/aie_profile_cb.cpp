@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "aie_profile_cb.h"
 #include "aie_profile_plugin.h"

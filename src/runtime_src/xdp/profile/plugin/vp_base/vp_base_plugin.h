@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -66,28 +67,28 @@ namespace xdp {
 
     // If there is something that is common amongst all plugins when
     //  dealing with emulation flows.
-    XDP_EXPORT virtual void emulationSetup() ;
+    XDP_CORE_EXPORT virtual void emulationSetup() ;
 
-    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type, bool openNewFiles = true);
-    XDP_EXPORT void endWrite();
-    XDP_EXPORT void trySafeWrite(const std::string& type, bool openNewFiles);
+    XDP_CORE_EXPORT void startWriteThread(unsigned int interval, std::string type, bool openNewFiles = true);
+    XDP_CORE_EXPORT void endWrite();
+    XDP_CORE_EXPORT void trySafeWrite(const std::string& type, bool openNewFiles);
 
   public:
-    XDP_EXPORT XDPPlugin() ;
-    XDP_EXPORT virtual ~XDPPlugin() ;
+    XDP_CORE_EXPORT XDPPlugin() ;
+    XDP_CORE_EXPORT virtual ~XDPPlugin() ;
     
     inline VPDatabase* getDatabase() { return db ; }
 
     // When the database gets reset or at the end of execution,
     //  the plugins must make sure all of their writers dump a complete file
-    XDP_EXPORT virtual void writeAll(bool openNewFiles = true) ;
+    XDP_CORE_EXPORT virtual void writeAll(bool openNewFiles = true) ;
 
     // Messages may be broadcast from the database to all plugins using
     //  this function
-    XDP_EXPORT virtual void broadcast(VPDatabase::MessageType msg,
+    XDP_CORE_EXPORT virtual void broadcast(VPDatabase::MessageType msg,
 				      void* blob = nullptr) ;
 
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     static unsigned int get_trace_file_dump_int_s ();
   } ;
 

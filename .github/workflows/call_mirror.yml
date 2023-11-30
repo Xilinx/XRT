@@ -1,0 +1,19 @@
+name: call-repo-mirror
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+
+jobs:
+  run-repository-dispatch:
+    runs-on: Ubuntu
+    steps:
+      - name: Trigger Workflow
+        run: |
+          curl -L \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.CI_DOMAIN_TOKEN }}" \
+          "https://${{ secrets.CI_DOMAIN_URL }}/api/v3/repos/${{ secrets.CI_DOMAIN_OWNER }}/${{ secrets.CI_DOMAIN_REPO }}/actions/workflows/${{ secrets.CI_DOMAIN_WORKFLOW }}/dispatches" \
+          -d '{"ref": "main", "inputs": { "branch_ref": "${{ github.event.pull_request.head.ref }}", "repo": "${{ github.event.pull_request.head.repo.full_name }}" }}'
+          

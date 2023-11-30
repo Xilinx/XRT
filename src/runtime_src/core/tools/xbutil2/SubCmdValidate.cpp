@@ -11,7 +11,7 @@
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/Report.h"
-#include "tools/common//reports/ReportPlatforms.h"
+#include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
@@ -244,8 +244,12 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   // Text output
   oStream << boost::format("%-26s: [%s]\n") % "Validate Device" % ptTree.get<std::string>("device_id");
   oStream << boost::format("    %-22s: %s\n") % "Platform" % ptTree.get<std::string>("platform");
-  oStream << boost::format("    %-22s: %s\n") % "SC Version" % ptTree.get<std::string>("sc_version");
-  oStream << boost::format("    %-22s: %s\n") % "Platform ID" % ptTree.get<std::string>("platform_id");
+
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  if (device_class == xrt_core::query::device_class::type::alveo) {
+    oStream << boost::format("    %-22s: %s\n") % "SC Version" % ptTree.get<std::string>("sc_version");
+    oStream << boost::format("    %-22s: %s\n") % "Platform ID" % ptTree.get<std::string>("platform_id");
+  }
 }
 
 static test_status
@@ -288,7 +292,13 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
         pretty_print_test_desc(testPtr->get_test_header(), test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
     }
 
-    auto ptTest = testPtr->run(device);
+    boost::property_tree::ptree ptTest;
+    try {
+      ptTest = testPtr->startTest(device);
+    } catch (const std::exception&) {
+      ptTest = testPtr->get_test_header();
+      ptTest.put("status", test_token_failed);
+    }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
     if (!is_black_box_test())

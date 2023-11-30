@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -110,12 +110,12 @@ namespace xdp {
 
   public:
 
-    XDP_EXPORT DeviceTraceLogger(uint64_t devId);
-    XDP_EXPORT ~DeviceTraceLogger();
+    XDP_CORE_EXPORT DeviceTraceLogger(uint64_t devId);
+    XDP_CORE_EXPORT ~DeviceTraceLogger();
 
-    XDP_EXPORT void processTraceData(void* data, uint64_t numBytes) ;
-    XDP_EXPORT void endProcessTraceData();
-    XDP_EXPORT void addEventMarkers(bool isFIFOFull, bool isTS2MMFull);
+    XDP_CORE_EXPORT void processTraceData(void* data, uint64_t numBytes) ;
+    XDP_CORE_EXPORT void endProcessTraceData();
+    XDP_CORE_EXPORT void addEventMarkers(bool isFIFOFull, bool isTS2MMFull);
   } ;
 
 }

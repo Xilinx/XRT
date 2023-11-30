@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +26,7 @@
 //  Instead, it just directly communicates with the counters in hardware.
 
 extern "C" {
-  XDP_EXPORT
+  XDP_PLUGIN_EXPORT
   void hal_api_interface_cb_func(xdp::HalInterfaceCallbackType cb_type,
                                  void* payload) ;
 }

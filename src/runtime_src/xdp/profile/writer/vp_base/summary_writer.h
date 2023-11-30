@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -108,11 +108,11 @@ namespace xdp {
     static constexpr double one_billion  = 1.0e09 ;
 
   public:
-    XDP_EXPORT SummaryWriter(const char* filename) ;
-    XDP_EXPORT SummaryWriter(const char* filename, VPDatabase* inst) ;
-    XDP_EXPORT ~SummaryWriter() = default ;
+    XDP_CORE_EXPORT SummaryWriter(const char* filename) ;
+    XDP_CORE_EXPORT SummaryWriter(const char* filename, VPDatabase* inst) ;
+    XDP_CORE_EXPORT ~SummaryWriter() = default ;
 
-    XDP_EXPORT virtual bool write(bool openNewFile) ;
+    XDP_CORE_EXPORT virtual bool write(bool openNewFile) ;
   } ;
 
 } // end namespace xdp

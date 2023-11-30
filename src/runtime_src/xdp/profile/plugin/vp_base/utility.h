@@ -25,12 +25,12 @@
 
 namespace xdp {
 
-  XDP_EXPORT std::string getCurrentDateTime();
-  XDP_EXPORT std::string getMsecSinceEpoch();
-  XDP_EXPORT const char* getToolVersion();
-  XDP_EXPORT std::string getXRTVersion();
-  XDP_EXPORT bool isEdge();
-  XDP_EXPORT uint64_t getPSMemorySize();
+  XDP_CORE_EXPORT std::string getCurrentDateTime();
+  XDP_CORE_EXPORT std::string getMsecSinceEpoch();
+  XDP_CORE_EXPORT const char* getToolVersion();
+  XDP_CORE_EXPORT std::string getXRTVersion();
+  XDP_CORE_EXPORT bool isEdge();
+  XDP_CORE_EXPORT uint64_t getPSMemorySize();
 
   enum Flow {
     SW_EMU  = 0,
@@ -53,7 +53,7 @@ namespace xdp {
     constexpr double ddr4_2400_bandwidth = 19250.00;
   }
 
-  XDP_EXPORT Flow getFlowMode();
+  XDP_CORE_EXPORT Flow getFlowMode();
 
 } // end namespace xdp
 

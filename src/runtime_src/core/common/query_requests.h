@@ -53,6 +53,7 @@ enum class key_type
 
   instance,
   edge_vendor,
+  device_class,
 
   dma_threads_raw,
 
@@ -461,6 +462,33 @@ struct edge_vendor : request
   {
     return boost::str(boost::format("0x%x") % val);
   }
+};
+
+struct device_class : request
+{
+  enum class type {
+    alveo,
+    ryzen
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::alveo:
+        return "Alveo";
+      case type::ryzen:
+        return "Ryzen";
+    }
+    return "unknown";
+  }
+
+  using result_type = type;
+  static const key_type key = key_type::device_class;
+  static const char* name() { return "device_class"; }
+
+  virtual std::any
+  get(const device*) const = 0;
 };
 
 struct dma_threads_raw : request

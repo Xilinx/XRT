@@ -17,7 +17,7 @@
 
 #include <string>
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "core/common/message.h"
 

@@ -26,13 +26,10 @@ namespace xdp {
 
   class AieTrace_EdgeImpl : public AieTraceImpl {
    public:
-    XDP_EXPORT
     AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
     ~AieTrace_EdgeImpl() = default;
 
-    XDP_EXPORT
     virtual void updateDevice();
-    XDP_EXPORT
     virtual void flushAieTileTraceModule();
     void pollTimers(uint64_t index, void* handle);
     void freeResources();

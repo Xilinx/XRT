@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "core/common/config_reader.h"
 #include "core/common/sysinfo.h"
@@ -139,7 +139,7 @@ namespace xdp {
 #endif
 
     boost::property_tree::ptree xrtInfo ;
-    xrt_core::sysinfo::get_xrt_info(xrtInfo) ;
+    xrt_core::sysinfo::get_xrt_build_info(xrtInfo) ;
 
     fout << "Profile Summary\n" ;
     fout << "Generated on: " << getCurrentDateTime() << "\n" ;

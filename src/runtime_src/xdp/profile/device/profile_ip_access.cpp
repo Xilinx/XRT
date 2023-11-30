@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019-2022, Xilinx Inc - All rights reserved
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -15,7 +16,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 #include "profile_ip_access.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 

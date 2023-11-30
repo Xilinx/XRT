@@ -14,7 +14,7 @@
 #define fmt16(x) boost::format("%16s%-22s: " x "\n") % " "
 
 boost::property_tree::ptree
-populate_aie_mem(const xrt_core::device * _pDevice, const std::string& desc)
+populate_aie_mem(const xrt_core::device* _pDevice, const std::string& desc)
 {
   xrt::device device(_pDevice->get_device_id());
   boost::property_tree::ptree pt_mem;
@@ -28,7 +28,7 @@ populate_aie_mem(const xrt_core::device * _pDevice, const std::string& desc)
 
 void
 ReportAieMem::
-getPropertyTreeInternal(const xrt_core::device * _pDevice, 
+getPropertyTreeInternal(const xrt_core::device* _pDevice,
                         boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
@@ -38,7 +38,7 @@ getPropertyTreeInternal(const xrt_core::device * _pDevice,
 
 void 
 ReportAieMem::
-getPropertyTree20202(const xrt_core::device * _pDevice, 
+getPropertyTree20202(const xrt_core::device * _pDevice,
                      boost::property_tree::ptree &_pt) const
 {
   _pt.add_child("aie_mem_status", populate_aie_mem(_pDevice, "Aie_Mem_Status"));
@@ -77,7 +77,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
   _output << "  Mem Status" << std::endl;
 
-  for (auto &tile : ptMemTiles) {
+  for (const auto& tile : ptMemTiles) {
     int curr_tile = count++;
     if (!aieTileList.empty() &&
         (std::find(aieTileList.begin(), aieTileList.end(), std::to_string(curr_tile)) == aieTileList.end()))
@@ -111,7 +111,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       _output << boost::format("        %s:\n") % "S2MM";
 
       _output << boost::format("            %s:\n") % "Channel";
-      for (auto& node : tile.second.get_child("dma.s2mm.channel")) {
+      for (const auto& node : tile.second.get_child("dma.s2mm.channel")) {
         _output << fmt16("%s") % "Id" % node.second.get<std::string>("id");
         _output << fmt16("%s") % "Channel Status" % node.second.get<std::string>("channel_status");
         _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
@@ -123,7 +123,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
     if (tile.second.find("locks") != tile.second.not_found()) {
       _output << boost::format("    %s:\n") % "Locks";
-      for (auto& node : tile.second.get_child("locks",empty_ptree)) {
+      for (const auto& node : tile.second.get_child("locks",empty_ptree)) {
         _output << fmt8("%s")  % node.second.get<std::string>("name")
                                % node.second.get<std::string>("value");
       }
@@ -132,9 +132,9 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
     if (tile.second.find("errors") != tile.second.not_found()) {
       _output << boost::format("    %s:\n") % "Errors";
-      for (auto& node : tile.second.get_child("errors",empty_ptree)) {
+      for (const auto& node : tile.second.get_child("errors",empty_ptree)) {
         _output << boost::format("        %s:\n") % node.second.get<std::string>("module");
-        for (auto& enode : node.second.get_child("error",empty_ptree)) {
+        for (const auto& enode : node.second.get_child("error",empty_ptree)) {
           _output << fmt12("%s")  % enode.second.get<std::string>("name")
                                   % enode.second.get<std::string>("value");
         }
@@ -144,7 +144,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
     if (tile.second.find("events") != tile.second.not_found()) {
       _output << boost::format("    %s:\n") % "Events";
-      for (auto& node : tile.second.get_child("events",empty_ptree)) {
+      for (const auto& node : tile.second.get_child("events",empty_ptree)) {
         _output << fmt8("%s")  % node.second.get<std::string>("name")
                                % node.second.get<std::string>("value");
       }
@@ -161,6 +161,4 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       }
     }
   }
-  _output << std::endl;
 }
-

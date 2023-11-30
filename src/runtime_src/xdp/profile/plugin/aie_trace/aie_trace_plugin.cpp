@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "core/common/api/device_int.h"
 #include "core/common/api/hw_context_int.h"

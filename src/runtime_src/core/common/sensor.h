@@ -97,36 +97,6 @@ inline void clear()
   instance().clear();
 }
 
-// Pretty formats @val. If @val is non-string, and is equal to max_value of type @T, 
-// returns @default_val.
-// Returns a string.
-template <typename T>
-inline std::string
-pretty( const T &val, const std::string &default_val = "N/A", bool isHex = false )
-{   
-  if (typeid(val).name() != typeid(std::string).name() ) { // argh ...
-    if( val >= std::numeric_limits<T>::max() || val == 0)
-      return default_val;
-
-    if( isHex ) {
-      std::stringstream ss;
-      ss << "0x" << std::hex << val;
-      return ss.str();
-    }
-  }
-
-  return std::to_string(val);
-}
-
-// Wrapper around get() that formats as pretty.
-template <typename T>
-inline std::string
-get_pretty( const std::string &path, const std::string &default_val = "N/A", bool isHex = false )
-{
-  T val = instance().get<T>( path );
-  return pretty( val, default_val, isHex );
-}
-
 } // namespace sensor_tree
 
 #endif

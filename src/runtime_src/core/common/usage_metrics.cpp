@@ -16,6 +16,7 @@
 #include "core/include/xrt/xrt_uuid.h"
 
 #include <algorithm>
+#include <atomic>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <fstream>
@@ -34,7 +35,7 @@ namespace bpt = boost::property_tree;
 namespace {
 // global variables
 static std::mutex m;
-static uint32_t thread_count;
+static std::atomic<uint32_t> thread_count {0};
 
 template <typename MetType, typename FindType>
 static MetType*
@@ -194,7 +195,10 @@ get_bos_ptree(const bo_metrics& bo_met)
 
   bo_tree.add("total_count", bo_met.total_count);
   bo_tree.add("size", std::to_string(bo_met.total_size_in_bytes) + " bytes");
-  bo_tree.add("avg_size", std::to_string(bo_met.total_size_in_bytes / bo_met.total_count) + " bytes");
+
+  auto avg_size = (bo_met.total_count > 0) ? (bo_met.total_size_in_bytes / bo_met.total_count) : 0;
+  bo_tree.add("avg_size", std::to_string(avg_size) + " bytes");
+
   bo_tree.add("peak_size", std::to_string(bo_met.peak_size_in_bytes) + " bytes");
   bo_tree.add("bytes_synced_to_device", std::to_string(bo_met.bytes_synced_to_device) + " bytes");
   bo_tree.add("bytes_synced_from_device", std::to_string(bo_met.bytes_synced_from_device) + " bytes");
@@ -214,10 +218,9 @@ get_kernels_ptree(const std::vector<kernel_metrics>& kernels_vec)
     kernel_tree.put("num_of_args", kernel.num_args);
     kernel_tree.put("num_total_runs", std::to_string(kernel.total_runs));
 
-    if (kernel.total_runs > 0) {
-      auto avg_run_time = (kernel.total_time.count()) / kernel.total_runs;
-      kernel_tree.put("avg_run_time", std::to_string(avg_run_time) + " us");
-    }
+    auto avg_run_time = (kernel.total_runs > 0) ? (kernel.total_time.count() / kernel.total_runs) : 0;
+    kernel_tree.put("avg_run_time", std::to_string(avg_run_time) + " us");
+
     kernel_array.push_back(std::make_pair("", kernel_tree));
   }
 
@@ -328,10 +331,9 @@ usage_metrics_logger() : map_ptr(usage_metrics_map)
 usage_metrics_logger::
 ~usage_metrics_logger()
 {
+  thread_count--;
   {
     std::lock_guard<std::mutex> lk(m);
-    thread_count--;
-
     // push this threads usage metrics to global map
     // in thread safe manner
     (*map_ptr)[std::this_thread::get_id()] = std::move(m_dev_map);
@@ -339,7 +341,12 @@ usage_metrics_logger::
 
   if (thread_count == 0) {
     // print usage metrics log after all threads are destroyed
-    print_usage_metrics();
+    try {
+      print_usage_metrics();
+    }
+    catch (const std::exception& e) {
+      std::cerr << " Failed to dump Usage metrics, exception occured - " << e.what() << std::endl;
+    }
   }
 }
 
@@ -353,7 +360,7 @@ log_device_info(const xrt_core::device* dev)
     m_dev_map[dev_id] = {};
     try {
       auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
-      m_dev_map[dev_id].bdf = bdf;
+      m_dev_map[dev_id].bdf = std::move(bdf);
     }   
     catch (...) {}
   }

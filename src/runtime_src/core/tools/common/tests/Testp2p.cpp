@@ -5,8 +5,8 @@
 #include "Testp2p.h"
 #include "core/common/unistd.h"
 #include "core/common/memalign.h"
+#include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
-#include "core/tools/common/BusyBar.h"
 namespace XBU = XBUtilities;
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
@@ -173,8 +173,6 @@ Testp2p::run(std::shared_ptr<xrt_core::device> dev)
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
 
-  XBU::BusyBar run_test("Running Test", std::cout);
-  run_test.start(XBUtilities::is_escape_codes_disabled());
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
     auto midx = std::distance(mem_topo->m_mem_data, &mem);
     std::vector<std::string> sup_list = { "HBM", "bank", "DDR" };
@@ -193,7 +191,6 @@ Testp2p::run(std::shared_ptr<xrt_core::device> dev)
       }
     }
   }
-  run_test.finish();
 
   return ptree;
 }

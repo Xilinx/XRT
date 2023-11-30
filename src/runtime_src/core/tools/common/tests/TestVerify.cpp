@@ -7,6 +7,11 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+#define LENGTH 64
+
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestVerify::TestVerify()
   : TestRunner("verify", 
@@ -26,7 +31,48 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
   }
   else {
     ptree = get_test_header();
-    runTestCase(dev, "22_verify.py", ptree);
+    runTest(dev, ptree);
   }
   return ptree;
+}
+
+void
+TestVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+{
+  xrt::device device(dev->get_device_id());
+
+  const std::string test_path = findPlatformPath(dev, ptree);
+  if (test_path.empty()) {
+    logger(ptree, "Error", "Platform test path was not found.");
+    ptree.put("status", test_token_failed);
+    return;
+  }
+
+  const std::string b_file = findXclbinPath(dev, ptree);
+  auto xclbin_uuid = device.load_xclbin(b_file);
+
+  auto krnl = xrt::kernel(device, xclbin_uuid, "verify");
+
+  // Allocate the output buffer to hold the kernel ooutput
+  auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, krnl.group_id(0));
+
+  // Run the kernel and store its contents within the allocated output buffer
+  auto run = krnl(output_buffer);
+  run.wait();
+
+  // Prepare local buffer
+  char received_data[LENGTH] = {};
+
+  // Acquire and read the buffer data
+  output_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+  output_buffer.read(received_data);
+
+  // Compare received data against expected data
+  std::string expected_data = "Hello World\n";
+  if (std::memcmp(received_data, expected_data.data(), expected_data.size())) {
+    logger(ptree, "Error", "Value read back does not match reference");
+    ptree.put("status", test_token_failed);
+  }
+
+  ptree.put("status", test_token_passed);
 }

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -249,8 +249,8 @@ namespace xdp {
     void addTopKernelExecution(KernelExecutionStats& exec) ;
 
   public:
-    XDP_EXPORT VPStatisticsDatabase(VPDatabase* d) ;
-    XDP_EXPORT ~VPStatisticsDatabase() ;
+    XDP_CORE_EXPORT VPStatisticsDatabase(VPDatabase* d) ;
+    XDP_CORE_EXPORT ~VPStatisticsDatabase() ;
 
     // Getters and setters
     inline const std::map<std::pair<std::string, std::thread::id>,
@@ -303,19 +303,19 @@ namespace xdp {
       { return commandQueuesAreOOO ; }
     inline void setCommandQueueOOO(uint64_t cq, bool value)
       { commandQueuesAreOOO[cq] = value ; }
-    XDP_EXPORT uint64_t getDeviceActiveTime(const std::string& deviceName) ;
+    XDP_CORE_EXPORT uint64_t getDeviceActiveTime(const std::string& deviceName) ;
 
     // Functions specific to compute unit executions
-    XDP_EXPORT
+    XDP_CORE_EXPORT
     std::vector<std::pair<std::string, TimeStatistics>> 
     getComputeUnitExecutionStats(const std::string& cuName) ;
 
     // User level event functions
     inline bool eventInformationPresent() { return eventCounts.size() != 0 ; }
     inline bool rangeInformationPresent() { return rangeCounts.size() != 0 ; }
-    XDP_EXPORT void addEventCount(const char* label);
-    XDP_EXPORT void addRangeCount(std::pair<const char*, const char*> desc);
-    XDP_EXPORT void recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration) ;
+    XDP_CORE_EXPORT void addEventCount(const char* label);
+    XDP_CORE_EXPORT void addRangeCount(std::pair<const char*, const char*> desc);
+    XDP_CORE_EXPORT void recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration) ;
     inline std::map<std::string, uint64_t>& getEventCounts()
       { return eventCounts; }
     inline std::map<std::pair<const char*, const char*>, uint64_t>&
@@ -332,20 +332,20 @@ namespace xdp {
       { return totalRangeDurations; }
 
     // Logging Functions
-    XDP_EXPORT void logFunctionCallStart(const std::string& name, 
+    XDP_CORE_EXPORT void logFunctionCallStart(const std::string& name, 
                                          double timestamp) ;
-    XDP_EXPORT void logFunctionCallEnd(const std::string& name, 
+    XDP_CORE_EXPORT void logFunctionCallEnd(const std::string& name, 
                                        double timestamp) ;
 
-    XDP_EXPORT void logMemoryTransfer(uint64_t deviceId, 
+    XDP_CORE_EXPORT void logMemoryTransfer(uint64_t deviceId, 
                                       DeviceMemoryStatistics::ChannelType channelType,
                                       size_t byteCount) ;
 
     // OpenCL level statistic logging
-    XDP_EXPORT void logDeviceActiveTime(const std::string& deviceName,
+    XDP_CORE_EXPORT void logDeviceActiveTime(const std::string& deviceName,
                                         uint64_t startTime,
                                         uint64_t endTime) ;
-    XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
+    XDP_CORE_EXPORT void logKernelExecution(const std::string& kernelName, 
                                        uint64_t executionTime,
                                        uint64_t kernelInstanceAddress,
                                        uint64_t contextId,
@@ -356,35 +356,35 @@ namespace xdp {
                                        const std::string& localWorkSize,
                                        const char** buffers,
                                        uint64_t numBuffers) ;
-    XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
+    XDP_CORE_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
                                             const std::string& kernelName,
                                             const std::string& localWorkGroup,
                                             const std::string& globalWorkGroup,
                                             uint64_t executionTime) ;
-    XDP_EXPORT void logHostRead(uint64_t contextId, uint64_t deviceId,
+    XDP_CORE_EXPORT void logHostRead(uint64_t contextId, uint64_t deviceId,
                                 uint64_t size, uint64_t startTime,
                                 uint64_t transferTime,
                                 uint64_t address,
                                 uint64_t commandQueueId) ;
-    XDP_EXPORT void logHostWrite(uint64_t contextId, uint64_t deviceId,
+    XDP_CORE_EXPORT void logHostWrite(uint64_t contextId, uint64_t deviceId,
                                  uint64_t size, uint64_t startTime,
                                  uint64_t transferTime,
                                  uint64_t address,
                                  uint64_t commandQueueId) ;
 
-    XDP_EXPORT void updateCounters(uint64_t deviceId, 
+    XDP_CORE_EXPORT void updateCounters(uint64_t deviceId, 
                                    xdp::CounterResults& counters) ;
-    XDP_EXPORT void updateCounters(xdp::CounterResults& counters) ;
+    XDP_CORE_EXPORT void updateCounters(xdp::CounterResults& counters) ;
 
     // Getters and setters on statistical information
-    XDP_EXPORT void setFirstKernelStartTime(double startTime) ;
+    XDP_CORE_EXPORT void setFirstKernelStartTime(double startTime) ;
     inline double getFirstKernelStartTime() { return firstKernelStartTime ; }
     inline void setLastKernelEndTime(double endTime) { lastKernelEndTime = endTime ; }
     inline double getLastKernelEndTime() { return lastKernelEndTime ; }
 
     // Helper functions for printing out summary information temporarily
-    XDP_EXPORT void dumpCallCount(std::ofstream& fout) ;
-    XDP_EXPORT void dumpHALMemory(std::ofstream& fout) ;    
+    XDP_CORE_EXPORT void dumpCallCount(std::ofstream& fout) ;
+    XDP_CORE_EXPORT void dumpHALMemory(std::ofstream& fout) ;    
   } ;
 }
 

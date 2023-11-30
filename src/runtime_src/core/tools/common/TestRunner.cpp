@@ -21,6 +21,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
 #include "core/tools/common/Process.h"
+#include "tools/common/BusyBar.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
@@ -33,10 +34,23 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 #include <iostream>
 #include <regex>
+#include <thread>
+
+static constexpr std::chrono::seconds max_test_duration = std::chrono::seconds(60 * 5); //5 minutes
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 namespace {
+
+static void
+runTestInternal(std::shared_ptr<xrt_core::device> dev,
+                boost::property_tree::ptree& ptree,
+                TestRunner* test,
+                bool& is_thread_running)
+{
+  ptree = test->run(dev);
+  is_thread_running = false;
+}
 
 static const std::string
 getXsaPath(const uint16_t vendor)
@@ -85,6 +99,33 @@ TestRunner::TestRunner (const std::string & test_name,
   //Empty
 }
 
+boost::property_tree::ptree 
+TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
+{
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+  bool is_thread_running = true;
+
+  boost::property_tree::ptree result;
+
+  // Start the test process
+  std::thread test_thread([&] { runTestInternal(dev, result, this, is_thread_running); });
+  // Wait for the test process to finish
+  while (is_thread_running) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try {
+      busy_bar.check_timeout(max_test_duration);
+    } catch (const std::exception&) {
+      test_thread.detach();
+      throw;
+    }
+  }
+  test_thread.join();
+  busy_bar.finish();
+
+  return result;
+}
+
 /*
  * mini logger to log errors, warnings and details produced by the test cases
  */
@@ -122,8 +163,7 @@ TestRunner::searchSSV2Xclbin(const std::string& logic_uuid,
 
   for (const std::string& t : suffix) {
     std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
-    for (std::filesystem::recursive_directory_iterator iter(fw_dir, 
-	  std::filesystem::directory_options::follow_directory_symlink ), end; iter != end;) {
+    for (std::filesystem::recursive_directory_iterator iter(fw_dir), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
       if (!std::filesystem::is_directory(std::filesystem::path(name.c_str()))) {
@@ -237,7 +277,6 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
 
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
 
   if (json_exists()) {
     //map old testcase names to new testcase names
@@ -280,7 +319,7 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
     }
 
     try {
-      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
       }
@@ -315,9 +354,9 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
       else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
 
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
