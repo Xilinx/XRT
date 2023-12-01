@@ -346,6 +346,7 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
+
     deviceInfo[deviceId]->deviceName = name ;
   }
 
@@ -1306,7 +1307,6 @@ namespace xdp {
      */
     parseXrtIPMetadata(deviceId, device);
   }
-
 
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
   {

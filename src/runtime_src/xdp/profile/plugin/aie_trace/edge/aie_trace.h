@@ -31,7 +31,7 @@ namespace xdp {
 
     virtual void updateDevice();
     virtual void flushAieTileTraceModule();
-    void pollTimers(uint32_t index, void* handle);
+    void pollTimers(uint64_t index, void* handle);
     void freeResources();
     
    private:

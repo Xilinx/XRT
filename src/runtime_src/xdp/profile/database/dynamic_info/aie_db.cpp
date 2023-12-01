@@ -39,6 +39,9 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(traceLock);
 
+    if (numTraceStreams == 0)
+      numTraceStreams = strmIndex + 1;
+
     if (traceData.size() == 0)
       traceData.resize(numTraceStreams);
 

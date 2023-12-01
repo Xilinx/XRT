@@ -1425,7 +1425,7 @@ namespace xdp {
     mInterfaceTileTraceFlushLocs.clear();
   }
 
-  void AieTrace_EdgeImpl::pollTimers(uint32_t index, void* handle)
+  void AieTrace_EdgeImpl::pollTimers(uint64_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))

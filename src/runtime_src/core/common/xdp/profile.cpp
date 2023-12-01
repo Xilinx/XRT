@@ -100,7 +100,7 @@ update_device(void* handle)
     update_device_cb(handle);
 }
 
-void 
+void
 end_debug(void* handle)
 {
   if (end_debug_cb)
@@ -159,6 +159,55 @@ finish_flush_device(void* handle)
 
 } // end namespace xrt_core::xdp::ml_timeline
 
+namespace xrt_core::xdp::aie::trace {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> end_trace_cb;
+
+
+void 
+register_callbacks(void* handle)
+{  
+  #ifdef XDP_MINIMAL_BUILD
+    using ftype = void (*)(void*);
+
+    end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDevice"));
+  #else 
+    (void)handle;
+  #endif
+}
+
+void 
+warning_callbacks()
+{
+}
+
+void 
+load()
+{
+  static xrt_core::module_loader xdp_aie_trace_loader("xdp_aie_trace_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
+}
+
+// Make connections
+void 
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void 
+end_trace(void* handle)
+{
+  if (end_trace_cb)
+    end_trace_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::aie::trace
+
 namespace xrt_core::xdp {
 
 void 
@@ -172,6 +221,17 @@ update_device(void* handle)
       return;
     }
     xrt_core::xdp::aie::profile::update_device(handle);
+  }
+
+  if (xrt_core::config::get_aie_trace()) {
+    try {
+      xrt_core::xdp::aie::trace::load();
+    } 
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::aie::trace::update_device(handle);
+    
   }
 
   if (xrt_core::config::get_aie_debug()) {
@@ -200,10 +260,10 @@ finish_flush_device(void* handle)
 {
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
-
+  if (xrt_core::config::get_aie_trace())
+    xrt_core::xdp::aie::trace::end_trace(handle);
   if (xrt_core::config::get_aie_debug())
     xrt_core::xdp::aie::debug::end_debug(handle);
-
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
 }

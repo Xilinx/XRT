@@ -29,6 +29,7 @@
 
 #include "core/common/device.h"
 #include "core/common/system.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 namespace xdp {
 
@@ -51,14 +52,14 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return filetype->getHardwareGeneration();
+      return metadataReader->getHardwareGeneration();
     }
     uint16_t getRowOffset() {
-      return filetype->getAIETileRowOffset();
+      return metadataReader->getAIETileRowOffset();
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return filetype->getTraceGMIOs();
+      return metadataReader->getTraceGMIOs();
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -66,6 +67,9 @@ class AieTraceMetadata {
       else
         return metricSets[module_type::core][0];
     }
+
+    xdp::aie::driver_config getAIEConfigMetadata();
+
 
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
@@ -94,6 +98,11 @@ class AieTraceMetadata {
     void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
     uint64_t getDelay() {return ((useDelay) ? delayCycles : 0);}
 
+    xrt::hw_context getHwContext(){return hwContext;}
+    void setHwContext(xrt::hw_context c) {
+      hwContext = std::move(c);
+    }
+
   private:
     bool useDelay = false;
     bool useUserControl = false;
@@ -114,8 +123,8 @@ class AieTraceMetadata {
     
     std::string counterScheme;
     std::string metricSet;
-    boost::property_tree::ptree aieMeta;
-    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
+    boost::property_tree::ptree aie_meta;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
@@ -143,7 +152,7 @@ class AieTraceMetadata {
     };
 
     void* handle;
-    
+    xrt::hw_context hwContext;
   };
 
 }
