@@ -40,6 +40,9 @@ namespace xdp {
 
     std::mutex traceLock; // Protects "traceData" vector
 
+    // This is the amount of AIESample threshold AIEDB stores before it flushes to the disk
+    static constexpr uint64_t sampleThreshold = 100000;
+
   public:
     AIEDB() = default;
     XDP_CORE_EXPORT ~AIEDB();
@@ -48,9 +51,7 @@ namespace xdp {
                          bool copy, uint64_t numTraceStreams);
     aie::TraceDataType* getAIETraceData(uint64_t strmIndex);
 
-    inline
-    void addAIESample(double timestamp, const std::vector<uint64_t>& values)
-    { samples.addSample({timestamp, values}); }
+    void addAIESample(double timestamp, const std::vector<uint64_t>& values);
 
     inline
     void addAIETimerSample(unsigned long timestamp1, unsigned long timestamp2, 

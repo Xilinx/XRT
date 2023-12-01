@@ -51,6 +51,11 @@ namespace xdp {
       std::lock_guard<std::mutex> lock(containerLock);
       return samples;
     }
+    inline uint64_t getSamplesSize()
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      return samples.size();
+    }
 
   };
 

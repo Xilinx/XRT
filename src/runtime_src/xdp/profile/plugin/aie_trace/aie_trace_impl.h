@@ -17,9 +17,9 @@
 #ifndef AIE_TRACE_IMPL_H
 #define AIE_TRACE_IMPL_H
 
+#include "aie_trace_metadata.h"
 #include <cstdint>
 #include <memory>
-#include "aie_trace_metadata.h"
 
 namespace xdp {
   
@@ -30,9 +30,7 @@ namespace xdp {
   // discovery platform, where the host code runs on the x86 and the AIE
   // is not directly accessible, will require configuration be done via
   // PS kernel. 
-  class AieTraceImpl
-  {
-
+  class AieTraceImpl {
   public:
     AieTraceImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       :db(database), metadata(metadata) {}
