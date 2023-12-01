@@ -73,7 +73,7 @@ static std::string
 shim_name()
 {
   if (!is_emulation())
-    return "xrt_core";
+    return "amd_xrt_core";
 
   if (is_hw_emulation()) {
     auto hw_em_driver_path = xrt_core::config::get_hw_em_driver();
