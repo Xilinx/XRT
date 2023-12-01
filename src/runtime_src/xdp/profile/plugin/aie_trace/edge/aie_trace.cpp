@@ -169,8 +169,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = mMemoryCounterStartEvents.size();
     if (available < required) {
-      msg << "Available memory performance counters for aie trace : " << available << std::endl
-          << "Required memory performance counters for aie trace  : " << required;
+      msg << "Available memory performance counters for AIE trace : " << available << std::endl
+          << "Required memory performance counters for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -179,8 +179,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = mMemoryCounterStartEvents.size() + mMemoryEventSets[metricSet].size();
     if (available < required) {
-      msg << "Available memory trace slots for aie trace : " << available << std::endl
-          << "Required memory trace slots for aie trace  : " << required;
+      msg << "Available memory trace slots for AIE trace : " << available << std::endl
+          << "Required memory trace slots for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
