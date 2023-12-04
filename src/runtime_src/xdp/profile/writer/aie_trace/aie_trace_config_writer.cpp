@@ -34,7 +34,7 @@ namespace xdp {
   {    
   }
 
-  bool AieTraceConfigWriter::write(bool openNewFile)
+  bool AieTraceConfigWriter::write(bool)
   {
     bpt::ptree pt;
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
@@ -50,7 +50,7 @@ namespace xdp {
 
     auto tiles = (db->getStaticInfo()).getAIECfgTiles(deviceIndex);
     if (tiles != nullptr) {
-      for (auto& tile: *tiles) {  
+      for (auto& tile: *tiles) {
         if (tile->type == module_type::core) {
           bpt::ptree AieTileTraceConfig_C;
           bpt::ptree core_trace_config;

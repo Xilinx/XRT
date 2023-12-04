@@ -174,17 +174,9 @@ namespace xdp {
       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
     }
 
-    // Start the AIE profiling thread
-#ifdef XDP_MINIMAL_BUILD
-    AIEData.threadCtrlBool = false;
-#else
-    AIEData.threadCtrlBool = true;
-    auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
-    AIEData.thread = std::move(device_thread);
-#endif
-    // Open the writer for this device
-    auto time = std::time(nullptr);
 
+// Open the writer for this device
+auto time = std::time(nullptr);
 #ifdef _WIN32
     std::tm tm{};
     localtime_s(&tm, &time);
@@ -206,7 +198,17 @@ namespace xdp {
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
-    ++mIndex;
+  // Start the AIE profiling thread
+  #ifdef XDP_MINIMAL_BUILD
+      AIEData.threadCtrlBool = false;
+  #else
+      AIEData.threadCtrlBool = true;
+      auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handleToAIEData.begin()->first);
+      AIEData.thread = std::move(device_thread);
+      xrt_core::message::send(severity_level::warning, "XRT", "AIEProfile pollAIECounters thread started.");
+  #endif
+
+     ++mIndex;
 
   }
 
@@ -282,4 +284,17 @@ namespace xdp {
     handleToAIEData.clear();
   }
 
+  void AieProfilePlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
+  {
+     switch(msg) {
+      case VPDatabase::MessageType::DUMP_AIE_PROFILE:
+        {
+          XDPPlugin::trySafeWrite("AIE_PROFILE", false);
+        }
+        break;
+
+      default:
+        break;
+     }
+  }
 }  // end namespace xdp

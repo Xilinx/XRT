@@ -32,6 +32,7 @@ namespace xdp {
     void updateAIEDevice(void* handle);
     void endPollforDevice(void* handle);
     static bool alive();
+    void broadcast(VPDatabase::MessageType msg, void* blob);
 
   private:
     virtual void writeAll(bool openNewFiles) override;
