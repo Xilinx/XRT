@@ -139,7 +139,7 @@ namespace xdp::aie::trace {
   }
 
   /****************************************************************************
-   * Get metric sets for memory module
+   * Get metric sets for interface tiles
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> 
   getInterfaceTileEventSets(int hwGen)
