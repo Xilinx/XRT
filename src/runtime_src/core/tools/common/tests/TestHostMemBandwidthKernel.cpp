@@ -15,6 +15,7 @@ namespace XBU = XBUtilities;
 
 #ifdef _WIN32
 #pragma warning(disable : 4996) //std::getenv
+#pragma warning(disable : 4702) //TODO remove when test is implemented properly
 #endif
 
 static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 10000;

@@ -14,6 +14,10 @@ namespace XBU = XBUtilities;
 #define HEIGHT 8 
 #define SIZE (WIDTH * HEIGHT)
 
+#ifdef _WIN32
+#pragma warning(disable : 4702) //TODO remove when test is implemented properly
+#endif
+
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestAiePs::TestAiePs()
   : TestRunner("ps-aie", 
