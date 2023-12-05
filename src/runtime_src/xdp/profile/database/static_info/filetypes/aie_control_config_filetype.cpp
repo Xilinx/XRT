@@ -24,7 +24,6 @@
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
 
-
 namespace xdp::aie {
 namespace pt = boost::property_tree;
 using severity_level = xrt_core::message::severity_level;
@@ -210,8 +209,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         auto currPort    = name.substr(namePos+1);
 
         // Make sure this matches what we're looking for
-        //if ((channelId >= 0) && (channelId != streamId))
-        //  continue;
         if ((portName.compare("all") != 0)
             && (portName.compare(currPort) != 0)
             && (portName.compare(logicalName) != 0))
@@ -368,6 +365,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
 
     std::vector<tile_type> tiles;
+    auto rowOffset = getAIETileRowOffset();
 
     for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
         auto currGraph = graph.second.get<std::string>("name");
@@ -385,7 +383,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child(row_name))
-            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
     }
 
