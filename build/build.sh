@@ -240,8 +240,7 @@ edge_dir=${EDGE_DIR:-Edge}
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
-export XRT_INSTALL_PREFIX=$xrt_install_prefix
-cmake_flags+="-DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
+cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
 
 here=$PWD
 cd $BUILDDIR

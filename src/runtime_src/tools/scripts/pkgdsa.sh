@@ -58,6 +58,7 @@ opt_cl=0
 opt_dev=0
 opt_deploy=0
 license_dir=""
+xrt_install_prefix="/opt/xilinx"
 
 dsa_version="5.1"
 build_date=`date +"%a %b %d %Y"`
@@ -69,6 +70,7 @@ usage()
     echo "-dsa <name>                Name of dsa, e.g. xilinx-vcu1525-dynamic_5_1"
     echo "-sdx <path>                Full path to SDx install (default: 2018.2_daily_latest)"
     echo "[-xrt <version>]           Requires xrt >= <version>"
+    echo "[-install_prefix <path>]   xrt install prefix (default: /opt/xilinx)"
     echo "[-cl <changelist>]         Changelist for package revision"
     echo "[-dsadir <path>]           Full path to directory with platforms (default: <sdx>/platforms/<dsa>)"
     echo "[-pkgdir <path>]           Full path to directory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
@@ -121,6 +123,11 @@ while [ $# -gt 0 ]; do
         -xrt)
             shift
             opt_xrt=$1
+            shift
+            ;;
+        -install_prefix)
+            shift
+            xrt_install_prefix=$1
             shift
             ;;
         -sdx)
@@ -203,11 +210,6 @@ dsabinOutputFile=""
 SatelliteControllerFamily=""
 CardMgmtControllerFamily=""
 SchedulerFamily=""
-
-xrt_install_prefix="/opt/xilinx"
-if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
-    xrt_install_prefix=${XRT_INSTALL_PREFIX}
-fi
 
 XBMGMT="${xrt_install_prefix}/xrt/bin/xbmgmt"
 post_inst_msg="DSA package installed successfully.

@@ -30,7 +30,7 @@
 # configuration of the components and hence we want to handle the configuration
 # in postinst script.
 
-DIR=@XRT_INSTALL_PREFIX@/xrt
+DIR=@@CMAKE_INSTALL_PREFIX@@/xrt
 
 #In case prerm is called after postinst on centos, make sure not to stop mpd
 awk -F= '$1=="ID" {print $2}' /etc/os-release | tr -d '"' | awk '{print tolower($1)}' | grep -Eq "^rhel|^centos"

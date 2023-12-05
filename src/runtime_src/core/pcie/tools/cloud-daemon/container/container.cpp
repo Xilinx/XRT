@@ -178,8 +178,8 @@ struct xclbin_repo {
     const char *path; //path to xclbin file
 };
 #ifdef XRT_INSTALL_PREFIX
-    #define VERIFY_XCLBIN_PATH "XRT_INSTALL_PREFIX/dsa/xilinx_u280_xdma_201910_1/test/verify.xclbin"
-    #define BANDWIDTH_XCLBIN_PATH "XRT_INSTALL_PREFIX/dsa/xilinx_u280_xdma_201910_1/test/bandwidth.xclbin"
+    #define VERIFY_XCLBIN_PATH XRT_INSTALL_PREFIX "/dsa/xilinx_u280_xdma_201910_1/test/verify.xclbin"
+    #define BANDWIDTH_XCLBIN_PATH XRT_INSTALL_PREFIX "/dsa/xilinx_u280_xdma_201910_1/test/bandwidth.xclbin"
 #else
     #define VERIFY_XCLBIN_PATH "/opt/xilinx/dsa/xilinx_u280_xdma_201910_1/test/verify.xclbin"
     #define BANDWIDTH_XCLBIN_PATH "/opt/xilinx/dsa/xilinx_u280_xdma_201910_1/test/bandwidth.xclbin"

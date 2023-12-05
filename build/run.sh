@@ -97,13 +97,8 @@ if [ "X$em" != "X" ] ; then
  export XCL_EMULATION_MODE=$em
 fi
 
-xrt_install_prefix="/opt/xilinx"
-if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
-    xrt_install_prefix=${XRT_INSTALL_PREFIX}
-fi
-
 if [ "X$xrt" == "X" ] ; then
- xrt=$XRTBUILD/$rel${xrt_install_prefix}/xrt
+ xrt=$XRTBUILD/$rel$/opt/xilinx/xrt
 fi
 
 if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then

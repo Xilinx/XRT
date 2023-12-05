@@ -5,7 +5,7 @@ set -e
 
 usage()
 {
-    echo "Usage: build.sh [options]"
+    echo "Usage: xma_test.sh [options]"
     echo
     echo "[-xrt <path>]    xrt install location, e.g. /opt/xilinx/xrt"
     exit 1
@@ -17,7 +17,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         -xrt)
             shift
-            xrt_install_path=$1
+            xrt_install_dir=$1
             shift
             ;;
         *)
@@ -29,6 +29,9 @@ done
 
 echo "PWD is $PWD"
 echo "XILINX_SDX is: $XILINX_SDX"
+
+export XRT_INSTALL_DIR=${xrt_install_dir}
+echo "XRT_INSTALL_DIR is: $XRT_INSTALL_DIR"
 
 #set xma include path
 BUILD=2018.3

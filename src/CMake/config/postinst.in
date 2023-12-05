@@ -41,7 +41,7 @@ rmmodules()
     depmod -A
 }
 
-installdir=@XRT_INSTALL_PREFIX@/xrt
+installdir=@CMAKE_INSTALL_PREFIX@/xrt
 systemddir=/etc/systemd/system
 
 msd_active=`systemctl is-active msd`

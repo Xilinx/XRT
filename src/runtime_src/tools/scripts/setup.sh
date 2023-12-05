@@ -40,12 +40,7 @@ else
     return 1
 fi
 
-xrt_install_prefix="/opt/xilinx"
-if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
-    xrt_install_prefix=${XRT_INSTALL_PREFIX}
-fi
-
-if [[ $XILINX_XRT != *"${xrt_install_prefix}/xrt" ]]; then
+if [[ $XILINX_XRT != *"/xrt" ]]; then
     echo "Invalid location: $XILINX_XRT"
     echo "This script must be sourced from XRT install directory"
     return 1

@@ -21,6 +21,7 @@
 
 ROOT_DIR=`pwd`
 DEST=
+xrt_install_prefix="/opt/xilinx"
 INSTALL_KERNEL_DRV="yes"
 FORCE_INSTALL_KERNEL_DRV="no"
 XRT_VER=2.1.0
@@ -33,8 +34,9 @@ fi
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 usage () {
-    echo "Usage: $0 [-d <install_root>] [-k <yes|no>] [-f <yes|no>]"
+    echo "Usage: $0 [-d <install_root>] [-x <xrt_install_prefix>] [-k <yes|no>] [-f <yes|no>]"
     echo "       -d deployment directory"
+    echo "       -x xrt install prefix"
     echo "       -k install kernel drivers"
     echo "       -f force-install kernel drivers"
     exit 1
@@ -111,6 +113,10 @@ do
     case $switch in
         -d)
             DEST="$2"
+            shift
+            ;;
+        -x)
+            xrt_install_prefix="$2"
             shift
             ;;
         -k)
@@ -354,13 +360,9 @@ cd $ROOT_DIR
 
 #-- setup.sh
 echo "Generating SDAccel runtime environment setup script, setup.sh for bash"
-xrt_install_prefix="/opt/xilinx"
-if [ x"${XRT_INSTALL_PREFIX}" != "x" ]; then
-    xrt_install_prefix=${XRT_INSTALL_PREFIX}
-fi
 if [ $INSTALL_PKG == 1 ]; then
 cat <<EOF > setup.sh
-export XILINX_XRT=${xrt_install_prefix}/xrt
+export XILINX_XRT="${xrt_install_prefix}/xrt"
 export LD_LIBRARY_PATH=\$XILINX_XRT/lib:\$LD_LIBRARY_PATH
 export PATH=\$XILINX_XRT/bin:\$PATH
 unset XILINX_SDACCEL
