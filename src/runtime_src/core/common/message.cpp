@@ -34,24 +34,12 @@
 # include <linux/limits.h>
 # include <sys/stat.h>
 # include <sys/types.h>
-#include <unistd.h>
 #endif
 #ifdef _WIN32
-# include <process.h>
 # include <winsock.h>
 #endif
 
 namespace {
-
-static int
-get_processid()
-{
-#ifdef _WIN32
-  return _getpid();
-#else
-  return getpid();
-#endif
-}
 
 static unsigned int
 get_userid()
@@ -206,7 +194,7 @@ file_dispatch(const std::string &file)
   handle << "Build date: " << xrt_build_version_date << "\n";
   handle << "Git branch: " << xrt_build_version_branch<< "\n";
   handle << "[" << xrt_core::timestamp() << "]" << "\n";
-  handle << "PID: " << get_processid() << "\n";
+  handle << "PID: " << xrt_core::utils::get_pid() << "\n";
   handle << "UID: " << get_userid() << "\n";
   handle << "HOST: " <<  xrt_core::utils::get_hostname() << "\n";
   handle << "EXE: " << get_exe_path() << std::endl;
@@ -235,7 +223,7 @@ console_dispatch()
   std::cerr << "Build hash: " << xrt_build_version_hash << "\n";
   std::cerr << "Build date: " << xrt_build_version_date << "\n";
   std::cerr << "Git branch: " << xrt_build_version_branch<< "\n";
-  std::cerr << "PID: " << get_processid() << "\n";
+  std::cerr << "PID: " << xrt_core::utils::get_pid() << "\n";
   std::cerr << "UID: " << get_userid() << "\n";
   std::cerr << "[" << xrt_core::timestamp() << "]\n";
   std::cerr << "HOST: " << xrt_core::utils::get_hostname() << "\n";

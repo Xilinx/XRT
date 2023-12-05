@@ -129,6 +129,10 @@ XRT_CORE_COMMON_EXPORT
 std::string
 value_to_mac_addr(const uint64_t mac_addr_value);
 
+XRT_CORE_COMMON_EXPORT
+int
+get_pid();
+
 }} // utils, xrt_core
 
 #endif
