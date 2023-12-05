@@ -29,7 +29,7 @@
 #include <boost/algorithm/string.hpp>
 
 #ifdef __linux__
-#include <unistd.h>
+# include <unistd.h>
 #endif
 #ifdef _WIN32
 # include <process.h>
