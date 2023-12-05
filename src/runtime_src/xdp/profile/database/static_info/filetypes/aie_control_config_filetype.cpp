@@ -297,7 +297,7 @@ AIEControlConfigFiletype::getMemoryTiles(
     return memTiles;
 }
 
-// Find all AIE tiles associated with a graph (kernel_name = all)
+// Find all AIE tiles in a graph that use the core (kernel_name = all)
 std::vector<tile_type> 
 AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
 {
@@ -346,6 +346,17 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
     startCount = count;
     }
 
+    return tiles;
+}
+
+// Find all AIE tiles in a graph that use core and/or memories (kernel_name = all)
+std::vector<tile_type>
+AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name)
+{
+    std::vector<tile_type> tiles;
+    tiles = getEventTiles(graph_name, module_type::core);
+    auto dmaTiles = getEventTiles(graph_name, module_type::dma);
+    std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
     return tiles;
 }
 

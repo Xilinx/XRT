@@ -77,12 +77,13 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         std::vector<tile_type>
         getMemoryTiles(const std::string& graphName,
                         const std::string& bufferName = "all") override;
-
         
         std::vector<tile_type>
         getAIETiles(const std::string& graphName) override;
 
-        
+        std::vector<tile_type>
+        getAllAIETiles(const std::string& graphName) override;
+
         std::vector<tile_type>
         getEventTiles( const std::string& graph_name,
                         module_type type) override;

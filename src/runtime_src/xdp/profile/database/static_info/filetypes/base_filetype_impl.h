@@ -73,6 +73,9 @@ class BaseFiletypeImpl {
         getAIETiles(const std::string& graphName) = 0;
 
         virtual std::vector<tile_type>
+        getAllAIETiles(const std::string& graphName) = 0;
+
+        virtual std::vector<tile_type>
         getEventTiles(const std::string& graph_name,
                         module_type type) = 0;
 
