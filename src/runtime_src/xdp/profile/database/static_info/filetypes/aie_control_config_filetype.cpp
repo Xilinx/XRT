@@ -261,7 +261,8 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
         return {};
 
     // Grab all shared buffers
-    auto sharedBufferTree = aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
+    auto sharedBufferTree = 
+        aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
     if (!sharedBufferTree)
         return {};
 
@@ -295,11 +296,15 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
 std::vector<tile_type> 
 AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
 {
+    auto graphsMetadata = aie_meta.get_child_optional("aie_metadata.graphs");
+    if (!graphsMetadata)
+        return {};
+
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
     int startCount = 0;
 
-    for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
+    for (auto& graph : graphsMetadata.get()) {
         if ((graph.second.get<std::string>("name") != graph_name)
             && (graph_name.compare("all") != 0))
             continue;
@@ -358,7 +363,11 @@ std::vector<tile_type>
 AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
                                         module_type type)
 {
-    if (type == module_type::shim)
+    if ((type == module_type::shim) || (type == module_type::mem_tile))
+        return {};
+
+    auto graphsMetadata = aie_meta.get_child_optional("aie_metadata.EventGraphs");
+    if (!graphsMetadata)
         return {};
 
     const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
@@ -367,7 +376,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
 
-    for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
+    for (auto& graph : graphsMetadata.get()) {
         auto currGraph = graph.second.get<std::string>("name");
         if ((currGraph.find(graph_name) == std::string::npos)
             && (graph_name.compare("all") != 0))
