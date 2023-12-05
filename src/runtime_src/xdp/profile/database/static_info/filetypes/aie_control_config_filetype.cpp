@@ -69,7 +69,7 @@ std::vector<std::string>
 AIEControlConfigFiletype::getValidPorts() {
     auto ios = getAllIOs();
     if (ios.empty())
-    return {};
+        return {};
 
     std::vector<std::string> ports;
 
@@ -90,13 +90,13 @@ AIEControlConfigFiletype::getValidKernels() {
     // Grab all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
     if (!kernelToTileMapping)
-    return {};
+        return {};
 
     for (auto const &mapping : kernelToTileMapping.get()) {
-    std::vector<std::string> names;
-    std::string functionStr = mapping.second.get<std::string>("function");
-    boost::split(names, functionStr, boost::is_any_of("."));
-    std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
+        std::vector<std::string> names;
+        std::string functionStr = mapping.second.get<std::string>("function");
+        boost::split(names, functionStr, boost::is_any_of("."));
+        std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
     }
 
     return kernels;
@@ -110,22 +110,26 @@ AIEControlConfigFiletype::getTraceGMIOs(){
 std::unordered_map<std::string, io_config> 
 AIEControlConfigFiletype::getPLIOs()
 {
+    auto pliosMetadata = aie_meta.get_child_optional("aie_metadata.PLIOs");
+    if (!pliosMetadata)
+        return {};
+
     std::unordered_map<std::string, io_config> plios;
 
-    for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
-    io_config plio;
+    for (auto& plio_node : pliosMetadata.get()) {
+        io_config plio;
 
-    plio.type = 0;
-    plio.id = plio_node.second.get<uint32_t>("id");
-    plio.name = plio_node.second.get<std::string>("name");
-    plio.logicalName = plio_node.second.get<std::string>("logical_name");
-    plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
-    plio.streamId = plio_node.second.get<uint16_t>("stream_id");
-    plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
-    plio.channelNum = 0;
-    plio.burstLength = 0;
+        plio.type = 0;
+        plio.id = plio_node.second.get<uint32_t>("id");
+        plio.name = plio_node.second.get<std::string>("name");
+        plio.logicalName = plio_node.second.get<std::string>("logical_name");
+        plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
+        plio.streamId = plio_node.second.get<uint16_t>("stream_id");
+        plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
+        plio.channelNum = 0;
+        plio.burstLength = 0;
 
-    plios[plio.name] = plio;
+        plios[plio.name] = plio;
     }
 
     return plios;
@@ -134,7 +138,7 @@ AIEControlConfigFiletype::getPLIOs()
 std::unordered_map<std::string, io_config>
 AIEControlConfigFiletype::getGMIOs()
 {
-return getChildGMIOs("aie_metadata.GMIOs");
+    return getChildGMIOs("aie_metadata.GMIOs");
 }
 
 std::unordered_map<std::string, io_config>
@@ -151,125 +155,118 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr)
 {
     auto gmiosMetadata = aie_meta.get_child_optional(childStr);
     if (!gmiosMetadata)
-    return {};
+        return {};
 
     std::unordered_map<std::string, io_config> gmios;
 
     for (auto& gmio_node : gmiosMetadata.get()) {
-      io_config gmio;
+        io_config gmio;
 
-      // Channel is reported as a unique number:
-      //   0 : S2MM channel 0 (master/output)
-      //   1 : S2MM channel 1
-      //   2 : MM2S channel 0 (slave/input)
-      //   3 : MM2S channel 1
-      auto slaveOrMaster = gmio_node.second.get<uint16_t>("type");
-      auto channelNumber = gmio_node.second.get<uint16_t>("channel_number");
+        // Channel is reported as a unique number:
+        //   0 : S2MM channel 0 (master/output)
+        //   1 : S2MM channel 1
+        //   2 : MM2S channel 0 (slave/input)
+        //   3 : MM2S channel 1
+        auto slaveOrMaster = gmio_node.second.get<uint16_t>("type");
+        auto channelNumber = gmio_node.second.get<uint16_t>("channel_number");
 
-      gmio.type = 1;
-      gmio.id = gmio_node.second.get<uint32_t>("id");
-      gmio.name = gmio_node.second.get<std::string>("name");
-      gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
-      gmio.slaveOrMaster = slaveOrMaster;
-      gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
-      gmio.channelNum = (slaveOrMaster == 0) ? (channelNumber - 2) : channelNumber;
-      gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
-      gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+        gmio.type = 1;
+        gmio.id = gmio_node.second.get<uint32_t>("id");
+        gmio.name = gmio_node.second.get<std::string>("name");
+        gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
+        gmio.slaveOrMaster = slaveOrMaster;
+        gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
+        gmio.channelNum = (slaveOrMaster == 0) ? (channelNumber - 2) : channelNumber;
+        gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
+        gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
-      gmios[gmio.name] = gmio;
+        gmios[gmio.name] = gmio;
     }
 
     return gmios;
 }
 
 std::vector<tile_type>
-AIEControlConfigFiletype::getInterfaceTiles(
-                const std::string& graphName,
-                const std::string& portName,
-                const std::string& metricStr,
-                int16_t channelId,
-                bool useColumn,
-                uint32_t minCol,
-                uint32_t maxCol)
+AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
+                                            const std::string& portName,
+                                            const std::string& metricStr,
+                                            int16_t channelId,
+                                            bool useColumn,
+                                            uint32_t minCol,
+                                            uint32_t maxCol)
 {
     std::vector<tile_type> tiles;
-
-    #ifdef XDP_MINIMAL_BUILD
-    auto ios = getGMIOs();
-    #else
     auto ios = getAllIOs();
-    #endif
 
     for (auto& io : ios) {
-    auto isMaster    = io.second.slaveOrMaster;
-    auto streamId    = io.second.streamId;
-    auto shimCol     = io.second.shimColumn;
-    auto logicalName = io.second.logicalName;
-    auto name        = io.second.name;
-    auto type        = io.second.type;
-    auto namePos     = name.find_last_of(".");
-    auto currGraph   = name.substr(0, namePos);
-    auto currPort    = name.substr(namePos+1);
+        auto isMaster    = io.second.slaveOrMaster;
+        auto streamId    = io.second.streamId;
+        auto shimCol     = io.second.shimColumn;
+        auto logicalName = io.second.logicalName;
+        auto name        = io.second.name;
+        auto type        = io.second.type;
+        auto namePos     = name.find_last_of(".");
+        auto currGraph   = name.substr(0, namePos);
+        auto currPort    = name.substr(namePos+1);
 
-    // Make sure this matches what we're looking for
-    //if ((channelId >= 0) && (channelId != streamId))
-    //  continue;
-    if ((portName.compare("all") != 0)
-        && (portName.compare(currPort) != 0)
-        && (portName.compare(logicalName) != 0))
-        continue;
-    if ((graphName.compare("all") != 0)
-        && (graphName.compare(currGraph) != 0))
-        continue;
+        // Make sure this matches what we're looking for
+        //if ((channelId >= 0) && (channelId != streamId))
+        //  continue;
+        if ((portName.compare("all") != 0)
+            && (portName.compare(currPort) != 0)
+            && (portName.compare(logicalName) != 0))
+            continue;
+        if ((graphName.compare("all") != 0)
+            && (graphName.compare(currGraph) != 0))
+            continue;
 
-    // Make sure it's desired polarity
-    // NOTE: input = slave (data flowing from PLIO)
-    //       output = master (data flowing to PLIO)
-    if ((metricStr != "ports")
-        && ((isMaster && (metricStr.find("input") != std::string::npos
-            || metricStr.find("mm2s") != std::string::npos))
-        || (!isMaster && (metricStr.find("output") != std::string::npos
-            || metricStr.find("s2mm") != std::string::npos))))
-        continue;
-    // Make sure column is within specified range (if specified)
-    if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
-        continue;
+        // Make sure it's desired polarity
+        // NOTE: input = slave (data flowing from PLIO)
+        //       output = master (data flowing to PLIO)
+        if ((metricStr != "ports")
+            && ((isMaster && (metricStr.find("input") != std::string::npos
+                || metricStr.find("mm2s") != std::string::npos))
+            || (!isMaster && (metricStr.find("output") != std::string::npos
+                || metricStr.find("s2mm") != std::string::npos))))
+            continue;
+        // Make sure column is within specified range (if specified)
+        if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
+            continue;
 
-    if ((channelId >= 0) && (channelId != io.second.channelNum)) 
-        continue;
+        if ((channelId >= 0) && (channelId != io.second.channelNum)) 
+            continue;
 
-    tile_type tile = {0};
-    tile.col = shimCol;
-    tile.row = 0;
-    tile.subtype = type;
-    // Grab stream ID and slave/master (used in configStreamSwitchPorts())
-    tile.itr_mem_col = isMaster;
-    tile.itr_mem_row = streamId;
+        tile_type tile = {0};
+        tile.col = shimCol;
+        tile.row = 0;
+        tile.subtype = type;
+        // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+        tile.itr_mem_col = isMaster;
+        tile.itr_mem_row = streamId;
 
-    tiles.emplace_back(std::move(tile));
+        tiles.emplace_back(std::move(tile));
     }
 
     if (tiles.empty() && (channelId >= 0)) {
-    std::string msg =
-        "No tiles used channel ID " + std::to_string(channelId) + ". Please specify a valid channel ID.";
-    xrt_core::message::send(severity_level::warning, "XRT", msg);
+        std::string msg = "No tiles used channel ID " + std::to_string(channelId) 
+                        + ". Please specify a valid channel ID.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
 
     return tiles;
 }
 
 std::vector<tile_type>
-AIEControlConfigFiletype::getMemoryTiles(
-                const std::string& graph_name,
-                const std::string& buffer_name)
+AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
+                                         const std::string& buffer_name)
 {
     if (getHardwareGeneration() == 1) 
-    return {};
+        return {};
 
     // Grab all shared buffers
     auto sharedBufferTree = aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
     if (!sharedBufferTree)
-    return {};
+        return {};
 
     std::vector<tile_type> allTiles;
     std::vector<tile_type> memTiles;
@@ -278,19 +275,19 @@ AIEControlConfigFiletype::getMemoryTiles(
 
     // Now parse all shared buffers
     for (auto const &shared_buffer : sharedBufferTree.get()) {
-    auto currGraph = shared_buffer.second.get<std::string>("graph");
-    if ((currGraph.find(graph_name) == std::string::npos)
-        && (graph_name.compare("all") != 0))
-        continue;
-    auto currBuffer = shared_buffer.second.get<std::string>("bufferName");
-    if ((currBuffer.find(buffer_name) == std::string::npos)
-        && (buffer_name.compare("all") != 0))
-        continue;
+        auto currGraph = shared_buffer.second.get<std::string>("graph");
+        if ((currGraph.find(graph_name) == std::string::npos)
+            && (graph_name.compare("all") != 0))
+            continue;
+        auto currBuffer = shared_buffer.second.get<std::string>("bufferName");
+        if ((currBuffer.find(buffer_name) == std::string::npos)
+            && (buffer_name.compare("all") != 0))
+            continue;
 
-    tile_type tile;
-    tile.col = shared_buffer.second.get<uint16_t>("column");
-    tile.row = shared_buffer.second.get<uint16_t>("row") + rowOffset;
-    allTiles.emplace_back(std::move(tile));
+        tile_type tile;
+        tile.col = shared_buffer.second.get<uint16_t>("column");
+        tile.row = shared_buffer.second.get<uint16_t>("row") + rowOffset;
+        allTiles.emplace_back(std::move(tile));
     }
 
     std::unique_copy(allTiles.begin(), allTiles.end(), std::back_inserter(memTiles), xdp::aie::tileCompare);
@@ -306,44 +303,44 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
     int startCount = 0;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-    if ((graph.second.get<std::string>("name") != graph_name)
-        && (graph_name.compare("all") != 0))
-        continue;
+        if ((graph.second.get<std::string>("name") != graph_name)
+            && (graph_name.compare("all") != 0))
+            continue;
 
-    int count = startCount;
-    for (auto& node : graph.second.get_child("core_columns")) {
-        tiles.push_back(tile_type());
-        auto& t = tiles.at(count++);
-        t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
-    }
+        int count = startCount;
+        for (auto& node : graph.second.get_child("core_columns")) {
+            tiles.push_back(tile_type());
+            auto& t = tiles.at(count++);
+            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
+        }
 
-    int num_tiles = count;
-    count = startCount;
-    for (auto& node : graph.second.get_child("core_rows"))
-        tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
-    xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
+        int num_tiles = count;
+        count = startCount;
+        for (auto& node : graph.second.get_child("core_rows"))
+            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
+        xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
 
-    count = startCount;
-    for (auto& node : graph.second.get_child("iteration_memory_columns"))
-        tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
-    xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
+        count = startCount;
+        for (auto& node : graph.second.get_child("iteration_memory_columns"))
+            tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
+        xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
-    count = startCount;
-    for (auto& node : graph.second.get_child("iteration_memory_rows"))
-        tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
-    xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
+        count = startCount;
+        for (auto& node : graph.second.get_child("iteration_memory_rows"))
+            tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
+        xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
-    count = startCount;
-    for (auto& node : graph.second.get_child("iteration_memory_addresses"))
-        tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
-    xdp::aie::throwIfError(count < num_tiles,"iteration_memory_addresses < num_tiles");
+        count = startCount;
+        for (auto& node : graph.second.get_child("iteration_memory_addresses"))
+            tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
+        xdp::aie::throwIfError(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
-    count = startCount;
-    for (auto& node : graph.second.get_child("multirate_triggers"))
-        tiles.at(count++).is_trigger = (node.second.data() == "true");
-    xdp::aie::throwIfError(count < num_tiles,"multirate_triggers < num_tiles");
+        count = startCount;
+        for (auto& node : graph.second.get_child("multirate_triggers"))
+            tiles.at(count++).is_trigger = (node.second.data() == "true");
+        xdp::aie::throwIfError(count < num_tiles,"multirate_triggers < num_tiles");
 
-    startCount = count;
+        startCount = count;
     }
 
     return tiles;
@@ -361,12 +358,11 @@ AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name)
 }
 
 std::vector<tile_type>
-AIEControlConfigFiletype::getEventTiles(
-            const std::string& graph_name,
-            module_type type)
+AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
+                                        module_type type)
 {
     if (type == module_type::shim)
-    return {};
+        return {};
 
     const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
@@ -374,20 +370,22 @@ AIEControlConfigFiletype::getEventTiles(
     std::vector<tile_type> tiles;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
-    if (graph.second.get<std::string>("name") != graph_name)
-        continue;
+        auto currGraph = graph.second.get<std::string>("name");
+        if ((currGraph.find(graph_name) == std::string::npos)
+            && (graph_name.compare("all") != 0))
+            continue;
 
-    int count = 0;
+        int count = 0;
         for (auto& node : graph.second.get_child(col_name)) {
-        tiles.push_back(tile_type());
-        auto& t = tiles.at(count++);
-        t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.push_back(tile_type());
+            auto& t = tiles.at(count++);
+            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child(row_name))
-        tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data()));
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
     }
 
@@ -398,41 +396,42 @@ AIEControlConfigFiletype::getEventTiles(
 //   kernel_name = all      : all tiles in graph
 //   kernel_name = <kernel> : only tiles used by that specific kernel
 std::vector<tile_type>
-AIEControlConfigFiletype::getTiles(
-        const std::string& graph_name,
-        module_type type,
-        const std::string& kernel_name)
+AIEControlConfigFiletype::getTiles(const std::string& graph_name,
+                                   module_type type,
+                                   const std::string& kernel_name)
 {
     if (type == module_type::mem_tile)
-    return getMemoryTiles(graph_name, kernel_name);
+        return getMemoryTiles(graph_name, kernel_name);
+    if ((type == module_type::dma) && (kernel_name.compare("all") == 0))
+        return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-    if (!kernelToTileMapping && kernel_name.compare("all") == 0)
-    return getAIETiles(graph_name);
+    if (!kernelToTileMapping && (kernel_name.compare("all") == 0))
+        return getAIETiles(graph_name);
     if (!kernelToTileMapping)
-    return {};
+        return {};
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
 
     for (auto const &mapping : kernelToTileMapping.get()) {
-    auto currGraph = mapping.second.get<std::string>("graph");
-    if ((currGraph.find(graph_name) == std::string::npos)
-        && (graph_name.compare("all") != 0))
-        continue;
-    if (kernel_name.compare("all") != 0) {
-        std::vector<std::string> names;
-        std::string functionStr = mapping.second.get<std::string>("function");
-        boost::split(names, functionStr, boost::is_any_of("."));
-        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
+        auto currGraph = mapping.second.get<std::string>("graph");
+        if ((currGraph.find(graph_name) == std::string::npos)
+            && (graph_name.compare("all") != 0))
             continue;
-    }
+        if (kernel_name.compare("all") != 0) {
+            std::vector<std::string> names;
+            std::string functionStr = mapping.second.get<std::string>("function");
+            boost::split(names, functionStr, boost::is_any_of("."));
+            if (std::find(names.begin(), names.end(), kernel_name) == names.end())
+                continue;
+        }
 
-    tile_type tile;
-    tile.col = mapping.second.get<uint16_t>("column");
-    tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
-    tiles.emplace_back(std::move(tile));
+        tile_type tile;
+        tile.col = mapping.second.get<uint16_t>("column");
+        tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
+        tiles.emplace_back(std::move(tile));
     }
     return tiles;
 }

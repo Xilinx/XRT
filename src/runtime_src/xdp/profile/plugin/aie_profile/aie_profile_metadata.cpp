@@ -177,8 +177,7 @@ namespace xdp {
 
   // Resolve metrics for AIE or MEM tiles
   void AieProfileMetadata::getConfigMetricsForTiles(int moduleIdx, const std::vector<std::string>& metricsSettings,
-      const std::vector<std::string>& graphMetricsSettings,
-      const module_type mod)
+      const std::vector<std::string>& graphMetricsSettings, const module_type mod)
   {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
@@ -197,9 +196,7 @@ namespace xdp {
     auto allValidKernels = filetype->getValidKernels();
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = filetype->getTiles("all",
-                                       mod,
-                                       "all");
+    auto validTilesVec = filetype->getTiles("all", mod, "all");
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()),
                      tileCompare);
 
@@ -244,9 +241,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getTiles(graphMetrics[i][0],
-                                 mod,
-                                 graphMetrics[i][1]);
+      auto tiles = filetype->getTiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -288,9 +283,7 @@ namespace xdp {
       }
 
       // Capture all tiles in given graph
-      auto tiles = filetype->getTiles(graphMetrics[i][0],
-                                 mod,
-                                 graphMetrics[i][1]);
+      auto tiles = filetype->getTiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -347,9 +340,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = filetype->getTiles(metrics[i][0],
-                                 mod,
-                                 "all");
+      auto tiles = filetype->getTiles(metrics[i][0], mod, "all");
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
       }

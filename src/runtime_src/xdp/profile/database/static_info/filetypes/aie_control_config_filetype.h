@@ -67,16 +67,16 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
 
         std::vector<tile_type>
         getInterfaceTiles(const std::string& graphName,
-                            const std::string& portName = "all",
-                            const std::string& metricStr = "channels",
-                            int16_t channelId = -1,
-                            bool useColumn = false, 
-                            uint32_t minCol = 0, 
-                            uint32_t maxCol = 0) override; 
+                          const std::string& portName = "all",
+                          const std::string& metricStr = "channels",
+                          int16_t channelId = -1,
+                          bool useColumn = false, 
+                          uint32_t minCol = 0, 
+                          uint32_t maxCol = 0) override; 
 
         std::vector<tile_type>
         getMemoryTiles(const std::string& graphName,
-                        const std::string& bufferName = "all") override;
+                       const std::string& bufferName = "all") override;
         
         std::vector<tile_type>
         getAIETiles(const std::string& graphName) override;
@@ -85,13 +85,13 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         getAllAIETiles(const std::string& graphName) override;
 
         std::vector<tile_type>
-        getEventTiles( const std::string& graph_name,
-                        module_type type) override;
+        getEventTiles(const std::string& graph_name,
+                      module_type type) override;
 
         std::vector<tile_type>
         getTiles(const std::string& graph_name,
-                module_type type, 
-                const std::string& kernel_name = "all") override;
+                 module_type type, 
+                 const std::string& kernel_name = "all") override;
 };
 }
 
