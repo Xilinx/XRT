@@ -22,84 +22,138 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp::aie::trace {
-  /// @brief   Get metric sets for core modules
-  /// @details Depending on hardware generation, these sets can be supplemented 
-  ///          with counter events as those are dependent on counter #.
+  /**
+   * @brief   Get metric sets for core modules
+   * @details Depending on hardware generation, these sets can be supplemented 
+   *          with counter events as those are dependent on counter #.
+   * @return  Map of metric set names with vectors of event IDs
+   */
   std::map<std::string, std::vector<XAie_Events>> getCoreEventSets();
 
-  /// @brief Get metric sets for memory modules
-  /// @details Core events listed here are broadcast by the resource manager.
-  ///          These can be supplemented with counter events as those are dependent 
-  ///          on counter #. For now, 'all' is the same as 'functions_all_stalls'.
+  /**
+   * @brief   Get metric sets for memory modules
+   * @details Core events listed here are broadcast by the resource manager.
+   *          These can be supplemented with counter events as those are dependent 
+   *          on counter #. For now, 'all' is the same as 'functions_all_stalls'.
+   * @return  Map of metric set names with vectors of event IDs
+   */
   std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets();
 
-  /// @brief Get metric sets for memory tiles
+  /**
+   * @brief   Get metric sets for memory tiles
+   * @details This function is only applicable to hardware generations that
+   *          contain memory tiles.
+   * @return  Map of metric set names with vectors of event IDs 
+   */
   std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets();
 
-  /// @brief Get metric sets for interface tiles
-  /// @param hwGen Hardware generation
+  /**
+   * @brief  Get metric sets for interface tiles
+   * @param  hwGen Hardware generation
+   * @return Map of metric set names with vectors of event IDs
+   */
   std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(int hwGen);
 
-  /// @brief Get start events for core module counters
-  /// @param hwGen  Hardware generation
-  /// @param scheme Counter scheme
+  /**
+   * @brief  Get start events for core module counters
+   * @param  hwGen  Hardware generation
+   * @param  scheme Counter scheme
+   * @return Vector of core module counter start events to use with event trace
+   *         (empty if not applicable to hardware generation)
+   */
   std::vector<XAie_Events> getCoreCounterStartEvents(int hwGen, std::string scheme);
 
-  /// @brief Get end events for core module counters
-  /// @param hwGen  Hardware generation
-  /// @param scheme Counter scheme
+  /**
+   * @brief  Get end events for core module counters
+   * @param  hwGen  Hardware generation
+   * @param  scheme Counter scheme
+   * @return Vector of core module counter end events to use with event trace
+   *         (empty if not applicable to hardware generation)
+   */
   std::vector<XAie_Events> getCoreCounterEndEvents(int hwGen, std::string scheme);
 
-  /// @brief Get counter event values for core module counters
-  /// @param hwGen  Hardware generation
-  /// @param scheme Counter scheme
+  /**
+   * @brief  Get counter event values for core module counters
+   * @param  hwGen  Hardware generation
+   * @param  scheme Counter scheme
+   * @return Vector of core module counter event values to use with event trace
+   *         (empty if not applicable to hardware generation)
+   */
   std::vector<uint32_t> getCoreCounterEventValues(int hwGen, std::string scheme);
 
-  /// @brief Get start events for memory module counters
-  /// @param hwGen  Hardware generation
-  /// @param scheme Counter scheme
+  /**
+   * @brief  Get start events for memory module counters
+   * @param  hwGen  Hardware generation
+   * @param  scheme Counter scheme
+   * @return Vector of memory module counter start events to use with event trace
+   *         (empty if not applicable to hardware generation)
+   */
   std::vector<XAie_Events> getMemoryCounterStartEvents(int hwGen, std::string scheme);
 
-  /// @brief Get end events for memory module counters
-  /// @param hwGen  Hardware generation
-  /// @param scheme Counter scheme
+  /**
+   * @brief  Get end events for memory module counters
+   * @param  hwGen  Hardware generation
+   * @param  scheme Counter scheme
+   * @return Vector of memory module counter end events to use with event trace
+   *         (empty if not applicable to hardware generation)
+   */
   std::vector<XAie_Events> getMemoryCounterEndEvents(int hwGen, std::string scheme);
 
-  /// @brief Get counter event values for memory module counters
-  /// @param hwGen  Hardware generation
-  /// @param scheme Counter scheme
+  /**
+   * @brief  Get counter event values for memory module counters
+   * @param  hwGen  Hardware generation
+   * @param  scheme Counter scheme
+   * @return Vector of memory module counter event values to use with event trace
+   *         (empty if not applicable to hardware generation)
+   */
   std::vector<uint32_t> getMemoryCounterEventValues(int hwGen, std::string scheme);
 
-  /// @brief Check if event is generated by a stream switch monitor port
-  /// @param event Event ID to check
+  /**
+   * @brief  Check if event is generated by a stream switch monitor port
+   * @param  event Event ID to check
+   * @return True if given event is from a stream switch port
+   */
   bool isStreamSwitchPortEvent(const XAie_Events event);
 
-  /// @brief Check if event is a port running event
-  /// @param event Event ID to check
+  /**
+   * @brief  Check if event is a port running event
+   * @param  event Event ID to check
+   * @return True if given event is a port running event
+   */
   bool isPortRunningEvent(const XAie_Events event);
 
-  /// @brief Get port number from event
-  /// @param event Event ID to check
+  /**
+   * @brief  Get port number from event
+   * @param  event Event ID to check
+   * @return Port number associated with given event
+   */
   uint8_t getPortNumberFromEvent(XAie_Events event);
-  
-  /// @brief Print out usage statistics for specified tile
-  /// @param aieDevice AIE device
-  /// @param tile      Tile to analyze
+
+  /**  
+   * @brief Print out usage statistics for specified tile
+   * @param aieDevice AIE device
+   * @param tile      Tile to analyze
+   */
   void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
-  /// @brief Print out trace event statistics across multiple tiles
-  /// @param m        Module index (used to get name)
-  /// @param numTiles Array of tile usage stats (length: NUM_TRACE_EVENTS)
+  /**
+   * @brief Print out trace event statistics across multiple tiles
+   * @param m        Module index (used to get name)
+   * @param numTiles Array of tile usage stats (length: NUM_TRACE_EVENTS)
+   */
   void printTraceEventStats(int m, int numTiles[]);
 
-  /// @brief Modify events in metric set based on tile type and channel number
-  /// @param type      Module/tile type
-  /// @param subtype   Subtype of module/tile (0: PLIO, 1: GMIO)
-  /// @param metricSet Name of requested metric set
-  /// @param channel   Channel number
-  /// @param events    Vector of original events in metric set 
+  /**
+   * @brief Modify events in metric set based on tile type and channel number
+   * @param type      Module/tile type
+   * @param subtype   Subtype of module/tile (0: PLIO, 1: GMIO)
+   * @param metricSet Name of requested metric set
+   * @param channel   Channel number
+   * @param events    Vector of events in metric set (modified if needed)
+   */
   void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
                     uint8_t channel, std::vector<XAie_Events>& events);
+
 }  // namespace xdp::aie::trace
 
 #endif

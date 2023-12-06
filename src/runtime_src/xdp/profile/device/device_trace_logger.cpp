@@ -422,7 +422,6 @@ namespace xdp {
       // start event, end event
       // start end must have created already
       // check if the memory ports on current cu has any event
-
       uint64_t cuLastTimestamp  = amLastTrans[amIndex];
 
       // get CU Id for the current slot
@@ -434,7 +433,6 @@ namespace xdp {
         // To reduce overhead, first check the timestamp.
         // If last activity timestamp on CU is earlier than current AIM, then only check
         // whether the current AIM is attached to the same CU.
-        //
         if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
           continue;
         }
@@ -452,7 +450,6 @@ namespace xdp {
         // To reduce overhead, first check the timestamp.
         // If last activity timestamp on CU is earlier than current ASM, then only check
         // whether the current ASM is attached to the same CU.
-        ///
         if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
           continue;
         }
