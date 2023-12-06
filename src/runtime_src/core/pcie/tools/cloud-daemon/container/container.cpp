@@ -177,14 +177,21 @@ struct xclbin_repo {
     const char *md5; //md5 of the xclbin metadata. should be the primary key of DB of the repo
     const char *path; //path to xclbin file
 };
+#ifdef XRT_INSTALL_PREFIX
+    #define VERIFY_XCLBIN_PATH XRT_INSTALL_PREFIX "/dsa/xilinx_u280_xdma_201910_1/test/verify.xclbin"
+    #define BANDWIDTH_XCLBIN_PATH XRT_INSTALL_PREFIX "/dsa/xilinx_u280_xdma_201910_1/test/bandwidth.xclbin"
+#else
+    #define VERIFY_XCLBIN_PATH "/opt/xilinx/dsa/xilinx_u280_xdma_201910_1/test/verify.xclbin"
+    #define BANDWIDTH_XCLBIN_PATH "/opt/xilinx/dsa/xilinx_u280_xdma_201910_1/test/bandwidth.xclbin"
+#endif
 static struct xclbin_repo repo[2] = {
     {
         .md5 = "d9662fc2a45422d5f7c80f57dae4c8db",
-        .path = "/opt/xilinx/dsa/xilinx_u280_xdma_201910_1/test/verify.xclbin",
+        .path = VERIFY_XCLBIN_PATH,
     },
     {
         .md5 = "97aefd0cd3dd9a96cc5d24c9afcd3818",
-        .path = "/opt/xilinx/dsa/xilinx_u280_xdma_201910_1/test/bandwidth.xclbin",
+        .path = BANDWIDTH_XCLBIN_PATH,
     },
 }; // there are only 2 xclbins in the sample code
 

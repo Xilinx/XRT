@@ -1,9 +1,15 @@
 #CC    = gcc
 CC    = g++
-CFLAGS       = -std=c++11 -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
+
+xrt_install_path := "/opt/xilinx/xrt"
+ifdef XRT_INSTALL_PATH
+	xrt_install_path := ${XRT_INSTALL_PATH}
+endif
+
+CFLAGS       = -std=c++11 -fPIC -g -I. -I${xrt_install_path}/include -I${XMA_INCLUDE}
 #LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core -lcheck_pic -lrt -lm -lsubunit -lpthread
 #LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core
-LDFLAGS      = -L/opt/xilinx/xrt/lib -L${XMA_LIBS} -lxmaapi -lxrt_core
+LDFLAGS      = -L${xrt_install_path}/lib -L${XMA_LIBS} -lxmaapi -lxrt_core
 
 SOURCES = $(shell echo *.c)
 HEADERS = $(shell echo *.h)
