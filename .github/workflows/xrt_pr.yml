@@ -89,7 +89,7 @@ jobs:
           workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
           buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
-          token: ${{ secrets.CI_DOMAIN_TOKEN }}
+          token: ${{ secrets.CI_CLOUD_TOKEN }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
