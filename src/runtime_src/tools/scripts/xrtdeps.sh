@@ -475,6 +475,8 @@ validate()
 prep_ubuntu()
 {
     echo "Preparing ubuntu ..."
+    # Update the list of available packages
+    apt-get update
 }
 
 prep_centos7()
