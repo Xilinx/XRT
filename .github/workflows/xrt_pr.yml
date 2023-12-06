@@ -58,9 +58,8 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows   
-          ref: test 
        
-      - name: Use composite action for build     
+      - name: XRT build     
         uses: ./composite-workflows/build
         with:     
           pipeline: ${{ env.PIPELINE }} 
@@ -81,7 +80,6 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows   
-          ref: test 
        
       - name: Use composite action for build     
         uses: ./composite-workflows/windows-build
@@ -122,7 +120,6 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
-          ref: test 
        
       - name: Use composite action for build     
         uses: ./composite-workflows/apu-package
@@ -133,7 +130,7 @@ jobs:
           apuPackage: 'True' 
           release: ${{ env.RELEASE }}  
           accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }} 
+          github-server-url: ${{ secrets.SERVER_URL }}
 
   package-download:    
     needs: build    
@@ -143,9 +140,9 @@ jobs:
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: test 
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
@@ -157,6 +154,7 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
           USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
 
   extract-platforms:  
@@ -169,6 +167,7 @@ jobs:
           repository: actions-int/extraction-action
           ref: 'v0.0.1' 
           token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/extraction-action
 
       - name: Extracting ${{ inputs.boardType }} ${{ inputs.boardMode }} platforms      
@@ -187,6 +186,7 @@ jobs:
           repository: actions-int/upload-logs-to-artifactory-action
           ref: 'v0.0.1' 
           token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/upload-logs-to-artifactory-action
 
       - name: Upload logs to Artifactory        
@@ -219,9 +219,9 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
-          ref: test 
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
@@ -240,7 +240,8 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}   
           apiKey: ${{ secrets.apiKey }}    
-          NPATH: ${{ secrets.NPATH }}  
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }}  
 
   pcie-sw-emulation-tests:
     needs: package-download
@@ -253,9 +254,9 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
-          ref: test 
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -276,6 +277,7 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }}     
           USER: ${{ secrets.USER }}
           NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }} 
 
   pcie-hw-emulation-tests:
     needs: package-download
@@ -288,9 +290,9 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
-          ref: test 
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -310,7 +312,8 @@ jobs:
           apiKey: ${{ secrets.apiKey }}  
           accessToken: ${{ secrets.ACCESS_TOKEN }}   
           USER: ${{ secrets.USER }}       
-          NPATH: ${{ secrets.NPATH }}    
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }}     
                   
   test-summary:    
     runs-on: Ubuntu-22.04
@@ -322,6 +325,7 @@ jobs:
           repository: actions-int/XOAH-URL-action
           ref: 'v0.0.5' 
           token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/XOAH-URL-action
 
       - name: Generate test summary URL
