@@ -198,7 +198,7 @@ namespace xdp::aie {
   }
 
   /****************************************************************************
-   * Read AIE metadata from ptree
+   * Read AIE metadata from axlf section
    ***************************************************************************/
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   readAIEMetadata(const char* data, size_t size, pt::ptree& aie_project)
