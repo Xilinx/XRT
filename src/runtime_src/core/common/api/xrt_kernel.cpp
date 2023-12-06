@@ -64,6 +64,10 @@
 #include <utility>
 using namespace std::chrono_literals;
 
+#ifdef __linux__
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#endif
+
 #ifdef _WIN32
 # pragma warning( disable : 4244 4267 4996 4100 4201)
 #endif

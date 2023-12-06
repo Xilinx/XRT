@@ -18,6 +18,7 @@
 #define xrtcore_util_time_h_
 
 #include "core/common/config.h"
+#include <cstdint>
 #include <string>
 
 namespace xrt_core {

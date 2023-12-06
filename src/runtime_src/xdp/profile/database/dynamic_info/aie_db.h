@@ -26,6 +26,10 @@
 #include "xdp/profile/database/dynamic_info/samples.h"
 #include "xdp/profile/database/dynamic_info/types.h"
 
+#ifdef __linux__
+#pragma GCC diagnostic ignored "-Wpessimizing-move"
+#endif
+
 namespace xdp {
 
   // This class abstracts the dynamic information related to AIE executions.

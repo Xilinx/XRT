@@ -18,6 +18,7 @@
 #define __DTCStringsBlock_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
+#include <cstdint>
 #include <sstream>
 #include <string>
 

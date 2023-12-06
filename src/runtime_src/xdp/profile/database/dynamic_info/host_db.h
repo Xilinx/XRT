@@ -29,6 +29,10 @@
 #include "xdp/profile/database/dynamic_info/mark.h"
 #include "xdp/profile/database/dynamic_info/types.h"
 
+#ifdef __linux__
+#pragma GCC diagnostic ignored "-Wpessimizing-move"
+#endif
+
 namespace xdp {
 
   // Forward declarations

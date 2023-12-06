@@ -11,6 +11,10 @@
 // 3rd Party Library - Include files
 #include <boost/property_tree/ptree.hpp>
 
+#ifdef __linux__
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#endif
+
 namespace xrt_core {
 
 /**
