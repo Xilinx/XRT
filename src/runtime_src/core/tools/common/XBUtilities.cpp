@@ -416,28 +416,28 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     return device;
   }
 
-// TODO this is a temporary function that will be replaced
-// by something in the shim or device layer.
 static std::string
-tempDeviceMapping(const std::string& deviceName)
+deviceMapping(const xrt_core::query::device_class::type type)
 {
-  if (deviceName.empty())
-    return "";
-
-  if (deviceName.find("Ryzen") != std::string::npos)
+  switch (type) {
+  case xrt_core::query::device_class::type::alveo:
+    return "alveo";
+  case xrt_core::query::device_class::type::ryzen:
     return "aie";
+  }
 
-  return "alveo";
+  return "";
 }
 
 std::string
 XBUtilities::get_device_class(const std::string &deviceBDF, bool in_user_domain)
 {
   if (deviceBDF.empty()) 
-    return tempDeviceMapping("");
+    return "";
 
   std::shared_ptr<xrt_core::device> device = get_device(boost::algorithm::to_lower_copy(deviceBDF), in_user_domain, false);
-  return tempDeviceMapping(xrt_core::device_query_default<xrt_core::query::rom_vbnv>(device, ""));
+  auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  return deviceMapping(device_class);
 }
 
 void
