@@ -61,9 +61,20 @@ TestVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree:
   }
   auto xclbin_uuid = device.load_xclbin(b_file);
 
-  auto krnl = xrt::kernel(device, xclbin_uuid, "verify");
+  xrt::kernel krnl;
+  try {
+    krnl = xrt::kernel(device, xclbin_uuid, "verify");
+  } catch (const std::exception&) {
+    try {
+      krnl = xrt::kernel(device, xclbin_uuid, "hello");
+    } catch (const std::exception&) {
+      logger(ptree, "Error", "Kernel could not be found.");
+      ptree.put("status", test_token_failed);
+      return;
+    }
+  }
 
-  // Allocate the output buffer to hold the kernel ooutput
+  // Allocate the output buffer to hold the kernel output
   auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, krnl.group_id(0));
 
   // Run the kernel and store its contents within the allocated output buffer
