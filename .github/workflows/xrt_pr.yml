@@ -81,7 +81,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows   
        
-      - name: Use composite action for build     
+      - name: XRT windows build     
         uses: ./composite-workflows/windows-build
         with:     
           workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
@@ -121,7 +121,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
        
-      - name: Use composite action for build     
+      - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
         with:     
           pipeline: ${{ env.PIPELINE }}   
