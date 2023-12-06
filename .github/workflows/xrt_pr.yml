@@ -68,7 +68,8 @@ jobs:
           packageType: ${{ matrix.packageType }}  
           workspace: ${{ github.workspace }}
           buildNumber: ${{ github.run_number }}     
-          accessToken: ${{ secrets.ACCESS_TOKEN }}     
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}     
 
   windows-build:  
     runs-on: windows-2017
