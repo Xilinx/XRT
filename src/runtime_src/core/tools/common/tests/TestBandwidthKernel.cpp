@@ -17,7 +17,7 @@ namespace XBU = XBUtilities;
 #pragma warning(disable : 4996) //std::getenv
 #endif
 
-static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 10000;
+static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 1000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestBandwidthKernel::TestBandwidthKernel()
@@ -119,9 +119,8 @@ initialize_output_host_hbm(unsigned int data_size)
 static double
 calculate_max_throughput(std::chrono::time_point<std::chrono::high_resolution_clock> time_end,
                           std::chrono::time_point<std::chrono::high_resolution_clock> time_start,
-                          unsigned int data_size, int num_bank)
+                          unsigned int data_size, int num_bank, double max_throughput)
 {
-  double max_throughput = 0;
   double usduration =
     (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
 
@@ -186,7 +185,7 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
       }
     }
 
-    max_throughput = calculate_max_throughput(time_end, time_start, data_size, num_kernel_ddr);
+    max_throughput = calculate_max_throughput(time_end, time_start, data_size, num_kernel_ddr, max_throughput);
   }
   return max_throughput;
 }
@@ -230,7 +229,7 @@ test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
       }
     }
 
-    max_throughput = calculate_max_throughput(time_end, time_start, data_size, 1);
+    max_throughput = calculate_max_throughput(time_end, time_start, data_size, 1, max_throughput);
   }
   return max_throughput;
 }

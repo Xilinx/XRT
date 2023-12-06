@@ -7,6 +7,7 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
+#include <filesystem>
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -49,6 +50,15 @@ TestVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree:
   }
 
   const std::string b_file = findXclbinPath(dev, ptree);
+  // 0RP (nonDFX) flat shell support.
+  // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
+  // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
+  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
+  if (!logic_uuid.empty() && !std::filesystem::exists(b_file)) {
+    logger(ptree, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
+    ptree.put("status", test_token_skipped);
+    return;
+  }
   auto xclbin_uuid = device.load_xclbin(b_file);
 
   auto krnl = xrt::kernel(device, xclbin_uuid, "verify");
