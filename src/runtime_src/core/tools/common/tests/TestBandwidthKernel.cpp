@@ -17,7 +17,7 @@ namespace XBU = XBUtilities;
 #pragma warning(disable : 4996) //std::getenv
 #endif
 
-static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 1000;
+static const int reps = (std::getenv("XCL_EMULATION_MODE") != nullptr) ? 2 : 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestBandwidthKernel::TestBandwidthKernel()
@@ -165,10 +165,11 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
     }
 
     auto time_start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < num_kernel_ddr; i++) {
-      auto run = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
-      run.wait();
-    }
+    xrt::run runs[num_kernel_ddr];
+    for (int i = 0; i < num_kernel_ddr; i++)
+      runs[i] = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
+    for (int i = 0; i < num_kernel_ddr; i++)
+      runs[i].wait();
     auto time_end = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < num_kernel_ddr; i++) {
