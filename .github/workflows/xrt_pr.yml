@@ -46,8 +46,8 @@ jobs:
           repository: "${{ github.event.inputs.repo }}"
           ref: "${{ github.event.inputs.branch_ref }}"
           fetch-depth: 0
-          # github-server-url: "https://github.com" 
-          # token: ${{ secrets.CI_CLOUD_TOKEN}}
+          github-server-url: "https://github.com" 
+          token: ${{ secrets.CI_CLOUD_TOKEN}}
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
 
