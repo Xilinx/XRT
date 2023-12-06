@@ -4,17 +4,21 @@ env:
   RELEASE: '2024.1'  
   PIPELINE: 'xrt' 
   ENV: 'prod' 
-  
+
 on:
-  workflow_call:
-  workflow_dispatch:
-    inputs:
-      branch_ref:
-        type: string
-        description: branch_name from repository dispatch
-      repo:
-        type: string
-        description: reponame for repository dispatch
+  pull_request_target:
+    types: [opened, edited, synchronize]
+  
+# on:
+#   workflow_call:
+#   workflow_dispatch:
+#     inputs:
+#       branch_ref:
+#         type: string
+#         description: branch_name from repository dispatch
+#       repo:
+#         type: string
+#         description: reponame for repository dispatch
   
 jobs:    
   build:    
