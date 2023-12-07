@@ -189,8 +189,9 @@ namespace xdp {
       return;
     }
     
-    uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : filetype->getAIETileRowOffset();
-    auto modName = (mod == module_type::core) ? "aie" : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
+    uint16_t rowOffset  = (mod == module_type::mem_tile) ? 1 : filetype->getAIETileRowOffset();
+    std::string modName = (mod == module_type::core) ? "aie" 
+                        : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
     auto allValidGraphs = filetype->getValidGraphs();
     auto allValidKernels = filetype->getValidKernels();
@@ -402,8 +403,8 @@ namespace xdp {
       }
       catch (...) {
         xrt_core::message::send(severity_level::warning, "XRT",
-                                "Tile range specification in tile_based_aie_[memory}_metrics "
-                                "is not of valid format and hence skipped.");
+                                "Tile range specification in tile_based_" + modName
+                                + "_metrics is not valid format and hence skipped.");
         continue;
       }
 
@@ -411,7 +412,7 @@ namespace xdp {
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << modName
-            << "_metrics is not of valid format and hence skipped.";
+            << "_metrics is not valid format and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
