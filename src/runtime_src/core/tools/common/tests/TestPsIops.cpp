@@ -17,6 +17,10 @@ namespace XBU = XBUtilities;
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
+#ifdef _WIN32
+#pragma warning(disable : 4702) //TODO remove when test is implemented properly
+#endif
+
 using ms_t = std::chrono::microseconds;
 using Clock = std::chrono::high_resolution_clock;
 

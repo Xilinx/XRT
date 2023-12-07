@@ -13,6 +13,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/utils.h"
 #include "core/include/xrt/xrt_uuid.h"
 
 #include <algorithm>
@@ -173,7 +174,8 @@ print_json(const bpt::ptree& pt)
   time_stamp << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
 
   // create json in pwd
-  std::string file_name{"XRT_usage_metrics_" + time_stamp.str() + ".json"};
+  // file name format - XRT_usage_metrics_##pid_YY-MM-DD_H-M-S.json
+  std::string file_name{"XRT_usage_metrics_" + std::to_string(xrt_core::utils::get_pid()) + "_" + time_stamp.str() + ".json"};
   std::ofstream out_file{file_name};
 
   if (out_file.is_open()) {
