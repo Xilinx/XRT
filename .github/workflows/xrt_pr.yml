@@ -1,6 +1,6 @@
 name: XRT PR
 
-# apu test with centos
+# apu test with centos on 35
 
 env:  
   RELEASE: '2024.1'  
