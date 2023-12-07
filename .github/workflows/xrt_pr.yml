@@ -99,7 +99,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:  
-    runs-on: CentOS
+    runs-on: apu
     # runs-on: Ubuntu-20.04
     steps:      
       - name: Set env variables    
