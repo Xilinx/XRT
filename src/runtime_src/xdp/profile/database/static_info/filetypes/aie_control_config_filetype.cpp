@@ -31,6 +31,12 @@ using severity_level = xrt_core::message::severity_level;
 AIEControlConfigFiletype::AIEControlConfigFiletype(boost::property_tree::ptree& aie_project)
 : BaseFiletypeImpl(aie_project) {}
 
+std::string
+AIEControlConfigFiletype::getMessage(std::string secName)
+{
+    return "Ignoring AIE metadata section " + secName + " since not found.";
+}
+
 driver_config
 AIEControlConfigFiletype::getDriverConfig() {
     return xdp::aie::getDriverConfig(aie_meta, "aie_metadata.driver_config");
@@ -58,7 +64,6 @@ AIEControlConfigFiletype::getAIETileRowOffset() {
     return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
 }
 
-
 std::vector<std::string>
 AIEControlConfigFiletype::getValidGraphs() {
     return xdp::aie::getValidGraphs(aie_meta, "aie_metadata.graphs");
@@ -67,8 +72,10 @@ AIEControlConfigFiletype::getValidGraphs() {
 std::vector<std::string>
 AIEControlConfigFiletype::getValidPorts() {
     auto ios = getAllIOs();
-    if (ios.empty())
+    if (ios.empty()) {
+        xrt_core::message::send(severity_level::info, "XRT", "No valid ports found.");
         return {};
+    }
 
     std::vector<std::string> ports;
 
@@ -88,8 +95,10 @@ AIEControlConfigFiletype::getValidKernels() {
 
     // Grab all kernel to tile mappings
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
-    if (!kernelToTileMapping)
+    if (!kernelToTileMapping) {
+        xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
         return {};
+    }
 
     for (auto const &mapping : kernelToTileMapping.get()) {
         std::vector<std::string> names;
@@ -110,8 +119,10 @@ std::unordered_map<std::string, io_config>
 AIEControlConfigFiletype::getPLIOs()
 {
     auto pliosMetadata = aie_meta.get_child_optional("aie_metadata.PLIOs");
-    if (!pliosMetadata)
+    if (!pliosMetadata) {
+        xrt_core::message::send(severity_level::info, "XRT", getMessage("PLIOs"));
         return {};
+    }
 
     std::unordered_map<std::string, io_config> plios;
 
@@ -153,8 +164,10 @@ std::unordered_map<std::string, io_config>
 AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr)
 {
     auto gmiosMetadata = aie_meta.get_child_optional(childStr);
-    if (!gmiosMetadata)
+    if (!gmiosMetadata) {
+        xrt_core::message::send(severity_level::info, "XRT", getMessage(childStr));
         return {};
+    }
 
     std::unordered_map<std::string, io_config> gmios;
 
@@ -195,7 +208,13 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             uint32_t maxCol)
 {
     std::vector<tile_type> tiles;
+
+    // PLIO metadata not valid in XDP_MINIMAL_BUILD builds
+    #ifdef XDP_MINIMAL_BUILD
+    auto ios = getGMIOs();
+    #else
     auto ios = getAllIOs();
+    #endif
 
     for (auto& io : ios) {
         auto isMaster    = io.second.slaveOrMaster;
@@ -263,8 +282,11 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
     // Grab all shared buffers
     auto sharedBufferTree = 
         aie_meta.get_child_optional("aie_metadata.TileMapping.SharedBufferToTileMapping");
-    if (!sharedBufferTree)
+    if (!sharedBufferTree) {
+        xrt_core::message::send(severity_level::info, "XRT", 
+            getMessage("TileMapping.SharedBufferToTileMapping"));
         return {};
+    }
 
     std::vector<tile_type> allTiles;
     std::vector<tile_type> memTiles;
@@ -297,8 +319,10 @@ std::vector<tile_type>
 AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
 {
     auto graphsMetadata = aie_meta.get_child_optional("aie_metadata.graphs");
-    if (!graphsMetadata)
+    if (!graphsMetadata) {
+        xrt_core::message::send(severity_level::info, "XRT", getMessage("graphs"));
         return {};
+    }
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
@@ -367,8 +391,10 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         return {};
 
     auto graphsMetadata = aie_meta.get_child_optional("aie_metadata.EventGraphs");
-    if (!graphsMetadata)
+    if (!graphsMetadata) {
+        xrt_core::message::send(severity_level::info, "XRT", getMessage("EventGraphs"));
         return {};
+    }
 
     const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
@@ -416,8 +442,10 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
     auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
     if (!kernelToTileMapping && (kernel_name.compare("all") == 0))
         return getAIETiles(graph_name);
-    if (!kernelToTileMapping)
+    if (!kernelToTileMapping) {
+        xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
         return {};
+    }
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();

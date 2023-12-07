@@ -20,7 +20,6 @@
 #include "base_filetype_impl.h"
 #include <boost/property_tree/ptree.hpp>
 
-
 // ***************************************************************
 // The implementation specific to the aie_control_config.json file
 // ***************************************************************
@@ -92,8 +91,11 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         getTiles(const std::string& graph_name,
                  module_type type, 
                  const std::string& kernel_name = "all") override;
-};
-}
 
+    private:
+        std::string getMessage(std::string secName);
+};
+
+}
 
 #endif 
