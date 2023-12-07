@@ -165,7 +165,7 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
     }
 
     auto time_start = std::chrono::high_resolution_clock::now();
-    xrt::run runs[num_kernel_ddr];
+    std::vector<xrt::run> runs(num_kernel_ddr);
     for (int i = 0; i < num_kernel_ddr; i++)
       runs[i] = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
     for (int i = 0; i < num_kernel_ddr; i++)
