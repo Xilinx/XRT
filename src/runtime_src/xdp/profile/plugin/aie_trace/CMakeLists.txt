@@ -33,6 +33,10 @@ file(GLOB AIE_TRACE_PLUGIN_FILES
   "${IMPL_DIR}/*.h"
   "${IMPL_DIR}/*.cpp"
 )
+file(GLOB AIE_TRACE_UTIL_FILES
+  "${PROFILE_DIR}/plugin/aie_trace/util/*.h"
+  "${PROFILE_DIR}/plugin/aie_trace/util/*.cpp"
+)
 
 if (XDP_MINIMAL_BUILD STREQUAL "yes")
   add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES})
@@ -63,7 +67,7 @@ elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
 
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
 
-  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES})
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES} ${AIE_TRACE_UTIL_FILES})
 
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
