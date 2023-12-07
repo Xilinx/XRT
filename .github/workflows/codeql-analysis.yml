@@ -11,10 +11,7 @@
 #
 name: "CodeQL"
 
-on:
-  #schedule:
-  #  - cron: '33 8 * * 6'
-    
+on:    
   workflow_dispatch:  
 
 jobs:
@@ -45,7 +42,6 @@ jobs:
     - if: matrix.language == 'cpp'
       name: Build 
       run: |
-       sudo apt update
        sudo src/runtime_src/tools/scripts/xrtdeps.sh
        ./build/build.sh -opt -verbose -driver
 
