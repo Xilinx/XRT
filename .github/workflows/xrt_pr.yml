@@ -97,7 +97,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:  
-    runs-on: [xrt,xco]
+    runs-on: CentOS
     # runs-on: Ubuntu-20.04
     steps:      
       - name: Set env variables    
