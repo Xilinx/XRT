@@ -17,7 +17,7 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: Ubuntu22.04
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
@@ -42,7 +42,7 @@ jobs:
     - if: matrix.language == 'cpp'
       name: Build 
       run: |
-       src/runtime_src/tools/scripts/xrtdeps.sh
+       sudo src/runtime_src/tools/scripts/xrtdeps.sh
        ./build/build.sh -opt -verbose -driver
 
     - name: Perform CodeQL Analysis
