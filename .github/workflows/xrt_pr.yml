@@ -1,5 +1,7 @@
 name: XRT PR
 
+# apu test with centos
+
 env:  
   RELEASE: '2024.1'  
   PIPELINE: 'xrt' 
