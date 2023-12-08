@@ -17,6 +17,8 @@
 #ifndef DEVICE_EVENTS_DOT_H
 #define DEVICE_EVENTS_DOT_H
 
+#include <cstdint>
+
 #include "xdp/profile/database/events/vtf_event.h"
 
 #include "xdp/config.h"

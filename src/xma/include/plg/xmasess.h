@@ -19,6 +19,7 @@
 #ifndef __XMA_SESS_H__
 #define __XMA_SESS_H__
 
+#include <cstdint>
 #include <stdbool.h>
 
 #include "app/xmahw.h"

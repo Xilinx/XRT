@@ -17,6 +17,7 @@
 #ifndef XDP_PROFILE_AIE_TRACE_LOGGER_H
 #define XDP_PROFILE_AIE_TRACE_LOGGER_H
 
+#include <cstdint>
 #include<iostream>
 
 namespace xdp {

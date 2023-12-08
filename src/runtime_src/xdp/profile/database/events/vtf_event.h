@@ -18,6 +18,7 @@
 #ifndef VTF_EVENT_DOT_H
 #define VTF_EVENT_DOT_H
 
+#include <cstdint>
 #include <fstream>
 
 #include "xdp/config.h"

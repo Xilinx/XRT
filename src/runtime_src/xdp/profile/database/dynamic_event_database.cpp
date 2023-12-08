@@ -107,7 +107,7 @@ namespace xdp {
                                               VTFEventType type)
   {
     auto device_db = getDeviceDB(deviceId);
-    return std::move(device_db->findMatchingStart(monitorId, type));
+    return device_db->findMatchingStart(monitorId, type);
   }
 
   bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t deviceId,
@@ -161,25 +161,25 @@ namespace xdp {
 
   UserRangeInfo VPDynamicDatabase::matchingRange(uint64_t functionID)
   {
-    return std::move(host->lookupUserStart(functionID));
+    return host->lookupUserStart(functionID);
   }
 
   std::vector<VTFEvent*>
   VPDynamicDatabase::copySortedHostEvents(std::function<bool(VTFEvent*)> filter)
   {
-    return std::move(host->filterSortedEvents(filter));
+    return host->filterSortedEvents(filter);
   }
 
   std::vector<std::unique_ptr<VTFEvent>> VPDynamicDatabase::moveSortedHostEvents(std::function<bool(VTFEvent*)> filter)
   {
-    return std::move(host->moveSortedEvents(filter));
+    return host->moveSortedEvents(filter);
   }
 
   std::vector<VTFEvent*>
   VPDynamicDatabase::
   moveUnsortedHostEvents(std::function<bool(VTFEvent*)> filter)
   {
-    return std::move(host->moveUnsortedEvents(filter));
+    return host->moveUnsortedEvents(filter);
   }
 
   bool VPDynamicDatabase::hostEventsExist(std::function<bool(VTFEvent*)> filter)
@@ -197,7 +197,7 @@ namespace xdp {
   VPDynamicDatabase::moveDeviceEvents(uint64_t deviceId)
   {
     auto device_db = getDeviceDB(deviceId);
-    return std::move(device_db->moveEvents());
+    return device_db->moveEvents();
   }
 
   void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
@@ -212,7 +212,7 @@ namespace xdp {
                                                            xrt_core::uuid uuid)
   {
     auto device_db = getDeviceDB(deviceId);
-    return std::move(device_db->getPLCounterResults(uuid));
+    return device_db->getPLCounterResults(uuid);
   }
 
   void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,
@@ -225,7 +225,7 @@ namespace xdp {
   std::pair<uint64_t, uint64_t>
   VPDynamicDatabase::lookupOpenCLMapping(uint64_t openclID)
   {
-    return std::move(host->lookupOpenCLMapping(openclID));
+    return host->lookupOpenCLMapping(openclID);
   }
 
   void VPDynamicDatabase::addDependency(uint64_t id, uint64_t dependency)
@@ -236,7 +236,7 @@ namespace xdp {
   std::map<uint64_t, std::vector<uint64_t>>
   VPDynamicDatabase::getDependencyMap()
   {
-    return std::move(host->copyDependencyMap());
+    return host->copyDependencyMap();
   }
 
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
@@ -267,7 +267,7 @@ namespace xdp {
   VPDynamicDatabase::getPowerSamples(uint64_t deviceId)
   {
     auto device_db = getDeviceDB(deviceId);
-    return std::move(device_db->getPowerSamples());
+    return device_db->getPowerSamples();
   }
 
   void VPDynamicDatabase::addAIESample(uint64_t deviceId, double timestamp,
@@ -281,7 +281,7 @@ namespace xdp {
   VPDynamicDatabase::getAIESamples(uint64_t deviceId)
   {
     auto device_db = getDeviceDB(deviceId);
-    return std::move(device_db->getAIESamples());
+    return device_db->getAIESamples();
   }
 
   void VPDynamicDatabase::addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,
@@ -295,7 +295,7 @@ namespace xdp {
   VPDynamicDatabase::getAIETimerSamples(uint64_t deviceId)
   {
     auto device_db = getDeviceDB(deviceId);
-    return std::move(device_db->getAIETimerSamples());
+    return device_db->getAIETimerSamples();
   }
 
   void VPDynamicDatabase::setPLTraceBufferFull(uint64_t deviceId, bool val)

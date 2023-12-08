@@ -17,6 +17,8 @@
 #ifndef _XMA_HW_H_
 #define _XMA_HW_H_
 
+#include <cstdint>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
