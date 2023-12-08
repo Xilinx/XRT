@@ -30,8 +30,6 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         AIEControlConfigFiletype(boost::property_tree::ptree& aie_project);
         ~AIEControlConfigFiletype() = default;
 
-        std::string getMessage(std::string secName);
-        
         driver_config
         getDriverConfig() override;
 
@@ -93,6 +91,10 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         getTiles(const std::string& graph_name,
                  module_type type, 
                  const std::string& kernel_name = "all") override;
+
+    private:
+        std::string getMessage(std::string secName);
+        
 };
 
 }
