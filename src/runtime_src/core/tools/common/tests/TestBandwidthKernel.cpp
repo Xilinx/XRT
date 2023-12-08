@@ -119,9 +119,8 @@ initialize_output_host_hbm(unsigned int data_size)
 static double
 calculate_max_throughput(std::chrono::time_point<std::chrono::high_resolution_clock> time_end,
                           std::chrono::time_point<std::chrono::high_resolution_clock> time_start,
-                          unsigned int data_size, int num_bank)
+                          unsigned int data_size, int num_bank, double max_throughput)
 {
-  double max_throughput = 0;
   double usduration =
     (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
 
@@ -166,10 +165,11 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
     }
 
     auto time_start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < num_kernel_ddr; i++) {
-      auto run = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
-      run.wait();
-    }
+    std::vector<xrt::run> runs(num_kernel_ddr);
+    for (int i = 0; i < num_kernel_ddr; i++)
+      runs[i] = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
+    for (int i = 0; i < num_kernel_ddr; i++)
+      runs[i].wait();
     auto time_end = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < num_kernel_ddr; i++) {
@@ -186,7 +186,7 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
       }
     }
 
-    max_throughput = calculate_max_throughput(time_end, time_start, data_size, num_kernel_ddr);
+    max_throughput = calculate_max_throughput(time_end, time_start, data_size, num_kernel_ddr, max_throughput);
   }
   return max_throughput;
 }
@@ -230,7 +230,7 @@ test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
       }
     }
 
-    max_throughput = calculate_max_throughput(time_end, time_start, data_size, 1);
+    max_throughput = calculate_max_throughput(time_end, time_start, data_size, 1, max_throughput);
   }
   return max_throughput;
 }
