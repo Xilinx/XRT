@@ -330,7 +330,7 @@ bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void *handle) {
   return true; // placeholder
 }
 
-void AieTrace_x86Impl::flushAieTileTraceModule() {
+void AieTrace_x86Impl::flushTraceModules() {
   try {
     // input bo
     auto inbo = xrt::bo(device, INPUT_SIZE, 2);

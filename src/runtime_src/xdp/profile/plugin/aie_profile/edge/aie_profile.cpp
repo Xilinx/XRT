@@ -92,8 +92,10 @@ namespace xdp {
                                    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
       {"read_throughputs",        {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
                                    XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
-      {"aie_trace",               {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
-                                   XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
+      {"s2mm_throughputs",        {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
+      {"mm2s_throughputs",        {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
+      {"aie_trace",               {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE,
+                                   XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE}},
       {"events",                  {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
                                    XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
@@ -104,8 +106,6 @@ namespace xdp {
     else {
       mCoreStartEvents["floating_point"]   = {XAIE_EVENT_FP_HUGE_CORE,        XAIE_EVENT_INT_FP_0_CORE, 
                                               XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
-      mCoreStartEvents["s2mm_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE};
-      mCoreStartEvents["mm2s_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_CORE, XAIE_EVENT_PORT_STALLED_0_CORE};
     }
     mCoreEndEvents = mCoreStartEvents;
 
@@ -179,34 +179,32 @@ namespace xdp {
       {"mem_trace",               {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
                                    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
                                    XAIE_EVENT_PORT_IDLE_0_MEM_TILE,
-                                   XAIE_EVENT_PORT_TLAST_0_MEM_TILE}}
+                                   XAIE_EVENT_PORT_TLAST_0_MEM_TILE}},
+      {"input_throughputs",       {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+                                   XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE,
+                                   XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
+                                   XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
+      {"output_throughputs",      {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
+                                   XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
+                                   XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
+                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE}},
+      {"conflict_stats1",         {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE}},
+      {"conflict_stats2",         {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE}},
+      {"conflict_stats3",         {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE}}, 
+      {"conflict_stats4",         {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
+                                   XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE}}
     };
-    if (metadata->getHardwareGen() > 1) {
-      mMemTileStartEvents["input_throughputs"]  = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-                                                   XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE,
-                                                   XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE,
-                                                   XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
-      mMemTileStartEvents["output_throughputs"] = {XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, 
-                                                   XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE,
-                                                   XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE,
-                                                   XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE};
-      mMemTileStartEvents["conflict_stats1"]    = {XAIE_EVENT_CONFLICT_DM_BANK_0_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_1_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_2_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_3_MEM_TILE};
-      mMemTileStartEvents["conflict_stats2"]    = {XAIE_EVENT_CONFLICT_DM_BANK_4_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_5_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_6_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_7_MEM_TILE};
-      mMemTileStartEvents["conflict_stats3"]    = {XAIE_EVENT_CONFLICT_DM_BANK_8_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_9_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_10_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_11_MEM_TILE}; 
-      mMemTileStartEvents["conflict_stats4"]    = {XAIE_EVENT_CONFLICT_DM_BANK_12_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_13_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_14_MEM_TILE,
-                                                   XAIE_EVENT_CONFLICT_DM_BANK_15_MEM_TILE};
-    }
     mMemTileStartEvents["s2mm_channels"]         = mMemTileStartEvents["input_channels"];
     mMemTileStartEvents["s2mm_channels_details"] = mMemTileStartEvents["input_channels_details"];
     mMemTileStartEvents["s2mm_throughputs"]      = mMemTileStartEvents["input_throughputs"];
@@ -391,6 +389,7 @@ namespace xdp {
 
       bool newPort = false;
       auto portnum = getPortNumberFromEvent(startEvent);
+      uint8_t channel = (portnum == 0) ? channel0 : channel1;
 
       // New port needed: reserver, configure, and store
       if (switchPortMap.find(portnum) == switchPortMap.end()) {
@@ -401,10 +400,32 @@ namespace xdp {
         switchPortMap[portnum] = switchPortRsc;
 
         if (type == module_type::core) {
-          // AIE Tiles (e.g., trace streams)
-          // Define stream switch port to monitor core or memory trace
-          uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-          switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+          int channelNum = 0;
+          std::string portName;
+
+          // AIE Tiles
+          if (metricSet.find("trace") != std::string::npos) {
+            // Monitor memory or core trace (memory:1, core:0)
+            uint8_t traceSelect = (startEvent == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 1 : 0;
+            switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+            
+            channelNum = traceSelect;
+            portName = (traceSelect == 0) ? "core trace" : "memory trace";
+          }
+          else {
+            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+
+            channelNum = channel;
+            portName = aie::isInputSet(type, metricSet) ? "DMA MM2S" : "DMA S2MM";
+          }
+
+          if (aie::isDebugVerbosity()) {
+              std::stringstream msg;
+              msg << "Configured core module stream switch to monitor " << portName 
+                  << " for metric set " << metricSet << " and channel " << channelNum;
+              xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          }
         }
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
@@ -419,7 +440,6 @@ namespace xdp {
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
           }
           else {
-            uint8_t channel = (portnum == 0) ? channel0 : channel1;
             auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
           }

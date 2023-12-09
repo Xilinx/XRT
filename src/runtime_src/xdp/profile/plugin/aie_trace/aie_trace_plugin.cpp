@@ -404,7 +404,7 @@ void AieTracePluginUnified::flushAIEDevice(void *handle) {
     return;
 
   // Flush AIE then datamovers
-  AIEData.implementation->flushAieTileTraceModule();
+  AIEData.implementation->flushTraceModules();
   flushOffloader(AIEData.offloader, false);
 }
 
@@ -433,7 +433,7 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   endPollforDevice(handle);
 
   // Flush AIE then datamovers
-  AIEData.implementation->flushAieTileTraceModule();
+  AIEData.implementation->flushTraceModules();
   flushOffloader(AIEData.offloader, true);
   XDPPlugin::endWrite();
   (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
@@ -453,7 +453,7 @@ void AieTracePluginUnified::writeAll(bool openNewFiles) {
     auto &AIEData = kv.second;
 
     if (AIEData.valid) {
-      AIEData.implementation->flushAieTileTraceModule();
+      AIEData.implementation->flushTraceModules();
       flushOffloader(AIEData.offloader, true);
     }
   }

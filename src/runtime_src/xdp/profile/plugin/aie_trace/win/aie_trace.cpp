@@ -216,7 +216,7 @@ namespace xdp {
     return size;
   }
 
-  void AieTrace_WinImpl::flushAieTileTraceModule()
+  void AieTrace_WinImpl::flushTraceModules()
   {
     if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty() 
         && mInterfaceTileTraceFlushLocs.empty())

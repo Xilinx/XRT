@@ -24,7 +24,6 @@
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
-
 extern "C" {
   #include <xaiengine.h>
   #include <xaiengine/xaiegbl_params.h>
@@ -68,7 +67,6 @@ enum class AIEOffloadThreadStatus {
 class AIETraceOffload 
 {
   public:
-    XDP_EXPORT
     AIETraceOffload(void* handle, uint64_t id,
                     DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
@@ -77,18 +75,12 @@ class AIETraceOffload
                     xrt::hw_context context,
                     std::shared_ptr<AieTraceMetadata> metadata
                    );
-
-    XDP_EXPORT
     virtual ~AIETraceOffload();
 
-public:
-    XDP_EXPORT
+  public:
     bool initReadTrace();
-    XDP_EXPORT
     void endReadTrace();
-    XDP_EXPORT
     void startOffload();
-    XDP_EXPORT
     void stopOffload();
 
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
@@ -104,8 +96,7 @@ public:
     void readTrace(bool final) {mReadTrace(final);};
     bool isTraceBufferFull() {return false;};
 
-private:
-
+  private:
     void*           deviceHandle;
     uint64_t        deviceId;
     DeviceIntf*     deviceIntf;
@@ -138,7 +129,7 @@ private:
     bool mEnCircularBuf;
     bool mCircularBufOverwrite;
 
-private:
+  private:
     void readTraceGMIO(bool final);
     bool keepOffloading();
     void offloadFinished();
