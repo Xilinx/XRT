@@ -109,7 +109,20 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
 
   xrt::device device(dev);
   auto uuid = device.load_xclbin(xclbin_fn);
-  auto hello = xrt::kernel(device, uuid.get(), krnl.name);
+  xrt::kernel hello;
+  try {
+    hello = xrt::kernel(device, uuid.get(), krnl.name);
+  } catch (const std::exception&) {
+    krnl.name = "hello";
+    krnl.new_style = false;
+    try {
+      hello = xrt::kernel(device, uuid.get(), "hello");
+    } catch (const std::exception&) {
+      logger(ptree, "Error", "Kernel could not be found.");
+      ptree.put("status", test_token_failed);
+      return;
+    }
+  }
 
   barrier.init(threadNumber + 1);
 
