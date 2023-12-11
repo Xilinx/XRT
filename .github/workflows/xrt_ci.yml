@@ -10,8 +10,8 @@ on:
     types: [opened, edited, synchronize]
 
 concurrency:  
-  group: xrt-ci  
-  max: 2  
+  group: ${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true  
   
 jobs:    
   build:    
