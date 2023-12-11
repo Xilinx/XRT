@@ -86,7 +86,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows
-          ref: test   
+          # ref: test   
        
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
