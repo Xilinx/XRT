@@ -41,7 +41,7 @@ namespace xdp {
   {
   public:
     // For messages sent to specific plugins
-    enum MessageType { READ_COUNTERS, READ_TRACE, DUMP_TRACE } ;
+    enum MessageType { READ_COUNTERS, READ_TRACE, DUMP_TRACE, DUMP_AIE_PROFILE } ;
 
   private:
     // The information stored in the database will be separated into 

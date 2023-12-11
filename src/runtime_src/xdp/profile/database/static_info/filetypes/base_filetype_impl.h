@@ -56,30 +56,33 @@ class BaseFiletypeImpl {
 
         virtual 
         std::vector<tile_type>
-        getInterfaceTiles(  const std::string& graphName,
-                            const std::string& portName = "all",
-                            const std::string& metricStr = "channels",
-                            int16_t channelId = -1,
-                            bool useColumn = false, 
-                            uint32_t minCol = 0, 
-                            uint32_t maxCol = 0) = 0; 
+        getInterfaceTiles(const std::string& graphName,
+                          const std::string& portName = "all",
+                          const std::string& metricStr = "channels",
+                          int16_t channelId = -1,
+                          bool useColumn = false, 
+                          uint32_t minCol = 0, 
+                          uint32_t maxCol = 0) = 0; 
 
         virtual 
         std::vector<tile_type>
         getMemoryTiles(const std::string& graphName,
-                        const std::string& bufferName) = 0;
+                       const std::string& bufferName) = 0;
 
         virtual std::vector<tile_type>
         getAIETiles(const std::string& graphName) = 0;
 
         virtual std::vector<tile_type>
+        getAllAIETiles(const std::string& graphName) = 0;
+
+        virtual std::vector<tile_type>
         getEventTiles(const std::string& graph_name,
-                        module_type type) = 0;
+                      module_type type) = 0;
 
         virtual std::vector<tile_type>
         getTiles(const std::string& graph_name,
-                module_type type, 
-                const std::string& kernel_name) = 0;
+                 module_type type, 
+                 const std::string& kernel_name) = 0;
 };
 
 }

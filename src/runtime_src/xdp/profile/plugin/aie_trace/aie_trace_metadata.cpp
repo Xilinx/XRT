@@ -22,7 +22,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <memory>
 #include <regex>
 
 #include "core/common/device.h"
@@ -33,6 +32,7 @@
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 
 namespace {
   static bool tileCompare(xdp::tile_type tile1, xdp::tile_type tile2)
@@ -71,14 +71,24 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
 
-    // Grab AIE metadata
+    #ifdef XDP_MINIMAL_BUILD
+
+    metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
+    
+    #else
+
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
-    invalidXclbinMetadata = (!data.first || !data.second);
-    filetype = aie::readAIEMetadata(data.first, data.second, aieMeta);
 
+    metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
+
+    #endif
+
+    if (metadataReader == nullptr)
+      return;
+    
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    auto compilerOptions = filetype->getAIECompilerOptions();
+    auto compilerOptions = metadataReader->getAIECompilerOptions();
     setRuntimeMetrics(compilerOptions.event_trace == "runtime");
 
     if (!getRuntimeMetrics()) {
@@ -185,7 +195,7 @@ namespace xdp {
 
       // Catch cases like "1Ms" "1NS"
       std::transform(start_str.begin(), start_str.end(), start_str.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+        [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
 
       // Default is 0 cycles
       uint64_t cycles = 0;
@@ -262,17 +272,17 @@ namespace xdp {
     auto aieIter = 
         std::find(metricSets[module_type::core].begin(), metricSets[module_type::core].end(), metricString);
     if (aieIter != metricSets[module_type::core].cend())
-      return std::distance(metricSets[module_type::core].begin(), aieIter);
+      return static_cast<uint8_t>(std::distance(metricSets[module_type::core].begin(), aieIter));
 
     auto memIter =
         std::find(metricSets[module_type::mem_tile].begin(), metricSets[module_type::mem_tile].end(), metricString);
     if (memIter != metricSets[module_type::mem_tile].cend())
-      return std::distance(metricSets[module_type::mem_tile].begin(), memIter);
+      return static_cast<uint8_t>(std::distance(metricSets[module_type::mem_tile].begin(), memIter));
 
     auto shimIter =
         std::find(metricSets[module_type::shim].begin(), metricSets[module_type::shim].end(), metricString);
     if (shimIter != metricSets[module_type::shim].cend())
-      return std::distance(metricSets[module_type::shim].begin(), shimIter);
+      return static_cast<uint8_t>(std::distance(metricSets[module_type::shim].begin(), shimIter));
 
     return 0;
   }
@@ -299,11 +309,11 @@ namespace xdp {
     uint16_t rowOffset = (type == module_type::mem_tile) ? 1 : getRowOffset();
     auto tileName = (type == module_type::mem_tile) ? "memory" : "aie";
 
-    auto allValidGraphs = filetype->getValidGraphs();
-    auto allValidKernels = filetype->getValidKernels();
+    auto allValidGraphs = metadataReader->getValidGraphs();
+    auto allValidKernels = metadataReader->getValidKernels();
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = filetype->getTiles("all", type, "all");
+    auto validTilesVec = metadataReader->getTiles("all", type, "all");
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), 
                      tileCompare);
 
@@ -343,7 +353,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
+      auto tiles = metadataReader->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -352,8 +362,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -381,7 +391,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
+      auto tiles = metadataReader->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -390,8 +400,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -432,7 +442,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = filetype->getTiles(metrics[i][0], type, "all");
+      auto tiles = metadataReader->getTiles(metrics[i][0], type, "all");
       for (auto &e : tiles) {
         configMetrics[e] = metrics[i][1];
       }
@@ -441,8 +451,8 @@ namespace xdp {
       if (metrics[i].size() > 2) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(metrics[i][2]);
-            configChannel1[e] = std::stoi(metrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(metrics[i][2]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(metrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -496,8 +506,8 @@ namespace xdp {
       uint8_t channel1 = 1;
       if (metrics[i].size() > 3) {
         try {
-          channel0 = std::stoi(metrics[i][3]);
-          channel1 = std::stoi(metrics[i].back());
+          channel0 = static_cast<uint8_t>(std::stoi(metrics[i][3]));
+          channel1 = static_cast<uint8_t>(std::stoi(metrics[i].back()));
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -509,8 +519,8 @@ namespace xdp {
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
           tile_type tile;
-          tile.col = col;
-          tile.row = row;
+          tile.col = static_cast<uint16_t>(col);
+          tile.row = static_cast<uint16_t>(row);
 
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -548,8 +558,8 @@ namespace xdp {
 
         std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
-        col = std::stoi(tilePos[0]);
-        row = std::stoi(tilePos[1]) + rowOffset;
+        col = static_cast<uint16_t>(std::stoi(tilePos[0]));
+        row = static_cast<uint16_t>(std::stoi(tilePos[1]) + rowOffset);
       } catch (...) {
         std::stringstream msg;
         msg << "Tile specification in tile_based_" << tileName
@@ -576,8 +586,8 @@ namespace xdp {
       // Grab channel numbers (if specified; memory tiles only)
       if (metrics[i].size() > 2) {
         try {
-          configChannel0[tile] = std::stoi(metrics[i][2]);
-          configChannel1[tile] = std::stoi(metrics[i].back());
+          configChannel0[tile] = static_cast<uint8_t>(std::stoi(metrics[i][2]));
+          configChannel1[tile] = static_cast<uint8_t>(std::stoi(metrics[i].back()));
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -636,8 +646,8 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    auto allValidGraphs = filetype->getValidGraphs();
-    auto allValidPorts  = filetype->getValidPorts();
+    auto allValidGraphs = metadataReader->getValidGraphs();
+    auto allValidPorts  = metadataReader->getValidPorts();
     
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -667,7 +677,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getInterfaceTiles(graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
+      auto tiles = metadataReader->getInterfaceTiles(graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -676,8 +686,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -705,7 +715,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getInterfaceTiles(graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
+      auto tiles = metadataReader->getInterfaceTiles(graphMetrics[i][0], graphMetrics[i][1], graphMetrics[i][2]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
@@ -714,8 +724,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = std::stoi(graphMetrics[i][3]);
-            configChannel1[e] = std::stoi(graphMetrics[i].back());
+            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
+            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
           }
         } catch (...) {
           std::stringstream msg;
@@ -728,7 +738,7 @@ namespace xdp {
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
-    /* AIE_profile_settings config format ; Multiple values can be specified for
+    /* AIE_trace_settings config format ; Multiple values can be specified for
      * a metric separated with ';' Single or all tiles
      * tile_based_interface_tile_metrics =
      * [[<column|all>:<off|ports|input_ports|input_ports_stalls|output_ports|output_ports_stalls>[:<channel 1>][:<channel 2>]]
@@ -748,7 +758,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
+      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
@@ -796,7 +806,7 @@ namespace xdp {
         }
       }
 
-      auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
+      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
                                           channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
@@ -842,7 +852,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = filetype->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
+        auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
                                             channelId, true, col, col);
 
         for (auto& t : tiles) {
@@ -884,6 +894,12 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics.erase(t);
     }
+  }
+
+  aie::driver_config 
+  AieTraceMetadata::getAIEConfigMetadata() 
+  {
+    return metadataReader->getDriverConfig();
   }
   
 }

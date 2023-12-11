@@ -109,7 +109,7 @@ namespace xdp {
       filetype = aie::readAIEMetadata("aie_control_config.json", aie_meta);
     } catch (...) {
       std::stringstream msg;
-      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Profile.";
+      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Debug.";
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return;
     }
@@ -182,6 +182,52 @@ namespace xdp {
     for (int i = 0; i < op_profile_data.size(); i++) {
       op->profile_data[i] = op_profile_data[i];
     }
+
+
+    xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Debug at application beginning!.");
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+    // Profiling is 3rd custom OP
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
+
+    try {
+      mKernel = xrt::kernel(context, "XDP_KERNEL");  
+    } catch (std::exception &e){
+      std::stringstream msg;
+      msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Debug. " << e.what() ;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return;
+    }
+
+    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
+    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+    op_buf instr_buf;
+    instr_buf.addOP(transaction_op(txn_ptr));
+
+    // this BO stores polling data and custom instructions
+    xrt::bo instr_bo;
+    try {
+      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    } catch (std::exception &e){
+      std::stringstream msg;
+      msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return;
+    }
+
+    instr_bo.write(instr_buf.ibuf_.data());
+    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    try {
+      run.wait2();
+    } catch (std::exception &e) {
+      std::stringstream msg;
+      msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << std::endl;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    }
+
+    XAie_ClearTransaction(&aieDevInst);
   }
 
 

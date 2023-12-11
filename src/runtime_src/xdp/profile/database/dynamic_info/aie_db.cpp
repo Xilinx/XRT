@@ -18,6 +18,8 @@
 
 #include <cstring>
 
+#include "core/common/message.h"
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/database/dynamic_info/aie_db.h"
 
 namespace xdp {
@@ -36,6 +38,9 @@ namespace xdp {
                               uint64_t numTraceStreams)
   {
     std::lock_guard<std::mutex> lock(traceLock);
+
+    if (numTraceStreams == 0)
+      numTraceStreams = strmIndex + 1;
 
     if (traceData.size() == 0)
       traceData.resize(numTraceStreams);
@@ -64,6 +69,16 @@ namespace xdp {
     auto data = traceData[strmIndex];
     traceData[strmIndex] = new aie::TraceDataType;
     return data;
+  }
+
+  void AIEDB::addAIESample(double timestamp, const std::vector<uint64_t>& values)
+  {
+      samples.addSample({timestamp, values});
+      if (samples.getSamplesSize() > sampleThreshold) {
+        std::string msg = "AIE profiling sample limit reached, writing data to disk.";
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+        VPDatabase::Instance()->broadcast(VPDatabase::DUMP_AIE_PROFILE);
+      }
   }
 
 } // end namespace xdp
