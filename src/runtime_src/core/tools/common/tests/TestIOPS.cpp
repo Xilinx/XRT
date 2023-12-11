@@ -116,7 +116,7 @@ TestIOPS::testMultiThreads(const std::string &dev, const std::string &xclbin_fn,
     krnl.name = "hello";
     krnl.new_style = false;
     try {
-      hello = xrt::kernel(device, uuid.get(), "hello");
+      hello = xrt::kernel(device, uuid.get(), krnl.name);
     } catch (const std::exception&) {
       logger(ptree, "Error", "Kernel could not be found.");
       ptree.put("status", test_token_failed);
