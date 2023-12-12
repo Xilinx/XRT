@@ -99,7 +99,7 @@ namespace xdp {
     // Core trace start/end: these are also broadcast to memory module
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     mCoreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
-
+.
     // Memory/interface tile trace is flushed at end of run
     mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
@@ -539,6 +539,10 @@ namespace xdp {
             break;
         }
 
+        // Configure combo & group events for metric sets that include DMA events
+        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, type, metricSet);
+        aie::trace::configGroupEvents(aieDevInst, loc, mod, type, metricSet);
+
         // Set overall start/end for trace capture
         // Wendy said this should be done first
         if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK)
@@ -600,11 +604,20 @@ namespace xdp {
           xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
-        auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
-        // Wendy said this should be done first
+        // NOTE: this should be done first for FAL-based implementations
+        auto memoryTrace = memory.traceControl();
         auto traceStartEvent = (type == module_type::core) ? mCoreTraceStartEvent : mMemoryTileTraceStartEvent;
         auto traceEndEvent = (type == module_type::core) ? mCoreTraceEndEvent : mMemoryTileTraceEndEvent;
+        
+        // Configure combo events for metric sets that include DMA events
+        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, module_type::dma, metricSet);
+        if (comboEvents.size() == 2) {
+          traceStartEvent = comboEvents.at(0);
+          traceEndEvent = comboEvents.at(1);
+        }
+        
+        // Set 
         if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
           break;
 

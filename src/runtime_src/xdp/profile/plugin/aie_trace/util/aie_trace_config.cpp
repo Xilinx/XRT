@@ -69,13 +69,25 @@ namespace xdp::aie::trace {
         switchPortMap[portnum] = switchPortRsc;
 
         if (type == module_type::core) {
-          // AIE Tiles (e.g., trace streams)
-          // Define stream switch port to monitor core or memory trace
-          uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
-          std::string msg = "Configuring core module stream switch to monitor trace port " 
-                          + std::to_string(traceSelect);
-          xrt_core::message::send(severity_level::debug, "XRT", msg);
-          switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+          // AIE Tiles
+          if (metricSet.find("trace") != std::string::npos) {
+            // Monitor core or memory trace
+            uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
+            std::string msg = "Configuring core module stream switch to monitor trace port " 
+                            + std::to_string(traceSelect);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
+            switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+          }
+          else {
+            // Monitor DMA channels
+            uint8_t channelNum = portnum % 2;
+            auto slaveOrMaster = (portnum < 2) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            std::string typeName = (portnum < 2) ? "MM2S" : "S2MM";
+            std::string msg = "Configuring core module stream switch to monitor DMA " 
+                            + typeName + " channel " + std::to_string(channelNum);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
+            switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channelNum);
+          }
         }
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
@@ -126,6 +138,85 @@ namespace xdp::aie::trace {
 
     switchPortMap.clear();
     return streamPorts;
+  }
+
+  /****************************************************************************
+   * Configure combo events (AIE tiles only)
+   ***************************************************************************/
+  std::vector<XAie_Events>
+  configComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieTile& xaieTile, 
+                    const module_type type, const std::string metricSet)
+  {
+    // Only needed for core/memory modules and metric sets that include DMA events
+    if (!isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
+      return {};
+
+    std::vector<XAie_Events> comboEvents;
+
+    if (type == module_type::core) {
+      auto comboEvent = xaieTile.core().comboEvent();
+      comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_2_CORE);
+
+      std::vector<XAie_Events> events;
+      events.push_back(XAIE_EVENT_PORT_IDLE_0_CORE);
+      events.push_back(XAIE_EVENT_PORT_IDLE_1_CORE);
+      events.push_back(XAIE_EVENT_PORT_IDLE_2_CORE);
+      events.push_back(XAIE_EVENT_PORT_IDLE_3_CORE);
+
+      std::vector<XAie_EventComboOps> opts;
+      opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
+  
+      // Set events and trigger on OR of events
+      comboEvent->setEvents(events, opts);
+      return comboEvents;
+    }
+
+    // Below is for memory modules
+
+    // Memory_Combo0 = (Active OR Group_Stream_Switch)
+    auto comboEvent0 = xaieTile.mem().comboEvent();
+    comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_0_MEM);
+
+    std::vector<XAie_Events> events0;
+    events0.push_back(XAIE_EVENT_ACTIVE_CORE);
+    events0.push_back(XAIE_EVENT_GROUP_STREAM_SWITCH_CORE);
+    std::vector<XAie_EventComboOps> opts0;
+    opts0.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
+    
+    comboEvent0->setEvents(events0, opts0);
+
+    // Memory_Combo1 = (Group_Core_Program_Flow AND Core_Combo2)
+    auto comboEvent1 = xaieTile.mem().comboEvent();
+    comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_1_MEM);
+
+    std::vector<XAie_Events> events1;
+    events1.push_back(XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE);
+    events1.push_back(XAIE_EVENT_COMBO_EVENT_2_CORE);
+    std::vector<XAie_EventComboOps> opts1;
+    opts1.push_back(XAIE_EVENT_COMBO_E1_AND_E2);
+    
+    comboEvent1->setEvents(events1, opts1);
+    return comboEvents;
+  }
+
+  /****************************************************************************
+   * Configure group events (core modules only)
+   ***************************************************************************/
+  void configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+                         const XAie_ModuleType mod, const module_type type, 
+                         const std::string metricSet)
+  {
+    // Only needed for core module and metric sets that include DMA events
+    if (!isDmaSet(metricSet) || (type != module_type::core))
+      return;
+
+    // Set masks for group events
+    XAie_EventGroupControl(aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE, 
+                           GROUP_CORE_FUNCTIONS_MASK);
+    XAie_EventGroupControl(aieDevInst, loc, mod, XAIE_EVENT_GROUP_CORE_STALL_CORE, 
+                           GROUP_CORE_STALL_MASK);
+    XAie_EventGroupControl(aieDevInst, loc, mod, XAIE_EVENT_GROUP_STREAM_SWITCH_CORE, 
+                           GROUP_STREAM_SWITCH_RUNNING_MASK);
   }
 
   /****************************************************************************
