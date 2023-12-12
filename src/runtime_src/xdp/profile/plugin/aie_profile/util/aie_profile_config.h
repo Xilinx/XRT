@@ -14,12 +14,16 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_CONFIG_DOT_H
-#define AIE_TRACE_CONFIG_DOT_H
+#ifndef AIE_PROFILE_CONFIG_DOT_H
+#define AIE_PROFILE_CONFIG_DOT_H
 
 #include <cstdint>
-#include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp::aie::profile {  
 

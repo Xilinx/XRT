@@ -25,8 +25,8 @@ file(GLOB AIE_PROFILE_PLUGIN_FILES
 )
 
 file(GLOB AIE_PROFILE_UTIL_FILES
-  "${PROFILE_DIR}/plugin/aie_trace/util/*.h"
-  "${PROFILE_DIR}/plugin/aie_trace/util/*.cpp"
+  "${PROFILE_DIR}/plugin/aie_profile/util/*.h"
+  "${PROFILE_DIR}/plugin/aie_profile/util/*.cpp"
 )
 
 if (XDP_MINIMAL_BUILD STREQUAL "yes")

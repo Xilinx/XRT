@@ -30,7 +30,6 @@
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 // ***************************************************************
@@ -39,7 +38,7 @@
 namespace xdp::aie::profile {
   using severity_level = xrt_core::message::severity_level;
 
-  constexpr std::vector<XAie_Events> mSSEventList = {
+  const std::vector<XAie_Events> mSSEventList = {
     XAIE_EVENT_PORT_RUNNING_0_CORE,
     XAIE_EVENT_PORT_STALLED_0_CORE,
     XAIE_EVENT_PORT_RUNNING_0_PL,

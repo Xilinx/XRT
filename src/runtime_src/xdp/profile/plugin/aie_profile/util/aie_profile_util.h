@@ -14,12 +14,16 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_UTIL_DOT_H
-#define AIE_TRACE_UTIL_DOT_H
+#ifndef AIE_PROFILE_UTIL_DOT_H
+#define AIE_PROFILE_UTIL_DOT_H
 
 #include <cstdint>
-#include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp::aie::profile {
  
@@ -37,30 +41,6 @@ namespace xdp::aie::profile {
    */
   bool isPortRunningEvent(const XAie_Events event);
 
-  /**
-   * @brief  Get port number from event
-   * @param  event Event ID to check
-   * @return Port number associated with given event
-   */
-  uint8_t getPortNumberFromEvent(XAie_Events event);
-
-  /**  
-   * @brief Print out usage statistics for specified tile
-   * @param aieDevice AIE device
-   * @param tile      Tile to analyze
-   */
-  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
-
-  /**
-   * @brief Modify events in metric set based on tile type and channel number
-   * @param type      Module/tile type
-   * @param subtype   Subtype of module/tile (0: PLIO, 1: GMIO)
-   * @param metricSet Name of requested metric set
-   * @param channel   Channel number
-   * @param events    Vector of events in metric set (modified if needed)
-   */
-  void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
-                    uint8_t channel, std::vector<XAie_Events>& events);
 
 }  // namespace xdp::aie::profile
 

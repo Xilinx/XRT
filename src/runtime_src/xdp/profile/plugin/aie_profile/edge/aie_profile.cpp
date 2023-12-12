@@ -17,6 +17,9 @@
 #define XDP_PLUGIN_SOURCE 
 
 #include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+
 #include "xdp/profile/database/static_info/aie_util.h"
 
 #include <boost/algorithm/string.hpp>

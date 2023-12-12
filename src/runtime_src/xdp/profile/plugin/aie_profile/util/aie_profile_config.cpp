@@ -30,7 +30,6 @@
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp::aie::profile {
