@@ -1042,7 +1042,7 @@ const struct drm_gem_object_funcs zocl_gem_object_funcs = {
 	.free = zocl_free_bo,
 	.vm_ops = &zocl_bo_vm_ops,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-	.get_sg_table = drm_gem_dma_object_get_sg_table,
+	.get_sg_table = zocl_gem_prime_get_sg_table,
 	.vmap = drm_gem_dma_object_vmap,
 #else
 	.get_sg_table = drm_gem_cma_get_sg_table,
