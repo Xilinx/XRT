@@ -254,7 +254,6 @@ namespace xdp::aie::profile {
     return (runningEvents.find(event) != runningEvents.end());
   }
 
-
   /****************************************************************************
    * Get XAie module enum at the module index 
    ***************************************************************************/
@@ -263,7 +262,5 @@ namespace xdp::aie::profile {
   {
     return falModuleTypes[moduleIndex];
   }
-
-
 
 } // namespace xdp::aie
