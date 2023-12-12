@@ -68,13 +68,6 @@ namespace xdp {
         XAIE_MEM_MOD
       };
 
-      std::map<xdp::module_type, uint16_t> mCounterBases = {
-        {module_type::core,     static_cast<uint16_t>(0)},
-        {module_type::dma,      BASE_MEMORY_COUNTER},
-        {module_type::shim,     BASE_SHIM_COUNTER},
-        {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
-      };
-
       std::map<module_type, std::vector<uint64_t>> regValues {
         {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
         {module_type::dma, {0x11020,0x11024}}, 

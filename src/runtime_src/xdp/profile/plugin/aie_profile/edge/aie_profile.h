@@ -91,7 +91,6 @@ namespace xdp {
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
 
-      std::map<module_type, uint32_t> mCounterBases;
       std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;

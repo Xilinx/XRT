@@ -214,7 +214,7 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     for (int module = 0; module < metadata->getNumModules(); ++module) {
 
-      XAie_ModuleType mod = falModuleTypes[module];
+      XAie_ModuleType mod = aie::profile::getFalModuleType(module);
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         int numCounters  = 0;
@@ -477,6 +477,7 @@ namespace xdp {
     // Profiling is 3rd custom OP
     XAie_RequestCustomTxnOp(&aieDevInst);
     XAie_RequestCustomTxnOp(&aieDevInst);
+    
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
