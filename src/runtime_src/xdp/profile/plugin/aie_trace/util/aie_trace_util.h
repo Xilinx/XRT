@@ -18,8 +18,12 @@
 #define AIE_TRACE_UTIL_DOT_H
 
 #include <cstdint>
-#include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+
+extern "C" {
+  #include <xaiengine.h>
+  #include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp::aie::trace {
   /**
@@ -128,13 +132,6 @@ namespace xdp::aie::trace {
    * @return Port number associated with given event
    */
   uint8_t getPortNumberFromEvent(XAie_Events event);
-
-  /**  
-   * @brief Print out usage statistics for specified tile
-   * @param aieDevice AIE device
-   * @param tile      Tile to analyze
-   */
-  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
   /**
    * @brief Print out trace event statistics across multiple tiles
