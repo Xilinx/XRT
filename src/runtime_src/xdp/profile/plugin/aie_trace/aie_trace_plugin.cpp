@@ -46,6 +46,10 @@
 #include "aie_trace_impl.h"
 #include "aie_trace_plugin.h"
 
+#ifdef _WIN32
+#pragma warning(disable : 4702) //TODO remove when test is implemented properly
+#endif
+
 namespace xdp {
 using severity_level = xrt_core::message::severity_level;
 bool AieTracePluginUnified::live = false;
