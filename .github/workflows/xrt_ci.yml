@@ -70,17 +70,17 @@ jobs:
   windows-build:  
     runs-on: Windows
     steps: 
-      - name: Checkout PR   
-        uses: actions/checkout@v4 
-        with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
-          fetch-depth: 0
-          github-server-url: "https://github.com" 
-          token: ${{ secrets.CI_CLOUD_TOKEN}}
-          path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive
-          persist-credentials: false  
+      # - name: Checkout PR   
+      #   uses: actions/checkout@v4 
+      #   with: 
+      #     repository: "${{ github.event.pull_request.head.repo.full_name }}"
+      #     ref: "${{ github.event.pull_request.head.ref }}"
+      #     fetch-depth: 0
+      #     github-server-url: "https://github.com" 
+      #     token: ${{ secrets.CI_CLOUD_TOKEN}}
+      #     path: ${{ github.workspace }}/${{ github.run_number }}  
+      #     submodules: recursive
+      #     persist-credentials: false  
 
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -89,7 +89,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows
-          # ref: test   
+          ref: test   
        
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
