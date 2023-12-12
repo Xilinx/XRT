@@ -30,18 +30,18 @@
 # configuration of the components and hence we want to handle the configuration
 # in postinst script.
 
-nm /opt/xilinx/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
+nm @XRT_INSTALL_PREFIX@/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
 if [ $? -eq 1 ]; then
     echo "Unloading old AWS Linux kernel modules"
-    modprobe -r awsmgmt
+    modprobe -r @CMAKE_INSTALL_PREFIX@
 
     echo "Unregistering AWS Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
     dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
-    find /lib/modules -type f -name awsmgmt.ko -delete
-    find /lib/modules -type f -name awsmgmt.ko.kz -delete
+    find /lib/modules -type f -name @CMAKE_INSTALL_PREFIX@.ko -delete
+    find /lib/modules -type f -name @CMAKE_INSTALL_PREFIX@.ko.kz -delete
     depmod -A
 
-    rm -f /etc/udev/rules.d/10-awsmgmt.rules
+    rm -f /etc/udev/rules.d/10-@CMAKE_INSTALL_PREFIX@.rules
 fi
 
 #In case prerm is called after postinst on centos, make sure not to stop mpd
@@ -52,7 +52,7 @@ if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
 fi
 
 echo "Remove mpd plugin"
-rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
+rm -rf @XRT_INSTALL_PREFIX@/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
 systemctl disable mpd > /dev/null 2>&1
 systemctl stop mpd > /dev/null 2>&1
 

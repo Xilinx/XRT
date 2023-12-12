@@ -205,7 +205,7 @@ CardMgmtControllerFamily=""
 SchedulerFamily=""
 
 
-XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
+XBMGMT=${XILINX_XRT}/bin/xbmgmt
 post_inst_msg="DSA package installed successfully.
 Please flash card manually by running below command:
 sudo ${XBMGMT} flash --update --shell ${opt_dsa}"

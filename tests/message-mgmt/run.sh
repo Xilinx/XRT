@@ -1,3 +1,30 @@
+usage()
+{
+    echo "Usage: run.sh [options]"
+    echo
+    echo "[-xrt <path>]    xrt install location, e.g. /opt/xilinx/xrt"
+    exit 1
+}
+
+xrt_install_path="/opt/xilinx/xrt"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -xrt)
+            shift
+            xrt_install_path=$1
+            shift
+            ;;
+        *)
+            echo "unknown option"
+            usage
+            ;;
+    esac
+done
+
+export XRT_INSTALL_PATH=${xrt_install_path}
+echo "XRT_INSTALL_PATH is: $XRT_INSTALL_PATH"
+
 make
 
 ROOT=$PWD

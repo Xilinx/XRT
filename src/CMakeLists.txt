@@ -69,11 +69,6 @@ if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
-if (${XRT_NATIVE_BUILD} STREQUAL "no")
-  set (CMAKE_INSTALL_PREFIX "/usr")
-endif()
-
 # Enable AIE even on x86.  This is POC, once
 # complete we will remove the need for these
 # macros and defines.
