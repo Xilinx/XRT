@@ -111,12 +111,12 @@ rh_package_list()
         RH_LIST+=(\
         system-lsb-core \
         compat-libtiff3 \
-	)
+        )
     elif [ $MAJOR -le 8 ]; then
         RH_LIST+=(\
         redhat-lsb \
         compat-libtiff3 \
-	)
+        )
     fi
 
     if [ $MAJOR -ge 8 ]; then
@@ -232,7 +232,7 @@ ub_package_list()
 
     #dmidecode is only applicable for x86_64
     if [ $ARCH == "x86_64" ]; then
-	UB_LIST+=( dmidecode )
+        UB_LIST+=( dmidecode )
     fi
 
     # Use GCC8 on ARM64 Ubuntu as GCC7 randomly crashes with Internal Compiler Error on
@@ -417,10 +417,6 @@ mariner_package_list()
     )
 }
 
-         
-               
-         
-
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -431,7 +427,7 @@ update_package_list()
         fd_package_list
     elif [ $FLAVOR == "sles" ]; then
         suse_package_list
-    elif [ $FLAVOR == "mariner" ]; then   
+    elif [ $FLAVOR == "mariner" ]; then
         mariner_package_list
     else
         echo "unknown OS flavor $FLAVOR"
@@ -445,7 +441,7 @@ validate()
         #apt-get -qq list "${UB_LIST[@]}"
         dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
-	    # Validate we have OpenCL 2.X headers installed
+            # Validate we have OpenCL 2.X headers installed
             dpkg-query -s opencl-headers | grep '^Version: 2\.'
         fi
     fi
@@ -479,6 +475,8 @@ validate()
 prep_ubuntu()
 {
     echo "Preparing ubuntu ..."
+    # Update the list of available packages
+    apt-get update
 }
 
 prep_centos7()
@@ -486,8 +484,8 @@ prep_centos7()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	     yum check-update
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+        yum check-update
     fi
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
@@ -502,8 +500,8 @@ prep_rhel7()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	 yum check-update
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+        yum check-update
     fi
 
     echo "Enabling RHEL SCL repository..."
@@ -636,7 +634,7 @@ install()
     fi
 
     if [ $FLAVOR == "ubuntu" ] && [ $MAJOR == 20 ]; then
-	apt-get install -y clang-tidy
+        apt-get install -y clang-tidy
     fi
 
     # Enable EPEL on CentOS/RHEL
@@ -647,7 +645,7 @@ install()
     elif [ $FLAVOR == "amzn" ]; then
         prep_amzn
     elif [ $FLAVOR == "mariner" ]; then
-        prep_mariner  
+        prep_mariner
     elif [ $FLAVOR == "sles" ]; then
         prep_sles
     fi
@@ -657,9 +655,9 @@ install()
         yum install -y "${RH_LIST[@]}"
         if [ $ds9 == 1 ]; then
             yum install -y devtoolset-9
-	elif [ $ARCH == "ppc64le" ]; then
+        elif [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
-	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
+        elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
             if [ $FLAVOR == "centos" ]; then
                 yum install -y centos-release-scl-rh
             fi
