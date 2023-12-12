@@ -21,14 +21,7 @@
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
-namespace xdp::aie::trace {  
-  /**  
-   * @brief Print out usage statistics for specified tile
-   * @param aieDevice AIE device
-   * @param tile      Tile to analyze
-   */
-  void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
-
+namespace xdp::aie::trace {
   /**
    * @brief Configure stream switch monitor ports
    * @param aieDevInst AIE device instance

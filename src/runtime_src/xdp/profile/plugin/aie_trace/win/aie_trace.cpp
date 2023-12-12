@@ -207,6 +207,50 @@ namespace xdp {
     return size;
   }
 
+  /****************************************************************************
+   * Modify events in metric set based on type and channel
+   ***************************************************************************/
+  void AieTrace_WinImpl::modifyEvents(module_type type, uint16_t subtype, 
+                                      const std::string metricSet, uint8_t channel, 
+                                      std::vector<XAie_Events>& events)
+  {
+    // Only needed for GMIO DMA channel 1
+    if ((type != module_type::shim) || (subtype == 0) || (channel == 0))
+      return;
+
+    // Check type to minimize replacements
+    if (isInputSet(type, metricSet)) {
+      // Input or MM2S
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,          XAIE_EVENT_DMA_MM2S_1_START_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
+    }
+    else {
+      // Output or S2MM
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,          XAIE_EVENT_DMA_S2MM_1_START_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,         XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,       XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,   XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+    }
+  }
+
   void AieTrace_WinImpl::flushTraceModules()
   {
     if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty() 
@@ -460,7 +504,6 @@ namespace xdp {
                                                const std::string metricSet, const uint8_t channel0,
                                                const uint8_t channel1)
   {
-    (void)mod;
     if (type != module_type::mem_tile)
       return;
 

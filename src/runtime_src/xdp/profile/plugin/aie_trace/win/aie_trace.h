@@ -49,6 +49,9 @@ namespace xdp {
       virtual void pollTimers(uint64_t index, void* handle);
       virtual uint64_t checkTraceBufSize(uint64_t size);
 
+      void modifyEvents(module_type type, uint16_t subtype, 
+                        const std::string metricSet, uint8_t channel, 
+                        std::vector<XAie_Events>& events);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       module_type getTileType(uint16_t row);
       uint16_t getRelativeRow(uint16_t absRow);
