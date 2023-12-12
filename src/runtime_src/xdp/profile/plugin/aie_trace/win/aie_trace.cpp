@@ -34,7 +34,6 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
-#include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 
 constexpr uint32_t MAX_TILES = 400;
 constexpr uint64_t ALIGNMENT_SIZE = 4096;
@@ -1015,7 +1014,7 @@ namespace xdp {
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
 
         // Modify events as needed
-        aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
+        modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
 
         // Record for runtime config file
         // NOTE: input/output designations are different from memory tile channels
