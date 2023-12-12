@@ -34,6 +34,7 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 
 constexpr uint32_t MAX_TILES = 400;
 constexpr uint64_t ALIGNMENT_SIZE = 4096;
@@ -144,27 +145,17 @@ namespace xdp {
         {XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
-        {"input_ports_details_1",
-        {XAIE_EVENT_DMA_MM2S_1_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL,
-         XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL}},
         {"output_ports_details",
         {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}, 
-        {"output_ports_details_1",
-        {XAIE_EVENT_DMA_S2MM_1_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL,
-         XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL}}
+         XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
     };
     mInterfaceTileEventSets["mm2s_ports"]           = mInterfaceTileEventSets["input_ports"];
     mInterfaceTileEventSets["s2mm_ports"]           = mInterfaceTileEventSets["output_ports"];
     mInterfaceTileEventSets["mm2s_ports_stalls"]    = mInterfaceTileEventSets["input_ports_stalls"];
     mInterfaceTileEventSets["s2mm_ports_stalls"]    = mInterfaceTileEventSets["output_ports_stalls"];
     mInterfaceTileEventSets["mm2s_ports_details"]   = mInterfaceTileEventSets["input_ports_details"];
-    mInterfaceTileEventSets["mm2s_ports_details_1"] = mInterfaceTileEventSets["input_ports_details_1"];
     mInterfaceTileEventSets["s2mm_ports_details"]   = mInterfaceTileEventSets["output_ports_details"];
-    mInterfaceTileEventSets["s2mm_ports_details_1"] = mInterfaceTileEventSets["output_ports_details_1"];
 
     // Interface tile trace is flushed at end of run
     mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
@@ -465,8 +456,7 @@ namespace xdp {
     portSet.clear();
   }
   
-  void AieTrace_WinImpl::configEventSelections(const XAie_LocType loc,
-                                               const XAie_ModuleType mod, const module_type type,
+  void AieTrace_WinImpl::configEventSelections(const XAie_LocType loc, const module_type type,
                                                const std::string metricSet, const uint8_t channel0,
                                                const uint8_t channel1)
   {
@@ -560,6 +550,7 @@ namespace xdp {
       auto tile       = tileMetric.first;
       auto col        = tile.col;
       auto row        = tile.row;
+      auto subtype    = tile.subtype;
       auto type       = getTileType(row);
       auto typeInt    = static_cast<int>(type);
       //auto& xaieTile  = aieDevice->tile(col, row);
@@ -785,7 +776,7 @@ namespace xdp {
           auto iter1 = configChannel1.find(tile);
           uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
           uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-          configEventSelections(loc, mod, type, metricSet, channel0, channel1);
+          configEventSelections(loc, type, metricSet, channel0, channel1);
 
           // Record for runtime config file
           cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
@@ -979,12 +970,9 @@ namespace xdp {
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-        //configEventSelections(loc, mod, type, metricSet, channel0, channel1);
 
-        if ((channel0 > 0) && (metricSet.find("details") != std::string::npos)) {
-          metricSet.append("_1");
-          interfaceEvents = mInterfaceTileEventSets[metricSet];
-        }
+        // Modify events as needed
+        aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
 
         // Record for runtime config file
         // NOTE: input/output designations are different from memory tile channels

@@ -626,8 +626,7 @@ namespace xdp {
           auto iter1 = configChannel1.find(tile);
           uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
           uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-          aie::trace::configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, 
-                                            metricSet, channel0, channel1);
+          aie::trace::configEventSelections(aieDevInst, loc, type, metricSet, channel0, channel1);
 
           // Record for runtime config file
           cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
@@ -796,8 +795,6 @@ namespace xdp {
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-        aie::trace::configEventSelections(aieDevInst, loc, XAIE_PL_MOD, type, metricSet, 
-                                          channel0, channel1);
 
         // Modify events as needed
         aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);

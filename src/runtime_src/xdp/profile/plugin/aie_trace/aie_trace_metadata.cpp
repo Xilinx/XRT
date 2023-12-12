@@ -324,7 +324,7 @@ namespace xdp {
      *
      * AI Engine Tiles
      * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>
-     *   :<off|functions|functions_partial_stalls|functions_all_stalls>
+     *   :<off|functions|functions_partial_stalls|functions_all_stalls|functions_dma|all>
      *
      * Memory Tiles (AIE2 and beyond)
      * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>
@@ -418,10 +418,10 @@ namespace xdp {
      * AI Engine Tiles
      * Single or all tiles
      * tile_based_aie_tile_metrics = <{<column>,<row>}|all>
-     *     :<off|functions|functions_partial_stalls|functions_all_stalls>
+     *     :<off|functions|functions_partial_stalls|functions_all_stalls|functions_dma|all>
      * Range of tiles
      * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
-     *     :<off|functions|functions_partial_stalls|functions_all_stalls>
+     *     :<off|functions|functions_partial_stalls|functions_all_stalls|functions_dma|all>
      *  
      * Memory Tiles (AIE2 and beyond)
      * Single or all tiles
@@ -432,6 +432,7 @@ namespace xdp {
      *     :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
+    std::set<size_t> processed;
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting 
@@ -442,6 +443,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
+      processed.insert(i);
       auto tiles = metadataReader->getTiles(metrics[i][0], type, "all");
       for (auto &e : tiles) {
         configMetrics[e] = metrics[i][1];
@@ -465,9 +467,10 @@ namespace xdp {
 
     // Pass 2 : process only range of tiles metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      if ((metrics[i].size() != 3) && (metrics[i].size() != 5))
+      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
       
+      processed.insert(i);
       uint32_t minCol = 0, minRow = 0;
       uint32_t maxCol = 0, maxRow = 0;
 
@@ -490,7 +493,8 @@ namespace xdp {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << tileName
             << "_tile_metrics is not of valid format and hence skipped.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());           
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;       
       }
 
       // Ensure range is valid 
@@ -545,8 +549,7 @@ namespace xdp {
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Check if already processed
-      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() == 3)
-          || (metrics[i].size() == 5))
+      if (processed.find(i) != processed.end())
         continue;
 
       uint16_t col = 0;
