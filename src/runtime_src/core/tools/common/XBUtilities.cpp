@@ -132,6 +132,10 @@ XBUtilities::get_available_devices(bool inUserDomain)
 
     }
     pt_dev.put("is_ready", xrt_core::device_query_default<xrt_core::query::is_ready>(device, true));
+
+    const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+    pt_dev.put("device_class", xrt_core::query::device_class::enum_to_str(device_class));
+
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;
