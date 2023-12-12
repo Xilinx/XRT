@@ -260,63 +260,6 @@ namespace xdp {
       }
   }
 
-  bool AieProfile_EdgeImpl::isInputSet(const module_type type, const std::string metricSet)
-  {
-    // Catch memory tile sets
-    if (type == module_type::mem_tile) {
-      if ((metricSet.find("input") != std::string::npos)
-          || (metricSet.find("s2mm") != std::string::npos))
-        return true;
-      else
-        return false;
-    }
-
-    // Remaining covers interface tiles
-    if ((metricSet.find("input") != std::string::npos)
-        || (metricSet.find("mm2s") != std::string::npos))
-      return true;
-    else
-      return false;
-  }
-
-  bool AieProfile_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
-  {
-    // AIE tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) 
-        && (event < XAIE_EVENT_GROUP_BROADCAST_CORE))
-      return true;
-    // Interface tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
-        && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
-      return true;
-    // Memory tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
-        && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
-      return true;
-
-    return false;
-  }
-
-  bool AieProfile_EdgeImpl::isPortRunningEvent(const XAie_Events event)
-  {
-    std::set<XAie_Events> runningEvents = {
-      XAIE_EVENT_PORT_RUNNING_0_CORE,     XAIE_EVENT_PORT_RUNNING_1_CORE,
-      XAIE_EVENT_PORT_RUNNING_2_CORE,     XAIE_EVENT_PORT_RUNNING_3_CORE,
-      XAIE_EVENT_PORT_RUNNING_4_CORE,     XAIE_EVENT_PORT_RUNNING_5_CORE,
-      XAIE_EVENT_PORT_RUNNING_6_CORE,     XAIE_EVENT_PORT_RUNNING_7_CORE,
-      XAIE_EVENT_PORT_RUNNING_0_PL,       XAIE_EVENT_PORT_RUNNING_1_PL,
-      XAIE_EVENT_PORT_RUNNING_2_PL,       XAIE_EVENT_PORT_RUNNING_3_PL,
-      XAIE_EVENT_PORT_RUNNING_4_PL,       XAIE_EVENT_PORT_RUNNING_5_PL,
-      XAIE_EVENT_PORT_RUNNING_6_PL,       XAIE_EVENT_PORT_RUNNING_7_PL,
-      XAIE_EVENT_PORT_RUNNING_0_MEM_TILE, XAIE_EVENT_PORT_RUNNING_1_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_2_MEM_TILE, XAIE_EVENT_PORT_RUNNING_3_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_4_MEM_TILE, XAIE_EVENT_PORT_RUNNING_5_MEM_TILE,
-      XAIE_EVENT_PORT_RUNNING_6_MEM_TILE, XAIE_EVENT_PORT_RUNNING_7_MEM_TILE
-    };
-
-    return (runningEvents.find(event) != runningEvents.end());
-  }
-
   bool AieProfile_EdgeImpl::isPortTlastEvent(const XAie_Events event)
   {
     switch (event) {
@@ -360,7 +303,7 @@ namespace xdp {
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
     else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
-      uint32_t bitMask = isInputSet(type, metricSet) 
+      uint32_t bitMask = aie::isInputSet(type, metricSet) 
           ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
           : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
       XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
@@ -384,7 +327,7 @@ namespace xdp {
       // Ensure applicable event
       auto startEvent = startEvents.at(i);
       auto endEvent = endEvents.at(i);
-      if (!isStreamSwitchPortEvent(startEvent))
+      if (!aie::profile::isStreamSwitchPortEvent(startEvent))
         continue;
 
       bool newPort = false;
@@ -413,11 +356,11 @@ namespace xdp {
             portName = (traceSelect == 0) ? "core trace" : "memory trace";
           }
           else {
-            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            auto slaveOrMaster = aie::aie::isInputSet(type, metricSet) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
 
             channelNum = channel;
-            portName = aie::isInputSet(type, metricSet) ? "DMA MM2S" : "DMA S2MM";
+            portName = aie::aie::isInputSet(type, metricSet) ? "DMA MM2S" : "DMA S2MM";
           }
 
           if (aie::isDebugVerbosity()) {
@@ -440,7 +383,7 @@ namespace xdp {
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
           }
           else {
-            auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
           }
         }
@@ -451,7 +394,7 @@ namespace xdp {
       // Event options:
       //   getSSIdleEvent, getSSRunningEvent, getSSStalledEvent, & getSSTlastEvent
       XAie_Events ssEvent;
-      if (isPortRunningEvent(startEvent))
+      if (aie::profile::isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
       else if (isPortTlastEvent(startEvent))
         switchPortRsc->getSSTlastEvent(ssEvent);
@@ -481,7 +424,7 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
+    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
@@ -506,7 +449,7 @@ namespace xdp {
     // 2. Channel IDs for memory tiles
     if (type == module_type::mem_tile) {
       // NOTE: value = ((master or slave) << 8) & (channel ID)
-      uint8_t isMaster = isInputSet(type, metricSet) ? 1 : 0;
+      uint8_t isMaster = aie::isInputSet(type, metricSet) ? 1 : 0;
       return ((isMaster << 8) | channel);
     }
 
@@ -585,25 +528,6 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
-  uint16_t AieProfile_EdgeImpl::getRelativeRow(uint16_t absRow)
-  {
-    auto rowOffset = metadata->getAIETileRowOffset();
-    if (absRow == 0)
-      return 0;
-    if (absRow < rowOffset)
-      return (absRow - 1);
-    return (absRow - rowOffset);
-  }
-
-  module_type 
-  AieProfile_EdgeImpl::getModuleType(uint16_t absRow, XAie_ModuleType mod)
-  {
-    if (absRow == 0)
-      return module_type::shim;
-    if (absRow < metadata->getAIETileRowOffset())
-      return module_type::mem_tile;
-    return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
-  }
 
   bool AieProfile_EdgeImpl::isValidType(module_type type, XAie_ModuleType mod)
   {
@@ -683,7 +607,7 @@ namespace xdp {
         auto col         = tile.col;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
-        auto type        = getModuleType(row, mod);
+        auto type        = aie::getModuleType(row, mod);
         if (!isValidType(type, mod))
           continue;
 
@@ -814,7 +738,7 @@ namespace xdp {
 
       std::vector<uint64_t> values;
       values.push_back(aie->column);
-      values.push_back(getRelativeRow(aie->row));
+      values.push_back(aie::getRelativeRow(aie->row, metadata->getAIETileRowOffset()));
       values.push_back(aie->startEvent);
       values.push_back(aie->endEvent);
       values.push_back(aie->resetEvent);
@@ -837,7 +761,7 @@ namespace xdp {
       if ((aie->column != prevColumn) || (aie->row != prevRow)) {
         prevColumn = aie->column;
         prevRow = aie->row;
-        auto moduleType = getModuleType(aie->row, XAIE_CORE_MOD);
+        auto moduleType = aie::getModuleType(aie->row, metadata->getAIETileRowOffset());
         auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
                             : XAIE_MEM_MOD);
