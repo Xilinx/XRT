@@ -359,11 +359,11 @@ namespace xdp {
             portName = (traceSelect == 0) ? "core trace" : "memory trace";
           }
           else {
-            auto slaveOrMaster = aie::aie::isInputSet(type, metricSet) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
 
             channelNum = channel;
-            portName = aie::aie::isInputSet(type, metricSet) ? "DMA MM2S" : "DMA S2MM";
+            portName = aie::isInputSet(type, metricSet) ? "DMA MM2S" : "DMA S2MM";
           }
 
           if (aie::isDebugVerbosity()) {
