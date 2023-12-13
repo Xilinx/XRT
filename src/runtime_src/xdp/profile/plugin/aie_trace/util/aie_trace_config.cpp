@@ -171,6 +171,9 @@ namespace xdp::aie::trace {
       return comboEvents;
     }
 
+    // Combo events do not auto-broadcast from core to memory module,
+    // so let's avoid the complexity and find a different method. 
+#if 0
     // Below is for memory modules
 
     // Memory_Combo0 = (Active OR Group_Stream_Switch)
@@ -196,6 +199,12 @@ namespace xdp::aie::trace {
     opts1.push_back(XAIE_EVENT_COMBO_E1_AND_E2);
     
     comboEvent1->setEvents(events1, opts1);
+#else
+    // Since we're tracing DMA events, start trace right away.
+    // Specify user event 0 as trace end so we can flush after run.
+    comboEvents.push_back(XAIE_EVENT_TRUE_MEM);
+    comboEvents.push_back(XAIE_EVENT_USER_EVENT_0_MEM);
+#endif
     return comboEvents;
   }
 

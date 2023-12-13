@@ -99,7 +99,7 @@ namespace xdp {
     // Core trace start/end: these are also broadcast to memory module
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     mCoreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
-.
+
     // Memory/interface tile trace is flushed at end of run
     mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
     mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;

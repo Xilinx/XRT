@@ -52,7 +52,7 @@ namespace xdp::aie::trace {
    * @param xaieTile   Tile instance in FAL/resource manager
    * @param type       Module/tile type
    * @param metricSet  Name of requested metric set
-   * @return Vector of combo events
+   * @return Vector of events to use for trace start and end
    */
   std::vector<XAie_Events>
   configComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieTile& xaieTile, 
