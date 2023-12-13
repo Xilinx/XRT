@@ -305,10 +305,7 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
                                     "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
   int exit_code;
   try {
-    if (py.find(".exe") != std::string::npos)
-      exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
-    else
-      exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
+    exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr);
 
     if (exit_code == EOPNOTSUPP) {
       _ptTest.put("status", test_token_skipped);
