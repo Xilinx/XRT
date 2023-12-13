@@ -243,7 +243,7 @@ TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_nam
 }
 
 /*
- * helper funtion for kernel and bandwidth test cases
+ * helper funtion for kernel and bandwidth python test cases when there is no platform.json
  * Steps:
  * 1. Find xclbin after determining if the shell is 1RP or 2RP
  * 2. Find testcase
@@ -251,7 +251,7 @@ TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_nam
  * 4. Check results
  */
 void
-TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
+TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
              boost::property_tree::ptree& _ptTest)
 {
   const auto xclbin = _ptTest.get<std::string>("xclbin", "");
@@ -273,11 +273,6 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
   logger(_ptTest, "Xclbin", xclbin_parent_path);
 
   std::string platform_path = findPlatformPath(_dev, _ptTest);
-  auto json_exists = [platform_path]() {
-    const static std::string platform_metadata = "/platform.json";
-    std::string platform_json_path(platform_path + platform_metadata);
-    return std::filesystem::exists(platform_json_path) ? true : false;
-  };
 
   // Some testcases require additional binaries to be present on the device
   std::string dependency_args;
@@ -294,101 +289,41 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
     #define XRT_TEST_CASE_DIR "/opt/xilinx/xrt/test/"
 #endif
 
-  if (json_exists()) {
-    //map old testcase names to new testcase names
-    static const std::map<std::string, std::string> test_map = {
-      { "22_verify.py",             "validate.exe"    },
-      { "23_bandwidth.py",          "kernel_bw.exe"   },
-      { "versal_23_bandwidth.py",   "kernel_bw.exe"   },
-      { "host_mem_23_bandwidth.py", "hostmemory.exe"  },
-      { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
-      { "xcl_iops_test.exe",        "xcl_iops_test.exe"},
-      { "aie_pl.exe",               "aie_pl.exe"}
-    };
-
-    // Validate the legacy names
-    // If no legacy name exists use the passed in test name
-    std::string test_name = py;
-    if (test_map.find(py) != test_map.end())
-      test_name = test_map.find(py)->second;
-
-    // Parse if the file exists here
-    std::string  xrtTestCasePath = XRT_TEST_CASE_DIR + test_name;
-    std::filesystem::path xrt_path(xrtTestCasePath);
-    if (!std::filesystem::exists(xrt_path)) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-      _ptTest.put("status", test_token_failed);
-      return;
-    }
-
-    // log testcase path for debugging purposes
-    logger(_ptTest, "Testcase", xrtTestCasePath);
-
-    std::vector<std::string> args = { "-x", xclbinPath,
-                                      "-p", platform_path,
-                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-
-    if (!dependency_args.empty()) {
-      args.push_back("-i");
-      args.push_back(dependency_args);
-    }
-
-    try {
-      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
-      if (exit_code == EOPNOTSUPP) {
-        _ptTest.put("status", test_token_skipped);
-      }
-      else if (exit_code == EXIT_SUCCESS) {
-        _ptTest.put("status", test_token_passed);
-      }
-      else {
-        logger(_ptTest, "Error", os_stdout.str());
-        logger(_ptTest, "Error", os_stderr.str());
-        _ptTest.put("status", test_token_failed);
-      }
-    } catch (const std::exception& e) {
-      logger(_ptTest, "Error", e.what());
-      _ptTest.put("status", test_token_failed);
-    }
+  //Check if testcase is present
+  std::string xrtTestCasePath = XRT_TEST_CASE_DIR + py;
+  std::filesystem::path xrt_path(xrtTestCasePath);
+  if (!std::filesystem::exists(xrt_path)) {
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", test_token_failed);
+    return;
   }
-  else {
-    //check if testcase is present
-    std::string xrtTestCasePath = XRT_TEST_CASE_DIR + py;
-    std::filesystem::path xrt_path(xrtTestCasePath);
-    if (!std::filesystem::exists(xrt_path)) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-      _ptTest.put("status", test_token_failed);
-      return;
+  // log testcase path for debugging purposes
+  logger(_ptTest, "Testcase", xrtTestCasePath);
+
+  std::vector<std::string> args = { "-k", xclbinPath,
+                                    "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+  int exit_code;
+  try {
+    if (py.find(".exe") != std::string::npos)
+      exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
+    else
+      exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
+
+    if (exit_code == EOPNOTSUPP) {
+      _ptTest.put("status", test_token_skipped);
     }
-    // log testcase path for debugging purposes
-    logger(_ptTest, "Testcase", xrtTestCasePath);
-
-    std::vector<std::string> args = { "-k", xclbinPath,
-                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-    int exit_code;
-    try {
-      if (py.find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
-      else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", max_test_duration, os_stdout, os_stderr);
-
-      if (exit_code == EOPNOTSUPP) {
-        _ptTest.put("status", test_token_skipped);
-      }
-      else if (exit_code == EXIT_SUCCESS) {
-        _ptTest.put("status", test_token_passed);
-      }
-      else {
-        logger(_ptTest, "Error", os_stdout.str());
-        logger(_ptTest, "Error", os_stderr.str());
-        _ptTest.put("status", test_token_failed);
-      }
-    } catch (const std::exception& e) {
-      logger(_ptTest, "Error", e.what());
+    else if (exit_code == EXIT_SUCCESS) {
+      _ptTest.put("status", test_token_passed);
+    }
+    else {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
       _ptTest.put("status", test_token_failed);
     }
+  } catch (const std::exception& e) {
+    logger(_ptTest, "Error", e.what());
+    _ptTest.put("status", test_token_failed);
   }
 
   // Get out max thruput for bandwidth testcase
@@ -407,14 +342,6 @@ TestRunner::runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const st
         logger(_ptTest, "Details", os_stdout.str().substr(str, end - str));
         str = os_stdout.str().find("Throughput" , end);
       }
-    }
-  }
-
-  if (py.compare("xcl_iops_test.exe") == 0) {
-    auto st = os_stdout.str().find("IOPS:");
-    if (st != std::string::npos) {
-      size_t end = os_stdout.str().find("\n", st);
-      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
   }
 }
