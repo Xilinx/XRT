@@ -600,7 +600,7 @@ namespace xdp {
 
       std::stringstream cmsg;
       cmsg << "Configuring tile (" << col << "," << row << ") in module type: " << typeInt << ".";
-      xrt_core::message::send(severity_level::warning, "XRT", cmsg.str());
+      xrt_core::message::send(severity_level::info, "XRT", cmsg.str());
 
       // xaiefal::XAieMod core;
       // xaiefal::XAieMod memory;
