@@ -18,6 +18,7 @@
 #define AIE_PROFILE_UTIL_DOT_H
 
 #include <cstdint>
+#include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
 extern "C" {
@@ -26,6 +27,29 @@ extern "C" {
 }
 
 namespace xdp::aie::profile {
+
+  const std::vector<XAie_Events> sSEventList = {
+    XAIE_EVENT_PORT_RUNNING_0_CORE,
+    XAIE_EVENT_PORT_STALLED_0_CORE,
+    XAIE_EVENT_PORT_RUNNING_0_PL,
+    XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
+    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
+    XAIE_EVENT_PORT_TLAST_0_MEM_TILE
+  };
+
+  const std::map<xdp::module_type, uint16_t> counterBases = {
+    {module_type::core,     static_cast<uint16_t>(0)},
+    {module_type::dma,      BASE_MEMORY_COUNTER},
+    {module_type::shim,     BASE_SHIM_COUNTER},
+    {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
+  };
+
+  const std::vector<XAie_ModuleType> falModuleTypes = {
+    XAIE_CORE_MOD,
+    XAIE_MEM_MOD,
+    XAIE_PL_MOD,
+    XAIE_MEM_MOD
+  };
 
   /**
    * @brief   Get metric sets for core modules
@@ -74,6 +98,13 @@ namespace xdp::aie::profile {
    * @return  
    */
   XAie_ModuleType getFalModuleType(int moduleIndex);
+
+  /**
+   * @brief Get base event number for a module
+   * @param type module type
+   * @return  
+   */
+  uint16_t getCounterBase(xdp::module_type type);
 
 }  // namespace xdp::aie::profile
 

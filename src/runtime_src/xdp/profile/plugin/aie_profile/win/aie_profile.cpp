@@ -273,8 +273,8 @@ namespace xdp {
           uint8_t tmpEnd;
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, startEvent, &tmpStart);
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod,   endEvent, &tmpEnd);
-          uint16_t phyStartEvent = tmpStart + mCounterBases[type];
-          uint16_t phyEndEvent   = tmpEnd   + mCounterBases[type];
+          uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(type);
+          uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(type);
           // auto payload = getCounterPayload(tileMetric.first, type, col, row, 
           //                                  startEvent, metricSet, channel0);
           auto payload = channel0;

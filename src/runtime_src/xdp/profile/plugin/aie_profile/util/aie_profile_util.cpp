@@ -38,29 +38,6 @@
 namespace xdp::aie::profile {
   using severity_level = xrt_core::message::severity_level;
 
-  const std::vector<XAie_Events> mSSEventList = {
-    XAIE_EVENT_PORT_RUNNING_0_CORE,
-    XAIE_EVENT_PORT_STALLED_0_CORE,
-    XAIE_EVENT_PORT_RUNNING_0_PL,
-    XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-    XAIE_EVENT_PORT_TLAST_0_MEM_TILE
-  };
-
-  const std::map<xdp::module_type, uint16_t> mCounterBases = {
-    {module_type::core,     0},
-    {module_type::dma,      BASE_MEMORY_COUNTER},
-    {module_type::shim,     BASE_SHIM_COUNTER},
-    {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
-  };
-
-  const std::vector<XAie_ModuleType> falModuleTypes = {
-    XAIE_CORE_MOD,
-    XAIE_MEM_MOD,
-    XAIE_PL_MOD,
-    XAIE_MEM_MOD
-  };
-
   /****************************************************************************
    * Get metric sets for core modules
    ***************************************************************************/
@@ -228,7 +205,7 @@ namespace xdp::aie::profile {
    ***************************************************************************/
   bool isStreamSwitchPortEvent(const XAie_Events event)
   {
-    return (std::find(mSSEventList.begin(), mSSEventList.end(), event) != mSSEventList.end());
+    return (std::find(sSEventList.begin(), sSEventList.end(), event) != sSEventList.end());
   }
 
   /****************************************************************************
@@ -261,6 +238,15 @@ namespace xdp::aie::profile {
   XAie_ModuleType getFalModuleType(int moduleIndex)
   {
     return falModuleTypes[moduleIndex];
+  }
+
+  /****************************************************************************
+   * Get base event number for a module
+   ***************************************************************************/
+
+  uint16_t getCounterBase(xdp::module_type type)
+  {
+    return counterBases.at(type);
   }
 
 } // namespace xdp::aie
