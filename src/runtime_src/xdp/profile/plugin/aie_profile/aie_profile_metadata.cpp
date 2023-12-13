@@ -147,7 +147,7 @@ namespace xdp {
 
       if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting Debug." << pos->first << " is deprecated. "
+        msg << "The setting Debug." << pos->first << " is no longer supported. "
             << "Please instead use " << iter->second << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }

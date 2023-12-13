@@ -167,7 +167,7 @@ namespace xdp {
       auto iter = deprecatedSettings.find(pos->first);
       if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting Debug." << pos->first << " is deprecated. "
+        msg << "The setting Debug." << pos->first << " is no longer supported. "
             << "Please instead use " << iter->second << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }
@@ -317,20 +317,20 @@ namespace xdp {
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), 
                      tileCompare);
 
-    // STEP 1 : Parse per-graph or per-kernel settings
+    // STEP 1 : Parse per-graph and/or per-kernel settings
 
-    /* AIE_trace_settings config format
-     * Multiple values can be specified separated with ';'
+    /* 
+     * AIE_trace_settings config format
+     * NOTE: Multiple values can be separated with ';'
      *
      * AI Engine Tiles
-     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>
-     *   :<off|functions|functions_partial_stalls|functions_all_stalls|functions_dma|all>
+     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<metric set>
      *
      * Memory Tiles (AIE2 and beyond)
-     * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>
-     *   :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>:<metric set>[:<channel 1>][:<channel 2>]
      */
 
+    std::set<size_t> processed;
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
 
     // Graph Pass 1 : process only "all" metric setting
@@ -350,9 +350,11 @@ namespace xdp {
         for (size_t j = 1; j < allValidKernels.size(); j++)
           msg << ", " << allValidKernels[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        processed.insert(i);
         continue;
       }
 
+      processed.insert(i);
       auto tiles = metadataReader->getTiles(graphMetrics[i][0], type, graphMetrics[i][1]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
@@ -376,8 +378,8 @@ namespace xdp {
 
     // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
-      // Check if already processed or if invalid
-      if (graphMetrics[i][0].compare("all") == 0)
+      // Check if already processed or if invalid kernel
+      if ((processed.find(i) != processed.end()) || (graphMetrics[i].size() < 3))
         continue;
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
@@ -412,27 +414,27 @@ namespace xdp {
       }
     } // Graph Pass 2
 
+    processed.clear();
+
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
     /*
+     * AIE_trace_settings config format
+     * NOTE: Multiple values can be separated with ';' 
+     * 
      * AI Engine Tiles
      * Single or all tiles
-     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>
-     *     :<off|functions|functions_partial_stalls|functions_all_stalls|functions_dma|all>
+     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>:<metric set>
      * Range of tiles
-     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
-     *     :<off|functions|functions_partial_stalls|functions_all_stalls|functions_dma|all>
+     * tile_based_aie_tile_metrics = <mincolumn,<minrow>:<maxcolumn>,<maxrow>:<metric set>
      *  
      * Memory Tiles (AIE2 and beyond)
      * Single or all tiles
-     * tile_based_memory_tile_metrics = <{<column>,<row>}|all>
-     *     :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_memory_tile_metrics = <column>,<row>|all>:<metric set>[:<channel 1>][:<channel 2>]
      * Range of tiles
-     * tile_based_memory_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}
-     *     :<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_memory_tile_metrics = <mincolumn,<minrow>:<maxcolumn>,<maxrow>:<metric set>[:<channel 1>][:<channel 2>]
      */
 
-    std::set<size_t> processed;
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting 
@@ -537,7 +539,7 @@ namespace xdp {
           
           configMetrics[tile] = metrics[i][2];
 
-          // Grab channel numbers (if specified; memory tiles only)
+          // Grab channel numbers (if specified; memory .tiles only)
           if (metrics[i].size() > 3) {
             configChannel0[tile] = channel0;
             configChannel1[tile] = channel1;
@@ -548,8 +550,8 @@ namespace xdp {
 
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      // Check if already processed
-      if (processed.find(i) != processed.end())
+      // Check if already processed or invalid format
+      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
 
       uint16_t col = 0;
@@ -599,6 +601,8 @@ namespace xdp {
         }
       }
     } // Pass 3 
+
+    processed.clear();
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
@@ -653,11 +657,16 @@ namespace xdp {
     auto allValidPorts  = metadataReader->getValidPorts();
     
     // STEP 1 : Parse per-graph or per-kernel settings
-    /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
+
+    /* 
+     * AIE_trace_settings config format
+     * NOTE: Multiple values can be separated with ';'
+     * 
      * Interface Tiles
-     * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<ports|input_ports|input_ports_stalls|output_ports|output_ports_stalls>[:<channel 1>][:<channel 2>]
+     * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<metric set>[:<channel 1>][:<channel 2>]
      */
 
+    std::set<size_t> processed;
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
 
     // Graph Pass 1 : process only "all" metric setting
@@ -665,8 +674,8 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
 
-      // Check if graph is not all or if invalid port
-      if (graphMetrics[i][0].compare("all") != 0)
+      // Check if graph is not all, invalid format, or invalid port
+      if ((graphMetrics[i][0].compare("all") != 0) || (graphMetrics[i].size() < 3))
         continue;
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
@@ -677,6 +686,7 @@ namespace xdp {
         for (size_t j = 1; j < allValidPorts.size(); j++)
           msg << ", " + allValidPorts[j];
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        processed.insert(i);
         continue;
       }
 
@@ -685,7 +695,7 @@ namespace xdp {
         configMetrics[e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; memory tiles only)
+      // Grab channel numbers (if specified)
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
@@ -703,8 +713,8 @@ namespace xdp {
 
     // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
-      // Check if already processed or if invalid
-      if (graphMetrics[i][0].compare("all") == 0)
+      // Check if already processed, invalid format, or invalid port
+      if ((processed.find(i) != processed.end()) || (graphMetrics[i].size() < 3))
         continue;
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidPorts.begin(), allValidPorts.end(), graphMetrics[i][1]) == allValidPorts.end())) {
@@ -723,7 +733,7 @@ namespace xdp {
         configMetrics[e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; memory tiles only)
+      // Grab channel numbers (if specified)
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
@@ -739,15 +749,19 @@ namespace xdp {
       }
     } // Graph Pass 2
 
+    processed.clear();
+
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
-    /* AIE_trace_settings config format ; Multiple values can be specified for
-     * a metric separated with ';' Single or all tiles
-     * tile_based_interface_tile_metrics =
-     * [[<column|all>:<off|ports|input_ports|input_ports_stalls|output_ports|output_ports_stalls>[:<channel 1>][:<channel 2>]]
+    /* 
+     * AIE_trace_settings config format
+     * NOTE: Multiple values can be separated with ';' 
+     * 
+     * Single or all tiles
+     * tile_based_interface_tile_metrics = <column|all>:<metric set>[:<channel>]
+     * 
      * Range of tiles
-     * tile_based_interface_tile_metrics =
-     * [<mincolumn>:<maxcolumn>:<off|ports|input_ports|input_ports_stalls|output_ports|output_ports_stalls>[:<channel 1>][:<channel 2>]]]
+     * tile_based_interface_tile_metrics = <mincolumn>:<maxcolumn>:<metric set>[:<channel>]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
@@ -757,9 +771,11 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
-      if (metrics[i][0].compare("all") != 0)
+      // Check if not all tiles or invalid format
+      if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
+      processed.insert(i);
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
 
@@ -771,7 +787,7 @@ namespace xdp {
 
     // Pass 2 : process only range of tiles metric setting
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
+      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
 
       uint32_t maxCol = 0;
@@ -779,15 +795,16 @@ namespace xdp {
         maxCol = std::stoi(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
-        // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
+        // Max column is not an integer, so either first style or wrong format. Skip for now.
         continue;
       }
+
       uint32_t minCol = 0;
       try {
         minCol = std::stoi(metrics[i][0]);
       }
       catch (std::invalid_argument const&) {
-        // 2nd style but expected min column is not an integer, give warning and skip
+        // Second style but expected min column is not an integer. Give warning and skip.
         xrt_core::message::send(severity_level::warning, "XRT",
                                 "Minimum column specification in "
                                 "tile_based_interface_tile_metrics is not "
@@ -801,7 +818,7 @@ namespace xdp {
           channelId = static_cast<uint8_t>(std::stoul(metrics[i][3]));
         }
         catch (std::invalid_argument const&) {
-          // Expected channel Id is not an integer, give warning and ignore
+          // Expected channel Id is not an integer. Give warning and ignore.
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Channel ID specification in "
                                   "tile_based_interface_tile_metrics is "
@@ -809,6 +826,7 @@ namespace xdp {
         }
       }
 
+      processed.insert(i);
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
                                           channelId, true, minCol, maxCol);
 
@@ -820,8 +838,8 @@ namespace xdp {
 
     // Pass 3 : process only single tile metric setting
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      // Skip range specification, invalid format, or already processed
-      if ((metrics[i].size() == 4) || (metrics[i].size() < 2) || (metrics[i][0].compare("all") == 0))
+      // Skip if already processed or invalid format
+      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 2))
         continue;
 
       uint32_t col = 0;
@@ -829,12 +847,12 @@ namespace xdp {
         col = std::stoi(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
-        // max column is not a number, so the expected single column specification. Handle this here
+        // Max column is not an integer, so expected single column specification. Handle this here.
         try {
           col = std::stoi(metrics[i][0]);
         }
         catch (std::invalid_argument const&) {
-          // Expected column specification is not a number. Give warning and skip
+          // Expected column specification is not an integer. Give warning and skip.
           xrt_core::message::send(severity_level::warning, "XRT",
                                   "Column specification in tile_based_interface_tile_metrics "
                                   "is not an integer and hence skipped.");
@@ -864,6 +882,8 @@ namespace xdp {
         }
       }
     }  // Pass 3
+
+    processed.clear();
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
