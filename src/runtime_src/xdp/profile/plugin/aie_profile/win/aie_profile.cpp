@@ -88,6 +88,8 @@ namespace xdp {
   AieProfile_WinImpl::
   setMetricsSettings(uint64_t deviceId)
   {
+    xrt_core::message::send(severity_level::info, "XRT", "Setting AIE Profile Metrics Settings.");
+
     int counterId = 0;
     bool runtimeCounters = false;
     // inputs to the DPU kernel
@@ -154,7 +156,7 @@ namespace xdp {
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
 
         // Modify events as needed
-        modifyEvents(type, subtype, channel0, startEvents, metadata->getHardwareGen());
+        aie::profile::modifyEvents(type, subtype, channel0, startEvents, metadata->getHardwareGen());
         endEvents = startEvents;
 
         configEventSelections(loc, type, metricSet, channel0);

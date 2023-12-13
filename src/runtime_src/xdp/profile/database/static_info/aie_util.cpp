@@ -97,7 +97,8 @@ namespace xdp::aie {
     }
 
     // We could not determine the type
-    return nullptr;
+    //return nullptr;
+    return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
   }
 
   // *****************************************************************

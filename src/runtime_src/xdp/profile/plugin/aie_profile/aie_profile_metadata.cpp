@@ -41,20 +41,23 @@ namespace xdp {
                             "XRT", "Parsing AIE Profile Metadata.");
 
     #ifdef XDP_MINIMAL_BUILD
-
-    metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
-    
+      metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
+      xrt_core::message::send(severity_level::info,
+                            "XRT", "Successfully Read AIE Profile Metadata.");
     #else
+      auto device = xrt_core::get_userpf_device(handle);
+      auto data = device->get_axlf_section(AIE_METADATA);
 
-    auto device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-
-    metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
-
+      metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
     #endif
 
-    if (metadataReader == nullptr)
+    if (metadataReader == nullptr) {
+      xrt_core::message::send(severity_level::error,
+                            "XRT", "Error parsing AIE Profiling Metadata.");
+
       return;
+    }
+
     
     #ifdef XDP_MINIMAL_BUILD
     metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
@@ -101,6 +104,8 @@ namespace xdp {
         getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
     }
 
+    xrt_core::message::send(severity_level::info,
+                            "XRT", "Finished Parsing AIE Profile Metadata."); 
   }
 
   bool tileCompare(tile_type tile1, tile_type tile2)

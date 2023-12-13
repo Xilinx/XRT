@@ -201,10 +201,9 @@ namespace xdp::aie::profile {
   }
 
   /****************************************************************************
-   * Modify configured events based on the channel and hardware generation
-   ***************************************************************************/
-  
-  void AieProfile_EdgeImpl::modifyEvents(module_type type, uint16_t subtype, uint8_t channel,
+  * Modify configured events based on the channel and hardware generation
+  ***************************************************************************/
+  void modifyEvents(module_type type, uint16_t subtype, uint8_t channel,
                                          std::vector<XAie_Events>& events, int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
