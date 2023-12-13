@@ -20,14 +20,14 @@ jobs:
         include:      
           - os: centos78      
             packageType: rpm      
-          - os: centos8      
-            packageType: rpm      
-          - os: rhel9      
-            packageType: rpm      
-          - os: ubuntu2004      
-            packageType: deb      
-          - os: ubuntu2204      
-            packageType: deb      
+          # - os: centos8      
+          #   packageType: rpm      
+          # - os: rhel9      
+          #   packageType: rpm      
+          # - os: ubuntu2004      
+          #   packageType: deb      
+          # - os: ubuntu2204      
+          #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -102,45 +102,45 @@ jobs:
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
 
-  apu-package-build:  
-    runs-on: apu
-    # runs-on: Ubuntu-20.04
-    steps:      
-      - name: Set env variables    
-        run: |    
-          echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+  # apu-package-build:  
+  #   runs-on: apu
+  #   # runs-on: Ubuntu-20.04
+  #   steps:      
+  #     - name: Set env variables    
+  #       run: |    
+  #         echo "Setting environment variables..."      
+  #         echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
-      - name: Checkout PR   
-        uses: actions/checkout@v3 
-        with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
-          fetch-depth: 0
-          github-server-url: "https://github.com" 
-          token: ${{ secrets.CI_CLOUD_TOKEN}}
-          path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive  
+  #     - name: Checkout PR   
+  #       uses: actions/checkout@v3 
+  #       with: 
+  #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
+  #         ref: "${{ github.event.pull_request.head.ref }}"
+  #         fetch-depth: 0
+  #         github-server-url: "https://github.com" 
+  #         token: ${{ secrets.CI_CLOUD_TOKEN}}
+  #         path: ${{ github.workspace }}/${{ github.run_number }}  
+  #         submodules: recursive  
 
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows   
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows   
        
-      - name: Apu package build for XRT     
-        uses: ./composite-workflows/apu-package
-        with:     
-          pipeline: ${{ env.PIPELINE }}   
-          workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }}    
-          apuPackage: 'True' 
-          release: ${{ env.RELEASE }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
+  #     - name: Apu package build for XRT     
+  #       uses: ./composite-workflows/apu-package
+  #       with:     
+  #         pipeline: ${{ env.PIPELINE }}   
+  #         workspace: ${{ github.workspace }}  
+  #         buildNumber: ${{ github.run_number }}    
+  #         apuPackage: 'True' 
+  #         release: ${{ env.RELEASE }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
 
   package-download:    
     needs: build    
