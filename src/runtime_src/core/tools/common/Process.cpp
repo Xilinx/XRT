@@ -34,7 +34,6 @@
 #endif
 
 // Local - Include Files
-#include "BusyBar.h"
 #include "EscapeCodes.h"
 #include "Process.h"
 #include "XBUtilitiesCore.h"
@@ -138,8 +137,6 @@ unsigned int
 XBUtilities::runScript( const std::string & env,
                         const std::string & script,
                         const std::vector<std::string> & args,
-                        const std::string & running_description,
-                        const std::chrono::seconds & max_duration_s,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr)
 {
@@ -158,25 +155,15 @@ XBUtilities::runScript( const std::string & env,
   }
   cmd += script + " " + args_str.str();
 
-  BusyBar busy_bar(running_description, std::cout); 
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
   bool is_thread_running = true;
 
   // Start the test process
-  // std::thread test_thread(run_script, cmd, std::ref(os_stdout), std::ref(os_stderr), std::ref(is_thread_running));
   std::thread test_thread([&] { run_script(cmd, os_stdout, os_stderr, is_thread_running); });
   // Wait for the test process to finish
   while (is_thread_running) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    try {
-      busy_bar.check_timeout(max_duration_s);
-    } catch (const std::exception& ex) {
-      test_thread.detach();
-      throw;
-    }
   }
   test_thread.join();
-  busy_bar.finish();
 
   bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
   bool skipped = (os_stdout.str().find("NOT SUPPORTED") != std::string::npos) ? true : false;
@@ -214,8 +201,6 @@ unsigned int
 XBUtilities::runScript( const std::string & env,
                         const std::string & script,
                         const std::vector<std::string> & args,
-                        const std::string & running_description,
-                        const std::chrono::seconds& max_running_duration,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr)
 {
@@ -239,9 +224,6 @@ XBUtilities::runScript( const std::string & env,
   boost::process::environment _env = boost::this_process::environment();
   _env.erase("XCL_EMULATION_MODE");
 
-  BusyBar run_test(running_description, std::cout);
-  run_test.start(XBUtilities::is_escape_codes_disabled());
-
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
   boost::process::ipstream ip_stderr;
@@ -254,12 +236,10 @@ XBUtilities::runScript( const std::string & env,
   // Wait for the process to finish
   while (runningProcess.running()) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    run_test.check_timeout(max_running_duration);
   }
 
   // Not really needed, but should be added for completeness 
   runningProcess.wait();
-  run_test.finish();
 
   // boost::process::ipstream::rdbuf() gives conversion error in
   // 1.65.1 Base class is constructed with underlying buffer so just

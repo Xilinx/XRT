@@ -246,6 +246,16 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
     ptree.put("status", test_token_failed);
     return;
   }
+  auto json_exists = [test_path]() {
+    const static std::string platform_metadata = "/platform.json";
+    std::string platform_json_path(test_path + platform_metadata);
+    return std::filesystem::exists(platform_json_path) ? true : false;
+  };
+  if (!json_exists()) {
+    // Without a platform.json, we need to run the python test file.
+    runPyTestCase(dev, "23_bandwidth.py", ptree);
+    return;
+  }
 
   int num_kernel = 0;
   int num_kernel_ddr = 0;
