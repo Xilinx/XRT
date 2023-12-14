@@ -173,7 +173,7 @@ namespace xdp {
           RC = XAie_PerfCounterControlSet(&aieDevInst, loc, mod, i, startEvent, endEvent);
           if(RC != XAIE_OK) break;
 
-          configGroupEvents(loc, mod, startEvent, metricSet, channel0);
+          configGroupEvents(loc, mod, type, startEvent, metricSet, channel0);
           if (aie::profile::isStreamSwitchPortEvent(startEvent))
             configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0);
 
@@ -264,26 +264,27 @@ namespace xdp {
   void
   AieProfile_WinImpl::
   configGroupEvents(
-    const XAie_LocType loc, const XAie_ModuleType mod,
+    const XAie_LocType loc, const XAie_ModuleType mod, const module_type type,
     const XAie_Events event, const std::string& metricSet, uint8_t channel)
   {
     // Set masks for group events
     // NOTE: Group error enable register is blocked, so ignoring
     if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
+      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_DMA_MASK);
     else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
+      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
     else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
+      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
+      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
     else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
       uint32_t bitMask = aie::isInputSet(type, metricSet) 
           ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
           : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
+      XAie_EventGroupControl(&aieDevInst, loc, mod, event, bitMask);
+    }
   }
 
   // Configure stream switch ports for monitoring purposes
