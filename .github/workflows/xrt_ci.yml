@@ -3,7 +3,7 @@ name: XRT CI
 env:  
   RELEASE: '2024.1'  
   PIPELINE: 'xrt' 
-  ENV: 'test' 
+  ENV: 'prod' 
 
 on:
   pull_request_target:
