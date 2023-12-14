@@ -116,18 +116,26 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for interface tiles
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets()
+  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
       {"packets",                 {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
       {"input_throughputs",       {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
       {"output_throughputs",      {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"input_stalls",            {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
-      {"output_stalls",           {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL}}
     };
+
+    if (hwGen == 1) {
+      eventSets["input_stalls"] =  {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                   XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["output_stalls"] = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                   XAIE_EVENT_PORT_IDLE_0_PL};
+    } else {
+      eventSets["input_stalls"] =  {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
+      eventSets["output_stalls"] = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                   XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
+    }
     eventSets["mm2s_throughputs"] = eventSets["input_throughputs"];
     eventSets["s2mm_throughputs"] = eventSets["output_throughputs"];
     eventSets["mm2s_stalls"]      = eventSets["input_stalls"];

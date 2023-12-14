@@ -83,7 +83,7 @@ namespace xdp {
     mMemoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
     mMemoryEndEvents = mMemoryStartEvents;
 
-    mShimStartEvents = aie::profile::getInterfaceTileEventSets();
+    mShimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
     mShimEndEvents = mShimStartEvents;
 
     mMemTileStartEvents = aie::profile::getMemoryTileEventSets();

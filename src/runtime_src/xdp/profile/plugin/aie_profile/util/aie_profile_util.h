@@ -69,7 +69,7 @@ namespace xdp::aie::profile {
    * @brief   Get metric sets for interface modules
    * @return  Map of interface metric set names with vectors of event IDs
    */
-  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(int hwGen);
 
   /**
    * @brief   Get metric sets for memory tile modules
