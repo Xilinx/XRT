@@ -323,6 +323,15 @@ namespace xdp::aie::trace {
   }
 
   /****************************************************************************
+   * Check if core module event
+   ***************************************************************************/
+  bool isCoreModuleEvent(const XAie_Events event)
+  {
+    return ((event >= XAIE_EVENT_NONE_CORE) 
+            && (event <= XAIE_EVENT_INSTR_ERROR_CORE));
+  }
+
+  /****************************************************************************
    * Check if stream switch port event
    ***************************************************************************/
   bool isStreamSwitchPortEvent(const XAie_Events event)

@@ -154,18 +154,16 @@ namespace xdp::aie::trace {
     std::vector<XAie_Events> comboEvents;
 
     if (type == module_type::core) {
-      auto comboEvent = xaieTile.core().comboEvent();
+      auto comboEvent = xaieTile.core().comboEvent(4);
       comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_2_CORE);
 
-      std::vector<XAie_Events> events;
-      events.push_back(XAIE_EVENT_PORT_IDLE_0_CORE);
-      events.push_back(XAIE_EVENT_PORT_IDLE_1_CORE);
-      events.push_back(XAIE_EVENT_PORT_IDLE_2_CORE);
-      events.push_back(XAIE_EVENT_PORT_IDLE_3_CORE);
+      // Combo2 = Port_Idle_0 OR Port_Idle_1 OR Port_Idle_2 OR Port_Idle_3
+      std::vector<XAie_Events> events = {XAIE_EVENT_PORT_IDLE_0_CORE,
+          XAIE_EVENT_PORT_IDLE_1_CORE, XAIE_EVENT_PORT_IDLE_2_CORE,
+          XAIE_EVENT_PORT_IDLE_3_CORE};
+      std::vector<XAie_EventComboOps> opts = {XAIE_EVENT_COMBO_E1_OR_E2, 
+          XAIE_EVENT_COMBO_E1_OR_E2, XAIE_EVENT_COMBO_E1_OR_E2};
 
-      std::vector<XAie_EventComboOps> opts;
-      opts.push_back(XAIE_EVENT_COMBO_E1_OR_E2);
-  
       // Set events and trigger on OR of events
       comboEvent->setEvents(events, opts);
       return comboEvents;
