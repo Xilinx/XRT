@@ -93,7 +93,7 @@ namespace xdp {
     inline void addPowerSample(double timestamp, const std::vector<uint64_t>& values)
     { powerSamples.addSample({timestamp, values});  }
     inline std::vector<counters::Sample> getPowerSamples()
-    { return std::move(powerSamples.getSamples()); }
+    { return powerSamples.getSamples(); }
 
     inline void setDeadlockInfo(const std::string& info)
     { deadlockInfo = info; }

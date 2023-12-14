@@ -20,6 +20,7 @@
 // ----------------------- I N C L U D E S -----------------------------------
 
 // #includes here - please keep these to a bare minimum!
+#include <cstdint>
 #include <string>
 #include <sstream>
 
