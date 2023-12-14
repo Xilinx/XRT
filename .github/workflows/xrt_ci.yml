@@ -3,7 +3,7 @@ name: XRT CI
 env:  
   RELEASE: '2024.1'  
   PIPELINE: 'xrt' 
-  ENV: 'prod' 
+  ENV: 'test' 
 
 on:
   pull_request_target:
@@ -54,7 +54,8 @@ jobs:
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows   
+          path: composite-workflows
+          ref: test   
        
       - name: XRT build     
         uses: ./composite-workflows/build
