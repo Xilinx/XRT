@@ -40,9 +40,7 @@ namespace xdp {
     void poll(uint32_t index, void* handle);
     void freeResources();
     bool setMetricsSettings(uint64_t deviceId);
-    xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
     bool isValidType(module_type type, XAie_ModuleType mod);
-    bool isStreamSwitchPortEvent(const XAie_Events event);
     void configEventSelections(
       const XAie_LocType loc, const xdp::module_type type,
       const std::string metricSet, const uint8_t channel0
@@ -68,22 +66,6 @@ namespace xdp {
         XAIE_MEM_MOD,
         XAIE_PL_MOD,
         XAIE_MEM_MOD
-      };
-
-      std::map<xdp::module_type, uint16_t> mCounterBases = {
-        {module_type::core,     static_cast<uint16_t>(0)},
-        {module_type::dma,      BASE_MEMORY_COUNTER},
-        {module_type::shim,     BASE_SHIM_COUNTER},
-        {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
-      };
-
-      std::vector<XAie_Events> mSSEventList = {
-        XAIE_EVENT_PORT_RUNNING_0_CORE,
-        XAIE_EVENT_PORT_STALLED_0_CORE,
-        XAIE_EVENT_PORT_RUNNING_0_PL,
-        XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-        XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-        XAIE_EVENT_PORT_TLAST_0_MEM_TILE
       };
 
       std::map<module_type, std::vector<uint64_t>> regValues {

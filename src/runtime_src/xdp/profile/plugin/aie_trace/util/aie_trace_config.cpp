@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
@@ -37,7 +37,7 @@ namespace xdp::aie::trace {
   using severity_level = xrt_core::message::severity_level;
 
   /****************************************************************************
-   * Configure stream switch ports for monitoring purposes
+   * Configure stream switch ports for monitoring p-urposes
    * NOTE: Used to monitor streams: trace, interfaces, and memory tiles
    ***************************************************************************/
   std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>>

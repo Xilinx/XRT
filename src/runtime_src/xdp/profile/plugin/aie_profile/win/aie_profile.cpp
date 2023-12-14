@@ -39,6 +39,8 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 
 // XRT headers
 #include "xrt/xrt_device.h"
@@ -212,7 +214,7 @@ namespace xdp {
     auto configChannel0 = metadata->getConfigChannel0();
     for (int module = 0; module < metadata->getNumModules(); ++module) {
 
-      XAie_ModuleType mod = falModuleTypes[module];
+      XAie_ModuleType mod = aie::profile::getFalModuleType(module);
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         int numCounters  = 0;
@@ -220,7 +222,7 @@ namespace xdp {
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto col  = tile.col;
-        auto type = getModuleType(row, mod);
+        auto type = aie::getModuleType(row, metadata->getAIETileRowOffset());
 
         if (!isValidType(type, mod))
           continue;
@@ -263,7 +265,7 @@ namespace xdp {
           if(RC != XAIE_OK) break;
 
           configGroupEvents(loc, mod, startEvent, metricSet, channel0);
-          if (isStreamSwitchPortEvent(startEvent))
+          if (aie::profile::isStreamSwitchPortEvent(startEvent))
             configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0);
 
           // Convert enums to physical event IDs for reporting purposes
@@ -271,8 +273,8 @@ namespace xdp {
           uint8_t tmpEnd;
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, startEvent, &tmpStart);
           XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod,   endEvent, &tmpEnd);
-          uint16_t phyStartEvent = tmpStart + mCounterBases[type];
-          uint16_t phyEndEvent   = tmpEnd   + mCounterBases[type];
+          uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(type);
+          uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(type);
           // auto payload = getCounterPayload(tileMetric.first, type, col, row, 
           //                                  startEvent, metricSet, channel0);
           auto payload = channel0;
@@ -348,13 +350,6 @@ namespace xdp {
     // Must clear aie state
     XAie_ClearTransaction(&aieDevInst);
     return runtimeCounters;
-  }
-
-  bool
-  AieProfile_WinImpl::
-  isStreamSwitchPortEvent(const XAie_Events event)
-  {
-    return (std::find(mSSEventList.begin(), mSSEventList.end(), event) != mSSEventList.end());
   }
 
   void
@@ -451,16 +446,6 @@ namespace xdp {
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
-  module_type 
-  AieProfile_WinImpl::
-  getModuleType(uint16_t absRow, XAie_ModuleType mod)
-  {
-    if (absRow == 0)
-      return module_type::shim;
-    if (absRow < metadata->getAIETileRowOffset())
-      return module_type::mem_tile;
-    return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
-  }
 
   bool
   AieProfile_WinImpl::
@@ -492,6 +477,7 @@ namespace xdp {
     // Profiling is 3rd custom OP
     XAie_RequestCustomTxnOp(&aieDevInst);
     XAie_RequestCustomTxnOp(&aieDevInst);
+    
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
