@@ -65,6 +65,7 @@ namespace xdp::aie {
       std::string schema;
       schema = aie_project.get_child("schema").get_value<std::string>();
       if (schema == "MEGraphSchema-0.4")
+        // For now, always try to parse aie_control_config.json
         return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
     }
     catch (...) {
@@ -76,7 +77,7 @@ namespace xdp::aie {
     //
     try {
       std::string major;
-      major = aie_project.get_child("schema_version.major").get_value<std::string>();
+      major = aie_project.get_child("aie_metadata.aiecompiler_options").get_value<std::string>();
       if (major == "1")
         return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
     }
@@ -90,6 +91,7 @@ namespace xdp::aie {
     try {
       auto schema = aie_project.get_child("schema").get_value<std::string>();
       if (schema == "handwritten")
+        // For now, always try to parse aie_control_config.json
         return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
     }
     catch(...) {
@@ -97,8 +99,7 @@ namespace xdp::aie {
     }
 
     // We could not determine the type
-    //return nullptr;
-    return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+    return nullptr;
   }
 
   // *****************************************************************
