@@ -167,14 +167,6 @@ namespace xdp {
           auto endEvent      = endEvents.at(i);
           uint8_t resetEvent = 0;
 
-          //Check if we're the memory module: Then set the correct Events based on channel
-          if (type == module_type::dma && channel0 != 0 
-            && (metricSet.find("s2mm") != std::string::npos
-                ||  metricSet.find("mm2s") != std::string::npos)) {
-            startEvent = startEvents.at(i+2);
-            endEvent   = endEvents.at(i+2);
-          }
-
           // No resource manager - manually manage the counters:
           RC = XAie_PerfCounterReset(&aieDevInst, loc, mod, i);
           if(RC != XAIE_OK) break;
@@ -278,27 +270,20 @@ namespace xdp {
     // Set masks for group events
     // NOTE: Group error enable register is blocked, so ignoring
     if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_DMA_MASK);
-    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL)
-      // Pass channel and set correct mask 
-      if (metricSet.find("input") != std::string::npos  || metricSet.find("s2mm") != std::string::npos)
-        if (channel == 0)
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_S2MM0_STALL_MASK);
-        else 
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_S2MM1_STALL_MASK);
-      else 
-        if (channel == 2)
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_MM2S0_STALL_MASK);
-        else 
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_MM2S1_STALL_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
     else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
     else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
+      uint32_t bitMask = aie::isInputSet(type, metricSet) 
+          ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
+          : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
   }
 
   // Configure stream switch ports for monitoring purposes
@@ -317,7 +302,7 @@ namespace xdp {
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
       std::stringstream msg;
-      msg << "Configured core tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
+      msg << "Configured core tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
@@ -331,7 +316,7 @@ namespace xdp {
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       std::stringstream msg;
-      msg << "Configured shim tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and stream port id " << (int)streamPortId << ".";
+      msg << "Configured shim tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and stream port id " << (int)streamPortId << ".";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
@@ -341,7 +326,7 @@ namespace xdp {
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
       std::stringstream msg;
-      msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
+      msg << "Configured mem tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
   }
@@ -355,11 +340,11 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = (metricSet.find("s2mm") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    XAie_DmaDirection dmaDir = aie::isInputSet(type,metricSet) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(&aieDevInst, loc, 0, dmaDir, channel0);
 
     std::stringstream msg;
-    msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << "DMA  for metricset " << metricSet << " and channel " << (int)channel0 << ".";
+    msg << "Configured mem tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") << "DMA  for metricset " << metricSet << " and channel " << (int)channel0 << ".";
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
