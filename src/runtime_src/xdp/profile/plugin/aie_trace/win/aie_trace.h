@@ -49,6 +49,9 @@ namespace xdp {
       virtual void pollTimers(uint64_t index, void* handle);
       virtual uint64_t checkTraceBufSize(uint64_t size);
 
+      void modifyEvents(module_type type, uint16_t subtype, 
+                        const std::string metricSet, uint8_t channel, 
+                        std::vector<XAie_Events>& events);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       module_type getTileType(uint16_t row);
       uint16_t getRelativeRow(uint16_t absRow);
@@ -58,14 +61,13 @@ namespace xdp {
       bool isPortRunningEvent(const XAie_Events event);
       uint8_t getPortNumberFromEvent(XAie_Events event);
       void configStreamSwitchPorts(const tile_type& tile,
-                                  /*xaiefal::XAieTile& xaieTile,*/ const XAie_LocType loc,
-                                  const module_type type, const std::string metricSet, 
-                                  const uint8_t channel0, const uint8_t channel1,
+                                   /*xaiefal::XAieTile& xaieTile,*/ const XAie_LocType loc,
+                                   const module_type type, const std::string metricSet, 
+                                   const uint8_t channel0, const uint8_t channel1,
                                   std::vector<XAie_Events>& events);
-      void configEventSelections(const XAie_LocType loc, 
-                                const XAie_ModuleType mod, const module_type type, 
-                                const std::string metricSet, const uint8_t channel0,
-                                const uint8_t channel);
+      void configEventSelections(const XAie_LocType loc, const module_type type, 
+                                 const std::string metricSet, const uint8_t channel0,
+                                 const uint8_t channel);
       void configEdgeEvents(const tile_type& tile, const module_type type,
                             const std::string metricSet, const XAie_Events event);
 

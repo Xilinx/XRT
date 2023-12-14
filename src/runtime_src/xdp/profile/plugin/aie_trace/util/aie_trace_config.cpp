@@ -132,9 +132,8 @@ namespace xdp::aie::trace {
    * Configure event selection (memory tiles only)
    ***************************************************************************/
   void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                             const XAie_ModuleType mod, const module_type type,
-                             const std::string metricSet, const uint8_t channel0,
-                             const uint8_t channel1)
+                             const module_type type, const std::string metricSet, 
+                             const uint8_t channel0, const uint8_t channel1)
   {
     if (type != module_type::mem_tile)
       return;

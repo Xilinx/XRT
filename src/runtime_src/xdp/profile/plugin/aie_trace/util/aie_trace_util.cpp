@@ -404,7 +404,7 @@ namespace xdp::aie::trace {
     }
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
-
+  
   /****************************************************************************
    * Print out reserved trace events
    ***************************************************************************/

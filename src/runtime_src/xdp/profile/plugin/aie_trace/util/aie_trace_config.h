@@ -21,7 +21,7 @@
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
-namespace xdp::aie::trace {  
+namespace xdp::aie::trace {
   /**
    * @brief Configure stream switch monitor ports
    * @param aieDevInst AIE device instance
@@ -46,16 +46,14 @@ namespace xdp::aie::trace {
    * @brief Configure event selections for DMA channels
    * @param aieDevInst AIE device instance
    * @param loc        Location of tile
-   * @param mod        Module type (used by driver)
    * @param type       Module/tile type
    * @param metricSet  Name of requested metric set
    * @param channel0   First specified channel number
    * @param channel1   Second specified channel number
    */
   void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                             const XAie_ModuleType mod, const module_type type,
-                             const std::string metricSet, const uint8_t channel0,
-                             const uint8_t channel);
+                             const module_type type, const std::string metricSet, 
+                             const uint8_t channel0, const uint8_t channel);
 
   /**
    * @brief Configure edge detection events
