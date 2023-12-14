@@ -46,19 +46,27 @@ namespace xdp::aie::trace {
    *       dependent on counter number (AIE1 only).
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> 
-  getCoreEventSets()
+  getCoreEventSets(int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"functions", 
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}}
+         {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}}
     };
-    eventSets["functions_partial_stalls"] = eventSets["functions"];
-    eventSets["functions_all_stalls"]     = eventSets["functions"];
-    eventSets["functions_all_dma"]        = eventSets["functions"];
-    eventSets["functions_all_stalls_dma"] = eventSets["functions"];
-    eventSets["s2mm_channels_stalls"]     = eventSets["functions"];
-    eventSets["mm2s_channels_stalls"]     = eventSets["functions"];
+
+    // Added in 2024.1
+    eventSets["partial_stalls"]           = eventSets["functions"];
+    eventSets["all_stalls"]               = eventSets["functions"];
+    eventSets["all_dma"]                  = eventSets["functions"];
+    eventSets["all_stalls_dma"]           = eventSets["functions"];
+    if (hwGen > 1) {
+      eventSets["s2mm_channels_stalls"]   = eventSets["functions"];
+      eventSets["mm2s_channels_stalls"]   = eventSets["functions"];
+    }
+
+    // Deprecated after 2024.1
+    eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];
+    eventSets["functions_all_stalls"]     = eventSets["all_stalls"];
     return eventSets;
   }
 
@@ -70,40 +78,48 @@ namespace xdp::aie::trace {
    *         dependent on counter number (AIE1 only).
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> 
-  getMemoryEventSets()
+  getMemoryEventSets(int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"functions", 
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
-        {"functions_partial_stalls",
+        {"partial_stalls",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
           XAIE_EVENT_STREAM_STALL_CORE,                    XAIE_EVENT_CASCADE_STALL_CORE, 
           XAIE_EVENT_LOCK_STALL_CORE}},
-        {"functions_all_stalls",
+        {"all_stalls",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
           XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
           XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}},
-        {"functions_all_dma",
+        {"all_dma",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE,
           XAIE_EVENT_PORT_RUNNING_2_CORE,                  XAIE_EVENT_PORT_RUNNING_3_CORE}},
-        {"functions_all_stalls_dma",
+        {"all_stalls_dma",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_GROUP_CORE_STALL_CORE,                XAIE_EVENT_PORT_RUNNING_0_CORE,
           XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_RUNNING_2_CORE,
-          XAIE_EVENT_PORT_RUNNING_3_CORE}},
-        {"s2mm_channels_stalls",
+          XAIE_EVENT_PORT_RUNNING_3_CORE}}
+    };
+
+    // Sets w/ DMA stall/backpressure events not supported on AIE1 
+    if (hwGen > 1) {
+      eventSets["s2mm_channels_stalls"] =
          {XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM,            XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM,         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
           XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM,           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM, 
-          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM}},
-        {"mm2s_channels_stalls",
+          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
+      eventSets["mm2s_channels_stalls"] =
          {XAIE_EVENT_DMA_MM2S_0_START_TASK_MEM,            XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
           XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_MEM,         XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM, 
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM,           XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
-          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM}},
-    };
+          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
+    }
+
+    // Deprecated after 2024.1
+    eventSets["functions_partial_stalls"] = eventSets["partial_stalls"];
+    eventSets["functions_all_stalls"]     = eventSets["all_stalls"];
     return eventSets;
   }
 
@@ -111,8 +127,11 @@ namespace xdp::aie::trace {
    * Get metric sets for memory tiles
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> 
-  getMemoryTileEventSets()
+  getMemoryTileEventSets(int hwGen)
   {
+    if (hwGen == 1)
+      return {};
+      
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
         {"input_channels",

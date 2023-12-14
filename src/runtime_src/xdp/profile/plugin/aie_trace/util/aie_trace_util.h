@@ -26,26 +26,29 @@ namespace xdp::aie::trace {
    * @brief   Get metric sets for core modules
    * @details Depending on hardware generation, these sets can be supplemented 
    *          with counter events as those are dependent on counter #.
+   * @param   hwGen Hardware generation
    * @return  Map of metric set names with vectors of event IDs
    */
-  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(int hwGen);
 
   /**
    * @brief   Get metric sets for memory modules
    * @details Core events listed here are broadcast by the resource manager.
    *          These can be supplemented with counter events as those are 
    *          dependent on counter # (AIE1 only).
+   * @param   hwGen Hardware generation
    * @return  Map of metric set names with vectors of event IDs
    */
-  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets(int hwGen);
 
   /**
    * @brief   Get metric sets for memory tiles
    * @details This function is only applicable to hardware generations that
    *          contain memory tiles.
+   * @param   hwGen Hardware generation
    * @return  Map of metric set names with vectors of event IDs 
    */
-  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets();
+  std::map<std::string, std::vector<XAie_Events>> getMemoryTileEventSets(int hwGen);
 
   /**
    * @brief  Get metric sets for interface tiles

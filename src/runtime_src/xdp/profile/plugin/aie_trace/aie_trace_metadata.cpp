@@ -599,6 +599,8 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
+    bool showWarning2 = true;
+    bool showWarning3 = true;
     std::vector<tile_type> offTiles;
     auto defaultSet = defaultSets[type];
     auto coreSets = metricSets[module_type::core];
@@ -628,15 +630,30 @@ namespace xdp {
         }
         tileMetric.second = defaultSet;
       }
+
+      // Check for deprecated metric set names
+      if (tileMetric.second == "functions_partial_stalls") {
+        if (showWarning2) {
+          xrt_core::message::send(severity_level::warning, "XRT", 
+              "The metric set functions_partial_stalls is being renamed to partial_stalls. "
+              "Please use the new set name starting in 2024.2.");
+          showWarning2 = false;
+        }
+      }
+      if (tileMetric.second == "functions_all_stalls") {
+        if (showWarning2) {
+          xrt_core::message::send(severity_level::warning, "XRT", 
+              "The metric set functions_all_stalls is being renamed to all_stalls. "
+              "Please use the new set name starting in 2024.2.");
+          showWarning2 = false;
+        }
+      }
     }
 
     // Remove all the "off" tiles
     for (auto &t : offTiles) {
       configMetrics.erase(t);
     }
-
-    // If needed, turn on debug fal messages
-    // xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
   }
 
   // Resolve metrics for interface tiles
