@@ -8,7 +8,10 @@ env:
 on:
   pull_request_target:
     types: [opened, edited, synchronize]
-  
+
+concurrency:  
+  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true 
   
 jobs:    
   build:    
