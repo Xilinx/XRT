@@ -84,7 +84,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system::
-program_plp(const xrt_core::device* dev, const std::vector<char> &buffer) const
+program_plp(const xrt_core::device* dev, const std::vector<char> &buffer, bool) const
 {
   throw std::runtime_error("plp program is not supported");
 }

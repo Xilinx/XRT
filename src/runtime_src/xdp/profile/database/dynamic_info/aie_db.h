@@ -60,11 +60,11 @@ namespace xdp {
 
     inline
     std::vector<counters::Sample> getAIESamples()
-    { return std::move(samples.getSamples());  }
+    { return samples.getSamples();  }
 
     inline
     std::vector<counters::DoubleSample> getAIETimerSamples()
-    { return std::move(timerSamples.getSamples());  }
+    { return timerSamples.getSamples();  }
   };
 
 } // end namespace xdp

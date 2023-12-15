@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,19 @@
  * under the License.
  */
 
-#ifndef __Process_h_
-#define __Process_h_
+#ifndef AIE_PROFILE_CONFIG_DOT_H
+#define AIE_PROFILE_CONFIG_DOT_H
 
-#include <vector>
+#include <cstdint>
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
-namespace XBUtilities {
-  unsigned int
-  runScript(const std::string & env,
-            const std::string & script,
-            const std::vector<std::string> & args,
-            std::ostringstream & os_stdout,
-            std::ostringstream & os_stderr);
-};
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
+
+namespace xdp::aie::profile {  
+
+}  // namespace xdp::aie::profile
 
 #endif

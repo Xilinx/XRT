@@ -73,4 +73,6 @@ static inline uint32_t zocl_convert_bo_uflags(uint32_t uflags)
 struct drm_gem_object *
 zocl_gem_import(struct drm_device *dev, struct dma_buf *dma_buf);
 
+struct sg_table *zocl_gem_prime_get_sg_table(struct drm_gem_object *obj);
+
 #endif /* _ZOCL_BO_H */

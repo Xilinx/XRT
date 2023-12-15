@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/aie_trace/util/aie_trace_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
@@ -471,7 +471,7 @@ namespace xdp::aie::trace {
     }
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
-
+  
   /****************************************************************************
    * Print out reserved trace events
    ***************************************************************************/

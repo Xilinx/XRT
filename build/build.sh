@@ -67,6 +67,7 @@ usage()
     echo "[-driver]                   Include building driver code"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
+    echo "[-install_prefix <path>]    set CMAKE_INSTALL_PREFIX to path"
     echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
     echo ""
@@ -104,6 +105,7 @@ static_boost=""
 ertbsp=""
 ertfw=""
 werror=1
+xrt_install_prefix="/opt/xilinx"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
@@ -211,6 +213,11 @@ while [ $# -gt 0 ]; do
             verbose="VERBOSE=1"
             shift
             ;;
+        -install_prefix)
+            shift
+            xrt_install_prefix=$1
+            shift
+            ;;
         -with-static-boost)
             shift
             static_boost=$1
@@ -231,6 +238,9 @@ edge_dir=${EDGE_DIR:-Edge}
 # Update every time CMake is generating makefiles.
 # Disable with '-disable-werror' option.
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
+
+# set CMAKE_INSTALL_PREFIX
+cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
 
 here=$PWD
 cd $BUILDDIR

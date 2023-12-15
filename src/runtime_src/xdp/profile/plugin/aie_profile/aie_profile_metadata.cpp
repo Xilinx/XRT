@@ -42,18 +42,18 @@ namespace xdp {
 
     #ifdef XDP_MINIMAL_BUILD
 
-    filetype = aie::readAIEMetadata("aie_control_config.json", aie_meta);
+    metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
     
     #else
 
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
 
-    filetype = aie::readAIEMetadata(data.first, data.second, aie_meta);
+    metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
 
     #endif
 
-    if (filetype == nullptr)
+    if (metadataReader == nullptr)
       return;
     
     #ifdef XDP_MINIMAL_BUILD
@@ -147,7 +147,7 @@ namespace xdp {
 
       if (iter != deprecatedSettings.end()) {
         std::stringstream msg;
-        msg << "The setting Debug." << pos->first << " is deprecated. "
+        msg << "The setting Debug." << pos->first << " is no longer supported. "
             << "Please instead use " << iter->second << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }
@@ -182,22 +182,22 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    if ((filetype->getHardwareGeneration() == 1) && (mod == module_type::mem_tile)) {
+    if ((metadataReader->getHardwareGeneration() == 1) && (mod == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
                               "MEM tiles are not available in AIE1. Profile "
                               "settings will be ignored.");
       return;
     }
     
-    uint16_t rowOffset  = (mod == module_type::mem_tile) ? 1 : filetype->getAIETileRowOffset();
+    uint16_t rowOffset  = (mod == module_type::mem_tile) ? 1 : metadataReader->getAIETileRowOffset();
     std::string modName = (mod == module_type::core) ? "aie" 
                         : ((mod == module_type::dma) ? "aie_memory" : "memory_tile");
 
-    auto allValidGraphs = filetype->getValidGraphs();
-    auto allValidKernels = filetype->getValidKernels();
+    auto allValidGraphs = metadataReader->getValidGraphs();
+    auto allValidKernels = metadataReader->getValidKernels();
 
     std::set<tile_type> allValidTiles;
-    auto validTilesVec = filetype->getTiles("all", mod, "all");
+    auto validTilesVec = metadataReader->getTiles("all", mod, "all");
     std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()),
                      tileCompare);
 
@@ -242,7 +242,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getTiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
+      auto tiles = metadataReader->getTiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -284,7 +284,7 @@ namespace xdp {
       }
 
       // Capture all tiles in given graph
-      auto tiles = filetype->getTiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
+      auto tiles = metadataReader->getTiles(graphMetrics[i][0], mod, graphMetrics[i][1]);
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
@@ -341,7 +341,7 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = filetype->getTiles(metrics[i][0], mod, "all");
+      auto tiles = metadataReader->getTiles(metrics[i][0], mod, "all");
       for (auto& e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
       }
@@ -553,8 +553,8 @@ namespace xdp {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
       return;
 
-    auto allValidGraphs = filetype->getValidGraphs();
-    auto allValidPorts = filetype->getValidPorts();
+    auto allValidGraphs = metadataReader->getValidGraphs();
+    auto allValidPorts = metadataReader->getValidPorts();
 
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -587,7 +587,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getInterfaceTiles(graphMetrics[i][0],
+      auto tiles = metadataReader->getInterfaceTiles(graphMetrics[i][0],
                                           graphMetrics[i][1],
                                           graphMetrics[i][2]);
 
@@ -645,7 +645,7 @@ namespace xdp {
         continue;
       }
 
-      auto tiles = filetype->getInterfaceTiles(graphMetrics[i][0],
+      auto tiles = metadataReader->getInterfaceTiles(graphMetrics[i][0],
                                           graphMetrics[i][1],
                                           graphMetrics[i][2]);
 
@@ -692,7 +692,7 @@ namespace xdp {
         continue;
 
       uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
-      auto tiles = filetype->getInterfaceTiles("all", "all", metrics[i][1], channelId);
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
@@ -744,7 +744,7 @@ namespace xdp {
         }
       }
 
-      auto tiles = filetype->getInterfaceTiles("all", "all", metrics[i][2], channelId, true, minCol, maxCol);
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
@@ -791,7 +791,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = filetype->getInterfaceTiles("all", "all", metrics[i][1], channelId, true, col, col);
+        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId, true, col, col);
 
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
@@ -849,7 +849,7 @@ namespace xdp {
   aie::driver_config
   AieProfileMetadata::getAIEConfigMetadata()
   {
-    return filetype->getDriverConfig();
+    return metadataReader->getDriverConfig();
   }
 
 }  // namespace xdp

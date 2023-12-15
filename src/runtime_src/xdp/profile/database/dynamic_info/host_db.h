@@ -139,13 +139,13 @@ namespace xdp {
                                           startXDPEventId);  }
 
     inline std::pair<uint64_t, uint64_t> lookupOpenCLMapping(uint64_t openclId)
-    { return std::move(openclDependencies.lookupOpenCLMapping(openclId)); }
+    { return openclDependencies.lookupOpenCLMapping(openclId); }
 
     inline void addDependency(uint64_t id, uint64_t dependency)
     { openclDependencies.addDependency(id, dependency);  }
 
     inline std::map<uint64_t, std::vector<uint64_t>> copyDependencyMap()
-    { return std::move(openclDependencies.copyDependencyMap()); }
+    { return openclDependencies.copyDependencyMap(); }
 
   };
 

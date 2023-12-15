@@ -61,7 +61,7 @@ namespace xdp {
     inline bool eventsExist() { return pl_db.eventsExist(); }
 
     inline std::vector<std::unique_ptr<VTFEvent>> moveEvents()
-    { return std::move(pl_db.moveEvents()); }
+    { return pl_db.moveEvents(); }
 
     inline void markStart(uint64_t monitorId, const DeviceEventInfo& info)
     {  pl_db.markStart(monitorId, info);  }
@@ -81,14 +81,14 @@ namespace xdp {
     inline void setPLCounterResults(xrt_core::uuid uuid, CounterResults& values)
     { pl_db.setPLCounterResults(uuid, values); }
     inline CounterResults getPLCounterResults(xrt_core::uuid uuid)
-    { return std::move(pl_db.getPLCounterResults(uuid)); }
+    { return pl_db.getPLCounterResults(uuid); }
 
     inline
     void addPowerSample(double timestamp, const std::vector<uint64_t>& values)
     { pl_db.addPowerSample(timestamp, values); }
 
     inline std::vector<counters::Sample> getPowerSamples()
-    { return std::move(pl_db.getPowerSamples()); }
+    { return pl_db.getPowerSamples(); }
 
     // ****************************************************************
     // Functions to access the AIE portion of the device.  These are all
@@ -112,10 +112,10 @@ namespace xdp {
     { aie_db.addAIETimerSample(timestamp1, timestamp2, values);  }
 
     inline std::vector<counters::Sample> getAIESamples()
-    { return std::move(aie_db.getAIESamples());  }
+    { return aie_db.getAIESamples();  }
 
     inline std::vector<counters::DoubleSample> getAIETimerSamples()
-    { return std::move(aie_db.getAIETimerSamples());  }
+    { return aie_db.getAIETimerSamples();  }
 
     inline void setPLDeadlockInfo(const std::string& info)
     { pl_db.setDeadlockInfo(info); }

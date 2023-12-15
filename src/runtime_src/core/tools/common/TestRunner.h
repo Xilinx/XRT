@@ -35,7 +35,7 @@ class TestRunner : public JSONConfigurable {
   protected:
     TestRunner(const std::string & test_name, const std::string & description, 
             const std::string & xclbin = "", bool is_explicit = false);
-    void runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
+    void runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
              boost::property_tree::ptree& _ptTest);
     void logger(boost::property_tree::ptree& ptree, const std::string& tag, const std::string& msg);
     bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);

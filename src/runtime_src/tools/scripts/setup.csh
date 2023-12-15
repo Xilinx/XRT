@@ -23,10 +23,10 @@ foreach x ($called)
         set script_path=`readlink -f $x`
         set xrt_dir=`dirname $script_path`
     endif
-    if ( $xrt_dir =~ */opt/xilinx/xrt ) break
+    if ( $xrt_dir =~ */xrt ) break
 end
 
-if ( $xrt_dir !~ */opt/xilinx/xrt ) then
+if ( $xrt_dir !~ */xrt ) then
     echo "Invalid location: $xrt_dir"
     echo "This script must be sourced from XRT install directory"
     exit 1
