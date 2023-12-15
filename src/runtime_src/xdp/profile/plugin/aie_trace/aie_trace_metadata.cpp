@@ -648,11 +648,11 @@ namespace xdp {
         }
       }
       if (tileMetric.second == "functions_all_stalls") {
-        if (showWarning2) {
+        if (showWarning3) {
           xrt_core::message::send(severity_level::warning, "XRT", 
               "The metric set functions_all_stalls is being renamed to all_stalls. "
               "Please use the new set name starting in 2024.2.");
-          showWarning2 = false;
+          showWarning3 = false;
         }
       }
     }
