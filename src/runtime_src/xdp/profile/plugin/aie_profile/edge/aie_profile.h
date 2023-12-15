@@ -45,19 +45,11 @@ namespace xdp {
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
-      bool isValidType(module_type type, XAie_ModuleType mod);
       bool isPortTlastEvent(const XAie_Events event);
       uint8_t getPortNumberFromEvent(XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
-      void configGroupEvents(XAie_DevInst* aieDevInst,
-                             const XAie_LocType loc,
-                             const XAie_ModuleType mod,
-                             const module_type type,
-                             const std::string metricSet,
-                             const XAie_Events event,
-                             const uint8_t channel = 0);
       void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
                                    const tile_type& tile,
                                    xaiefal::XAieTile& xaieTile,
@@ -69,13 +61,6 @@ namespace xdp {
                                    const uint8_t channel1,
                                    std::vector<XAie_Events>& startEvents,
                                    std::vector<XAie_Events>& endEvents);
-      void configEventSelections(XAie_DevInst* aieDevInst,
-                                 const XAie_LocType loc,
-                                 const XAie_ModuleType mod,
-                                 const module_type type,
-                                 const std::string metricSet,
-                                 const uint8_t channel0,
-                                 const uint8_t channel1);
       uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
                                  const tile_type& tile,
                                  const module_type type,

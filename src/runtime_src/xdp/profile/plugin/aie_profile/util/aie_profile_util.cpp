@@ -19,18 +19,12 @@
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
-#include <boost/algorithm/string.hpp>
 #include <cmath>
 #include <cstring>
-#include <iostream>
 #include <memory>
-#include <regex>
 #include <set>
 
 #include "core/common/message.h"
-#include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
@@ -301,6 +295,22 @@ namespace xdp::aie::profile {
   uint16_t getCounterBase(xdp::module_type type)
   {
     return counterBases.at(type);
+  }
+
+  /****************************************************************************
+   *  Check the match of the XAie enum module type with our xdp::module_type
+   ***************************************************************************/
+  bool isValidType(module_type type, XAie_ModuleType mod)
+  {
+    if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
+        || (type == module_type::dma)))
+      return true;
+    if ((mod == XAIE_MEM_MOD) && ((type == module_type::dma) 
+        || (type == module_type::mem_tile)))
+      return true;
+    if ((mod == XAIE_PL_MOD) && (type == module_type::shim)) 
+      return true;
+    return false;
   }
 
 } // namespace xdp::aie
