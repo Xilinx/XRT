@@ -46,7 +46,7 @@ namespace xdp {
       const std::string metricSet, const uint8_t channel0
     );
     void configGroupEvents(
-      const XAie_LocType loc, const XAie_ModuleType mod,
+      const XAie_LocType loc, const XAie_ModuleType mod, xdp::module_type type,
       const XAie_Events event, const std::string& metricSet, 
       uint8_t channel
     );
