@@ -1,13 +1,14 @@
 name: XRT CI
 
-env:  
-  RELEASE: '2024.1'  
-  PIPELINE: 'xrt' 
-  ENV: 'prod' 
-
 on:
   pull_request_target:
-    types: [opened, edited, synchronize]
+    types: [opened, synchronize]
+
+env:  
+  # RELEASE: '2023.2'
+  RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
+  PIPELINE: 'xrt' 
+  ENV: 'prod' 
 
 concurrency:  
   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
