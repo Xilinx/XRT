@@ -421,7 +421,7 @@ update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
-    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
+    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
         rh_package_list
     elif [ $FLAVOR == "fedora" ]; then
         fd_package_list
@@ -446,7 +446,7 @@ validate()
         fi
     fi
 
-    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
+    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
         rpm -q "${RH_LIST[@]}"
         if [ $? == 0 ] ; then
             # Validate we have OpenCL 2.X headers installed
@@ -624,6 +624,23 @@ prep_sles()
     fi
 }
 
+prep_alma9()
+{
+    echo "Enabling EPEL repository..."
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    yum check-update
+
+    echo "Enabling CodeReady-Builder repository..."
+    dnf config-manager --set-enabled crb
+}
+
+prep_alma()
+{
+    if [ $MAJOR -ge 9 ]; then
+        prep_alma9
+    fi
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -648,9 +665,11 @@ install()
         prep_mariner
     elif [ $FLAVOR == "sles" ]; then
         prep_sles
+    elif [ $FLAVOR == "almalinux" ]; then
+        prep_alma
     fi
 
-    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
+    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
         if [ $ds9 == 1 ]; then
