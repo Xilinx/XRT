@@ -8,7 +8,7 @@ BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
-CPU=`uname -m
+CPU=`uname -m`
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
     if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]]; then
@@ -280,7 +280,7 @@ fi
 
 # we pick microblaze toolchain from Vitis install
 if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
-    export XILINX_VITIS=/proj/xbuilds/2023.1_released/installs/lin64/Vitis/2023.1
+    expor XILINX_VITIS=/proj/xbuilds/2023.1_released/installs/lin64/Vitis/2023.1
     if [[ ! -d ${XILINX_VITIS} ]]; then
         echo "****************************************************************"
         echo "* XILINX_VITIS is undefined or not accessible.                 *"
