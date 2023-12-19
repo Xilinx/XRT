@@ -665,7 +665,7 @@ install()
         fi
     fi
 
-    if [ $FLAVOR == "centos" ] && [ $MAJOR -eq "8" ]; then
+    if [[ $FLAVOR == "centos" || $FLAVOR == "rhel" ]] && [ $MAJOR -eq "8" ]; then
         yum install -y gcc-toolset-9-toolchain
     fi
 
