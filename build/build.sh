@@ -52,6 +52,7 @@ usage()
     echo "[-dbg]                      Build debug library only (default)"
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
+    echo "[-hip]                      Enable hip bindings"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
@@ -146,6 +147,10 @@ while [ $# -gt 0 ]; do
             edge=1
             opt=0
             dbg=0
+            ;;
+        -hip)
+            shift
+            cmake_flags+=" -DXRT_ENABLE_HIP=ON"
             ;;
         -opt)
             dbg=0

@@ -76,6 +76,8 @@ while [ $# -gt 0 ]; do
 	    BOOST="$1"
 	    shift
 	    ;;
+        -hip)
+            cmake_flags+= " -DXRT_ENABLE_HIP=ON"
         -j)
             shift
             jcore=$1

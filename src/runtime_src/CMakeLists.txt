@@ -36,6 +36,10 @@ xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)
 xrt_add_subdirectory(xrt)
 xrt_add_subdirectory(ert)
+if (XRT_ENABLE_HIP)
+  xrt_add_subdirectory(hip)
+endif(XRT_ENABLE_HIP)
+
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   # Only for host native build.
   # For embedded, headers and libraries are installed in /usr
