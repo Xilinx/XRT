@@ -8,6 +8,7 @@
 
 #include "core/common/debug_ip.h"
 #include "core/common/query_requests.h"
+#include "core/common/xrt_profiling.h"
 
 #include <map>
 #include <memory>
@@ -741,6 +742,98 @@ struct dtbo_path
   }
 };
 
+struct debug_ip_layout_path
+{
+  using result_type = xrt_core::query::debug_ip_layout_path::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    uint32_t size = std::any_cast<uint32_t>(param);
+    std::string path;
+    path.resize(size);
+
+    // Get Debug Ip layout path
+    xclGetDebugIPlayoutPath(device->get_user_handle(), const_cast<char*>(path.data()), size);
+    return path;
+  }
+};
+
+struct device_clock_freq_MHz {
+  using result_type = xrt_core::query::device_clock_freq_MHz::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    return xclGetDeviceClockFreqMHz(device->get_user_handle());
+  }
+};
+
+struct trace_buffer_info
+{
+  using result_type = xrt_core::query::trace_buffer_info::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    uint32_t input_samples = std::any_cast<uint32_t>(param);
+    result_type buf_info;
+
+    // Get trace buf size and trace samples
+    xclGetTraceBufferInfo(device->get_user_handle(), input_samples, buf_info.samples, buf_info.buf_size);
+    return buf_info;
+  }
+};
+
+struct host_max_bandwidth_MBps
+{
+  using result_type = xrt_core::query::host_max_bandwidth_MBps::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    bool read = std::any_cast<bool>(param);
+
+    // Get read/write host max bandwidth in MBps
+    return read ? xclGetHostReadMaxBandwidthMBps(device->get_user_handle())
+                : xclGetHostWriteMaxBandwidthMBps(device->get_user_handle());
+  }
+};
+
+struct kernel_max_bandwidth_MBps
+{
+  using result_type = xrt_core::query::kernel_max_bandwidth_MBps::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    bool read = std::any_cast<bool>(param);
+
+    // Get read/write host max bandwidth in MBps
+    return read ? xclGetKernelReadMaxBandwidthMBps(device->get_user_handle())
+                : xclGetKernelWriteMaxBandwidthMBps(device->get_user_handle());
+  }
+};
+
+struct read_trace_data
+{
+  using result_type = xrt_core::query::read_trace_data::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    auto args = std::any_cast<xrt_core::query::read_trace_data::args>(param);
+
+    result_type trace_buf;
+    trace_buf.resize(args.buf_size);
+
+    // read trace data
+    xclReadTraceData(device->get_user_handle(), trace_buf.data(),
+                     args.buf_size, args.samples, args.ip_base_addr, args.words_per_sample);
+    return trace_buf;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -940,6 +1033,13 @@ initialize_query_table()
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
   emplace_func4_request<query::dtbo_path,               dtbo_path>();
+
+  emplace_func4_request<query::debug_ip_layout_path,    debug_ip_layout_path>();
+  emplace_func0_request<query::device_clock_freq_MHz,   device_clock_freq_MHz>();
+  emplace_func4_request<query::trace_buffer_info,       trace_buffer_info>();
+  emplace_func4_request<query::read_trace_data,         read_trace_data>();
+  emplace_func4_request<query::host_max_bandwidth_MBps, host_max_bandwidth_MBps>();
+  emplace_func4_request<query::kernel_max_bandwidth_MBps, kernel_max_bandwidth_MBps>();
 }
 
 struct X { X() { initialize_query_table(); } };

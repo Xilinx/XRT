@@ -3,6 +3,7 @@
 // Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #include "device_hwemu.h"
 #include "core/common/query_requests.h"
+#include "core/common/xrt_profiling.h"
 #include "core/pcie/emulation/common_em/query.h"
 #include "shim.h"
 
@@ -29,6 +30,98 @@ struct device_query
   }
 };
 
+struct debug_ip_layout_path
+{
+  using result_type = xrt_core::query::debug_ip_layout_path::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    uint32_t size = std::any_cast<uint32_t>(param);
+    std::string path;
+    path.resize(size);
+
+    // Get Debug Ip layout path
+    xclGetDebugIPlayoutPath(device->get_user_handle(), const_cast<char*>(path.data()), size);
+    return path;
+  }
+};
+
+struct device_clock_freq_MHz {
+  using result_type = xrt_core::query::device_clock_freq_MHz::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key)
+  {
+    return xclGetDeviceClockFreqMHz(device->get_user_handle());
+  }
+};
+
+struct trace_buffer_info
+{
+  using result_type = xrt_core::query::trace_buffer_info::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    uint32_t input_samples = std::any_cast<uint32_t>(param);
+    result_type buf_info;
+
+    // Get trace buf size and trace samples
+    xclGetTraceBufferInfo(device->get_user_handle(), input_samples, buf_info.samples, buf_info.buf_size);
+    return buf_info;
+  }
+};
+
+struct host_max_bandwidth_MBps
+{
+  using result_type = xrt_core::query::host_max_bandwidth_MBps::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    bool read = std::any_cast<bool>(param);
+
+    // Get read/write host max bandwidth in MBps
+    return read ? xclGetHostReadMaxBandwidthMBps(device->get_user_handle())
+                : xclGetHostWriteMaxBandwidthMBps(device->get_user_handle());
+  }
+};
+
+struct kernel_max_bandwidth_MBps
+{
+  using result_type = xrt_core::query::kernel_max_bandwidth_MBps::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    bool read = std::any_cast<bool>(param);
+
+    // Get read/write host max bandwidth in MBps
+    return read ? xclGetKernelReadMaxBandwidthMBps(device->get_user_handle())
+                : xclGetKernelWriteMaxBandwidthMBps(device->get_user_handle());
+  }
+};
+
+struct read_trace_data
+{
+  using result_type = xrt_core::query::read_trace_data::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+    auto args = std::any_cast<xrt_core::query::read_trace_data::args>(param);
+
+    result_type trace_buf;
+    trace_buf.resize(args.buf_size);
+
+    // read trace data
+    xclReadTraceData(device->get_user_handle(), trace_buf.data(),
+                     args.buf_size, args.samples, args.ip_base_addr, args.words_per_sample);
+    return trace_buf;
+  }
+};
+
 template <typename QueryRequestType, typename Getter>
 struct function0_get : virtual QueryRequestType
 {
@@ -41,11 +134,30 @@ struct function0_get : virtual QueryRequestType
 };
 
 template <typename QueryRequestType, typename Getter>
+struct function1_get : virtual QueryRequestType
+{
+  std::any
+  get(const xrt_core::device* device, const std::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
 static void
 emplace_func0_request()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func1_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function1_get<QueryRequestType, Getter>>());
 }
 
 static void
@@ -57,6 +169,12 @@ initialize_query_table()
   emplace_func0_request<query::m2m, device_query>();
   emplace_func0_request<query::nodma, device_query>();
   emplace_func0_request<query::rom_vbnv, xclemulation::query::device_info>();
+  emplace_func1_request<query::debug_ip_layout_path, debug_ip_layout_path>();
+  emplace_func0_request<query::device_clock_freq_MHz, device_clock_freq_MHz>();
+  emplace_func1_request<query::trace_buffer_info, trace_buffer_info>();
+  emplace_func1_request<query::host_max_bandwidth_MBps, host_max_bandwidth_MBps>();
+  emplace_func1_request<query::kernel_max_bandwidth_MBps, kernel_max_bandwidth_MBps>();
+  emplace_func1_request<query::read_trace_data, read_trace_data>();
 }
 
 struct X { X() { initialize_query_table(); } };

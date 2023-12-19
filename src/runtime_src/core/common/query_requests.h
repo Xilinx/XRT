@@ -298,6 +298,15 @@ enum class key_type
   xgq_scaling_power_override,
   xgq_scaling_temp_override,
   performance_mode,
+  debug_ip_layout_path,
+  debug_ip_layout,
+  num_live_processes,
+  device_clock_freq_MHz,
+  trace_buffer_info,
+  host_max_bandwidth_MBps,
+  kernel_max_bandwidth_MBps,
+  sub_device_path,
+  read_trace_data,
   noop
 };
 
@@ -3411,6 +3420,110 @@ struct performance_mode : request
   }
 };
 
+struct debug_ip_layout_path : request
+{
+  // Get debug ip layout path
+  // Used by xdp code
+  using result_type = std::string; // get value type
+  static const key_type key = key_type::debug_ip_layout_path;
+
+  virtual std::any
+  get(const device*, const std::any&) const = 0;
+};
+
+struct debug_ip_layout : request
+{
+  // Get debug ip layout
+  using result_type = std::vector<char>; // get value type
+  static const key_type key = key_type::debug_ip_layout;
+
+  virtual std::any
+  get(const device*) const = 0;
+};
+
+struct num_live_processes : request
+{
+  // Get the count of number of live processes
+  using result_type = uint32_t; // get value type
+  static const key_type key = key_type::num_live_processes;
+
+  virtual std::any
+  get(const device*) const = 0;
+};
+
+struct device_clock_freq_MHz : request
+{
+  // Get device clock frequency in MHz
+  using result_type = double; // get value type
+  static const key_type key = key_type::device_clock_freq_MHz;
+
+  virtual std::any
+  get(const device*) const = 0;
+};
+
+struct trace_buffer_info : request
+{
+  struct info {
+    uint32_t samples;
+    uint32_t buf_size;
+  };
+  // Get trace buffer info
+  using result_type = info; // get value type
+  static const key_type key = key_type::trace_buffer_info;
+
+  virtual std::any
+  get(const device*, const std::any&) const = 0;
+};
+
+struct host_max_bandwidth_MBps : request
+{
+  // Get Max host bandwidth MBps
+  using result_type = double; // get value type
+  static const key_type key = key_type::host_max_bandwidth_MBps;
+
+  virtual std::any
+  get(const device*, const std::any&) const = 0;
+};
+
+struct kernel_max_bandwidth_MBps : request
+{
+  // Get Max host bandwidth MBps
+  using result_type = double; // get value type
+  static const key_type key = key_type::kernel_max_bandwidth_MBps;
+
+  virtual std::any
+  get(const device*, const std::any&) const = 0;
+};
+
+struct sub_device_path : request
+{
+  struct args {
+    std::string subdev;
+    uint32_t index;
+  };
+  // Get sub device sysfs path
+  using result_type = std::string; // get value type
+  static const key_type key = key_type::sub_device_path;
+
+  virtual std::any
+  get(const device*, const std::any&) const = 0;
+};
+
+struct read_trace_data : request
+{
+  struct args {
+    uint32_t  buf_size;
+    uint32_t  samples;
+    uint64_t  ip_base_addr;
+    uint32_t& words_per_sample;
+  };
+  // Get sub device sysfs path
+  using result_type = std::vector<uint32_t>; // get value type
+  static const key_type key = key_type::read_trace_data;
+
+  virtual std::any
+  get(const device*, const std::any&) const = 0;
+};
 } // query
 
 } // xrt_core
