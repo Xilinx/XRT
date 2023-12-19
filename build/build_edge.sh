@@ -31,7 +31,7 @@ usage_and_exit()
 }
 
 # --- Internal funtions ---
-install_recipes()
+install_recipes(
 {
     META_USER_PATH=$1
 
