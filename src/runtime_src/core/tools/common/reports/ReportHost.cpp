@@ -82,10 +82,10 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
 {
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
   const Table2D::HeaderData colon = {":", Table2D::Justification::left};
-  const Table2D::HeaderData vbnv = {"Name", Table2D::Justification::left};
+  const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
   const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::left};
   const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, instance, ready};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, name, instance, ready};
   Table2D device_table(table_headers);
 
   for (const auto& kd : available_devices) {
@@ -96,7 +96,7 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
 
     const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
     const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
-    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
+    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("name", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
     device_table.addEntry(entry_data);
   }
 

@@ -92,6 +92,9 @@ XBUtilities::get_available_devices(bool inUserDomain)
     boost::property_tree::ptree pt_dev;
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
 
+    const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+    pt_dev.put("device_class", xrt_core::query::device_class::enum_to_str(device_class));
+
     //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
     const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
 
@@ -104,7 +107,15 @@ XBUtilities::get_available_devices(bool inUserDomain)
       pt_dev.put("instance","n/a");
     }
     else {
-      pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+      switch (device_class) {
+      case xrt_core::query::device_class::type::alveo:
+        pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        break;
+      case xrt_core::query::device_class::type::ryzen:
+        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        break;
+      }
+      
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
       }
@@ -132,9 +143,6 @@ XBUtilities::get_available_devices(bool inUserDomain)
 
     }
     pt_dev.put("is_ready", xrt_core::device_query_default<xrt_core::query::is_ready>(device, true));
-
-    const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
-    pt_dev.put("device_class", xrt_core::query::device_class::enum_to_str(device_class));
 
     pt.push_back(std::make_pair("", pt_dev));
   }
