@@ -2,7 +2,7 @@
 // Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
 #include "device.h"
 
-namespace xrthip_core {
+namespace xrt::core::hip {
 
 // Implementation  
   

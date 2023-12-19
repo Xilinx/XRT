@@ -5,7 +5,7 @@
 
 #include "core/common/error.h"
 
-namespace xrthip_core {
+namespace xrt::core::hip {
 
 // Returns a handle to compute device
 // Throws on error
@@ -15,14 +15,14 @@ hipDeviceGet(hipDevice_t* device, int ordinal)
   throw std::runtime_error("Not implemented");
 }
   
-} // xrthip_core
+} // xrt::core::hip
 
 
 hipError_t
 hipDeviceGet(hipDevice_t* device, int ordinal)
 {
   try {
-    xrthip_core::hipDeviceGet(device, ordinal);
+    xrt::core::hip::hipDeviceGet(device, ordinal);
     return hipSuccess;
   }
   catch (const std::exception& ex) {

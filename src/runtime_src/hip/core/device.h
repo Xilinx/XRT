@@ -3,12 +3,12 @@
 #ifndef xrthip_device_h
 #define xrthip_device_h
 
-namespace xrthip_core {
+namespace xrt::core::hip {
 
 class device
 {
 };
   
-} // xrthip_core
+} // xrt::core::hip
 
 #endif
