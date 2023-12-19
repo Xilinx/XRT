@@ -37,6 +37,7 @@ namespace xdp::aie::trace {
    * @param channel0   First specified channel number
    * @param channel1   Second specified channel number
    * @param events     Vector of original events in metric set
+   * @param config     Class used to document configuration
    * @return Vector of stream switch monitor ports used
    */
   std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>>
@@ -44,19 +45,24 @@ namespace xdp::aie::trace {
                           xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
                           const module_type type, const std::string metricSet, 
                           const uint8_t channel0, const uint8_t channel1,
-                          std::vector<XAie_Events>& events);
+                          std::vector<XAie_Events>& events, aie_cfg_base& config);
 
   /**
    * @brief Configure combo events (AIE tiles only)
    * @param aieDevInst AIE device instance
    * @param xaieTile   Tile instance in FAL/resource manager
+   * @param loc        Location of tile
+   * @param mod        Module type (used by driver)
    * @param type       Module/tile type
    * @param metricSet  Name of requested metric set
+   * @param config     Class used to document configuration
    * @return Vector of events to use for trace start and end
    */
   std::vector<XAie_Events>
   configComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieTile& xaieTile, 
-                    const module_type type, const std::string metricSet);
+                    const XAie_LocType loc, const XAie_ModuleType mod,
+                    const module_type type, const std::string metricSet,
+                    aie_cfg_base& config);
 
   /**
    * @brief Configure group events (core modules only)

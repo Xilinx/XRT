@@ -32,20 +32,20 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp::aie::trace {
   using severity_level = xrt_core::message::severity_level;
 
   /****************************************************************************
-   * Configure stream switch ports for monitoring p-urposes
-   * NOTE: Used to monitor streams: trace, interfaces, and memory tiles
+   * Configure stream switch event ports for monitoring purposes
    ***************************************************************************/
   std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>>
   configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
                           xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
                           const module_type type, const std::string metricSet,
                           const uint8_t channel0, const uint8_t channel1, 
-                          std::vector<XAie_Events>& events)
+                          std::vector<XAie_Events>& events, aie_cfg_base& config)
   {
     std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
     std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
@@ -77,6 +77,9 @@ namespace xdp::aie::trace {
                             + std::to_string(traceSelect);
             xrt_core::message::send(severity_level::debug, "XRT", msg);
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+
+            config.port_trace_ids[portnum] = traceSelect;
+            config.port_trace_is_master[portnum] = false;
           }
           else {
             // Monitor DMA channels
@@ -87,6 +90,9 @@ namespace xdp::aie::trace {
                             + typeName + " channel " + std::to_string(channelNum);
             xrt_core::message::send(severity_level::debug, "XRT", msg);
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channelNum);
+
+            config.port_trace_ids[portnum] = channelNum;
+            config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);
           }
         }
         else if (type == module_type::shim) {
@@ -99,6 +105,9 @@ namespace xdp::aie::trace {
                           + typeName + " stream port " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
+
+          config.port_trace_ids[portnum] = streamPortId;
+          config.port_trace_is_master[portnum] = (tile.itr_mem_col != 0);
         }
         else {
           // Memory tiles
@@ -106,6 +115,9 @@ namespace xdp::aie::trace {
             xrt_core::message::send(severity_level::debug, "XRT", 
               "Configuring memory tile stream switch to monitor trace port 0");
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
+
+            config.port_trace_ids[portnum] = 0;
+            config.port_trace_is_master[portnum] = false;
           }
           else {
             uint8_t channel = (portnum == 0) ? channel0 : channel1;
@@ -115,6 +127,9 @@ namespace xdp::aie::trace {
                             + typeName + " stream port " + std::to_string(channel);
             xrt_core::message::send(severity_level::debug, "XRT", msg);
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+
+            config.port_trace_ids[portnum] = channel;
+            config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);
           }
         }
       }
@@ -145,7 +160,9 @@ namespace xdp::aie::trace {
    ***************************************************************************/
   std::vector<XAie_Events>
   configComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieTile& xaieTile, 
-                    const module_type type, const std::string metricSet)
+                    const XAie_LocType loc, const XAie_ModuleType mod,
+                    const module_type type, const std::string metricSet,
+                    aie_cfg_base& config)
   {
     // Only needed for core/memory modules and metric sets that include DMA events
     if (!isDmaSet(metricSet) || ((type != module_type::core) && (type != module_type::dma)))
@@ -163,6 +180,15 @@ namespace xdp::aie::trace {
           XAIE_EVENT_PORT_IDLE_3_CORE};
       std::vector<XAie_EventComboOps> opts = {XAIE_EVENT_COMBO_E1_OR_E2, 
           XAIE_EVENT_COMBO_E1_OR_E2, XAIE_EVENT_COMBO_E1_OR_E2};
+
+      // Capture in config class to report later
+      for (int i=0; i < NUM_COMBO_EVENT_CONTROL; ++i)
+        config.combo_event_control[i] = 2;
+      for (int i=0; i < events.size(); ++i) {
+        uint8_t phyEvent = 0;
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, events.at(i), &phyEvent);
+        config.combo_event_input[i] = phyEvent;
+      }
 
       // Set events and trigger on OR of events
       comboEvent->setEvents(events, opts);

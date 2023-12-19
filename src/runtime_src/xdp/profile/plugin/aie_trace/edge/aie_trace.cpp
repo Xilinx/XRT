@@ -538,12 +538,12 @@ namespace xdp {
             break;
         }
 
-        // Configure combo & group events for metric sets that include DMA events
-        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, type, metricSet);
+        // Configure combo & group events (e.g., to monitor DMA channels)
+        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, loc, mod, type, 
+                                                         metricSet, cfgTile->core_trace_config);
         aie::trace::configGroupEvents(aieDevInst, loc, mod, type, metricSet);
 
         // Set overall start/end for trace capture
-        // Wendy said this should be done first
         if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK)
           break;
 
@@ -610,14 +610,26 @@ namespace xdp {
         auto traceStartEvent = (type == module_type::core) ? mCoreTraceStartEvent : mMemoryTileTraceStartEvent;
         auto traceEndEvent = (type == module_type::core) ? mCoreTraceEndEvent : mMemoryTileTraceEndEvent;
         
-        // Configure combo events for metric sets that include DMA events
-        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, module_type::dma, metricSet);
+        aie_cfg_base aieConfig = cfgTile->core_trace_config;
+        if (type == module_type::mem_tile)
+          aieConfig = cfgTile->memory_tile_trace_config;
+
+        // Configure combo events for metric sets that include DMA events        
+        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, loc, 
+            XAIE_CORE_MOD, module_type::dma, metricSet, aieConfig);
         if (comboEvents.size() == 2) {
           traceStartEvent = comboEvents.at(0);
           traceEndEvent = comboEvents.at(1);
         }
-        
-        // Set 
+
+        // Configure event ports on stream switch
+        // NOTE: These are events from the core module stream switch
+        //       outputted on the memory module trace stream. 
+        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
+            xaieTile, loc, type, metricSet, 0, 0, memoryEvents, aieConfig);
+        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(mStreamPorts));
+          
+        // Set overall start/end for trace capture
         if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
           break;
 
@@ -714,7 +726,10 @@ namespace xdp {
           }
           else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
-            cfgTile->memory_tile_trace_config.start_event = phyEvent;
+            if (type == module_type::mem_tile)
+              cfgTile->memory_tile_trace_config.start_event = phyEvent;
+            else
+              cfgTile->memory_trace_config.start_event = phyEvent;
           }
 
           // Stop
@@ -734,7 +749,10 @@ namespace xdp {
           }
           else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
-            cfgTile->memory_tile_trace_config.stop_event = phyEvent;
+            if (type == module_type::mem_tile)
+              cfgTile->memory_tile_trace_config.stop_event = phyEvent;
+            else
+              cfgTile->memory_trace_config.stop_event = phyEvent;
           }
         }
 
@@ -786,7 +804,7 @@ namespace xdp {
           return false;
         }
 
-        // Specify Sel0/Sel1 for interface tile DMA events
+        // Specify channels for interface tile DMA events
         auto iter0 = configChannel0.find(tile);
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
@@ -796,26 +814,24 @@ namespace xdp {
         aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
 
         // Record for runtime config file
-        cfgTile->interface_tile_trace_config.port_trace_ids[0] = channel0;
-        cfgTile->interface_tile_trace_config.port_trace_ids[1] = channel1;
-        if (aie::isInputSet(type, metricSet)) {
-          cfgTile->interface_tile_trace_config.port_trace_is_master[0] = false;
-          cfgTile->interface_tile_trace_config.port_trace_is_master[1] = false;
-          cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
-          if (channel0 != channel1)
-            cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
-        } 
-        else {
-          cfgTile->interface_tile_trace_config.port_trace_is_master[0] = true;
-          cfgTile->interface_tile_trace_config.port_trace_is_master[1] = true;
-          cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
-          if (channel0 != channel1)
-            cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
+        if (type == module_type::shim) {
+          if (aie::isInputSet(type, metricSet)) {
+            cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
+            if (channel0 != channel1)
+              cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
+          } 
+          else {
+            cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
+            if (channel0 != channel1)
+              cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
+          }
         }
 
-        mStreamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tileMetric.first, 
-                                                          xaieTile, loc, type, metricSet, 
-                                                          channel0, channel1, interfaceEvents);
+        // Configure event ports on stream switch
+        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
+            xaieTile, loc, type, metricSet, channel0, channel1, interfaceEvents,
+            cfgTile->interface_tile_trace_config);
+        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(mStreamPorts));
 
         // Configure interface tile trace events
         for (int i = 0; i < interfaceEvents.size(); i++) {
