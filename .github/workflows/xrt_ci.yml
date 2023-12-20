@@ -3,6 +3,8 @@ name: XRT CI
 on:
   pull_request:
     types: [opened, synchronize]
+  pull_request_target:  
+    types: [opened, synchronize]  
 
 env:  
   # RELEASE: '2023.2'
