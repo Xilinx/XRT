@@ -117,7 +117,8 @@ namespace xdp {
         && shimTileMetricsSettings.empty() && shimGraphMetricsSettings.empty()) {
       isValidMetrics = false;
     } else {
-      getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::core);
+      // Use DMA type here to include both core-active tiles and DMA-only tiles
+      getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::dma);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
       getConfigMetricsForInterfaceTiles(shimTileMetricsSettings, shimGraphMetricsSettings);
       setTraceStartControl(compilerOptions.graph_iterator_event);
@@ -314,8 +315,8 @@ namespace xdp {
 
     std::set<tile_type> allValidTiles;
     auto validTilesVec = metadataReader->getTiles("all", type, "all");
-    std::unique_copy(validTilesVec.begin(), validTilesVec.end(), std::inserter(allValidTiles, allValidTiles.end()), 
-                     tileCompare);
+    std::unique_copy(validTilesVec.begin(), validTilesVec.end(), 
+                     std::inserter(allValidTiles, allValidTiles.end()), tileCompare);
 
     // STEP 1 : Parse per-graph and/or per-kernel settings
 

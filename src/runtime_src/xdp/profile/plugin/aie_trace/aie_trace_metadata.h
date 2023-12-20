@@ -131,6 +131,7 @@ class AieTraceMetadata {
 
     std::map<module_type, std::string> defaultSets {
       { module_type::core,     "functions"},
+      { module_type::dma,      "functions"},
       { module_type::mem_tile, "input_channels"},
       { module_type::shim,     "input_ports"}
     };
