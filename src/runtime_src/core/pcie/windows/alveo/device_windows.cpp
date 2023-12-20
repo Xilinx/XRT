@@ -9,6 +9,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
 #include "core/common/system.h"
+#include "core/common/xrt_profiling.h"
 #include "core/include/xrt.h"
 #include "core/include/xclfeatures.h"
 
