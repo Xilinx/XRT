@@ -129,7 +129,7 @@ jobs:
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
+          # token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
        
