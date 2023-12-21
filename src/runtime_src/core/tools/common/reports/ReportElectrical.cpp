@@ -40,10 +40,12 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
 
   _output << "Electrical\n";
   const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
-  _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
-  _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
-  _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
-  
+  if (!electricals.empty()) {
+    _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
+    _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
+    _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
+  }
+
   const std::vector<Table2D::HeaderData> table_headers = {
     {"Power Rails", Table2D::Justification::left},
     {":", Table2D::Justification::left},
