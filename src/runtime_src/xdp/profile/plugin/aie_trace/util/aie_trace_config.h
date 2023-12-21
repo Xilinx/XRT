@@ -21,10 +21,6 @@
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
-constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
-constexpr uint32_t GROUP_CORE_FUNCTIONS_MASK        = 0x0000000C;
-constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x00002222;
-
 namespace xdp::aie::trace {  
   /**
    * @brief Configure stream switch monitor ports
@@ -96,10 +92,11 @@ namespace xdp::aie::trace {
    * @param type       Module/tile type
    * @param metricSet  Name of requested metric set
    * @param event      Requested event ID
+   * @param channel    Channel number to use for edge events
    */
   void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
                         const module_type type, const std::string metricSet, 
-                        const XAie_Events event);
+                        const XAie_Events event, const uint8_t channel = 0);
 
   /**
    * @brief Configure start of event trace using time delay

@@ -277,24 +277,52 @@ namespace xdp::aie::trace {
   }
 
   /****************************************************************************
-   * Configure edge detection events (memory tiles only)
+   * Configure edge detection events
    ***************************************************************************/
   void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
                         const module_type type, const std::string metricSet, 
-                        const XAie_Events event)
+                        const XAie_Events event, const uint8_t channel)
   {
-    // For now, only memory tiles are supported
     if ((event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE)
-        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE))
+        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE)
+        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM)
+        && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM))
       return;
 
-    // AIE core register offsets
-    constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
+    // Catch memory tiles
+    if (type == module_type::mem_tile) {
+      // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
+      uint16_t eventNum = isInputSet(type, metricSet)
+          ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
+          : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
 
-    // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
+      // Register Edge_Detection_event_control
+      // 26    Event 1 triggered on falling edge
+      // 25    Event 1 triggered on rising edge
+      // 23:16 Input event for edge event 1
+      // 10    Event 0 triggered on falling edge
+      //  9    Event 0 triggered on rising edge
+      //  7:0  Input event for edge event 0
+      uint32_t edgeEventsValue = (1 << 26) + (eventNum << 16) + (1 << 9) + eventNum;
+
+      xrt_core::message::send(severity_level::debug, "XRT",
+          "Configuring memory tile edge events to detect rise and fall of event " 
+          + std::to_string(eventNum));
+
+      auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+      XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, 
+                   edgeEventsValue);
+      return;
+    }
+
+    // Below is AIE tile support
+    
+    // Event is DMA_MM2S_stalled_lock or DMA_S2MM_stream_starvation
     uint16_t eventNum = isInputSet(type, metricSet)
-        ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
-        : EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK;
+        ? ((channel == 0) ? EVENT_MEM_DMA_MM2S_0_STALLED_LOCK
+                          : EVENT_MEM_DMA_MM2S_1_STALLED_LOCK)
+        : ((channel == 0) ? EVENT_MEM_DMA_S2MM_0_STREAM_STARVATION
+                          : EVENT_MEM_DMA_S2MM_1_STREAM_STARVATION);
 
     // Register Edge_Detection_event_control
     // 26    Event 1 triggered on falling edge
@@ -305,12 +333,13 @@ namespace xdp::aie::trace {
     //  7:0  Input event for edge event 0
     uint32_t edgeEventsValue = (1 << 26) + (eventNum << 16) + (1 << 9) + eventNum;
 
-    std::string msg = "Configuring memory tile edge events to detect rise and fall of event " 
-                    + std::to_string(eventNum);
-    xrt_core::message::send(severity_level::debug, "XRT", msg);
+    xrt_core::message::send(severity_level::debug, "XRT", 
+        "Configuring AIE tile edge events to detect rise and fall of event " 
+        + std::to_string(eventNum));
 
     auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
-    XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, edgeEventsValue);
+    XAie_Write32(aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM, 
+                 edgeEventsValue);
   }
 
   /****************************************************************************
