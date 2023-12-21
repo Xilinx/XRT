@@ -524,9 +524,6 @@ namespace xdp {
         && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE))
       return;
 
-    // AIE core register offsets
-    constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
-
     // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
     uint16_t eventNum = isInputSet(type, metricSet)
         ? EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION
