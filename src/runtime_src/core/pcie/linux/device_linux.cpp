@@ -976,8 +976,8 @@ struct num_live_processes {
   }
 };
 
-struct device_clock_freq_MHz {
-  using result_type = xrt_core::query::device_clock_freq_MHz::result_type;
+struct device_clock_freq_mhz {
+  using result_type = xrt_core::query::device_clock_freq_mhz::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key)
@@ -1021,9 +1021,9 @@ struct sub_device_path
   }
 };
 
-struct host_max_bandwidth_MBps
+struct host_max_bandwidth_mbps
 {
-  using result_type = xrt_core::query::host_max_bandwidth_MBps::result_type;
+  using result_type = xrt_core::query::host_max_bandwidth_mbps::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const std::any& param)
@@ -1036,9 +1036,9 @@ struct host_max_bandwidth_MBps
   }
 };
 
-struct kernel_max_bandwidth_MBps
+struct kernel_max_bandwidth_mbps
 {
-  using result_type = xrt_core::query::kernel_max_bandwidth_MBps::result_type;
+  using result_type = xrt_core::query::kernel_max_bandwidth_mbps::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const std::any& param)
@@ -1509,11 +1509,11 @@ initialize_query_table()
 
   emplace_func4_request<query::debug_ip_layout_path,           debug_ip_layout_path>();
   emplace_func0_request<query::num_live_processes,             num_live_processes>();
-  emplace_func0_request<query::device_clock_freq_MHz,          device_clock_freq_MHz>();
+  emplace_func0_request<query::device_clock_freq_mhz,          device_clock_freq_mhz>();
   emplace_func4_request<query::trace_buffer_info,              trace_buffer_info>();
   emplace_func4_request<query::sub_device_path,                sub_device_path>();
-  emplace_func4_request<query::host_max_bandwidth_MBps,        host_max_bandwidth_MBps>();
-  emplace_func4_request<query::kernel_max_bandwidth_MBps,      kernel_max_bandwidth_MBps>();
+  emplace_func4_request<query::host_max_bandwidth_mbps,        host_max_bandwidth_mbps>();
+  emplace_func4_request<query::kernel_max_bandwidth_mbps,      kernel_max_bandwidth_mbps>();
   emplace_func4_request<query::read_trace_data,                read_trace_data>();
 }
 

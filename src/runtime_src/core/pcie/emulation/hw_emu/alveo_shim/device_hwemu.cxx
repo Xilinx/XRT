@@ -47,8 +47,8 @@ struct debug_ip_layout_path
   }
 };
 
-struct device_clock_freq_MHz {
-  using result_type = xrt_core::query::device_clock_freq_MHz::result_type;
+struct device_clock_freq_mhz {
+  using result_type = xrt_core::query::device_clock_freq_mhz::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key)
@@ -73,9 +73,9 @@ struct trace_buffer_info
   }
 };
 
-struct host_max_bandwidth_MBps
+struct host_max_bandwidth_mbps
 {
-  using result_type = xrt_core::query::host_max_bandwidth_MBps::result_type;
+  using result_type = xrt_core::query::host_max_bandwidth_mbps::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const std::any& param)
@@ -88,9 +88,9 @@ struct host_max_bandwidth_MBps
   }
 };
 
-struct kernel_max_bandwidth_MBps
+struct kernel_max_bandwidth_mbps
 {
-  using result_type = xrt_core::query::kernel_max_bandwidth_MBps::result_type;
+  using result_type = xrt_core::query::kernel_max_bandwidth_mbps::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const std::any& param)
@@ -170,10 +170,10 @@ initialize_query_table()
   emplace_func0_request<query::nodma, device_query>();
   emplace_func0_request<query::rom_vbnv, xclemulation::query::device_info>();
   emplace_func1_request<query::debug_ip_layout_path, debug_ip_layout_path>();
-  emplace_func0_request<query::device_clock_freq_MHz, device_clock_freq_MHz>();
+  emplace_func0_request<query::device_clock_freq_mhz, device_clock_freq_mhz>();
   emplace_func1_request<query::trace_buffer_info, trace_buffer_info>();
-  emplace_func1_request<query::host_max_bandwidth_MBps, host_max_bandwidth_MBps>();
-  emplace_func1_request<query::kernel_max_bandwidth_MBps, kernel_max_bandwidth_MBps>();
+  emplace_func1_request<query::host_max_bandwidth_mbps, host_max_bandwidth_mbps>();
+  emplace_func1_request<query::kernel_max_bandwidth_mbps, kernel_max_bandwidth_mbps>();
   emplace_func1_request<query::read_trace_data, read_trace_data>();
 }
 

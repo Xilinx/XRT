@@ -301,10 +301,10 @@ enum class key_type
   debug_ip_layout_path,
   debug_ip_layout,
   num_live_processes,
-  device_clock_freq_MHz,
+  device_clock_freq_mhz,
   trace_buffer_info,
-  host_max_bandwidth_MBps,
-  kernel_max_bandwidth_MBps,
+  host_max_bandwidth_mbps,
+  kernel_max_bandwidth_mbps,
   sub_device_path,
   read_trace_data,
   noop
@@ -3451,11 +3451,11 @@ struct num_live_processes : request
   get(const device*) const = 0;
 };
 
-struct device_clock_freq_MHz : request
+struct device_clock_freq_mhz : request
 {
   // Get device clock frequency in MHz
   using result_type = double; // get value type
-  static const key_type key = key_type::device_clock_freq_MHz;
+  static const key_type key = key_type::device_clock_freq_mhz;
 
   virtual std::any
   get(const device*) const = 0;
@@ -3475,21 +3475,21 @@ struct trace_buffer_info : request
   get(const device*, const std::any&) const = 0;
 };
 
-struct host_max_bandwidth_MBps : request
+struct host_max_bandwidth_mbps : request
 {
   // Get Max host bandwidth MBps
   using result_type = double; // get value type
-  static const key_type key = key_type::host_max_bandwidth_MBps;
+  static const key_type key = key_type::host_max_bandwidth_mbps;
 
   virtual std::any
   get(const device*, const std::any&) const = 0;
 };
 
-struct kernel_max_bandwidth_MBps : request
+struct kernel_max_bandwidth_mbps : request
 {
   // Get Max host bandwidth MBps
   using result_type = double; // get value type
-  static const key_type key = key_type::kernel_max_bandwidth_MBps;
+  static const key_type key = key_type::kernel_max_bandwidth_mbps;
 
   virtual std::any
   get(const device*, const std::any&) const = 0;
