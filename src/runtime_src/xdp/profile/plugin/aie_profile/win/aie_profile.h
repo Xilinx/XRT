@@ -18,11 +18,13 @@
 #define AIE_PROFILE_H
 
 #include <cstdint>
+#include <memory>
 
-#include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
+
+#include "xdp/profile/plugin/common/client_transaction.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -69,8 +71,7 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents;
 
-      xrt::kernel mKernel;
-      xrt::bo input_bo;
+      std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
       aie_profile_op_t* op;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};

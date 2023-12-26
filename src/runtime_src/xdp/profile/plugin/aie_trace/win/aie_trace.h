@@ -80,11 +80,8 @@ namespace xdp {
       typedef std::vector<EventType> EventVector;
 
       xrt::device device;
-      xrt::kernel aie_trace_kernel;
-
       xrt::kernel mKernel;
       xrt::bo input_bo;
-      aie_trace_op_t* op;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
 

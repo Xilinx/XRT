@@ -544,9 +544,6 @@ namespace xdp {
     (void)deviceId;
     (void)handle;
 
-    // Inputs to the DPU kernel
-    std::vector<trace_data_t> op_trace_data;
-
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
