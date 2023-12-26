@@ -19,12 +19,12 @@ SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 SET(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
-# When the rpmbuild occurs for packaging, it uses a default version of 
-# python to perform a python byte compilation.  For the CentOS 7.x OS, this 
-# is python2.  Being that the XRT python code is for python3, this results in 
+# When the rpmbuild occurs for packaging, it uses a default version of
+# python to perform a python byte compilation.  For the CentOS 7.x OS, this
+# is python2.  Being that the XRT python code is for python3, this results in
 # a bad release build. The following line overrides this default value
 # and uses python3 for the RPM package builds.
-# 
+#
 # Note: If a python script is placed in a directory where with a parent directory
 #       is "bin" (any level of hierarchy), python byte compilation will not be performed.
 SET(CPACK_RPM_SPEC_MORE_DEFINE "%define __python python3")
@@ -90,6 +90,21 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
       ocl-icd-opencl-dev (>= 2.2.0), \
       uuid-dev (>= 2.27.1)")
   endif()
+
+  # Workaround for the following class of cpack build failure on Ubuntu 23.10
+  # CMake Error at /usr/share/cmake-3.27/Modules/Internal/CPack/CPackDeb.cmake:348 (message):
+  #   CPackDeb: dpkg-shlibdeps: 'dpkg-shlibdeps: error: no dependency information
+  #   found for opt/xilinx/xrt/lib/libxrt_coreutil.so.2 (used by
+  #   ./opt/xilinx/xrt/lib/libxrt_hwemu.so.2.17.0)
+  # Debugging this shows that dpkg-shlibdeps is unable to find dependencies recursively; it
+  # does not realize that libxrt_coreutil.so is part of the same package but instead attempts
+  # to determine the source package for the said library by looking in standard system databases.
+  # You can see this behavior by running dpkg-shlibdeps -v ./opt/xilinx/xrt/lib/libxrt_core.so inside
+  # build/Release/_CPack_Packages/Linux/DEB/xrt_202410.2.17.0_23.10-amd64/xrt directory
+  # Adding an empty DEBIAN directory somehow convinces dpkg-shlibdeps to behave sanely.
+
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/please-mantic.txt" "Workaround for cpack bug on Ubuntu 23.10")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/please-mantic.txt" DESTINATION "${XRT_INSTALL_DIR}/DEBIAN")
 
   if (DEFINED CROSS_COMPILE)
     if (${aarch} STREQUAL "aarch64")
@@ -166,7 +181,7 @@ else ()
 endif()
 
 # On Amazon Linux CPACK_REL_VER is just '2' and it is hard to
-# distinguish it as AL package, so adding CPACK_FLOVOR (eg: amzn) 
+# distinguish it as AL package, so adding CPACK_FLOVOR (eg: amzn)
 # to package name
 if (${LINUX_FLAVOR} MATCHES "^amzn")
   execute_process(
@@ -182,9 +197,9 @@ endif()
 
 message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
 
-SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
-SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx FPGA platforms")
+SET(CPACK_PACKAGE_VENDOR "Advanced Micro Devices Inc.")
+SET(CPACK_PACKAGE_CONTACT "sonal.santan@amd.com")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Runtime stack for use with AMD platforms")
 SET(CPACK_RESOURCE_FILE_LICENSE "${XRT_SOURCE_DIR}/../LICENSE")
 
 add_custom_target(xrtpkg
