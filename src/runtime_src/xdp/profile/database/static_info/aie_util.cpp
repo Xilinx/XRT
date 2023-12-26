@@ -16,17 +16,17 @@
 
 #define XDP_CORE_SOURCE
 
-#include <cstdint>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <set>
-#include <memory>
-#include <iostream>
-#include "filetypes/aie_control_config_filetype.h"
+
 #include "aie_util.h"
 #include "core/common/message.h"
+#include "filetypes/aie_control_config_filetype.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
