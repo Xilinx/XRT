@@ -7,11 +7,12 @@
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "core/include/xrt/xrt_kernel.h"
+#include "xdp/profile/plugin/common/client_transaction.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+
+#include "core/include/xrt/xrt_hw_context.h"
 
 
 extern "C" {
@@ -44,10 +45,9 @@ namespace xdp {
       {module_type::shim, "Interface"},
       {module_type::mem_tile, "Memory Tile"}
     };
-    xrt::kernel mKernel;
-    xrt::bo result_bo;
-    xrt::bo instr_bo;
-    xrt::hw_context context;
+    
+    std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
+    uint8_t* txn_ptr;
     XAie_DevInst aieDevInst = {0};
     boost::property_tree::ptree aie_meta;
     std::unique_ptr<xdp::aie::BaseFiletypeImpl> filetype;

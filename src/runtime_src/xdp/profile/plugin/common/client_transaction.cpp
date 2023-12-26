@@ -45,7 +45,7 @@ namespace xdp::aie::common {
         kernel = xrt::kernel(context, kernelName);  
       } catch (std::exception &e){
         std::stringstream msg;
-        msg << "Unable to find " << kernelName << " kernel from hardware context. Failed to configure " << pluginName << "." << e.what();
+        msg << "Unable to find " << kernelName << " kernel from hardware context. Failed to configure " << pluginName << ". " << e.what();
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         return false;
       }
@@ -64,7 +64,7 @@ namespace xdp::aie::common {
         instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
       } catch (std::exception &e){
         std::stringstream msg;
-        msg << "Unable to create instruction buffer for " << pluginName << " transaction. Unable to configure " << pluginName<< "." << e.what() << std::endl;
+        msg << "Unable to create instruction buffer for " << pluginName << " transaction. Unable to configure " << pluginName<< ". " << e.what() << std::endl;
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         return false;
       }
