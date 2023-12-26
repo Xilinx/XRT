@@ -91,20 +91,23 @@ if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
       uuid-dev (>= 2.27.1)")
   endif()
 
-  # Workaround for the following class of cpack build failure on Ubuntu 23.10
-  # CMake Error at /usr/share/cmake-3.27/Modules/Internal/CPack/CPackDeb.cmake:348 (message):
-  #   CPackDeb: dpkg-shlibdeps: 'dpkg-shlibdeps: error: no dependency information
-  #   found for opt/xilinx/xrt/lib/libxrt_coreutil.so.2 (used by
-  #   ./opt/xilinx/xrt/lib/libxrt_hwemu.so.2.17.0)
-  # Debugging this shows that dpkg-shlibdeps is unable to find dependencies recursively; it
-  # does not realize that libxrt_coreutil.so is part of the same package but instead attempts
-  # to determine the source package for the said library by looking in standard system databases.
-  # You can see this behavior by running dpkg-shlibdeps -v ./opt/xilinx/xrt/lib/libxrt_core.so inside
-  # build/Release/_CPack_Packages/Linux/DEB/xrt_202410.2.17.0_23.10-amd64/xrt directory
-  # Adding an empty DEBIAN directory somehow convinces dpkg-shlibdeps to behave sanely.
+  if ((${LINUX_FLAVOR} MATCHES "^(ubuntu)") AND (${LINUX_VERSION} STREQUAL "23.10"))
+    # Workaround for the following class of cpack build failure on Ubuntu 23.10
+    # CMake Error at /usr/share/cmake-3.27/Modules/Internal/CPack/CPackDeb.cmake:348 (message):
+    #   CPackDeb: dpkg-shlibdeps: 'dpkg-shlibdeps: error: no dependency information
+    #   found for opt/xilinx/xrt/lib/libxrt_coreutil.so.2 (used by
+    #   ./opt/xilinx/xrt/lib/libxrt_hwemu.so.2.17.0)
+    # Debugging this reveals that dpkg-shlibdeps is unable to find dependencies recursively; it
+    # does not realize that libxrt_coreutil.so is part of the same package but instead attempts
+    # to determine the source package for the said library by looking in standard system databases.
+    # You can see this behavior by running dpkg-shlibdeps -v ./opt/xilinx/xrt/lib/libxrt_core.so inside
+    # build/Release/_CPack_Packages/Linux/DEB/xrt_202410.2.17.0_23.10-amd64/xrt directory
+    # Adding an empty DEBIAN directory somehow convinces dpkg-shlibdeps to behave sanely.
 
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/please-mantic.txt" "Workaround for cpack bug on Ubuntu 23.10")
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/please-mantic.txt" DESTINATION "${XRT_INSTALL_DIR}/DEBIAN")
+    message("-- Enable Ubuntu 23.10 cpack dpkg-shlibdeps failure workaround")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/please-mantic.txt" "Workaround for cpack bug on Ubuntu 23.10")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/please-mantic.txt" DESTINATION "${XRT_INSTALL_DIR}/DEBIAN")
+  endif()
 
   if (DEFINED CROSS_COMPILE)
     if (${aarch} STREQUAL "aarch64")
