@@ -134,7 +134,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows
-          ref: test   
+          ref: test_vaish   
        
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
