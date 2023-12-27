@@ -639,6 +639,24 @@ static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
 static std::mutex mutex;
 static std::condition_variable device_erased;
 
+////////////////////////////////////////////////////////////////  
+// Trivially dsetructible pod type that is accessible after global
+// dstruction.  Used to know when above global objects (destructed
+// after below uninit) are valid.
+bool&
+exiting()
+{
+  static bool lights_out = false;
+  return lights_out;
+}
+
+struct uninit
+{
+  ~uninit() { exiting() = true; }
+};
+static uninit s_uninit;
+////////////////////////////////////////////////////////////////  
+
 // This function ensures that only one kds_device is created per
 // xrt_core::device regardless of hwctx.  It allocates (if necessary)
 // a kds_device queue impl in the sentinel slot that represents a null
@@ -695,6 +713,13 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
 static void
 remove_device(const xrt_core::device* device)
 {
+  // Accessing static globals is not safe during static global
+  // destruction.  If a device objects is deleted during static global
+  // destruction, we can only access the static globals if they have
+  // not yet been destructed.
+  if (exiting())
+    return;
+  
   std::lock_guard lk(mutex);
   XRT_DEBUGF("remove_device(0x%x) devices(%d)\n", device, dev2hwc.size());
   dev2hwc.erase(device);
