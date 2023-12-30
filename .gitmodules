@@ -4,3 +4,7 @@
 [submodule "src/runtime_src/core/common/elf"]
 	path = src/runtime_src/core/common/elf
 	url = https://github.com/serge1/ELFIO.git
+[submodule "src/runtime_src/hip/interface"]
+	path = src/runtime_src/hip/interface
+	url = https://github.com/ROCm/HIP.git
+	branch = rocm-6.0.x
