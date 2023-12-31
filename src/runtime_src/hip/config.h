@@ -5,6 +5,9 @@
 
 //------------------Enable dynamic linking on windows-------------------------//
 
+// We need to define either __HIP_PLATFORM_AMD__ or __HIP_PLATFORM_NVIDIA for HIP header
+// files to stand; see hip/hip_runtime_api.h
+
 #define __HIP_PLATFORM_AMD__
 
 #ifdef _WIN32
