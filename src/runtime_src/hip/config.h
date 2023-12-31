@@ -5,6 +5,8 @@
 
 //------------------Enable dynamic linking on windows-------------------------//
 
+#define __HIP_PLATFORM_AMD__
+
 #ifdef _WIN32
 # ifdef XRTHIP_SOURCE
 #  define XRTHIP_EXPORT __declspec(dllexport)

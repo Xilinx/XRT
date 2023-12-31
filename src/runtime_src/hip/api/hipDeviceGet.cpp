@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
-#include "hip/hip.h"
+#include "hip/config.h"
+#include "hip/hip_runtime_api.h"
 #include "hip/core/device.h"
 
 #include "core/common/error.h"
@@ -14,7 +15,7 @@ hipDeviceGet(hipDevice_t* device, int ordinal)
 {
   throw std::runtime_error("Not implemented");
 }
-  
+
 } // xrt::core::hip
 
 
