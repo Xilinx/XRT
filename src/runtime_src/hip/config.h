@@ -10,6 +10,9 @@
 
 #define __HIP_PLATFORM_AMD__
 
+// Currently the following are not used since we are using HIP header files from standard
+// HIP install area
+
 #ifdef _WIN32
 # ifdef XRTHIP_SOURCE
 #  define XRTHIP_EXPORT __declspec(dllexport)
