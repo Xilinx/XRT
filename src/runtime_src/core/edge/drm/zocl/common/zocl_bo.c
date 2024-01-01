@@ -89,8 +89,13 @@ int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
 	}
 
 	/* MAP user's VA to pages table into IOMMU */
-	err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
-			bo->sgt->nents, prot);
+        #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+                err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
+                        bo->sgt->nents, prot, GFP_KERNEL);
+        #else
+                err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
+                        bo->sgt->nents, prot);
+        #endif
 	if (err < 0) {
 		/* If IOMMU map failed forget user's VA */
 		bo->uaddr = 0;
