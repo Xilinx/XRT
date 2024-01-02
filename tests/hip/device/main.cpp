@@ -5,7 +5,7 @@
 // % g++ -g -std=c++17 -I${XILINX_XRT}/include -L${XILINX_XRT}/lib \
 //       -o hip_device.exe main.cpp -lxrt_hip
 
-#include "hip/hip.h"
+#include "hip/hip_runtime_api.h"
 
 int main()
 {
