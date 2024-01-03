@@ -5,6 +5,14 @@
 
 //------------------Enable dynamic linking on windows-------------------------//
 
+// We need to define either __HIP_PLATFORM_AMD__ or __HIP_PLATFORM_NVIDIA for HIP header
+// files to stand; see hip/hip_runtime_api.h
+
+#define __HIP_PLATFORM_AMD__
+
+// Currently the following are not used since we are using HIP header files from standard
+// HIP install area
+
 #ifdef _WIN32
 # ifdef XRTHIP_SOURCE
 #  define XRTHIP_EXPORT __declspec(dllexport)

@@ -7,5 +7,5 @@ add_library(hip_core_library_objects OBJECT
 target_include_directories(hip_core_library_objects
   PRIVATE
   ${XRT_SOURCE_DIR}/runtime_src
+  ${HIP_INCLUDE_DIRS}
   )
-
