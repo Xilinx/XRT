@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
 
+#ifndef _XRT_HIP_TEST_COMMON_H
+#define _XRT_HIP_TEST_COMMON_H
+
 #include <chrono>
 #include <cstring>
 #include <iostream>
@@ -9,10 +12,27 @@
 #include <string>
 #include <system_error>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
+#ifdef __linux__
+#include <uuid/uuid.h>
+#endif
 
 #include "hip/hip_runtime_api.h"
+
+namespace {
+#ifdef _WIN32
+// Copied from src/runtime_src/core/include/windows/uuid.h
+inline void
+uuid_unparse_lower(const unsigned char uuid[16], char* str)
+{
+  std::sprintf(str,"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+               uuid[0], uuid[1], uuid[2], uuid[3],
+               uuid[4], uuid[5],
+               uuid[6], uuid[7],
+               uuid[8], uuid[9],
+               uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
+}
+#endif
+}
 
 class
 test_hip_error : public std::system_error
@@ -108,9 +128,9 @@ public:
 
     hipUUID_t hid;
     test_hip_check(hipDeviceGetUuid(&hid, m_device));
-    boost::uuids::uuid bid;
-    std::memcpy(&bid, hid.bytes, sizeof(hid));
-    stream << bid << std::endl;
+    char uuid_str[40];
+    uuid_unparse_lower((unsigned char *)hid.bytes, uuid_str);
+    stream << uuid_str << std::endl;
 
     hipDeviceProp_t devProp;
     test_hip_check(hipGetDeviceProperties(&devProp, m_index));
@@ -133,3 +153,5 @@ public:
     return hfunction;
   }
 };
+
+#endif

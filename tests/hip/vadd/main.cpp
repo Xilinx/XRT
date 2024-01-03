@@ -7,9 +7,6 @@
 #include <iostream>
 #include <memory>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include "hip/hip_runtime_api.h"
 
 #include "common.h"
