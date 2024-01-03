@@ -29,8 +29,8 @@ jobs:
             packageType: rpm      
           - os: ubuntu2004      
             packageType: deb      
-          # - os: ubuntu2204      
-          #   packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
