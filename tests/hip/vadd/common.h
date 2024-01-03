@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: Apache License 2.0 */
-/* Copyright (C) 2023 Advanced Micro Devices, Inc. */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024 Advanced Micro Devices, Inc.
 
 #include <chrono>
 #include <cstring>
@@ -14,113 +14,122 @@
 
 #include "hip/hip_runtime_api.h"
 
-class HIPError : public std::system_error
+class
+test_hip_error : public std::system_error
 {
 private:
-    static std::string message(hipError_t ec, const std::string& what) {
-        std::string str = what;
-        str += ": ";
-        str += hipGetErrorString(ec);
-        str += " (";
-        str += hipGetErrorName(ec);
-        str += ")";
-        return str;
-//        hipDrvGetErrorString(result, str);
-    }
+  static std::string
+  message(hipError_t ec, const std::string& what) {
+    std::string str = what;
+    str += ": ";
+    str += hipGetErrorString(ec);
+    str += " (";
+    str += hipGetErrorName(ec);
+    str += ")";
+    return str;
+  }
 
 public:
   explicit
-  HIPError(hipError_t ec, const std::string& what = "")
-      : system_error(ec, std::system_category(), message(ec, what))
+  test_hip_error(hipError_t ec, const std::string& what = "")
+    : system_error(ec, std::system_category(), message(ec, what))
   {}
 };
 
-inline void hipCheck(hipError_t status, const char *note = "") {
-    if (status != hipSuccess) {       \
-        throw HIPError(status, note);   \
-    }
+inline void
+test_hip_check(hipError_t status, const char *note = "") {
+  if (status != hipSuccess) {           \
+    throw test_hip_error(status, note);       \
+  }
 }
 
 
-class Timer {
-    std::chrono::high_resolution_clock::time_point mTimeStart;
+class
+hip_test_timer {
+  std::chrono::high_resolution_clock::time_point mTimeStart;
 public:
-    Timer() {
-        reset();
-    }
-    long long stop() {
-        std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
-        return std::chrono::duration_cast<std::chrono::microseconds>(timeEnd - mTimeStart).count();
-    }
-    void reset() {
-        mTimeStart = std::chrono::high_resolution_clock::now();
-    }
+  hip_test_timer() {
+    reset();
+  }
+  long long
+  stop() {
+    std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::microseconds>(timeEnd - mTimeStart).count();
+  }
+  void
+  reset() {
+    mTimeStart = std::chrono::high_resolution_clock::now();
+  }
 };
 
 // Abstraction of device buffer so we can do automatic buffer dealocation (RAII)
-template<typename T> class DeviceBO {
-    T *_buffer;
+template<typename T> class
+hip_test_device_bo {
+  T *_buffer;
 public:
-    DeviceBO(size_t size) : _buffer(nullptr) {
-        hipCheck(hipMalloc((void**)&_buffer, size * sizeof(T)));
-    }
-    ~DeviceBO() noexcept {
-        hipCheck(hipFree(_buffer));
-    }
-    T *get() const {
-        return _buffer;
-    }
+  hip_test_device_bo(size_t size) : _buffer(nullptr) {
+    test_hip_check(hipMalloc((void**)&_buffer, size * sizeof(T)));
+  }
+  ~hip_test_device_bo() noexcept {
+    test_hip_check(hipFree(_buffer));
+  }
+  T *get() const {
+    return _buffer;
+  }
 
-    T *&get() {
-        return _buffer;
-    }
+  T *&get() {
+    return _buffer;
+  }
 
 };
 
-class HipDevice {
+class
+hip_test_device {
 private:
-    hipDevice_t mDevice;
-    int mIndex;
-    std::map<std::string, hipModule_t> mModuleTable;
+  hipDevice_t m_device;
+  int m_index;
+  std::map<std::string, hipModule_t> mModuleTable;
 
 public:
-    HipDevice(int index = 0) : mIndex(index) {
-        hipCheck(hipDeviceGet(&mDevice, index));
+  hip_test_device(int index = 0) : m_index(index) {
+    test_hip_check(hipDeviceGet(&m_device, index));
+  }
+
+  ~hip_test_device() {
+    for (auto it : mModuleTable)
+      (void)hipModuleUnload(it.second);
+  }
+
+  void
+  show_info(std::ostream &stream) const {
+    char name[64];
+    test_hip_check(hipDeviceGetName(name, sizeof(name), m_device));
+    stream << name << std::endl;
+
+    hipUUID_t hid;
+    test_hip_check(hipDeviceGetUuid(&hid, m_device));
+    boost::uuids::uuid bid;
+    std::memcpy(&bid, hid.bytes, sizeof(hid));
+    stream << bid << std::endl;
+
+    hipDeviceProp_t devProp;
+    test_hip_check(hipGetDeviceProperties(&devProp, m_index));
+    stream << devProp.name << std::endl;
+    stream << devProp.totalGlobalMem/0x100000 << " MB" << std::endl;
+    stream << devProp.maxThreadsPerBlock << " Threads" << std::endl;
+  }
+
+  hipFunction_t
+  get_function(const char *fileName, const char *funcName) {
+    std::map<std::string, hipModule_t>::iterator it = mModuleTable.find(fileName);
+    hipModule_t hmodule;
+    hmodule = it->second;
+    if (it == mModuleTable.end()) {
+      test_hip_check(hipModuleLoad(&hmodule, fileName), fileName);
+      mModuleTable.insert(it, std::pair<std::string, hipModule_t>(fileName, hmodule));
     }
-
-    virtual ~HipDevice() {
-        for (auto it : mModuleTable)
-            (void)hipModuleUnload(it.second);
-    }
-
-    void showInfo(std::ostream &stream) const {
-        char name[64];
-        hipCheck(hipDeviceGetName(name, sizeof(name), mDevice));
-        stream << name << std::endl;
-
-        hipUUID_t hid;
-        hipCheck(hipDeviceGetUuid(&hid, mDevice));
-        boost::uuids::uuid bid;
-        std::memcpy(&bid, hid.bytes, sizeof(hid));
-        stream << bid << std::endl;
-
-        hipDeviceProp_t devProp;
-        hipCheck(hipGetDeviceProperties(&devProp, mIndex));
-        stream << devProp.name << std::endl;
-        stream << devProp.totalGlobalMem/0x100000 << " MB" << std::endl;
-        stream << devProp.maxThreadsPerBlock << " Threads" << std::endl;
-    }
-
-    hipFunction_t getFunction(const char *fileName, const char *funcName) {
-        std::map<std::string, hipModule_t>::iterator it = mModuleTable.find(fileName);
-        hipModule_t hmodule;
-        hmodule = it->second;
-        if (it == mModuleTable.end()) {
-            hipCheck(hipModuleLoad(&hmodule, fileName), fileName);
-            mModuleTable.insert(it, std::pair<std::string, hipModule_t>(fileName, hmodule));
-        }
-        hipFunction_t hfunction;
-        hipCheck(hipModuleGetFunction(&hfunction, hmodule, funcName), funcName);
-        return hfunction;
-    }
+    hipFunction_t hfunction;
+    test_hip_check(hipModuleGetFunction(&hfunction, hmodule, funcName), funcName);
+    return hfunction;
+  }
 };

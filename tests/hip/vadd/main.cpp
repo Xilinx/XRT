@@ -1,7 +1,6 @@
-/* SPDX-License-Identifier: Apache License 2.0 */
-/* Copyright (c) 2021-2022 Xilinx, Inc. All rights reserved */
-/* Copyright (C) 2022-2023 Advanced Micro Devices, Inc. */
-/* Based on https://github.com/ROCm-Developer-Tools/HIP-Examples/tree/master/vectorAdd */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024 Advanced Micro Devices, Inc.
+// Based on https://github.com/ROCm-Developer-Tools/HIP-Examples/tree/master/vectorAdd
 
 #include <cstring>
 #include <algorithm>
@@ -15,186 +14,189 @@
 
 #include "common.h"
 
-#define FILENAME "kernel.co"
-#define KERNELNAME "vectoradd"
-
-#define NOP_FILENAME "nop.co"
-#define NOP_KERNELNAME "mynop"
-
 namespace {
 
-static const int LEN = 0x100000;
-static const int SIZE = LEN * sizeof(float);
-static const int THREADS_PER_BLOCK_X = 32;
-static const int LOOP = 5000;
+static constexpr char const *kernel_filename = "kernel.co";
+static constexpr char const *kernel_name = "vectoradd";
+
+static constexpr char const *nop_kernel_filename = "nop.co";
+static constexpr char const *nop_kernel_name = "mynop";
+
+static constexpr int vector_length = 0x100000;
+static constexpr int vector_size = vector_length * sizeof(float);
+static constexpr int threads_per_block_x = 32;
+static constexpr int repeat_loop = 5000;
 
 
-void runkernel(hipFunction_t function, void *args[])
+void
+runkernel(hipFunction_t function, void *args[])
 {
-    const char *name = hipKernelNameRef(function);
-    std::cout << "Running " << name << ' ' << LOOP << " times...\n";
-    Timer timer;
+  const char *name = hipKernelNameRef(function);
+  std::cout << "Running " << name << ' ' << repeat_loop << " times...\n";
+  hip_test_timer timer;
 
-    const int globalr = std::strcmp(name, NOP_KERNELNAME) ? LEN/THREADS_PER_BLOCK_X : 1;
-    const int localr = std::strcmp(name, NOP_KERNELNAME) ? THREADS_PER_BLOCK_X : 1;
+  const int globalr = std::strcmp(name, nop_kernel_name) ? vector_length/threads_per_block_x : 1;
+  const int localr = std::strcmp(name, nop_kernel_name) ? threads_per_block_x : 1;
 
-    for (int i = 0; i < LOOP; i++) {
-        hipCheck(hipModuleLaunchKernel(function,
+  for (int i = 0; i < repeat_loop; i++) {
+    test_hip_check(hipModuleLaunchKernel(function,
                                          globalr, 1, 1,
                                          localr, 1, 1,
                                          0, 0, args, nullptr), name);
-    }
-    hipCheck(hipDeviceSynchronize());
-    auto delayD = timer.stop();
+  }
+  test_hip_check(hipDeviceSynchronize());
+  auto delayd = timer.stop();
 
-    std::cout << "Throughput metrics" << std::endl;
-    std::cout << '(' << LOOP << " loops, " << delayD << " us, " << (LOOP * 1000000.0)/delayD
-              << " ops/s, " << delayD/LOOP << " us average pipelined latency)" << std::endl;
+  std::cout << "Throughput metrics" << std::endl;
+  std::cout << '(' << repeat_loop << " loops, " << delayd << " us, " << (repeat_loop * 1000000.0)/delayd
+            << " ops/s, " << delayd/repeat_loop << " us average pipelined latency)" << std::endl;
 
 
-    timer.reset();
-    for (int i = 0; i < LOOP; i++) {
-        hipCheck(hipModuleLaunchKernel(function,
+  timer.reset();
+  for (int i = 0; i < repeat_loop; i++) {
+    test_hip_check(hipModuleLaunchKernel(function,
                                          globalr, 1, 1,
                                          localr, 1, 1,
                                          0, 0, args, nullptr), name);
-        hipCheck(hipDeviceSynchronize());
-    }
+    test_hip_check(hipDeviceSynchronize());
+  }
 
-    delayD = timer.stop();
+  delayd = timer.stop();
 
-    std::cout << "Latency metrics" << std::endl;
-    std::cout << '(' << LOOP << " loops, " << delayD << " us, " << (LOOP * 1000000.0)/delayD
-              << " ops/s, " << delayD/LOOP << " us average start-to-finish latency)" << std::endl;
+  std::cout << "Latency metrics" << std::endl;
+  std::cout << '(' << repeat_loop << " loops, " << delayd << " us, " << (repeat_loop * 1000000.0)/delayd
+            << " ops/s, " << delayd/repeat_loop << " us average start-to-finish latency)" << std::endl;
 
 }
 
-int mainworker() {
+int
+mainworker() {
 
-    std::cout << "---------------------------------------------------------------------------------\n";
-    HipDevice hdevice;
-    hdevice.showInfo(std::cout);
+  std::cout << "---------------------------------------------------------------------------------\n";
+  hip_test_device hdevice;
+  hdevice.show_info(std::cout);
 
-    hipFunction_t function = hdevice.getFunction(FILENAME, KERNELNAME);
-    hipFunction_t nopfunction = hdevice.getFunction(NOP_FILENAME, NOP_KERNELNAME);
+  hipFunction_t function = hdevice.get_function(kernel_filename, kernel_name);
+  hipFunction_t nopfunction = hdevice.get_function(nop_kernel_filename, nop_kernel_name);
 
-    std::unique_ptr<float[]> hostA(new float[LEN]);
-    std::unique_ptr<float[]> hostB(new float[LEN]);
-    std::unique_ptr<float[]> hostC(new float[LEN]);
+  std::unique_ptr<float[]> host_a(new float[vector_length]);
+  std::unique_ptr<float[]> host_b(new float[vector_length]);
+  std::unique_ptr<float[]> host_c(new float[vector_length]);
 
-    // Initialize input/output vectors
-    for (int i = 0; i < LEN; i++) {
-        hostB[i] = i;
-        hostC[i] = i * 2;
-        hostA[i] = 0;
+  // Initialize input/output vectors
+  for (int i = 0; i < vector_length; i++) {
+    host_b[i] = i;
+    host_c[i] = i * 2;
+    host_a[i] = 0;
+  }
+
+  hip_test_device_bo<float> device_a(vector_length);
+  hip_test_device_bo<float> device_b(vector_length);
+  hip_test_device_bo<float> device_c(vector_length);
+
+  // Sync host buffers to device
+  test_hip_check(hipMemcpy(device_b.get(), host_b.get(), vector_size, hipMemcpyHostToDevice));
+  test_hip_check(hipMemcpy(device_c.get(), host_c.get(), vector_size, hipMemcpyHostToDevice));
+
+  void *args_d[] = {&device_a.get(), &device_b.get(), &device_c.get()};
+
+  std::cout << "---------------------------------------------------------------------------------\n";
+  std::cout << "Run " << hipKernelNameRef(function) << ' ' << repeat_loop << " times using device resident memory" << std::endl;
+  std::cout << "Host buffers: " << host_a.get() << ", "
+            << host_b.get() << ", " << host_c.get() << std::endl;
+  std::cout << "Device buffers: " << device_a.get() << ", "
+            << device_b.get() << ", " << device_c.get() << std::endl;
+
+  runkernel(function, args_d);
+  // Sync device output buffer to host
+  test_hip_check(hipMemcpy(host_a.get(), device_a.get(), vector_size, hipMemcpyDeviceToHost));
+
+  // Verify output and then reset it for the subsequent test
+  int errors = 0;
+  for (int i = 0; i < vector_length; i++) {
+    if (host_a[i] != (host_b[i] + host_c[i])) {
+      errors++;
+      break;
     }
+    host_a[i] = 0.0;
+  }
 
-    DeviceBO<float> deviceA(LEN);
-    DeviceBO<float> deviceB(LEN);
-    DeviceBO<float> deviceC(LEN);
+  if (errors)
+    std::cout << "FAILED" << std::endl;
+  else
+    std::cout << "PASSED" << std::endl;
 
-    // Sync host buffers to device
-    hipCheck(hipMemcpy(deviceB.get(), hostB.get(), SIZE, hipMemcpyHostToDevice));
-    hipCheck(hipMemcpy(deviceC.get(), hostC.get(), SIZE, hipMemcpyHostToDevice));
+  std::cout << "---------------------------------------------------------------------------------\n";
 
-    void *argsD[] = {&deviceA.get(), &deviceB.get(), &deviceC.get()};
+  std::cout << "Run " << hipKernelNameRef(nopfunction) << ' ' << repeat_loop << " times using device resident memory" << std::endl;
+  std::cout << "Host buffers: " << host_a.get() << ", "
+            << host_b.get() << ", " << host_c.get() << std::endl;
+  std::cout << "Device buffers: " << device_a.get() << ", "
+            << device_b.get() << ", " << device_c.get() << std::endl;
 
-    std::cout << "---------------------------------------------------------------------------------\n";
-    std::cout << "Run " << hipKernelNameRef(function) << ' ' << LOOP << " times using device resident memory" << std::endl;
-    std::cout << "Host buffers: " << hostA.get() << ", "
-              << hostB.get() << ", " << hostC.get() << std::endl;
-    std::cout << "Device buffers: " << deviceA.get() << ", "
-              << deviceB.get() << ", " << deviceC.get() << std::endl;
+  runkernel(nopfunction, args_d);
 
-    runkernel(function, argsD);
-    // Sync device output buffer to host
-    hipCheck(hipMemcpy(hostA.get(), deviceA.get(), SIZE, hipMemcpyDeviceToHost));
+  // Register our buffer with ROCm so it is pinned and prepare for access by device
+  test_hip_check(hipHostRegister(host_a.get(), vector_size, hipHostRegisterDefault));
+  test_hip_check(hipHostRegister(host_b.get(), vector_size, hipHostRegisterDefault));
+  test_hip_check(hipHostRegister(host_c.get(), vector_size, hipHostRegisterDefault));
 
-    // Verify output and then reset it for the subsequent test
-    int errors = 0;
-    for (int i = 0; i < LEN; i++) {
-        if (hostA[i] != (hostB[i] + hostC[i])) {
-            errors++;
-            break;
-        }
-        hostA[i] = 0.0;
-    }
+  void *tmp_a1 = nullptr;
+  void *tmp_b1 = nullptr;
+  void *tmp_c1 = nullptr;
 
-    if (errors)
-        std::cout << "FAILED" << std::endl;
-    else
-        std::cout << "PASSED" << std::endl;
+  // Map the host buffer to device address space so device can access the buffers
+  test_hip_check(hipHostGetDevicePointer(&tmp_a1, host_a.get(), 0));
+  test_hip_check(hipHostGetDevicePointer(&tmp_b1, host_b.get(), 0));
+  test_hip_check(hipHostGetDevicePointer(&tmp_c1, host_c.get(), 0));
 
-    std::cout << "---------------------------------------------------------------------------------\n";
+  std::cout << "---------------------------------------------------------------------------------\n";
+  std::cout << "Run " << hipKernelNameRef(function) << ' ' << repeat_loop << " times using host resident memory" << std::endl;
+  std::cout << "Device mapped host buffers: " << tmp_a1 << ", "
+            << tmp_b1 << ", " << tmp_c1 << std::endl;
 
-    std::cout << "Run " << hipKernelNameRef(nopfunction) << ' ' << LOOP << " times using device resident memory" << std::endl;
-    std::cout << "Host buffers: " << hostA.get() << ", "
-              << hostB.get() << ", " << hostC.get() << std::endl;
-    std::cout << "Device buffers: " << deviceA.get() << ", "
-              << deviceB.get() << ", " << deviceC.get() << std::endl;
+  void *args_h[] = {&tmp_a1, &tmp_b1, &tmp_c1};
 
-    runkernel(nopfunction, argsD);
+  runkernel(function, args_h);
+  // Verify the output
+  for (int i = 0; i < vector_length; i++) {
+    if (host_a[i] == (host_b[i] + host_c[i]))
+      continue;
+    errors++;
+    break;
+  }
 
-    // Register our buffer with ROCm so it is pinned and prepare for access by device
-    hipCheck(hipHostRegister(hostA.get(), SIZE, hipHostRegisterDefault));
-    hipCheck(hipHostRegister(hostB.get(), SIZE, hipHostRegisterDefault));
-    hipCheck(hipHostRegister(hostC.get(), SIZE, hipHostRegisterDefault));
+  std::cout << "---------------------------------------------------------------------------------\n";
+  std::cout << "Run " << hipKernelNameRef(nopfunction) << ' ' << repeat_loop << " times using host resident memory" << std::endl;
+  std::cout << "Device mapped host buffers: " << tmp_a1 << ", "
+            << tmp_b1 << ", " << tmp_c1 << std::endl;
 
-    void *tmpA1 = nullptr;
-    void *tmpB1 = nullptr;
-    void *tmpC1 = nullptr;
+  runkernel(nopfunction, args_h);
 
-    // Map the host buffer to device address space so device can access the buffers
-    hipCheck(hipHostGetDevicePointer(&tmpA1, hostA.get(), 0));
-    hipCheck(hipHostGetDevicePointer(&tmpB1, hostB.get(), 0));
-    hipCheck(hipHostGetDevicePointer(&tmpC1, hostC.get(), 0));
+  // Unmap the host buffers from device address space
+  test_hip_check(hipHostUnregister(host_c.get()));
+  test_hip_check(hipHostUnregister(host_b.get()));
+  test_hip_check(hipHostUnregister(host_a.get()));
 
-    std::cout << "---------------------------------------------------------------------------------\n";
-    std::cout << "Run " << hipKernelNameRef(function) << ' ' << LOOP << " times using host resident memory" << std::endl;
-    std::cout << "Device mapped host buffers: " << tmpA1 << ", "
-              << tmpB1 << ", " << tmpC1 << std::endl;
-
-    void *argsH[] = {&tmpA1, &tmpB1, &tmpC1};
-
-    runkernel(function, argsH);
-    // Verify the output
-    for (int i = 0; i < LEN; i++) {
-        if (hostA[i] == (hostB[i] + hostC[i]))
-            continue;
-        errors++;
-        break;
-    }
-
-    std::cout << "---------------------------------------------------------------------------------\n";
-    std::cout << "Run " << hipKernelNameRef(nopfunction) << ' ' << LOOP << " times using host resident memory" << std::endl;
-    std::cout << "Device mapped host buffers: " << tmpA1 << ", "
-              << tmpB1 << ", " << tmpC1 << std::endl;
-
-    runkernel(nopfunction, argsH);
-
-    // Unmap the host buffers from device address space
-    hipCheck(hipHostUnregister(hostC.get()));
-    hipCheck(hipHostUnregister(hostB.get()));
-    hipCheck(hipHostUnregister(hostA.get()));
-
-    if (errors)
-        std::cout << "FAILED" << std::endl;
-    else
-        std::cout << "PASSED" << std::endl;
+  if (errors)
+    std::cout << "FAILED" << std::endl;
+  else
+    std::cout << "PASSED" << std::endl;
 
 
-    return errors;
+  return errors;
 }
 }
 
-int main()
+int
+main()
 {
-    try {
-        mainworker();
+  try {
+    mainworker();
 
-    } catch (std::exception &e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
+  } catch (std::exception &e) {
+    std::cerr << e.what() << std::endl;
+    return 1;
+  }
+  return 0;
 }

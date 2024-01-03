@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: Apache License 2.0 */
-/* Copyright (C) 2023 Advanced Micro Devices, Inc. */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <cstdio>
 #include "hip/hip_runtime.h"

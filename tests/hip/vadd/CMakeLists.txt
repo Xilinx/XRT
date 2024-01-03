@@ -3,7 +3,7 @@
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5.0)
 PROJECT(device)
-set(TESTNAME "device")
+set(TESTNAME "vadd")
 
 include(../../CMake/utils.cmake)
 
