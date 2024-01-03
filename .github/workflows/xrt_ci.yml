@@ -7,8 +7,8 @@ on:
     types: [opened, synchronize]  
 
 env:  
-  # RELEASE: '2023.2'
-  RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
+  RELEASE: '2024.1'
+  # RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
   PIPELINE: 'xrt' 
   ENV: 'test' 
 
