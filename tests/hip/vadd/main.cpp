@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
-// Based on https://github.com/ROCm-Developer-Tools/HIP-Examples/tree/master/vectorAdd
+// Based on https://github.com/sonals/ROCmExp/blob/master/VectorAdd/main.cpp
 
 #include <cstring>
 #include <algorithm>
@@ -119,9 +119,9 @@ mainworker() {
   }
 
   if (errors)
-    std::cout << "FAILED" << std::endl;
+    std::cout << "FAILED TEST" << std::endl;
   else
-    std::cout << "PASSED" << std::endl;
+    std::cout << "PASSED TEST" << std::endl;
 
   std::cout << "---------------------------------------------------------------------------------\n";
 
@@ -176,9 +176,9 @@ mainworker() {
   test_hip_check(hipHostUnregister(host_a.get()));
 
   if (errors)
-    std::cout << "FAILED" << std::endl;
+    std::cout << "FAILED TEST" << std::endl;
   else
-    std::cout << "PASSED" << std::endl;
+    std::cout << "PASSED TEST" << std::endl;
 
 
   return errors;

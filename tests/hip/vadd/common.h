@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc.
+// Based on https://github.com/sonals/ROCmExp/blob/master/VectorAdd/common.h
 
 #ifndef _XRT_HIP_TEST_COMMON_H
 #define _XRT_HIP_TEST_COMMON_H
