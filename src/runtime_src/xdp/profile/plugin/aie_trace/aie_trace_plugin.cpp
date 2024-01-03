@@ -107,12 +107,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   if (!handle)
     return;
 
-    /*
-     * handle relates to hw context handle in case of Client XRT
-     */
+  //handle relates to hw context handle in case of Client XRT
 #ifdef XDP_MINIMAL_BUILD
-  xrt::hw_context context =
-      xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+  xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   auto device = xrt_core::hw_context_int::get_core_device(context);
 #else
   auto device = xrt_core::get_userpf_device(handle);
@@ -149,31 +146,22 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
 #ifdef XDP_MINIMAL_BUILD
   AIEData.metadata->setHwContext(context);
-  AIEData.implementation =
-      std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
+  AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
-  AIEData.implementation =
-      std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
+  AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, AIEData.metadata);
 #else
-  AIEData.implementation =
-      std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
+  AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
 #endif
 
   // Check for device interface
   DeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
 
 #ifdef XDP_MINIMAL_BUILD
-
   if (deviceIntf == nullptr)
-    deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID,
-                                                      new ClientDevice(handle));
-
+    deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new ClientDevice(handle));
 #else
-
   if (deviceIntf == nullptr)
-    deviceIntf =
-        db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
-
+    deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
 #endif
 
   // Create gmio metadata
@@ -217,17 +205,15 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   for (uint64_t n = 0; n < AIEData.metadata->getNumStreams(); ++n) {
     std::string fileName = "aie_trace_" + std::to_string(deviceID) + "_" +
                            std::to_string(n) + ".txt";
-    VPWriter *writer =
-        new AIETraceWriter(fileName.c_str(), deviceID, n // stream id
-                           ,
-                           "" // version
-                           ,
-                           "" // creation time
-                           ,
-                           "" // xrt version
-                           ,
-                           "" // tool version
-        );
+    VPWriter *writer = new AIETraceWriter(
+      fileName.c_str(),
+      deviceID,
+      n,  // stream id
+      "", // version
+      "", // creation time
+      "", // xrt version
+      ""  // tool version
+    );
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(),
                                       "AIE_EVENT_TRACE");
@@ -299,10 +285,17 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   auto &offloader = AIEData.offloader;
 
   // Can't call init without setting important details in offloader
+#ifdef XDP_MINIMAL_BUILD
+  if (AIEData.metadata->getContinuousTrace()) {
+    xrt_core::message::send(severity_level::debug, "XRT", "Periofic offload isn't supported on this platform.");
+    AIEData.metadata->resetContinuousTrace();
+  }
+#else
   if (AIEData.metadata->getContinuousTrace()) {
     offloader->setContinuousTrace();
     offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
   }
+#endif
 
   try {
     if (!offloader->initReadTrace()) {

@@ -81,6 +81,7 @@ class AieTraceMetadata {
     uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
     uint64_t getContinuousTrace() {return continuousTrace;}
+    void resetContinuousTrace() {continuousTrace = false;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
     uint64_t getDeviceID() {return deviceID;}
     bool getIsValidMetrics() {return isValidMetrics;}
