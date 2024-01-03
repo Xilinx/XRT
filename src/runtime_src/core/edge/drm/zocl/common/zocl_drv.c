@@ -688,7 +688,11 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * and set the vm_pgoff (used as a fake buffer offset by DRM)
 	 * to 0 as we want to map the whole buffer.
 	 */
-	vma->vm_flags &= ~VM_PFNMAP;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+        vma->vm_flags &= ~VM_PFNMAP;
+#else
+        vm_flags_clear(vma, VM_PFNMAP);
+#endif
 	vma->vm_pgoff = 0;
 
 	gem_obj = vma->vm_private_data;
@@ -781,8 +785,13 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		rc = zocl_iommu_map_bo(dev, bo);
 		if (rc)
 			return rc;
-		vma->vm_flags &= ~VM_PFNMAP;
-		vma->vm_flags |= VM_MIXEDMAP;
+                #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+                        vma->vm_flags &= ~VM_PFNMAP;
+                        vma->vm_flags |= VM_MIXEDMAP;
+                #else
+                        vm_flags_clear(vma, VM_PFNMAP);
+                        vm_flags_set(vma, VM_MIXEDMAP);
+                #endif
 		/* Reset the fake offset used to identify the BO */
 		vma->vm_pgoff = 0;
 		return 0;
@@ -805,9 +814,12 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EINVAL;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-	vma->vm_flags |= VM_IO;
-	vma->vm_flags |= VM_RESERVED;
-
+        #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+        	vma->vm_flags |= VM_IO;
+	        vma->vm_flags |= VM_RESERVED;
+        #else
+                vm_flags_set(vma, VM_IO | VM_RESERVED);
+        #endif
 	vma->vm_ops = &reg_physical_vm_ops;
 	rc = io_remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
 				vsize, vma->vm_page_prot);
@@ -1020,15 +1032,17 @@ static struct drm_driver zocl_driver = {
 #endif
 
 	.gem_create_object         = zocl_gem_create_object,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
+        .gem_prime_mmap            = drm_gem_prime_mmap,
+#endif
 	.gem_prime_import          = zocl_gem_import,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	.gem_prime_import_sg_table = drm_gem_dma_prime_import_sg_table,
 #else
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
 #endif
-	.gem_prime_mmap            = drm_gem_prime_mmap,
 	.ioctls                    = zocl_ioctls,
 	.num_ioctls                = ARRAY_SIZE(zocl_ioctls),
 	.fops                      = &zocl_driver_fops,
