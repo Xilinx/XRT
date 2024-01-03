@@ -7,8 +7,8 @@ on:
     types: [opened, synchronize]  
 
 env:  
-  # RELEASE: '2023.2'
-  RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
+  RELEASE: '2024.1'
+  # RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
   PIPELINE: 'xrt' 
   ENV: 'test' 
 
@@ -29,8 +29,8 @@ jobs:
           #   packageType: rpm      
           # - os: ubuntu2004      
           #   packageType: deb      
-          - os: ubuntu2204      
-            packageType: deb      
+          # - os: ubuntu2204      
+          #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -237,7 +237,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows
-          ref: test   
+          ref: test_vaish   
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
