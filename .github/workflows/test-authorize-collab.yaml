@@ -28,8 +28,13 @@ jobs:
             });
 
             if (isCollaborator.data) {
-              console.log('Author ${collab_author} is a trusted outside collaborator');
+              console.log("Author ${collab_author} is a trusted outside collaborator");
             } else {
-              console.log('Author ${collab_author} is not a trusted outside collaborator');
+              console.log("Author ${collab_author} is not a trusted outside collaborator");
+              await github.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: github.context.payload.pull_request.number,
+                body: "${collab_author} is not a collaborator"
               process.exit(1);
             }
