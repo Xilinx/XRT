@@ -27,6 +27,7 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 memory_topology(const xrt_core::device * device);
 
+XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 dynamic_regions(const xrt_core::device * device);
 
