@@ -9,7 +9,7 @@ on:
 
 jobs:
   authorize:
-    runs-on: Ubuntu22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Retrieve the collaborator
@@ -35,7 +35,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: "Author is not a collaborator: " + collab_author + "\n can we please validate PR"
+                body: collab_author + ":is not a collaborator " + "\n Can XRT admins please validate PR"
               });
               process.exit(1);
             }
