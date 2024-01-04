@@ -35,7 +35,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: "${collab_author} is not a collaborator"
+                body: "Author is not a collaborator: " + collab_author + "\n can we please validate PR"
               });
               process.exit(1);
             }
