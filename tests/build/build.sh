@@ -1,5 +1,11 @@
 #!/bin/bash -x
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+#
+# Script to enable compilation of testcases (host code only) in the
+# XRT/tests directory.
+
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
@@ -60,9 +66,9 @@ usage()
     echo "[-toolchain <file>]         Extra toolchain file to configure CMake"
     echo "[-verbose]                  Turn on verbosity when compiling"
     echo ""
-    echo "Compile caching is enabled with '-ccache' but requires access to internal network."
+    echo "Compile the test cases in the tests directory. Previously compiled XRT "
+    echo "build must be available in XRT/build/Debug and or XRT/build/Release area(s)."
     echo ""
-
 
     exit 1
 }
