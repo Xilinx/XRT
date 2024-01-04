@@ -15,15 +15,15 @@ jobs:
         uses: actions/github-script@v5
         with:
           script: |
-            const username = github.event.pull_request.actor
+            const username = github.event.pull_request.actor;
             const isCollaborator = await github.orgs.checkMembership({
               org: 'Xilinx'
               username: username
             });
 
             if (isCollaborator.data) {
-              console.log('Author ${username} is a trusted outside collaborator')
+              console.log('Author ${username} is a trusted outside collaborator');
             } else {
-              console.log('Author ${username} is not a trusted outside collaborator')
-              process.exit(1)
+              console.log('Author ${username} is not a trusted outside collaborator');
+              process.exit(1);
             }
