@@ -1,23 +1,12 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportPcieInfo.h"
 #include "core/common/device.h"
+#include "core/common/info_platform.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
@@ -35,14 +24,8 @@ void
 ReportPcieInfo::getPropertyTree20202( const xrt_core::device * dev, 
                                            boost::property_tree::ptree &pt) const
 {
-  xrt::device device(dev->get_device_id());
-  boost::property_tree::ptree pt_pcie_info;
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::pcie_info>();
-  boost::property_tree::read_json(ss, pt_pcie_info);
-  
   // There can only be 1 root node
-    pt.add_child("pcie_info", pt_pcie_info);
+  pt.add_child("pcie_info", xrt_core::platform::pcie_info(dev));
 }
 
 void 

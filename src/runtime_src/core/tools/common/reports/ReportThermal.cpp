@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "ReportThermal.h"
 #include "core/common/device.h"
@@ -22,10 +22,7 @@ void
 ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::thermal>();
-  boost::property_tree::read_json(ss, _pt);
+  _pt = xrt_core::sensor::read_thermals(_pDevice);
 }
 
 void

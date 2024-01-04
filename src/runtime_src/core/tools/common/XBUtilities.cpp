@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "XBUtilities.h"
@@ -280,6 +280,24 @@ XBUtilities::xrt_version_cmp(bool isUserDomain)
   }
 }
 
+static std::shared_ptr<xrt_core::device>
+get_device_internal(int index, bool in_user_domain)
+{
+  if (in_user_domain) {
+    static std::unordered_map<xrt_core::device::id_type, std::shared_ptr<xrt_core::device>> user_device_map;
+    if (user_device_map.find(index) == user_device_map.end())
+      user_device_map[index] = xrt_core::get_userpf_device(index);
+
+    return user_device_map[index];
+  }
+
+  static std::unordered_map<xrt_core::device::id_type, std::shared_ptr<xrt_core::device>> mgmt_device_map;
+  if (mgmt_device_map.find(index) == mgmt_device_map.end())
+    mgmt_device_map[index] = xrt_core::get_userpf_device(index);
+
+  return mgmt_device_map[index];
+}
+
 void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
                               bool _inUserDomain,
@@ -306,10 +324,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     // Now collect the devices and add them to the collection
     for(xrt_core::device::id_type index = 0; index < total; ++index) {
       try {
-        if(_inUserDomain)
-          _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-        else
-          _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+        _deviceCollection.push_back(get_device_internal(index, _inUserDomain));
       } catch (...) {
         /* If the device is not available, quietly ignore it
            Use case: when a device is being reset in parallel */
@@ -323,10 +338,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
     auto index = str2index(deviceBDF, _inUserDomain);         // Can throw
-    if(_inUserDomain)
-      _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-    else
-      _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+    _deviceCollection.push_back(get_device_internal(index, _inUserDomain));
   }
 }
 
@@ -408,10 +420,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     // -- Collect the devices by name
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw
     std::shared_ptr<xrt_core::device> device;
-    if(in_user_domain)
-      device = xrt_core::get_userpf_device(index);
-    else
-      device = xrt_core::get_mgmtpf_device(index);
+    device = get_device_internal(index, in_user_domain);
 
     if (xrt_core::device_query_default<xq::is_versal>(device, false))
       check_versal_boot(device);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -16,12 +16,8 @@
 boost::property_tree::ptree
 populate_aie_mem(const xrt_core::device* _pDevice, const std::string& desc)
 {
-  xrt::device device(_pDevice->get_device_id());
-  boost::property_tree::ptree pt_mem;
+  boost::property_tree::ptree pt_mem = xrt_core::aie::aie_mem(_pDevice);
   pt_mem.put("description", desc);
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::aie_mem>();
-  boost::property_tree::read_json(ss, pt_mem);
 
   return pt_mem;
 }
