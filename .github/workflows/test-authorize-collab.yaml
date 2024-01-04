@@ -19,7 +19,7 @@ jobs:
         with:
           script: |
             const collab_author = process.env.PR_AUTHOR;
-            const isCollaborator = await github.orgs.checkMembership({
+            const isCollaborator = await github.rest.orgs.checkMembership({
               org: 'Xilinx',
               username: collab_author
             });
