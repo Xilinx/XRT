@@ -9,11 +9,11 @@ on:
 
 jobs:
   authorize:
-    runs-on: [ self-hosted ]
+    runs-on: Ubuntu22.04
 
     steps:
       - name: Authorize the author - ${{ github.event.pull_request.user.login }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
             const collab_author = github.event.pull_request.user.login;
