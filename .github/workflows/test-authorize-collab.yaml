@@ -16,7 +16,7 @@ jobs:
         uses: actions/github-script@v5
         with:
           script: |
-            const username = github.event.pull_request.head.user.login;
+            const username = github.event.pull_request.user.login;
             const isCollaborator = await github.orgs.checkMembership({
               org: 'Xilinx',
               username: username
