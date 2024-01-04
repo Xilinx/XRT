@@ -1,20 +1,32 @@
-name: XRT CI
+# name: XRT CI
 
-on:
-#   pull_request:
-#     types: [opened, synchronize]
-  pull_request_target:  
-    types: [opened, synchronize]  
+# on:
+# #   pull_request:
+# #     types: [opened, synchronize]
+#   pull_request_target:  
+#     types: [opened, synchronize]  
+
+# env:  
+#   RELEASE: '2024.1'
+#   # RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
+#   PIPELINE: 'xrt' 
+#   ENV: 'test' 
+
+# concurrency:  
+#   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
+#   cancel-in-progress: true  
+
+
+name: XRT CI Allowing Multiple Runs
+
+on:  
+  workflow_dispatch:
+  workflow_call:
 
 env:  
   RELEASE: '2024.1'
-  # RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
   PIPELINE: 'xrt' 
   ENV: 'test' 
-
-concurrency:  
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-  cancel-in-progress: true  
   
 jobs:    
   build:    
