@@ -18,7 +18,7 @@ jobs:
           script: |
             const username = github.event.pull_request.actor;
             const isCollaborator = await github.orgs.checkMembership({
-              org: 'Xilinx'
+              org: 'Xilinx',
               username: username
             });
 
