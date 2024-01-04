@@ -36,5 +36,6 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: github.context.payload.pull_request.number,
                 body: "${collab_author} is not a collaborator"
+              });
               process.exit(1);
             }
