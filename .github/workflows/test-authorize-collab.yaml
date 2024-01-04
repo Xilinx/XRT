@@ -21,7 +21,7 @@ jobs:
           script: |
             const collab_author = process.env.PR_AUTHOR;
             const isCollaborator = await github.rest.repos.checkCollaborator({
-              org: 'Xilinx',
+              owner: 'Xilinx',
               repo: 'xrt',
               username: collab_author
             });
