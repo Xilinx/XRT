@@ -83,6 +83,8 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
 
   windows-build:  
     runs-on: Windows
