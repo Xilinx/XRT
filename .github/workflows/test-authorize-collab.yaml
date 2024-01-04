@@ -1,0 +1,29 @@
+name: test-authorize-collab
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronized
+
+jobs:
+  authorize:
+    runs-on: [ self-hosted ]
+
+    steps:
+      - name: Authorize the author
+        uses: actions/github-script@v5
+        with:
+          script: |
+            const username = github.event.pull_request.actor
+            const isCollaborator = await github.orgs.checkMembership({
+              org: 'Xilinx'
+              username: username
+            });
+
+            if (isCollaborator.data) {
+              console.log('Author ${username} is a trusted outside collaborator')
+            } else {
+              console.log('Author ${username} is not a trusted outside collaborator')
+              process.exit(1)
+            }
