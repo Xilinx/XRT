@@ -227,9 +227,16 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
   bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceID) ? true : false;
 
+#ifdef XDP_MINIMAL_BUILD
+  if (AIEData.metadata->getContinuousTrace()) {
+    xrt_core::message::send(severity_level::debug, "XRT", "Periofic offload isn't supported on this platform.");
+    AIEData.metadata->resetContinuousTrace();
+  }
+#else
   if (AIEData.metadata->getContinuousTrace())
     XDPPlugin::startWriteThread(AIEData.metadata->getFileDumpIntS(),
                                 "AIE_EVENT_TRACE", false);
+#endif
 
   // First, check against memory bank size
   // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
@@ -285,17 +292,10 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   auto &offloader = AIEData.offloader;
 
   // Can't call init without setting important details in offloader
-#ifdef XDP_MINIMAL_BUILD
-  if (AIEData.metadata->getContinuousTrace()) {
-    xrt_core::message::send(severity_level::debug, "XRT", "Periofic offload isn't supported on this platform.");
-    AIEData.metadata->resetContinuousTrace();
-  }
-#else
   if (AIEData.metadata->getContinuousTrace()) {
     offloader->setContinuousTrace();
     offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
   }
-#endif
 
   try {
     if (!offloader->initReadTrace()) {
