@@ -14,9 +14,7 @@ jobs:
     steps:
       - name: Retrieve the collaborator
         run: echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
-
-      - name: Confirm Collaborator
-      
+        
       - name: Authorize the PR Author
         uses: actions/github-script@v6
         with:
