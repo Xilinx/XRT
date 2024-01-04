@@ -18,6 +18,7 @@ jobs:
       - name: Authorize the PR Author
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.CI_ACCESS_TOKEN }}
           script: |
             const collab_author = process.env.PR_AUTHOR;
             const isCollaborator = await github.rest.repos.checkCollaborator({
