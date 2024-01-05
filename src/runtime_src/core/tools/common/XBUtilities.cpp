@@ -293,7 +293,7 @@ get_device_internal(int index, bool in_user_domain)
 
   static std::unordered_map<xrt_core::device::id_type, std::shared_ptr<xrt_core::device>> mgmt_device_map;
   if (mgmt_device_map.find(index) == mgmt_device_map.end())
-    mgmt_device_map[index] = xrt_core::get_userpf_device(index);
+    mgmt_device_map[index] = xrt_core::get_mgmtpf_device(index);
 
   return mgmt_device_map[index];
 }
