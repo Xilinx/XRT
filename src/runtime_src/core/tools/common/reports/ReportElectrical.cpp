@@ -40,11 +40,15 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
 
   _output << "Electrical\n";
   const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
-  if (!electricals.empty()) {
-    _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
-    _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
-    _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
-  }
+  auto max_watts = _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
+  if (max_watts != "N/A")
+    _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % max_watts;
+  auto watts = _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
+  if (watts != "N/A")
+    _output << boost::format("  %-23s: %s Watts\n") % "Power" % watts;
+  auto power_warn = _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
+  if (power_warn != "N/A")
+    _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % power_warn;
 
   const std::vector<Table2D::HeaderData> table_headers = {
     {"Power Rails", Table2D::Justification::left},
@@ -68,9 +72,9 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
     elec_table.addEntry(entry_data);
   }
 
-  if (elec_table.empty())
+  if (watts == "N/A" && max_watts == "N/A" && power_warn == "N/A" && elec_table.empty())
     _output << "  No electrical sensors found\n";
-  else
+  else if (!elec_table.empty())
     _output << elec_table.toString("  ");
 
   _output << std::endl;

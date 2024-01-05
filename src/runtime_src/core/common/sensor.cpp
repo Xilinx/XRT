@@ -210,19 +210,19 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     sensor_array.push_back({"", pt});
   }
 
-  uint64_t bd_power;
+  std::string bd_power = "N/A";
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power) {
     if (boost::iequals(tmp.label, "Total Power"))
-      bd_power = tmp.input;
+      bd_power = std::to_string(tmp.input);
   }
   ptree_type root;
 
   root.add_child("power_rails", sensor_array);
 
   root.put("power_consumption_watts", bd_power);
-  root.put("power_consumption_max_watts", "NA");
-  root.put("power_consumption_warning", "NA");
+  root.put("power_consumption_max_watts", "N/A");
+  root.put("power_consumption_warning", "N/A");
 
   return root;
 }
