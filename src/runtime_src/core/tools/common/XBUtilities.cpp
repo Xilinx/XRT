@@ -283,19 +283,22 @@ XBUtilities::xrt_version_cmp(bool isUserDomain)
 static std::shared_ptr<xrt_core::device>
 get_device_internal(int index, bool in_user_domain)
 {
-  if (in_user_domain) {
-    static std::unordered_map<xrt_core::device::id_type, std::shared_ptr<xrt_core::device>> user_device_map;
-    if (user_device_map.find(index) == user_device_map.end())
-      user_device_map[index] = xrt_core::get_userpf_device(index);
+  static std::mutex mutex;
+  std::lock_guard guard(mutex);
 
-    return user_device_map[index];
+  if (in_user_domain) {
+    static std::vector<std::shared_ptr<xrt_core::device>> user_devices(xrt_core::get_total_devices(true).second, nullptr);
+    if (!user_devices[index])
+      user_devices[index] = xrt_core::get_userpf_device(index);
+
+    return user_devices[index];
   }
 
-  static std::unordered_map<xrt_core::device::id_type, std::shared_ptr<xrt_core::device>> mgmt_device_map;
-  if (mgmt_device_map.find(index) == mgmt_device_map.end())
-    mgmt_device_map[index] = xrt_core::get_mgmtpf_device(index);
+  static std::vector<std::shared_ptr<xrt_core::device>> mgmt_devices(xrt_core::get_total_devices(false).second, nullptr);
+  if (!mgmt_devices[index])
+    mgmt_devices[index] = xrt_core::get_mgmtpf_device(index);
 
-  return mgmt_device_map[index];
+  return mgmt_devices[index];
 }
 
 void
