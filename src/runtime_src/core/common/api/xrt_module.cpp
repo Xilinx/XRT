@@ -146,26 +146,26 @@ struct patcher
   void
   patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    constexpr uint64_t DDR_AIE_ADDR_OFFSET = ((uint64_t)(0x80000000));
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |
       ((static_cast<uint64_t>(bd_data_ptr[2])));
 
-    base_address = base_address + patch + DDR_AIE_ADDR_OFFSET;
+    base_address = base_address + patch + ddr_aie_addr_offset;
     bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);
     bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);
   }
 
   void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    constexpr uint64_t DDR_AIE_ADDR_OFFSET = ((uint64_t)(0x80000000));
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFF) << 32) |
       ((static_cast<uint64_t>(bd_data_ptr[1])));
 
-    base_address = base_address + patch + DDR_AIE_ADDR_OFFSET;
+    base_address = base_address + patch + ddr_aie_addr_offset;
     bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFC);
     bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);
   }
@@ -754,7 +754,7 @@ class module_sram : public module_impl
   {
     m_column_bo_address.clear();
     m_column_bo_address.push_back({ m_instr_buf.address(), m_instr_buf.size() });
-    if (m_ctrlpkt_buf.get_handle() != nullptr) {
+    if (m_ctrlpkt_buf) {
       m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() });
     }
   }
@@ -806,7 +806,7 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_instr_buf(m_instr_buf, data);
 
-    if (m_ctrlpkt_buf.get_handle() != nullptr) {
+    if (m_ctrlpkt_buf) {
       // The current assembler uses "mc_code" to represent control-packet
       // buffer. We should change the name to "control-packet" which is not
       // DPU specific. Will change this once assembler fix it.
@@ -873,7 +873,7 @@ class module_sram : public module_impl
     bool patched = false;
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
-      if (m_ctrlpkt_buf.get_handle() != nullptr) {
+      if (m_ctrlpkt_buf) {
         if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value))
           patched = true;
       }
@@ -934,7 +934,7 @@ class module_sram : public module_impl
     }
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      if (m_ctrlpkt_buf.get_handle() != nullptr)
+      if (m_ctrlpkt_buf)
         m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
