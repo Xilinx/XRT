@@ -1,0 +1,46 @@
+name: xrt-pr-comment-ci
+
+on:  
+  issue_comment:
+    types: [created]
+
+env:  
+  RELEASE: '2024.1'
+  PIPELINE: 'xrt' 
+  ENV: 'test' 
+  
+jobs:
+  build:    
+    strategy:      
+      matrix:      
+        include:      
+          - os: centos78      
+            packageType: rpm      
+          - os: centos8      
+            packageType: rpm      
+          - os: rhel9      
+            packageType: rpm      
+          - os: ubuntu2004      
+            packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
+        
+    runs-on: [self-hosted, Ubuntu-22.04]
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+    steps:  
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+    
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: "${{ github.event.issue.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.issue.pull_request.head.ref }}"
+          fetch-depth: 0
+          github-server-url: "https://github.com" 
+          token: ${{ secrets.CI_CLOUD_TOKEN}}
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive  
