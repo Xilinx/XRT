@@ -35,7 +35,7 @@ jobs:
             console.log(collaboratorPermission)
             console.log(collaboratorPermission.data.user.permissions.push)
             
-            if (isCollaborator.status == "204" && collaboratorPermission.data.user.permissions.push != "false" ) {
+            if (isCollaborator.status == "204" && collaboratorPermission.data.user.permissions.push == "true" ) {
               console.log("Author is a trusted outside collaborator: " + collab_author);
             } else {
               console.log("Author is not a trusted outside collaborator: "+ collab_author);
