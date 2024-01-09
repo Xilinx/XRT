@@ -26,7 +26,12 @@ jobs:
             packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+    if: github.event.issue.pull_request && contains('\
+      msnow,\
+      venkatap,\
+      subhedar,\
+      msubram,\
+      ', format('{0},', github.actor)) && contains(github.event.comment.body, '/build')
     steps:  
       - name: Set env variables    
         run: |    
