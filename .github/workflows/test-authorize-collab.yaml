@@ -28,7 +28,7 @@ jobs:
             });
               console.log(isCollaborator)
               console.log(isCollaborator.status)
-            if (isCollaborator.status == "200") {
+            if (isCollaborator.status == "204") {
               console.log("Author is a trusted outside collaborator: " + collab_author);
             } else {
               console.log("Author is not a trusted outside collaborator: "+ collab_author);
