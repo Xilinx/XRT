@@ -111,4 +111,4 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 
   ptree.put("status", test_token_passed);
   return ptree;
-}
+} 
