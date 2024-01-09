@@ -80,7 +80,8 @@ jobs:
               process.exit(1);
             }
 
-  build:    
+  build:   
+    needs: authorize  
     strategy:      
       matrix:      
         include:      
@@ -92,8 +93,8 @@ jobs:
             packageType: rpm      
           - os: ubuntu2004      
             packageType: deb      
-          - os: ubuntu2204      
-            packageType: deb      
+          # - os: ubuntu2204      
+          #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -138,7 +139,8 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  # windows-build:  
+  # windows-build: 
+      # needs: authorize 
   #   runs-on: Windows
   #   steps: 
   #     - name: Checkout PR   
@@ -174,6 +176,7 @@ jobs:
   #         github-server-url: ${{ secrets.SERVER_URL }}
 
   # apu-package-build:  
+      # needs: authorize 
   #   runs-on: apu
   #   # runs-on: Ubuntu-20.04 //
   #   steps:      
