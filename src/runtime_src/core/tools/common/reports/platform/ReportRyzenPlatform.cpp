@@ -57,7 +57,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
       _output << std::endl << "Clocks" << std::endl;
       for (const auto& kc : clocks) {
         const boost::property_tree::ptree& pt_clock = kc.second;
-        std::string clock_name_type = pt_clock.get<std::string>("id") + " (" + pt_clock.get<std::string>("description") + ")";
+        std::string clock_name_type = pt_clock.get<std::string>("id");
         _output << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
       }
     }
