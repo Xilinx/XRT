@@ -93,7 +93,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
     try {
       auto run = kernel(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
       // Wait for kernel to be done
-      run.wait2();
+      run.wait();
     }
     catch (const std::exception& ex) {
       logger(ptree, "Error", ex.what());
