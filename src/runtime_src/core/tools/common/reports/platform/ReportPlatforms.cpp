@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // System - Include Files
@@ -10,6 +10,7 @@
 #include "ReportPlatforms.h"
 #include "ReportAlveoPlatform.h"
 #include "ReportRyzenPlatform.h"
+#include "core/common/info_platform.h"
 #include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
@@ -27,14 +28,8 @@ void
 ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev, 
                                            boost::property_tree::ptree &pt) const
 {
-  xrt::device device(dev->get_device_id());
-  boost::property_tree::ptree pt_platform;
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::platform>();
-  boost::property_tree::read_json(ss, pt_platform);
- 
   // There can only be 1 root node
-  pt = pt_platform;
+  pt = xrt_core::platform::platform_info(dev);
 }
 
 void 

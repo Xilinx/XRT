@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "ReportElectrical.h"
 #include "tools/common/Table2D.h"
+#include "core/common/sensor.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -20,14 +21,8 @@ void
 ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
                                         boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  boost::property_tree::ptree pt_electrical;
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::electrical>();
-  boost::property_tree::read_json(ss, pt_electrical);
-
   // There can only be 1 root node
-  _pt.add_child("electrical", pt_electrical);
+  _pt.add_child("electrical", xrt_core::sensor::read_electrical(_pDevice));
 }
 
 void
