@@ -24,10 +24,10 @@ jobs:
             const isCollaborator = await github.rest.repos.checkCollaborator({
               owner: 'Xilinx',
               repo: 'preflight-check',
-              username: collab_author, 
+              username: collab_author
             });
-            console.log(isCollaborator)
-            console.log(isCollborator.status)
+            console.log(isCollaborator);
+            console.log(isCollborator.status);
            
             if (isCollaborator.status == 204) {
               console.log("Author is a trusted outside collaborator: " + collab_author);
