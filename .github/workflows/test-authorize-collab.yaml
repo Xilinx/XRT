@@ -27,4 +27,3 @@ jobs:
               username: collab_author
             });
             console.log(isCollaborator);
-            console.log(isCollborator.status);
