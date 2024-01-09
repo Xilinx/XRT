@@ -16,7 +16,7 @@ jobs:
         run: echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
         
       - name: Authorize the PR Author
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.CI_CLOUD_TOKEN }}
           script: |
@@ -26,15 +26,8 @@ jobs:
               repo: 'preflight-check',
               username: collab_author, 
             });
-
-            const collaboratorPermission = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: 'Xilinx',
-              repo: 'preflight-check',
-              username: collab_author, 
-            });
-            
            
-            if (isCollaborator.status == "204" && collaboratorPermission.data.user.permissions.push) {
+            if (isCollaborator.status == "204") {
               console.log("Author is a trusted outside collaborator: " + collab_author);
             } else if (isCollaborator.status == "404") {
                 console.log("Author is not a trusted outside collaborator: "+ collab_author);
