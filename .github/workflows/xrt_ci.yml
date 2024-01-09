@@ -19,14 +19,26 @@
 
 name: XRT CI Allowing Multiple Runs
 
-on:  
-  workflow_dispatch:
-  workflow_call:
+# on:  
+#   workflow_dispatch:
+#   workflow_call:
 
+# env:  
+#   RELEASE: '2024.1'
+#   PIPELINE: 'xrt' 
+#   ENV: 'test' 
+
+on:
+  pull_request_target:
+     types:
+      - opened
+      - edited
+      - synchronized
+ 
 env:  
   RELEASE: '2024.1'
   PIPELINE: 'xrt' 
-  ENV: 'test' 
+  ENV: 'test'  
   
 jobs:   
 
@@ -54,9 +66,7 @@ jobs:
               repo: 'preflight-check',
               username: collab_author, 
             });
-            console.log(collaboratorPermission)
-            console.log(collaboratorPermission.data.user.permissions.push)
-            
+           
             if (isCollaborator.status == "204" && collaboratorPermission.data.user.permissions.push) {
               console.log("Author is a trusted outside collaborator: " + collab_author);
             } else {
@@ -99,13 +109,13 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          github-server-url: "https://github.com" 
-          token: ${{ secrets.CI_CLOUD_TOKEN}}
+          # github-server-url: "https://github.com" 
+          # token: ${{ secrets.CI_CLOUD_TOKEN}}
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
 
       - name: Checkout private repository      
-        uses: actions/checkout@v3   
+        uses: actions/checkout@v4   
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
@@ -137,14 +147,14 @@ jobs:
   #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
   #         ref: "${{ github.event.pull_request.head.ref }}"
   #         fetch-depth: 0
-  #         github-server-url: "https://github.com" 
-  #         token: ${{ secrets.CI_CLOUD_TOKEN}}
+          # github-server-url: "https://github.com" 
+          # token: ${{ secrets.CI_CLOUD_TOKEN}}
   #         path: ${{ github.workspace }}/${{ github.run_number }}  
   #         submodules: recursive
   #         persist-credentials: false  
 
   #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
+  #       uses: actions/checkout@v4   
   #       with:      
   #         repository: actions-int/composite-workflows
   #         github-server-url: ${{ secrets.SERVER_URL }}      
@@ -174,18 +184,18 @@ jobs:
   #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
   #     - name: Checkout PR   
-  #       uses: actions/checkout@v3 
+  #       uses: actions/checkout@v4 
   #       with: 
   #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
   #         ref: "${{ github.event.pull_request.head.ref }}"
   #         fetch-depth: 0
-  #         github-server-url: "https://github.com" 
-  #         token: ${{ secrets.CI_CLOUD_TOKEN}}
+          # github-server-url: "https://github.com" 
+          # token: ${{ secrets.CI_CLOUD_TOKEN}}
   #         path: ${{ github.workspace }}/${{ github.run_number }}  
   #         submodules: recursive  
 
   #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
+  #       uses: actions/checkout@v4   
   #       with:      
   #         repository: actions-int/composite-workflows      
   #         token: ${{ secrets.ACCESS_TOKEN }}
@@ -209,7 +219,7 @@ jobs:
   #   runs-on: [self-hosted, Ubuntu-22.04]    
   #   steps:    
   #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
+  #       uses: actions/checkout@v4 
   #       with:    
   #         repository: actions-int/composite-workflows    
   #         token: ${{ secrets.ACCESS_TOKEN }}
@@ -234,7 +244,7 @@ jobs:
   #   runs-on: [self-hosted, Ubuntu-22.04]
   #   steps:      
   #     - name: Checkout extraction Action repository  
-  #       uses: actions/checkout@v3  
+  #       uses: actions/checkout@v4  
   #       with:  
   #         repository: actions-int/extraction-action
   #         ref: 'v0.0.1' 
@@ -253,7 +263,7 @@ jobs:
   #         boardMode: "hw"    
   
   #     - name: Checkout upload-logs-to-artifactory Action repository  
-  #       uses: actions/checkout@v3  
+  #       uses: actions/checkout@v4  
   #       with:  
   #         repository: actions-int/upload-logs-to-artifactory-action
   #         ref: 'v0.0.1' 
@@ -288,7 +298,7 @@ jobs:
   #       board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
   #   steps:      
   #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
+  #       uses: actions/checkout@v4   
   #       with:      
   #         repository: actions-int/composite-workflows      
   #         token: ${{ secrets.ACCESS_TOKEN }}
@@ -324,7 +334,7 @@ jobs:
   #       os_list: ['centos_7.8', 'centos_8.1'] 
   #   steps:      
   #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
+  #       uses: actions/checkout@v4   
   #       with:      
   #         repository: actions-int/composite-workflows      
   #         token: ${{ secrets.ACCESS_TOKEN }}
@@ -361,7 +371,7 @@ jobs:
   #       os_list: ['centos_7.8', 'centos_8.1'] 
   #   steps:      
   #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
+  #       uses: actions/checkout@v4   
   #       with:      
   #         repository: actions-int/composite-workflows      
   #         token: ${{ secrets.ACCESS_TOKEN }}
@@ -395,7 +405,7 @@ jobs:
   #   needs: build
   #   steps:  
   #     - name: Checkout test summary Action repository  
-  #       uses: actions/checkout@v3  
+  #       uses: actions/checkout@v4  
   #       with:  
   #         repository: actions-int/XOAH-URL-action
   #         ref: 'v0.0.5' 
