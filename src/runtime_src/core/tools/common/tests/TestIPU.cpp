@@ -14,6 +14,7 @@ namespace XBU = XBUtilities;
 
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 128;
+static constexpr int itr_count = 10000; 
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
@@ -87,15 +88,26 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-  try {
-    auto run = kernel(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
-    // Wait for kernel to be done
-    run.wait();
+  auto start = std::chrono::high_resolution_clock::now();
+  for (int itr = 0; itr < itr_count; itr++) {
+    try {
+      auto run = kernel(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
+      // Wait for kernel to be done
+      run.wait2();
+    }
+    catch (const std::exception& ex) {
+      logger(ptree, "Error", ex.what());
+      ptree.put("status", test_token_failed);
+    }
   }
-  catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
-  }
+  auto end = std::chrono::high_resolution_clock::now();
+  //Calculate throughput
+  float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+  float throughput = itr_count / elapsedSecs;
+  float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
+  logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
+  logger(ptree, "Details", boost::str(boost::format("Average throughput: '%f' GB/s") % throughput));
+  logger(ptree, "Details", boost::str(boost::format("Average latency: '%f' us") % latency));
 
   ptree.put("status", test_token_passed);
   return ptree;
