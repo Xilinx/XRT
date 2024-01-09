@@ -103,10 +103,10 @@ struct patcher
 {
   enum class symbol_type {
     uc_dma_remote_ptr_symbol_kind = 1,
-    shim_dma_base_addr_symbol_kind = 2,
+    shim_dma_base_addr_symbol_kind = 2, // patching scheme needed by AIE2PS firmware
     scalar_32bit_kind = 3,
-    control_packet_48 = 4,
-    shim_dma_48 = 5,
+    control_packet_48 = 4,              // patching scheme needed by IPU firmware to patch control packet
+    shim_dma_48 = 5,                    // patching scheme needed by IPU firmware to patch instruction buffer
     unknown_symbol_kind = 6
   };
 
@@ -146,6 +146,7 @@ struct patcher
   void
   patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
   {
+    // This function is a copy&paste from IPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
@@ -159,6 +160,7 @@ struct patcher
 
   void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
   {
+    // This function is a copy&paste from IPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
