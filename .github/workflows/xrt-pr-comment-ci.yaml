@@ -36,11 +36,8 @@ jobs:
     
       - name: Checkout PR   
         uses: actions/checkout@v4 
-        with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
-          github-server-url: "https://github.com" 
-          token: ${{ secrets.CI_CLOUD_TOKEN}}
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
