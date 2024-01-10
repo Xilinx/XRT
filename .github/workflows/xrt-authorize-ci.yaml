@@ -2,11 +2,8 @@ name: xrt-authorize-ci
 
 on:
   pull_request_target:
-     types:
-      - opened
-      - edited
-      - synchronized
- 
+    types: [opened, edited, synchronize, reopened]
+    
 env:  
   RELEASE: '2024.1'
   PIPELINE: 'xrt' 
