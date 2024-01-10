@@ -1,20 +1,3 @@
-# on:
-# #   pull_request:
-# #     types: [opened, synchronize]
-#   pull_request_target:  
-#     types: [opened, synchronize]  
-
-# env:  
-#   RELEASE: '2024.1'
-#   # RELEASE: ${{ github.base_ref == 'master' && '2024.1' || github.base_ref }}  
-#   PIPELINE: 'xrt' 
-#   ENV: 'test' 
-
-# concurrency:  
-#   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-#   cancel-in-progress: true  
-
-
 name: XRT CI Allowing Multiple Runs
 
 # on:  
@@ -42,7 +25,6 @@ jobs:
 
   authorize:
     runs-on: ubuntu-latest
-
     steps:
       - name: Retrieve the collaborator
         run: echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
@@ -100,8 +82,8 @@ jobs:
             packageType: rpm      
           - os: ubuntu2004      
             packageType: deb      
-          # - os: ubuntu2204      
-          #   packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -117,8 +99,6 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          # github-server-url: "https://github.com" 
-          # token: ${{ secrets.CI_CLOUD_TOKEN}}
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
 
@@ -146,65 +126,203 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  # # windows-build: 
-  #     # needs: authorize 
-  # #   runs-on: Windows
-  # #   steps: 
-  # #     - name: Checkout PR   
-  # #       uses: actions/checkout@v4 
-  # #       with: 
-  # #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
-  # #         ref: "${{ github.event.pull_request.head.ref }}"
-  # #         fetch-depth: 0
-  #         # github-server-url: "https://github.com" 
-  #         # token: ${{ secrets.CI_CLOUD_TOKEN}}
-  # #         path: ${{ github.workspace }}/${{ github.run_number }}  
-  # #         submodules: recursive
-  # #         persist-credentials: false  
+  windows-build: 
+    needs: authorize 
+    runs-on: Windows
+    steps: 
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive
+          persist-credentials: false  
 
-  # #     - name: Checkout private repository      
-  # #       uses: actions/checkout@v4   
-  # #       with:      
-  # #         repository: actions-int/composite-workflows
-  # #         github-server-url: ${{ secrets.SERVER_URL }}      
-  # #         token: ${{ secrets.ACCESS_TOKEN }}      
-  # #         path: composite-workflows
-  # #         ref: test_vaish   
+      - name: Checkout private repository      
+        uses: actions/checkout@v4   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows
+          ref: test_vaish   
        
-  # #     - name: XRT windows build     
-  # #       uses: ./composite-workflows/windows-build
-  # #       with:     
-  # #         workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
-  # #         buildNumber: ${{ github.run_number }}    
-  # #         release: ${{ env.RELEASE }}
-  # #         token: ${{ secrets.CI_CLOUD_TOKEN }}
-  # #         accessToken: ${{ secrets.ACCESS_TOKEN }} 
-  # #         workspaceg: ${{ github.workspace }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: XRT windows build     
+        uses: ./composite-workflows/windows-build
+        with:     
+          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
+          buildNumber: ${{ github.run_number }}    
+          release: ${{ env.RELEASE }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }} 
+          workspaceg: ${{ github.workspace }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
-  # apu-package-build:  
-  #   # needs: authorize 
-  #   runs-on: apu
-  #   steps:      
-  #     - name: Set env variables    
-  #       run: |    
-  #         echo "Setting environment variables..."      
-  #         echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
-  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+  apu-package-build:  
+    needs: authorize 
+    runs-on: apu
+    steps:      
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
-  #     - name: Checkout PR   
-  #       uses: actions/checkout@v3 
-  #       with: 
-  #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
-  #         ref: "${{ github.event.pull_request.head.ref }}"
-  #         fetch-depth: 0
-  #         # github-server-url: "https://github.com" 
-  #         # token: ${{ secrets.CI_CLOUD_TOKEN}}
-  #         path: ${{ github.workspace }}/${{ github.run_number }}  
-  #         submodules: recursive  
+      - name: Checkout PR   
+        uses: actions/checkout@v3 
+        with: 
+          repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive  
 
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}       
+          path: composite-workflows
+          ref: test_vaish   
+       
+      - name: Apu package build for XRT     
+        uses: ./composite-workflows/apu-package
+        with:     
+          pipeline: ${{ env.PIPELINE }}   
+          workspace: ${{ github.workspace }}  
+          buildNumber: ${{ github.run_number }}    
+          apuPackage: 'True' 
+          release: ${{ env.RELEASE }}  
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
+  # package-download:    
+  #   needs: build    
+  #   runs-on: [self-hosted, Ubuntu-22.04]    
+  #   steps:    
+  #     - name: Checkout private repository    
+  #       uses: actions/checkout@v4 
+  #       with:    
+  #         repository: actions-int/composite-workflows    
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}    
+  #         path: composite-workflows 
+    
+  #     - name: Use composite action package download     
+  #       uses: ./composite-workflows/package-download   
+  #       with:    
+  #         runNumber: ${{ github.run_number }}    
+  #         pipeline: ${{ env.PIPELINE }}    
+  #         env: ${{ env.ENV }}  
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
+  #         NPATH: ${{ secrets.NPATH }}
+  #         USER: ${{ secrets.USER }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+
+
+  # extract-platforms:  
+  #   needs: package-download    
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   steps:      
+  #     - name: Checkout extraction Action repository  
+  #       uses: actions/checkout@v4  
+  #       with:  
+  #         repository: actions-int/extraction-action
+  #         ref: 'v0.0.1' 
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         path: ./.github/actions/extraction-action
+
+  #     - name: Extracting ${{ inputs.boardType }} ${{ inputs.boardMode }} platforms      
+  #       uses: ./.github/actions/extraction-action 
+  #       id: extract      
+  #       with:      
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         boardType: "pcie"
+  #         boardMode: "hw"    
+  
+  #     - name: Checkout upload-logs-to-artifactory Action repository  
+  #       uses: actions/checkout@v4  
+  #       with:  
+  #         repository: actions-int/upload-logs-to-artifactory-action
+  #         ref: 'v0.0.1' 
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         path: ./.github/actions/upload-logs-to-artifactory-action
+
+  #     - name: Upload logs to Artifactory        
+  #       id: upload        
+  #       uses: ./.github/actions/upload-logs-to-artifactory-action
+  #       with:          
+  #         logFile: ${{ steps.extract.outputs.logFile }}           
+  #         buildNumber: ${{ github.run_number }}     
+  #         apiKey: ${{ secrets.apiKey }}     
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         repoKeyName: 'extractBoard'  
+
+  #     - name: Display log file URL      
+  #       run: |      
+  #         # echo "Log file URL: ${{ steps.upload.outputs.logFileUrl }}" >> $GITHUB_STEP_SUMMARY  
+  #         # echo '### [logs for extracted boards](${{ steps.upload.outputs.logFileUrl }})' >> $GITHUB_STEP_SUMMARY  
+  #         echo "logs for extracted boards: ${{ steps.upload.outputs.logFileUrl }}"  
+  #   outputs:    
+  #     board_list: ${{ steps.extract.outputs.board_list }}        
+  #     logFileUrl: ${{ steps.upload.outputs.logFileUrl }} 
+
+  # pcie-hw-tests:  
+  #   needs: extract-platforms    
+  #   runs-on: [xrt, trx]
+  #   strategy:      
+  #     matrix:      
+  #       board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
+  #   steps:      
   #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
+  #       uses: actions/checkout@v4   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}      
+  #         path: composite-workflows
+  #         ref: test_vaish   
+       
+  #     - name: Use composite action for pcie-hw       
+  #       uses: ./composite-workflows/pcie-hw  
+  #       with:     
+  #         organization: ${{ github.repository }}  
+  #         runNumber: ${{ github.run_number }}  
+  #         buildNumber: ${{ github.run_number }}  
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}  
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         boardType: "pcie"  
+  #         boardState: "gating"  
+  #         boardMode: "hw"  
+  #         board: ${{ matrix.board_list }}      
+  #         runnerName: ${{ runner.name }}
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}  
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}   
+  #         apiKey: ${{ secrets.apiKey }}    
+  #         NPATH: ${{ secrets.NPATH }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}  
+
+  # pcie-sw-emulation-tests:
+  #   needs: package-download
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   strategy:      
+  #     matrix:      
+  #       os_list: ['centos_7.8', 'centos_8.1'] 
+  #   steps:      
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v4   
   #       with:      
   #         repository: actions-int/composite-workflows      
   #         token: ${{ secrets.ACCESS_TOKEN }}
@@ -212,230 +330,87 @@ jobs:
   #         path: composite-workflows
   #         ref: test_vaish   
        
-  #     - name: Apu package build for XRT     
-  #       uses: ./composite-workflows/apu-package
-  #       with:     
-  #         pipeline: ${{ env.PIPELINE }}   
-  #         workspace: ${{ github.workspace }}  
-  #         buildNumber: ${{ github.run_number }}    
-  #         apuPackage: 'True' 
-  #         release: ${{ env.RELEASE }}  
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
-  #         appConfig: ${{ secrets.APP_CONFIG }} 
-  #         appConfig1: ${{ secrets.APP_CONFIG1 }} 
-  #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
-  #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
+  #     - name: Use composite action for pcie-hw       
+  #       uses: ./composite-workflows/emulation
+  #       with:  
+  #         organization: ${{ github.repository }}
+  #         run_number: ${{ github.run_number }}
+  #         buildNumber: ${{ github.run_number }}
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         boardType: "pcie"
+  #         boardState: "gating"
+  #         boardMode: "sw_emu"
+  #         os: ${{ matrix.os_list }}
+  #         runnerName: ${{ runner.name }}
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+  #         apiKey: ${{ secrets.apiKey }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}     
+  #         USER: ${{ secrets.USER }}
+  #         NPATH: ${{ secrets.NPATH }}
+  #         github-server-url: ${{ secrets.SERVER_URL }} 
 
-  # # package-download:    
-  # #   needs: build    
-  # #   runs-on: [self-hosted, Ubuntu-22.04]    
-  # #   steps:    
-  # #     - name: Checkout private repository    
-  # #       uses: actions/checkout@v4 
-  # #       with:    
-  # #         repository: actions-int/composite-workflows    
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}    
-  # #         path: composite-workflows 
-    
-  # #     - name: Use composite action package download     
-  # #       uses: ./composite-workflows/package-download   
-  # #       with:    
-  # #         runNumber: ${{ github.run_number }}    
-  # #         pipeline: ${{ env.PIPELINE }}    
-  # #         env: ${{ env.ENV }}  
-  # #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-  # #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  # #         NPATH: ${{ secrets.NPATH }}
-  # #         USER: ${{ secrets.USER }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}
-
-
-  # # extract-platforms:  
-  # #   needs: package-download    
-  # #   runs-on: [self-hosted, Ubuntu-22.04]
-  # #   steps:      
-  # #     - name: Checkout extraction Action repository  
-  # #       uses: actions/checkout@v4  
-  # #       with:  
-  # #         repository: actions-int/extraction-action
-  # #         ref: 'v0.0.1' 
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}
-  # #         path: ./.github/actions/extraction-action
-
-  # #     - name: Extracting ${{ inputs.boardType }} ${{ inputs.boardMode }} platforms      
-  # #       uses: ./.github/actions/extraction-action 
-  # #       id: extract      
-  # #       with:      
-  # #         release: ${{ env.RELEASE }}
-  # #         env: ${{ env.ENV }}
-  # #         pipeline: ${{ env.PIPELINE }} 
-  # #         boardType: "pcie"
-  # #         boardMode: "hw"    
-  
-  # #     - name: Checkout upload-logs-to-artifactory Action repository  
-  # #       uses: actions/checkout@v4  
-  # #       with:  
-  # #         repository: actions-int/upload-logs-to-artifactory-action
-  # #         ref: 'v0.0.1' 
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}
-  # #         path: ./.github/actions/upload-logs-to-artifactory-action
-
-  # #     - name: Upload logs to Artifactory        
-  # #       id: upload        
-  # #       uses: ./.github/actions/upload-logs-to-artifactory-action
-  # #       with:          
-  # #         logFile: ${{ steps.extract.outputs.logFile }}           
-  # #         buildNumber: ${{ github.run_number }}     
-  # #         apiKey: ${{ secrets.apiKey }}     
-  # #         pipeline: ${{ env.PIPELINE }} 
-  # #         repoKeyName: 'extractBoard'  
-
-  # #     - name: Display log file URL      
-  # #       run: |      
-  # #         # echo "Log file URL: ${{ steps.upload.outputs.logFileUrl }}" >> $GITHUB_STEP_SUMMARY  
-  # #         # echo '### [logs for extracted boards](${{ steps.upload.outputs.logFileUrl }})' >> $GITHUB_STEP_SUMMARY  
-  # #         echo "logs for extracted boards: ${{ steps.upload.outputs.logFileUrl }}"  
-  # #   outputs:    
-  # #     board_list: ${{ steps.extract.outputs.board_list }}        
-  # #     logFileUrl: ${{ steps.upload.outputs.logFileUrl }} 
-
-  # # pcie-hw-tests:  
-  # #   needs: extract-platforms    
-  # #   runs-on: [xrt, trx]
-  # #   strategy:      
-  # #     matrix:      
-  # #       board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
-  # #   steps:      
-  # #     - name: Checkout private repository      
-  # #       uses: actions/checkout@v4   
-  # #       with:      
-  # #         repository: actions-int/composite-workflows      
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}      
-  # #         path: composite-workflows
-  # #         ref: test_vaish   
+  # pcie-hw-emulation-tests:
+  #   needs: package-download
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   strategy:      
+  #     matrix:      
+  #       os_list: ['centos_7.8', 'centos_8.1'] 
+  #   steps:      
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v4   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows
+  #         ref: test_vaish   
        
-  # #     - name: Use composite action for pcie-hw       
-  # #       uses: ./composite-workflows/pcie-hw  
-  # #       with:     
-  # #         organization: ${{ github.repository }}  
-  # #         runNumber: ${{ github.run_number }}  
-  # #         buildNumber: ${{ github.run_number }}  
-  # #         release: ${{ env.RELEASE }}
-  # #         env: ${{ env.ENV }}  
-  # #         pipeline: ${{ env.PIPELINE }} 
-  # #         boardType: "pcie"  
-  # #         boardState: "gating"  
-  # #         boardMode: "hw"  
-  # #         board: ${{ matrix.board_list }}      
-  # #         runnerName: ${{ runner.name }}
-  # #         accessToken: ${{ secrets.ACCESS_TOKEN }}  
-  # #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}   
-  # #         apiKey: ${{ secrets.apiKey }}    
-  # #         NPATH: ${{ secrets.NPATH }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}  
-
-  # # pcie-sw-emulation-tests:
-  # #   needs: package-download
-  # #   runs-on: [self-hosted, Ubuntu-22.04]
-  # #   strategy:      
-  # #     matrix:      
-  # #       os_list: ['centos_7.8', 'centos_8.1'] 
-  # #   steps:      
-  # #     - name: Checkout private repository      
-  # #       uses: actions/checkout@v4   
-  # #       with:      
-  # #         repository: actions-int/composite-workflows      
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}       
-  # #         path: composite-workflows
-  # #         ref: test_vaish   
-       
-  # #     - name: Use composite action for pcie-hw       
-  # #       uses: ./composite-workflows/emulation
-  # #       with:  
-  # #         organization: ${{ github.repository }}
-  # #         run_number: ${{ github.run_number }}
-  # #         buildNumber: ${{ github.run_number }}
-  # #         release: ${{ env.RELEASE }}
-  # #         env: ${{ env.ENV }}
-  # #         pipeline: ${{ env.PIPELINE }} 
-  # #         boardType: "pcie"
-  # #         boardState: "gating"
-  # #         boardMode: "sw_emu"
-  # #         os: ${{ matrix.os_list }}
-  # #         runnerName: ${{ runner.name }}
-  # #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-  # #         apiKey: ${{ secrets.apiKey }}  
-  # #         accessToken: ${{ secrets.ACCESS_TOKEN }}     
-  # #         USER: ${{ secrets.USER }}
-  # #         NPATH: ${{ secrets.NPATH }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }} 
-
-  # # pcie-hw-emulation-tests:
-  # #   needs: package-download
-  # #   runs-on: [self-hosted, Ubuntu-22.04]
-  # #   strategy:      
-  # #     matrix:      
-  # #       os_list: ['centos_7.8', 'centos_8.1'] 
-  # #   steps:      
-  # #     - name: Checkout private repository      
-  # #       uses: actions/checkout@v4   
-  # #       with:      
-  # #         repository: actions-int/composite-workflows      
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}       
-  # #         path: composite-workflows
-  # #         ref: test_vaish   
-       
-  # #     - name: Use composite action for pcie-hw       
-  # #       uses: ./composite-workflows/emulation
-  # #       with:  
-  # #         organization: ${{ github.repository }}
-  # #         run_number: ${{ github.run_number }}
-  # #         buildNumber: ${{ github.run_number }}
-  # #         release: ${{ env.RELEASE }}
-  # #         env: ${{ env.ENV }}
-  # #         pipeline: ${{ env.PIPELINE }} 
-  # #         boardType: "pcie"
-  # #         boardState: "gating"
-  # #         boardMode: "hw_emu"
-  # #         os: ${{ matrix.os_list }}
-  # #         runnerName: ${{ runner.name }}
-  # #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-  # #         apiKey: ${{ secrets.apiKey }}  
-  # #         accessToken: ${{ secrets.ACCESS_TOKEN }}   
-  # #         USER: ${{ secrets.USER }}       
-  # #         NPATH: ${{ secrets.NPATH }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}     
+  #     - name: Use composite action for pcie-hw       
+  #       uses: ./composite-workflows/emulation
+  #       with:  
+  #         organization: ${{ github.repository }}
+  #         run_number: ${{ github.run_number }}
+  #         buildNumber: ${{ github.run_number }}
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         boardType: "pcie"
+  #         boardState: "gating"
+  #         boardMode: "hw_emu"
+  #         os: ${{ matrix.os_list }}
+  #         runnerName: ${{ runner.name }}
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+  #         apiKey: ${{ secrets.apiKey }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}   
+  #         USER: ${{ secrets.USER }}       
+  #         NPATH: ${{ secrets.NPATH }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}     
                   
-  # # test-summary:    
-  # #   runs-on: [self-hosted, Ubuntu-22.04]
-  # #   needs: build
-  # #   steps:  
-  # #     - name: Checkout test summary Action repository  
-  # #       uses: actions/checkout@v4  
-  # #       with:  
-  # #         repository: actions-int/XOAH-URL-action
-  # #         ref: 'v0.0.5' 
-  # #         token: ${{ secrets.ACCESS_TOKEN }}
-  # #         github-server-url: ${{ secrets.SERVER_URL }}
-  # #         path: ./.github/actions/XOAH-URL-action
+  # test-summary:    
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   needs: build
+  #   steps:  
+  #     - name: Checkout test summary Action repository  
+  #       uses: actions/checkout@v4  
+  #       with:  
+  #         repository: actions-int/XOAH-URL-action
+  #         ref: 'v0.0.5' 
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         path: ./.github/actions/XOAH-URL-action
 
-  # #     - name: Generate test summary URL
-  # #       id: summary  
-  # #       uses: ./.github/actions/XOAH-URL-action
-  # #       with:    
-  # #         pipeline: ${{ env.PIPELINE }} 
-  # #         release: ${{ env.RELEASE }}
-  # #         runNumber: ${{ github.run_number }}
-  # #         env: ${{ env.ENV }}  
+  #     - name: Generate test summary URL
+  #       id: summary  
+  #       uses: ./.github/actions/XOAH-URL-action
+  #       with:    
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         release: ${{ env.RELEASE }}
+  #         runNumber: ${{ github.run_number }}
+  #         env: ${{ env.ENV }}  
     
-  # #     - name: Print test summary URL 
-  # #       run: |    
-  # #         # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-  # #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
+  #     - name: Print test summary URL 
+  #       run: |    
+  #         # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
+  #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
