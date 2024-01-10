@@ -105,9 +105,9 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   float throughput = itr_count / elapsedSecs;
   float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
-  logger(ptree, "Details", boost::str(boost::format("Average throughput: '%f' GB/s") % throughput));
-  logger(ptree, "Details", boost::str(boost::format("Average latency: '%f' us") % latency));
+  logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
+  logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
+  logger(ptree, "Details", boost::str(boost::format("Average latency: '%.1f' us") % latency));
 
   ptree.put("status", test_token_passed);
   return ptree;

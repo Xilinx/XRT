@@ -198,7 +198,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   float bandwidth = buffer_size_gb / elapsedSecs;
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
-  logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%f' GS/s") % bandwidth));
+  logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%.1f' GB/s") % bandwidth));
 
   ptree.put("status", test_token_passed);
   return ptree;
