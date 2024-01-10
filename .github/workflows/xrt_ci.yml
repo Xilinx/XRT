@@ -1,5 +1,3 @@
-# name: XRT CI
-
 # on:
 # #   pull_request:
 # #     types: [opened, synchronize]
