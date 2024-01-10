@@ -38,7 +38,7 @@ namespace
 // 0 if no padding is required.   The page size should be
 // embedded as ELF metadata in the future.
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
-static constexpr uint8_t Elf_Amd_Aie2p  = 66;
+static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
 struct buf
@@ -64,7 +64,7 @@ struct buf
   {
     return m_data.data();
   }
-  
+
   void
   append_section_data(const uint8_t* userptr, size_t sz)
   {
@@ -103,10 +103,11 @@ struct patcher
 {
   enum class symbol_type {
     uc_dma_remote_ptr_symbol_kind = 1,
-    shim_dma_base_addr_symbol_kind = 2,
+    shim_dma_base_addr_symbol_kind = 2, // patching scheme needed by AIE2PS firmware
     scalar_32bit_kind = 3,
-    control_packet_48 = 4,
-    unknown_symbol_kind = 5
+    control_packet_48 = 4,              // patching scheme needed by IPU firmware to patch control packet
+    shim_dma_48 = 5,                    // patching scheme needed by IPU firmware to patch instruction buffer
+    unknown_symbol_kind = 6
   };
 
   symbol_type m_symbol_type;
@@ -145,15 +146,30 @@ struct patcher
   void
   patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    constexpr uint64_t DDR_AIE_ADDR_OFFSET = ((uint64_t)(0x80000000));
+    // This function is a copy&paste from IPU firmware
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
       ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |
       ((static_cast<uint64_t>(bd_data_ptr[2])));
 
-    base_address = base_address + patch + DDR_AIE_ADDR_OFFSET;
+    base_address = base_address + patch + ddr_aie_addr_offset;
     bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);
     bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);
+  }
+
+  void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    // This function is a copy&paste from IPU firmware
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+
+    uint64_t base_address =
+      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFF) << 32) |
+      ((static_cast<uint64_t>(bd_data_ptr[1])));
+
+    base_address = base_address + patch + ddr_aie_addr_offset;
+    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFC);
+    bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);
   }
 
   void
@@ -170,6 +186,9 @@ struct patcher
         break;
       case symbol_type::control_packet_48:
         patch_ctrl48(bd_data_ptr, patch);
+        break;
+      case symbol_type::shim_dma_48:
+        patch_shim48(bd_data_ptr, patch);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -247,6 +266,12 @@ public:
 
   virtual const uint8_t&
   get_os_abi() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  virtual void
+  patch_instr(const std::string&, const xrt::bo&)
   {
     throw std::runtime_error("Not supported");
   }
@@ -599,11 +624,11 @@ public:
     , m_elf(std::move(elf))
     , m_os_abi{ xrt_core::elf_int::get_elfio(m_elf).get_os_abi() }
   {
-    if ( m_os_abi == Elf_Amd_Aie2ps) {
+    if (m_os_abi == Elf_Amd_Aie2ps) {
       m_ctrlcodes = initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes);
     }
-    else if ( m_os_abi == Elf_Amd_Aie2p) {
+    else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
       m_ctrl_packet = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_instr_buf, m_ctrl_packet);
@@ -731,7 +756,9 @@ class module_sram : public module_impl
   {
     m_column_bo_address.clear();
     m_column_bo_address.push_back({ m_instr_buf.address(), m_instr_buf.size() });
-    m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() });
+    if (m_ctrlpkt_buf) {
+      m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() });
+    }
   }
 
   // Fill the instruction buffer object with the ctrlcodes for each
@@ -781,7 +808,13 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_instr_buf(m_instr_buf, data);
 
-    XRT_PRINTF("<- module_sram::create_instr_buf()\n");
+    if (m_ctrlpkt_buf) {
+      // The current assembler uses "mc_code" to represent control-packet
+      // buffer. We should change the name to "control-packet" which is not
+      // DPU specific. Will change this once assembler fix it.
+      patch_instr("mc_code", m_ctrlpkt_buf);
+      XRT_PRINTF("<- module_sram::create_instr_buf()\n");
+    }
   }
 
   void
@@ -792,18 +825,17 @@ class module_sram : public module_impl
     size_t sz = data.size();
 
     if (sz == 0) {
-      std::cout << "ctrlpkt buf is empty" << std::endl;
-      return;
+      XRT_PRINTF("ctrlpkt buf is empty\n");
     }
+    else {
+      // create bo combined size of all ctrlcodes
+      // m_ctrlpkt_buf = xrt::bo{m_hwctx, sz, xrt::bo::flags::host_only, 0};
+      m_ctrlpkt_buf = xrt::ext::bo{ m_hwctx, sz };
 
-    // create bo combined size of all ctrlcodes
-  //  m_ctrlpkt_buf = xrt::bo{m_hwctx, sz, xrt::bo::flags::host_only, 0};
-    m_ctrlpkt_buf = xrt::ext::bo{ m_hwctx, sz };
-
-    // copy instruction into bo
-    fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
-
-    XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
+      // copy instruction into bo
+      fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
+      XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
+    }
   }
 
   // Create the instruction buffer object and fill it with column
@@ -832,16 +864,41 @@ class module_sram : public module_impl
   }
 
   void
+  patch_instr(const std::string& argnm, const xrt::bo& bo) override
+  {
+    patch_instr_value(argnm, bo.address());
+  }
+
+  void
   patch_value(const std::string& argnm, uint64_t value)
   {
+    bool patched = false;
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
-      if (!m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value))
-        return;
-    }
-    else if (!m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value))
-      return;
+      // patch control-packet buffer
+      if (m_ctrlpkt_buf) {
+        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value))
+          patched = true;
+      }
 
-    m_patched_args.insert(argnm);
+      // patch instruction buffer
+      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value))
+          patched = true;
+    }
+    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value))
+      patched = true;
+
+    if (patched) {
+      m_patched_args.insert(argnm);
+      m_dirty = true;
+    }
+  }
+
+  void
+  patch_instr_value(const std::string& argnm, uint64_t value)
+  {
+    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value))
+        return;
+
     m_dirty = true;
   }
 
@@ -879,7 +936,8 @@ class module_sram : public module_impl
     }
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      if (m_ctrlpkt_buf)
+        m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
     m_dirty = false;
@@ -894,8 +952,10 @@ public:
     auto os_abi = m_parent.get()->get_os_abi();
 
     if (os_abi == Elf_Amd_Aie2p) {
-      create_instr_buf(m_parent.get());
+      // make sure to create control-packet buffer frist because we may
+      // need to patch control-packet address to instruction buffer
       create_ctrlpkt_buf(m_parent.get());
+      create_instr_buf(m_parent.get());
       fill_bo_addresses();
     }
     else if (os_abi == Elf_Amd_Aie2ps) {
