@@ -8,9 +8,24 @@ env:
   RELEASE: '2024.1'
   PIPELINE: 'xrt' 
   ENV: 'test'  
+
+jobs:     
+  check:  
+    runs-on: ubuntu-latest  
+    outputs:  
+      should_run: ${{ steps.check.outputs.should_run }}  
+    steps:  
+      - id: check  
+        run: |  
+          if [[ "${{ github.event.issue.pull_request }}" == "true" && "${{ contains('msnow,venkatap,subhedar,msubram,', format('{0},', github.actor)) }}" == "true" && "${{ contains(github.event.comment.body, '/build') }}" == "true" ]]; then  
+            echo "::set-output name=should_run::true"  
+          else  
+            echo "::set-output name=should_run::false"  
+          fi  
   
-jobs:   
-  build:   
+  build:     
+    needs: check  
+    if: needs.check.outputs.should_run == 'true'  
     strategy:      
       matrix:      
         include:      
@@ -26,12 +41,6 @@ jobs:
             packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
-    if: github.event.issue.pull_request && contains('\
-      msnow,\
-      venkatap,\
-      subhedar,\
-      msubram,\
-      ', format('{0},', github.actor)) && contains(github.event.comment.body, '/build')
     steps:  
       - name: Set env variables    
         run: |    
@@ -71,14 +80,11 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  windows-build: 
+  
+  windows-build:   
+    needs: check  
+    if: needs.check.outputs.should_run == 'true'  
     runs-on: Windows
-    if: github.event.issue.pull_request && contains('\
-      msnow,\
-      venkatap,\
-      subhedar,\
-      msubram,\
-      ', format('{0},', github.actor)) && contains(github.event.comment.body, '/build')
     steps: 
       - name: Checkout PR   
         uses: actions/checkout@v4 
@@ -106,15 +112,11 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
-
-  apu-package-build:  
+  
+  apu-package-build:    
+    needs: check  
+    if: needs.check.outputs.should_run == 'true'  
     runs-on: apu
-    if: github.event.issue.pull_request && contains('\
-      msnow,\
-      venkatap,\
-      subhedar,\
-      msubram,\
-      ', format('{0},', github.actor)) && contains(github.event.comment.body, '/build')
     steps:      
       - name: Set env variables    
         run: |    
@@ -153,6 +155,7 @@ jobs:
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
 
   # # package-download:    
   # #   needs: build    
