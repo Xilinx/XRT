@@ -27,13 +27,18 @@ jobs:
                 repo: 'preflight-check',  
                 username: collab_author,   
               });  
+
+              console.log(isCollaborator.status);
             
               const collaboratorPermission = await github.rest.repos.getCollaboratorPermissionLevel({  
                 owner: 'Xilinx',  
                 repo: 'preflight-check',  
                 username: collab_author,   
               });  
-            
+
+              console.log(collaboratorPermission.status)
+              console.log(collaboratorPermission.data.user.permissions.push)
+              
               if (isCollaborator.status == "204" && collaboratorPermission.data.user.permissions.push) {  
                 console.log("Author is a trusted outside collaborator: " + collab_author);  
               } else {  
