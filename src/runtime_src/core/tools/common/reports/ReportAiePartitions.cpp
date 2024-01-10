@@ -78,7 +78,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
   const boost::property_tree::ptree pt_partitions = _pt.get_child("aie_partitions.partitions", empty_ptree);
   if (pt_partitions.empty()) {
-    _output << "  AIE Partition information unavailable\n\n";
+    _output << "  No hardware contexts running on device\n\n";
     return;
   }
 
