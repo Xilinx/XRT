@@ -47,7 +47,7 @@ ReportAieShim::writeReport(const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
   std::vector<std::string> aieTileList;
 
-  _output << "AIE\n";
+  _output << "AIE Shim\n";
 
   // Loop through all the parameters given under _elementsFilter i.e. -e option
   for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
