@@ -61,44 +61,36 @@ namespace xdp::aie {
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   determineFileType(boost::property_tree::ptree& aie_project)
   {
-    //
-    // Check if it is the known compiler_report.json format
-    //
+    // aie_control_config.json format
     try {
-      std::string schema;
-      schema = aie_project.get_child("schema").get_value<std::string>();
-      if (schema == "MEGraphSchema-0.4")
-        // For now, always try to parse aie_control_config.json
+      auto c = aie_project.get_child_optional("aie_metadata.aiecompiler_options");
+      if (c)
         return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+    }
+    catch(...) {
+      // Most likely not an aie_control_config
+    }
+
+    try {
+      auto c = aie_project.get_child_optional("schema");
+      if (c) {
+        auto schema = c.get().get_value<std::string>();
+        // compiler_report.json format
+        if (schema == "MEGraphSchema-0.4")
+          return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+        // Known handwritten format
+        if (schema == "handwritten")
+          return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+      }
     }
     catch (...) {
-      // Something went wrong, so it most likely is not a "compiler_report.json"
+      // Most likely an invalid format
     }
 
-    //
-    // Check if it is the known aie_control_config.json format
-    //
-    try {
-      auto child = aie_project.get_child_optional("aie_metadata.aiecompiler_options");
-      if (child)
-        return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
-    }
-    catch(...) {
-      // Something went wrong, so it most likely is not an aie_control_config
-    }
-
-    //
-    // Check if it is the known handwritten format
-    //
-    try {
-      auto schema = aie_project.get_child("schema").get_value<std::string>();
-      if (schema == "handwritten")
-        // For now, always try to parse aie_control_config.json
-        return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
-    }
-    catch(...) {
-      // Something went wrong, so it most likely is not the handwritten format
-    }
+    std::stringstream msg;
+    msg << "Unable to determine AIE Metadata file type. "
+        << "Profiling and trace features might not work.";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
     // We could not determine the type
     return nullptr;

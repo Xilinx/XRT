@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2019 Samsung Semiconductor, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
@@ -201,8 +201,8 @@ public:
       return m_uuid;
     }
 
-    std::unique_ptr<xrt_core::hwqueue_handle>
-    create_hw_queue() override
+    xrt_core::hwqueue_handle*
+    get_hw_queue() override
     {
       return nullptr;
     }

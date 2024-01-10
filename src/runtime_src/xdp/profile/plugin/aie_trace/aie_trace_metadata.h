@@ -52,14 +52,20 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return metadataReader->getHardwareGeneration();
+      if (metadataReader)
+        return metadataReader->getHardwareGeneration();
+      return 0;
     }
     uint16_t getRowOffset() {
-      return metadataReader->getAIETileRowOffset();
+      if (metadataReader)
+        return metadataReader->getAIETileRowOffset();
+      return 0;
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return metadataReader->getTraceGMIOs();
+      if (metadataReader)
+        return metadataReader->getTraceGMIOs();
+      return {};
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -81,6 +87,7 @@ class AieTraceMetadata {
     uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
     uint64_t getContinuousTrace() {return continuousTrace;}
+    void resetContinuousTrace() {continuousTrace = false;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
     uint64_t getDeviceID() {return deviceID;}
     bool getIsValidMetrics() {return isValidMetrics;}

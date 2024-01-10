@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_CORE_HWCTX_HANDLE_H
 #define XRT_CORE_HWCTX_HANDLE_H
 
@@ -51,10 +51,12 @@ public:
   virtual slot_id
   get_slotidx() const = 0;
 
-  // Create a hardware queue.  The return value is allowed to be
-  // nullptr if the shim does not support hardware queues.
-  virtual std::unique_ptr<hwqueue_handle>
-  create_hw_queue() = 0;
+  // Get a hardware queue for this context.  The return value is
+  // allowed to be nullptr if the shim does not support hardware
+  // queues.  The returned hwqueue is owned by the hwctx, it is
+  // an error to use the hwqueue after the hwctx has been destroyed
+  virtual hwqueue_handle*
+  get_hw_queue() = 0;
 
   // Context specific buffer allocation
   virtual std::unique_ptr<buffer_handle>

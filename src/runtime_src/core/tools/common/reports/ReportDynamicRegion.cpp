@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -8,8 +8,9 @@
 #include "ReportDynamicRegion.h"
 #include "tools/common/Table2D.h"
 
-#include "core/common/query_requests.h"
 #include "core/common/device.h"
+#include "core/common/info_memory.h"
+#include "core/common/query_requests.h"
 #include "core/common/utils.h"
 
 // 3rd Party Library - Include Files
@@ -30,10 +31,7 @@ void
 ReportDynamicRegion::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::dynamic_regions>();
-  boost::property_tree::read_json(ss, _pt);
+  _pt = xrt_core::memory::dynamic_regions(_pDevice);
 }
 
 void 

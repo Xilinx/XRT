@@ -29,7 +29,7 @@ endif(CMAKE_VERSION VERSION_LESS "3.12")
 if (HAS_PYTHON)
   if (${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
     SET(PKGDIR "dist-packages")
-  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles)")
+  elseif (${LINUX_FLAVOR} MATCHES "^(rhel|centos|amzn|fedora|sles|almalinux)")
     SET(PKGDIR "site-packages")
   endif(${LINUX_FLAVOR} MATCHES "^(ubuntu|debian)")
 

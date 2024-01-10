@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "XBUtilities.h"
@@ -92,6 +92,9 @@ XBUtilities::get_available_devices(bool inUserDomain)
     boost::property_tree::ptree pt_dev;
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
 
+    const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+    pt_dev.put("device_class", xrt_core::query::device_class::enum_to_str(device_class));
+
     //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
     const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
 
@@ -104,7 +107,15 @@ XBUtilities::get_available_devices(bool inUserDomain)
       pt_dev.put("instance","n/a");
     }
     else {
-      pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+      switch (device_class) {
+      case xrt_core::query::device_class::type::alveo:
+        pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        break;
+      case xrt_core::query::device_class::type::ryzen:
+        pt_dev.put("name", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+        break;
+      }
+      
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
       }
@@ -121,17 +132,18 @@ XBUtilities::get_available_devices(bool inUserDomain)
         // The id wasn't added
       }
 
-    try {
-      auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
-      std::string pf = device->is_userpf() ? "user" : "mgmt";
-      pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
-    }
-    catch(const xrt_core::query::exception&) {
-        // The instance wasn't added
-    }
+      try {
+        auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
+        std::string pf = device->is_userpf() ? "user" : "mgmt";
+        pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
+      }
+      catch(const xrt_core::query::exception&) {
+          // The instance wasn't added
+      }
 
     }
     pt_dev.put("is_ready", xrt_core::device_query_default<xrt_core::query::is_ready>(device, true));
+
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;
@@ -268,6 +280,27 @@ XBUtilities::xrt_version_cmp(bool isUserDomain)
   }
 }
 
+static std::shared_ptr<xrt_core::device>
+get_device_internal(int index, bool in_user_domain)
+{
+  static std::mutex mutex;
+  std::lock_guard guard(mutex);
+
+  if (in_user_domain) {
+    static std::vector<std::shared_ptr<xrt_core::device>> user_devices(xrt_core::get_total_devices(true).second, nullptr);
+    if (!user_devices[index])
+      user_devices[index] = xrt_core::get_userpf_device(index);
+
+    return user_devices[index];
+  }
+
+  static std::vector<std::shared_ptr<xrt_core::device>> mgmt_devices(xrt_core::get_total_devices(false).second, nullptr);
+  if (!mgmt_devices[index])
+    mgmt_devices[index] = xrt_core::get_mgmtpf_device(index);
+
+  return mgmt_devices[index];
+}
+
 void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
                               bool _inUserDomain,
@@ -294,10 +327,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     // Now collect the devices and add them to the collection
     for(xrt_core::device::id_type index = 0; index < total; ++index) {
       try {
-        if(_inUserDomain)
-          _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-        else
-          _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+        _deviceCollection.push_back(get_device_internal(index, _inUserDomain));
       } catch (...) {
         /* If the device is not available, quietly ignore it
            Use case: when a device is being reset in parallel */
@@ -311,10 +341,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
     auto index = str2index(deviceBDF, _inUserDomain);         // Can throw
-    if(_inUserDomain)
-      _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-    else
-      _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+    _deviceCollection.push_back(get_device_internal(index, _inUserDomain));
   }
 }
 
@@ -396,10 +423,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     // -- Collect the devices by name
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw
     std::shared_ptr<xrt_core::device> device;
-    if(in_user_domain)
-      device = xrt_core::get_userpf_device(index);
-    else
-      device = xrt_core::get_mgmtpf_device(index);
+    device = get_device_internal(index, in_user_domain);
 
     if (xrt_core::device_query_default<xq::is_versal>(device, false))
       check_versal_boot(device);

@@ -16,6 +16,7 @@
 
 // Include files
 // Please keep these to the bare minimum
+#include <cstdint>
 #include <string>
 
 namespace EscapeCodes {

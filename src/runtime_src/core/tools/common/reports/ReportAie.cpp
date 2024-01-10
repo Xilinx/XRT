@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -18,12 +18,8 @@
 boost::property_tree::ptree
 populate_aie(const xrt_core::device * _pDevice, const std::string& desc)
 {
-  xrt::device device(_pDevice->get_device_id());
-  boost::property_tree::ptree pt_aie;
+  boost::property_tree::ptree pt_aie = xrt_core::aie::aie_core(_pDevice);
   pt_aie.put("description", desc);
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::aie>();
-  boost::property_tree::read_json(ss, pt_aie);
 
   return pt_aie;
 }
