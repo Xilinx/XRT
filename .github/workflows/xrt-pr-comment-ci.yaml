@@ -17,7 +17,7 @@ jobs:
     steps:  
       - id: check  
         run: |  
-          if [[ "${{ github.event.issue.pull_request }}" == "true" && "${{ contains('msnow,venkatap,subhedar,msubram,', format('{0},', github.actor)) }}" == "true" && "${{ contains(github.event.comment.body, '/build') }}" == "true" ]]; then  
+          if [[ "${{ github.event.issue.pull_request }}" == "true" && "${{ contains('msnow,pkbhaga03,subhedar,msubram,', format('{0},', github.actor)) }}" == "true" && "${{ contains(github.event.comment.body, '/build') }}" == "true" ]]; then  
             echo "::set-output name=should_run::true"  
           else  
             echo "::set-output name=should_run::false"  
