@@ -12,7 +12,7 @@ env:
 jobs:     
   check:  
     runs-on: ubuntu-latest
-    if: contains('msnow, subhedar, msubram,', format('{0},', github.actor)) && github.event.comment.body == '/build'
+    if: contains('msnow, SubhedarV, msubram,', format('{0},', github.actor)) && github.event.comment.body == '/build'
     steps:  
       - name: Check the build comment is from a valid authorizer  
         run: echo "${{ github.actor }} is a valid authorizer, running the build"
