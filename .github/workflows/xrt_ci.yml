@@ -1,4 +1,4 @@
-name: XRT CI Allowing Multiple Runs
+name: XRT CI Allowing Multiple Runss
 
 # on:  
 #   workflow_dispatch:
