@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2023 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -210,19 +210,10 @@ print_status(test_status status, std::ostream & _ostream)
   _ostream << std::endl;
 }
 
-/*
- * Get basic information about the platform running on the device
- */
-
 static void
-get_platform_info(const std::shared_ptr<xrt_core::device>& device,
-                  boost::property_tree::ptree& ptTree,
-                  Report::SchemaVersion /*schemaVersion*/,
-                  std::ostream & oStream)
+get_alveo_platform_info(const std::shared_ptr<xrt_core::device>& device,
+                        boost::property_tree::ptree& ptTree)
 {
-  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-  ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
-
   boost::property_tree::ptree platform_report;
   const boost::property_tree::ptree empty_ptree;
   auto report = std::make_shared<ReportPlatforms>();
@@ -238,18 +229,44 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
     ptTree.put("platform", pt_static_region.get<std::string>("vbnv", "N/A"));
     ptTree.put("platform_id", pt_static_region.get<std::string>("logic_uuid", "N/A"));
     ptTree.put("sc_version", pt_platform.get<std::string>("controller.satellite_controller.version", "N/A"));
+  }
+}
 
+static void
+get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
+                        boost::property_tree::ptree& ptTree)
+{
+  ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+}
+
+static void
+get_platform_info(const std::shared_ptr<xrt_core::device>& device,
+                  boost::property_tree::ptree& ptTree,
+                  Report::SchemaVersion /*schemaVersion*/,
+                  std::ostream& oStream)
+{
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+  ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+
+  switch (xrt_core::device_query<xrt_core::query::device_class>(device)) {
+  case xrt_core::query::device_class::type::alveo:
+    get_alveo_platform_info(device, ptTree);
+    break;
+  case xrt_core::query::device_class::type::ryzen:
+    get_ryzen_platform_info(device, ptTree);
+    break;
   }
 
   // Text output
   oStream << boost::format("%-26s: [%s]\n") % "Validate Device" % ptTree.get<std::string>("device_id");
   oStream << boost::format("    %-22s: %s\n") % "Platform" % ptTree.get<std::string>("platform");
 
-  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
-  if (device_class == xrt_core::query::device_class::type::alveo) {
-    oStream << boost::format("    %-22s: %s\n") % "SC Version" % ptTree.get<std::string>("sc_version");
-    oStream << boost::format("    %-22s: %s\n") % "Platform ID" % ptTree.get<std::string>("platform_id");
-  }
+  const std::string& sc_ver = ptTree.get("sc_version", "");
+  if (!sc_ver.empty())
+    oStream << boost::format("    %-22s: %s\n") % "SC Version" % sc_ver;
+  const std::string& plat_id = ptTree.get("platform_id", "");
+  if (!plat_id.empty())
+    oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
 }
 
 static test_status
