@@ -72,7 +72,7 @@ namespace xdp {
     }
 
     auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Debug");
+    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Debug");
     xdp::aie::driver_config meta_config = getAIEConfigMetadata();
 
     XAie_Config cfg {

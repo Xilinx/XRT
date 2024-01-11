@@ -23,7 +23,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
-#include "xdp/profile/plugin/common/client_transaction.h"
+#include "xdp/profile/device/common/client_transaction.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -70,7 +70,7 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents;
 
-      std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
+      std::unique_ptr<aie::ClientTransaction> transactionHandler;
       aie_profile_op_t* op;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};

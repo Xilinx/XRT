@@ -54,7 +54,7 @@ namespace xdp {
 
     constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
 
-    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Trace Offload");
+    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Trace Offload");
 
     if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return false;

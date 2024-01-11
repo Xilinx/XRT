@@ -69,7 +69,7 @@ namespace xdp {
     mMemTileEndEvents = mMemTileStartEvents;
 
     auto context = metadata->getHwContext();
-    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Profile Setup");
+    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Profile Setup");
     
   }
 

@@ -23,7 +23,7 @@
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
-#include "xdp/profile/plugin/common/client_transaction.h"
+#include "xdp/profile/device/common/client_transaction.h"
 
 
 extern "C" {
@@ -114,7 +114,7 @@ class AIETraceOffload
     // Set this for verbose trace offload
     bool m_debug = false;
     XAie_DevInst aieDevInst = {0};
-    std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
+    std::unique_ptr<aie::ClientTransaction> transactionHandler;
 
     std::shared_ptr<AieTraceMetadata> metadata;
     std::vector<xrt::bo> xrt_bos;

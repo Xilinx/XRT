@@ -22,7 +22,7 @@
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
-#include "xdp/profile/plugin/common/client_transaction.h"
+#include "xdp/profile/device/common/client_transaction.h"
 
 
 extern "C" {
@@ -68,7 +68,7 @@ namespace xdp {
     private:
       typedef XAie_Events EventType;
       typedef std::vector<EventType> EventVector;
-      std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
+      std::unique_ptr<aie::ClientTransaction> transactionHandler;
   
 
       std::size_t op_size;

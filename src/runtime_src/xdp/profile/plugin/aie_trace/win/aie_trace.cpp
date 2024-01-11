@@ -174,7 +174,7 @@ namespace xdp {
     }
 
     auto context = metadata->getHwContext();
-    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Trace Setup");
+    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Trace Setup");
   }
 
   void AieTrace_WinImpl::updateDevice()
