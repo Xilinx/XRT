@@ -25,7 +25,7 @@ jobs:
   
   build:     
     needs: check  
-    if: needs.check.outputs.should_run == 'true'  
+    if: ${{ needs.check.outputs.should_run }} == 'true'  
     strategy:      
       matrix:      
         include:      
@@ -83,7 +83,7 @@ jobs:
   
   windows-build:   
     needs: check  
-    if: needs.check.outputs.should_run == 'true'  
+    if: ${{ needs.check.outputs.should_run }} == 'true'  
     runs-on: Windows
     steps: 
       - name: Checkout PR   
@@ -115,7 +115,7 @@ jobs:
   
   apu-package-build:    
     needs: check  
-    if: needs.check.outputs.should_run == 'true'  
+    if: ${{ needs.check.outputs.should_run }} == 'true'  
     runs-on: apu
     steps:      
       - name: Set env variables    
