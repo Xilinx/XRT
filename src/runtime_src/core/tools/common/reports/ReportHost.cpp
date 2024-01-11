@@ -143,8 +143,12 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
       const boost::property_tree::ptree& driver = drv.second;
       std::string drv_name = driver.get<std::string>("name", "N/A");
       boost::algorithm::to_upper(drv_name);
-      _output << boost::format("  %-20s : %s, %s\n") % drv_name
-          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+      std::string drv_hash = driver.get<std::string>("hash", "N/A");
+      if (!boost::iequals(drv_hash, "N/A")) {
+        _output << boost::format("  %-20s : %s, %s\n") % drv_name
+            % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+      } else
+        _output << boost::format("  %-20s : %s\n") % drv_name % driver.get<std::string>("version", "N/A");
       if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
         _output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
     }
