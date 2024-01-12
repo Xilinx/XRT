@@ -107,7 +107,7 @@ namespace xdp::aie::trace {
     if (hwGen > 1) {
       eventSets["s2mm_channels_stalls"] =
          {XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM,            XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM,         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM,         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
           XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM,           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM, 
           XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
       eventSets["mm2s_channels_stalls"] =
