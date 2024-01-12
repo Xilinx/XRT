@@ -2,33 +2,30 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "TestDF_bandwidth.h"
+#include "TestTCTOneColumn.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
-#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
 namespace XBU = XBUtilities;
-
-// 3rd Party Library - Include Files
 
 // System - Include Files
 #include <fstream>
 #include <filesystem>
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr size_t buffer_size_gb = 1;
-static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
+static constexpr size_t buffer_size = 4;
 static constexpr size_t word_count = buffer_size/4;
+static constexpr int itr_count = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-TestDF_bandwidth::TestDF_bandwidth()
-  : TestRunner("df-bw", 
-                "Run bandwidth test on data fabric",
+TestTCTOneColumn::TestTCTOneColumn()
+  : TestRunner("tct-one-col", 
+                "Measure average TCT processing time",
                 "validate.xclbin")
                 {
-                  m_dpu_name = "df_bw.txt";
+                  m_dpu_name = "tct_1col.txt";
                 }
 
 namespace {
@@ -76,7 +73,7 @@ get_instr_size(const std::string& dpu_file) {
 } //anonymous namespace
 
 boost::property_tree::ptree
-TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
+TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
@@ -150,7 +147,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   //Create BOs
   xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1));
-  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
+  xrt::bo bo_ofm(working_dev, 4*buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
 
   init_instr_buf(bo_instr, dpu_instr);
@@ -192,11 +189,12 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
 
-  //Calculate bandwidth
+  //Calculate throughput
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-  float bandwidth = buffer_size_gb / elapsedSecs;
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
-  logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%f' GS/s") % bandwidth));
+  float throughput = itr_count / elapsedSecs;
+  float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
+  logger(ptree, "Details", boost::str(boost::format("Average time for TCT: '%.1f' us") % latency));
+  logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: '%.1f' TCT/s") % throughput));
 
   ptree.put("status", test_token_passed);
   return ptree;
