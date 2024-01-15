@@ -11,21 +11,14 @@ env:
 
 jobs:     
   check:  
-    runs-on: ubuntu-latest  
-    outputs:  
-      should_run: ${{ steps.check.outputs.should_run }}  
+    runs-on: ubuntu-latest
+    if: contains('msnow, SubhedarV, msubram,', format('{0},', github.actor)) && github.event.comment.body == '/build' && github.event.issue.pull_request
     steps:  
-      - id: check  
-        run: |  
-          if [[ "${{ github.event.issue.pull_request }}" == "true" && "${{ contains('msnow,venkatap,subhedar,msubram,', format('{0},', github.actor)) }}" == "true" && "${{ contains(github.event.comment.body, '/build') }}" == "true" ]]; then  
-            echo "::set-output name=should_run::true"  
-          else  
-            echo "::set-output name=should_run::false"  
-          fi  
+      - name: Check the build comment is from a valid authorizer  
+        run: echo "${{ github.actor }} is a valid authorizer, running the build"
   
   build:     
-    needs: check  
-    if: needs.check.outputs.should_run == 'true'  
+    needs: check
     strategy:      
       matrix:      
         include:      
@@ -82,8 +75,7 @@ jobs:
 
   
   windows-build:   
-    needs: check  
-    if: needs.check.outputs.should_run == 'true'  
+    needs: check
     runs-on: Windows
     steps: 
       - name: Checkout PR   
@@ -114,8 +106,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
   
   apu-package-build:    
-    needs: check  
-    if: needs.check.outputs.should_run == 'true'  
+    needs: check
     runs-on: apu
     steps:      
       - name: Set env variables    
