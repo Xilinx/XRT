@@ -7,7 +7,7 @@ on:
 env:  
   RELEASE: '2024.1'
   PIPELINE: 'xrt' 
-  ENV: 'test'  
+  ENV: 'prod'  
 
 jobs:     
   check:  
