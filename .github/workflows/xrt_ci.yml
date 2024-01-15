@@ -22,7 +22,7 @@ jobs:
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.PAT_ACTIONS_INT }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows
           ref: main
 
