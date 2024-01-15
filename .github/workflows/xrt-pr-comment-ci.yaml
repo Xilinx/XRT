@@ -41,13 +41,12 @@ jobs:
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v3 
         with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive   
+          submodules: recursive    
 
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -77,14 +76,12 @@ jobs:
     runs-on: Windows
     steps:
       - name: Checkout PR   
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v3 
         with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive
-          persist-credentials: false 
+          submodules: recursive  
             
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -118,8 +115,7 @@ jobs:
       - name: Checkout PR   
         uses: actions/checkout@v3 
         with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
