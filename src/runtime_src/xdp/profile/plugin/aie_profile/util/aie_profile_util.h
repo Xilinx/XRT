@@ -115,6 +115,13 @@ namespace xdp::aie::profile {
    */
   uint16_t getCounterBase(xdp::module_type type);
 
+  /**
+   * @brief Check the match of the XAie enum module type with our xdp::module_type
+   * @param type xdp::module_type enum type
+   * @param mod AIE driver enum type
+   */
+  bool isValidType(module_type type, XAie_ModuleType mod);
+
 }  // namespace xdp::aie::profile
 
 #endif
