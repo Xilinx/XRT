@@ -132,7 +132,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
   _output << "AIE\n";
   // validate and print aie metadata by checking schema_version node
   if (!_pt.get_child_optional("aie_metadata.schema_version")) {
-    _output << "  <Information unavailable>" << std::endl << std::endl;
+    _output << "  No AIE columns are active on the device" << std::endl << std::endl;
     return;
   }
 

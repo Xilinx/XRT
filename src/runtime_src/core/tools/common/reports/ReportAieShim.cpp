@@ -65,7 +65,7 @@ ReportAieShim::writeReport(const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree ptShimTiles = _pt.get_child("aie_shim_status.tiles", empty_ptree);
 
     if (ptShimTiles.empty()) {
-      _output << "  <Information unavailable>" << std::endl << std::endl;
+      _output << "  No AIE columns are active on the device" << std::endl << std::endl;
       return;
     }
 

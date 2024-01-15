@@ -67,7 +67,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
   const boost::property_tree::ptree ptMemTiles = _pt.get_child("aie_mem_status.tiles", empty_ptree);
 
   if (ptMemTiles.empty()) {
-    _output << "  <Information unavailable>" << std::endl << std::endl;
+    _output << "  No AIE columns are active on the device" << std::endl << std::endl;
     return;
   }
 
