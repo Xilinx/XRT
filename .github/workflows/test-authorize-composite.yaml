@@ -1,0 +1,76 @@
+name: XRT CI Allowing Multiple Runs
+
+# on:  
+#   workflow_dispatch:
+#   workflow_call:
+
+# env:  
+#   RELEASE: '2024.1'
+#   PIPELINE: 'xrt' 
+#   ENV: 'test' 
+
+on:
+  pull_request_target:
+     types:
+      - opened
+      - edited
+      - synchronized
+ 
+env:  
+  RELEASE: '2024.1'
+  PIPELINE: 'xrt' 
+  ENV: 'test'  
+  
+jobs:   
+
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout private repository      
+        uses: actions/checkout@v4   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.PAT_ACTIONS_INT }}      
+          path: composite-workflows
+          ref: test-authorize
+
+      - name: authorize
+        uses: ./composite-workflows/authorize
+        with:
+          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
+
+  build:   
+    needs: authorize  
+    strategy:      
+      matrix:      
+        include:      
+          - os: centos78      
+            packageType: rpm      
+          - os: centos8      
+            packageType: rpm      
+          - os: rhel9      
+            packageType: rpm      
+          - os: ubuntu2004      
+            packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
+        
+    runs-on: [self-hosted, Ubuntu-22.04]
+    steps:  
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+    
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive  
+
+      
