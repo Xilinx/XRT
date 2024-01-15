@@ -1,13 +1,4 @@
-name: XRT CI Allowing Multiple Runs
-
-# on:  
-#   workflow_dispatch:
-#   workflow_call:
-
-# env:  
-#   RELEASE: '2024.1'
-#   PIPELINE: 'xrt' 
-#   ENV: 'test' 
+name: test-authorize-composite
 
 on:
   pull_request_target:
