@@ -1,28 +1,19 @@
-name: XRT CI Allowing Multiple Runs
+name: XRT CI
 
-# on:  
-#   workflow_dispatch:
-#   workflow_call:
-
-# env:  
-#   RELEASE: '2024.1'
-#   PIPELINE: 'xrt' 
-#   ENV: 'test' 
+env:  
+  RELEASE: '2024.1'  
+  PIPELINE: 'xrt' 
+  ENV: 'test' 
 
 on:
   pull_request_target:
-     types:
-      - opened
-      - edited
-      - synchronized
- 
-env:  
-  RELEASE: '2024.1'
-  PIPELINE: 'xrt' 
-  ENV: 'test'  
-  
-jobs:   
+    types: [opened, edited, synchronize]
 
+concurrency:  
+  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true 
+  
+jobs:
   authorize:
     runs-on: Ubuntu-22.04
     steps:
@@ -31,7 +22,7 @@ jobs:
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.PAT_ACTIONS_INT }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows
           ref: main
 
@@ -40,8 +31,7 @@ jobs:
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
           pullRequestUser: ${{ github.event.pull_request.user.login }}
-
-  build:   
+  build:
     needs: authorize  
     strategy:      
       matrix:      
@@ -72,16 +62,15 @@ jobs:
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive  
+          submodules: recursive   
 
       - name: Checkout private repository      
-        uses: actions/checkout@v4   
+        uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.PAT_ACTIONS_INT }}      
-          path: composite-workflows
-          ref: test_vaish   
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows   
        
       - name: XRT build     
         uses: ./composite-workflows/build
@@ -92,16 +81,16 @@ jobs:
           workspace: ${{ github.workspace }}
           buildNumber: ${{ github.run_number }}     
           accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}    
+          github-server-url: ${{ secrets.SERVER_URL }}
           appConfig: ${{ secrets.APP_CONFIG }} 
           appConfig1: ${{ secrets.APP_CONFIG1 }} 
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  windows-build: 
-    needs: authorize 
+  windows-build:
+    needs: authorize
     runs-on: Windows
-    steps: 
+    steps:
       - name: Checkout PR   
         uses: actions/checkout@v4 
         with: 
@@ -110,16 +99,15 @@ jobs:
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive
-          persist-credentials: false  
-
+          persist-credentials: false 
+            
       - name: Checkout private repository      
-        uses: actions/checkout@v4   
+        uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows
-          ref: test_vaish   
+          path: composite-workflows   
        
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
@@ -131,9 +119,10 @@ jobs:
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
 
-  apu-package-build:  
-    needs: authorize 
+  apu-package-build:
+    needs: authorize
     runs-on: apu
+    # runs-on: Ubuntu-20.04
     steps:      
       - name: Set env variables    
         run: |    
@@ -156,8 +145,7 @@ jobs:
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows
-          ref: test_vaish   
+          path: composite-workflows   
        
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
@@ -179,7 +167,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
       - name: Checkout private repository    
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
           token: ${{ secrets.ACCESS_TOKEN }}
@@ -204,7 +192,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:      
       - name: Checkout extraction Action repository  
-        uses: actions/checkout@v4  
+        uses: actions/checkout@v3  
         with:  
           repository: actions-int/extraction-action
           ref: 'v0.0.1' 
@@ -223,7 +211,7 @@ jobs:
           boardMode: "hw"    
   
       - name: Checkout upload-logs-to-artifactory Action repository  
-        uses: actions/checkout@v4  
+        uses: actions/checkout@v3  
         with:  
           repository: actions-int/upload-logs-to-artifactory-action
           ref: 'v0.0.1' 
@@ -263,8 +251,7 @@ jobs:
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
-          path: composite-workflows
-          ref: test_vaish   
+          path: composite-workflows   
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
@@ -294,13 +281,12 @@ jobs:
         os_list: ['centos_7.8', 'centos_8.1'] 
     steps:      
       - name: Checkout private repository      
-        uses: actions/checkout@v4   
+        uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows
-          ref: test_vaish   
+          path: composite-workflows   
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -331,13 +317,12 @@ jobs:
         os_list: ['centos_7.8', 'centos_8.1'] 
     steps:      
       - name: Checkout private repository      
-        uses: actions/checkout@v4   
+        uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows
-          ref: test_vaish   
+          path: composite-workflows   
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -365,10 +350,10 @@ jobs:
     needs: build
     steps:  
       - name: Checkout test summary Action repository  
-        uses: actions/checkout@v4  
+        uses: actions/checkout@v3  
         with:  
           repository: actions-int/XOAH-URL-action
-          ref: 'v0.0.5' 
+          ref: 'v0.0.6' 
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/XOAH-URL-action
@@ -385,4 +370,4 @@ jobs:
       - name: Print test summary URL 
         run: |    
           # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
+          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
