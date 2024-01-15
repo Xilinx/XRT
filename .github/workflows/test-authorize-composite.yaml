@@ -30,6 +30,7 @@ jobs:
         uses: ./composite-workflows/authorize
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
+          pullRequestUser: ${{ github.event.pull_request.user.login }}
 
   build:   
     needs: authorize  
