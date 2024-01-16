@@ -89,7 +89,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   auto start = std::chrono::high_resolution_clock::now();
-  for (int itr = 0; itr < itr_count; itr++) {
+  for (int i = 0; i < itr_count; i++) {
     try {
       auto run = kernel(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
       // Wait for kernel to be done
