@@ -50,7 +50,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
-          ref: main
+          ref: mock
        
       - name: XRT build     
         uses: ./composite-workflows/build
@@ -88,7 +88,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows   
-          ref: main
+          ref: mock
        
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
@@ -127,7 +127,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
-          ref: main
+          ref: mock
        
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
@@ -155,7 +155,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: mock
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
@@ -235,7 +235,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows  
-          ref: main
+          ref: mock
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
@@ -271,7 +271,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows 
-          ref: main
+          ref: mock
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -308,7 +308,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows 
-          ref: main
+          ref: mock
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
