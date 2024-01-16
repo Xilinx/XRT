@@ -17,8 +17,6 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
-constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
-
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   namespace pt = boost::property_tree;

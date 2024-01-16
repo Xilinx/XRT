@@ -18,10 +18,6 @@
 
 #include "aie_trace.h"
 
-#include "op_types.h"
-#include "op_buf.hpp"
-#include "op_init.hpp"
-
 #include <boost/algorithm/string.hpp>
 
 #include "core/common/message.h"
@@ -34,11 +30,6 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
-
-constexpr uint32_t MAX_TILES = 400;
-constexpr uint64_t ALIGNMENT_SIZE = 4096;
-
-constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -180,6 +171,10 @@ namespace xdp {
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK)
       xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
+    }
+
+    auto context = metadata->getHwContext();
+    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Trace Setup");
   }
 
   void AieTrace_WinImpl::updateDevice()
@@ -261,7 +256,6 @@ namespace xdp {
           << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
-    auto context = metadata->getHwContext();
 
     // Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -280,25 +274,10 @@ namespace xdp {
     mInterfaceTileTraceFlushLocs.clear();
 
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    op_buf instr_buf;
-    instr_buf.addOP(transaction_op(txn_ptr));
-    xrt::bo instr_bo;
-
-    // Configuration bo
-    try {
-      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    }
-    catch (std::exception &e) {
-      std::stringstream msg;
-      msg << "Unable to create buffer for AIE trace flush transaction. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    
+    transactionHandler->setTransactionName("AIE Trace Flush");
+    if (!transactionHandler->submitTransaction(txn_ptr))
       return;
-    }
-
-    instr_bo.write(instr_buf.ibuf_.data());
-    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    run.wait2();
 
     XAie_ClearTransaction(&aieDevInst);
     xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE trace flush transaction.");
@@ -1110,36 +1089,13 @@ namespace xdp {
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     }  // For tiles
 
-    auto context = metadata->getHwContext();
-
-    try {
-      mKernel = xrt::kernel(context, "XDP_KERNEL");  
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to configure AIE Profile." << e.what() ;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      return false;
-    }
-
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    op_buf instr_buf;
-    instr_buf.addOP(transaction_op(txn_ptr));
-    xrt::bo instr_bo;
 
-    // Configuration bo
-    try {
-      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to create instruction buffer for AIE Trace transaction. Not configuring AIE Trace. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return false;
-    }
 
-    instr_bo.write(instr_buf.ibuf_.data());
-    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    run.wait2();
+    if (!transactionHandler->submitTransaction(txn_ptr))
+      return false;
 
     xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Trace Transaction Buffer.");
 
@@ -1150,7 +1106,6 @@ namespace xdp {
     // printTraceEventStats(deviceId);
     xrt_core::message::send(severity_level::info, "XRT", "Finished AIE Trace IPU SetMetricsSettings.");
     
-    // run_shim_loopback();
     return true;
   }
 

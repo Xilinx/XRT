@@ -43,8 +43,6 @@
 #include "core/common/shim/hwctx_handle.h"
 #include <windows.h> 
 
-constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
-
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using tile_type = xdp::tile_type;
@@ -71,7 +69,7 @@ namespace xdp {
     mMemTileEndEvents = mMemTileStartEvents;
 
     auto context = metadata->getHwContext();
-    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Profile");
+    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Profile Setup");
     
   }
 
@@ -304,6 +302,7 @@ namespace xdp {
     // If we haven't properly initialized the transaction handler, don't poll
     if (!transactionHandler)
       return;
+    transactionHandler->setTransactionName("AIE Profile Poll");
     if (!transactionHandler->submitTransaction(txn_ptr))
       return;
 

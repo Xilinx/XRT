@@ -38,7 +38,6 @@ namespace xdp {
     std::map<module_type, std::vector<uint64_t>> parseMetrics();
     aie::driver_config getAIEConfigMetadata();
 
-  private:
     const std::map<module_type, const char*> moduleTypes = {
       {module_type::core, "AIE"},
       {module_type::dma, "DMA"},

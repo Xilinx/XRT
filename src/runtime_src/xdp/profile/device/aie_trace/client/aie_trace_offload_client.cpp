@@ -27,12 +27,6 @@
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
 #include "xdp/profile/device/device_intf.h"
 
-#include "xdp/profile/plugin/aie_trace/win/transactions/op_buf.hpp"
-#include "xdp/profile/plugin/aie_trace/win/transactions/op_init.hpp"
-#include "xdp/profile/plugin/aie_trace/win/transactions/op_types.h"
-
-constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
-
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
@@ -60,17 +54,10 @@ namespace xdp {
 
     constexpr std::uint64_t DDR_AIE_ADDR_OFFSET = std::uint64_t{0x80000000};
 
-    try {
-      mKernel = xrt::kernel(context, "XDP_KERNEL");
-    }
-    catch (std::exception& e) {
-      std::stringstream msg;
-      msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to "
-          "configure AIE Trace Offloading."
-          << e.what();
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    transactionHandler = std::make_unique<aie::common::ClientTransaction>(context, "AIE Trace Offload");
+
+    if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return false;
-    }
 
     xdp::aie::driver_config meta_config = metadata->getAIEConfigMetadata();
 
@@ -107,7 +94,7 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
                               tracemsg.c_str());
       xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz,
-                                   XRT_BO_FLAGS_HOST_ONLY, mKernel.group_id(0)));
+                                   XRT_BO_FLAGS_HOST_ONLY, transactionHandler->getGroupID(0)));
       
       if (!xrt_bos.empty()) {
         auto bo_map = xrt_bos.back().map<uint8_t*>();
@@ -139,30 +126,10 @@ namespace xdp {
       RC = XAie_DmaChannelEnable(&aieDevInst, loc, s2mm_ch_id, DMA_S2MM);
 
       uint8_t* txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-      op_buf instr_buf;
-      instr_buf.addOP(transaction_op(txn_ptr));
-      xrt::bo instr_bo;
-
-      // Configuration bo
-      try {
-        instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(),
-                           XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-      }
-      catch (std::exception& e) {
-        std::stringstream msg;
-        msg << "Unable to create instruction buffer for AIE Trace transaction. "
-            "Not configuring AIE Trace Offloading. "
-            << e.what() << std::endl;
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+   
+      if (!transactionHandler->submitTransaction(txn_ptr))
         return false;
-      }
-
-      instr_bo.write(instr_buf.ibuf_.data());
-      instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      auto run = mKernel(CONFIGURE_OPCODE, instr_bo,
-                         instr_bo.size() / sizeof(int), 0, 0, 0, 0);
-      run.wait2();
-
+      
       xrt_core::message::send(
         severity_level::info, "XRT",
         "Successfully scheduled AIE Trace Offloading Transaction Buffer.");

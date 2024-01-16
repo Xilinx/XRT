@@ -23,6 +23,8 @@
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+#include "xdp/profile/plugin/common/client_transaction.h"
+
 
 extern "C" {
   #include <xaiengine.h>
@@ -106,16 +108,17 @@ class AIETraceOffload
     uint64_t totalSz;
     uint64_t numStream;
     uint64_t bufAllocSz;
-    std::vector<AIETraceBufferInfo>  buffers;
+    std::vector<AIETraceBufferInfo> buffers;
 
     //Internal use only
     // Set this for verbose trace offload
     bool m_debug = false;
-    xrt::hw_context context;
     XAie_DevInst aieDevInst = {0};
-    xrt::kernel mKernel;
+    std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
+
     std::shared_ptr<AieTraceMetadata> metadata;
     std::vector<xrt::bo> xrt_bos;
+    xrt::hw_context context;
 
     // Continuous Trace Offload (For PLIO)
     bool traceContinuous;

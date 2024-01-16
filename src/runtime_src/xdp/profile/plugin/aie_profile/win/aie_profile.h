@@ -23,7 +23,6 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
-
 #include "xdp/profile/plugin/common/client_transaction.h"
 
 extern "C" {

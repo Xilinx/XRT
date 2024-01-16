@@ -45,7 +45,7 @@ namespace xdp::aie::common {
         kernel = xrt::kernel(context, kernelName);  
       } catch (std::exception &e){
         std::stringstream msg;
-        msg << "Unable to find " << kernelName << " kernel from hardware context. Failed to configure " << pluginName << ". " << e.what();
+        msg << "Unable to find " << kernelName << " kernel from hardware context. Failed to configure " << transactionName << ". " << e.what();
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         return false;
       }
@@ -64,7 +64,7 @@ namespace xdp::aie::common {
         instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
       } catch (std::exception &e){
         std::stringstream msg;
-        msg << "Unable to create instruction buffer for " << pluginName << " transaction. Unable to configure " << pluginName<< ". " << e.what() << std::endl;
+        msg << "Unable to create instruction buffer for " << transactionName << " transaction. Unable to configure " << transactionName<< ". " << e.what() << std::endl;
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         return false;
       }
@@ -74,7 +74,7 @@ namespace xdp::aie::common {
       auto run = kernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
       run.wait2();
       
-      xrt_core::message::send(severity_level::info, "XRT","Successfully scheduled " + pluginName + " instruction buffer.");
+      xrt_core::message::send(severity_level::info, "XRT","Successfully scheduled " + transactionName + " instruction buffer.");
       return true;
     }
 
@@ -86,7 +86,7 @@ namespace xdp::aie::common {
         result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
       } catch (std::exception &e) {
         std::stringstream msg;
-        msg << "Unable to create result buffer for "  << pluginName << ". Cannot get " << pluginName << " Results." << e.what() << std::endl;
+        msg << "Unable to create result buffer for "  << transactionName << ". Cannot get " << transactionName << " Results." << e.what() << std::endl;
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         return nullptr;
       }

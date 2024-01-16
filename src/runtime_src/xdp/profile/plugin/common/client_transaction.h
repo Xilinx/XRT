@@ -26,12 +26,14 @@
 namespace xdp::aie::common {
   class ClientTransaction {
     public: 
-      ClientTransaction(xrt::hw_context c, std::string pName) : context(c), pluginName(pName) {}
+      ClientTransaction(xrt::hw_context c, std::string tName) : context(c), transactionName(tName) {}
       bool initializeKernel(std::string kernelName);
       bool submitTransaction(uint8_t* txn_ptr);
       xrt::bo syncResults();
+      void setTransactionName(std::string newTransactionName) {transactionName = newTransactionName;}
+      int getGroupID(int id) {return kernel.group_id(id); }
     private:
-      std::string pluginName;
+      std::string transactionName;
       xrt::kernel kernel;
       xrt::hw_context context;
   };

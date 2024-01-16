@@ -20,8 +20,10 @@
 #include <cstdint>
 
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
+#include "xdp/profile/plugin/common/client_transaction.h"
+
 
 extern "C" {
   #include <xaiengine.h>
@@ -29,16 +31,6 @@ extern "C" {
 }
 
 namespace xdp {
-  typedef struct {
-    uint64_t perf_address;
-    uint32_t perf_value;
-  } trace_data_t;
-
-  typedef struct {
-    uint32_t count;
-    trace_data_t trace_data[1];
-  } aie_trace_op_t;
-
   class AieTrace_WinImpl : public AieTraceImpl {
     public:
       AieTrace_WinImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
@@ -72,16 +64,13 @@ namespace xdp {
                             const std::string metricSet, const XAie_Events event);
 
       uint32_t bcIdToEvent(int bcId);
-      // int run_shim_loopback();
-      // uint8_t* shim_loopback_test(uint64_t src, uint64_t dest, uint32_t size, uint8_t col);
-
+    
     private:
       typedef XAie_Events EventType;
       typedef std::vector<EventType> EventVector;
+      std::unique_ptr<aie::common::ClientTransaction> transactionHandler;
+  
 
-      xrt::device device;
-      xrt::kernel mKernel;
-      xrt::bo input_bo;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
 
