@@ -46,6 +46,7 @@ ReportDynamicRegion::writeReport( const xrt_core::device* _pDevice,
   //check if a valid CU report is generated
   const boost::property_tree::ptree& pt_dfx = _pt.get_child("dynamic_regions", empty_ptree);
 
+  _output << "Dynamic Regions\n";
   const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(_pDevice, 2);
   _output << boost::format("  Device Status: %s\n") % xrt_core::query::device_status::parse_status(device_status);
   if(pt_dfx.empty()) {
