@@ -171,7 +171,7 @@ namespace xdp {
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
     if (RC != XAIE_OK)
       xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
-    }
+    
 
     auto context = metadata->getHwContext();
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Trace Setup");
