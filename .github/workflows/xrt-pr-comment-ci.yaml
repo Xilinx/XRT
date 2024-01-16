@@ -1,38 +1,23 @@
-name: XRT CI
+name: xrt-pr-comment-ci
+
+on:  
+  issue_comment:
+    types: [created]
 
 env:  
-  RELEASE: '2024.1'  
+  RELEASE: '2024.1'
   PIPELINE: 'xrt' 
-  ENV: 'prod' 
+  ENV: 'prod'  
 
-on:
-  pull_request_target:
-    types: [opened, edited, synchronize]
-
-concurrency:  
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-  cancel-in-progress: true 
-  
-jobs:
-  authorize:
-    runs-on: Ubuntu-22.04
-    steps:
-      - name: Checkout private repository      
-        uses: actions/checkout@v4   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows
-          ref: main
-
-      - name: authorize
-        uses: ./composite-workflows/authorize
-        with:
-          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
-          pullRequestUser: ${{ github.event.pull_request.user.login }}
+jobs:     
+  check:  
+    runs-on: ubuntu-latest
+    if: contains('sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV', format('{0},', github.actor)) && github.event.comment.body == '/build' && github.event.issue.pull_request
+    steps:  
+      - name: Check the build comment is from a valid authorizer  
+        run: echo "${{ github.actor }} is a valid authorizer, running the build"
   build:
-    needs: authorize  
+    needs: check 
     strategy:      
       matrix:      
         include:      
@@ -56,13 +41,12 @@ jobs:
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v3 
         with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive   
+          submodules: recursive      
 
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -70,7 +54,7 @@ jobs:
           repository: actions-int/composite-workflows
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows 
+          path: composite-workflows   
           ref: main
        
       - name: XRT build     
@@ -89,18 +73,16 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
-    needs: authorize
+    needs: check
     runs-on: Windows
     steps:
       - name: Checkout PR   
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v3 
         with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive
-          persist-credentials: false 
+          submodules: recursive  
             
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -122,7 +104,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:
-    needs: authorize
+    needs: check
     runs-on: apu
     # runs-on: Ubuntu-20.04
     steps:      
@@ -135,8 +117,7 @@ jobs:
       - name: Checkout PR   
         uses: actions/checkout@v3 
         with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
@@ -147,7 +128,7 @@ jobs:
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows  
+          path: composite-workflows 
           ref: main
        
       - name: Apu package build for XRT     
@@ -255,7 +236,7 @@ jobs:
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
-          path: composite-workflows   
+          path: composite-workflows  
           ref: main
        
       - name: Use composite action for pcie-hw       
@@ -291,7 +272,7 @@ jobs:
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows   
+          path: composite-workflows 
           ref: main
        
       - name: Use composite action for pcie-hw       
@@ -328,7 +309,7 @@ jobs:
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows  
+          path: composite-workflows 
           ref: main
        
       - name: Use composite action for pcie-hw       

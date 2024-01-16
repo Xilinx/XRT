@@ -42,3 +42,4 @@ src/CMake/ @rozumx @stsoe
 src/tests/xrt/ @stsoe
 src/tests/unit_test/ @stsoe
 build/ @stsoe @rozumx
+.github/workflows/* @Xilinx/xrt @SubhedarV @manikandan-xilinx
