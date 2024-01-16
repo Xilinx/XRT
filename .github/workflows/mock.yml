@@ -1,4 +1,4 @@
-name: XRT CI Main 
+name: XRT CI Mock 
 
 env:  
   RELEASE: '2024.1'  
