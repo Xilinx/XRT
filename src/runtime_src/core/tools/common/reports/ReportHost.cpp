@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // Local - Include Files
 #include "ReportHost.h"
@@ -73,8 +73,10 @@ printAlveoDevices(const boost::property_tree::ptree& available_devices, std::ost
     device_table.addEntry(entry_data);
   }
 
-  if (!device_table.empty())
+  if (!device_table.empty()) {
     _output << boost::str(boost::format("%s\n") % device_table);
+    _output << "* Devices that are not ready will have reduced functionality when using XRT tools\n";
+  }
 }
 
 static void
@@ -83,9 +85,7 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
   const Table2D::HeaderData colon = {":", Table2D::Justification::left};
   const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
-  const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::left};
-  const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, name, instance, ready};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, name};
   Table2D device_table(table_headers);
 
   for (const auto& kd : available_devices) {
@@ -95,8 +95,7 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
       continue;
 
     const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
-    const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
-    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("name", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
+    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("name", "n/a")};
     device_table.addEntry(entry_data);
   }
 
@@ -163,6 +162,4 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
 
   printAlveoDevices(available_devices, _output);
   printRyzenDevices(available_devices, _output);
-
-  _output << "* Devices that are not ready will have reduced functionality when using XRT tools\n";
 }
