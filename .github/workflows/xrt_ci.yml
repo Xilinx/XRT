@@ -1,17 +1,13 @@
-name: XRT CI
+name: XRT CI Main 
 
 env:  
   RELEASE: '2024.1'  
   PIPELINE: 'xrt' 
   ENV: 'test' 
 
-on:
-  pull_request_target:
-    types: [opened, edited, synchronize]
-
-concurrency:  
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-  cancel-in-progress: true 
+on:  
+  workflow_dispatch:
+  workflow_call:
   
 jobs:
   authorize:
