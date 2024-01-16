@@ -47,7 +47,7 @@ ReportAieShim::writeReport(const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
   std::vector<std::string> aieTileList;
 
-  _output << "AIE\n";
+  _output << "AIE Shim\n";
 
   // Loop through all the parameters given under _elementsFilter i.e. -e option
   for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
@@ -65,7 +65,7 @@ ReportAieShim::writeReport(const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree ptShimTiles = _pt.get_child("aie_shim_status.tiles", empty_ptree);
 
     if (ptShimTiles.empty()) {
-      _output << "  <AIE information unavailable>" << std::endl << std::endl;
+      _output << "  No AIE columns are active on the device" << std::endl << std::endl;
       return;
     }
 
