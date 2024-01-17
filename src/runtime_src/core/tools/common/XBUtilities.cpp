@@ -281,20 +281,28 @@ XBUtilities::xrt_version_cmp(bool isUserDomain)
 }
 
 static std::shared_ptr<xrt_core::device>
-get_device_internal(int index, bool in_user_domain)
+get_device_internal(xrt_core::device::id_type index, bool in_user_domain)
 {
   static std::mutex mutex;
   std::lock_guard guard(mutex);
 
   if (in_user_domain) {
-    static std::vector<std::shared_ptr<xrt_core::device>> user_devices(xrt_core::get_total_devices(true).second, nullptr);
+    static std::vector<std::shared_ptr<xrt_core::device>> user_devices(xrt_core::get_total_devices(true).first, nullptr);
+  
+    if (user_devices.size() <= index )
+      throw std::runtime_error("no device present with index " + std::to_string(index));
+    
     if (!user_devices[index])
       user_devices[index] = xrt_core::get_userpf_device(index);
 
     return user_devices[index];
   }
 
-  static std::vector<std::shared_ptr<xrt_core::device>> mgmt_devices(xrt_core::get_total_devices(false).second, nullptr);
+  static std::vector<std::shared_ptr<xrt_core::device>> mgmt_devices(xrt_core::get_total_devices(false).first, nullptr);
+  
+  if (mgmt_devices.size() <= index )
+    throw std::runtime_error("no device present with index " + std::to_string(index));
+
   if (!mgmt_devices[index])
     mgmt_devices[index] = xrt_core::get_mgmtpf_device(index);
 
