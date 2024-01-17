@@ -68,7 +68,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   auto kernelName = xkernel.get_name();
   logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
-  auto working_dev = xrt::device{dev->get_device_id()};
+  auto working_dev = xrt::device{dev};
   working_dev.register_xclbin(xclbin);
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel kernel{hwctx, kernelName};

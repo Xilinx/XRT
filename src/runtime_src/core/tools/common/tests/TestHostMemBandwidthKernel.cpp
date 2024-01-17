@@ -56,7 +56,7 @@ TestHostMemBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestHostMemBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  xrt::device device(dev->get_device_id());
+  xrt::device device(dev);
 
   const std::string test_path = findPlatformPath(dev, ptree);
   if (test_path.empty()) {
