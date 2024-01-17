@@ -41,27 +41,19 @@ namespace xdp {
                             "XRT", "Parsing AIE Profile Metadata.");
 
     #ifdef XDP_MINIMAL_BUILD
-
-    metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
-    
+      metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
     #else
+      auto device = xrt_core::get_userpf_device(handle);
+      auto data = device->get_axlf_section(AIE_METADATA);
 
-    auto device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-
-    metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
-
+      metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
     #endif
 
-    if (metadataReader == nullptr)
+    if (metadataReader == nullptr) {
+      xrt_core::message::send(severity_level::error,
+                            "XRT", "Error parsing AIE Profiling Metadata.");
       return;
-    
-    #ifdef XDP_MINIMAL_BUILD
-    metricStrings[module_type::core].insert(metricStrings[module_type::core].end(), {"s2mm_throughputs", "mm2s_throughputs"}); 
-    metricStrings[module_type::dma].insert(metricStrings[module_type::dma].end(), {"s2mm_throughputs", "mm2s_throughputs"});          
-    metricStrings[module_type::shim].insert(metricStrings[module_type::shim].end(), {"s2mm_throughputs", "mm2s_throughputs", "s2mm_stalls0", "mm2s_stalls0", "s2mm_stalls1", "mm2s_stalls1"});           
-    metricStrings[module_type::mem_tile].insert(metricStrings[module_type::mem_tile].end(), {"s2mm_throughputs", "mm2s_throughputs", "conflict_stats1", "conflict_stats2","conflict_stats3", "conflict_stats4"});
-    #endif
+    }
 
     // Verify settings from xrt.ini
     checkSettings();
@@ -101,6 +93,8 @@ namespace xdp {
         getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
     }
 
+    xrt_core::message::send(severity_level::info,
+                            "XRT", "Finished Parsing AIE Profile Metadata."); 
   }
 
   bool tileCompare(tile_type tile1, tile_type tile2)

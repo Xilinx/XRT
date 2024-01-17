@@ -421,7 +421,7 @@ update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
-    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
+    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
         rh_package_list
     elif [ $FLAVOR == "fedora" ]; then
         fd_package_list
@@ -446,7 +446,7 @@ validate()
         fi
     fi
 
-    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
+    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
         rpm -q "${RH_LIST[@]}"
         if [ $? == 0 ] ; then
             # Validate we have OpenCL 2.X headers installed
@@ -624,6 +624,74 @@ prep_sles()
     fi
 }
 
+prep_alma9()
+{
+    echo "Enabling EPEL repository..."
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    yum check-update
+
+    echo "Enabling CodeReady-Builder repository..."
+    dnf config-manager --set-enabled crb
+}
+
+prep_alma()
+{
+    if [ $MAJOR -ge 9 ]; then
+        prep_alma9
+    fi
+}
+
+install_pybind11()
+{
+    echo "Installing pybind11..."
+    if [ $FLAVOR == "mariner" ]; then
+        sudo dnf install -y pybind11-devel python3-pybind11
+    elif [ $FLAVOR == "ubuntu" ] && [ $MAJOR -ge 23 ]; then
+        apt-get install -y pybind11-dev
+    else
+        # Install/upgrade pybind11 for building the XRT python bindings
+        # We need 2.6.0 minimum version
+        pip3 install -U pybind11
+    fi
+}
+
+install_hip()
+{
+    # For building HIP bindings for XRT an install of ROCm HIP is required; install HIP if
+    # supported by the Linux distribution
+    if [ $FLAVOR == "ubuntu" ]; then
+        # Check if ROCm has already been manually installed by the user
+        dpkg-query -s hip-dev
+        if [ $? == 0 ]; then
+            echo "hip-dev already installed..."
+            dpkg-query -L hip-dev | grep hip/hip_runtime_api.h
+        elif [ $MAJOR -ge 23 ]; then
+            # From Ubuntu 23.04 (lunar) onwards, a version of HIP devel tools is bundled--
+            # https://packages.ubuntu.com/
+            apt-get install -y libamdhip64-dev
+        else
+            echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
+            echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
+        fi
+    elif [ $FLAVOR == "fedora" ]; then
+        rpm -q hip-devel
+        if [ $? == 0 ]; then
+            echo "hip-devel already installed..."
+            rpm -q -l hip-devel | grep hip/hip_runtime_api.h
+        elif [ $MAJOR -ge 38 ]; then
+            # From version 38 onwards, a version of HIP devel tools is bundled--
+            # https://packages.fedoraproject.org/pkgs/rocclr/hip-devel/
+            yum install -y hip-devel
+        else
+            echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
+            echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
+        fi
+    else
+            echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
+            echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
+    fi
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -648,9 +716,11 @@ install()
         prep_mariner
     elif [ $FLAVOR == "sles" ]; then
         prep_sles
+    elif [ $FLAVOR == "almalinux" ]; then
+        prep_alma
     fi
 
-    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
+    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ] || [ $FLAVOR == "almalinux" ]; then
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
         if [ $ds9 == 1 ]; then
@@ -665,7 +735,7 @@ install()
         fi
     fi
 
-    if [ $FLAVOR == "centos" ] && [ $MAJOR -eq "8" ]; then
+    if [[ $FLAVOR == "centos" || $FLAVOR == "rhel" ]] && [ $MAJOR -eq "8" ]; then
         yum install -y gcc-toolset-9-toolchain
     fi
 
@@ -684,14 +754,9 @@ install()
         dnf install -y "${MN_LIST[@]}"
     fi
 
-    if [ $FLAVOR == "mariner" ]; then
-        echo "Installing pybind..."
-        sudo dnf install -y pybind11-devel python3-pybind11
-    else
-        # Install/upgrade pybind11 for building the XRT python bindings
-        # We need 2.6.0 minimum version
-        pip3 install -U pybind11
-    fi
+    install_pybind11
+
+    install_hip
 }
 
 update_package_list

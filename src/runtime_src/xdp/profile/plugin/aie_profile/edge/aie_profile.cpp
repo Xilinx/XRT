@@ -83,7 +83,7 @@ namespace xdp {
     mMemoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
     mMemoryEndEvents = mMemoryStartEvents;
 
-    mShimStartEvents = aie::profile::getInterfaceTileEventSets();
+    mShimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
     mShimEndEvents = mShimStartEvents;
 
     mMemTileStartEvents = aie::profile::getMemoryTileEventSets();
@@ -160,31 +160,6 @@ namespace xdp {
     }
   }
 
-  void 
-  AieProfile_EdgeImpl::configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
-                                         const XAie_ModuleType mod, const module_type type,
-                                         const std::string metricSet, const XAie_Events event,
-                                         const uint8_t channel)
-  {
-    // Set masks for group events
-    // NOTE: Group error enable register is blocked, so ignoring
-    if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
-    else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
-    else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
-    else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
-    else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
-    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
-      uint32_t bitMask = aie::isInputSet(type, metricSet) 
-          ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
-          : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
-    }
-  }
 
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
@@ -288,23 +263,6 @@ namespace xdp {
     switchPortMap.clear();
   }
 
-  void 
-  AieProfile_EdgeImpl::configEventSelections(XAie_DevInst* aieDevInst,
-                                             const XAie_LocType loc,
-                                             const XAie_ModuleType mod,
-                                             const module_type type,
-                                             const std::string metricSet,
-                                             const uint8_t channel0,
-                                             const uint8_t channel1) 
-  {
-    if (type != module_type::mem_tile)
-      return;
-
-    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
-    XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
-    XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
-  }
-
   // Get reportable payload specific for this tile and/or counter
   uint32_t 
   AieProfile_EdgeImpl::getCounterPayload(XAie_DevInst* aieDevInst, 
@@ -404,58 +362,6 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
-
-  bool AieProfile_EdgeImpl::isValidType(module_type type, XAie_ModuleType mod)
-  {
-    if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
-        || (type == module_type::dma)))
-      return true;
-    if ((mod == XAIE_MEM_MOD) && ((type == module_type::dma) 
-        || (type == module_type::mem_tile)))
-      return true;
-    if ((mod == XAIE_PL_MOD) && (type == module_type::shim)) 
-      return true;
-    return false;
-  }
-
-  void AieProfile_EdgeImpl::modifyEvents(module_type type, uint16_t subtype, uint8_t channel,
-                                         std::vector<XAie_Events>& events)
-  {
-    if ((type != module_type::dma) && (type != module_type::shim))
-      return;
-    
-    // Memory modules
-    if (type == module_type::dma) {
-      // Modify events based on channel number
-      if (channel > 0) {
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM);
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM, XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM);
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM, XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM);
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM,   XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM);
-      }
-    }
-
-    // Interface tiles
-    std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-    std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
-    std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-    std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
-
-    // Calculate throughput differently for PLIO or AIE1 devices
-    if ((subtype == 0) || (metadata->getHardwareGen() == 1)) {
-      std::replace(events.begin(), events.end(), 
-        XAIE_EVENT_GROUP_DMA_ACTIVITY_PL,              XAIE_EVENT_PORT_STALLED_0_PL);
-    }
-  }
-
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
   AieProfile_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
@@ -482,7 +388,7 @@ namespace xdp {
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, mod);
-        if (!isValidType(type, mod))
+        if (!aie::profile::isValidType(type, mod))
           continue;
 
         auto& metricSet  = tileMetric.second;
@@ -512,10 +418,10 @@ namespace xdp {
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
         
         // Modify events as needed
-        modifyEvents(type, subtype, channel0, startEvents);
+        aie::profile::modifyEvents(type, subtype, channel0, startEvents, metadata->getHardwareGen());
         endEvents = startEvents;
 
-        configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
+        aie::profile::configEventSelections(aieDevInst, loc, type, metricSet, channel0);
         configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtr, 
                                 metricSet, channel0, channel1, startEvents, endEvents);
 
@@ -528,7 +434,7 @@ namespace xdp {
           uint8_t channel    = (portnum == 0) ? channel0 : channel1;
 
           // Configure group event before reserving and starting counter
-          configGroupEvents(aieDevInst, loc, mod, type, metricSet, startEvent, channel);
+          aie::profile::configGroupEvents(aieDevInst, loc, mod, type, metricSet, startEvent, channel);
 
           // Request counter from resource manager
           auto perfCounter = xaieModule.perfCounter();

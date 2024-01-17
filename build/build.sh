@@ -4,6 +4,7 @@ set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+MAJOR=${VERSION%.*}
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
@@ -11,7 +12,7 @@ CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{p
 CPU=`uname -m`
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
-    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]]; then
+    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]] || [[ $OSDIST == "almalinux" ]]; then
         CMAKE=cmake3
         if [[ ! -x "$(command -v $CMAKE)" ]]; then
             echo "$CMAKE is not installed, please run xrtdeps.sh"
@@ -35,9 +36,9 @@ if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
-# Use GCC 9 on CentOS 8 for std::filesystem
+# Use GCC 9 on CentOS 8 and RHEL 8 for std::filesystem
 # The dependency is installed by xrtdeps.sh
-if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" ]] && [[ $VERSION == 8 ]]; then
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" ]] && [[ $MAJOR == 8 ]]; then
     source /opt/rh/gcc-toolset-9/enable
 fi
 
@@ -51,6 +52,7 @@ usage()
     echo "[-dbg]                      Build debug library only (default)"
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
+    echo "[-hip]                      Enable hip bindings"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
@@ -145,6 +147,10 @@ while [ $# -gt 0 ]; do
             edge=1
             opt=0
             dbg=0
+            ;;
+        -hip)
+            shift
+            cmake_flags+=" -DXRT_ENABLE_HIP=ON"
             ;;
         -opt)
             dbg=0

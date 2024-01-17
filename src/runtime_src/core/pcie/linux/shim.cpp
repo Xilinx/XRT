@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
@@ -287,8 +287,8 @@ public:
     return m_uuid;
   }
 
-  std::unique_ptr<xrt_core::hwqueue_handle>
-  create_hw_queue() override
+  xrt_core::hwqueue_handle*
+  get_hw_queue() override
   {
     return nullptr;
   }

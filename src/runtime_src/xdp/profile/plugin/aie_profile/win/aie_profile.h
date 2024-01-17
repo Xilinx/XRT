@@ -40,21 +40,6 @@ namespace xdp {
     void poll(uint32_t index, void* handle);
     void freeResources();
     bool setMetricsSettings(uint64_t deviceId);
-    bool isValidType(module_type type, XAie_ModuleType mod);
-    void configEventSelections(
-      const XAie_LocType loc, const xdp::module_type type,
-      const std::string metricSet, const uint8_t channel0
-    );
-    void configGroupEvents(
-      const XAie_LocType loc, const XAie_ModuleType mod,
-      const XAie_Events event, const std::string& metricSet, 
-      uint8_t channel
-    );
-    uint32_t getCounterPayload(const tile_type& tile, 
-      const xdp::module_type type, uint16_t column, 
-      uint16_t row, XAie_Events startEvent, 
-      const std::string metricSet, const uint8_t channel
-    );
     void configStreamSwitchPorts(
       const tile_type& tile, const XAie_LocType& loc,
       const module_type& type, const std::string& metricSet,

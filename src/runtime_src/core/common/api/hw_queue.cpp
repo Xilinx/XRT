@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #define XRT_API_SOURCE         // in same dll as API sources
 #include "hw_queue.h"
@@ -390,12 +390,13 @@ public:
 // class qds_device - queue implementation for shim queue support
 class qds_device : public hw_queue_impl
 {
-  xrt_core::device* m_device;
-  std::unique_ptr<hwqueue_handle> m_qhdl;
+  xrt::hw_context m_hwctx;
+  hwqueue_handle* m_qhdl;
 
 public:
-  qds_device(xrt_core::device* device, std::unique_ptr<hwqueue_handle>&& qhdl)
-    : m_device(device), m_qhdl(std::move(qhdl))
+  qds_device(xrt::hw_context hwctx, hwqueue_handle* qhdl)
+    : m_hwctx(std::move(hwctx))
+    , m_qhdl(qhdl)
   {}
 
   std::cv_status
@@ -639,6 +640,24 @@ static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
 static std::mutex mutex;
 static std::condition_variable device_erased;
 
+////////////////////////////////////////////////////////////////  
+// Trivially dsetructible pod type that is accessible after global
+// dstruction.  Used to know when above global objects (destructed
+// after below uninit) are valid.
+bool&
+exiting()
+{
+  static bool lights_out = false;
+  return lights_out;
+}
+
+struct uninit
+{
+  ~uninit() { exiting() = true; }
+};
+static uninit s_uninit;
+////////////////////////////////////////////////////////////////  
+
 // This function ensures that only one kds_device is created per
 // xrt_core::device regardless of hwctx.  It allocates (if necessary)
 // a kds_device queue impl in the sentinel slot that represents a null
@@ -679,10 +698,10 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
   auto& queues = dev2hwc[device];
   auto hwqimpl = queues[hwctx_hdl].lock();
   if (!hwqimpl) {
-    auto hwqueue_hdl = hwctx_hdl->create_hw_queue();
+    auto hwqueue_hdl = hwctx_hdl->get_hw_queue();
     queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == nullptr)
       ? get_kds_device_nolock(queues, device)
-      : queue_ptr{new xrt_core::qds_device(device, std::move(hwqueue_hdl))};
+      : queue_ptr{new xrt_core::qds_device(hwctx, hwqueue_hdl)};
   }
   return hwqimpl;
 }
@@ -695,6 +714,13 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
 static void
 remove_device(const xrt_core::device* device)
 {
+  // Accessing static globals is not safe during static global
+  // destruction.  If a device objects is deleted during static global
+  // destruction, we can only access the static globals if they have
+  // not yet been destructed.
+  if (exiting())
+    return;
+  
   std::lock_guard lk(mutex);
   XRT_DEBUGF("remove_device(0x%x) devices(%d)\n", device, dev2hwc.size());
   dev2hwc.erase(device);

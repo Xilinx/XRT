@@ -674,7 +674,11 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin
 		flags = zdev->fpga_mgr->flags;
 		zdev->fpga_mgr->flags |= FPGA_MGR_CONFIG_DMA_BUF;
 		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
-		err = of_overlay_fdt_apply((void *)section_buffer, size, &id);
+                #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+                         err = of_overlay_fdt_apply((void *)section_buffer, size, &id, NULL);
+                #else
+                         err = of_overlay_fdt_apply((void *)section_buffer, size, &id);
+                #endif
 		if (err < 0) {
 			DRM_WARN("Failed to create overlay (err=%d)\n", err);
 			zdev->fpga_mgr->flags = flags;

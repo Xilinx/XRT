@@ -16,16 +16,17 @@
 
 #define XDP_CORE_SOURCE
 
-#include <cstdint>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <cstdint>
+#include <filesystem>
+#include <memory>
 #include <optional>
 #include <set>
-#include <memory>
 
-#include "filetypes/aie_control_config_filetype.h"
 #include "aie_util.h"
 #include "core/common/message.h"
+#include "filetypes/aie_control_config_filetype.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
@@ -38,7 +39,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Compare two tiles (used for sorting)
    ***************************************************************************/
-  bool tileCompare(xdp::tile_type tile1, xdp::tile_type tile2) 
+  bool 
+  tileCompare(xdp::tile_type tile1, xdp::tile_type tile2) 
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
@@ -46,7 +48,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Throw runtime error (only if err is set)
    ***************************************************************************/
-  void throwIfError(bool err, const char* msg)
+  void
+  throwIfError(bool err, const char* msg)
   {
     if (err)
       throw std::runtime_error(msg);
@@ -58,43 +61,36 @@ namespace xdp::aie {
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   determineFileType(boost::property_tree::ptree& aie_project)
   {
-    //
-    // Check if it is the known compiler_report.json format
-    //
+    // aie_control_config.json format
     try {
-      std::string schema;
-      schema = aie_project.get_child("schema").get_value<std::string>();
-      if (schema == "MEGraphSchema-0.4")
+      auto c = aie_project.get_child_optional("aie_metadata.aiecompiler_options");
+      if (c)
         return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+    }
+    catch(...) {
+      // Most likely not an aie_control_config
+    }
+
+    try {
+      auto c = aie_project.get_child_optional("schema");
+      if (c) {
+        auto schema = c.get().get_value<std::string>();
+        // compiler_report.json format
+        if (schema == "MEGraphSchema-0.4")
+          return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+        // Known handwritten format
+        if (schema == "handwritten")
+          return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
+      }
     }
     catch (...) {
-      // Something went wrong, so it most likely is not a "compiler_report.json"
+      // Most likely an invalid format
     }
 
-    //
-    // Check if it is the known aie_control_config.json format
-    //
-    try {
-      std::string major;
-      major = aie_project.get_child("schema_version.major").get_value<std::string>();
-      if (major == "1")
-        return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
-    }
-    catch(...) {
-      // Something went wrong, so it most likely is not an aie_control_config
-    }
-
-    //
-    // Check if it is the known handwritten format
-    //
-    try {
-      auto schema = aie_project.get_child("schema").get_value<std::string>();
-      if (schema == "handwritten")
-        return std::make_unique<xdp::aie::AIEControlConfigFiletype>(aie_project);
-    }
-    catch(...) {
-      // Something went wrong, so it most likely is not the handwritten format
-    }
+    std::stringstream msg;
+    msg << "Unable to determine AIE Metadata file type. "
+        << "Profiling and trace features might not work.";
+    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
     // We could not determine the type
     return nullptr;
@@ -216,16 +212,16 @@ namespace xdp::aie {
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   readAIEMetadata(const char* filename, pt::ptree& aie_project)
   {
-    try {
-      pt::read_json(filename, aie_project);
-    }
-    catch (...) {
+    if (!std::filesystem::exists(filename)) {
       std::stringstream msg;
       msg << "The AIE metadata JSON file is required in the same directory"
-          << " as the host executable to run AIE Profile.";
+          << " as the run directory to run AIE Profile.";
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return nullptr;
     }
+
+    pt::read_json(filename, aie_project);
+   
 
     return determineFileType(aie_project);
   }
@@ -233,7 +229,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Check if verbosity is at least info level
    ***************************************************************************/
-  bool isInfoVerbosity()
+  bool 
+  isInfoVerbosity()
   {
     return (xrt_core::config::get_verbosity() >= 
             static_cast<uint32_t>(severity_level::info));
@@ -242,7 +239,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Check if verbosity is at least debug level
    ***************************************************************************/
-  bool isDebugVerbosity()
+  bool 
+  isDebugVerbosity()
   {
     return (xrt_core::config::get_verbosity() >= 
             static_cast<uint32_t>(severity_level::debug));
@@ -251,7 +249,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Check if input-based metric set
    ***************************************************************************/
-  bool isInputSet(const module_type type, const std::string metricSet)
+  bool 
+  isInputSet(const module_type type, const std::string metricSet)
   {
     // Catch memory tile sets
     if (type == module_type::mem_tile) {
@@ -273,7 +272,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Get relative row of given tile
    ***************************************************************************/
-  uint16_t getRelativeRow(uint16_t absRow, uint16_t rowOffset)
+  uint16_t 
+  getRelativeRow(uint16_t absRow, uint16_t rowOffset)
   {
     if (absRow == 0)
       return 0;
@@ -285,7 +285,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Get module type
    ***************************************************************************/
-  module_type getModuleType(uint16_t absRow, uint16_t rowOffset)
+  module_type 
+  getModuleType(uint16_t absRow, uint16_t rowOffset)
   {
     if (absRow == 0)
       return module_type::shim;
@@ -297,7 +298,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Convert broadcast ID to event ID
    ***************************************************************************/
-  uint32_t bcIdToEvent(int bcId)
+  uint32_t 
+  bcIdToEvent(int bcId)
   {
     return bcId + CORE_BROADCAST_EVENT_BASE;
   }
@@ -305,7 +307,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Get module name
    ***************************************************************************/
-  std::string getModuleName(module_type mod)
+  std::string 
+  getModuleName(module_type mod)
   {
     static std::map<module_type, std::string> modNames {
       {module_type::core,     "AIE modules"},

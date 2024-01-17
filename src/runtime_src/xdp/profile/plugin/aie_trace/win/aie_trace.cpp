@@ -183,9 +183,8 @@ namespace xdp {
     };
 
     auto RC = XAie_CfgInitialize(&aieDevInst, &cfg);
-    if (RC != XAIE_OK) {
+    if (RC != XAIE_OK)
       xrt_core::message::send(severity_level::warning, "XRT", "AIE Driver Initialization Failed.");
-    }
   }
 
   void AieTrace_WinImpl::updateDevice()
@@ -193,9 +192,8 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Trace IPU updateDevice.");
 
     // compile-time trace
-    if (!metadata->getRuntimeMetrics()) {
+    if (!metadata->getRuntimeMetrics())
       return;
-    }
 
     // Set metrics for trace events
     if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {

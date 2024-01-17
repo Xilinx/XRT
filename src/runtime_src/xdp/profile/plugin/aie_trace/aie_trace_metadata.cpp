@@ -940,7 +940,9 @@ namespace xdp {
   aie::driver_config 
   AieTraceMetadata::getAIEConfigMetadata() 
   {
-    return metadataReader->getDriverConfig();
+    if (metadataReader)
+      return metadataReader->getDriverConfig();
+    return {};
   }
   
 }

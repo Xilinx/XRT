@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _HW_EM_SHIM_H_
 #define _HW_EM_SHIM_H_
 
@@ -260,8 +260,8 @@ using addr_type = uint64_t;
         return m_uuid;
       }
 
-      std::unique_ptr<xrt_core::hwqueue_handle>
-      create_hw_queue() override
+      xrt_core::hwqueue_handle*
+      get_hw_queue() override
       {
         return nullptr;
       }

@@ -164,8 +164,9 @@ struct adapter
     if (query_info->Status != D3DDDI_QUERYREGISTRY_STATUS_SUCCESS)
       throw std::runtime_error("D3DDDI_QUERYREGISTRY_STATUS_SUCCESS failed");
 
-    // Return the driver path
-    std::wstring wstr{query_info->OutputString, query_info->OutputString + output_value_size};
+    // Return the driver path.
+    // Account for OutputString being WCHAR[], whereas OutputValueSize is bytes
+    std::wstring wstr{query_info->OutputString, query_info->OutputString + output_value_size / sizeof(wchar_t)};
     return replace_systemroot(utf8(wstr));
   }
 };
