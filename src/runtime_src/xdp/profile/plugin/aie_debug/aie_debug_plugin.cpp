@@ -13,15 +13,9 @@
 #include "core/common/message.h"
 #include "core/include/experimental/xrt-next.h"
 
-#include "op_types.h"
-#include "op_buf.hpp"
-#include "op_init.hpp"
-
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-
-constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -77,7 +71,8 @@ namespace xdp {
       return;
     }
 
-    context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Debug");
     xdp::aie::driver_config meta_config = getAIEConfigMetadata();
 
     XAie_Config cfg {
@@ -156,41 +151,46 @@ namespace xdp {
     XAie_RequestCustomTxnOp(&aieDevInst);
     auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
-    try {
-      mKernel = xrt::kernel(context, "XDP_KERNEL");  
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Debug. " << e.what() ;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    // try {
+    //   mKernel = xrt::kernel(context, "XDP_KERNEL");  
+    // } catch (std::exception &e){
+    //   std::stringstream msg;
+    //   msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Debug. " << e.what() ;
+    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    //   return;
+    // }
+
+    if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return;
-    }
 
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
-    uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    op_buf instr_buf;
-    instr_buf.addOP(transaction_op(txn_ptr));
+    txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+
+
+    // op_buf instr_buf;
+    // instr_buf.addOP(transaction_op(txn_ptr));
 
     // Initialize instructions
-    try {
-      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      return;
-    }
-    instr_bo.write(instr_buf.ibuf_.data());
-    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    // try {
+    //   instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    // } catch (std::exception &e){
+    //   std::stringstream msg;
+    //   msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
+    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    //   return;
+    // }
+    // instr_bo.write(instr_buf.ibuf_.data());
+    // instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-    // results BO syncs AIE Debug result from device
-    try {
-      result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e) {
-      std::stringstream msg;
-      msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-      return;
-    }
+    // // results BO syncs AIE Debug result from device
+    // try {
+    //   result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
+    // } catch (std::exception &e) {
+    //   std::stringstream msg;
+    //   msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << std::endl;
+    //   xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+    //   return;
+    // }
 
     XAie_ClearTransaction(&aieDevInst);
 
@@ -272,18 +272,23 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    try {
-      run.wait2();
-    } catch (std::exception &e) {
-      std::stringstream msg;
-      msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    if (!transactionHandler->submitTransaction(txn_ptr))
       return;
-    }
+    auto result_bo = transactionHandler->syncResults();
+    if (!result_bo)
+      return;
+
+    // auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
+    // try {
+    //   run.wait2();
+    // } catch (std::exception &e) {
+    //   std::stringstream msg;
+    //   msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << std::endl;
+    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    //   return;
+    // }
 
     auto result_bo_map = result_bo.map<uint8_t*>();
-    result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     uint32_t* output = reinterpret_cast<uint32_t*>(result_bo_map+offset_3K);
 

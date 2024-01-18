@@ -31,10 +31,6 @@
 #include "core/common/xrt_profiling.h"
 #include "core/include/xrt/xrt_kernel.h"
 
-#include "op_types.h"
-#include "op_buf.hpp"
-#include "op_init.hpp"
-
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
@@ -43,13 +39,9 @@
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
 
 // XRT headers
-#include "xrt/xrt_device.h"
-#include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "core/common/shim/hwctx_handle.h"
 #include <windows.h> 
-
-constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -75,6 +67,10 @@ namespace xdp {
 
     mMemTileStartEvents = aie::profile::getMemoryTileEventSets();
     mMemTileEndEvents = mMemTileStartEvents;
+
+    auto context = metadata->getHwContext();
+    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Profile Setup");
+    
   }
 
   void
@@ -223,36 +219,13 @@ namespace xdp {
       op->profile_data[i] = op_profile_data[i];
     }
     
-    auto context = metadata->getHwContext();
-
-    try {
-      mKernel = xrt::kernel(context, "XDP_KERNEL");  
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to find XDP_KERNEL kernel from hardware context. Failed to configure AIE Profile." << e.what() ;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      return false;
-    }
-
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    op_buf instr_buf;
-    instr_buf.addOP(transaction_op(txn_ptr));
-    xrt::bo instr_bo;
 
-    // Configuration bo
-    try {
-      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to create instruction buffer for AIE Profile transaction. Not configuring AIE Profile. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return false;
-    }
 
-    instr_bo.write(instr_buf.ibuf_.data());
-    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    run.wait2();
+    if (!transactionHandler->submitTransaction(txn_ptr))
+      return false;
 
     xrt_core::message::send(severity_level::info, "XRT", "Successfully scheduled AIE Profiling Transaction Buffer.");
 
@@ -315,7 +288,6 @@ namespace xdp {
 
     (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;
-    auto context = metadata->getHwContext();
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     // Profiling is 3rd custom OP
@@ -326,51 +298,24 @@ namespace xdp {
 
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-    op_buf instr_buf;
-    instr_buf.addOP(transaction_op(txn_ptr));
 
-    // this BO stores polling data and custom instructions
-    xrt::bo instr_bo;
-    try {
-      instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e){
-      std::stringstream msg;
-      msg << "Unable to create the instruction buffer for polling during AIE Profile. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    // If we haven't properly initialized the transaction handler, don't poll
+    if (!transactionHandler)
       return;
-    }
-
-    instr_bo.write(instr_buf.ibuf_.data());
-    instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    try {
-      run.wait2();
-    } catch (std::exception &e) {
-      std::stringstream msg;
-      msg << "Unable to successfully execute AIE Profile polling kernel. " << e.what() << std::endl;
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+    transactionHandler->setTransactionName("AIE Profile Poll");
+    if (!transactionHandler->submitTransaction(txn_ptr))
       return;
-    }
 
     XAie_ClearTransaction(&aieDevInst);
 
     static constexpr uint32_t size_4K   = 0x1000;
     static constexpr uint32_t offset_3K = 0x0C00;
 
-    // results BO syncs profile result from device
-    xrt::bo result_bo;
-    try {
-      result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    } catch (std::exception &e) {
-      std::stringstream msg;
-      msg << "Unable to create result buffer for AIE Profle. Cannot get AIE Profile Info." << e.what() << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+    auto result_bo = transactionHandler->syncResults();
+    if (!result_bo)
       return;
-    }
-
     auto result_bo_map = result_bo.map<uint8_t*>();
-    result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
+    // result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
     uint32_t* output = reinterpret_cast<uint32_t*>(result_bo_map+offset_3K);
 
     for (uint32_t i = 0; i < op->count; i++) {
