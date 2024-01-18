@@ -23,7 +23,7 @@ if (XDP_MINIMAL_BUILD STREQUAL "yes")
 
   target_link_libraries(xdp_ml_timeline_plugin PRIVATE xdp_core xrt_coreutil)
 
-  target_compile_definitions(xdp_ml_timeline_plugin PRIVATE XDP_MINIMAL_BUILD=1)
+  target_compile_definitions(xdp_ml_timeline_plugin PRIVATE XDP_CLIENT_BUILD=1)
 
   set_target_properties(xdp_ml_timeline_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
