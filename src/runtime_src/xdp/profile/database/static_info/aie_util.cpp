@@ -320,4 +320,10 @@ namespace xdp::aie {
     return modNames[mod];
   }
 
+  uint8_t
+  convertMetricString(std::string& input) {
+    return static_cast<uint8_t>(std::stoi(input));
+  }
+
+
 } // namespace xdp::aie

@@ -437,7 +437,7 @@ namespace xdp {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
           auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+          auto streamPortId  = tile.itr_mem_row;
           //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
           XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, SOUTH, streamPortId);
         }
@@ -513,7 +513,7 @@ namespace xdp {
     //  7:0  Input event for edge event 0
     uint32_t edgeEventsValue = (1 << 26) + (eventNum << 16) + (1 << 9) + eventNum;
 
-    auto tileOffset = _XAie_GetTileAddr(&aieDevInst, static_cast<uint8_t>(tile.row), static_cast<uint8_t>(tile.col));
+    auto tileOffset = _XAie_GetTileAddr(&aieDevInst, tile.row, tile.col);
     XAie_Write32(&aieDevInst, tileOffset + AIE_OFFSET_EDGE_CONTROL_MEM_TILE, edgeEventsValue);
   }
 
@@ -570,7 +570,7 @@ namespace xdp {
       auto type       = getTileType(row);
       auto typeInt    = static_cast<int>(type);
       //auto& xaieTile  = aieDevice->tile(col, row);
-      auto loc        = XAie_TileLoc(static_cast<uint8_t>(col), static_cast<uint8_t>(row));
+      auto loc        = XAie_TileLoc(col, row);
 
       std::stringstream cmsg;
       cmsg << "Configuring tile (" << col << "," << row << ") in module type: " << typeInt << ".";

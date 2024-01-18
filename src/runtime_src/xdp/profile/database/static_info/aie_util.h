@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <map>
 #include <vector>
+#include <string>
 
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -89,6 +90,9 @@ namespace xdp::aie {
   
   XDP_CORE_EXPORT
   std::string getModuleName(module_type mod);
+
+  XDP_CORE_EXPORT
+  uint8_t convertMetricString(std::string& input);
 
 } // namespace xdp::aie
 

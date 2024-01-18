@@ -364,8 +364,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
-            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
+            configChannel0[e] = aie::convertMetricString(graphMetrics[i][3]);
+            configChannel1[e] = aie::convertMetricString(graphMetrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -402,8 +402,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
-            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
+            configChannel0[e] = aie::convertMetricString(graphMetrics[i][3]);
+            configChannel1[e] = aie::convertMetricString(graphMetrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -455,8 +455,8 @@ namespace xdp {
       if (metrics[i].size() > 2) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = static_cast<uint8_t>(std::stoi(metrics[i][2]));
-            configChannel1[e] = static_cast<uint8_t>(std::stoi(metrics[i].back()));
+            configChannel0[e] = aie::convertMetricString(metrics[i][2]);
+            configChannel1[e] = aie::convertMetricString(metrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -512,8 +512,8 @@ namespace xdp {
       uint8_t channel1 = 1;
       if (metrics[i].size() > 3) {
         try {
-          channel0 = static_cast<uint8_t>(std::stoi(metrics[i][3]));
-          channel1 = static_cast<uint8_t>(std::stoi(metrics[i].back()));
+          channel0 = aie::convertMetricString(metrics[i][3]);
+          channel1 = aie::convertMetricString(metrics[i].back());
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -525,8 +525,8 @@ namespace xdp {
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
           tile_type tile;
-          tile.col = static_cast<uint16_t>(col);
-          tile.row = static_cast<uint16_t>(row);
+          tile.col = static_cast<uint8_t>(col);
+          tile.row = static_cast<uint8_t>(row);
 
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -563,8 +563,8 @@ namespace xdp {
 
         std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
-        col = static_cast<uint16_t>(std::stoi(tilePos[0]));
-        row = static_cast<uint16_t>(std::stoi(tilePos[1]) + rowOffset);
+        col = aie::convertMetricString(tilePos[0]);
+        row = aie::convertMetricString(tilePos[1] + rowOffset);
       } catch (...) {
         std::stringstream msg;
         msg << "Tile specification in tile_based_" << tileName
@@ -591,8 +591,8 @@ namespace xdp {
       // Grab channel numbers (if specified; memory tiles only)
       if (metrics[i].size() > 2) {
         try {
-          configChannel0[tile] = static_cast<uint8_t>(std::stoi(metrics[i][2]));
-          configChannel1[tile] = static_cast<uint8_t>(std::stoi(metrics[i].back()));
+          configChannel0[tile] = aie::convertMetricString(metrics[i][2]);
+          configChannel1[tile] = aie::convertMetricString(metrics[i].back());
         } catch (...) {
           std::stringstream msg;
           msg << "Channel specifications in tile_based_" << tileName
@@ -699,8 +699,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
-            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
+            configChannel0[e] = aie::convertMetricString(graphMetrics[i][3]);
+            configChannel1[e] = aie::convertMetricString(graphMetrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -737,8 +737,8 @@ namespace xdp {
       if (graphMetrics[i].size() > 3) {
         try {
           for (auto &e : tiles) {
-            configChannel0[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i][3]));
-            configChannel1[e] = static_cast<uint8_t>(std::stoi(graphMetrics[i].back()));
+            configChannel0[e] = aie::convertMetricString(graphMetrics[i][3]);
+            configChannel1[e] = aie::convertMetricString(graphMetrics[i].back());
           }
         } catch (...) {
           std::stringstream msg;
@@ -776,7 +776,7 @@ namespace xdp {
         continue;
 
       processed.insert(i);
-      uint8_t channelId = (metrics[i].size() < 3) ? 0 : static_cast<uint8_t>(std::stoul(metrics[i][2]));
+      uint8_t channelId = (metrics[i].size() < 3) ? 0 : aie::convertMetricString(metrics[i][2]);
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
 
       for (auto& t : tiles) {
@@ -815,7 +815,7 @@ namespace xdp {
       uint8_t channelId = 0;
       if (metrics[i].size() == 4) {
         try {
-          channelId = static_cast<uint8_t>(std::stoul(metrics[i][3]));
+          channelId = aie::convertMetricString(metrics[i][3]);
         }
         catch (std::invalid_argument const&) {
           // Expected channel Id is not an integer. Give warning and ignore.
@@ -862,7 +862,7 @@ namespace xdp {
         uint8_t channelId = 0;
         if (metrics[i].size() == 3) {
           try {
-            channelId = static_cast<uint8_t>(std::stoul(metrics[i][2]));
+            channelId = aie::convertMetricString(metrics[i][2]);
           }
           catch (std::invalid_argument const&) {
             // Expected channel Id is not an integer, give warning and ignore
