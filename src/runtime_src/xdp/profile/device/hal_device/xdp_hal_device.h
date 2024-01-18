@@ -22,6 +22,7 @@
 #include<vector>
 #include "core/include/xrt.h"
 #include "core/include/xrt/xrt_bo.h"
+#include "core/common/device.h"
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
@@ -30,6 +31,7 @@ class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
   std::vector<xrt::bo> xrt_bos;
+  std::shared_ptr<xrt_core::device> mXrtCoreDevice;
 
 public:
   HalDevice(void* halDeviceHandle);
