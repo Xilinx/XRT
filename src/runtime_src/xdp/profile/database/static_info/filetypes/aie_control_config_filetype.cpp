@@ -133,8 +133,8 @@ AIEControlConfigFiletype::getPLIOs()
         plio.id = plio_node.second.get<uint32_t>("id");
         plio.name = plio_node.second.get<std::string>("name");
         plio.logicalName = plio_node.second.get<std::string>("logical_name");
-        plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
-        plio.streamId = plio_node.second.get<uint16_t>("stream_id");
+        plio.shimColumn = plio_node.second.get<uint8_t>("shim_column");
+        plio.streamId = plio_node.second.get<uint8_t>("stream_id");
         plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
         plio.channelNum = 0;
         plio.burstLength = 0;
@@ -179,18 +179,18 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr)
         //   1 : S2MM channel 1
         //   2 : MM2S channel 0 (slave/input)
         //   3 : MM2S channel 1
-        auto slaveOrMaster = gmio_node.second.get<uint16_t>("type");
-        auto channelNumber = gmio_node.second.get<uint16_t>("channel_number");
+        auto slaveOrMaster = gmio_node.second.get<uint8_t>("type");
+        auto channelNumber = gmio_node.second.get<uint8_t>("channel_number");
 
         gmio.type = 1;
         gmio.id = gmio_node.second.get<uint32_t>("id");
         gmio.name = gmio_node.second.get<std::string>("name");
         gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
         gmio.slaveOrMaster = slaveOrMaster;
-        gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
+        gmio.shimColumn = gmio_node.second.get<uint8_t>("shim_column");
         gmio.channelNum = (slaveOrMaster == 0) ? (channelNumber - 2) : channelNumber;
-        gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
-        gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+        gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
+        gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 
         gmios[gmio.name] = gmio;
     }
@@ -291,7 +291,7 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
     std::vector<tile_type> allTiles;
     std::vector<tile_type> memTiles;
     // Always one row of interface tiles
-    uint16_t rowOffset = 1;
+    uint8_t rowOffset = 1;
 
     // Now parse all shared buffers
     for (auto const &shared_buffer : sharedBufferTree.get()) {
@@ -305,8 +305,8 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
             continue;
 
         tile_type tile;
-        tile.col = shared_buffer.second.get<uint16_t>("column");
-        tile.row = shared_buffer.second.get<uint16_t>("row") + rowOffset;
+        tile.col = shared_buffer.second.get<uint8_t>("column");
+        tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
         allTiles.emplace_back(std::move(tile));
     }
 
@@ -337,23 +337,23 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
         for (auto& node : graph.second.get_child("core_columns")) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            t.col = xdp::aie::convertMetricString(node.second.data());
         }
 
         int num_tiles = count;
         count = startCount;
         for (auto& node : graph.second.get_child("core_rows"))
-            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertMetricString(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.at(count++).itr_mem_col = xdp::aie::convertMetricString(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.at(count++).itr_mem_row = xdp::aie::convertMetricString(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
         count = startCount;
@@ -412,13 +412,13 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         for (auto& node : graph.second.get_child(col_name)) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            t.col = xdp::aie::convertMetricString(node.second.data());
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child(row_name))
-            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertMetricString(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
     }
 
@@ -464,8 +464,8 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
         }
 
         tile_type tile;
-        tile.col = mapping.second.get<uint16_t>("column");
-        tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
+        tile.col = mapping.second.get<uint8_t>("column");
+        tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
         tiles.emplace_back(std::move(tile));
     }
     return tiles;

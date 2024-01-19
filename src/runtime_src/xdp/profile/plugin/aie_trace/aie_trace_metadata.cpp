@@ -306,7 +306,7 @@ namespace xdp {
       return;
     }
       
-    uint16_t rowOffset = (type == module_type::mem_tile) ? 1 : getRowOffset();
+    uint8_t rowOffset = (type == module_type::mem_tile) ? 1 : getRowOffset();
     auto tileName = (type == module_type::mem_tile) ? "memory" : "aie";
 
     auto allValidGraphs = metadataReader->getValidGraphs();
@@ -554,8 +554,8 @@ namespace xdp {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
 
-      uint16_t col = 0;
-      uint16_t row = 0;
+      uint8_t col = 0;
+      uint8_t row = 0;
 
       try {
         boost::replace_all(metrics[i][0], "{", "");
@@ -564,7 +564,7 @@ namespace xdp {
         std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
         col = aie::convertMetricString(tilePos[0]);
-        row = aie::convertMetricString(tilePos[1] + rowOffset);
+        row = aie::convertMetricString(tilePos[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
         msg << "Tile specification in tile_based_" << tileName

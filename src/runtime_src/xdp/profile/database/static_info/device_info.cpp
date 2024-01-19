@@ -285,8 +285,8 @@ namespace xdp {
     return constructed ;
   }
 
-  void DeviceInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
-                                uint16_t stream, uint16_t len)
+  void DeviceInfo::addTraceGMIO(uint32_t id, uint8_t col, uint8_t num,
+                                uint8_t stream, uint8_t len)
   {
     XclbinInfo* xclbin = currentXclbin() ;
     if (!xclbin)
