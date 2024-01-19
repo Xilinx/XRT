@@ -337,23 +337,23 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
         for (auto& node : graph.second.get_child("core_columns")) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = xdp::aie::convertMetricString(node.second.data());
+            t.col = xdp::aie::convertStringToUint8(node.second.data());
         }
 
         int num_tiles = count;
         count = startCount;
         for (auto& node : graph.second.get_child("core_rows"))
-            tiles.at(count++).row = xdp::aie::convertMetricString(node.second.data()) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).itr_mem_col = xdp::aie::convertMetricString(node.second.data());
+            tiles.at(count++).itr_mem_col = xdp::aie::convertStringToUint8(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).itr_mem_row = xdp::aie::convertMetricString(node.second.data());
+            tiles.at(count++).itr_mem_row = xdp::aie::convertStringToUint8(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
         count = startCount;
@@ -412,13 +412,13 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         for (auto& node : graph.second.get_child(col_name)) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = xdp::aie::convertMetricString(node.second.data());
+            t.col = xdp::aie::convertStringToUint8(node.second.data());
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child(row_name))
-            tiles.at(count++).row = xdp::aie::convertMetricString(node.second.data()) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
     }
 

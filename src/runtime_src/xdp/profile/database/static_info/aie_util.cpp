@@ -321,7 +321,7 @@ namespace xdp::aie {
   }
 
   uint8_t
-  convertMetricString(std::string& input) {
+  convertStringToUint8(const std::string& input) {
     return static_cast<uint8_t>(std::stoi(input));
   }
 
