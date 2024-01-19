@@ -268,8 +268,8 @@ namespace xdp {
   AieProfile_EdgeImpl::getCounterPayload(XAie_DevInst* aieDevInst, 
                                          const tile_type& tile, 
                                          const module_type type, 
-                                         uint16_t column, 
-                                         uint16_t row, 
+                                         uint8_t column, 
+                                         uint8_t row, 
                                          uint16_t startEvent, 
                                          const std::string metricSet,
                                          const uint8_t channel)

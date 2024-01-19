@@ -300,7 +300,7 @@ namespace xdp {
     return (absRow - rowOffset);
   }
 
-  module_type AieTrace_WinImpl::getTileType(uint16_t absRow)
+  module_type AieTrace_WinImpl::getTileType(uint8_t absRow)
   {
     if (absRow == 0)
       return module_type::shim;

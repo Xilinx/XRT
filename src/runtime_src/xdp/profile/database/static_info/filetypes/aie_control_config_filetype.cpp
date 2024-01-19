@@ -204,8 +204,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             const std::string& metricStr,
                                             int16_t channelId,
                                             bool useColumn,
-                                            uint32_t minCol,
-                                            uint32_t maxCol)
+                                            uint8_t minCol,
+                                            uint8_t maxCol)
 {
     std::vector<tile_type> tiles;
 
@@ -246,7 +246,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                 || metricStr.find("s2mm") != std::string::npos))))
             continue;
         // Make sure column is within specified range (if specified)
-        if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
+        if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
 
         if ((channelId >= 0) && (channelId != io.second.channelNum)) 

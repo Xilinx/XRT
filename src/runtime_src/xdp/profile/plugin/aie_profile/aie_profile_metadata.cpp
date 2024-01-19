@@ -699,20 +699,20 @@ namespace xdp {
       if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
         continue;
 
-      uint32_t maxCol = 0;
+      uint8_t maxCol = 0;
 
       try {
-        maxCol = std::stoi(metrics[i][1]);
+        maxCol = aie::convertMetricString(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
         // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
         continue;
       }
 
-      uint32_t minCol = 0;
+      uint8_t minCol = 0;
 
       try {
-        minCol = std::stoi(metrics[i][0]);
+        minCol = aie::convertMetricString(metrics[i][0]);
       }
       catch (std::invalid_argument const&) {
         // 2nd style but expected min column is not an integer, give warning and skip
@@ -752,15 +752,15 @@ namespace xdp {
       if ((metrics[i].size() == 4) || (metrics[i].size() < 2) || (metrics[i][0].compare("all") == 0))
         continue;
 
-      uint32_t col = 0;
+      uint8_t col = 0;
 
       try {
-        col = std::stoi(metrics[i][1]);
+        col = aie::convertMetricString(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
         // max column is not a number, so the expected single column specification. Handle this here
         try {
-          col = std::stoi(metrics[i][0]);
+          col = aie::convertMetricString(metrics[i][0]);
         }
         catch (std::invalid_argument const&) {
           // Expected column specification is not a number. Give warning and skip

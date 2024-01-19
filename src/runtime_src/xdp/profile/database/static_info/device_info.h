@@ -134,7 +134,7 @@ namespace xdp {
     void addTraceGMIO(uint32_t i, uint8_t col, uint8_t num, uint8_t stream,
                       uint8_t len) ;
     XDP_CORE_EXPORT
-    void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
+    void addAIECounter(uint32_t i, uint8_t col, uint8_t row, uint8_t num,
                        uint16_t start, uint16_t end, uint8_t reset,
                        uint32_t load, double freq, const std::string& mod,
                        const std::string& aieName) ;

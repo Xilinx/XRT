@@ -61,8 +61,8 @@ class BaseFiletypeImpl {
                           const std::string& metricStr = "channels",
                           int16_t channelId = -1,
                           bool useColumn = false, 
-                          uint32_t minCol = 0, 
-                          uint32_t maxCol = 0) = 0; 
+                          uint8_t minCol = 0, 
+                          uint8_t maxCol = 0) = 0; 
 
         virtual 
         std::vector<tile_type>

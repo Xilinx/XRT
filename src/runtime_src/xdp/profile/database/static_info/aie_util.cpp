@@ -272,8 +272,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Get relative row of given tile
    ***************************************************************************/
-  uint16_t 
-  getRelativeRow(uint16_t absRow, uint16_t rowOffset)
+  uint8_t 
+  getRelativeRow(uint8_t absRow, uint8_t rowOffset)
   {
     if (absRow == 0)
       return 0;
@@ -286,7 +286,7 @@ namespace xdp::aie {
    * Get module type
    ***************************************************************************/
   module_type 
-  getModuleType(uint16_t absRow, uint16_t rowOffset)
+  getModuleType(uint8_t absRow, uint8_t rowOffset)
   {
     if (absRow == 0)
       return module_type::shim;

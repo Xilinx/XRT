@@ -80,10 +80,10 @@ namespace xdp::aie {
   bool isInputSet(const module_type type, const std::string metricSet);
   
   XDP_CORE_EXPORT
-  uint16_t getRelativeRow(uint16_t absRow, uint16_t rowOffset);
+  uint8_t getRelativeRow(uint8_t absRow, uint8_t rowOffset);
   
   XDP_CORE_EXPORT
-  module_type getModuleType(uint16_t absRow, uint16_t rowOffset);
+  module_type getModuleType(uint8_t absRow, uint8_t rowOffset);
   
   XDP_CORE_EXPORT
   uint32_t bcIdToEvent(int bcId);

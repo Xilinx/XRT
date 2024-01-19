@@ -473,8 +473,8 @@ namespace xdp {
         continue;
       
       processed.insert(i);
-      uint32_t minCol = 0, minRow = 0;
-      uint32_t maxCol = 0, maxRow = 0;
+      uint8_t minCol = 0, minRow = 0;
+      uint8_t maxCol = 0, maxRow = 0;
 
       try {
         for (size_t j = 0; j < metrics[i].size(); ++j) {
@@ -484,13 +484,13 @@ namespace xdp {
 
         std::vector<std::string> minTile;
         boost::split(minTile, metrics[i][0], boost::is_any_of(","));
-        minCol = std::stoi(minTile[0]);
-        minRow = std::stoi(minTile[1]) + rowOffset;
+        minCol = aie::convertMetricString(minTile[0]);
+        minRow = aie::convertMetricString(minTile[1]) + rowOffset;
 
         std::vector<std::string> maxTile;
         boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
-        maxCol = std::stoi(maxTile[0]);
-        maxRow = std::stoi(maxTile[1]) + rowOffset;
+        maxCol = aie::convertMetricString(maxTile[0]);
+        maxRow = aie::convertMetricString(maxTile[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << tileName
@@ -522,11 +522,11 @@ namespace xdp {
         }
       }
 
-      for (uint32_t col = minCol; col <= maxCol; ++col) {
-        for (uint32_t row = minRow; row <= maxRow; ++row) {
+      for (uint8_t col = minCol; col <= maxCol; ++col) {
+        for (uint8_t row = minRow; row <= maxRow; ++row) {
           tile_type tile;
-          tile.col = static_cast<uint8_t>(col);
-          tile.row = static_cast<uint8_t>(row);
+          tile.col = col;
+          tile.row = row;
 
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -790,18 +790,18 @@ namespace xdp {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
 
-      uint32_t maxCol = 0;
+      uint8_t maxCol = 0;
       try {
-        maxCol = std::stoi(metrics[i][1]);
+        maxCol = aie::convertMetricString(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
         // Max column is not an integer, so either first style or wrong format. Skip for now.
         continue;
       }
 
-      uint32_t minCol = 0;
+      uint8_t minCol = 0;
       try {
-        minCol = std::stoi(metrics[i][0]);
+        minCol = aie::convertMetricString(metrics[i][0]);
       }
       catch (std::invalid_argument const&) {
         // Second style but expected min column is not an integer. Give warning and skip.
@@ -842,14 +842,14 @@ namespace xdp {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 2))
         continue;
 
-      uint32_t col = 0;
+      uint8_t col = 0;
       try {
-        col = std::stoi(metrics[i][1]);
+        col = aie::convertMetricString(metrics[i][1]);
       }
       catch (std::invalid_argument const&) {
         // Max column is not an integer, so expected single column specification. Handle this here.
         try {
-          col = std::stoi(metrics[i][0]);
+          col = aie::convertMetricString(metrics[i][0]);
         }
         catch (std::invalid_argument const&) {
           // Expected column specification is not an integer. Give warning and skip.

@@ -295,7 +295,7 @@ namespace xdp {
     xclbin->aie.gmioList.push_back(new TraceGMIO(id, col, num, stream, len)) ;
   }
 
-  void DeviceInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
+  void DeviceInfo::addAIECounter(uint32_t i, uint8_t col, uint8_t row,
                                  uint8_t num, uint16_t start, uint16_t end,
                                  uint8_t reset, uint32_t load, double freq,
                                  const std::string& mod,
@@ -305,7 +305,7 @@ namespace xdp {
     if (!xclbin)
       return ;
 
-    xclbin->aie.aieList.push_back(new AIECounter(i, col, r, num, start, end,
+    xclbin->aie.aieList.push_back(new AIECounter(i, col, row, num, start, end,
                                                  reset, load, freq, mod, aieName)) ;
   }
 

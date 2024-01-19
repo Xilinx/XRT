@@ -106,8 +106,8 @@ enum class module_type {
   struct AIECounter
   {
     uint32_t id;
-    uint16_t column;
-    uint16_t row;
+    uint8_t column;
+    uint8_t row;
     uint8_t counterNumber;
     uint8_t resetEvent;
     uint16_t startEvent;
@@ -117,7 +117,7 @@ enum class module_type {
     std::string module;
     std::string name;
 
-    AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
+    AIECounter(uint32_t i, uint8_t col, uint8_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
                uint32_t load, double freq, const std::string& mod, 
                const std::string& aieName)
