@@ -18,6 +18,7 @@
 
 #include "xdp_hal_device.h"
 #include "core/common/time.h"
+#include "core/common/ishim.h"
 #include "core/common/system.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
@@ -90,7 +91,13 @@ int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-  return xclWrite(mHalDevice, space, offset, hostBuf, size);
+  try{
+    mXrtCoreDevice->xwrite(space, offset, hostBuf, size);
+  }
+  catch(const xrt_core::error& ex){
+    xrt_core::message::send(severity_level::error, "XRT", ex.what());
+  }
+  return 0;
 #ifndef _WIN32
 #pragma GCC diagnostic pop
 #endif
@@ -101,7 +108,13 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-  return xclRead(mHalDevice, space, offset, hostBuf, size);
+  try{
+    mXrtCoreDevice->xread(space, offset, hostBuf, size);
+  }
+  catch(const xrt_core::error& ex){
+    xrt_core::message::send(severity_level::error, "XRT", ex.what());
+  }
+  return 0;
 #ifndef _WIN32
 #pragma GCC diagnostic pop
 #endif
@@ -146,7 +159,13 @@ int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
 
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  return xclUnmgdPread(mHalDevice, flags, buf, count, offset);
+  try{
+    mXrtCoreDevice->unmgd_pread(buf, count, offset);
+  }
+  catch(const xrt_core::error& ex){
+    xrt_core::message::send(severity_level::error, "XRT", ex.what());
+  }
+  return 0;
 }
 
 
