@@ -59,7 +59,7 @@ AIEControlConfigFiletype::getAIECompilerOptions() {
     return aiecompiler_options;
 }
 
-uint16_t 
+uint8_t 
 AIEControlConfigFiletype::getAIETileRowOffset() {
     return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
 }

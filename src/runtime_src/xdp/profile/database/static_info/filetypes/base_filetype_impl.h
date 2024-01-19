@@ -40,7 +40,7 @@ class BaseFiletypeImpl {
         virtual aiecompiler_options
         getAIECompilerOptions() = 0;
         
-        virtual uint16_t getAIETileRowOffset() = 0;
+        virtual uint8_t getAIETileRowOffset() = 0;
 
         virtual std::vector<std::string>
         getValidGraphs() = 0;

@@ -136,7 +136,7 @@ namespace xdp {
           continue;
 
         auto& metricSet  = tileMetric.second;
-        auto loc         = XAie_TileLoc(static_cast<uint8_t>(col), static_cast<uint8_t>(row));
+        auto loc         = XAie_TileLoc(col, row);
         auto startEvents = (type  == module_type::core) ? mCoreStartEvents[metricSet]
                          : ((type == module_type::dma)  ? mMemoryStartEvents[metricSet]
                          : ((type == module_type::shim) ? mShimStartEvents[metricSet]
@@ -260,7 +260,7 @@ namespace xdp {
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
       auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+      auto streamPortId  = tile.itr_mem_row;
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       std::stringstream msg;

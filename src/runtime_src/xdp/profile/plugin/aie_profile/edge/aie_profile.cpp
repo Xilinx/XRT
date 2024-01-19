@@ -225,7 +225,7 @@ namespace xdp {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
           auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+          auto streamPortId  = tile.itr_mem_row;
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
         }
         else {

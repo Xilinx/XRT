@@ -167,13 +167,13 @@ namespace xdp::aie {
   /****************************************************************************
    * Get first row offset of AIE tiles in array
    ***************************************************************************/
-  uint16_t
+  uint8_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
                     const std::string& location)
   {
-    static std::optional<uint16_t> rowOffset;
+    static std::optional<uint8_t> rowOffset;
     if (!rowOffset.has_value()) {
-      rowOffset = aie_meta.get_child(location).get_value<uint16_t>();
+      rowOffset = aie_meta.get_child(location).get_value<uint8_t>();
     }
     return *rowOffset;
   }

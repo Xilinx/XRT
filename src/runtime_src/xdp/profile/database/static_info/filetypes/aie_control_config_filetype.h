@@ -38,7 +38,7 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         aiecompiler_options
         getAIECompilerOptions() override;
 
-        uint16_t getAIETileRowOffset() override;
+        uint8_t getAIETileRowOffset() override;
 
         std::vector<std::string>
         getValidGraphs() override;
