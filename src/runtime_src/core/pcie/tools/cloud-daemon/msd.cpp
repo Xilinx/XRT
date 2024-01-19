@@ -48,7 +48,12 @@ static uint64_t chanSwitch = (1UL<<XCL_MAILBOX_REQ_TEST_READY) |
                       (1UL<<XCL_MAILBOX_REQ_LOAD_XCLBIN) |
                       (1UL<<XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN);
 static struct msd_plugin_callbacks plugin_cbs;
-static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
+#ifdef XRT_INSTALL_PREFIX
+    #define MSD_PLUGIN_PATH XRT_INSTALL_PREFIX "/xrt/lib/libmsd_plugin.so"
+#else
+    #define MSD_PLUGIN_PATH "/opt/xilinx/xrt/lib/libmsd_plugin.so"
+#endif
+static const std::string plugin_path(MSD_PLUGIN_PATH);
 
 class Msd : public Common
 {

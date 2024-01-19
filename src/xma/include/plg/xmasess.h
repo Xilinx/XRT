@@ -20,6 +20,7 @@
 #define __XMA_SESS_H__
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "app/xmahw.h"
 

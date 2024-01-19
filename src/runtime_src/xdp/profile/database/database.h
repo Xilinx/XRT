@@ -41,7 +41,7 @@ namespace xdp {
   {
   public:
     // For messages sent to specific plugins
-    enum MessageType { READ_COUNTERS, READ_TRACE, DUMP_TRACE } ;
+    enum MessageType { READ_COUNTERS, READ_TRACE, DUMP_TRACE, DUMP_AIE_PROFILE } ;
 
   private:
     // The information stored in the database will be separated into 
@@ -75,9 +75,9 @@ namespace xdp {
     static bool live ;
 
   public:
-    XDP_EXPORT ~VPDatabase() ;
-    XDP_EXPORT static VPDatabase* Instance() ;
-    XDP_EXPORT static bool alive() ;
+    XDP_CORE_EXPORT ~VPDatabase() ;
+    XDP_CORE_EXPORT static VPDatabase* Instance() ;
+    XDP_CORE_EXPORT static bool alive() ;
 
     // Access to the three different types of information
     inline VPStatisticsDatabase& getStats()       { return stats ; }
@@ -90,11 +90,11 @@ namespace xdp {
     inline void registerInfo(uint64_t info)    { pluginInfo |= info ; }
     inline bool infoAvailable(uint64_t info)   { return (pluginInfo&info)!=0; }
 
-    XDP_EXPORT uint64_t addDevice(const std::string&);
-    XDP_EXPORT uint64_t getDeviceId(const std::string&);
+    XDP_CORE_EXPORT uint64_t addDevice(const std::string&);
+    XDP_CORE_EXPORT uint64_t getDeviceId(const std::string&);
 
     // Functions that send messages to registered plugins
-    XDP_EXPORT void broadcast(MessageType msg, void* blob = nullptr);
+    XDP_CORE_EXPORT void broadcast(MessageType msg, void* blob = nullptr);
   } ;
 }
 

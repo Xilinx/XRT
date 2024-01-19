@@ -40,7 +40,7 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/include/xclbin.h"
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/device_info.h"
@@ -346,6 +346,7 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
+
     deviceInfo[deviceId]->deviceName = name ;
   }
 
@@ -1306,7 +1307,6 @@ namespace xdp {
      */
     parseXrtIPMetadata(deviceId, device);
   }
-
 
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
   {

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,12 +31,12 @@ class AIETraceDataLogger : public AIETraceLogger
 
 public:
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   AIETraceDataLogger(uint64_t devId);
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   virtual ~AIETraceDataLogger();
 
-  XDP_EXPORT
+  XDP_CORE_EXPORT
   virtual void addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz, bool copy);
 };
 

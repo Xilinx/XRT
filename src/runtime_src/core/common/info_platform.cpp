@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_platform.h"
 #include "query_requests.h"
@@ -32,37 +20,48 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type static_region;
 
-  static_region.add("vbnv", xrt_core::device_query<xq::rom_vbnv>(device));
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  switch (device_class) {
+  case xrt_core::query::device_class::type::alveo:
+  {
+    static_region.add("vbnv", xrt_core::device_query<xq::rom_vbnv>(device));
+    std::vector<std::string> logic_uuids;
+    try {
+      logic_uuids = xrt_core::device_query<xq::logic_uuids>(device);
+      logic_uuids.erase
+        (std::remove_if(logic_uuids.begin(), logic_uuids.end(),
+                        [](const std::string& s) {
+                          return s.empty();
+                        }), logic_uuids.end());
+    }
+    catch (const xq::exception&) {
+    }
+    
+    if (!logic_uuids.empty())
+      static_region.add("logic_uuid", xq::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+    else 
+      static_region.add("logic_uuid", (boost::format("0x%x") % xrt_core::device_query<xq::rom_time_since_epoch>(device)));
 
-  std::vector<std::string> logic_uuids;
-  try {
-    logic_uuids = xrt_core::device_query<xq::logic_uuids>(device);
-    logic_uuids.erase
-      (std::remove_if(logic_uuids.begin(), logic_uuids.end(),
-                      [](const std::string& s) {
-                        return s.empty();
-                      }), logic_uuids.end());
-  }
-  catch (const xq::exception&) {
-  }
-  
-  if (!logic_uuids.empty())
-    static_region.add("logic_uuid", xq::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
-  else 
-    static_region.add("logic_uuid", (boost::format("0x%x") % xrt_core::device_query<xq::rom_time_since_epoch>(device)));
+    try {
+      static_region.add("jtag_idcode", xq::idcode::to_string(xrt_core::device_query<xq::idcode>(device)));
+    }
+    catch (const xq::no_such_key&) {
+      static_region.add("jtag_idcode", "N/A");  // edge
+    }
 
-  try {
-    static_region.add("jtag_idcode", xq::idcode::to_string(xrt_core::device_query<xq::idcode>(device)));
+    try {
+      static_region.add("fpga_name", xrt_core::device_query<xq::rom_fpga_name>(device));
+    }
+    catch (const xq::no_such_key&) {
+      static_region.add("fpga_name", "N/A");   // edge
+    }
+    break;
   }
-  catch (const xq::no_such_key&) {
-    static_region.add("jtag_idcode", "N/A");  // edge
+  case xrt_core::query::device_class::type::ryzen:
+  {
+    static_region.add("name", xrt_core::device_query<xq::rom_vbnv>(device));
+    break;
   }
-
-  try {
-    static_region.add("fpga_name", xrt_core::device_query<xq::rom_fpga_name>(device));
-  }
-  catch (const xq::no_such_key&) {
-    static_region.add("fpga_name", "N/A");   // edige
   }
 
   pt.put_child("static_region", static_region);
@@ -197,10 +196,21 @@ add_status_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_status;
 
-  add_mig_info(device, pt_status);
-  add_p2p_info(device, pt_status);
-  add_performance_info(device, pt_status);
-  add_host_mem_info(device, pt_status);
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  switch (device_class) {
+  case xrt_core::query::device_class::type::alveo:
+  {
+    add_mig_info(device, pt_status);
+    add_p2p_info(device, pt_status);
+    add_host_mem_info(device, pt_status);
+    break;
+  }
+  case xrt_core::query::device_class::type::ryzen:
+  {
+    add_performance_info(device, pt_status);
+    break;
+  }
+  }
 
   pt.put_child("status", pt_status);
 }
@@ -387,15 +397,26 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
-  add_board_info(device, pt_platform);
-  add_status_info(device, pt_platform);
-  if (xrt_core::device_query_default<xq::is_versal>(device, false))
-    add_versal_controller_info(device, pt_platform);
-  else
-    add_controller_info(device, pt_platform);
   add_clock_info(device, pt_platform);
-  add_mac_info(device, pt_platform);
-  add_config_info(device, pt_platform);
+  add_status_info(device, pt_platform);
+
+  const auto device_class = xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo);
+  switch (device_class) {
+  case xrt_core::query::device_class::type::alveo:
+  {
+    add_board_info(device, pt_platform);
+    if (xrt_core::device_query_default<xq::is_versal>(device, false))
+      add_versal_controller_info(device, pt_platform);
+    else
+      add_controller_info(device, pt_platform);
+    add_clock_info(device, pt_platform);
+    add_mac_info(device, pt_platform);
+    add_config_info(device, pt_platform);
+    break;
+  }
+  default:
+    break;
+  }
 
   pt_platforms.push_back(std::make_pair("", pt_platform));
   pt_platform_array.add_child("platforms", pt_platforms);

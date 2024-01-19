@@ -1,20 +1,7 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
-// ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportHost.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -62,11 +49,65 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
   _pt.add_child("host", pt);
 }
 
+static void
+printAlveoDevices(const boost::property_tree::ptree& available_devices, std::ostream& _output)
+{
+  const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
+  const Table2D::HeaderData colon = {":", Table2D::Justification::left};
+  const Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::left};
+  const Table2D::HeaderData id = {"Logic UUID", Table2D::Justification::left};
+  const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::left};
+  const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::left};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
+  Table2D device_table(table_headers);
+
+  for (const auto& kd : available_devices) {
+    const boost::property_tree::ptree& dev = kd.second;
+
+    if (dev.get<std::string>("device_class") != xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::alveo))
+      continue;
+
+    const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
+    const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
+    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
+    device_table.addEntry(entry_data);
+  }
+
+  if (!device_table.empty()) {
+    _output << boost::str(boost::format("%s\n") % device_table);
+    _output << "* Devices that are not ready will have reduced functionality when using XRT tools\n";
+  }
+}
+
+static void
+printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ostream& _output)
+{
+  const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
+  const Table2D::HeaderData colon = {":", Table2D::Justification::left};
+  const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, name};
+  Table2D device_table(table_headers);
+
+  for (const auto& kd : available_devices) {
+    const boost::property_tree::ptree& dev = kd.second;
+
+    if (dev.get<std::string>("device_class") != xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+      continue;
+
+    const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
+    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("name", "n/a")};
+    device_table.addEntry(entry_data);
+  }
+
+  if (!device_table.empty())
+    _output << boost::str(boost::format("%s\n") % device_table);
+}
+
 void
 ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
                         const boost::property_tree::ptree& _pt,
                         const std::vector<std::string>& /*_elementsFilter*/,
-                        std::ostream & _output) const
+                        std::ostream& _output) const
 {
   boost::property_tree::ptree empty_ptree;
 
@@ -101,8 +142,12 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
       const boost::property_tree::ptree& driver = drv.second;
       std::string drv_name = driver.get<std::string>("name", "N/A");
       boost::algorithm::to_upper(drv_name);
-      _output << boost::format("  %-20s : %s, %s\n") % drv_name
-          % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+      std::string drv_hash = driver.get<std::string>("hash", "N/A");
+      if (!boost::iequals(drv_hash, "N/A")) {
+        _output << boost::format("  %-20s : %s, %s\n") % drv_name
+            % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+      } else
+        _output << boost::format("  %-20s : %s\n") % drv_name % driver.get<std::string>("version", "N/A");
       if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
         _output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
     }
@@ -119,23 +164,6 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
 
-  const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
-  const Table2D::HeaderData colon = {":", Table2D::Justification::left};
-  const Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::left};
-  const Table2D::HeaderData id = {"Logic UUID", Table2D::Justification::left};
-  const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::left};
-  const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
-  Table2D device_table(table_headers);
-
-  for (const auto& kd : available_devices) {
-    const boost::property_tree::ptree& dev = kd.second;
-    const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
-    const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
-    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
-    device_table.addEntry(entry_data);
-  }
-
-  _output << boost::str(boost::format("%s\n") % device_table);
-  _output << "* Devices that are not ready will have reduced functionality when using XRT tools\n";
+  printAlveoDevices(available_devices, _output);
+  printRyzenDevices(available_devices, _output);
 }

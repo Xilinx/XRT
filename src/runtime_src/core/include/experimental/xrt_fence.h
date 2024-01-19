@@ -70,8 +70,10 @@ public:
    *   Access is shared between devices within process
    * @var process
    *   Access is shared between processes and devices
+   * @var hybrid
+   *   Access is shared between drivers (cross-adapater)
    */
-  enum class access_mode : uint8_t { local, shared, process };
+  enum class access_mode : uint8_t { local, shared, process, hybrid };
 
   /**
    * fence() - Default constructor

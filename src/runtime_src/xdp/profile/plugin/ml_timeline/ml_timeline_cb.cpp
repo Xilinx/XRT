@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_cb.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"

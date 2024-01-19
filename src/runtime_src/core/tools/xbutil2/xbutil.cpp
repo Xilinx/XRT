@@ -50,7 +50,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "aie", "aiemem", "aieshim", "aie-partitions"]
+      "report": ["dynamic-regions", "electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions"]
     }]
   },{
     "configure": [{
@@ -62,7 +62,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["verify", "df-bw"]
+      "test": ["verify", "df-bw", "tct-one-col"]
     }]
   }]
 }]

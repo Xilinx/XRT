@@ -83,14 +83,14 @@ get_os_info(boost::property_tree::ptree &pt)
   std::ifstream bios_stream("/sys/class/dmi/id/bios_vendor");
   if (bios_stream.is_open()) {
     getline(bios_stream, bios_vendor);
-    pt.put("bios_vendor", bios_vendor);
   }
+  pt.put("bios_vendor", bios_vendor);
 
   std::ifstream ver_stream("/sys/class/dmi/id/bios_version");
   if (ver_stream.is_open()) {
     getline(ver_stream, bios_version);
-    pt.put("bios_version", bios_version);
   }
+  pt.put("bios_version", bios_version);
 
   pt.put("model", machine_info());
   pt.put("cores", std::thread::hardware_concurrency());

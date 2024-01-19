@@ -16,6 +16,7 @@
 
 #include <linux/pagemap.h>
 #include <linux/of_address.h>
+#include <linux/dma-buf.h>
 #include <linux/iommu.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
@@ -88,8 +89,13 @@ int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
 	}
 
 	/* MAP user's VA to pages table into IOMMU */
-	err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
-			bo->sgt->nents, prot);
+        #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+                err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
+                        bo->sgt->nents, prot, GFP_KERNEL);
+        #else
+                err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
+                        bo->sgt->nents, prot);
+        #endif
 	if (err < 0) {
 		/* If IOMMU map failed forget user's VA */
 		bo->uaddr = 0;
@@ -387,6 +393,38 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 free:
 	kfree(bo);
 	return ERR_PTR(err);
+}
+/*
+ * Allocate a sg_table for this GEM object.
+ * Note: Both the table's contents, and the sg_table itself must be freed by
+ *       the caller.
+ * Returns a pointer to the newly allocated sg_table, or an ERR_PTR() error.
+ */
+struct sg_table *zocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
+{
+        struct drm_zocl_bo *zocl_obj = to_zocl_bo(obj);
+	if (zocl_obj && (zocl_obj->flags & ZOCL_BO_FLAGS_CMA)) {
+		return drm_gem_dma_get_sg_table(&zocl_obj->cma_base);
+	}
+        struct drm_device *drm = obj->dev;
+        struct sg_table *sgt;
+        int ret;
+	unsigned long dma_attrs = DMA_ATTR_WRITE_COMBINE;
+
+        sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
+        if (!sgt)
+                return ERR_PTR(-ENOMEM);
+
+        ret = dma_get_sgtable_attrs(drm->dev, sgt, zocl_obj->vmapping,
+                                    zocl_obj->mm_node->start, obj->size,
+                                    dma_attrs);
+        if (ret) {
+                DRM_ERROR("failed to allocate sgt, %d\n", ret);
+                kfree(sgt);
+                return ERR_PTR(ret);
+        }
+
+        return sgt;
 }
 
 static struct drm_zocl_bo *

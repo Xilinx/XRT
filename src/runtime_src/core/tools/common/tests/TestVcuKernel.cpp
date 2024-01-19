@@ -16,6 +16,14 @@ boost::property_tree::ptree
 TestVcuKernel::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  runTestCase(dev, "xcl_vcu_test.exe", ptree);
+  runTest(dev, ptree);
   return ptree;
+}
+
+void
+TestVcuKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
+{
+  logger(ptree, "Details", "Test not supported.");
+  ptree.put("status", test_token_skipped);
+  return;
 }

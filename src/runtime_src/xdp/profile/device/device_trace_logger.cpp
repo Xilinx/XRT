@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/device_trace_logger.h"
@@ -422,7 +422,6 @@ namespace xdp {
       // start event, end event
       // start end must have created already
       // check if the memory ports on current cu has any event
-
       uint64_t cuLastTimestamp  = amLastTrans[amIndex];
 
       // get CU Id for the current slot
@@ -434,7 +433,6 @@ namespace xdp {
         // To reduce overhead, first check the timestamp.
         // If last activity timestamp on CU is earlier than current AIM, then only check
         // whether the current AIM is attached to the same CU.
-        //
         if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
           continue;
         }
@@ -452,7 +450,6 @@ namespace xdp {
         // To reduce overhead, first check the timestamp.
         // If last activity timestamp on CU is earlier than current ASM, then only check
         // whether the current ASM is attached to the same CU.
-        ///
         if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
           continue;
         }

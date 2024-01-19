@@ -98,7 +98,7 @@ if [ "X$em" != "X" ] ; then
 fi
 
 if [ "X$xrt" == "X" ] ; then
- xrt=$XRTBUILD/$rel/opt/xilinx/xrt
+ xrt=$XRTBUILD/$rel$/opt/xilinx/xrt
 fi
 
 if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then

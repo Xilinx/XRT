@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_CORE_SOURCE
 
 #include "xdp/profile/writer/vp_base/ini_parameters.h"
 #include "core/common/config_reader.h"
@@ -63,7 +63,6 @@ namespace xdp {
                  "Generation of lower overhead OpenCL trace. Should not be used with other OpenCL options.");
     addParameter("debug_mode", xrt_core::config::get_launch_waveform(),
                  "Debug mode (emulation only)");
-#ifndef SKIP_AIE_INI
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
@@ -151,7 +150,6 @@ namespace xdp {
     addParameter("AIE_trace_settings.poll_timers_interval_us",
                  xrt_core::config::get_aie_trace_settings_poll_timers_interval_us(),
                  "Interval for polling AI Engine timers (in us)");
-#endif
   }
 
   IniParameters::~IniParameters()

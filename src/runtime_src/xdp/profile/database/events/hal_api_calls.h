@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +18,7 @@
 #ifndef HAL_API_CALLS_DOT_H
 #define HAL_API_CALLS_DOT_H
 
+#include <cstdint>
 #include <fstream>
 
 #include "xdp/profile/database/events/vtf_event.h"
@@ -30,13 +32,13 @@ namespace xdp {
   private:
     HALAPICall() = delete ;
   public:
-    XDP_EXPORT HALAPICall(uint64_t s_id, double ts, uint64_t name) ;
-    XDP_EXPORT ~HALAPICall() ;
+    XDP_CORE_EXPORT HALAPICall(uint64_t s_id, double ts, uint64_t name) ;
+    XDP_CORE_EXPORT ~HALAPICall() ;
 
     virtual bool isHALAPI()       { return true ; }
     virtual bool isHALHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class AllocBoCall : public HALAPICall
@@ -44,10 +46,10 @@ namespace xdp {
   private:
     AllocBoCall() = delete ;
   public:
-    XDP_EXPORT AllocBoCall(uint64_t s_id, double ts, uint64_t name) ;
-    XDP_EXPORT ~AllocBoCall() ;
+    XDP_CORE_EXPORT AllocBoCall(uint64_t s_id, double ts, uint64_t name) ;
+    XDP_CORE_EXPORT ~AllocBoCall() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+    XDP_CORE_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
 } // end namespace xdp

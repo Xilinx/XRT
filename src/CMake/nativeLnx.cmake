@@ -123,9 +123,19 @@ set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBM
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
-# -- Cursers ---
+# --- Curses ---
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
+
+# --- Optional HIP bindings ---
+if (XRT_ENABLE_HIP)
+  message("-- Looking for HIP include files...")
+  # We should find HIP cmake either in standard cmake locations or in the /opt/rocm location
+  set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/opt/rocm/lib/cmake/hip")
+  set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
+  include(hip-config)
+  message("-- Found at ${HIP_INCLUDE_DIR}")
+endif()
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR           "xrt")
@@ -193,7 +203,6 @@ install (FILES ${PY_TEST_SRC}
   PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION ${XRT_INSTALL_DIR}/test)
 
-xrt_add_subdirectory("../tests/validate" "${CMAKE_CURRENT_BINARY_DIR}/validate_build")
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 # -- CPack

@@ -12,10 +12,10 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 
 // System - Include Files
 #include <fstream>
+#include <filesystem>
 
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size_gb = 1;
@@ -25,9 +25,10 @@ static constexpr size_t word_count = buffer_size/4;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestDF_bandwidth::TestDF_bandwidth()
   : TestRunner("df-bw", 
-                "Run bandwidth test on data fabric")
+                "Run bandwidth test on data fabric",
+                "validate.xclbin")
                 {
-                  m_dpu_name = "df_bw_dpu.txt";
+                  m_dpu_name = "df_bw.txt";
                 }
 
 namespace {
@@ -79,16 +80,13 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(dev, "");
-  if (device_name.find("RyzenAI-Strix") != std::string::npos) {
-    ptree.put("xclbin", "validate_stx.xclbin");
-  }
-  else if (device_name.find("RyzenAI-Phoenix") != std::string::npos) {
-    ptree.put("xclbin", "validate_phx.xclbin");
-  }
+  auto device_id = xrt_core::query::pcie_device::to_string(xrt_core::device_query<xrt_core::query::pcie_device>(dev));
+  std::filesystem::path xpath{device_id};
+  xpath /= m_xclbin;
+  ptree.put("xclbin", xpath.string());
 
   auto xclbin_path = findXclbinPath(dev, ptree);
-  if (!boost::filesystem::exists(xclbin_path)) {
+  if (!std::filesystem::exists(xclbin_path)) {
     return ptree;
   }
   // log xclbin test dir for debugging purposes
@@ -198,7 +196,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   float bandwidth = buffer_size_gb / elapsedSecs;
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
-  logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%f' GS/s") % bandwidth));
+  logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%.1f' GB/s") % bandwidth));
 
   ptree.put("status", test_token_passed);
   return ptree;

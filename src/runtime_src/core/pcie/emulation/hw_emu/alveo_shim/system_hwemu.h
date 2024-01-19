@@ -39,7 +39,7 @@ public:
   get_mgmtpf_device(device::id_type id) const;
 
   void
-  program_plp(const device* dev, const std::vector<char> &buffer) const;
+  program_plp(const device* dev, const std::vector<char> &buffer, bool) const override;
 };
 
 /**

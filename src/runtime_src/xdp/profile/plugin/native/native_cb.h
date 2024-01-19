@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,19 +23,19 @@
 // These are the functions that are visible when the plugin is dynamically
 //  linked in.  XRT should call them directly
 extern "C"
-XDP_EXPORT
+XDP_PLUGIN_EXPORT
 void native_function_start(const char* functionName, unsigned long long int functionID) ;
 
 extern "C"
-XDP_EXPORT
+XDP_PLUGIN_EXPORT
 void native_function_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp) ;
 
 extern "C"
-XDP_EXPORT
+XDP_PLUGIN_EXPORT
 void native_sync_start(const char* functionName, unsigned long long int functionID, bool isWrite) ;
 
 extern "C"
-XDP_EXPORT
+XDP_PLUGIN_EXPORT
 void native_sync_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp, bool isWrite, unsigned long long int size);
 
 #endif

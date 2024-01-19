@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,9 +21,9 @@
 
 extern "C" {
 
-  XDP_EXPORT void updateAIEDevice(void* handle);
-  XDP_EXPORT void flushAIEDevice(void* handle);
-  XDP_EXPORT void finishFlushAIEDevice(void* handle);
+  XDP_PLUGIN_EXPORT void updateAIEDevice(void* handle);
+  XDP_PLUGIN_EXPORT void flushAIEDevice(void* handle);
+  XDP_PLUGIN_EXPORT void finishFlushAIEDevice(void* handle);
 
 }
 #endif

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
-nm /opt/xilinx/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
+nm @CMAKE_INSTALL_PREFIX@/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
 if [ $? -eq 1 ]; then
     if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
         echo "Unloading old XRT Linux kernel modules"
@@ -39,10 +39,10 @@ if [ $? -eq 1 ]; then
     fi
 fi
 
-#create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
+#create sym link to @CMAKE_INSTALL_PREFIX@/xrt/lib/libmpd_plugin and restart mpd service
 echo "Install aws mpd plugin"
-rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
-ln -s /opt/xilinx/xrt/lib/libaws_mpd_plugin.so /opt/xilinx/xrt/lib/libmpd_plugin.so
+rm -rf @CMAKE_INSTALL_PREFIX@/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
+ln -s @CMAKE_INSTALL_PREFIX@/xrt/lib/libaws_mpd_plugin.so @CMAKE_INSTALL_PREFIX@/xrt/lib/libmpd_plugin.so
 #make sure mpd automatically gets starts across reboot if plugin is installed
 systemctl enable mpd
 echo "Restart mpd service"

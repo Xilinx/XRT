@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,11 +30,11 @@ namespace xdp {
     VPSummaryWriter() = delete ;
 
   protected:
-    XDP_EXPORT virtual void switchFiles() ;
+    XDP_CORE_EXPORT virtual void switchFiles() ;
   public:
-    XDP_EXPORT VPSummaryWriter(const char* filename) ;
-    XDP_EXPORT VPSummaryWriter(const char* filename, VPDatabase* inst);
-    XDP_EXPORT ~VPSummaryWriter() ;
+    XDP_CORE_EXPORT VPSummaryWriter(const char* filename) ;
+    XDP_CORE_EXPORT VPSummaryWriter(const char* filename, VPDatabase* inst);
+    XDP_CORE_EXPORT ~VPSummaryWriter() ;
   } ;
   
 }

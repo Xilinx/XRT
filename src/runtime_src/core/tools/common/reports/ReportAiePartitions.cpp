@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -78,7 +78,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
   const boost::property_tree::ptree pt_partitions = _pt.get_child("aie_partitions.partitions", empty_ptree);
   if (pt_partitions.empty()) {
-    _output << "  AIE Partition information unavailable\n\n";
+    _output << "  No hardware contexts running on device\n\n";
     return;
   }
 
@@ -100,9 +100,8 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     const std::vector<Table2D::HeaderData> table_headers = {
       {"Slot ID", Table2D::Justification::left},
       {"Xclbin UUID", Table2D::Justification::left},
-      {"Usage Count", Table2D::Justification::left},
-      {"Migration Count", Table2D::Justification::left},
-      {"Device BO Sync Count", Table2D::Justification::left}
+      {"Command Submissions", Table2D::Justification::left},
+      {"Migration Count", Table2D::Justification::left}
     };
     Table2D context_table(table_headers);
 
@@ -113,8 +112,7 @@ writeReport(const xrt_core::device* /*_pDevice*/,
         hw_context.get<std::string>("slot_id"),
         hw_context.get<std::string>("xclbin_uuid"),
         hw_context.get<std::string>("usage_count"),
-        hw_context.get<std::string>("migration_count"),
-        hw_context.get<std::string>("device_bo_sync_count")
+        hw_context.get<std::string>("migration_count")
       };
       context_table.addEntry(entry_data);
     }
@@ -150,7 +148,4 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     }
     _output << boost::str(boost::format("%s\n") % verbose_table.toString("  "));
   }
-
-  _output << "\n";
 }
-

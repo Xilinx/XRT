@@ -26,7 +26,7 @@
 #include "tools/common/reports/ReportMechanical.h"
 #include "tools/common/reports/ReportMemory.h"
 #include "tools/common/reports/ReportPcieInfo.h"
-#include "tools/common/reports/ReportPlatforms.h"
+#include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/reports/ReportPsKernels.h"
 #include "tools/common/reports/ReportQspiStatus.h"
 #include "tools/common/reports/ReportThermal.h"

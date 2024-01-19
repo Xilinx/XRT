@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include "xdp/profile/plugin/device_offload/hw_emu/hw_emu_device_offload_cb.h"
 #include "xdp/profile/plugin/device_offload/hw_emu/hw_emu_device_offload_plugin.h"

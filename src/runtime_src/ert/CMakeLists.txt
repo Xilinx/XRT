@@ -2,6 +2,9 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 set(ERT_INSTALL_PREFIX "/opt/xilinx/xrt/share/fw")
+if (DEFINED XRT_INSTALL_PREFIX)
+  set(ERT_INSTALL_PREFIX "${XRT_INSTALL_PREFIX}/xrt/share/fw")
+endif()
 set(ERT_INSTALL_FIRMWARE_PREFIX "/lib/firmware/xilinx")
 
 if ((EXISTS $ENV{XILINX_VITIS}/gnu/microblaze) AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))

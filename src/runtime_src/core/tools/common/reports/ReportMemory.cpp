@@ -1,29 +1,18 @@
-/**
- * Copyright (C) 2020-2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2021 Xilinx, Inc
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportMemory.h"
 #include "tools/common/Table2D.h"
+#include "core/common/info_memory.h"
 #include "core/common/utils.h"
 
 #include <map>
+#include <string>
 
 // 3rd Party Library - Include Files
-#include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
@@ -32,20 +21,19 @@ constexpr int      invalid_sensor_value = 0;
 
 // ------ S T A T I C   F U N C T I O N S -------------------------------------
 namespace {
-template <typename T>
-inline std::string pretty(const T &val, const std::string &default_val = "N/A", bool isHex = false)
+inline std::string
+pretty(unsigned int val, const std::string &default_val = "N/A", bool isHex = false)
 {   
-  if (typeid(val).name() != typeid(std::string).name()){
-    if (val >= std::numeric_limits<T>::max() || val == 0)
-      return default_val;
+  if (val >= std::numeric_limits<unsigned int>::max() || val == 0)
+    return default_val;
 
-    if (isHex){
-      std::stringstream ss;
-      ss << "0x" << std::hex << val;
-      return ss.str();
-    }
+  if (isHex) {
+    std::stringstream ss;
+    ss << "0x" << std::hex << val;
+    return ss.str();
   }
-  return boost::lexical_cast<std::string>(val);
+
+  return std::to_string(val);
 }
 
 } //unnamed namespace
@@ -63,14 +51,8 @@ void
 ReportMemory::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  boost::property_tree::ptree pt_memory;
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::memory>();
-  boost::property_tree::read_json(ss, pt_memory);
-
   // There can only be 1 root node
-  _pt.add_child("mem_topology", pt_memory);
+  _pt.add_child("mem_topology", xrt_core::memory::memory_topology(_pDevice));
 }
 
 void 
@@ -140,7 +122,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
             tag = subv.second.get_value<std::string>();
           } else if (subv.first == "extended_info") {
             unsigned int t = subv.second.get<unsigned int>("temperature_C", invalid_sensor_value);
-            temp = pretty<unsigned int>(t == invalid_sensor_value ? no_sensor_dev : t, "N/A");
+            temp = pretty(t == invalid_sensor_value ? no_sensor_dev : t, "N/A");
           } else if (subv.first == "range_bytes") {
             size = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
           } else if (subv.first == "base_address") {

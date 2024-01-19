@@ -27,11 +27,12 @@ namespace xdp {
   class AieProfilePlugin : public XDPPlugin
   {
   public:
-    XDP_EXPORT AieProfilePlugin();
-    XDP_EXPORT ~AieProfilePlugin();
-    XDP_EXPORT void updateAIEDevice(void* handle);
-    XDP_EXPORT void endPollforDevice(void* handle);
-    XDP_EXPORT static bool alive();
+    AieProfilePlugin();
+    ~AieProfilePlugin();
+    void updateAIEDevice(void* handle);
+    void endPollforDevice(void* handle);
+    static bool alive();
+    void broadcast(VPDatabase::MessageType msg, void* blob);
 
   private:
     virtual void writeAll(bool openNewFiles) override;

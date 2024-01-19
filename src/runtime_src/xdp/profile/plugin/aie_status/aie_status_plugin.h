@@ -27,7 +27,7 @@
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/config.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
 #include "core/common/device.h"
 #include "xaiefal/xaiefal.hpp"
@@ -45,12 +45,9 @@ namespace xdp {
     AIEStatusPlugin();
     ~AIEStatusPlugin();
 
-    XDP_EXPORT
     void updateAIEDevice(void* handle);
-    XDP_EXPORT
     void endPollforDevice(void* handle);
 
-    XDP_EXPORT
     static bool alive();
 
   private:
@@ -66,6 +63,7 @@ namespace xdp {
     static bool live;
     uint32_t mPollingInterval;
     boost::property_tree::ptree mAieMeta;
+    std::unique_ptr<aie::BaseFiletypeImpl> filetype;
 
     // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;

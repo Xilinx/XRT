@@ -25,8 +25,11 @@
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+
 #include "core/common/device.h"
 #include "core/common/system.h"
+#include "core/include/xrt/xrt_hw_context.h"
 
 namespace xdp {
 
@@ -49,14 +52,20 @@ class AieTraceMetadata {
     
    public:
     int getHardwareGen() {
-      return aie::getHardwareGeneration(aieMeta);
+      if (metadataReader)
+        return metadataReader->getHardwareGeneration();
+      return 0;
     }
     uint16_t getRowOffset() {
-      return aie::getAIETileRowOffset(aieMeta);
+      if (metadataReader)
+        return metadataReader->getAIETileRowOffset();
+      return 0;
     }
     std::unordered_map<std::string, io_config> 
     get_trace_gmios() {
-      return aie::getTraceGMIOs(aieMeta);
+      if (metadataReader)
+        return metadataReader->getTraceGMIOs();
+      return {};
     }
     std::string getMetricString(uint8_t index) {
       if (index < metricSets[module_type::core].size())
@@ -64,6 +73,9 @@ class AieTraceMetadata {
       else
         return metricSets[module_type::core][0];
     }
+
+    xdp::aie::driver_config getAIEConfigMetadata();
+
 
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
@@ -75,6 +87,7 @@ class AieTraceMetadata {
     uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
     uint64_t getContinuousTrace() {return continuousTrace;}
+    void resetContinuousTrace() {continuousTrace = false;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
     uint64_t getDeviceID() {return deviceID;}
     bool getIsValidMetrics() {return isValidMetrics;}
@@ -91,6 +104,11 @@ class AieTraceMetadata {
     void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}
     void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
     uint64_t getDelay() {return ((useDelay) ? delayCycles : 0);}
+
+    xrt::hw_context getHwContext(){return hwContext;}
+    void setHwContext(xrt::hw_context c) {
+      hwContext = std::move(c);
+    }
 
   private:
     bool useDelay = false;
@@ -112,7 +130,8 @@ class AieTraceMetadata {
     
     std::string counterScheme;
     std::string metricSet;
-    boost::property_tree::ptree aieMeta;
+    boost::property_tree::ptree aie_meta;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
@@ -140,7 +159,7 @@ class AieTraceMetadata {
     };
 
     void* handle;
-    
+    xrt::hw_context hwContext;
   };
 
 }

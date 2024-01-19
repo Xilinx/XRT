@@ -21,74 +21,42 @@
 
 #include "xaiefal/xaiefal.hpp"
 #include "xdp/profile/plugin/aie_trace/aie_trace_impl.h"
+#include "xdp/profile/plugin/aie_trace/util/aie_trace_config.h"
 
 namespace xdp {
 
   class AieTrace_EdgeImpl : public AieTraceImpl {
-   public:
-    XDP_EXPORT
+  public:
     AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
     ~AieTrace_EdgeImpl() = default;
 
-    XDP_EXPORT
     virtual void updateDevice();
-    XDP_EXPORT
-    virtual void flushAieTileTraceModule();
-    void pollTimers(uint32_t index, void* handle);
+    virtual void flushTraceModules();
+    void pollTimers(uint64_t index, void* handle);
     void freeResources();
     
-   private:
+  private:
+    uint64_t checkTraceBufSize(uint64_t size);
+    bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
+                        const module_type type, const std::string& metricSet);
+    bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
+    bool setMetricsSettings(uint64_t deviceId, void* handle);
+
+  private:
     typedef XAie_Events EventType;
     typedef std::vector<EventType> EventVector;
     typedef std::vector<uint32_t> ValueVector;
-
-    module_type getTileType(uint16_t row);
-    uint16_t getRelativeRow(uint16_t absRow);
-    module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
-    bool isInputSet(const module_type type, const std::string metricSet);
-    bool isStreamSwitchPortEvent(const XAie_Events event);
-    bool isPortRunningEvent(const XAie_Events event);
-    uint8_t getPortNumberFromEvent(XAie_Events event);
-    void configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
-                                 xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
-                                 const module_type type, const std::string metricSet, 
-                                 const uint8_t channel0, const uint8_t channel1,
-                                 std::vector<XAie_Events>& events);
-    void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc, 
-                               const XAie_ModuleType mod, const module_type type, 
-                               const std::string metricSet, const uint8_t channel0,
-                               const uint8_t channel);
-    void configEdgeEvents(XAie_DevInst* aieDevInst, const tile_type& tile,
-                          const module_type type, const std::string metricSet, 
-                          const XAie_Events event);
-    void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
-                      uint8_t channel, std::vector<XAie_Events>& events);
-    bool setMetricsSettings(uint64_t deviceId, void* handle);
-    void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
-    bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, 
-                        const module_type type, const std::string& metricSet);
-    void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
-    void printTraceEventStats(uint64_t deviceId);
-    bool configureStartIteration(xaiefal::XAieMod& core);
-    bool configureStartDelay(xaiefal::XAieMod& core);
-
-    bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
-    void setTraceStartControl(void* handle);
-    uint64_t checkTraceBufSize(uint64_t size);
-    inline uint32_t bcIdToEvent(int bcId);
-
-   private:
     XAie_DevInst* aieDevInst = nullptr;
     xaiefal::XAieDev* aieDevice = nullptr;
+
+    // AIE resources
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
 
     std::map<std::string, EventVector> mCoreEventSets;
     std::map<std::string, EventVector> mMemoryEventSets;
     std::map<std::string, EventVector> mMemoryTileEventSets;
     std::map<std::string, EventVector> mInterfaceTileEventSets;
-
-    // AIE profile counters
-    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
-    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
 
     // Counter metrics (same for all sets)
     EventType mCoreTraceStartEvent;

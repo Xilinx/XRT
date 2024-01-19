@@ -4,6 +4,7 @@ set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+MAJOR=${VERSION%.*}
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
@@ -11,7 +12,7 @@ CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{p
 CPU=`uname -m`
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
-    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]]; then
+    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]] || [[ $OSDIST == "almalinux" ]]; then
         CMAKE=cmake3
         if [[ ! -x "$(command -v $CMAKE)" ]]; then
             echo "$CMAKE is not installed, please run xrtdeps.sh"
@@ -35,9 +36,9 @@ if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
-# Use GCC 9 on CentOS 8 for std::filesystem
+# Use GCC 9 on CentOS 8 and RHEL 8 for std::filesystem
 # The dependency is installed by xrtdeps.sh
-if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" ]] && [[ $VERSION == 8 ]]; then
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" ]] && [[ $MAJOR == 8 ]]; then
     source /opt/rh/gcc-toolset-9/enable
 fi
 
@@ -51,6 +52,7 @@ usage()
     echo "[-dbg]                      Build debug library only (default)"
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
+    echo "[-hip]                      Enable hip bindings"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
@@ -67,6 +69,7 @@ usage()
     echo "[-driver]                   Include building driver code"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
+    echo "[-install_prefix <path>]    set CMAKE_INSTALL_PREFIX to path"
     echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
     echo ""
@@ -104,6 +107,7 @@ static_boost=""
 ertbsp=""
 ertfw=""
 werror=1
+xrt_install_prefix="/opt/xilinx"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
@@ -143,6 +147,10 @@ while [ $# -gt 0 ]; do
             edge=1
             opt=0
             dbg=0
+            ;;
+        -hip)
+            shift
+            cmake_flags+=" -DXRT_ENABLE_HIP=ON"
             ;;
         -opt)
             dbg=0
@@ -211,6 +219,11 @@ while [ $# -gt 0 ]; do
             verbose="VERBOSE=1"
             shift
             ;;
+        -install_prefix)
+            shift
+            xrt_install_prefix=$1
+            shift
+            ;;
         -with-static-boost)
             shift
             static_boost=$1
@@ -231,6 +244,9 @@ edge_dir=${EDGE_DIR:-Edge}
 # Update every time CMake is generating makefiles.
 # Disable with '-disable-werror' option.
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
+
+# set CMAKE_INSTALL_PREFIX
+cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
 
 here=$PWD
 cd $BUILDDIR

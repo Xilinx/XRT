@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "ReportElectrical.h"
 #include "tools/common/Table2D.h"
+#include "core/common/sensor.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -20,14 +21,8 @@ void
 ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
                                         boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  boost::property_tree::ptree pt_electrical;
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::electrical>();
-  boost::property_tree::read_json(ss, pt_electrical);
-
   // There can only be 1 root node
-  _pt.add_child("electrical", pt_electrical);
+  _pt.add_child("electrical", xrt_core::sensor::read_electrical(_pDevice));
 }
 
 void
@@ -40,10 +35,19 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
 
   _output << "Electrical\n";
   const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
-  _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
-  _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
-  _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
-  
+
+  auto max_watts = _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
+  if (max_watts != "N/A")
+    _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % max_watts;
+
+  auto watts = _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
+  if (watts != "N/A")
+    _output << boost::format("  %-23s: %s Watts\n") % "Power" % watts;
+
+  auto power_warn = _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
+  if (power_warn != "N/A")
+    _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % power_warn;
+
   const std::vector<Table2D::HeaderData> table_headers = {
     {"Power Rails", Table2D::Justification::left},
     {":", Table2D::Justification::left},
@@ -66,9 +70,9 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
     elec_table.addEntry(entry_data);
   }
 
-  if (elec_table.empty())
+  if (watts == "N/A" && max_watts == "N/A" && power_warn == "N/A" && elec_table.empty())
     _output << "  No electrical sensors found\n";
-  else
+  else if (!elec_table.empty())
     _output << elec_table.toString("  ");
 
   _output << std::endl;

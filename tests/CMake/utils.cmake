@@ -10,7 +10,7 @@ set(XRT_CORE_LIBRARY xrt_core)
 set(XILINX_VITIS $ENV{XILINX_VITIS})
 
 if(NOT VITIS_COMPILER)
-  find_program(VITIS_COMPILER 
+  find_program(VITIS_COMPILER
   NAMES v++
   HINTS XILINX_VITIS}
   )
@@ -30,6 +30,7 @@ set(xrt_xilinxopencl_LIBRARY XRT::xilinxopencl)
 set(xrt_core_static_LIBRARY XRT::xrt_core_static)
 set(xrt_coreutil_static_LIBRARY XRT::xrt_coreutil_static)
 set(xrt_xilinxopencl_static_LIBRARY XRT::xilinxopencl_static)
+set(xrt_hip_LIBRARY XRT::xrt_hip)
 
 if (DEFINED ENV{XCL_EMULATION_MODE})
     set(MODE $ENV{XCL_EMULATION_MODE})
@@ -66,7 +67,7 @@ function(xrt_create_emconfig PLATFORM)
   add_custom_target(EMCONFIG_${TESTNAME}
   ALL
   DEPENDS emconfig.json
-  )   
+  )
 endfunction()
 
 # macro to generate XO file
@@ -97,10 +98,10 @@ endmacro()
 
 # macro to generate xclbin file
 # xrt_create_xclbin() macro has two arguments, LINK_OPTIONS, OUT
-# OUT             Name of the xclbin to be generated 
+# OUT             Name of the xclbin to be generated
 # LINK_OPTIONS    Any extra link options while generating xclbin to be provided
 macro(xrt_create_xclbin OUT LINK_OPTIONS)
-  
+
   set(OUT_FILE "${OUT}_${MODE}")
   set(OUT_TARGET "XCLBIN_${OUT_FILE}_${TESTNAME}")
 

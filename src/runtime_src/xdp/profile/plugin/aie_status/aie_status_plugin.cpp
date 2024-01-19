@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#define XDP_PLUGIN_SOURCE
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -104,9 +104,9 @@ namespace xdp {
   {
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = aie::getValidGraphs(mAieMeta);
+    auto graphs = filetype->getValidGraphs();
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = aie::getEventTiles(mAieMeta, graph, module_type::core);
+      mGraphCoreTilesMap[graph] = filetype->getEventTiles(graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -186,8 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = aie::getAIETileRowOffset(mAieMeta);
-    auto hwGen = aie::getHardwareGeneration(mAieMeta);
+    auto offset = filetype->getAIETileRowOffset();
+    auto hwGen = filetype->getHardwareGeneration();
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -412,8 +412,8 @@ namespace xdp {
     // Grab AIE metadata
     auto device = xrt_core::get_userpf_device(handle);
     auto data = device->get_axlf_section(AIE_METADATA);
-    aie::readAIEMetadata(data.first, data.second, mAieMeta);
-    auto hwGen = aie::getHardwareGeneration(mAieMeta);
+    filetype = aie::readAIEMetadata(data.first, data.second, mAieMeta);
+    auto hwGen = filetype->getHardwareGeneration();
 
     // Update list of tiles to debug
     getTilesForStatus();

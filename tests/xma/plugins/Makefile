@@ -1,6 +1,12 @@
 #CC    = gcc
 CC    = g++
-CFLAGS       = -std=c++11 -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
+
+xrt_install_path := "/opt/xilinx/xrt"
+ifdef XRT_INSTALL_PATH
+	xrt_install_path := ${XRT_INSTALL_PATH}
+endif
+
+CFLAGS       = -std=c++11 -fPIC -g -I. -I${xrt_install_path}/include -I${XMA_INCLUDE}
 #CFLAGS       = -fPIC -g -I. -I../../../src/xma/include
 LDFLAGS      = -shared
 
