@@ -94,8 +94,9 @@ int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf
   try{
     mXrtCoreDevice->xwrite(space, offset, hostBuf, size);
   }
-  catch(const xrt_core::error& ex){
-    xrt_core::message::send(severity_level::error, "XRT", ex.what());
+  catch(const std::exception&){
+    std::string msg = "Profiling will not be available. Reason: xwrite failed";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
   }
   return 0;
 #ifndef _WIN32
@@ -111,8 +112,9 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
   try{
     mXrtCoreDevice->xread(space, offset, hostBuf, size);
   }
-  catch(const xrt_core::error& ex){
-    xrt_core::message::send(severity_level::error, "XRT", ex.what());
+  catch(const std::exception&){
+    std::string msg = "Profiling will not be available. Reason: xread failed";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
   }
   return 0;
 #ifndef _WIN32
@@ -162,7 +164,7 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
   try{
     mXrtCoreDevice->unmgd_pread(buf, count, offset);
   }
-  catch(const xrt_core::error& ex){
+  catch(const std::exception& ex){
     xrt_core::message::send(severity_level::error, "XRT", ex.what());
   }
   return 0;
