@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "core/common/trace.h"
-
-#include <memory>
-#include <stdexcept>
 
 #define SDT_USE_VARIADIC
 #include <sys/sdt.h>
@@ -40,49 +37,4 @@
     { DTRACE_PROBE2(xrt, probe##_exit, a1, a2);  }                      \
   } xrt_trace_scope_instance{arg1, arg2}
 
-namespace xrt_core::trace::detail {
-
-// Trace logger class definition for Linux
-class logger_linux : public logger
-{
-public:
-};
-
-// Create a trace object for current thread.  This function is called
-// exactly once per thread that leverages tracing.
-inline std::unique_ptr<xrt_core::trace::logger>
-create_logger_object()
-{
-  return std::make_unique<logger_linux>();
-}
-
-template <typename ProbeType>
-inline void
-add_event(ProbeType&& p)
-{
-  throw std::runtime_error("xrt_core::trace::add_event() not supported on Linux");
-}
-
-template <typename ProbeType, typename A1>
-inline void
-add_event(ProbeType&& p, A1&& a1)
-{
-  throw std::runtime_error("xrt_core::trace::add_event() not supported on Linux");
-}
-
-template <typename ProbeType, typename A1, typename A2>
-inline void
-add_event(ProbeType&& p, A1&& a1, A2&& a2)
-{
-  throw std::runtime_error("xrt_core::trace::add_event() not supported on Linux");
-}
-
-template<typename ...Args>
-inline void
-add_event(Args&&... args)
-{
-  static_assert(sizeof...(args) < 4, "Max 3 arguments supported for add_event");
-}
-
-} // xrt_core::detail::trace
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // Implementation of trace infrastructure for MSVC
 // This infrastructure leverage native TraceLogging infrastruture.
@@ -30,20 +30,6 @@
 TRACELOGGING_DECLARE_PROVIDER(g_logging_provider);
 
 namespace xrt_core::trace::detail {
-
-// Trace class definition for windows to tie into TraceLogging infrastructure  
-class logger_windows : public logger
-{
-public:
-};
-
-// Create a trace object for current thread.  This function is called
-// exactly once per thread that leverages tracing.
-inline std::unique_ptr<xrt_core::trace::logger>
-create_logger_object()
-{
-  return std::make_unique<logger_windows>();
-}
 
 template <typename ProbeType>
 inline void
