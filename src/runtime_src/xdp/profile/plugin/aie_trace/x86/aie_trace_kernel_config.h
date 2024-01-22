@@ -24,23 +24,13 @@
 namespace xdp {
   namespace built_in {
 
-    enum class MetricSet : uint8_t { 
-      FUNCTIONS = 0, 
-      PARTIAL_STALLS = 1, 
-      ALL_STALLS = 2, 
-      ALL_DMA = 3,
-      ALL_STALLS_DMA = 4,
-      S2MM_CHANNELS_STALLS = 5,
-      MM2S_CHANNELS_STALLS = 6
-    };
+    enum class MetricSet : uint8_t { FUNCTIONS = 0, PARTIAL_STALLS = 1, ALL_STALLS = 2, ALL = 3 };
 
     enum class MemTileMetricSet : uint8_t {
       INPUT_CHANNELS = 0,
       INPUT_CHANNELS_STALLS = 1,
       OUTPUT_CHANNELS = 2,
-      OUTPUT_CHANNELS_STALLS = 3,
-      MEMORY_CONFLICTS1 = 4,
-      MEMORY_CONFLICTS2 = 5
+      OUTPUT_CHANNELS_STALLS = 3
     };
 
     enum class CounterScheme : uint8_t { ES1 = 0, ES2 = 1, AIE2 = 2 };

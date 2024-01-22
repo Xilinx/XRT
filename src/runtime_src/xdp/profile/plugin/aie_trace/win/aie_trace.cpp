@@ -43,57 +43,39 @@ namespace xdp {
     // **** Core Module Trace ****
     mCoreEventSets = {
         {"functions", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"functions_partial_stalls", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"functions_all_stalls", 
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
+        {"all", 
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}}
     };
-    mCoreEventSets["partial_stalls"]           = mCoreEventSets["functions"];
-    mCoreEventSets["all_stalls"]               = mCoreEventSets["functions"];
-    mCoreEventSets["all_dma"]                  = mCoreEventSets["functions"];
-    mCoreEventSets["all_stalls_dma"]           = mCoreEventSets["functions"];
-    mCoreEventSets["s2mm_channels_stalls"]     = mCoreEventSets["functions"];
-    mCoreEventSets["mm2s_channels_stalls"]     = mCoreEventSets["functions"];
-
-    mCoreEventSets["functions_partial_stalls"] = mCoreEventSets["partial_stalls"];
-    mCoreEventSets["functions_all_stalls"]     = mCoreEventSets["all_stalls"];
 
     // These are also broadcast to memory module
     mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
     mCoreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
 
     // **** Memory Module Trace ****
-    // NOTE: Core events listed here are broadcast by the resource manager
+    // NOTE 1: Core events listed here are broadcast by the resource manager 
+    // NOTE 2: For now, 'all' is the same as 'functions_all_stalls'.
+    //         Combo events (required for all) have limited support in resource manager.
     mMemoryEventSets = {
         {"functions", 
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE}},
-        {"partial_stalls",
+        {"functions_partial_stalls",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
           XAIE_EVENT_STREAM_STALL_CORE,                    XAIE_EVENT_CASCADE_STALL_CORE, 
           XAIE_EVENT_LOCK_STALL_CORE}},
-        {"all_stalls",
+        {"functions_all_stalls",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
           XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
           XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}},
-        {"all_dma",
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
-          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE,
-          XAIE_EVENT_PORT_RUNNING_2_CORE,                  XAIE_EVENT_PORT_RUNNING_3_CORE}},
-        {"all_stalls_dma",
-         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
-          XAIE_EVENT_GROUP_CORE_STALL_CORE,                XAIE_EVENT_PORT_RUNNING_0_CORE,
-          XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_RUNNING_2_CORE,
-          XAIE_EVENT_PORT_RUNNING_3_CORE}},
-        {"s2mm_channels_stalls",
-         {XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM,            XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM,         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-          XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM,           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM, 
-          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM}},
-        {"mm2s_channels_stalls",
-         {XAIE_EVENT_DMA_MM2S_0_START_TASK_MEM,            XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_MEM,         XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM, 
-          XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM,           XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
-          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM}}
+        {"all",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE, 
+          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
+          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE}}
     };
-    mMemoryEventSets["functions_partial_stalls"] = mMemoryEventSets["partial_stalls"];
-    mMemoryEventSets["functions_all_stalls"]     = mMemoryEventSets["all_stalls"];
 
     // **** Memory Tile Trace ****
     mMemoryTileEventSets = {
@@ -513,6 +495,9 @@ namespace xdp {
     if ((event != XAIE_EVENT_EDGE_DETECTION_EVENT_0_MEM_TILE)
         && (event != XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM_TILE))
       return;
+
+    // AIE core register offsets
+    constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
 
     // Event is DMA_S2MM_Sel0_stream_starvation or DMA_MM2S_Sel0_stalled_lock
     uint16_t eventNum = isInputSet(type, metricSet)
