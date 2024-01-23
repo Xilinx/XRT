@@ -436,8 +436,8 @@ namespace xdp {
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
-          auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = tile.itr_mem_row;
+          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          auto streamPortId  = tile.stream_id;
           //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
           XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, SOUTH, streamPortId);
         }

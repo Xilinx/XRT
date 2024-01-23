@@ -224,8 +224,8 @@ namespace xdp {
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
-          auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = tile.itr_mem_row;
+          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          auto streamPortId  = tile.stream_id;
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
         }
         else {
@@ -277,7 +277,7 @@ namespace xdp {
     // 1. Stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (stream ID)
-      return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
+      return ((tile.is_master << 8) | tile.stream_id);
     }
 
     // 2. Channel IDs for memory tiles
