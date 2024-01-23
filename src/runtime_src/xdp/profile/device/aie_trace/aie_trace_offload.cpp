@@ -32,7 +32,7 @@
  * XRT_X86_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD) && ! defined (XDP_MINIMAL_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD) && ! defined (XDP_CLIENT_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
 #include "core/edge/user/shim.h"

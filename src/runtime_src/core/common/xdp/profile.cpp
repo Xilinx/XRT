@@ -20,7 +20,7 @@ std::function<void (void*)> end_poll_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #ifdef XDP_MINIMAL_BUILD
+  #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
@@ -69,7 +69,7 @@ std::function<void (void*)> end_debug_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #ifdef XDP_MINIMAL_BUILD
+  #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     end_debug_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugRead"));
@@ -118,7 +118,7 @@ std::function<void (void*)> finish_flush_device_cb;
 void
 register_callbacks(void* handle)
 { 
-  #ifdef XDP_MINIMAL_BUILD
+  #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
@@ -168,7 +168,7 @@ std::function<void (void*)> end_trace_cb;
 void 
 register_callbacks(void* handle)
 {  
-  #ifdef XDP_MINIMAL_BUILD
+  #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
 
     end_trace_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishFlushAIEDevice"));

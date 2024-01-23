@@ -71,7 +71,7 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
 
-    #ifdef XDP_MINIMAL_BUILD
+    #ifdef XDP_CLIENT_BUILD
 
     metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
     
