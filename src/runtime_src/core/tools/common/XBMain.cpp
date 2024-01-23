@@ -4,6 +4,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "core/common/system.h"
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
@@ -56,9 +57,10 @@ void  main_(int argc, char** argv,
   globalOptions.add(globalSubCmdOptions);
 
   // Hidden Options
+  const std::string device_default = xrt_core::get_total_devices(false).first == 1 ? "default" : "";
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
-    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value("")->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
+    ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
     ("subCmd",      po::value<std::string>(), "Command to execute")
