@@ -31,7 +31,7 @@ TestPsVerify::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestPsVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  xrt::device device(dev->get_device_id());
+  xrt::device device(dev);
 
   const std::string test_path = findPlatformPath(dev, ptree);
   const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
