@@ -1556,7 +1556,7 @@ struct firmware_version : request
   };
 
   using result_type = struct data;
-  static const key_type key = key_type::aie_partition_info;
+  static const key_type key = key_type::firmware_version;
 
   virtual std::any
   get(const device* device) const = 0;
