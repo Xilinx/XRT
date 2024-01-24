@@ -135,7 +135,7 @@ struct dev_info
   {
     switch (key) {
     case key_type::device_class:
-      return xrt_core::query::device_class::type::alveo;
+      return xrt_core::query::device_class::type::ryzen;
     default:
       throw query::no_such_key(key);
     }

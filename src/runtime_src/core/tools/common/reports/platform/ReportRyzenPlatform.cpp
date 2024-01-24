@@ -49,6 +49,11 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
     _output << boost::format("  %-23s: %s \n") % "Name" % pt_static_region.get<std::string>("name");
 
+    const boost::property_tree::ptree& pt_fw = pt_platform.get_child("firmware");
+    _output << boost::format("  %-23s: %u.%u.%u.%u\n") % "Firmware Version"
+      % pt_fw.get<uint32_t>("major") % pt_fw.get<uint32_t>("minor")
+      % pt_fw.get<uint32_t>("patch") % pt_fw.get<uint32_t>("build");
+
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Performance Mode" % pt_status.get<std::string>("performance_mode");
 
