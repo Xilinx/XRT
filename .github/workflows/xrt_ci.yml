@@ -273,7 +273,7 @@ jobs:
           apiKey: ${{ secrets.apiKey }}    
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}  
-          pact: 'true'
+          # pact: 'true'
 
   # pcie-sw-emulation-tests:
   #   needs: package-download
