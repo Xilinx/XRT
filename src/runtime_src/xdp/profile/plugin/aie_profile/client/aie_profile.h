@@ -61,14 +61,14 @@ namespace xdp {
         {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
       };
 
-      std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> coreStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> coreEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileEndEvents;
 
       std::unique_ptr<aie::ClientTransaction> transactionHandler;
       aie_profile_op_t* op;

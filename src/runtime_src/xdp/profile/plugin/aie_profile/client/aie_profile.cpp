@@ -56,17 +56,17 @@ namespace xdp {
   {
     auto hwGen = metadata->getHardwareGen();
 
-    mCoreStartEvents = aie::profile::getCoreEventSets(hwGen);
-    mCoreEndEvents = mCoreStartEvents;
+    coreStartEvents = aie::profile::getCoreEventSets(hwGen);
+    coreEndEvents = coreStartEvents;
 
-    mMemoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
-    mMemoryEndEvents = mMemoryStartEvents;
+    memoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
+    memoryEndEvents = memoryStartEvents;
 
-    mShimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
-    mShimEndEvents = mShimStartEvents;
+    shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
+    shimEndEvents = shimStartEvents;
 
-    mMemTileStartEvents = aie::profile::getMemoryTileEventSets();
-    mMemTileEndEvents = mMemTileStartEvents;
+    memTileStartEvents = aie::profile::getMemoryTileEventSets();
+    memTileEndEvents = memTileStartEvents;
 
     auto context = metadata->getHwContext();
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Profile Setup");
@@ -137,14 +137,14 @@ namespace xdp {
 
         auto& metricSet  = tileMetric.second;
         auto loc         = XAie_TileLoc(static_cast<uint8_t>(col), static_cast<uint8_t>(row));
-        auto startEvents = (type  == module_type::core) ? mCoreStartEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryStartEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimStartEvents[metricSet]
-                         : mMemTileStartEvents[metricSet]));
-        auto endEvents   = (type  == module_type::core) ? mCoreEndEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryEndEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimEndEvents[metricSet]
-                         : mMemTileEndEvents[metricSet]));
+        auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
+                         : ((type == module_type::shim) ? shimStartEvents[metricSet]
+                         : memTileStartEvents[metricSet]));
+        auto endEvents   = (type  == module_type::core) ? coreEndEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryEndEvents[metricSet]
+                         : ((type == module_type::shim) ? shimEndEvents[metricSet]
+                         : memTileEndEvents[metricSet]));
 
         uint8_t numFreeCtr = (type == module_type::dma) ? 2 : static_cast<uint8_t>(startEvents.size());
 

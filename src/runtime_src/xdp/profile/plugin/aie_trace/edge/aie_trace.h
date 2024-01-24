@@ -50,38 +50,38 @@ namespace xdp {
     xaiefal::XAieDev* aieDevice = nullptr;
 
     // AIE resources
-    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
-    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
+    std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
 
-    std::map<std::string, EventVector> mCoreEventSets;
-    std::map<std::string, EventVector> mMemoryEventSets;
-    std::map<std::string, EventVector> mMemoryTileEventSets;
-    std::map<std::string, EventVector> mInterfaceTileEventSets;
+    std::map<std::string, EventVector> coreEventSets;
+    std::map<std::string, EventVector> memoryEventSets;
+    std::map<std::string, EventVector> memoryTileEventSets;
+    std::map<std::string, EventVector> interfaceTileEventSets;
 
     // Counter metrics (same for all sets)
-    EventType mCoreTraceStartEvent;
-    EventType mCoreTraceEndEvent;
-    EventType mMemoryTileTraceStartEvent;
-    EventType mMemoryTileTraceEndEvent;
-    EventType mInterfaceTileTraceStartEvent;
-    EventType mInterfaceTileTraceEndEvent;
+    EventType coreTraceStartEvent;
+    EventType coreTraceEndEvent;
+    EventType memoryTileTraceStartEvent;
+    EventType memoryTileTraceEndEvent;
+    EventType interfaceTileTraceStartEvent;
+    EventType interfaceTileTraceEndEvent;
 
-    EventVector mCoreCounterStartEvents;
-    EventVector mCoreCounterEndEvents;
-    ValueVector mCoreCounterEventValues;
+    EventVector coreCounterStartEvents;
+    EventVector coreCounterEndEvents;
+    ValueVector coreCounterEventValues;
 
-    EventVector mMemoryCounterStartEvents;
-    EventVector mMemoryCounterEndEvents;
-    ValueVector mMemoryCounterEventValues;
+    EventVector memoryCounterStartEvents;
+    EventVector memoryCounterEndEvents;
+    ValueVector memoryCounterEventValues;
 
-    EventVector mInterfaceCounterStartEvents;
-    EventVector mInterfaceCounterEndEvents;
-    ValueVector mInterfaceCounterEventValues;
+    EventVector interfaceCounterStartEvents;
+    EventVector interfaceCounterEndEvents;
+    ValueVector interfaceCounterEventValues;
 
     // Tile locations to apply trace end and flush
-    std::vector<XAie_LocType> mTraceFlushLocs;
-    std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
-    std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
+    std::vector<XAie_LocType> traceFlushLocs;
+    std::vector<XAie_LocType> memoryTileTraceFlushLocs;
+    std::vector<XAie_LocType> interfaceTileTraceFlushLocs;
 
     // Keep track of number of events reserved per module and/or tile
     int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];

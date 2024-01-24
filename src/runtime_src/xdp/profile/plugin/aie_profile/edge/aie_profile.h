@@ -74,16 +74,16 @@ namespace xdp {
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
 
-      std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
-      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
-      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+      std::map<std::string, std::vector<XAie_Events>> coreStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> coreEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileEndEvents; 
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
+      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
 
   };
 
