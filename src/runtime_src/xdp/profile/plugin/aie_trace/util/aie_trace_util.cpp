@@ -381,9 +381,9 @@ namespace xdp::aie::trace {
     msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
     for (auto& g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
       msg << "Resource Group : " << std::left << std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
@@ -393,9 +393,9 @@ namespace xdp::aie::trace {
     msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
     for (auto& g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
+      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
       msg << "Resource Group : " << std::left << std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
