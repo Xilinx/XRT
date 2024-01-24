@@ -289,7 +289,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows 
-          ref: main
+          ref: test_vaish
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -326,7 +326,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows 
-          ref: main
+          ref: test_vaish
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
