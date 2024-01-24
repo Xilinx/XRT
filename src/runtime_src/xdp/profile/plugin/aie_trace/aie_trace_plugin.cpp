@@ -31,8 +31,8 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_timestamps_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 
-#ifdef XDP_MINIMAL_BUILD
-#include "win/aie_trace.h"
+#ifdef XDP_CLIENT_BUILD
+#include "client/aie_trace.h"
 #include "xdp/profile/device/client_device/xdp_client_device.h"
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_trace.h"
@@ -89,7 +89,7 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
   if (itr != handleToAIEData.end())
     return itr->second.deviceID;
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   return db->addDevice("win_sysfspath");
 #else
   std::array<char, sysfs_max_path_length> pathBuf = {0};
@@ -108,7 +108,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     return;
 
   //handle relates to hw context handle in case of Client XRT
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
   auto device = xrt_core::hw_context_int::get_core_device(context);
 #else
@@ -128,7 +128,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   AIEData.devIntf = nullptr;
 
   // Update the static database with information from xclbin
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   (db->getStaticInfo()).updateDeviceClient(deviceID, device);
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
@@ -144,7 +144,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   // Metadata depends on static information from the database
   AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);
   AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
@@ -156,7 +156,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   // Check for device interface
   DeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   if (deviceIntf == nullptr)
     deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new ClientDevice(handle));
 #else
@@ -227,7 +227,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
   bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceID) ? true : false;
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   if (AIEData.metadata->getContinuousTrace()) {
     xrt_core::message::send(severity_level::debug, "XRT", "Periofic offload isn't supported on this platform.");
     AIEData.metadata->resetContinuousTrace();
@@ -273,7 +273,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
   AIEData.offloader = std::make_unique<AIETraceOffload>(
       handle, deviceID, deviceIntf, AIEData.logger.get(), isPLIO // isPLIO?
       ,
@@ -408,7 +408,7 @@ void AieTracePluginUnified::flushAIEDevice(void *handle) {
 void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   xrt_core::message::send(severity_level::info, "XRT",
                           "Beginning AIE Trace finishFlushAIEDevice.");
-  #ifdef XDP_MINIMAL_BUILD
+  #ifdef XDP_CLIENT_BUILD
     // For now, just return please
     return;
   #endif

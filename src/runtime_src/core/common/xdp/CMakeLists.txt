@@ -12,6 +12,6 @@ target_include_directories(core_common_xdp_profile_objects
 if (XDP_MINIMAL_BUILD STREQUAL "yes")
   target_compile_definitions(core_common_xdp_profile_objects
     PRIVATE 
-    XDP_MINIMAL_BUILD=1
+    XDP_CLIENT_BUILD=1
     )
 endif()

@@ -40,7 +40,7 @@ namespace xdp {
     xrt_core::message::send(severity_level::info,
                             "XRT", "Parsing AIE Profile Metadata.");
 
-    #ifdef XDP_MINIMAL_BUILD
+    #ifdef XDP_CLIENT_BUILD
       metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
     #else
       auto device = xrt_core::get_userpf_device(handle);

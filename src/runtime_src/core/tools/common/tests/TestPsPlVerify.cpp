@@ -41,7 +41,7 @@ TestPsPlVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_t
   const std::vector<std::string> dependency_paths = findDependencies(test_path, m_xclbin);
   bool flag_s = false;
 
-  xrt::device device(dev->get_device_id());
+  xrt::device device(dev);
 
   // Load dependency xclbins onto device if any
   for (const auto& path : dependency_paths) {

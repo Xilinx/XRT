@@ -541,7 +541,9 @@ static struct drm_driver mm_drm_driver = {
 	.fops				= &xocl_driver_fops,
 
 	.gem_prime_import_sg_table	= xocl_gem_prime_import_sg_table,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	.gem_prime_mmap			= xocl_gem_prime_mmap,
+#endif
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
@@ -562,6 +564,9 @@ const struct drm_gem_object_funcs xocl_gem_object_funcs = {
         .vmap = xocl_gem_prime_vmap,
         .vunmap = xocl_gem_prime_vunmap,
         .export = drm_gem_prime_export,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+        .mmap = xocl_gem_prime_mmap,
+#endif
 };
 #endif
 

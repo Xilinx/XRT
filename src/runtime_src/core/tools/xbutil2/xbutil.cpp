@@ -62,7 +62,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["verify", "df-bw"]
+      "test": ["verify", "df-bw", "tct-one-col"]
     }]
   }]
 }]

@@ -238,7 +238,7 @@ test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
 void
 TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  xrt::device device(dev->get_device_id());
+  xrt::device device(dev);
 
   const std::string test_path = findPlatformPath(dev, ptree);
   if (test_path.empty()) {

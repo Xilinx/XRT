@@ -230,7 +230,7 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
 void
 TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  xrt::device device(dev->get_device_id());
+  xrt::device device(dev);
 
   const std::string test_path = findPlatformPath(dev, ptree);
   const std::string aie_control_file = "aie_control_config.json";

@@ -38,8 +38,8 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
-#ifdef XDP_MINIMAL_BUILD
-#include "win/aie_profile.h"
+#ifdef XDP_CLIENT_BUILD
+#include "client/aie_profile.h"
 // #include "shim.h"
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_profile.h"
@@ -92,7 +92,7 @@ namespace xdp {
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
 #else
     constexpr uint32_t PATH_LENGTH = 512;
@@ -119,7 +119,7 @@ namespace xdp {
   /*
    * handle relates to hw context handle in case of Client XRT
    */
-    #ifdef XDP_MINIMAL_BUILD
+    #ifdef XDP_CLIENT_BUILD
         xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
         auto device = xrt_core::hw_context_int::get_core_device(context);
     #else
@@ -130,7 +130,7 @@ namespace xdp {
 
     // Update the static database with information from xclbin
     {
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
       (db->getStaticInfo()).updateDeviceClient(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
@@ -144,7 +144,7 @@ namespace xdp {
 
     // delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
       return;
 #else
       handleToAIEData.erase(handle);
@@ -154,7 +154,7 @@ namespace xdp {
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
 
-#ifdef XDP_MINIMAL_BUILD
+#ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
 #elif defined(XRT_X86_BUILD)
@@ -199,7 +199,7 @@ auto time = std::time(nullptr);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
   // Start the AIE profiling thread
-  #ifdef XDP_MINIMAL_BUILD
+  #ifdef XDP_CLIENT_BUILD
       AIEData.threadCtrlBool = false;
   #else
       AIEData.threadCtrlBool = true;
@@ -254,7 +254,7 @@ auto time = std::time(nullptr);
     if (AIEData.thread.joinable())
       AIEData.thread.join();
     
-    #ifdef XDP_MINIMAL_BUILD
+    #ifdef XDP_CLIENT_BUILD
       AIEData.implementation->poll(0, handle);
     #endif
 
@@ -267,7 +267,7 @@ auto time = std::time(nullptr);
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPoll.");
     
-    #ifdef XDP_MINIMAL_BUILD
+    #ifdef XDP_CLIENT_BUILD
       auto& AIEData = handleToAIEData.begin()->second;
       AIEData.implementation->poll(0, nullptr);
     #endif

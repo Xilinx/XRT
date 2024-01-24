@@ -209,8 +209,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
 {
     std::vector<tile_type> tiles;
 
-    // PLIO metadata not valid in XDP_MINIMAL_BUILD builds
-    #ifdef XDP_MINIMAL_BUILD
+    // PLIO metadata not valid in XDP_CLIENT_BUILD builds
+    #ifdef XDP_CLIENT_BUILD
     auto ios = getGMIOs();
     #else
     auto ios = getAllIOs();

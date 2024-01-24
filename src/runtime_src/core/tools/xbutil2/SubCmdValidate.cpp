@@ -34,6 +34,7 @@
 #include "tools/common/tests/TestPsVerify.h"
 #include "tools/common/tests/TestPsIops.h"
 #include "tools/common/tests/TestDF_bandwidth.h"
+#include "tools/common/tests/TestTCTOneColumn.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -98,7 +99,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestPsPlVerify>(),
   std::make_shared<TestPsVerify>(),
   std::make_shared<TestPsIops>(),
-  std::make_shared<TestDF_bandwidth>()
+  std::make_shared<TestDF_bandwidth>(),
+  std::make_shared<TestTCTOneColumn>()
 };
 
 /*
@@ -286,28 +288,12 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   std::cout << "-------------------------------------------------------------------------------" << std::endl;
 
   int test_idx = 0;
-  int black_box_tests_skipped = 0;
-  int black_box_tests_counter = 0;
 
   if (testObjectsToRun.size() == 1)
     XBU::setVerbose(true);// setting verbose true for single_case.
 
   for (std::shared_ptr<TestRunner> testPtr : testObjectsToRun) {
-
-    // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
-    // we need to print the test description before running the test
-    auto is_black_box_test = [testPtr]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie", "dma", "p2p", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"};
-      auto test = testPtr->get_name();
-      return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
-    };
-
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-
-    if (is_black_box_test()) {
-        black_box_tests_counter++;
-        pretty_print_test_desc(testPtr->get_test_header(), test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
-    }
 
     boost::property_tree::ptree ptTest;
     try {
@@ -318,23 +304,14 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     }
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
-    if (!is_black_box_test())
-      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
-
+    pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
     pretty_print_test_run(ptTest, status, std::cout);
-
-    // consider only when testcase is part of black_box_tests.
-    if (is_black_box_test() && boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped))
-      black_box_tests_skipped++;
 
     // If a test fails, don't test the remaining ones
     if (status == test_status::failed) {
       break;
     }
   }
-
-  if (black_box_tests_counter !=0 && black_box_tests_skipped == black_box_tests_counter)
-    status = test_status::failed;
 
   print_status(status, std::cout);
 
