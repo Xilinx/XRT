@@ -159,7 +159,7 @@ deviceId2index()
 }
 
 std::string
-str_available_devs(bool _inUserDomain)
+XBUtilities::str_available_devs(bool _inUserDomain)
 {
   //gather available devices for user to pick from
   std::stringstream available_devs;
@@ -167,7 +167,10 @@ str_available_devs(bool _inUserDomain)
   boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(_inUserDomain);
   for (auto& kd : available_devices) {
     boost::property_tree::ptree& dev = kd.second;
-    available_devs << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
+    if (boost::iequals(dev.get<std::string>("device_class"), xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::alveo)))
+      available_devs << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
+    if (boost::iequals(dev.get<std::string>("device_class"), xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen)))
+      available_devs << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("name");
   }
   return available_devs.str();
 }
@@ -180,7 +183,7 @@ static uint16_t
 bdf2index(const std::string& bdfstr, bool _inUserDomain)
 {
   if (!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
-    throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + str_available_devs(_inUserDomain));
+    throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + XBUtilities::str_available_devs(_inUserDomain));
 
   std::vector<std::string> tokens;
   boost::split(tokens, bdfstr, boost::is_any_of(":"));
@@ -193,7 +196,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   // check if we have 2-3 tokens: domain, bus, device.function
   // domain is optional
   if (tokens.size() <= 1 || tokens.size() > 3)
-    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr) + str_available_devs(_inUserDomain));
+    throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr) + XBUtilities::str_available_devs(_inUserDomain));
 
   std::reverse(std::begin(tokens), std::end(tokens));
 
@@ -231,7 +234,36 @@ auto devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_cor
       return static_cast<uint16_t>(i);
   }
 
-  throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + str_available_devs(_inUserDomain));
+  throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + XBUtilities::str_available_devs(_inUserDomain));
+}
+
+static std::shared_ptr<xrt_core::device>
+get_device_internal(xrt_core::device::id_type index, bool in_user_domain)
+{
+  static std::mutex mutex;
+  std::lock_guard guard(mutex);
+
+  if (in_user_domain) {
+    static std::vector<std::shared_ptr<xrt_core::device>> user_devices(xrt_core::get_total_devices(true).first, nullptr);
+  
+    if (user_devices.size() <= index )
+      throw std::runtime_error("no device present with index " + std::to_string(index));
+    
+    if (!user_devices[index])
+      user_devices[index] = xrt_core::get_userpf_device(index);
+
+    return user_devices[index];
+  }
+
+  static std::vector<std::shared_ptr<xrt_core::device>> mgmt_devices(xrt_core::get_total_devices(false).first, nullptr);
+  
+  if (mgmt_devices.size() <= index )
+    throw std::runtime_error("no device present with index " + std::to_string(index));
+
+  if (!mgmt_devices[index])
+    mgmt_devices[index] = xrt_core::get_mgmtpf_device(index);
+
+  return mgmt_devices[index];
 }
 
 /*
@@ -247,7 +279,7 @@ str2index(const std::string& str, bool _inUserDomain)
     throw std::runtime_error("No devices found");
   try {
     int idx(boost::lexical_cast<int>(str));
-    auto device = _inUserDomain ? xrt_core::get_userpf_device(idx) : xrt_core::get_mgmtpf_device(idx);
+    auto device = get_device_internal(idx, _inUserDomain);
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
     // if the bdf is zero, we are dealing with an edge device
@@ -278,35 +310,6 @@ XBUtilities::xrt_version_cmp(bool isUserDomain)
       std::cout << warnMsg << std::endl;
     }
   }
-}
-
-static std::shared_ptr<xrt_core::device>
-get_device_internal(xrt_core::device::id_type index, bool in_user_domain)
-{
-  static std::mutex mutex;
-  std::lock_guard guard(mutex);
-
-  if (in_user_domain) {
-    static std::vector<std::shared_ptr<xrt_core::device>> user_devices(xrt_core::get_total_devices(true).first, nullptr);
-  
-    if (user_devices.size() <= index )
-      throw std::runtime_error("no device present with index " + std::to_string(index));
-    
-    if (!user_devices[index])
-      user_devices[index] = xrt_core::get_userpf_device(index);
-
-    return user_devices[index];
-  }
-
-  static std::vector<std::shared_ptr<xrt_core::device>> mgmt_devices(xrt_core::get_total_devices(false).first, nullptr);
-  
-  if (mgmt_devices.size() <= index )
-    throw std::runtime_error("no device present with index " + std::to_string(index));
-
-  if (!mgmt_devices[index])
-    mgmt_devices[index] = xrt_core::get_mgmtpf_device(index);
-
-  return mgmt_devices[index];
 }
 
 void
@@ -426,7 +429,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   {
     // -- If the deviceBDF is empty then do nothing
     if (deviceBDF.empty())
-      throw std::runtime_error("Please specify a device using --device option" + str_available_devs(in_user_domain));
+      throw std::runtime_error("Please specify a device using --device option" + XBUtilities::str_available_devs(in_user_domain));
 
     // -- Collect the devices by name
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw

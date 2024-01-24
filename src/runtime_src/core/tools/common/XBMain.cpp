@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -148,11 +135,7 @@ void  main_(int argc, char** argv,
     // DRC: Are there multiple devices, if so then no default device can be found.
     if (available_devices.size() > 1) {
       std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
-      std::cerr << "List of available devices:" << std::endl;
-      for (auto &kd : available_devices) {
-        boost::property_tree::ptree& dev = kd.second;
-        std::cerr << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
-      }
+      std::cerr << XBUtilities::str_available_devs(isUserDomain) << std::endl;
 
       std::cout << std::endl;
       throw xrt_core::error(std::errc::operation_canceled);
