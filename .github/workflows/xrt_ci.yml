@@ -349,29 +349,29 @@ jobs:
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}     
                   
-  # test-summary:    
-  #   runs-on: [self-hosted, Ubuntu-22.04]
-  #   needs: build
-  #   steps:  
-  #     - name: Checkout test summary Action repository  
-  #       uses: actions/checkout@v3  
-  #       with:  
-  #         repository: actions-int/XOAH-URL-action
-  #         ref: 'v0.0.6' 
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
-  #         path: ./.github/actions/XOAH-URL-action
+  test-summary:    
+    runs-on: [self-hosted, Ubuntu-22.04]
+    needs: build
+    steps:  
+      - name: Checkout test summary Action repository  
+        uses: actions/checkout@v3  
+        with:  
+          repository: actions-int/XOAH-URL-action
+          ref: 'v0.0.6' 
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          path: ./.github/actions/XOAH-URL-action
 
-  #     - name: Generate test summary URL
-  #       id: summary  
-  #       uses: ./.github/actions/XOAH-URL-action
-  #       with:    
-  #         pipeline: ${{ env.PIPELINE }} 
-  #         release: ${{ env.RELEASE }}
-  #         runNumber: ${{ github.run_number }}
-  #         env: ${{ env.ENV }}  
+      - name: Generate test summary URL
+        id: summary  
+        uses: ./.github/actions/XOAH-URL-action
+        with:    
+          pipeline: ${{ env.PIPELINE }} 
+          release: ${{ env.RELEASE }}
+          runNumber: ${{ github.run_number }}
+          env: ${{ env.ENV }}  
     
-  #     - name: Print test summary URL 
-  #       run: |    
-  #         # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-  #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
+      - name: Print test summary URL 
+        run: |    
+          # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
+          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
