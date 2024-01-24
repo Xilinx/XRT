@@ -90,7 +90,7 @@ namespace xdp {
     memTileEndEvents = memTileStartEvents;
   }
 
-  bool AieProfile_EdgeImpl::checkAieDevice(uint64_t deviceId, void* handle)
+  bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, const void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
     aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
@@ -148,7 +148,7 @@ namespace xdp {
     }
   }
 
-  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(XAie_Events event)
+  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(const XAie_Events event)
   {
     switch (event) {
     case XAIE_EVENT_PORT_RUNNING_1_CORE:
@@ -364,7 +364,7 @@ namespace xdp {
 
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
-  AieProfile_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
+  AieProfile_EdgeImpl::setMetricsSettings(const uint64_t deviceId, const void* handle)
   {
     int counterId = 0;
     bool runtimeCounters = false;
@@ -495,7 +495,7 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::poll(uint32_t index, void* handle)
+  void AieProfile_EdgeImpl::poll(const uint32_t index, const void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))

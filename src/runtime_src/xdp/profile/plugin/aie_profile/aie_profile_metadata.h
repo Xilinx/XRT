@@ -41,7 +41,7 @@ class AieProfileMetadata {
     // Currently supporting Core, Memory, Interface Tiles, and Memory Tiles
     static constexpr int NUM_MODULES = 4;
 
-    std::map <module_type, std::vector<std::string>> metricStrings {
+    const std::map <module_type, std::vector<std::string>> metricStrings {
       {
         module_type::core, {
           "heat_map", "stalls", "execution", "floating_point", 
@@ -104,24 +104,24 @@ class AieProfileMetadata {
 
     std::vector<std::string> getSettingsVector(std::string settingsString);
 
-    void getConfigMetricsForTiles(int moduleIdx,
+    void getConfigMetricsForTiles(const int moduleIdx,
                                   const std::vector<std::string>& metricsSettings,
                                   const std::vector<std::string>& graphMetricsSettings,
                                   const module_type mod);
-    void getConfigMetricsForInterfaceTiles(int moduleIdx,
+    void getConfigMetricsForInterfaceTiles(const int moduleIdx,
                                             const std::vector<std::string>& metricsSettings,
                                             const std::vector<std::string> graphMetricsSettings);
     uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
     
-    std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
+    std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
     xdp::aie::driver_config getAIEConfigMetadata();
 
-    bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
-    std::string getModuleName(int module) { return moduleNames[module]; }
-    int getNumCountersMod(int module){ return numCountersMod[module]; }
-    module_type getModuleType(int module) { return moduleTypes[module]; }
+    bool checkModule(const int module) { return (module >= 0 && module < NUM_MODULES);}
+    std::string getModuleName(const int module) { return moduleNames[module]; }
+    int getNumCountersMod(const int module){ return numCountersMod[module]; }
+    module_type getModuleType(const int module) { return moduleTypes[module]; }
 
     uint16_t getAIETileRowOffset() { return metadataReader->getAIETileRowOffset();}
     int getHardwareGen() { return metadataReader->getHardwareGeneration();}

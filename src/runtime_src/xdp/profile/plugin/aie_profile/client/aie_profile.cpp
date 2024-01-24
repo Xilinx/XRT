@@ -82,7 +82,7 @@ namespace xdp {
 
   bool
   AieProfile_WinImpl::
-  setMetricsSettings(uint64_t deviceId)
+  setMetricsSettings(const uint64_t deviceId)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Setting AIE Profile Metrics Settings.");
 
@@ -165,9 +165,15 @@ namespace xdp {
 
           // No resource manager - manually manage the counters:
           RC = XAie_PerfCounterReset(&aieDevInst, loc, mod, i);
-          if(RC != XAIE_OK) break;
+          if(RC != XAIE_OK) {
+            xrt_core::message::send(severity_level::error, "XRT", "AIE Performance Counter Reset Failed.");
+            break;
+          }
           RC = XAie_PerfCounterControlSet(&aieDevInst, loc, mod, i, startEvent, endEvent);
-          if(RC != XAIE_OK) break;
+          if(RC != XAIE_OK) {
+            xrt_core::message::send(severity_level::error, "XRT", "AIE Performance Counter Set Failed.");
+            break;
+          }
 
           aie::profile::configGroupEvents(&aieDevInst, loc, mod, type, metricSet, startEvent, channel0);
           if (aie::profile::isStreamSwitchPortEvent(startEvent))
@@ -240,7 +246,7 @@ namespace xdp {
   AieProfile_WinImpl::
   configStreamSwitchPorts( 
     const tile_type& tile, const XAie_LocType& loc,
-    const module_type& type, const std::string& metricSet, uint8_t channel)
+    const module_type& type, const std::string& metricSet, const uint8_t channel)
   {
     // Hardcoded
     uint8_t rscId = 0;
@@ -281,7 +287,7 @@ namespace xdp {
 
   void
   AieProfile_WinImpl::
-  poll(uint32_t index, void* handle)
+  poll(const uint32_t index, const void* handle)
   {
     if (finishedPoll)
       return;

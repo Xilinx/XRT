@@ -64,7 +64,7 @@ namespace xdp {
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
   }
 
-  bool AieProfile_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle)
+  bool AieProfile_x86Impl::setMetricsSettings(const uint64_t deviceId, const void* handle)
   {
     int NUM_MODULES = metadata->getNumModules();
 
@@ -172,7 +172,7 @@ namespace xdp {
     return true;
   }
 
-  void AieProfile_x86Impl::poll(uint32_t index, void* handle)
+  void AieProfile_x86Impl::poll(const uint32_t index, const void* handle)
   {
     try {
       // input bo

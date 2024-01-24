@@ -170,7 +170,7 @@ namespace xdp {
   }
 
   // Resolve metrics for AIE or MEM tiles
-  void AieProfileMetadata::getConfigMetricsForTiles(int moduleIdx, const std::vector<std::string>& metricsSettings,
+  void AieProfileMetadata::getConfigMetricsForTiles(const int moduleIdx, const std::vector<std::string>& metricsSettings,
       const std::vector<std::string>& graphMetricsSettings, const module_type mod)
   {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
@@ -540,7 +540,7 @@ namespace xdp {
   }
 
   // Resolve Interface metrics
-  void AieProfileMetadata::getConfigMetricsForInterfaceTiles(int moduleIdx,
+  void AieProfileMetadata::getConfigMetricsForInterfaceTiles(const int moduleIdx,
       const std::vector<std::string>& metricsSettings,
       const std::vector<std::string> graphMetricsSettings)
   {
