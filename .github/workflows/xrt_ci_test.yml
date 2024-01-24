@@ -1,4 +1,4 @@
-name: XRT CI Main 
+name: TSM tesing 
 
 env:  
   RELEASE: '2024.1'  
@@ -238,42 +238,42 @@ jobs:
       board_list: ${{ steps.extract.outputs.board_list }}        
       logFileUrl: ${{ steps.upload.outputs.logFileUrl }} 
 
-  # pcie-hw-tests:  
-  #   needs: extract-platforms    
-  #   runs-on: [xrt, trx]
-  #   strategy:      
-  #     matrix:      
-  #       board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
-  #   steps:      
-  #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
-  #       with:      
-  #         repository: actions-int/composite-workflows      
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}      
-  #         path: composite-workflows  
-  #         ref: test_vaish
+  pcie-hw-tests:  
+    needs: extract-platforms    
+    runs-on: [xrt, trx]
+    strategy:      
+      matrix:      
+        board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
+    steps:      
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          path: composite-workflows  
+          ref: test_tsm
        
-  #     - name: Use composite action for pcie-hw       
-  #       uses: ./composite-workflows/pcie-hw  
-  #       with:     
-  #         organization: ${{ github.repository }}  
-  #         runNumber: ${{ github.run_number }}  
-  #         buildNumber: ${{ github.run_number }}  
-  #         release: ${{ env.RELEASE }}
-  #         env: ${{ env.ENV }}  
-  #         pipeline: ${{ env.PIPELINE }} 
-  #         boardType: "pcie"  
-  #         boardState: "gating"  
-  #         boardMode: "hw"  
-  #         board: ${{ matrix.board_list }}      
-  #         runnerName: ${{ runner.name }}
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}  
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}   
-  #         apiKey: ${{ secrets.apiKey }}    
-  #         NPATH: ${{ secrets.NPATH }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}  
-  #         # pact: 'true'
+      - name: Use composite action for pcie-hw       
+        uses: ./composite-workflows/pcie-hw  
+        with:     
+          organization: ${{ github.repository }}  
+          runNumber: ${{ github.run_number }}  
+          buildNumber: ${{ github.run_number }}  
+          release: ${{ env.RELEASE }}
+          env: ${{ env.ENV }}  
+          pipeline: ${{ env.PIPELINE }} 
+          boardType: "pcie"  
+          boardState: "gating"  
+          boardMode: "hw"  
+          board: ${{ matrix.board_list }}      
+          runnerName: ${{ runner.name }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}   
+          apiKey: ${{ secrets.apiKey }}    
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }}  
+          # pact: 'true'
 
   pcie-sw-emulation-tests:
     needs: package-download
@@ -289,7 +289,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows 
-          ref: test_vaish
+          ref: test_tsm
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -326,7 +326,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows 
-          ref: test_vaish
+          ref: test_tsm
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
