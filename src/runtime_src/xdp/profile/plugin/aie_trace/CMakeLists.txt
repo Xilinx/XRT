@@ -8,7 +8,7 @@
 # on the hardware shim
 # ====================================================================
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/win")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_trace/client")
   set(OFFLOAD_DIR "${PROFILE_DIR}/device/aie_trace/client")
   set(DEVICE_DIR "${PROFILE_DIR}/device/client_device")
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
