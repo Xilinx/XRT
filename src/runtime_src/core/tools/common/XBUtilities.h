@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBUtilities_h_
 #define __XBUtilities_h_
@@ -59,6 +59,9 @@ namespace XBUtilities {
 
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
+
+  std::string
+  str_available_devs(bool _inUserDomain);
 
    /**
    * get_axlf_section() - Get section from the file passed in
