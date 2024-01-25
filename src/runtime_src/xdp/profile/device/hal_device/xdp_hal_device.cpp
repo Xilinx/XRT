@@ -64,7 +64,7 @@ std::string HalDevice::getDebugIPlayoutPath()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Debug IP Layout Path.";
+    std::string msg = "Error while retrieving debug IP layout path.";
     xrt_core::message::send(severity_level::error, "XRT", msg);
   }
   return path;
@@ -80,7 +80,7 @@ uint32_t HalDevice::getNumLiveProcesses()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Number of Live Processes. Using default value.";
+    std::string msg = "Error while retrieving number of live processes. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
   return liveProcessesOnDevice;
@@ -183,7 +183,7 @@ void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Debug IP Layout.";
+    std::string msg = "Error while retrieving debug IP layout.";
     xrt_core::message::send(severity_level::error, "XRT", msg);
   }
  }
@@ -199,7 +199,7 @@ double HalDevice::getDeviceClock()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Device Clock Frequency. Using default value.";
+    std::string msg = "Error while retrieving device clock frequency. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
   return deviceClockFreqMHz;
@@ -222,7 +222,7 @@ int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uin
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Trace Buffer Information. Using default value.";
+    std::string msg = "Error while retrieving trace buffer information. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
   return 0;
@@ -241,7 +241,7 @@ int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Trace Data.";
+    std::string msg = "Error while retrieving trace data.";
     xrt_core::message::send(severity_level::error, "XRT", msg);
   }
   return 0;
@@ -309,7 +309,7 @@ double HalDevice::getHostMaxBwRead()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Host Max Read Bandwidth. Using default value.";
+    std::string msg = "Error while retrieving host max read bandwidth. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
   return hostMaxReadBW;
@@ -326,7 +326,7 @@ double HalDevice::getHostMaxBwWrite()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Host Max Write Bandwidth. Using default value.";
+    std::string msg = "Error while retrieving host max write bandwidth. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
    return hostMaxWriteBW;
@@ -343,7 +343,7 @@ double HalDevice::getKernelMaxBwRead()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Kernel Max Read Bandwidth. Using default value.";
+    std::string msg = "Error while retrieving kernel max read bandwidth. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
   return kernelMaxReadBW;
@@ -360,7 +360,7 @@ double HalDevice::getKernelMaxBwWrite()
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Kernel Max Write Bandwidth. Using default value.";
+    std::string msg = "Error while retrieving kernel max write bandwidth. Using default value.";
     xrt_core::message::send(severity_level::warning, "XRT", msg);
   }
   return kernelMaxWriteBW;
@@ -378,7 +378,7 @@ std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
   }
   catch (const std::exception&) {
     // error retrieving information
-    std::string msg = "Error while retrieving Sub Device Path.";
+    std::string msg = "Error while retrieving sub device path.";
     xrt_core::message::send(severity_level::error, "XRT", msg);
   }
   return subDevicePath;
