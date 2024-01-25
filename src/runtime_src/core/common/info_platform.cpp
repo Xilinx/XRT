@@ -390,6 +390,26 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
   }
 }
 
+static void
+add_firmware_info(const xrt_core::device* device, ptree_type& pt)
+{
+  ptree_type pt_firmware;
+
+  const auto fw_ver = xrt_core::device_query_default<xq::firmware_version>(device, {0,0,0,0});
+  std::string version = "N/A";
+  if (fw_ver.major != 0 || fw_ver.minor != 0 || fw_ver.patch != 0 || fw_ver.build != 0) {
+    version = boost::str(boost::format("%u.%u.%u.%u")
+      % fw_ver.major % fw_ver.minor % fw_ver.patch % fw_ver.build);
+    pt_firmware.add("major", fw_ver.major);
+    pt_firmware.add("minor", fw_ver.minor);
+    pt_firmware.add("patch", fw_ver.patch);
+    pt_firmware.add("build", fw_ver.build);
+  }
+  pt_firmware.add("version", version);
+
+  pt.put_child("firmware", pt_firmware);
+}
+
 void
 add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
 {
@@ -414,6 +434,9 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
     add_config_info(device, pt_platform);
     break;
   }
+  case xrt_core::query::device_class::type::ryzen:
+    add_firmware_info(device, pt_platform);
+    break;
   default:
     break;
   }

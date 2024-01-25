@@ -128,6 +128,8 @@ enum class key_type
   aie_tiles_status_info,
   aie_partition_info,
 
+  firmware_version,
+
   idcode,
   data_retention,
   sec_level,
@@ -1537,6 +1539,24 @@ struct aie_partition_info : request
 
   using result_type = std::vector<struct data>;
   static const key_type key = key_type::aie_partition_info;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the firmware version of the device.
+struct firmware_version : request
+{
+  struct data
+  {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
+    uint32_t build;
+  };
+
+  using result_type = struct data;
+  static const key_type key = key_type::firmware_version;
 
   virtual std::any
   get(const device* device) const = 0;
