@@ -3,7 +3,7 @@ name: XRT CI Prod Mirror
 env:  
   RELEASE: '2024.1'  
   PIPELINE: 'xrt' 
-  ENV: 'prod' 
+  ENV: 'test' 
 
 on:
   pull_request_target:
@@ -31,9 +31,20 @@ jobs:
         uses: ./composite-workflows/authorize
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
-          pullRequestUser: ${{ github.event.pull_request.user.login }}
+          pullRequestUser: ${{ github.event.pull_request.user.login }}   
+          
+  generate-build-number:  
+    needs: authorize 
+    runs-on: Ubuntu-22.04   
+    outputs:  
+      buildNumber: ${{ steps.generate.outputs.buildNumber }}  
+    steps:  
+      - name: Generate build number  
+        id: generate  
+        run: echo "::set-output name=buildNumber::$(printf "%02d" $(($GITHUB_RUN_NUMBER % 100)))"  
+        
   build:
-    needs: authorize  
+    needs: generate-build-number
     strategy:      
       matrix:      
         include:      
@@ -90,7 +101,6 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
-    needs: authorize
     runs-on: Windows
     steps:
       - name: Checkout PR   
@@ -123,7 +133,6 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:
-    needs: authorize
     runs-on: apu
     # runs-on: Ubuntu-20.04
     steps:      
@@ -229,7 +238,7 @@ jobs:
         uses: ./.github/actions/upload-logs-to-artifactory-action
         with:          
           logFile: ${{ steps.extract.outputs.logFile }}           
-          buildNumber: ${{ github.run_number }}     
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}  
           apiKey: ${{ secrets.apiKey }}     
           pipeline: ${{ env.PIPELINE }} 
           repoKeyName: 'extractBoard'  
@@ -264,7 +273,7 @@ jobs:
         with:     
           organization: ${{ github.repository }}  
           runNumber: ${{ github.run_number }}  
-          buildNumber: ${{ github.run_number }}  
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}  
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
@@ -300,7 +309,7 @@ jobs:
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -337,7 +346,7 @@ jobs:
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
