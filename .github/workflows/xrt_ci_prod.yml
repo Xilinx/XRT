@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   authorize:
-    if: github.event.pull_request.base.ref == 'master' || github.event.pull_request.base.ref == '2023.2'
+    if: github.event.pull_request.base.ref == 'master' 
     runs-on: Ubuntu-22.04   
     steps:
       - name: Checkout private repository      
@@ -64,7 +64,7 @@ jobs:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=${{ needs.generate-build-number.outputs.buildNumber }} }" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -73,7 +73,7 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }}   
           submodules: recursive   
 
       - name: Checkout private repository      
@@ -92,7 +92,7 @@ jobs:
           osVersion: ${{ matrix.os }}  
           packageType: ${{ matrix.packageType }}  
           workspace: ${{ github.workspace }}
-          buildNumber: ${{ github.run_number }}     
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}      
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           appConfig: ${{ secrets.APP_CONFIG }} 
@@ -109,7 +109,7 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }}   
           submodules: recursive
           persist-credentials: false 
             
@@ -125,8 +125,8 @@ jobs:
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
         with:     
-          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
-          buildNumber: ${{ github.run_number }}    
+          workspace: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }} /build   
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}     
           release: ${{ env.RELEASE }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
@@ -139,7 +139,7 @@ jobs:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=${{ needs.generate-build-number.outputs.buildNumber }} }" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -148,7 +148,7 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }}   
           submodules: recursive  
 
       - name: Checkout private repository      
@@ -165,7 +165,7 @@ jobs:
         with:     
           pipeline: ${{ env.PIPELINE }}   
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }}    
+          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}     
           apuPackage: 'True' 
           release: ${{ env.RELEASE }}  
           accessToken: ${{ secrets.ACCESS_TOKEN }}
@@ -191,7 +191,7 @@ jobs:
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
         with:    
-          runNumber: ${{ github.run_number }}    
+          runNumber: ${{ needs.generate-build-number.outputs.buildNumber }}     
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
@@ -272,7 +272,7 @@ jobs:
         uses: ./composite-workflows/pcie-hw  
         with:     
           organization: ${{ github.repository }}  
-          runNumber: ${{ github.run_number }}  
+          runNumber: ${{ needs.generate-build-number.outputs.buildNumber }}   
           buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}  
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
@@ -308,7 +308,7 @@ jobs:
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
-          run_number: ${{ github.run_number }}
+          run_number: ${{ needs.generate-build-number.outputs.buildNumber }} 
           buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
@@ -345,7 +345,7 @@ jobs:
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
-          run_number: ${{ github.run_number }}
+          run_number: ${{ needs.generate-build-number.outputs.buildNumber }} 
           buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
@@ -381,7 +381,7 @@ jobs:
         with:    
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
-          runNumber: ${{ github.run_number }}
+          runNumber: ${{ needs.generate-build-number.outputs.buildNumber }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
