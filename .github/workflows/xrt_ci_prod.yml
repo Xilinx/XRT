@@ -101,6 +101,7 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
+    needs: generate-build-number
     runs-on: Windows
     steps:
       - name: Checkout PR   
@@ -133,6 +134,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:
+    needs: generate-build-number
     runs-on: apu
     # runs-on: Ubuntu-20.04
     steps:      
