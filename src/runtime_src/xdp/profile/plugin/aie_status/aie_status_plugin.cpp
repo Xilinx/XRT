@@ -393,6 +393,8 @@ namespace xdp {
     if (!xrt_core::config::get_aie_status())
       return;
 
+    localDevice = xrt_core::get_userpf_device(handle);
+
     std::array<char, sysfs_max_path_length> pathBuf = {0};
     xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
     std::string sysfspath(pathBuf.data());
@@ -434,7 +436,7 @@ namespace xdp {
 
     // Create and register AIE status writer
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
-    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen);
+    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen, localDevice);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 

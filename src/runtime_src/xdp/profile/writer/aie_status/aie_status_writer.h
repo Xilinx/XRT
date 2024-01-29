@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,11 +18,13 @@
 #ifndef AIE_STATUS_WRITER_DOT_H
 #define AIE_STATUS_WRITER_DOT_H
 
-#include <string>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include "xdp/profile/writer/vp_base/vp_writer.h"
+#include <boost/property_tree/ptree.hpp>
+#include <memory>
+#include <string>
+
 #include "core/include/xrt/xrt_kernel.h"
+#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 namespace bpt = boost::property_tree;
 
@@ -35,7 +37,8 @@ namespace xdp {
   {
   public:
     AIEStatusWriter(const char* fileName, const char* deviceName,
-                    uint64_t deviceIndex, int hwGen);
+                    uint64_t deviceIndex, int hwGen,
+                    std::shared_ptr<xrt_core::device> d);
     ~AIEStatusWriter();
 
     virtual bool write(bool openNewFile);
@@ -50,6 +53,7 @@ namespace xdp {
     uint64_t mDeviceIndex;
     int mHardwareGen;
     bool mWroteValidData;
+    std::shared_ptr<xrt_core::device> mXrtCoreDevice;
   };
 
 } // end namespace xdp
