@@ -941,7 +941,7 @@ struct device_status : request
       case 2:
         return "UNKNOWN";
       default:
-        throw xrt_core::system_error(EINVAL, "Invalid device status: " + status);
+        throw xrt_core::system_error(EINVAL, "Invalid device status: " + std::to_string(status));
     }
   }
 };
@@ -3435,7 +3435,7 @@ struct performance_mode : request
       case 3:
         return "High";
       default:
-        throw xrt_core::system_error(EINVAL, "Invalid performance status: " + status);
+        throw xrt_core::system_error(EINVAL, "Invalid performance status: " + std::to_string(status));
     }
   }
 };
