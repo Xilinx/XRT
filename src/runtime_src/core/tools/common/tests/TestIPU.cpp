@@ -28,10 +28,15 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
+  // workaround: can't rename files when copying to driver store
+  // so need to name the files as _phx and _stx
+  // will revisit this after the current release
   auto device_id = xrt_core::query::pcie_device::to_string(xrt_core::device_query<xrt_core::query::pcie_device>(dev));
-  std::filesystem::path xpath{device_id};
-  xpath /= m_xclbin;
-  ptree.put("xclbin", xpath.string());
+  if (device_id.compare("0x1502") == 0)
+    m_xclbin = "validate_phx.xclbin";
+  else if (device_id.compare("0x17f0") == 0)
+    m_xclbin = "validate_stx.xclbin";
+  ptree.put("xclbin", m_xclbin);
 
   auto xclbin_path = findXclbinPath(dev, ptree);
   if (!std::filesystem::exists(xclbin_path)) {
