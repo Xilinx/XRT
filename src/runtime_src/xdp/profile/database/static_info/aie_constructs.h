@@ -211,9 +211,16 @@ enum class module_type {
       uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
       uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
       uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
+      bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
+      int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
       std::vector<aie_cfg_counter> pc;
 
-      aie_cfg_base(uint32_t count) : pc(count) {};
+      aie_cfg_base(uint32_t count) : pc(count) {
+        for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
+          port_trace_is_master[i] = false;
+          port_trace_ids[i] = -1;
+        }
+      };
   };
 
   /*
@@ -226,7 +233,6 @@ enum class module_type {
   {
   public:
     uint32_t trace_mode = 1;
-    std::string port_trace = "null";
     aie_cfg_core() : aie_cfg_base(4)
     {
       group_event_config = {
@@ -261,16 +267,9 @@ enum class module_type {
   class aie_cfg_peripheral_tile : public aie_cfg_base
   {
   public:
-    bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
-    int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
     int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
     int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
-    aie_cfg_peripheral_tile() : aie_cfg_base(4) {
-      for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
-        port_trace_is_master[i] = false;
-        port_trace_ids[i] = -1;
-      }
-    }
+    aie_cfg_peripheral_tile() : aie_cfg_base(4) {}
   };
 
   /*
