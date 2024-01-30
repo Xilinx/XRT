@@ -38,14 +38,14 @@ jobs:
         include:      
           - os: centos78      
             packageType: rpm      
-          - os: centos8      
-            packageType: rpm      
-          - os: rhel9      
-            packageType: rpm      
-          - os: ubuntu2004      
-            packageType: deb      
-          - os: ubuntu2204      
-            packageType: deb      
+          # - os: centos8      
+          #   packageType: rpm      
+          # - os: rhel9      
+          #   packageType: rpm      
+          # - os: ubuntu2004      
+          #   packageType: deb      
+          # - os: ubuntu2204      
+          #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -263,7 +263,7 @@ jobs:
         with:     
           organization: ${{ github.repository }}  
           runNumber: ${{ github.run_number }}  
-          buildNumber: ${{ github.run_number }}  
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
@@ -299,7 +299,7 @@ jobs:
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -336,7 +336,7 @@ jobs:
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -372,7 +372,7 @@ jobs:
         with:    
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
-          runNumber: ${{ github.run_number }}
+          runNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
