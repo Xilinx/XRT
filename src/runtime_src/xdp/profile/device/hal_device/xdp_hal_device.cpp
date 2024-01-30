@@ -159,7 +159,7 @@ int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
 #endif
 
 
-int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
+int HalDevice::unmgdRead(unsigned , void *buf, size_t count, uint64_t offset)
 {
   try{
     mXrtCoreDevice->unmgd_pread(buf, count, offset);
@@ -171,12 +171,11 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
 }
 
 
-void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+std::vector<char> HalDevice::getDebugIpLayout()
 {
   std::vector<char> bufferData;
   try {
     bufferData = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(mXrtCoreDevice);
-    std::memcpy(buffer, bufferData.data(), bufferData.size()*sizeof(char));
   }
   catch (const xrt_core::query::no_such_key&) {
     //query is not implemented
@@ -186,6 +185,7 @@ void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
     std::string msg = "Error while retrieving debug IP layout.";
     xrt_core::message::send(severity_level::error, "XRT", msg);
   }
+  return bufferData;
  }
 
 double HalDevice::getDeviceClock()

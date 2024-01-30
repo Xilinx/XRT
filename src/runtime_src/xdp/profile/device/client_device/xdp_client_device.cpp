@@ -99,11 +99,9 @@ int ClientDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t of
 }
 
 
-void ClientDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+std::vector<char> ClientDevice::getDebugIpLayout()
 {
-  (void) buffer;
-  (void) size;
-  (void) size_ret;
+  return {};
 }
 
 double ClientDevice::getDeviceClock()
