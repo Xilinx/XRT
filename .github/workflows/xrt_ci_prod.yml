@@ -354,7 +354,8 @@ jobs:
                   
   test-summary:    
     runs-on: [self-hosted, Ubuntu-22.04]
-    needs: build
+    needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
+    if: always()  
     steps:  
       - name: Checkout test summary Action repository  
         uses: actions/checkout@v3  
