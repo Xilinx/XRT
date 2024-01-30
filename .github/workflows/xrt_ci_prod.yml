@@ -1,4 +1,4 @@
-name: XRT CI Prod Mirror 
+name: XRT CI
 
 env:  
   RELEASE: '2024.1'  
@@ -7,16 +7,15 @@ env:
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, edited, synchronize]
 
 concurrency:  
   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
   cancel-in-progress: true 
-
+  
 jobs:
   authorize:
-    if: github.event.pull_request.base.ref == 'master' 
-    runs-on: Ubuntu-22.04   
+    runs-on: Ubuntu-22.04
     steps:
       - name: Checkout private repository      
         uses: actions/checkout@v4   
@@ -31,20 +30,9 @@ jobs:
         uses: ./composite-workflows/authorize
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
-          pullRequestUser: ${{ github.event.pull_request.user.login }}   
-          
-  generate-build-number:  
-    needs: authorize 
-    runs-on: Ubuntu-22.04   
-    outputs:  
-      buildNumber: ${{ steps.generate.outputs.buildNumber }}  
-    steps:  
-      - name: Generate build number  
-        id: generate  
-        run: echo "::set-output name=buildNumber::$(printf "%02d" $(($GITHUB_RUN_NUMBER % 100)))"  
-        
+          pullRequestUser: ${{ github.event.pull_request.user.login }}
   build:
-    needs: generate-build-number
+    needs: authorize  
     strategy:      
       matrix:      
         include:      
@@ -64,7 +52,7 @@ jobs:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${{ needs.generate-build-number.outputs.buildNumber }} }" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -73,7 +61,7 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }}   
+          path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive   
 
       - name: Checkout private repository      
@@ -92,7 +80,7 @@ jobs:
           osVersion: ${{ matrix.os }}  
           packageType: ${{ matrix.packageType }}  
           workspace: ${{ github.workspace }}
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}      
+          buildNumber: ${{ github.run_number }}     
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           appConfig: ${{ secrets.APP_CONFIG }} 
@@ -101,7 +89,7 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
-    needs: generate-build-number
+    needs: authorize
     runs-on: Windows
     steps:
       - name: Checkout PR   
@@ -110,7 +98,7 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }}   
+          path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive
           persist-credentials: false 
             
@@ -126,22 +114,22 @@ jobs:
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
         with:     
-          workspace: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }} /build   
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}     
+          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
+          buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:
-    needs: generate-build-number
+    needs: authorize
     runs-on: apu
     # runs-on: Ubuntu-20.04
     steps:      
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${{ needs.generate-build-number.outputs.buildNumber }} }" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -150,7 +138,7 @@ jobs:
           repository: "${{ github.event.pull_request.head.repo.full_name }}"
           ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ needs.generate-build-number.outputs.buildNumber }}   
+          path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
 
       - name: Checkout private repository      
@@ -167,7 +155,7 @@ jobs:
         with:     
           pipeline: ${{ env.PIPELINE }}   
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}     
+          buildNumber: ${{ github.run_number }}    
           apuPackage: 'True' 
           release: ${{ env.RELEASE }}  
           accessToken: ${{ secrets.ACCESS_TOKEN }}
@@ -193,7 +181,7 @@ jobs:
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
         with:    
-          runNumber: ${{ needs.generate-build-number.outputs.buildNumber }}     
+          runNumber: ${{ github.run_number }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
@@ -240,7 +228,7 @@ jobs:
         uses: ./.github/actions/upload-logs-to-artifactory-action
         with:          
           logFile: ${{ steps.extract.outputs.logFile }}           
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}  
+          buildNumber: ${{ github.run_number }}     
           apiKey: ${{ secrets.apiKey }}     
           pipeline: ${{ env.PIPELINE }} 
           repoKeyName: 'extractBoard'  
@@ -274,8 +262,8 @@ jobs:
         uses: ./composite-workflows/pcie-hw  
         with:     
           organization: ${{ github.repository }}  
-          runNumber: ${{ needs.generate-build-number.outputs.buildNumber }}   
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}  
+          runNumber: ${{ github.run_number }}  
+          buildNumber: ${{ github.run_number }}  
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
@@ -310,8 +298,8 @@ jobs:
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
-          run_number: ${{ needs.generate-build-number.outputs.buildNumber }} 
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}
+          run_number: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -347,8 +335,8 @@ jobs:
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
-          run_number: ${{ needs.generate-build-number.outputs.buildNumber }} 
-          buildNumber: ${{ needs.generate-build-number.outputs.buildNumber }}
+          run_number: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -383,10 +371,10 @@ jobs:
         with:    
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
-          runNumber: ${{ needs.generate-build-number.outputs.buildNumber }} 
+          runNumber: ${{ github.run_number }}
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
         run: |    
           # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
+          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
