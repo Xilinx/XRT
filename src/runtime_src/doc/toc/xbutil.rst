@@ -175,6 +175,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
     - ``pcie-info`` : Pcie information of the device
     - ``platform``: Platforms flashed on the device (default when ``--device`` is provided)
     - ``qspi-status``: QSPI write protection status
+    - ``telemetry``: Telemetry data for the device
     - ``thermal``: Reports thermal sensors present on the device
 
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
