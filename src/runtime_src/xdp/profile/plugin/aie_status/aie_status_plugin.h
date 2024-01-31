@@ -64,7 +64,7 @@ namespace xdp {
     uint32_t mPollingInterval;
     boost::property_tree::ptree mAieMeta;
     std::unique_ptr<aie::BaseFiletypeImpl> filetype;
-    std::shared_ptr<xrt_core::device> localDevice;
+    std::shared_ptr<xrt_core::device> mXrtCoreDevice;
 
     // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
