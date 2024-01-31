@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -127,6 +127,13 @@ enum class key_type
   aie_tiles_stats,
   aie_tiles_status_info,
   aie_partition_info,
+
+  misc_telemetry,
+  aie_telemetry,
+  opcode_telemetry,
+  rtos_telemetry,
+  stream_buffer_telemetry,
+
 
   firmware_version,
 
@@ -1539,6 +1546,97 @@ struct aie_partition_info : request
 
   using result_type = std::vector<struct data>;
   static const key_type key = key_type::aie_partition_info;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the AIE telemetry info for the device
+// While the AIE status is for live information. This is historical information
+// of the AIE column operation.
+// This query is available for Ryzen devices
+struct aie_telemetry : request
+{
+  struct data {
+    uint64_t deep_sleep_count;
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::aie_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the miscellaneous telemetry info for the device
+// Various bits of information are not tied to anything in AIE devices.
+// This is how to get them!
+// This query is available for Ryzen devices
+struct misc_telemetry : request
+{
+  struct data {
+    uint64_t l1_interrupts;
+  };
+
+  using result_type = struct data;
+  static const key_type key = key_type::misc_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the opcode telemetry info for the device
+// Opcodes are the commands that are sent to the device such as EXEC_BUF or SYNC_BO
+// This query is available for Ryzen devices
+struct opcode_telemetry : request
+{
+  struct data {
+    uint64_t count;
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::opcode_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the rtos telemetry info for the device
+// Returns historical data about how the rtos tasks operate
+// This query is available for Ryzen devices
+struct rtos_telemetry : request
+{
+  struct dtlb_data {
+    uint64_t misses;
+  };
+
+  struct data {
+    uint64_t context_starts;
+    uint64_t schedules;
+    uint64_t syscalls;
+    uint64_t dma_access;
+    uint64_t resource_acquisition;
+    std::vector<struct dtlb_data> dtlbs;
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::rtos_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieve the stream buffer telemetry from the device
+// Returns historical data about how the stream buffers operate
+// Applicable to Ryzen devices
+struct stream_buffer_telemetry : request
+{
+  struct data {
+    uint64_t tokens;
+  };
+
+  using result_type = std::vector<struct data>;
+  static const key_type key = key_type::stream_buffer_telemetry;
 
   virtual std::any
   get(const device* device) const = 0;

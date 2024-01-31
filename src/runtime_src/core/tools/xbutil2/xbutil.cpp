@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // Sub Commands
 #include "SubCmdAdvanced.h"
@@ -50,7 +50,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions"]
+      "report": ["dynamic-regions", "electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 add_subdirectory(api)
 add_subdirectory(xdp)
 
@@ -14,6 +14,7 @@ add_library(core_common_library_objects OBJECT
   info_aie.cpp
   info_memory.cpp
   info_platform.cpp
+  info_telemetry.cpp
   info_vmr.cpp
   memaccess.cpp
   message.cpp
