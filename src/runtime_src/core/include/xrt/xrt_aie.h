@@ -163,6 +163,21 @@ public:
   }
 };
 
+class event_impl;
+class event 
+{
+public:
+
+  event(const xrt::device& device, int option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
+
+  uint64_t read_profiling() const;
+
+  void stop_profiling() const;
+
+private:
+    std::shared_ptr<event_impl> handle;
+};
+
 }} // aie, xrt
 
 /// @cond
@@ -256,6 +271,14 @@ xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 int
 xrtResetAIEArray(xrtDeviceHandle handle);
 
+int
+xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value);
+
+uint64_t
+xrtAIEReadProfiling(int pHandle);
+
+int
+xrtAIEStopProfiling(int pHandle);
 /// @endcond
 
 #ifdef __cplusplus
