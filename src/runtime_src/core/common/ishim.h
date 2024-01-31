@@ -239,7 +239,7 @@ struct ishim
   wait_gmio(const char *gmioName) = 0;
 
   virtual int
-  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
+  start_profiling(xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
 
   virtual uint64_t
   read_profiling(int phdl) = 0;
@@ -525,7 +525,7 @@ struct shim : public DeviceType
   }
 
   int
-  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) override
+  start_profiling(xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Name, uint32_t value) override
   {
     return xclStartProfiling(DeviceType::get_device_handle(), option, port1Name, port2Name, value);
   }
@@ -540,7 +540,7 @@ struct shim : public DeviceType
   stop_profiling(int phdl) override
   {
     if (auto ret = xclStopProfiling(DeviceType::get_device_handle(), phdl))
-      throw system_error(ret, "fail to wait gmio");
+      throw system_error(ret, "failed to stop profiling");
   }
 
   void

@@ -114,7 +114,7 @@ xclGMIOWait(xclDeviceHandle, const char*)
 }
 
 int
-xclStartProfiling(xclDeviceHandle, int, const char*, const char*, uint32_t)
+xclStartProfiling(xclDeviceHandle, xrt::aie::event::profiling_option, const char*, const char*, uint32_t)
 {
   throw xrt_core::error(std::errc::not_supported, __func__);
 }

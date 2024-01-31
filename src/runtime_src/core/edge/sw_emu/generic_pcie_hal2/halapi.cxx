@@ -1015,7 +1015,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 }
 
 int
-xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value)
+xclStartProfiling(xclDeviceHandle handle, xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Nmae, uint32_t value)
 {
   return 0;
 }

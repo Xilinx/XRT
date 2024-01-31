@@ -280,7 +280,7 @@ reset(const xrt_core::device* device)
 
 int
 Aie::
-start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
+start_profiling(xrt::aie::event::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
 {
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Start profiling fails: AIE is not initialized");
@@ -290,16 +290,16 @@ start_profiling(int option, const std::string& port1_name, const std::string& po
 
   switch (option) {
 
-  case IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE:
+  case xrt::aie::event::profiling_option::IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE:
     return start_profiling_run_idle(port1_name);
 
-  case IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES:
+  case xrt::aie::event::profiling_option::IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES:
     return start_profiling_start_bytes(port1_name, value);
 
-  case IO_STREAM_START_DIFFERENCE_CYCLES:
+  case xrt::aie::event::profiling_option::IO_STREAM_START_DIFFERENCE_CYCLES:
     return start_profiling_diff_cycles(port1_name, port2_name);
 
-  case IO_STREAM_RUNNING_EVENT_COUNT:
+  case xrt::aie::event::profiling_option::IO_STREAM_RUNNING_EVENT_COUNT:
     return start_profiling_event_count(port1_name);
 
   default:
@@ -316,7 +316,7 @@ read_profiling(int phdl)
 
   uint64_t value = 0;
   if (eventRecords.size() > phdl)
-    value = adf::profiling::read(eventRecords[phdl].acquiredResources, eventRecords[phdl].option == IO_STREAM_START_DIFFERENCE_CYCLES);
+    value = adf::profiling::read(eventRecords[phdl].acquiredResources, static_cast<int>(eventRecords[phdl].option) == static_cast<int>(xrt::aie::event::profiling_option::IO_STREAM_START_DIFFERENCE_CYCLES));
   else
     throw xrt_core::error(-EAGAIN, "Read profiling failed: invalid handle.");
   return value;
@@ -370,7 +370,7 @@ start_profiling_run_idle(const std::string& port_name)
   if (adf::profiling::profile_stream_running_to_idle_cycles(get_shim_config(port_name), acquiredResources) == adf::err_code::ok)
   {
     handle = eventRecords.size();
-    eventRecords.push_back({ IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE, acquiredResources });
+    eventRecords.push_back(EventRecord( xrt::aie::event::profiling_option::IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE, acquiredResources ));
   }
   return handle;
 }
@@ -384,7 +384,7 @@ start_profiling_start_bytes(const std::string& port_name, uint32_t value)
   if (adf::profiling::profile_stream_start_to_transfer_complete_cycles(get_shim_config(port_name), value, acquiredResources) == adf::err_code::ok)
   {
     handle = eventRecords.size();
-    eventRecords.push_back({ IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES, acquiredResources });
+    eventRecords.push_back(EventRecord( xrt::aie::event::profiling_option::IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES, acquiredResources ));
   }
   return handle;
 }
@@ -398,7 +398,7 @@ start_profiling_diff_cycles(const std::string& port1_name, const std::string& po
   if (adf::profiling::profile_start_time_difference_btw_two_streams(get_shim_config(port1_name), get_shim_config(port2_name), acquiredResources) == adf::err_code::ok)
   {
     handle = eventRecords.size();
-    eventRecords.push_back({ IO_STREAM_START_DIFFERENCE_CYCLES, acquiredResources });
+    eventRecords.push_back(EventRecord( xrt::aie::event::profiling_option::IO_STREAM_START_DIFFERENCE_CYCLES, acquiredResources ));
   }
   return handle;
 }
@@ -412,7 +412,7 @@ start_profiling_event_count(const std::string& port_name)
   if (adf::profiling::profile_stream_running_event_count(get_shim_config(port_name), acquiredResources) == adf::err_code::ok)
   {
     handle = eventRecords.size();
-    eventRecords.push_back({ IO_STREAM_RUNNING_EVENT_COUNT, acquiredResources });
+    eventRecords.push_back(EventRecord( xrt::aie::event::profiling_option::IO_STREAM_RUNNING_EVENT_COUNT, acquiredResources ));
   }
   return handle;
 }

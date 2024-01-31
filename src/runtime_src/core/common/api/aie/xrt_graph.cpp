@@ -109,7 +109,54 @@ public:
     device->read_graph_rtp(handle, port, buffer, size);
   }
 };
+}
+namespace xrt {
+namespace aie {
 
+class event_impl
+{
+private:
+  std::shared_ptr<xrt_core::device> device;
+  int handle;
+
+public:
+  event_impl(std::shared_ptr<xrt_core::device> dev, int phdl)
+    : device(std::move(dev))
+    , handle(phdl)
+  {}
+
+  ~event_impl()
+  {}
+
+  uint64_t
+  read_profiling()
+  {
+    return device->read_profiling(handle);
+  }
+
+  void
+  stop_profiling()
+  {
+    device->stop_profiling(handle);
+  }
+
+  int getHandle() const { return handle; }
+};
+
+}
+
+}
+
+// Function to extract the integer handle from the shared pointer
+int get_handle_from_shared_ptr(const std::shared_ptr<xrt::aie::event_impl>& event_ptr) {
+    // Check if the pointer is valid
+    if (event_ptr) {
+        // Access the handle from the event_impl object and return it
+        return event_ptr->getHandle();
+    } else {
+        // Return an appropriate error code or handle the error
+        return -1;
+    }
 }
 
 namespace {
@@ -189,27 +236,26 @@ wait_gmio(xrtDeviceHandle dhdl, const char *gmio_name)
   device->wait_gmio(gmio_name);
 }
 
-static int
-start_profiling(xrtDeviceHandle dhdl, int option, const char *port1_name, const char *port2_name, uint32_t value)
+// C-API Event handles are inserted to this map.
+static std::map<int, std::shared_ptr<xrt::aie::event_impl>> event_cache;
+
+static std::shared_ptr<xrt::aie::event_impl>
+start_profiling(xrtDeviceHandle dhdl, xrt::aie::event::profiling_option option, const char *port1_name, const char *port2_name, uint32_t value)
 {
-  auto device = xrt_core::device_int::get_core_device(dhdl);
-  return device->start_profiling(option, port1_name, port2_name, value);
+  auto core_device = xrt_core::device_int::get_core_device(dhdl);
+  auto handle = core_device->start_profiling(option, port1_name, port2_name, value);
+  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device, handle);
+  return phdl;
 }
 
-static uint64_t
-read_profiling(xrtDeviceHandle dhdl, int phdl)
+static std::shared_ptr<xrt::aie::event_impl>
+start_profiling(const xrt::device& device, xrt::aie::event::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
 {
-  auto device = xrt_core::device_int::get_core_device(dhdl);
-  return device->read_profiling(phdl);
+  auto core_device = device.get_handle();
+  auto handle = core_device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
+  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device, handle);
+  return phdl;
 }
-
-static void
-stop_profiling(xrtDeviceHandle dhdl, int phdl)
-{
-  auto device = xrt_core::device_int::get_core_device(dhdl);
-  return device->stop_profiling(phdl);
-}
-
 inline void
 send_exception_message(const char* msg)
 {
@@ -320,6 +366,36 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 }
 
 } // namespace xrt
+
+////////////////////////////////////////////////////////////////
+// xrt_aie_event C++ API implmentations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+namespace xrt { namespace aie {
+
+event::
+event(const xrt::device& device, xrt::aie::event::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
+  : handle(start_profiling(device, option, port2_name, port1_name, value))
+{}
+
+uint64_t
+event::
+read_profiling() const
+{
+  xdp::native::profiling_wrapper("xrt::aie::event::read_profiling", [=]{
+    handle->read_profiling();
+  });
+}
+
+void
+event::
+stop_profiling() const
+{
+  xdp::native::profiling_wrapper("xrt::aie::event::stop_profiling", [=]{
+    handle->stop_profiling();
+  });
+}
+
+}} //namespace aie, xrt
 
 ////////////////////////////////////////////////////////////////
 // xrt_aie API implementations (xrt_aie.h, xrt_graph.h)
@@ -752,10 +828,15 @@ xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
  *       io_stream_running_event_count (GMIO and PLIO)
  */
 int
-xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
+xrtAIEStartProfiling(xrtDeviceHandle handle, xrt::aie::event::profiling_option option, const char *port1Name, const char *port2Name, uint32_t value)
 {
   try {
-    return start_profiling(handle, option, port1Name, port2Name, value);
+    auto event_ptr = start_profiling(handle, option, port1Name, port2Name, value);
+    if(event_ptr) {
+      int hdl = get_handle_from_shared_ptr(event_ptr); 
+      event_cache[hdl] = event_ptr;
+      return hdl;
+    }
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -777,10 +858,13 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
  * Return:         The performance counter value, or appropriate error number.
  */
 uint64_t
-xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
+xrtAIEReadProfiling(int pHandle)
 {
   try {
-    return read_profiling(handle, pHandle);
+    auto it = event_cache.find(pHandle);
+    if (it != event_cache.end()) {
+      return it->second->read_profiling();
+    } 
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -803,11 +887,15 @@ xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
  * Return:         0 on success, or appropriate error number.
  */
 int
-xrtAIEStopProfiling(xrtDeviceHandle handle, int pHandle)
+xrtAIEStopProfiling(int pHandle)
 {
   try {
-    stop_profiling(handle, pHandle);
-    return 0;
+    auto it = event_cache.find(pHandle);
+    if (it != event_cache.end()) {
+        it->second->stop_profiling();
+        event_cache.erase(it);
+        return 0; 
+    }   
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

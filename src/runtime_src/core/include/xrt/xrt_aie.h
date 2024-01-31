@@ -163,6 +163,22 @@ public:
   }
 };
 
+class event_impl;
+class event 
+{
+public:
+  enum class profiling_option : int { IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE = 0, IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES = 1, IO_STREAM_START_DIFFERENCE_CYCLES = 2, IO_STREAM_RUNNING_EVENT_COUNT = 3 };
+
+  event(const xrt::device& device, profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
+
+  uint64_t read_profiling() const;
+
+  void stop_profiling() const;
+
+private:
+    std::shared_ptr<event_impl> handle;
+};
+
 }} // aie, xrt
 
 /// @cond
@@ -256,6 +272,14 @@ xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 int
 xrtResetAIEArray(xrtDeviceHandle handle);
 
+int
+xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value);
+
+uint64_t
+xrtAIEReadProfiling(int pHandle);
+
+int
+xrtAIEStopProfiling(int pHandle);
 /// @endcond
 
 #ifdef __cplusplus
