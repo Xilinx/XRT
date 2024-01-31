@@ -31,168 +31,168 @@ jobs:
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
           pullRequestUser: ${{ github.event.pull_request.user.login }}
-  build:
-    needs: authorize  
-    strategy:      
-      matrix:      
-        include:      
-          - os: centos78      
-            packageType: rpm      
-          # - os: centos8      
-          #   packageType: rpm      
-          # - os: rhel9      
-          #   packageType: rpm      
-          # - os: ubuntu2004      
-          #   packageType: deb      
-          # - os: ubuntu2204      
-          #   packageType: deb      
+  # build:
+  #   needs: authorize  
+  #   strategy:      
+  #     matrix:      
+  #       include:      
+  #         - os: centos78      
+  #           packageType: rpm      
+  #         # - os: centos8      
+  #         #   packageType: rpm      
+  #         # - os: rhel9      
+  #         #   packageType: rpm      
+  #         # - os: ubuntu2004      
+  #         #   packageType: deb      
+  #         # - os: ubuntu2204      
+  #         #   packageType: deb      
         
-    runs-on: [self-hosted, Ubuntu-22.04]
-    steps:  
-      - name: Set env variables    
-        run: |    
-          echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   steps:  
+  #     - name: Set env variables    
+  #       run: |    
+  #         echo "Setting environment variables..."      
+  #         echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
-      - name: Checkout PR   
-        uses: actions/checkout@v4 
-        with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
-          fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive   
+  #     - name: Checkout PR   
+  #       uses: actions/checkout@v4 
+  #       with: 
+  #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
+  #         ref: "${{ github.event.pull_request.head.ref }}"
+  #         fetch-depth: 0
+  #         path: ${{ github.workspace }}/${{ github.run_number }}  
+  #         submodules: recursive   
 
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows 
-          ref: main
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows
+  #         github-server-url: ${{ secrets.SERVER_URL }}      
+  #         token: ${{ secrets.ACCESS_TOKEN }}      
+  #         path: composite-workflows 
+  #         ref: main
        
-      - name: XRT build     
-        uses: ./composite-workflows/build
-        with:     
-          pipeline: ${{ env.PIPELINE }} 
-          osVersion: ${{ matrix.os }}  
-          packageType: ${{ matrix.packageType }}  
-          workspace: ${{ github.workspace }}
-          buildNumber: ${{ github.run_number }}     
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
-          appConfig: ${{ secrets.APP_CONFIG }} 
-          appConfig1: ${{ secrets.APP_CONFIG1 }} 
-          appConfig2: ${{ secrets.APP_CONFIG2 }} 
-          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+  #     - name: XRT build     
+  #       uses: ./composite-workflows/build
+  #       with:     
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         osVersion: ${{ matrix.os }}  
+  #         packageType: ${{ matrix.packageType }}  
+  #         workspace: ${{ github.workspace }}
+  #         buildNumber: ${{ github.run_number }}     
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         appConfig: ${{ secrets.APP_CONFIG }} 
+  #         appConfig1: ${{ secrets.APP_CONFIG1 }} 
+  #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
+  #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  windows-build:
-    needs: authorize
-    runs-on: Windows
-    steps:
-      - name: Checkout PR   
-        uses: actions/checkout@v4 
-        with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
-          fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive
-          persist-credentials: false 
+  # windows-build:
+  #   needs: authorize
+  #   runs-on: Windows
+  #   steps:
+  #     - name: Checkout PR   
+  #       uses: actions/checkout@v4 
+  #       with: 
+  #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
+  #         ref: "${{ github.event.pull_request.head.ref }}"
+  #         fetch-depth: 0
+  #         path: ${{ github.workspace }}/${{ github.run_number }}  
+  #         submodules: recursive
+  #         persist-credentials: false 
             
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows 
-          ref: main
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows
+  #         github-server-url: ${{ secrets.SERVER_URL }}      
+  #         token: ${{ secrets.ACCESS_TOKEN }}      
+  #         path: composite-workflows 
+  #         ref: main
        
-      - name: XRT windows build     
-        uses: ./composite-workflows/windows-build
-        with:     
-          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
-          buildNumber: ${{ github.run_number }}    
-          release: ${{ env.RELEASE }}
-          accessToken: ${{ secrets.ACCESS_TOKEN }} 
-          workspaceg: ${{ github.workspace }}
-          github-server-url: ${{ secrets.SERVER_URL }}
+  #     - name: XRT windows build     
+  #       uses: ./composite-workflows/windows-build
+  #       with:     
+  #         workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
+  #         buildNumber: ${{ github.run_number }}    
+  #         release: ${{ env.RELEASE }}
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }} 
+  #         workspaceg: ${{ github.workspace }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
 
-  apu-package-build:
-    needs: authorize
-    runs-on: apu
-    # runs-on: Ubuntu-20.04
-    steps:      
-      - name: Set env variables    
-        run: |    
-          echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+  # apu-package-build:
+  #   needs: authorize
+  #   runs-on: apu
+  #   # runs-on: Ubuntu-20.04
+  #   steps:      
+  #     - name: Set env variables    
+  #       run: |    
+  #         echo "Setting environment variables..."      
+  #         echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+  #         echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
-      - name: Checkout PR   
-        uses: actions/checkout@v3 
-        with: 
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"
-          ref: "${{ github.event.pull_request.head.ref }}"
-          fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive  
+  #     - name: Checkout PR   
+  #       uses: actions/checkout@v3 
+  #       with: 
+  #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
+  #         ref: "${{ github.event.pull_request.head.ref }}"
+  #         fetch-depth: 0
+  #         path: ${{ github.workspace }}/${{ github.run_number }}  
+  #         submodules: recursive  
 
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows  
-          ref: main
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows  
+  #         ref: main
        
-      - name: Apu package build for XRT     
-        uses: ./composite-workflows/apu-package
-        with:     
-          pipeline: ${{ env.PIPELINE }}   
-          workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }}    
-          apuPackage: 'True' 
-          release: ${{ env.RELEASE }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
-          appConfig: ${{ secrets.APP_CONFIG }} 
-          appConfig1: ${{ secrets.APP_CONFIG1 }} 
-          appConfig2: ${{ secrets.APP_CONFIG2 }} 
-          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+  #     - name: Apu package build for XRT     
+  #       uses: ./composite-workflows/apu-package
+  #       with:     
+  #         pipeline: ${{ env.PIPELINE }}   
+  #         workspace: ${{ github.workspace }}  
+  #         buildNumber: ${{ github.run_number }}    
+  #         apuPackage: 'True' 
+  #         release: ${{ env.RELEASE }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         appConfig: ${{ secrets.APP_CONFIG }} 
+  #         appConfig1: ${{ secrets.APP_CONFIG1 }} 
+  #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
+  #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  package-download:    
-    needs: build    
-    runs-on: [self-hosted, Ubuntu-22.04]    
-    steps:    
-      - name: Checkout private repository    
-        uses: actions/checkout@v3 
-        with:    
-          repository: actions-int/composite-workflows    
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}    
-          path: composite-workflows 
-          ref: main
+  # package-download:    
+  #   needs: build    
+  #   runs-on: [self-hosted, Ubuntu-22.04]    
+  #   steps:    
+  #     - name: Checkout private repository    
+  #       uses: actions/checkout@v3 
+  #       with:    
+  #         repository: actions-int/composite-workflows    
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}    
+  #         path: composite-workflows 
+  #         ref: main
     
-      - name: Use composite action package download     
-        uses: ./composite-workflows/package-download   
-        with:    
-          runNumber: ${{ github.run_number }}    
-          pipeline: ${{ env.PIPELINE }}    
-          env: ${{ env.ENV }}  
-          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-          accessToken: ${{ secrets.ACCESS_TOKEN }}
-          NPATH: ${{ secrets.NPATH }}
-          USER: ${{ secrets.USER }}
-          github-server-url: ${{ secrets.SERVER_URL }}
+  #     - name: Use composite action package download     
+  #       uses: ./composite-workflows/package-download   
+  #       with:    
+  #         runNumber: ${{ github.run_number }}    
+  #         pipeline: ${{ env.PIPELINE }}    
+  #         env: ${{ env.ENV }}  
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
+  #         NPATH: ${{ secrets.NPATH }}
+  #         USER: ${{ secrets.USER }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
 
 
   extract-platforms:  
-    needs: package-download    
+    # needs: package-download    
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:      
       - name: Checkout extraction Action repository  
@@ -256,7 +256,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
-          ref: main
+          ref: logs
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
@@ -278,104 +278,104 @@ jobs:
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}  
 
-  pcie-sw-emulation-tests:
-    needs: package-download
-    runs-on: [self-hosted, Ubuntu-22.04]
-    strategy:      
-      matrix:      
-        os_list: ['centos_7.8', 'centos_8.1'] 
-    steps:      
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows   
-          ref: xoah
+  # pcie-sw-emulation-tests:
+  #   needs: package-download
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   strategy:      
+  #     matrix:      
+  #       os_list: ['centos_7.8', 'centos_8.1'] 
+  #   steps:      
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows   
+  #         ref: xoah
        
-      - name: Use composite action for pcie-hw       
-        uses: ./composite-workflows/emulation
-        with:  
-          organization: ${{ github.repository }}
-          run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
-          release: ${{ env.RELEASE }}
-          env: ${{ env.ENV }}
-          pipeline: ${{ env.PIPELINE }} 
-          boardType: "pcie"
-          boardState: "gating"
-          boardMode: "sw_emu"
-          os: ${{ matrix.os_list }}
-          runnerName: ${{ runner.name }}
-          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-          apiKey: ${{ secrets.apiKey }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}     
-          USER: ${{ secrets.USER }}
-          NPATH: ${{ secrets.NPATH }}
-          github-server-url: ${{ secrets.SERVER_URL }} 
+  #     - name: Use composite action for pcie-hw       
+  #       uses: ./composite-workflows/emulation
+  #       with:  
+  #         organization: ${{ github.repository }}
+  #         run_number: ${{ github.run_number }}
+  #         buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         boardType: "pcie"
+  #         boardState: "gating"
+  #         boardMode: "sw_emu"
+  #         os: ${{ matrix.os_list }}
+  #         runnerName: ${{ runner.name }}
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+  #         apiKey: ${{ secrets.apiKey }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}     
+  #         USER: ${{ secrets.USER }}
+  #         NPATH: ${{ secrets.NPATH }}
+  #         github-server-url: ${{ secrets.SERVER_URL }} 
 
-  pcie-hw-emulation-tests:
-    needs: package-download
-    runs-on: [self-hosted, Ubuntu-22.04]
-    strategy:      
-      matrix:      
-        os_list: ['centos_7.8', 'centos_8.1'] 
-    steps:      
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows  
-          ref: xoah
+  # pcie-hw-emulation-tests:
+  #   needs: package-download
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   strategy:      
+  #     matrix:      
+  #       os_list: ['centos_7.8', 'centos_8.1'] 
+  #   steps:      
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows  
+  #         ref: xoah
        
-      - name: Use composite action for pcie-hw       
-        uses: ./composite-workflows/emulation
-        with:  
-          organization: ${{ github.repository }}
-          run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
-          release: ${{ env.RELEASE }}
-          env: ${{ env.ENV }}
-          pipeline: ${{ env.PIPELINE }} 
-          boardType: "pcie"
-          boardState: "gating"
-          boardMode: "hw_emu"
-          os: ${{ matrix.os_list }}
-          runnerName: ${{ runner.name }}
-          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-          apiKey: ${{ secrets.apiKey }}  
-          accessToken: ${{ secrets.ACCESS_TOKEN }}   
-          USER: ${{ secrets.USER }}       
-          NPATH: ${{ secrets.NPATH }}
-          github-server-url: ${{ secrets.SERVER_URL }}     
+  #     - name: Use composite action for pcie-hw       
+  #       uses: ./composite-workflows/emulation
+  #       with:  
+  #         organization: ${{ github.repository }}
+  #         run_number: ${{ github.run_number }}
+  #         buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         boardType: "pcie"
+  #         boardState: "gating"
+  #         boardMode: "hw_emu"
+  #         os: ${{ matrix.os_list }}
+  #         runnerName: ${{ runner.name }}
+  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+  #         apiKey: ${{ secrets.apiKey }}  
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }}   
+  #         USER: ${{ secrets.USER }}       
+  #         NPATH: ${{ secrets.NPATH }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}     
                   
-  test-summary:    
-    runs-on: [self-hosted, Ubuntu-22.04]
-    needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
-    if: always()  
-    steps:  
-      - name: Checkout test summary Action repository  
-        uses: actions/checkout@v3  
-        with:  
-          repository: actions-int/XOAH-URL-action
-          ref: 'v0.0.6' 
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
-          path: ./.github/actions/XOAH-URL-action
+  # test-summary:    
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
+  #   if: always()  
+  #   steps:  
+  #     - name: Checkout test summary Action repository  
+  #       uses: actions/checkout@v3  
+  #       with:  
+  #         repository: actions-int/XOAH-URL-action
+  #         ref: 'v0.0.6' 
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}
+  #         path: ./.github/actions/XOAH-URL-action
 
-      - name: Generate test summary URL
-        id: summary  
-        uses: ./.github/actions/XOAH-URL-action
-        with:    
-          pipeline: ${{ env.PIPELINE }} 
-          release: ${{ env.RELEASE }}
-          runNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
-          env: ${{ env.ENV }}  
+  #     - name: Generate test summary URL
+  #       id: summary  
+  #       uses: ./.github/actions/XOAH-URL-action
+  #       with:    
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         release: ${{ env.RELEASE }}
+  #         runNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+  #         env: ${{ env.ENV }}  
     
-      - name: Print test summary URL 
-        run: |    
-          # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
+  #     - name: Print test summary URL 
+  #       run: |    
+  #         # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
+  #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
