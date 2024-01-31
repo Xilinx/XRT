@@ -56,7 +56,7 @@ class AieTraceMetadata {
         return metadataReader->getHardwareGeneration();
       return 0;
     }
-    uint16_t getRowOffset() {
+    uint8_t getRowOffset() {
       if (metadataReader)
         return metadataReader->getAIETileRowOffset();
       return 0;

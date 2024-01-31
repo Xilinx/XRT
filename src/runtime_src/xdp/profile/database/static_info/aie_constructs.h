@@ -61,11 +61,11 @@ enum class module_type {
 
   struct tile_type
   { 
-    uint16_t row;
-    uint16_t col;
+    uint8_t row;
+    uint8_t col;
     uint16_t subtype;
-    uint16_t itr_mem_row;
-    uint16_t itr_mem_col;
+    uint8_t stream_id;
+    uint8_t is_master;
     uint64_t itr_mem_addr;
     bool     is_trigger;
     
@@ -86,17 +86,17 @@ enum class module_type {
     // Loginal name
     std::string logicalName;
     // Column where I/O is mapped
-    short shimColumn;
+    uint8_t shimColumn;
     // slave or master - 0:slave, 1:master
-    short slaveOrMaster;
+    uint8_t slaveOrMaster;
     // Shim stream switch port id
-    short streamId;
+    uint8_t streamId;
     // Channel number
-    short channelNum;
+    uint8_t channelNum;
     // Burst length
-    short burstLength;
+    uint8_t burstLength;
     // I/O type - 0:PLIO, 1:GMIO
-    short type;
+    uint8_t type;
   };  
 
   /*
@@ -106,8 +106,8 @@ enum class module_type {
   struct AIECounter
   {
     uint32_t id;
-    uint16_t column;
-    uint16_t row;
+    uint8_t column;
+    uint8_t row;
     uint8_t counterNumber;
     uint8_t resetEvent;
     uint16_t startEvent;
@@ -117,7 +117,7 @@ enum class module_type {
     std::string module;
     std::string name;
 
-    AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
+    AIECounter(uint32_t i, uint8_t col, uint8_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
                uint32_t load, double freq, const std::string& mod, 
                const std::string& aieName)
@@ -138,13 +138,13 @@ enum class module_type {
   struct TraceGMIO
   {
     uint32_t id;
-    uint16_t shimColumn;
-    uint16_t channelNumber;
-    uint16_t streamId;
-    uint16_t burstLength;
+    uint8_t shimColumn;
+    uint8_t channelNumber;
+    uint8_t streamId;
+    uint8_t burstLength;
 
-    TraceGMIO(uint32_t i, uint16_t col, uint16_t num, 
-              uint16_t stream, uint16_t len)
+    TraceGMIO(uint32_t i, uint8_t col, uint8_t num, 
+              uint8_t stream, uint8_t len)
       : id(i)
       , shimColumn(col)
       , channelNumber(num)

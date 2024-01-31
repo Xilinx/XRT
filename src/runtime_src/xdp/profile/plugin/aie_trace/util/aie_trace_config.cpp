@@ -98,9 +98,9 @@ namespace xdp::aie::trace {
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
-          auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          std::string typeName = (tile.itr_mem_col == 0) ? "slave" : "master"; 
-          auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          std::string typeName = (tile.is_master == 0) ? "slave" : "master"; 
+          auto streamPortId  = static_cast<uint8_t>(tile.stream_id);
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " stream port " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
