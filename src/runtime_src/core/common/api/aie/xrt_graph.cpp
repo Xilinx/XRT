@@ -147,14 +147,10 @@ public:
 
 }
 
-// Function to extract the integer handle from the shared pointer
-int get_handle_from_shared_ptr(const std::shared_ptr<xrt::aie::event_impl>& event_ptr) {
-    // Check if the pointer is valid
+int get_event_handle(const std::shared_ptr<xrt::aie::event_impl>& event_ptr) {
     if (event_ptr) {
-        // Access the handle from the event_impl object and return it
         return event_ptr->getHandle();
     } else {
-        // Return an appropriate error code or handle the error
         return -1;
     }
 }
@@ -833,7 +829,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, xrt::aie::event::profiling_option o
   try {
     auto event_ptr = start_profiling(handle, option, port1Name, port2Name, value);
     if(event_ptr) {
-      int hdl = get_handle_from_shared_ptr(event_ptr); 
+      int hdl = get_event_handle(event_ptr); 
       event_cache[hdl] = event_ptr;
       return hdl;
     }
