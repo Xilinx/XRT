@@ -92,7 +92,7 @@ namespace xdp::aie {
   std::string getModuleName(module_type mod);
 
   XDP_CORE_EXPORT
-  uint8_t convertStringToUint8ToInt(const std::string& input);
+  uint8_t convertStringToUint8(const std::string& input);
 
 } // namespace xdp::aie
 
