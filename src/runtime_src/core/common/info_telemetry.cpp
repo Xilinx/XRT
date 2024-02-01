@@ -80,13 +80,24 @@ aie2_telemetry_info(const xrt_core::device* device)
 {
   boost::property_tree::ptree pt;
 
-  const auto misc_telem = xrt_core::device_query<xrt_core::query::misc_telemetry>(device);
-  pt.put("level_one_interrupt_count", misc_telem.l1_interrupts);
+  try {
+    const auto misc_telem = xrt_core::device_query<xrt_core::query::misc_telemetry>(device);
+    pt.put("level_one_interrupt_count", misc_telem.l1_interrupts);
 
-  add_rtos_tasks(device, pt);
-  add_opcode_info(device, pt);
-  add_stream_buffer_info(device, pt);
-  add_aie_info(device, pt);
+    add_rtos_tasks(device, pt);
+    add_opcode_info(device, pt);
+    add_stream_buffer_info(device, pt);
+    add_aie_info(device, pt);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Queries are not setup
+    boost::property_tree::ptree empty_pt;
+    return empty_pt;
+  }
+  catch (const std::exception& ex) {
+    pt.put("error_msg", ex.what());
+    return pt;
+  }
 
   return pt;
 }

@@ -202,7 +202,11 @@ ReportTelemetry::writeReport(const xrt_core::device* /*_pDevice*/,
 {
   _output << "Telemetry\n";
 
-  boost::property_tree::ptree telemetry_pt = pt.get_child("telemetry");
+  boost::property_tree::ptree telemetry_pt = pt.get_child("telemetry", empty_ptree);
+  if (telemetry_pt.empty()) {
+    _output << "  No telemetry information available\n\n";
+    return;
+  }
 
   _output << generate_misc_string(telemetry_pt) << "\n";
   _output << generate_rtos_string(telemetry_pt) << "\n";
@@ -210,4 +214,5 @@ ReportTelemetry::writeReport(const xrt_core::device* /*_pDevice*/,
   _output << generate_opcode_string(telemetry_pt) << "\n";
   _output << generate_stream_buffer_string(telemetry_pt) << "\n";
   _output << generate_aie_string(telemetry_pt) << "\n";
+  _output << std::endl;
 }
