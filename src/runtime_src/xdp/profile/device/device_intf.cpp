@@ -584,6 +584,7 @@ void DeviceIntf::readDebugIPlayout() {
   if (ifs.gcount() > 0) {
     map = (debug_ip_layout *)(buffer);
 #else
+  //The vector<char> buffer is a chunk of raw bytes, not a string
   std::vector<char> buffer;
   buffer = mDevice->getDebugIpLayout();
   auto map = reinterpret_cast<debug_ip_layout *>(buffer.data());
