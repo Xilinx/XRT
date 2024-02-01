@@ -5,34 +5,38 @@ env:
   PIPELINE: 'xrt' 
   ENV: 'test' 
 
-on:
-  pull_request_target:
-    types: [opened, edited, synchronize]
+on:  
+  workflow_dispatch:
+  workflow_call:
 
-concurrency:  
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-  cancel-in-progress: true 
+# on:
+#   pull_request_target:
+#     types: [opened, edited, synchronize]
+
+# concurrency:  
+#   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
+#   cancel-in-progress: true 
   
 jobs:
-  authorize:
-    runs-on: Ubuntu-22.04
-    steps:
-      - name: Checkout private repository      
-        uses: actions/checkout@v4   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows
-          ref: main
+  # authorize:
+  #   runs-on: Ubuntu-22.04
+  #   steps:
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v4   
+  #       with:      
+  #         repository: actions-int/composite-workflows
+  #         github-server-url: ${{ secrets.SERVER_URL }}      
+  #         token: ${{ secrets.ACCESS_TOKEN }}      
+  #         path: composite-workflows
+  #         ref: main
 
-      - name: authorize
-        uses: ./composite-workflows/authorize
-        with:
-          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
-          pullRequestUser: ${{ github.event.pull_request.user.login }}
+  #     - name: authorize
+  #       uses: ./composite-workflows/authorize
+  #       with:
+  #         accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
+  #         pullRequestUser: ${{ github.event.pull_request.user.login }}
   build:
-    needs: authorize  
+    # needs: authorize  
     strategy:      
       matrix:      
         include:      
@@ -89,7 +93,7 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
-    needs: authorize
+    # needs: authorize
     runs-on: Windows
     steps:
       - name: Checkout PR   
@@ -122,7 +126,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:
-    needs: authorize
+    # needs: authorize
     runs-on: apu
     # runs-on: Ubuntu-20.04
     steps:      
