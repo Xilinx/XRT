@@ -61,11 +61,11 @@ enum class module_type {
 
   struct tile_type
   { 
-    uint16_t row;
-    uint16_t col;
+    uint8_t row;
+    uint8_t col;
     uint16_t subtype;
-    uint16_t itr_mem_row;
-    uint16_t itr_mem_col;
+    uint8_t stream_id;
+    uint8_t is_master;
     uint64_t itr_mem_addr;
     bool     is_trigger;
     
@@ -86,17 +86,17 @@ enum class module_type {
     // Loginal name
     std::string logicalName;
     // Column where I/O is mapped
-    short shimColumn;
+    uint8_t shimColumn;
     // slave or master - 0:slave, 1:master
-    short slaveOrMaster;
+    uint8_t slaveOrMaster;
     // Shim stream switch port id
-    short streamId;
+    uint8_t streamId;
     // Channel number
-    short channelNum;
+    uint8_t channelNum;
     // Burst length
-    short burstLength;
+    uint8_t burstLength;
     // I/O type - 0:PLIO, 1:GMIO
-    short type;
+    uint8_t type;
   };  
 
   /*
@@ -106,8 +106,8 @@ enum class module_type {
   struct AIECounter
   {
     uint32_t id;
-    uint16_t column;
-    uint16_t row;
+    uint8_t column;
+    uint8_t row;
     uint8_t counterNumber;
     uint8_t resetEvent;
     uint16_t startEvent;
@@ -117,7 +117,7 @@ enum class module_type {
     std::string module;
     std::string name;
 
-    AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
+    AIECounter(uint32_t i, uint8_t col, uint8_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
                uint32_t load, double freq, const std::string& mod, 
                const std::string& aieName)
@@ -138,13 +138,13 @@ enum class module_type {
   struct TraceGMIO
   {
     uint32_t id;
-    uint16_t shimColumn;
-    uint16_t channelNumber;
-    uint16_t streamId;
-    uint16_t burstLength;
+    uint8_t shimColumn;
+    uint8_t channelNumber;
+    uint8_t streamId;
+    uint8_t burstLength;
 
-    TraceGMIO(uint32_t i, uint16_t col, uint16_t num, 
-              uint16_t stream, uint16_t len)
+    TraceGMIO(uint32_t i, uint8_t col, uint8_t num, 
+              uint8_t stream, uint8_t len)
       : id(i)
       , shimColumn(col)
       , channelNumber(num)
@@ -211,9 +211,16 @@ enum class module_type {
       uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
       uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
       uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
+      bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
+      int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
       std::vector<aie_cfg_counter> pc;
 
-      aie_cfg_base(uint32_t count) : pc(count) {};
+      aie_cfg_base(uint32_t count) : pc(count) {
+        for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
+          port_trace_is_master[i] = false;
+          port_trace_ids[i] = -1;
+        }
+      };
   };
 
   /*
@@ -226,7 +233,6 @@ enum class module_type {
   {
   public:
     uint32_t trace_mode = 1;
-    std::string port_trace = "null";
     aie_cfg_core() : aie_cfg_base(4)
     {
       group_event_config = {
@@ -261,16 +267,9 @@ enum class module_type {
   class aie_cfg_peripheral_tile : public aie_cfg_base
   {
   public:
-    bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
-    int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
     int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
     int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
-    aie_cfg_peripheral_tile() : aie_cfg_base(4) {
-      for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
-        port_trace_is_master[i] = false;
-        port_trace_ids[i] = -1;
-      }
-    }
+    aie_cfg_peripheral_tile() : aie_cfg_base(4) {}
   };
 
   /*

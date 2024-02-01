@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,25 +26,27 @@ namespace xdp {
    */
 
   AIEStatusWriter::AIEStatusWriter(const char* fileName,
-      const char* deviceName, uint64_t deviceIndex, int hwGen)
+                                   const char* deviceName,
+                                   uint64_t deviceIndex,
+                                   int hwGen,
+                                   std::shared_ptr<xrt_core::device> d)
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
     , mHardwareGen(hwGen)
     , mWroteValidData(false)
+    , mXrtCoreDevice(d)
   {
   }
 
   bool AIEStatusWriter::write(bool openNewFile)
   {
-    auto xrtDevice = xrt::device((int)mDeviceIndex);
-    return writeDevice(openNewFile, xrtDevice);
+    return writeDevice(openNewFile, xrt::device(mXrtCoreDevice));
   }
 
   bool AIEStatusWriter::write(bool openNewFile, void* handle)
   {
-    auto xrtDevice = xrt::device(handle);
-    return writeDevice(openNewFile, xrtDevice);
+    return writeDevice(openNewFile, xrt::device(mXrtCoreDevice));
   }
 
   bool AIEStatusWriter::writeDevice(bool openNewFile, xrt::device xrtDevice)

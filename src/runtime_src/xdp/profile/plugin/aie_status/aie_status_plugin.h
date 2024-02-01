@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,16 +21,16 @@
 #include <atomic>
 #include <boost/property_tree/ptree.hpp>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/database/static_info/aie_util.h"
-#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
-
 #include "core/common/device.h"
 #include "xaiefal/xaiefal.hpp"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 extern "C" {
 #include <xaiengine.h>
@@ -64,6 +64,7 @@ namespace xdp {
     uint32_t mPollingInterval;
     boost::property_tree::ptree mAieMeta;
     std::unique_ptr<aie::BaseFiletypeImpl> filetype;
+    std::shared_ptr<xrt_core::device> mXrtCoreDevice;
 
     // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;

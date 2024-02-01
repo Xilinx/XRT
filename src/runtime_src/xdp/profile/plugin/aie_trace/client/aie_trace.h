@@ -45,7 +45,7 @@ namespace xdp {
                         const std::string metricSet, uint8_t channel, 
                         std::vector<XAie_Events>& events);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
-      module_type getTileType(uint16_t row);
+      module_type getTileType(uint8_t row);
       uint16_t getRelativeRow(uint16_t absRow);
       
       bool isInputSet(const module_type type, const std::string metricSet);

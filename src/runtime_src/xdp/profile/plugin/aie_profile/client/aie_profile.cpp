@@ -265,8 +265,8 @@ namespace xdp {
     if (type == module_type::shim) {
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
-      auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+      auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      auto streamPortId  = tile.stream_id;
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       std::stringstream msg;

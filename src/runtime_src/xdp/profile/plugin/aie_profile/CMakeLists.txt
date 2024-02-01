@@ -8,7 +8,7 @@
 # ====================================================================
 
 if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
-  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/win")
+  set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/client")
 elseif (${XRT_NATIVE_BUILD} STREQUAL "yes")
   set(IMPL_DIR "${PROFILE_DIR}/plugin/aie_profile/x86")
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")

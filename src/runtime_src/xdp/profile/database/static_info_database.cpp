@@ -895,8 +895,8 @@ namespace xdp {
   }
 
   void VPStaticDatabase::addTraceGMIO(uint64_t deviceId, uint32_t i,
-                                      uint16_t col, uint16_t num,
-                                      uint16_t stream, uint16_t len)
+                                      uint8_t col, uint8_t num,
+                                      uint8_t stream, uint8_t len)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -906,7 +906,7 @@ namespace xdp {
   }
 
   void VPStaticDatabase::addAIECounter(uint64_t deviceId, uint32_t i,
-                                       uint16_t col, uint16_t r, uint8_t num,
+                                       uint8_t col, uint8_t row, uint8_t num,
                                        uint16_t start, uint16_t end,
                                        uint8_t reset, uint32_t load,
                                        double freq, const std::string& mod,
@@ -916,7 +916,7 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
-    deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
+    deviceInfo[deviceId]->addAIECounter(i, col, row, num, start, end, reset,
                                         load, freq, mod, aieName) ;
   }
 
