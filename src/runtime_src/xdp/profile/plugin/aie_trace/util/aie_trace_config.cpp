@@ -107,7 +107,7 @@ namespace xdp::aie::trace {
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           config.port_trace_ids[portnum] = streamPortId;
-          config.port_trace_is_master[portnum] = (tile.itr_mem_col != 0);
+          config.port_trace_is_master[portnum] = (tile.is_master != 0);
         }
         else {
           // Memory tiles

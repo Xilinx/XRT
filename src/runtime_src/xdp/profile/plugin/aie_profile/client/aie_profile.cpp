@@ -136,7 +136,7 @@ namespace xdp {
           continue;
 
         auto& metricSet  = tileMetric.second;
-        auto loc         = XAie_TileLoc(static_cast<uint8_t>(col), static_cast<uint8_t>(row));
+        auto loc         = XAie_TileLoc(col, row);
         auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
                          : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
                          : ((type == module_type::shim) ? shimStartEvents[metricSet]
