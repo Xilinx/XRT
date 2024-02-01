@@ -20,6 +20,7 @@
 #define _XDP_PROIFLE_XDP_BASE_DEVICE_H
 
 #include<string>
+#include<vector>
 #include "core/include/xrt.h"
 
 namespace xdp {
