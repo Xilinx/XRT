@@ -607,7 +607,7 @@ xclResetAieArray(xclDeviceHandle handle)
 }
 
 int
-xclStartProfiling(xclDeviceHandle handle, xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Name, uint32_t value)
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
 {
 #ifndef __AIESIM__
   auto device = xrt_core::get_userpf_device(handle);
@@ -990,7 +990,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 }
 
 int
-xclStartProfiling(xclDeviceHandle handle, xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Name, uint32_t value)
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
 {
   try {
     return api::xclStartProfiling(handle, option, port1Name, port2Name, value);

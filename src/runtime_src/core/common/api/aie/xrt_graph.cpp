@@ -239,7 +239,8 @@ static std::shared_ptr<xrt::aie::event_impl>
 start_profiling(xrtDeviceHandle dhdl, xrt::aie::event::profiling_option option, const char *port1_name, const char *port2_name, uint32_t value)
 {
   auto core_device = xrt_core::device_int::get_core_device(dhdl);
-  auto handle = core_device->start_profiling(option, port1_name, port2_name, value);
+  int opt = static_cast<int>(option);
+  auto handle = core_device->start_profiling(opt, port1_name, port2_name, value);
   auto phdl = std::make_shared<xrt::aie::event_impl>(core_device, handle);
   return phdl;
 }
@@ -248,7 +249,8 @@ static std::shared_ptr<xrt::aie::event_impl>
 start_profiling(const xrt::device& device, xrt::aie::event::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
 {
   auto core_device = device.get_handle();
-  auto handle = core_device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
+  int opt = static_cast<int>(option);
+  auto handle = core_device->start_profiling(opt, port1_name.c_str(), port2_name.c_str(), value);
   auto phdl = std::make_shared<xrt::aie::event_impl>(core_device, handle);
   return phdl;
 }
@@ -824,10 +826,11 @@ xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
  *       io_stream_running_event_count (GMIO and PLIO)
  */
 int
-xrtAIEStartProfiling(xrtDeviceHandle handle, xrt::aie::event::profiling_option option, const char *port1Name, const char *port2Name, uint32_t value)
+xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
 {
   try {
-    auto event_ptr = start_profiling(handle, option, port1Name, port2Name, value);
+    xrt::aie::event::profiling_option opt = static_cast<xrt::aie::event::profiling_option>(option);
+    auto event_ptr = start_profiling(handle, opt, port1Name, port2Name, value);
     if(event_ptr) {
       int hdl = get_event_handle(event_ptr); 
       event_cache[hdl] = event_ptr;

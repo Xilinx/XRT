@@ -78,7 +78,7 @@ int
 xclGMIOWait(xclDeviceHandle handle, const char *gmioName);
 
 int
-xclStartProfiling(xclDeviceHandle handle, xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Nmae, uint32_t value);
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value);
 
 uint64_t
 xclReadProfiling(xclDeviceHandle handle, int phdl);

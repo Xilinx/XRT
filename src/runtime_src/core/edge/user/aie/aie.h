@@ -40,6 +40,13 @@ extern "C" {
 
 #define CONVERT_LCHANL_TO_PCHANL(l_ch) (l_ch > 1 ? l_ch - 2 : l_ch)
 
+enum xrtProfilingOption {
+  IO_TOTAL_STREAM_RUNNING_TO_IDLE_CYCLE = 0,
+  IO_STREAM_START_TO_BYTES_TRANSFERRED_CYCLES,
+  IO_STREAM_START_DIFFERENCE_CYCLES,
+  IO_STREAM_RUNNING_EVENT_COUNT
+};
+
 namespace zynqaie {
 
 struct BD {
@@ -66,11 +73,8 @@ struct ShimDMA {
 };
 
 struct EventRecord {
-    xrt::aie::event::profiling_option option;
+    int option;
     std::vector<std::shared_ptr<xaiefal::XAieRsc>> acquiredResources;
-
-    EventRecord(xrt::aie::event::profiling_option opt, const std::vector<std::shared_ptr<xaiefal::XAieRsc>>& resources)
-        : option(opt), acquiredResources(resources) {}
 };
 
 class Aie {
@@ -107,7 +111,7 @@ public:
     reset(const xrt_core::device* device);
 
     int
-    start_profiling(xrt::aie::event::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
+    start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
 
     uint64_t
     read_profiling(int phdl);

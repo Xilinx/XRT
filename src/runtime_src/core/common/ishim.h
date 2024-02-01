@@ -239,7 +239,7 @@ struct ishim
   wait_gmio(const char *gmioName) = 0;
 
   virtual int
-  start_profiling(xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
 
   virtual uint64_t
   read_profiling(int phdl) = 0;
@@ -525,7 +525,7 @@ struct shim : public DeviceType
   }
 
   int
-  start_profiling(xrt::aie::event::profiling_option option, const char* port1Name, const char* port2Name, uint32_t value) override
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) override
   {
     return xclStartProfiling(DeviceType::get_device_handle(), option, port1Name, port2Name, value);
   }
