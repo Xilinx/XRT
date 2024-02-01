@@ -196,7 +196,7 @@ namespace xdp {
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName);
 
-          std::vector<uint64_t> Regs = regValues[type];
+          std::vector<uint64_t> Regs = regValues.at(type);
           // 25 is column offset and 20 is row offset for IPU
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20)});
 

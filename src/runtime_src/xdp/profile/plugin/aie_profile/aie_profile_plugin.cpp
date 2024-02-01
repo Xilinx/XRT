@@ -86,7 +86,7 @@ namespace xdp {
     return AieProfilePlugin::live;
   }
 
-  uint64_t AieProfilePlugin::getDeviceIDFromHandle(const void* handle)
+  uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
   {
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
@@ -94,7 +94,7 @@ namespace xdp {
 
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
-#elsem
+#else
     constexpr uint32_t PATH_LENGTH = 512;
     
     char pathBuf[PATH_LENGTH];
@@ -212,7 +212,7 @@ auto time = std::time(nullptr);
 
   }
 
-  void AieProfilePlugin::pollAIECounters(const uint32_t index, const void* handle)
+  void AieProfilePlugin::pollAIECounters(const uint32_t index, void* handle)
   {
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())
@@ -284,7 +284,7 @@ auto time = std::time(nullptr);
     handleToAIEData.clear();
   }
 
-  void AieProfilePlugin::broadcast(const VPDatabase::MessageType msg, void* /*blob*/)
+  void AieProfilePlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
   {
      switch(msg) {
       case VPDatabase::MessageType::DUMP_AIE_PROFILE:

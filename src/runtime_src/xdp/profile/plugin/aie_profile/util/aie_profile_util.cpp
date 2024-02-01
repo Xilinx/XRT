@@ -206,7 +206,7 @@ namespace xdp::aie::profile {
   * Modify configured events based on the channel and hardware generation
   ***************************************************************************/
   void modifyEvents(const module_type type, const uint16_t subtype, const uint8_t channel,
-                                         const std::vector<XAie_Events>& events, const int hwGen)
+                                        std::vector<XAie_Events>& events, const int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
       return;

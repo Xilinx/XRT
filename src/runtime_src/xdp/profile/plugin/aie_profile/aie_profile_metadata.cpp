@@ -519,8 +519,8 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (std::find(metricStrings[mod].begin(), metricStrings[mod].end(), tileMetric.second) ==
-          metricStrings[mod].end()) {
+      if (std::find(metricStrings.at(mod).begin(), metricStrings.at(mod).end(), tileMetric.second) ==
+          metricStrings.at(mod).end()) {
         if (showWarning) {
           std::stringstream msg;
           msg << "Unable to find " << moduleNames[moduleIdx] << " metric set " << tileMetric.second
@@ -807,7 +807,7 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      auto metricVec = metricStrings[module_type::shim];
+      auto metricVec = metricStrings.at(module_type::shim);
 
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
         if (showWarning) {
@@ -829,7 +829,7 @@ namespace xdp {
 
   uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod)
   {
-    auto stringVector = metricStrings[mod];
+    auto stringVector = metricStrings.at(mod);
     auto itr = std::find(stringVector.begin(), stringVector.end(), metricString);
 
     if (itr != stringVector.cend()) {

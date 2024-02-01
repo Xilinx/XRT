@@ -32,12 +32,12 @@ namespace xdp {
     void updateAIEDevice(void* handle);
     void endPollforDevice(void* handle);
     static bool alive();
-    void broadcast(const VPDatabase::MessageType msg, void* blob);
+    void broadcast(VPDatabase::MessageType msg, void* blob);
 
   private:
     virtual void writeAll(bool openNewFiles) override;
-    uint64_t getDeviceIDFromHandle(const void* handle);
-    void pollAIECounters(const uint32_t index, const void* handle);
+    uint64_t getDeviceIDFromHandle(void* handle);
+    void pollAIECounters(const uint32_t index, void* handle);
     void endPoll();
 
   private:
