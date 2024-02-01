@@ -963,7 +963,7 @@ struct kds_cu_info : request
     uint32_t status;
     uint64_t usages;
   };
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<data>;
   using data_type = struct data;
   static const key_type key = key_type::kds_cu_info;
 
@@ -1561,7 +1561,7 @@ struct aie_telemetry : request
     uint64_t deep_sleep_count;
   };
 
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<data>;
   static const key_type key = key_type::aie_telemetry;
 
   virtual std::any
@@ -1578,7 +1578,7 @@ struct misc_telemetry : request
     uint64_t l1_interrupts;
   };
 
-  using result_type = struct data;
+  using result_type = data;
   static const key_type key = key_type::misc_telemetry;
 
   virtual std::any
@@ -1594,7 +1594,7 @@ struct opcode_telemetry : request
     uint64_t count;
   };
 
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<data>;
   static const key_type key = key_type::opcode_telemetry;
 
   virtual std::any
@@ -1616,10 +1616,10 @@ struct rtos_telemetry : request
     uint64_t syscalls;
     uint64_t dma_access;
     uint64_t resource_acquisition;
-    std::vector<struct dtlb_data> dtlbs;
+    std::vector<dtlb_data> dtlbs;
   };
 
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<data>;
   static const key_type key = key_type::rtos_telemetry;
 
   virtual std::any
@@ -1635,7 +1635,7 @@ struct stream_buffer_telemetry : request
     uint64_t tokens;
   };
 
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<data>;
   static const key_type key = key_type::stream_buffer_telemetry;
 
   virtual std::any
@@ -1653,7 +1653,7 @@ struct firmware_version : request
     uint32_t build;
   };
 
-  using result_type = struct data;
+  using result_type = data;
   static const key_type key = key_type::firmware_version;
 
   virtual std::any
@@ -1662,7 +1662,7 @@ struct firmware_version : request
 
 struct clock_freqs_mhz : request
 {
-  using result_type = std::vector<std::string> ;
+  using result_type = std::vector<std::string>;
   static const key_type key = key_type::clock_freqs_mhz;
   static const char* name() { return "clocks"; }
 

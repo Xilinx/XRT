@@ -6,7 +6,6 @@
 #include "core/common/info_telemetry.h"
 #include "tools/common/Table2D.h"
 
-#include <map>
 #include <vector>
 
 const boost::property_tree::ptree empty_ptree;
