@@ -370,7 +370,7 @@ namespace xdp {
       EventVector interfaceEvents;
       if (type == module_type::core) {
         coreEvents = coreEventSets[metricSet];
-        memoryCrossEvents = memoryEventSets[metricSet];
+        memoryEvents = memoryEventSets[metricSet];
       }
       else if (type == module_type::mem_tile) {
         memoryEvents = memoryTileEventSets[metricSet];
@@ -432,7 +432,7 @@ namespace xdp {
           // If no memory counters are used, then we need to broadcast the core
           // counter
           if (memoryCounterStartEvents.empty())
-            memoryCrossEvents.push_back(counterEvent);
+            memoryEvents.push_back(counterEvent);
 
           if (perfCounter->start() != XAIE_OK)
             break;
