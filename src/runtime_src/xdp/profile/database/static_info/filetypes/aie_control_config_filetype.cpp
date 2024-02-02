@@ -343,7 +343,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
         int num_tiles = count;
         count = startCount;
         for (auto& node : graph.second.get_child("core_rows"))
-            tiles.at(count++).row =xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
 
         count = startCount;
