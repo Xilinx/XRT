@@ -29,6 +29,8 @@ Currently supported ``xbmgmt`` commands are
     - ``xbmgmt program``
     - ``xbmgmt reset``
 
+**Note**: For applicable commands, if only one device is present on the system ``--device`` (or ``-d``) is not required. If more than one device is present in the system, ``--device`` (or ``-d``) is required.
+
 
 xbmgmt configure
 ~~~~~~~~~~~

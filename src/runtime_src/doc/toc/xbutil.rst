@@ -31,6 +31,8 @@ Currently supported ``xbutil`` commands are
     - ``xbutil configure``
     - ``xbutil reset``
 
+**Note**: For applicable commands, if only one device is present on the system ``--device`` (or ``-d``) is not required. If more than one device is present in the system, ``--device`` (or ``-d``) is required.
+
 
 xbutil program
 ~~~~~~~~~~~~~~
