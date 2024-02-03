@@ -16,14 +16,14 @@ jobs:
         include:      
           - os: centos78      
             packageType: rpm      
-          # - os: centos8      
-          #   packageType: rpm      
-          # - os: rhel9      
-          #   packageType: rpm      
-          # - os: ubuntu2004      
-          #   packageType: deb      
-          # - os: ubuntu2204      
-          #   packageType: deb      
+          - os: centos8      
+            packageType: rpm      
+          - os: rhel9      
+            packageType: rpm      
+          - os: ubuntu2004      
+            packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -114,7 +114,7 @@ jobs:
           # repository: "${{ github.event.pull_request.head.repo.full_name }}"
           repository: "Xilinx/XRT"
           # ref: "${{ github.event.pull_request.head.ref }}"
-          ref: "04c800f2922dc2e6180db8bcb22d56b681a6078c" 
+          ref: "3a9f1dde3aac457d2b0baa28caf584a1b0812129" 
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
           github-server-url: 'https://github.com'
