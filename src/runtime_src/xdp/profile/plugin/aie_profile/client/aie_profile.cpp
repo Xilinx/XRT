@@ -287,7 +287,7 @@ namespace xdp {
 
   void
   AieProfile_WinImpl::
-  poll(const uint32_t index, const void* handle)
+  poll(const uint32_t index, void* handle)
   {
     if (finishedPoll)
       return;

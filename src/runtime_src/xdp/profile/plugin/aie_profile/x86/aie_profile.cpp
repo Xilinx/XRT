@@ -172,7 +172,7 @@ namespace xdp {
     return true;
   }
 
-  void AieProfile_x86Impl::poll(const uint32_t index, const void* handle)
+  void AieProfile_x86Impl::poll(const uint32_t index, void* handle)
   {
     try {
       // input bo
