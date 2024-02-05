@@ -32,7 +32,7 @@ namespace xdp {
       void updateDevice();
       void poll(const uint32_t index, void* handle);
       void freeResources();
-      bool setMetricsSettings(const uint64_t deviceId, const void* handle);
+      bool setMetricsSettings(const uint64_t deviceId, void* handle);
 
     private:
       xrt::device device;

@@ -90,7 +90,7 @@ namespace xdp {
     memTileEndEvents = memTileStartEvents;
   }
 
-  bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, const void* handle)
+  bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
     aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
@@ -364,7 +364,7 @@ namespace xdp {
 
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
-  AieProfile_EdgeImpl::setMetricsSettings(const uint64_t deviceId, const void* handle)
+  AieProfile_EdgeImpl::setMetricsSettings(const uint64_t deviceId, void* handle)
   {
     int counterId = 0;
     bool runtimeCounters = false;
