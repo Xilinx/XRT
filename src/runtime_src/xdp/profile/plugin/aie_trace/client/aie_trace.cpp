@@ -499,7 +499,7 @@ namespace xdp {
           auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
           auto streamPortId  = tile.stream_id;
 
-          std::string typeName = (tile.itr_mem_col == 0) ? "slave" : "master";
+          std::string typeName = (tile.is_master) ? "master" : "slave";
           std::string msg = "Configuring interface tile stream switch to monitor " 
                           + typeName + " stream port " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
