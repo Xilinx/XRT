@@ -827,7 +827,7 @@ namespace xdp {
           }
         }
 
-        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tileMetric.first, 
+        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, 
                                                           xaieTile, loc, type, metricSet, 
                                                           channel0, channel1, interfaceEvents, cfgTile->interface_tile_trace_config);
 
