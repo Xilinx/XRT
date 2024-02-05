@@ -777,7 +777,7 @@ namespace xdp {
       auto loc        = XAie_TileLoc(col, row);
 
       std::stringstream cmsg;
-      cmsg << "Configuring tile (" << col << "," << row << ") in module type: " << typeInt << ".";
+      cmsg << "Configuring tile (" << +col << "," << +row << ") in module type: " << typeInt << ".";
       xrt_core::message::send(severity_level::info, "XRT", cmsg.str());
 
       // xaiefal::XAieMod core;
@@ -826,8 +826,8 @@ namespace xdp {
         std::stringstream infoMsg;
         auto tileName = (type == module_type::mem_tile) ? "memory" 
             : ((type == module_type::shim) ? "interface" : "AIE");
-        infoMsg << "Configuring " << tileName << " tile (" << (int)col << "," 
-                << (int)row << ") for trace using metric set " << metricSet;
+        infoMsg << "Configuring " << tileName << " tile (" << +col << "," 
+                << +row << ") for trace using metric set " << metricSet;
         xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
       }
 
