@@ -30,7 +30,7 @@ namespace xdp {
       ~AieProfile_x86Impl() = default;
 
       void updateDevice();
-      void poll(const uint32_t index, const void* handle);
+      void poll(const uint32_t index, void* handle);
       void freeResources();
       bool setMetricsSettings(const uint64_t deviceId, const void* handle);
 

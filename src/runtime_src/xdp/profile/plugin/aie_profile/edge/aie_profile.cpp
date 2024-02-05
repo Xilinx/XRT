@@ -40,7 +40,7 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 
 namespace {
-  static void* fetchAieDevInst(const void* devHandle)
+  static void* fetchAieDevInst(void* devHandle)
   {
     auto drv = ZYNQ::shim::handleCheck(devHandle);
     if (!drv)
@@ -51,7 +51,7 @@ namespace {
     return aieArray->getDevInst() ;
   }
 
-  static void* allocateAieDevice(const void* devHandle)
+  static void* allocateAieDevice(void* devHandle)
   {
     auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
     if (!aieDevInst)
@@ -495,7 +495,7 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::poll(const uint32_t index, const void* handle)
+  void AieProfile_EdgeImpl::poll(const uint32_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
