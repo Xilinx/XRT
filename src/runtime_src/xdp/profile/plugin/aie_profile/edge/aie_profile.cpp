@@ -40,7 +40,7 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_metadata.h"
 
 namespace {
-  static void* fetchAieDevInst(void* devHandle)
+  static void* fetchAieDevInst(const void* devHandle)
   {
     auto drv = ZYNQ::shim::handleCheck(devHandle);
     if (!drv)
@@ -51,7 +51,7 @@ namespace {
     return aieArray->getDevInst() ;
   }
 
-  static void* allocateAieDevice(void* devHandle)
+  static void* allocateAieDevice(const void* devHandle)
   {
     auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
     if (!aieDevInst)

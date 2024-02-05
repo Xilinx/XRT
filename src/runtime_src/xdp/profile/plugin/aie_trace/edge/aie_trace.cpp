@@ -87,10 +87,6 @@ namespace xdp {
     memoryEventSets = aie::trace::getMemoryEventSets(hwGen);
     memoryTileEventSets = aie::trace::getMemoryTileEventSets(hwGen);
     interfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
-    coreEventSets = aie::trace::getCoreEventSets();
-    memoryEventSets = aie::trace::getMemoryEventSets();
-    memoryTileEventSets = aie::trace::getMemoryTileEventSets();
-    interfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
 
     // Core/memory module counters
     coreCounterStartEvents = aie::trace::getCoreCounterStartEvents(hwGen, counterScheme);
@@ -548,7 +544,6 @@ namespace xdp {
         aie::trace::configGroupEvents(aieDevInst, loc, mod, type, metricSet);
 
         // Set overall start/end for trace capture
-        // Wendy said this should be done first
         if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK)
           break;
 
@@ -610,9 +605,31 @@ namespace xdp {
         }
 
         // Set overall start/end for trace capture
-        // Wendy said this should be done first
-        auto traceStartEvent = (type == module_type::core) ? coreTraceStartEvent : memoryTileTraceStartEvent;
-        auto traceEndEvent = (type == module_type::core) ? coreTraceEndEvent : memoryTileTraceEndEvent;
+        // NOTE: this should be done first for FAL-based implementations
+        auto memoryTrace = memory.traceControl();
+        auto traceStartEvent = (type == module_type::core) ? mCoreTraceStartEvent : mMemoryTileTraceStartEvent;
+        auto traceEndEvent = (type == module_type::core) ? mCoreTraceEndEvent : mMemoryTileTraceEndEvent;
+        
+        aie_cfg_base aieConfig = cfgTile->core_trace_config;
+        if (type == module_type::mem_tile)
+          aieConfig = cfgTile->memory_tile_trace_config;
+
+        // Configure combo events for metric sets that include DMA events        
+        auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, loc, 
+            XAIE_CORE_MOD, module_type::dma, metricSet, aieConfig);
+        if (comboEvents.size() == 2) {
+          traceStartEvent = comboEvents.at(0);
+          traceEndEvent = comboEvents.at(1);
+        }
+
+        // Configure event ports on stream switch
+        // NOTE: These are events from the core module stream switch
+        //       outputted on the memory module trace stream. 
+        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
+            xaieTile, loc, type, metricSet, 0, 0, memoryEvents, aieConfig);
+        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(mStreamPorts));
+          
+        // Set overall start/end for trace capture
         if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
           break;
 
