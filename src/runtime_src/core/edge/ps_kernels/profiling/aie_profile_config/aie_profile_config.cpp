@@ -54,7 +54,7 @@ class xrtHandles : public pscontext
 
 // Anonymous namespace for helper functions used in this file
 namespace {
-  using tile_type = xrt_core::edge::aie::tile_type;
+  using tile_type = xdp::tile_type;
   using CoreMetrics = xdp::built_in::CoreMetrics;
   using MemoryMetrics = xdp::built_in::MemoryMetrics;
   using InterfaceMetrics = xdp::built_in::InterfaceMetrics;
