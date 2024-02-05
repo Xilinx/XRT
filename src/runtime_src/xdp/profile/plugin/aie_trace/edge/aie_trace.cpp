@@ -607,8 +607,8 @@ namespace xdp {
         // Set overall start/end for trace capture
         // NOTE: this should be done first for FAL-based implementations
         auto memoryTrace = memory.traceControl();
-        auto traceStartEvent = (type == module_type::core) ? mCoreTraceStartEvent : mMemoryTileTraceStartEvent;
-        auto traceEndEvent = (type == module_type::core) ? mCoreTraceEndEvent : mMemoryTileTraceEndEvent;
+        auto traceStartEvent = (type == module_type::core) ? coreTraceStartEvent : memoryTileTraceStartEvent;
+        auto traceEndEvent = (type == module_type::core) ? coreTraceEndEvent : memoryTileTraceEndEvent;
         
         aie_cfg_base aieConfig = cfgTile->core_trace_config;
         if (type == module_type::mem_tile)
@@ -627,7 +627,7 @@ namespace xdp {
         //       outputted on the memory module trace stream. 
         auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
             xaieTile, loc, type, metricSet, 0, 0, memoryEvents, aieConfig);
-        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(mStreamPorts));
+        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(streamPorts));
           
         // Set overall start/end for trace capture
         if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
@@ -829,7 +829,7 @@ namespace xdp {
 
         streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tileMetric.first, 
                                                           xaieTile, loc, type, metricSet, 
-                                                          channel0, channel1, interfaceEvents);
+                                                          channel0, channel1, interfaceEvents, cfgTile->interface_tile_trace_config);
 
         // Configure interface tile trace events
         for (int i = 0; i < interfaceEvents.size(); i++) {
