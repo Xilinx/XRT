@@ -381,6 +381,10 @@ if [[ $apu_package == 1 ]]; then
   petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
   petalinux-build
+  if [ $? != 0 ]; then
+    error "XRT build failed"
+  fi  
+
   if [[ $gen_sysroot == 1 ]]; then
         petalinux-build --sdk
         echo "Run $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/sdk.sh to generate the syroot"
