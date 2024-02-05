@@ -55,7 +55,7 @@ class xrtHandles : public pscontext {
 
 // Anonymous namespace for helper functions used in this file
 namespace {
-  using tile_type = xrt_core::edge::aie::tile_type;
+  using tile_type = xdp::tile_type;
   using CoreMetrics = xdp::built_in::CoreMetrics;
   using MemoryMetrics = xdp::built_in::MemoryMetrics;
   using InterfaceMetrics = xdp::built_in::InterfaceMetrics;
@@ -316,11 +316,11 @@ namespace {
       XAie_ModuleType mod = falModuleTypes[module];
 
       auto mConfigMetrics = processMetrics(params, module);
-      std::map<xrt_core::edge::aie::tile_type, uint8_t> configChannel0;
-      std::map<xrt_core::edge::aie::tile_type, uint8_t> configChannel1;
+      std::map<xdp::tile_type, uint8_t> configChannel0;
+      std::map<xdp::tile_type, uint8_t> configChannel1;
 
       for (int i = 0; i < params->numTiles; i ++) {
-        auto tile = xrt_core::edge::aie::tile_type();
+        auto tile = xdp::tile_type();
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
 
