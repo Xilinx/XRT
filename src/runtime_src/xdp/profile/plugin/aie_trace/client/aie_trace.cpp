@@ -826,8 +826,8 @@ namespace xdp {
         std::stringstream infoMsg;
         auto tileName = (type == module_type::mem_tile) ? "memory" 
             : ((type == module_type::shim) ? "interface" : "AIE");
-        infoMsg << "Configuring " << tileName << " tile (" << col << "," << row 
-                << ") for trace using metric set " << metricSet;
+        infoMsg << "Configuring " << tileName << " tile (" << (int)col << "," 
+                << (int)row << ") for trace using metric set " << metricSet;
         xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
       }
 
@@ -1227,7 +1227,7 @@ namespace xdp {
           msg << numMemoryTraceEvents << " memory tile";
         else if (type == module_type::shim)
           msg << numInterfaceTraceEvents << " interface tile";
-        msg << " trace events for tile (" << col << "," << row 
+        msg << " trace events for tile (" << (int)col << "," << (int)row 
             << "). Adding tile to static database.";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
