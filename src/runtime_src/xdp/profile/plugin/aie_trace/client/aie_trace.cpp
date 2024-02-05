@@ -1038,8 +1038,6 @@ namespace xdp {
           }
         }
 
-        xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
-
         // For now, use hard-coded broadcast IDs for module cross events
         uint8_t bcId = firstBroadcastId;
         int bcIndex = (firstBroadcastId == 10) ? 2 : 0;
