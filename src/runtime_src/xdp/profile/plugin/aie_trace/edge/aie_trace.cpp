@@ -625,9 +625,8 @@ namespace xdp {
         // Configure event ports on stream switch
         // NOTE: These are events from the core module stream switch
         //       outputted on the memory module trace stream. 
-        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
+        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
             xaieTile, loc, type, metricSet, 0, 0, memoryEvents, aieConfig);
-        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(streamPorts));
           
         // Set overall start/end for trace capture
         if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
@@ -827,7 +826,7 @@ namespace xdp {
           }
         }
 
-        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, 
+        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, 
                                                           xaieTile, loc, type, metricSet, 
                                                           channel0, channel1, interfaceEvents, cfgTile->interface_tile_trace_config);
 
