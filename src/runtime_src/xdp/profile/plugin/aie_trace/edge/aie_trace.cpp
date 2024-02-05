@@ -83,10 +83,10 @@ namespace xdp {
     auto counterScheme = metadata->getCounterScheme();
 
     // Pre-defined metric sets
-    mCoreEventSets = aie::trace::getCoreEventSets(hwGen);
-    mMemoryEventSets = aie::trace::getMemoryEventSets(hwGen);
-    mMemoryTileEventSets = aie::trace::getMemoryTileEventSets(hwGen);
-    mInterfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
+    coreEventSets = aie::trace::getCoreEventSets(hwGen);
+    memoryEventSets = aie::trace::getMemoryEventSets(hwGen);
+    memoryTileEventSets = aie::trace::getMemoryTileEventSets(hwGen);
+    interfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
     coreEventSets = aie::trace::getCoreEventSets();
     memoryEventSets = aie::trace::getMemoryEventSets();
     memoryTileEventSets = aie::trace::getMemoryTileEventSets();

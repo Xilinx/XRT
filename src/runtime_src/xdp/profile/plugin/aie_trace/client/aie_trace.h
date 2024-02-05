@@ -82,7 +82,7 @@ namespace xdp {
       // Trace metrics (same for all sets)
       EventType coreTraceStartEvent;
       EventType coreTraceEndEvent;
-      EventType mMemoryModTraceStartEvent;
+      EventType memoryModTraceStartEvent;
       EventType memoryTileTraceStartEvent;
       EventType memoryTileTraceEndEvent;
       EventType interfaceTileTraceStartEvent;

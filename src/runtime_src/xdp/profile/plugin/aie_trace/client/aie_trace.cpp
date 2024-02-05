@@ -759,7 +759,7 @@ namespace xdp {
           traceEndEvent = XAIE_EVENT_BROADCAST_9_MEM;
         }
 
-        mMemoryModTraceStartEvent = traceStartEvent;
+        memoryModTraceStartEvent = traceStartEvent;
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, traceEndEvent) != XAIE_OK)
           break;
 
