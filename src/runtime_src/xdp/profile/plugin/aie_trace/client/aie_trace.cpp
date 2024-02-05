@@ -764,7 +764,7 @@ namespace xdp {
 
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
-    std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
+    //std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
@@ -934,6 +934,8 @@ namespace xdp {
         xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
 
         XAie_ModuleType mod = XAIE_MEM_MOD;
+        uint8_t firstBroadcastId = 8;
+
         //auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
         // Wendy said this should be done first
@@ -942,7 +944,17 @@ namespace xdp {
         //if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
         //  break;
 
-        if (type == module_type::core) {
+        aie_cfg_base aieConfig = cfgTile->core_trace_config;
+        if (type == module_type::mem_tile)
+          aieConfig = cfgTile->memory_tile_trace_config;
+
+        // Configure combo events for metric sets that include DMA events        
+        auto comboEvents = configComboEvents(loc, XAIE_CORE_MOD, module_type::dma, metricSet, aieConfig);
+        if (comboEvents.size() == 2) {
+          traceStartEvent = comboEvents.at(0);
+          traceEndEvent = comboEvents.at(1);
+        }
+        else if (type == module_type::core) {
           // Broadcast to memory module
           if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, 8, traceStartEvent) != XAIE_OK)
             break;
@@ -967,18 +979,7 @@ namespace xdp {
 
           traceStartEvent = XAIE_EVENT_BROADCAST_8_MEM;
           traceEndEvent = XAIE_EVENT_BROADCAST_9_MEM;
-        }
-
-        aie_cfg_base aieConfig = cfgTile->core_trace_config;
-        if (type == module_type::mem_tile)
-          aieConfig = cfgTile->memory_tile_trace_config;
-
-        // Configure combo events for metric sets that include DMA events        
-        auto comboEvents = configComboEvents(loc, XAIE_CORE_MOD, module_type::dma, 
-                                             metricSet, aieConfig);
-        if (comboEvents.size() == 2) {
-          traceStartEvent = comboEvents.at(0);
-          traceEndEvent = comboEvents.at(1);
+          firstBroadcastId = 10;
         }
 
         // Configure event ports on stream switch
@@ -1040,9 +1041,11 @@ namespace xdp {
         xrt_core::message::send(severity_level::info, "XRT", "Configuring Memory Trace Events");
 
         // For now, use hard-coded broadcast IDs for module cross events
-        int numCross = 0;
-        uint8_t firstBroadcastId = 10;
+        uint8_t bcId = firstBroadcastId;
+        int bcIndex = (firstBroadcastId == 10) ? 2 : 0;
         std::vector<XAie_Events> broadcastEvents = {
+          XAIE_EVENT_BROADCAST_8_MEM,
+          XAIE_EVENT_BROADCAST_9_MEM,
           XAIE_EVENT_BROADCAST_10_MEM,
           XAIE_EVENT_BROADCAST_11_MEM,
           XAIE_EVENT_BROADCAST_12_MEM,
@@ -1052,22 +1055,20 @@ namespace xdp {
         };
 
         // Configure memory trace events
-        for (int i = 0; i < memoryEvents.size(); i++) {
-          int bcId = firstBroadcastId + numCross;
+        for (uint8_t i = 0; i < memoryEvents.size(); i++) {
           bool isCoreEvent = isCoreModuleEvent(memoryEvents[i]);
-          mod = isCoreEvent ? XAIE_CORE_MOD : XAIE_MEM_MOD;
 
           if (isCoreEvent) {
-            if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, static_cast<uint8_t>(bcId), memoryEvents[i]) != XAIE_OK)
+            if (XAie_EventBroadcast(&aieDevInst, loc, XAIE_CORE_MOD, bcId, memoryEvents[i]) != XAIE_OK)
               break;
-            if (XAie_TraceEvent(&aieDevInst, loc, mod, broadcastEvents[i], static_cast<uint8_t>(i)) != XAIE_OK)
+            if (XAie_TraceEvent(&aieDevInst, loc, XAIE_MEM_MOD, broadcastEvents[bcIndex++], i) != XAIE_OK)
               break;
           
             coreToMemBcMask |= (0x1 << bcId);
-            numCross++;
+            bcId++;
           } 
           else {
-            if (XAie_TraceEvent(&aieDevInst, loc, mod, memoryEvents[i], static_cast<uint8_t>(i)) != XAIE_OK)
+            if (XAie_TraceEvent(&aieDevInst, loc, XAIE_MEM_MOD, memoryEvents[i], i) != XAIE_OK)
               break;
           }
           numMemoryTraceEvents++;
@@ -1077,7 +1078,8 @@ namespace xdp {
 
           // Update config file
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, memoryEvents[i], &phyEvent);
+          auto phyMod = isCoreEvent ? XAIE_CORE_MOD : XAIE_MEM_MOD;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, phyMod, memoryEvents[i], &phyEvent);
 
           if (isCoreEvent) {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
@@ -1234,7 +1236,7 @@ namespace xdp {
 
       // Add config info to static database
       // NOTE: Do not access cfgTile after this
-      std::cout <<"log tile to device : " << deviceId << std::endl;
+      //std::cout <<"log tile to device : " << deviceId << std::endl;
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     }  // For tiles
 
