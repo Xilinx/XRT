@@ -83,6 +83,10 @@ namespace xdp::aie::trace {
           }
           else {
             // Monitor DMA channels
+            //   Port 0: MM2S Channel 0
+            //   Port 1: MM2S Channel 1
+            //   Port 2: S2MM Channel 0
+            //   Port 3: S2MM Channel 1
             uint8_t channelNum = portnum % 2;
             auto slaveOrMaster = (portnum < 2) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
             std::string typeName = (portnum < 2) ? "MM2S" : "S2MM";

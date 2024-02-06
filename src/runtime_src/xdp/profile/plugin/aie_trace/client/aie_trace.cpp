@@ -419,14 +419,26 @@ namespace xdp {
   uint8_t AieTrace_WinImpl::getPortNumberFromEvent(XAie_Events event)
   {
     switch (event) {
+    case XAIE_EVENT_PORT_RUNNING_3_CORE:
+    case XAIE_EVENT_PORT_STALLED_3_CORE:
+    case XAIE_EVENT_PORT_IDLE_3_CORE:
     case XAIE_EVENT_PORT_RUNNING_3_PL:
     case XAIE_EVENT_PORT_STALLED_3_PL:
+    case XAIE_EVENT_PORT_IDLE_3_PL:
       return 3;
+    case XAIE_EVENT_PORT_RUNNING_2_CORE:
+    case XAIE_EVENT_PORT_STALLED_2_CORE:
+    case XAIE_EVENT_PORT_IDLE_2_CORE:
     case XAIE_EVENT_PORT_RUNNING_2_PL:
     case XAIE_EVENT_PORT_STALLED_2_PL:
+    case XAIE_EVENT_PORT_IDLE_2_PL:
       return 2;
+    case XAIE_EVENT_PORT_RUNNING_1_CORE:
+    case XAIE_EVENT_PORT_STALLED_1_CORE:
+    case XAIE_EVENT_PORT_IDLE_1_CORE:
     case XAIE_EVENT_PORT_RUNNING_1_PL:
     case XAIE_EVENT_PORT_STALLED_1_PL:
+    case XAIE_EVENT_PORT_IDLE_1_PL:
       return 1;
     default:
       return 0;
@@ -481,6 +493,10 @@ namespace xdp {
           }
           else {
             // Monitor DMA channels
+            //   Port 0: MM2S Channel 0
+            //   Port 1: MM2S Channel 1
+            //   Port 2: S2MM Channel 0
+            //   Port 3: S2MM Channel 1
             uint8_t channelNum = portnum % 2;
             auto slaveOrMaster = (portnum < 2) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
             std::string typeName = (portnum < 2) ? "MM2S" : "S2MM";
@@ -944,7 +960,7 @@ namespace xdp {
         //if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
         //  break;
 
-        aie_cfg_base aieConfig = cfgTile->core_trace_config;
+        aie_cfg_base& aieConfig = cfgTile->core_trace_config;
         if (type == module_type::mem_tile)
           aieConfig = cfgTile->memory_tile_trace_config;
 
