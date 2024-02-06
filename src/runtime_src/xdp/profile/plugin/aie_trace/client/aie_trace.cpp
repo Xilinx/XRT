@@ -1243,7 +1243,7 @@ namespace xdp {
           msg << numMemoryTraceEvents << " memory tile";
         else if (type == module_type::shim)
           msg << numInterfaceTraceEvents << " interface tile";
-        msg << " trace events for tile (" << (int)col << "," << (int)row 
+        msg << " trace events for tile (" << +col << "," << +row 
             << "). Adding tile to static database.";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
