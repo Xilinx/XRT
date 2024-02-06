@@ -3517,12 +3517,12 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		XGQ_INFO(xgq, "res : %s %pR", res->name, res);
 		if (!strncmp(res->name, NODE_XGQ_SQ_BASE, strlen(NODE_XGQ_SQ_BASE))) {
-			xgq->xgq_sq_base = ioremap_nocache(res->start,
+			xgq->xgq_sq_base = ioremap(res->start,
 				res->end - res->start + 1);
 		}
 		if (!strncmp(res->name, NODE_XGQ_VMR_PAYLOAD_BASE,
 			strlen(NODE_XGQ_VMR_PAYLOAD_BASE))) {
-			xgq->xgq_payload_base = ioremap_nocache(res->start,
+			xgq->xgq_payload_base = ioremap(res->start,
 				res->end - res->start + 1);
 		}
 	}
