@@ -40,13 +40,13 @@ namespace xdp {
       ~AieProfile_EdgeImpl() = default;
 
       void updateDevice();
-      void poll(uint32_t index, void* handle);
+      void poll(const uint32_t index, void* handle);
       void freeResources();
-      bool checkAieDevice(uint64_t deviceId, void* handle);
+      bool checkAieDevice(const uint64_t deviceId, void* handle);
 
-      bool setMetricsSettings(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(const uint64_t deviceId, void* handle);
       bool isPortTlastEvent(const XAie_Events event);
-      uint8_t getPortNumberFromEvent(XAie_Events event);
+      uint8_t getPortNumberFromEvent(const XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 
                              const XAie_ModuleType mod);
@@ -74,16 +74,16 @@ namespace xdp {
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
 
-      std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
-      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
-      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> mStreamPorts;
+      std::map<std::string, std::vector<XAie_Events>> coreStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> coreEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileEndEvents; 
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
+      std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
 
   };
 

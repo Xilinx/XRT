@@ -77,20 +77,20 @@ namespace xdp {
   {
     auto hwGen = metadata->getHardwareGen();
 
-    mCoreStartEvents = aie::profile::getCoreEventSets(hwGen);
-    mCoreEndEvents = mCoreStartEvents;
+    coreStartEvents = aie::profile::getCoreEventSets(hwGen);
+    coreEndEvents = coreStartEvents;
 
-    mMemoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
-    mMemoryEndEvents = mMemoryStartEvents;
+    memoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
+    memoryEndEvents = memoryStartEvents;
 
-    mShimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
-    mShimEndEvents = mShimStartEvents;
+    shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
+    shimEndEvents = shimStartEvents;
 
-    mMemTileStartEvents = aie::profile::getMemoryTileEventSets();
-    mMemTileEndEvents = mMemTileStartEvents;
+    memTileStartEvents = aie::profile::getMemoryTileEventSets();
+    memTileEndEvents = memTileStartEvents;
   }
 
-  bool AieProfile_EdgeImpl::checkAieDevice(uint64_t deviceId, void* handle)
+  bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
     aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
@@ -148,7 +148,7 @@ namespace xdp {
     }
   }
 
-  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(XAie_Events event)
+  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(const XAie_Events event)
   {
     switch (event) {
     case XAIE_EVENT_PORT_RUNNING_1_CORE:
@@ -256,7 +256,7 @@ namespace xdp {
 
       if (newPort) {
         switchPortRsc->start();
-        mStreamPorts.push_back(switchPortRsc);
+        streamPorts.push_back(switchPortRsc);
       }
     }
 
@@ -364,7 +364,7 @@ namespace xdp {
 
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
-  AieProfile_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
+  AieProfile_EdgeImpl::setMetricsSettings(const uint64_t deviceId, void* handle)
   {
     int counterId = 0;
     bool runtimeCounters = false;
@@ -398,14 +398,14 @@ namespace xdp {
                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
                          : xaieTile.pl());
 
-        auto startEvents = (type  == module_type::core) ? mCoreStartEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryStartEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimStartEvents[metricSet]
-                         : mMemTileStartEvents[metricSet]));
-        auto endEvents   = (type  == module_type::core) ? mCoreEndEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryEndEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimEndEvents[metricSet]
-                         : mMemTileEndEvents[metricSet]));
+        auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
+                         : ((type == module_type::shim) ? shimStartEvents[metricSet]
+                         : memTileStartEvents[metricSet]));
+        auto endEvents   = (type  == module_type::core) ? coreEndEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryEndEvents[metricSet]
+                         : ((type == module_type::shim) ? shimEndEvents[metricSet]
+                         : memTileEndEvents[metricSet]));
 
         int numCounters  = 0;
         auto numFreeCtr  = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
@@ -446,7 +446,7 @@ namespace xdp {
           // Start the counter
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
-          mPerfCounters.push_back(perfCounter);
+          perfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
           uint8_t tmpStart;
@@ -495,7 +495,7 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::poll(uint32_t index, void* handle)
+  void AieProfile_EdgeImpl::poll(const uint32_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
@@ -525,14 +525,14 @@ namespace xdp {
 
       // Read counter value from device
       uint32_t counterValue;
-      if (mPerfCounters.empty()) {
+      if (perfCounters.empty()) {
         // Compiler-defined counters
         XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
         XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
       }
       else {
         // Runtime-defined counters
-        auto perfCounter = mPerfCounters.at(c);
+        auto perfCounter = perfCounters.at(c);
         perfCounter->readResult(counterValue);
       }
       values.push_back(counterValue);
@@ -559,12 +559,12 @@ namespace xdp {
 
   void AieProfile_EdgeImpl::freeResources() 
   {
-    for (auto& c : mPerfCounters){
+    for (auto& c : perfCounters){
       c->stop();
       c->release();
     }
 
-    for (auto& c : mStreamPorts){
+    for (auto& c : streamPorts){
       c->stop();
       c->release();
     }

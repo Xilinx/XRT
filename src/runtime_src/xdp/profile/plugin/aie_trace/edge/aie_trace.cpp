@@ -83,28 +83,28 @@ namespace xdp {
     auto counterScheme = metadata->getCounterScheme();
 
     // Pre-defined metric sets
-    mCoreEventSets = aie::trace::getCoreEventSets(hwGen);
-    mMemoryEventSets = aie::trace::getMemoryEventSets(hwGen);
-    mMemoryTileEventSets = aie::trace::getMemoryTileEventSets(hwGen);
-    mInterfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
+    coreEventSets = aie::trace::getCoreEventSets(hwGen);
+    memoryEventSets = aie::trace::getMemoryEventSets(hwGen);
+    memoryTileEventSets = aie::trace::getMemoryTileEventSets(hwGen);
+    interfaceTileEventSets = aie::trace::getInterfaceTileEventSets(hwGen);
 
     // Core/memory module counters
-    mCoreCounterStartEvents = aie::trace::getCoreCounterStartEvents(hwGen, counterScheme);
-    mCoreCounterEndEvents = aie::trace::getCoreCounterEndEvents(hwGen, counterScheme);
-    mCoreCounterEventValues = aie::trace::getCoreCounterEventValues(hwGen, counterScheme);
-    mMemoryCounterStartEvents = aie::trace::getMemoryCounterStartEvents(hwGen, counterScheme);
-    mMemoryCounterEndEvents = aie::trace::getMemoryCounterEndEvents(hwGen, counterScheme);
-    mMemoryCounterEventValues = aie::trace::getMemoryCounterEventValues(hwGen, counterScheme);
+    coreCounterStartEvents = aie::trace::getCoreCounterStartEvents(hwGen, counterScheme);
+    coreCounterEndEvents = aie::trace::getCoreCounterEndEvents(hwGen, counterScheme);
+    coreCounterEventValues = aie::trace::getCoreCounterEventValues(hwGen, counterScheme);
+    memoryCounterStartEvents = aie::trace::getMemoryCounterStartEvents(hwGen, counterScheme);
+    memoryCounterEndEvents = aie::trace::getMemoryCounterEndEvents(hwGen, counterScheme);
+    memoryCounterEventValues = aie::trace::getMemoryCounterEventValues(hwGen, counterScheme);
 
     // Core trace start/end: these are also broadcast to memory module
-    mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
-    mCoreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
+    coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
+    coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
 
     // Memory/interface tile trace is flushed at end of run
-    mMemoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
-    mMemoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
-    mInterfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
-    mInterfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_PL;
+    memoryTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
+    memoryTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_MEM_TILE;
+    interfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
+    interfaceTileTraceEndEvent = XAIE_EVENT_USER_EVENT_1_PL;
   }
 
   /****************************************************************************
@@ -155,7 +155,7 @@ namespace xdp {
     // Check trace events for interface tiles
     if (type == module_type::shim) {
       available = stats.getNumRsc(loc, XAIE_PL_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      required = mInterfaceTileEventSets[metricSet].size();
+      required = interfaceTileEventSets[metricSet].size();
       if (available < required) {
         msg << "Available interface tile trace slots for AIE trace : " << available << std::endl
             << "Required interface tile trace slots for AIE trace  : " << required;
@@ -167,7 +167,7 @@ namespace xdp {
 
     // Memory module/tile perf counters
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-    required = mMemoryCounterStartEvents.size();
+    required = memoryCounterStartEvents.size();
     if (available < required) {
       msg << "Available memory performance counters for AIE trace : " << available << std::endl
           << "Required memory performance counters for AIE trace  : " << required;
@@ -177,7 +177,7 @@ namespace xdp {
 
     // Memory module/tile trace slots
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    required = mMemoryCounterStartEvents.size() + mMemoryEventSets[metricSet].size();
+    required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
     if (available < required) {
       msg << "Available memory trace slots for AIE trace : " << available << std::endl
           << "Required memory trace slots for AIE trace  : " << required;
@@ -191,7 +191,7 @@ namespace xdp {
 
     // Core module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
-    required = mCoreCounterStartEvents.size();
+    required = coreCounterStartEvents.size();
     if (metadata->getUseDelay()) {
       ++required;
       if (!metadata->getUseOneDelayCounter())
@@ -208,7 +208,7 @@ namespace xdp {
 
     // Core module trace slots
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    required = mCoreCounterStartEvents.size() + mCoreEventSets[metricSet].size();
+    required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
     if (available < required) {
       msg << "Available core module trace slots for AIE trace : " << available << std::endl
           << "Required core module trace slots for AIE trace  : " << required;
@@ -218,7 +218,7 @@ namespace xdp {
 
     // Core module broadcasts. 2 events for starting/ending trace
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
-    required = mMemoryEventSets[metricSet].size() + 2;
+    required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
       msg << "Available core module broadcast channels for AIE trace : " << available << std::endl
           << "Required core module broadcast channels for AIE trace  : " << required;
@@ -234,11 +234,11 @@ namespace xdp {
    ***************************************************************************/
   void AieTrace_EdgeImpl::freeResources()
   {
-    for (auto& c : mPerfCounters) {
+    for (auto& c : perfCounters) {
       c->stop();
       c->release();
     }
-    for (auto& p : mStreamPorts) {
+    for (auto& p : streamPorts) {
       p->stop();
       p->release();
     }
@@ -310,8 +310,8 @@ namespace xdp {
     if ((metadata->getUseUserControl()) || (metadata->getUseGraphIterator()) || (metadata->getUseDelay()) ||
         (xrt_core::config::get_aie_trace_settings_end_type() == "event1")) {
       if (metadata->getUseUserControl())
-        mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-      mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+        coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
+      coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
       useTraceFlush = true;
       xrt_core::message::send(severity_level::info, "XRT", "Enabling trace flush");
     }
@@ -347,11 +347,11 @@ namespace xdp {
       if (useTraceFlush || (type == module_type::mem_tile) 
           || (type == module_type::shim)) {
         if (type == module_type::core)
-          mTraceFlushLocs.push_back(loc);
+          traceFlushLocs.push_back(loc);
         else if (type == module_type::mem_tile)
-          mMemoryTileTraceFlushLocs.push_back(loc);
+          memoryTileTraceFlushLocs.push_back(loc);
         else if (type == module_type::shim)
-          mInterfaceTileTraceFlushLocs.push_back(loc);
+          interfaceTileTraceFlushLocs.push_back(loc);
       }
 
       // AIE config object for this tile
@@ -365,14 +365,14 @@ namespace xdp {
       EventVector memoryEvents;
       EventVector interfaceEvents;
       if (type == module_type::core) {
-        coreEvents = mCoreEventSets[metricSet];
-        memoryEvents = mMemoryEventSets[metricSet];
+        coreEvents = coreEventSets[metricSet];
+        memoryEvents = memoryEventSets[metricSet];
       }
       else if (type == module_type::mem_tile) {
-        memoryEvents = mMemoryTileEventSets[metricSet];
+        memoryEvents = memoryTileEventSets[metricSet];
       }
       else if (type == module_type::shim) {
-        interfaceEvents = mInterfaceTileEventSets[metricSet];
+        interfaceEvents = interfaceTileEventSets[metricSet];
       }
 
       if (aie::isInfoVerbosity()) {
@@ -398,19 +398,19 @@ namespace xdp {
       //
       // 1. Reserve and start core module counters (as needed)
       //
-      if ((type == module_type::core) && (mCoreCounterStartEvents.size() > 0)) {
+      if ((type == module_type::core) && (coreCounterStartEvents.size() > 0)) {
         if (aie::isDebugVerbosity()) {
           std::stringstream msg;
-          msg << "Reserving " << mCoreCounterStartEvents.size() 
+          msg << "Reserving " << coreCounterStartEvents.size() 
               << " core counters for " << tileName;
           xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         XAie_ModuleType mod = XAIE_CORE_MOD;
 
-        for (int i = 0; i < mCoreCounterStartEvents.size(); ++i) {
+        for (int i = 0; i < coreCounterStartEvents.size(); ++i) {
           auto perfCounter = core.perfCounter();
-          if (perfCounter->initialize(mod, mCoreCounterStartEvents.at(i), mod, mCoreCounterEndEvents.at(i)) != XAIE_OK)
+          if (perfCounter->initialize(mod, coreCounterStartEvents.at(i), mod, coreCounterEndEvents.at(i)) != XAIE_OK)
             break;
           if (perfCounter->reserve() != XAIE_OK)
             break;
@@ -419,7 +419,7 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
-          perfCounter->changeThreshold(mCoreCounterEventValues.at(i));
+          perfCounter->changeThreshold(coreCounterEventValues.at(i));
 
           // Set reset event based on counter number
           perfCounter->changeRstEvent(mod, counterEvent);
@@ -427,44 +427,44 @@ namespace xdp {
 
           // If no memory counters are used, then we need to broadcast the core
           // counter
-          if (mMemoryCounterStartEvents.empty())
+          if (memoryCounterStartEvents.empty())
             memoryEvents.push_back(counterEvent);
 
           if (perfCounter->start() != XAIE_OK)
             break;
 
-          mPerfCounters.push_back(perfCounter);
+          perfCounters.push_back(perfCounter);
           numCoreCounters++;
 
           // Update config file
           uint8_t phyEvent = 0;
           auto& cfg = cfgTile->core_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = mCoreCounterEventValues[i];
+          cfg.event_value = coreCounterEventValues[i];
         }
       }
 
       //
       // 2. Reserve and start memory module counters (as needed)
       //
-      if ((type == module_type::core) && (mMemoryCounterStartEvents.size() > 0)) {
+      if ((type == module_type::core) && (memoryCounterStartEvents.size() > 0)) {
         if (aie::isDebugVerbosity()) {
           std::stringstream msg;
-          msg << "Reserving " << mMemoryCounterStartEvents.size() 
+          msg << "Reserving " << memoryCounterStartEvents.size() 
               << " memory counters for " << tileName;
           xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         }
 
         XAie_ModuleType mod = XAIE_MEM_MOD;
 
-        for (int i = 0; i < mMemoryCounterStartEvents.size(); ++i) {
+        for (int i = 0; i < memoryCounterStartEvents.size(); ++i) {
           auto perfCounter = memory.perfCounter();
-          if (perfCounter->initialize(mod, mMemoryCounterStartEvents.at(i), mod, mMemoryCounterEndEvents.at(i)) !=
+          if (perfCounter->initialize(mod, memoryCounterStartEvents.at(i), mod, memoryCounterEndEvents.at(i)) !=
               XAIE_OK)
             break;
           if (perfCounter->reserve() != XAIE_OK)
@@ -474,7 +474,7 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-          perfCounter->changeThreshold(mMemoryCounterEventValues.at(i));
+          perfCounter->changeThreshold(memoryCounterEventValues.at(i));
 
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
@@ -482,27 +482,27 @@ namespace xdp {
           if (perfCounter->start() != XAIE_OK)
             break;
 
-          mPerfCounters.push_back(perfCounter);
+          perfCounters.push_back(perfCounter);
           numMemoryCounters++;
 
           // Update config file
           uint8_t phyEvent = 0;
           auto& cfg = cfgTile->memory_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = mMemoryCounterEventValues[i];
+          cfg.event_value = memoryCounterEventValues[i];
         }
 
         // Catch when counters cannot be reserved: report, release, and return
-        if ((numCoreCounters < mCoreCounterStartEvents.size()) ||
-            (numMemoryCounters < mMemoryCounterStartEvents.size())) {
+        if ((numCoreCounters < coreCounterStartEvents.size()) ||
+            (numMemoryCounters < memoryCounterStartEvents.size())) {
           std::stringstream msg;
-          msg << "Unable to reserve " << mCoreCounterStartEvents.size() 
-              << " core counters and " << mMemoryCounterStartEvents.size() 
+          msg << "Unable to reserve " << coreCounterStartEvents.size() 
+              << " core counters and " << memoryCounterStartEvents.size() 
               << " memory counters for " << tileName << " required for trace.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
@@ -530,11 +530,11 @@ namespace xdp {
         // Delay cycles and user control are not compatible with each other
         if (metadata->getUseGraphIterator()) {
           if (!aie::trace::configStartIteration(core, metadata->getIterationCount(), 
-                                                mCoreTraceStartEvent))
+                                                coreTraceStartEvent))
             break;
         } else if (metadata->getUseDelay()) {
           if (!aie::trace::configStartDelay(core, metadata->getDelay(), 
-                                            mCoreTraceStartEvent))
+                                            coreTraceStartEvent))
             break;
         }
 
@@ -544,7 +544,7 @@ namespace xdp {
         aie::trace::configGroupEvents(aieDevInst, loc, mod, type, metricSet);
 
         // Set overall start/end for trace capture
-        if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK)
+        if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK)
           break;
 
         auto ret = coreTrace->reserve();
@@ -573,9 +573,9 @@ namespace xdp {
         }
 
         // Update config file
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
         cfgTile->core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
         cfgTile->core_trace_config.stop_event = phyEvent;
 
         // Record allocated trace events
@@ -607,8 +607,8 @@ namespace xdp {
         // Set overall start/end for trace capture
         // NOTE: this should be done first for FAL-based implementations
         auto memoryTrace = memory.traceControl();
-        auto traceStartEvent = (type == module_type::core) ? mCoreTraceStartEvent : mMemoryTileTraceStartEvent;
-        auto traceEndEvent = (type == module_type::core) ? mCoreTraceEndEvent : mMemoryTileTraceEndEvent;
+        auto traceStartEvent = (type == module_type::core) ? coreTraceStartEvent : memoryTileTraceStartEvent;
+        auto traceEndEvent = (type == module_type::core) ? coreTraceEndEvent : memoryTileTraceEndEvent;
         
         aie_cfg_base aieConfig = cfgTile->core_trace_config;
         if (type == module_type::mem_tile)
@@ -625,9 +625,8 @@ namespace xdp {
         // Configure event ports on stream switch
         // NOTE: These are events from the core module stream switch
         //       outputted on the memory module trace stream. 
-        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
+        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
             xaieTile, loc, type, metricSet, 0, 0, memoryEvents, aieConfig);
-        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(mStreamPorts));
           
         // Set overall start/end for trace capture
         if (memoryTrace->setCntrEvent(traceStartEvent, traceEndEvent) != XAIE_OK)
@@ -789,7 +788,7 @@ namespace xdp {
         }
 
         auto shimTrace = shim.traceControl();
-        if (shimTrace->setCntrEvent(mInterfaceTileTraceStartEvent, mInterfaceTileTraceEndEvent) != XAIE_OK)
+        if (shimTrace->setCntrEvent(interfaceTileTraceStartEvent, interfaceTileTraceEndEvent) != XAIE_OK)
           break;
 
         auto ret = shimTrace->reserve();
@@ -827,11 +826,9 @@ namespace xdp {
           }
         }
 
-        // Configure event ports on stream switch
-        auto streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile,
-            xaieTile, loc, type, metricSet, channel0, channel1, interfaceEvents,
-            cfgTile->interface_tile_trace_config);
-        std::copy(streamPorts.begin(), streamPorts.end(), back_inserter(mStreamPorts));
+        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, 
+                                                          xaieTile, loc, type, metricSet, 
+                                                          channel0, channel1, interfaceEvents, cfgTile->interface_tile_trace_config);
 
         // Configure interface tile trace events
         for (int i = 0; i < interfaceEvents.size(); i++) {
@@ -861,10 +858,10 @@ namespace xdp {
           // Add interface trace control events
           // Start
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceStartEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceStartEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.start_event = phyEvent;
           // Stop
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceEndEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceEndEvent, &phyEvent);
           cfgTile->interface_tile_trace_config.stop_event = phyEvent;
         }
 
@@ -921,8 +918,8 @@ namespace xdp {
    ***************************************************************************/
   void AieTrace_EdgeImpl::flushTraceModules()
   {
-    if (mTraceFlushLocs.empty() && mMemoryTileTraceFlushLocs.empty()
-        && mInterfaceTileTraceFlushLocs.empty())
+    if (traceFlushLocs.empty() && memoryTileTraceFlushLocs.empty()
+        && interfaceTileTraceFlushLocs.empty())
       return;
 
     auto handle = metadata->getHandle();
@@ -930,24 +927,24 @@ namespace xdp {
 
     if (aie::isDebugVerbosity()) {
       std::stringstream msg;
-      msg << "Flushing AIE trace by forcing end event for " << mTraceFlushLocs.size()
-          << " AIE tiles, " << mMemoryTileTraceFlushLocs.size() << " memory tiles, and " 
-          << mInterfaceTileTraceFlushLocs.size() << " interface tiles.";
+      msg << "Flushing AIE trace by forcing end event for " << traceFlushLocs.size()
+          << " AIE tiles, " << memoryTileTraceFlushLocs.size() << " memory tiles, and " 
+          << interfaceTileTraceFlushLocs.size() << " interface tiles.";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
     // Flush trace by forcing end event
     // NOTE: this informs tiles to output remaining packets (even if partial)
-    for (const auto& loc : mTraceFlushLocs) 
-      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, mCoreTraceEndEvent);
-    for (const auto& loc : mMemoryTileTraceFlushLocs)
-      XAie_EventGenerate(aieDevInst, loc, XAIE_MEM_MOD, mMemoryTileTraceEndEvent);
-    for (const auto& loc : mInterfaceTileTraceFlushLocs)
-      XAie_EventGenerate(aieDevInst, loc, XAIE_PL_MOD, mInterfaceTileTraceEndEvent);
+    for (const auto& loc : traceFlushLocs) 
+      XAie_EventGenerate(aieDevInst, loc, XAIE_CORE_MOD, coreTraceEndEvent);
+    for (const auto& loc : memoryTileTraceFlushLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_MEM_MOD, memoryTileTraceEndEvent);
+    for (const auto& loc : interfaceTileTraceFlushLocs)
+      XAie_EventGenerate(aieDevInst, loc, XAIE_PL_MOD, interfaceTileTraceEndEvent);
 
-    mTraceFlushLocs.clear();
-    mMemoryTileTraceFlushLocs.clear();
-    mInterfaceTileTraceFlushLocs.clear();
+    traceFlushLocs.clear();
+    memoryTileTraceFlushLocs.clear();
+    interfaceTileTraceFlushLocs.clear();
   }
 
   /****************************************************************************

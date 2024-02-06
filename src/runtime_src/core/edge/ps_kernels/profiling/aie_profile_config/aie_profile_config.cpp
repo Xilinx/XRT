@@ -54,7 +54,7 @@ class xrtHandles : public pscontext
 
 // Anonymous namespace for helper functions used in this file
 namespace {
-  using tile_type = xrt_core::edge::aie::tile_type;
+  using tile_type = xdp::tile_type;
   using CoreMetrics = xdp::built_in::CoreMetrics;
   using MemoryMetrics = xdp::built_in::MemoryMetrics;
   using InterfaceMetrics = xdp::built_in::InterfaceMetrics;
@@ -68,8 +68,8 @@ namespace {
         auto tile = tile_type();
         tile.row = params->tiles[i].row;
         tile.col = params->tiles[i].col;
-        tile.itr_mem_row = params->tiles[i].itr_mem_row;
-        tile.itr_mem_col = params->tiles[i].itr_mem_col;
+        tile.stream_id = params->tiles[i].stream_id;
+        tile.is_master = params->tiles[i].is_master;
         tile.itr_mem_addr = params->tiles[i].itr_mem_addr;
         tile.is_trigger = params->tiles[i].is_trigger;
         tiles.insert({tile, params->tiles[i].metricSet});
@@ -152,8 +152,8 @@ namespace {
 
     // Grab slave/master and stream ID
     // NOTE: stored in getTilesForProfiling() above
-    auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-    auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+    auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+    auto streamPortId  = static_cast<uint8_t>(tile.stream_id);
 
     // Define stream switch port to monitor PLIO 
     XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
@@ -169,7 +169,7 @@ namespace {
         || (startEvent == XAIE_EVENT_PORT_TLAST_0_PL)
         || (startEvent == XAIE_EVENT_PORT_IDLE_0_PL)
         || (startEvent == XAIE_EVENT_PORT_STALLED_0_PL))
-      return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
+      return ((tile.is_master << 8) | tile.stream_id);
 
     // Second, send DMA BD sizes
     if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)

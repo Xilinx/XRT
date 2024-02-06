@@ -35,7 +35,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for core modules
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(int hwGen)
+  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
@@ -73,7 +73,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for memory modules
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets(int hwGen)
+  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
@@ -110,7 +110,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for interface tiles
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(int hwGen)
+  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
@@ -205,8 +205,8 @@ namespace xdp::aie::profile {
   /****************************************************************************
   * Modify configured events based on the channel and hardware generation
   ***************************************************************************/
-  void modifyEvents(module_type type, uint16_t subtype, uint8_t channel,
-                                         std::vector<XAie_Events>& events, int hwGen)
+  void modifyEvents(const module_type type, const uint16_t subtype, const uint8_t channel,
+                                        std::vector<XAie_Events>& events, const int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
       return;
@@ -283,7 +283,7 @@ namespace xdp::aie::profile {
    * Get XAie module enum at the module index 
    ***************************************************************************/
 
-  XAie_ModuleType getFalModuleType(int moduleIndex)
+  XAie_ModuleType getFalModuleType(const int moduleIndex)
   {
     return falModuleTypes[moduleIndex];
   }
@@ -292,7 +292,7 @@ namespace xdp::aie::profile {
    * Get base event number for a module
    ***************************************************************************/
 
-  uint16_t getCounterBase(xdp::module_type type)
+  uint16_t getCounterBase(const xdp::module_type type)
   {
     return counterBases.at(type);
   }
@@ -300,7 +300,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    *  Check the match of the XAie enum module type with our xdp::module_type
    ***************************************************************************/
-  bool isValidType(module_type type, XAie_ModuleType mod)
+  bool isValidType(const module_type type, const XAie_ModuleType mod)
   {
     if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
         || (type == module_type::dma)))
