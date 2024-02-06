@@ -81,24 +81,24 @@ namespace xdp {
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
 
-      std::map<std::string, EventVector> mCoreEventSets;
-      std::map<std::string, EventVector> mMemoryEventSets;
-      std::map<std::string, EventVector> mMemoryTileEventSets;
-      std::map<std::string, EventVector> mInterfaceTileEventSets;
+      std::map<std::string, EventVector> coreEventSets;
+      std::map<std::string, EventVector> memoryEventSets;
+      std::map<std::string, EventVector> memoryTileEventSets;
+      std::map<std::string, EventVector> interfaceTileEventSets;
 
       // Trace metrics (same for all sets)
-      EventType mCoreTraceStartEvent;
-      EventType mCoreTraceEndEvent;
-      EventType mMemoryModTraceStartEvent;
-      EventType mMemoryTileTraceStartEvent;
-      EventType mMemoryTileTraceEndEvent;
-      EventType mInterfaceTileTraceStartEvent;
-      EventType mInterfaceTileTraceEndEvent;
+      EventType coreTraceStartEvent;
+      EventType coreTraceEndEvent;
+      EventType memoryModTraceStartEvent;
+      EventType memoryTileTraceStartEvent;
+      EventType memoryTileTraceEndEvent;
+      EventType interfaceTileTraceStartEvent;
+      EventType interfaceTileTraceEndEvent;
 
       // Tile locations to apply trace end and flush
-      std::vector<XAie_LocType> mTraceFlushLocs;
-      std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
-      std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
+      std::vector<XAie_LocType> traceFlushLocs;
+      std::vector<XAie_LocType> memoryTileTraceFlushLocs;
+      std::vector<XAie_LocType> interfaceTileTraceFlushLocs;
 
       // Keep track of number of events reserved per module and/or tile
       int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];

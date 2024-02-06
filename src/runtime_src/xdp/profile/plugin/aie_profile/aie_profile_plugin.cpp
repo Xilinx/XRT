@@ -212,7 +212,7 @@ auto time = std::time(nullptr);
 
   }
 
-  void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
+  void AieProfilePlugin::pollAIECounters(const uint32_t index, void* handle)
   {
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())

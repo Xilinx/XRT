@@ -63,7 +63,7 @@ enum class module_type {
   { 
     uint8_t row;
     uint8_t col;
-    uint16_t subtype;
+    uint8_t subtype;
     uint8_t stream_id;
     uint8_t is_master;
     uint64_t itr_mem_addr;
