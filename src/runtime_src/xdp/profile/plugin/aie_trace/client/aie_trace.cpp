@@ -45,15 +45,15 @@ namespace xdp {
         {"functions", 
          {XAIE_EVENT_INSTR_CALL_CORE, XAIE_EVENT_INSTR_RETURN_CORE}}
     };
-    mCoreEventSets["partial_stalls"]           = mCoreEventSets["functions"];
-    mCoreEventSets["all_stalls"]               = mCoreEventSets["functions"];
-    mCoreEventSets["all_dma"]                  = mCoreEventSets["functions"];
-    mCoreEventSets["all_stalls_dma"]           = mCoreEventSets["functions"];
-    mCoreEventSets["s2mm_channels_stalls"]     = mCoreEventSets["functions"];
-    mCoreEventSets["mm2s_channels_stalls"]     = mCoreEventSets["functions"];
+    coreEventSets["partial_stalls"]           = coreEventSets["functions"];
+    coreEventSets["all_stalls"]               = coreEventSets["functions"];
+    coreEventSets["all_dma"]                  = coreEventSets["functions"];
+    coreEventSets["all_stalls_dma"]           = coreEventSets["functions"];
+    coreEventSets["s2mm_channels_stalls"]     = coreEventSets["functions"];
+    coreEventSets["mm2s_channels_stalls"]     = coreEventSets["functions"];
 
-    mCoreEventSets["functions_partial_stalls"] = mCoreEventSets["partial_stalls"];
-    mCoreEventSets["functions_all_stalls"]     = mCoreEventSets["all_stalls"];
+    coreEventSets["functions_partial_stalls"] = coreEventSets["partial_stalls"];
+    coreEventSets["functions_all_stalls"]     = coreEventSets["all_stalls"];
 
     // These are also broadcast to memory module
     coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
@@ -92,8 +92,8 @@ namespace xdp {
           XAIE_EVENT_EDGE_DETECTION_EVENT_1_MEM,           XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
           XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM}}
     };
-    mMemoryEventSets["functions_partial_stalls"] = mMemoryEventSets["partial_stalls"];
-    mMemoryEventSets["functions_all_stalls"]     = mMemoryEventSets["all_stalls"];
+    memoryEventSets["functions_partial_stalls"] = memoryEventSets["partial_stalls"];
+    memoryEventSets["functions_all_stalls"]     = memoryEventSets["all_stalls"];
 
     // **** Memory Tile Trace ****
     memoryTileEventSets = {
