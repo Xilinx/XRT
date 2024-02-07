@@ -384,7 +384,7 @@ jobs:
   #         echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY   
 
   cleanup:    
-    needs: package-download  
+    needs: [package-download, windows-build]  
     runs-on: Ubuntu-22.04  
     if: success()    
     steps:    
