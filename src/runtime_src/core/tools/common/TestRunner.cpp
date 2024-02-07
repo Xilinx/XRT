@@ -432,9 +432,7 @@ TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
   boost::ignore_unused(_dev);
   prefix_path = xrt_core::environment::xclbin_path(_ptTest.get<std::string>("xclbin", "")).parent_path();
 #else
-  boost::property_tree::ptree ptree; //ignore
-  const auto platform_path = findPlatformPath(_dev, ptree);
-  prefix_path = std::filesystem::path(platform_path);
+  prefix_path = std::filesystem::path("/opt/xilinx/xrt/test/");
 #endif
   auto dpu_instr = prefix_path / dpu_dir / dpu_name;
   if (!std::filesystem::exists(dpu_instr)) {
