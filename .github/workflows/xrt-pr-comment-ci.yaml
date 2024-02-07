@@ -22,7 +22,7 @@ jobs:
         with:
           route: ${{ github.event.issue.pull_request.url }}
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}
       - name: Get PR informations
         id: pr_data
         run: |
