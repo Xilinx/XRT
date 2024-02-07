@@ -31,6 +31,8 @@ jobs:
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
           pullRequestUser: ${{ github.event.pull_request.user.login }}
+          org-name: 'Xilinx'
+          repo-name: 'preflight-check'
   build:
     needs: authorize  
     strategy:      
