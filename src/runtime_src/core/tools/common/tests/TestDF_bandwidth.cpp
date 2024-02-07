@@ -85,6 +85,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   switch (device_id) {
   case 5378: // 0x1502
     ptree.put("xclbin", "validate_phx.xclbin");
+    break;
   case 6128: // 0x17f0
     ptree.put("xclbin", "validate_stx.xclbin");
     break;
