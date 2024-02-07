@@ -46,6 +46,10 @@ R"(
     "validate": [{
       "test": ["aux-connection", "pcie-link", "sc-version", "verify", "dma", "iops", "mem-bw", "p2p", "m2m", "hostmem-bw", "bist", "vcu", "aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"]
     }]
+  },{
+    "reset": [{}]
+  },{
+    "program": [{}]
   }]
 },{
   "aie": [{
@@ -111,7 +115,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, executable, description, subCommands);
+    main_( argc, argv, executable, description, subCommands, configTree);
     return 0;
   } catch (const xrt_core::error& e) {
     // Clean exception exit

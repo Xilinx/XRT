@@ -27,7 +27,8 @@ namespace po = boost::program_options;
 void  main_(int argc, char** argv, 
             const std::string & _executable,
             const std::string & _description,
-            const SubCmdsCollection &_subCmds) 
+            const SubCmdsCollection &_subCmds,
+            const boost::property_tree::ptree& configurations) 
 {
   bool isUserDomain = boost::iequals(_executable, "xbutil"); 
 
@@ -40,6 +41,7 @@ void  main_(int argc, char** argv,
   bool bForce = false;
   bool bVersion = false;
   std::string sDevice;
+  std::string sCmd;
 
   // Build Options
   po::options_description globalSubCmdOptions("Global Command Options");
@@ -63,7 +65,7 @@ void  main_(int argc, char** argv,
     ("device,d",    boost::program_options::value<decltype(sDevice)>(&sDevice)->default_value(device_default)->implicit_value("default"), "If specified with no BDF value and there is only 1 device, that device will be automatically selected.\n")
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
-    ("subCmd",      po::value<std::string>(), "Command to execute")
+    ("subCmd",      po::value<decltype(sCmd)>(&sCmd), "Command to execute")
   ;
 
   // Merge the options to one common collection
@@ -94,37 +96,6 @@ void  main_(int argc, char** argv,
   XBU::setShowHidden( bShowHidden );
   XBU::setForce( bForce );
 
-  // Check to see if help was requested and no command was found
-  if (vm.count("subCmd") == 0) {
-    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
-    return;
-  }
-
-  // -- Now see if there is a command to work with
-  // Get the command of choice
-  std::string sCommand = vm["subCmd"].as<std::string>();
-
-  // Search for the subcommand (case sensitive)
-  std::shared_ptr<SubCmd> subCommand;
-  for (auto & subCmdEntry :  _subCmds) {
-    if (sCommand.compare(subCmdEntry->getName()) == 0) {
-      subCommand = subCmdEntry;
-      break;
-    }
-  }
-
-  if (!subCommand) {
-    std::cerr << "ERROR: " << "Unknown command: '" << sCommand << "'" << std::endl;
-    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // -- Prepare the data
-  subcmd_options.erase(subcmd_options.begin());
-
-  if (bHelp)
-    subcmd_options.push_back("--help");
-
   // Was default device requested?
   if (boost::iequals(sDevice, "default")) {
     sDevice.clear();
@@ -148,6 +119,44 @@ void  main_(int argc, char** argv,
       sDevice = kd.second.get<std::string>("bdf"); // Exit after the first item
 
   }
+
+  // If there is a device value, parse for valid subcommands for this device.
+  SubCmdsCollection devSubCmds;
+  if (!sDevice.empty()) {
+    const std::string deviceClass = XBU::get_device_class(sDevice, isUserDomain);
+    const auto& configs = JSONConfigurable::parse_configuration_tree(configurations);
+    for (auto & subCmdEntry : _subCmds) {
+      auto it = configs.find(subCmdEntry->getName());
+      for (const auto& [device_name, device_config] : it->second) {
+        if (device_name.compare(deviceClass) == 0)
+          devSubCmds.emplace_back(subCmdEntry);
+      }
+    }
+  }
+
+  const SubCmdsCollection parsedSubCmds = sDevice.empty() ? _subCmds : devSubCmds;
+
+  // Search for the subcommand (case sensitive)
+  std::shared_ptr<SubCmd> subCommand;
+  for (auto & subCmdEntry : parsedSubCmds) {
+    if (sCmd.compare(subCmdEntry->getName()) == 0) {
+      subCommand = subCmdEntry;
+      break;
+    }
+  }
+
+  if (!subCommand) {
+    if (!bHelp)
+      std::cerr << "ERROR: " << "Unknown command: '" << sCmd << "'" << std::endl;
+    XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, parsedSubCmds);
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  // -- Prepare the data
+  subcmd_options.erase(subcmd_options.begin());
+
+  if (bHelp)
+    subcmd_options.push_back("--help");
 
   // If there is a device value, pass it to the sub commands.
   if (!sDevice.empty()) {

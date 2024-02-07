@@ -28,5 +28,6 @@
 void main_(int argc, char** argv, 
            const std::string & _executable,
            const std::string & _description,
-           const SubCmdsCollection & _SubCmds);
+           const SubCmdsCollection & _SubCmds,
+           const boost::property_tree::ptree& configurations);
 #endif

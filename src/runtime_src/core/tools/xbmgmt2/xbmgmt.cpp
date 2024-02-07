@@ -46,16 +46,10 @@ R"(
     "program":[{
       "suboption": ["base", "shell", "revert-to-golden", "user", "boot"]
     }]
-  }]
-},{
-  "aie": [{
-    "examine": [{
-      "report": ["cmc", "firewall", "host", "mailbox", "mechanical", "platform", "vmr"]
-    }]
   },{
-    "program":[{
-      "suboption": ["user"]
-    }]
+    "reset": [{}]
+  },{
+    "dump": [{}]
   }]
 }]
 )";
@@ -92,7 +86,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, executable, description, subCommands);
+    main_( argc, argv, executable, description, subCommands, configTree);
     return 0;
   } catch (const xrt_core::error& e) {
     // Clean exception exit
