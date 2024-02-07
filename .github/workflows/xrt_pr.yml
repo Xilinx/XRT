@@ -24,13 +24,15 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows
-          ref: main
+          ref: variable-input
 
       - name: authorize
         uses: ./composite-workflows/authorize
         with:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
           pullRequestUser: ${{ github.event.pull_request.user.login }}
+          org-name: 'Xilinx'
+          repo-name: 'preflight-check'
   build:
     needs: authorize  
     strategy:      
