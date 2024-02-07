@@ -24,7 +24,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows
-          ref: main
+          ref: variable-input
 
       - name: authorize
         uses: ./composite-workflows/authorize
