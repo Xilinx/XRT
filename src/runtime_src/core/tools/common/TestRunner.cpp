@@ -374,21 +374,21 @@ TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& d
 }
 
 std::string
-TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
-                 boost::property_tree::ptree& _ptTest)
+TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
+                             boost::property_tree::ptree& ptTest)
 {
   //check if a 2RP platform
-  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
-  const auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(_dev, "");
-  if (device_name.find("Ryzen") != std::string::npos) {
-    return "/opt/xilinx/xrt/amdaie/";
+  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
+  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::ryzen) {
+    const auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
+    return "/lib/firmware/amdnpu/" + boost::str(boost::format("%x") % device_id) + "/";
   }
   if (!logic_uuid.empty())
-    return searchSSV2Xclbin(logic_uuid.front(), _ptTest);
+    return searchSSV2Xclbin(logic_uuid.front(), ptTest);
   else {
-    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
-    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
-    return searchLegacyXclbin(vendor, name, _ptTest);
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
+    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
+    return searchLegacyXclbin(vendor, name, ptTest);
   }
 }
 
