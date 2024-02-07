@@ -12,7 +12,7 @@ env:
 jobs:     
   check:  
     runs-on: ubuntu-latest
-    if: contains('sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV', format('{0},', github.actor)) && github.event.comment.body == '/build' && github.event.issue.pull_request
+    if: contains('pkbhaga03, sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV', format('{0},', github.actor)) && github.event.comment.body == '/build' && github.event.issue.pull_request
     steps:  
       - name: Check the build comment is from a valid authorizer  
         run: echo "${{ github.actor }} is a valid authorizer, running the build"
