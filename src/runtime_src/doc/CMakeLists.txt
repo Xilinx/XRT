@@ -39,7 +39,7 @@ set(KERNELDOC_URL "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-
 
 if (NOT EXISTS ${CMAKE_BINARY_DIR}/${KERNELDOC})
   MESSAGE(STATUS "${KERNELDOC} downloading")
-  file(DOWNLOAD ${KERNELDOC_URL} "./${KERNELDOC}")
+  file(DOWNLOAD ${KERNELDOC_URL} "${CMAKE_BINARY_DIR}/${KERNELDOC}")
   execute_process(COMMAND chmod +x ${KERNELDOC})
 endif ()
 
