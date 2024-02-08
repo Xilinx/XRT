@@ -5,7 +5,7 @@
 #define _XRT_COMMON_BO_INT_H_
 
 // This file defines implementation extensions to the XRT BO APIs.
-#include "core/include/experimental/xrt_bo.h"
+#include "core/include/xrt/xrt_bo.h"
 #include "core/common/shim/buffer_handle.h"
 
 namespace xrt_core::bo_int {

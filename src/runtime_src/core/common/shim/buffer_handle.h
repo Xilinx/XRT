@@ -85,11 +85,6 @@ public:
   virtual void
   bind_at(size_t /*pos*/, const buffer_handle* /*bh*/, size_t /*offset*/, size_t /*size*/)
   {
-    bool is_exec_buf = !!(get_properties().flags & XCL_BO_FLAGS_EXECBUF);
-
-    if (!is_exec_buf)
-      throw std::runtime_error("not supported");
-    // By default, nothing needs to be done for exec buf
   }
 };
 

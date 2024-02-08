@@ -951,6 +951,15 @@ public:
     }
   }
 
+  void
+  bind_arg_at_index(size_t index, const xrt::bo& bo)
+  {
+    auto bh = xrt_core::bo_int::get_buffer_handle(bo);
+    auto off = xrt_core::bo_int::get_offset(bo);
+    auto sz = bo.size();
+    get_exec_bo()->bind_at(index, bh, off, sz);
+  }
+
 private:
   std::shared_ptr<device_type> m_device;
   xrt_core::hw_queue m_hwqueue;  // hwqueue for command submission
@@ -2225,11 +2234,7 @@ public:
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
-
-    auto bh = xrt_core::bo_int::get_buffer_handle(bo);
-    auto off = xrt_core::bo_int::get_offset(bo);
-    auto sz = bo.size();
-    cmd->get_exec_bo()->bind_at(arg.index(), bh, off, sz);
+    cmd->bind_arg_at_index(arg.index(), bo);
 
     if (m_module)
       xrt_core::module_int::patch(m_module, arg.name(), bo);
