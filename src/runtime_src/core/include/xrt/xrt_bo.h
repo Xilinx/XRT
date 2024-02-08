@@ -1,7 +1,7 @@
-/*
- * Copyright (C) 2020-2022 Xilinx, Inc
- * SPDX-License-Identifier: Apache-2.0
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+
 #ifndef XRT_BO_H_
 #define XRT_BO_H_
 
@@ -468,6 +468,16 @@ public:
   XCL_DRIVER_DLLESPEC
   size_t
   size() const;
+
+  /**
+   * offset() - Get the offset of this buffer
+   *
+   * @return
+   *  Offset of buffer in bytes
+   */
+  XCL_DRIVER_DLLESPEC
+  size_t
+  offset() const;
 
   /**
    * address() - Get the device address of this buffer

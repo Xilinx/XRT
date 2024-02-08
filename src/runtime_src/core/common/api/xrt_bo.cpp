@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT BO APIs as declared in
 // core/include/experimental/xrt_bo.h
@@ -20,6 +20,7 @@
 #include "hw_context_int.h"
 #include "kernel_int.h"
 #include "xrt_mem.h"
+#include "core/common/api/bo_int.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
 #include "core/common/message.h"
@@ -492,6 +493,7 @@ public:
   }
 
   virtual size_t get_size()      const { return size;    }
+  virtual size_t get_offset()    const { return 0;       }
   virtual void*  get_hbuf()      const { return nullptr; }
   virtual bool   is_sub()        const { return false;   }
   virtual bool   is_imported()   const { return false;   }
@@ -905,6 +907,12 @@ public:
   is_sub() const override
   {
     return true;
+  }
+
+  size_t
+  get_offset() const override
+  {
+    return m_offset;
   }
 
   uint64_t
@@ -1443,6 +1451,15 @@ size() const
   }) ;
 }
 
+size_t
+bo::
+offset() const
+{
+  return xdp::native::profiling_wrapper("xrt::bo::offset", [this]{
+    return handle->get_offset();
+  }) ;
+}
+
 uint64_t
 bo::
 address() const
@@ -1953,3 +1970,15 @@ xrtBOAddress(xrtBufferHandle bhdl)
   }
   return std::numeric_limits<uint64_t>::max();
 }
+
+namespace xrt_core::bo_int {
+
+xrt_core::buffer_handle*
+get_buffer_handle(const xrt::bo& bo)
+{
+  auto handle = bo.get_handle();
+  return handle->get_handle();
+}
+
+} // xrt_core::bo_int
+
