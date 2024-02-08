@@ -36,11 +36,11 @@ jobs:
   #         pullRequestUser: ${{ github.event.pull_request.user.login }}
   build:
     # needs: authorize  
-    # strategy:      
-    #   matrix:      
-        # include:      
-          # - os: centos78      
-          #   packageType: rpm      
+    strategy:      
+      matrix:      
+        include:      
+          - os: centos78      
+            packageType: rpm      
           # - os: centos8      
           #   packageType: rpm      
           # - os: rhel9      
@@ -168,34 +168,34 @@ jobs:
   #         appConfig2: ${{ secrets.APP_CONFIG2 }} 
   #         appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  # package-download:    
-  #   needs: build    
-  #   runs-on: [self-hosted, Ubuntu-22.04]    
-  #   steps:    
-  #     - name: Checkout private repository    
-  #       uses: actions/checkout@v3 
-  #       with:    
-  #         repository: actions-int/composite-workflows    
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}    
-  #         path: composite-workflows 
-  #         ref: main
+  package-download:    
+    needs: build    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:    
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
     
-  #     - name: Use composite action package download     
-  #       uses: ./composite-workflows/package-download   
-  #       with:    
-  #         runNumber: ${{ github.run_number }}    
-  #         pipeline: ${{ env.PIPELINE }}    
-  #         env: ${{ env.ENV }}  
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}
-  #         NPATH: ${{ secrets.NPATH }}
-  #         USER: ${{ secrets.USER }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: Use composite action package download     
+        uses: ./composite-workflows/package-download   
+        with:    
+          runNumber: ${{ github.run_number }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
 
   extract-platforms:  
-    # needs: package-download    
+    needs: package-download    
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:      
       - name: Checkout extraction Action repository  
@@ -283,7 +283,7 @@ jobs:
           
 
   pcie-sw-emulation-tests:
-    # needs: package-download
+    needs: package-download
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
@@ -320,7 +320,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }} 
 
   pcie-hw-emulation-tests:
-    # needs: package-download
+    needs: package-download
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
