@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -23,7 +23,7 @@ Table2D::addEntry(const std::vector<std::string>& entry)
   if (entry.size() < m_table.size())
     throw std::runtime_error(boost::str(boost::format("Table2D - Entry data is smaller than table. Entry size: %d Table Size: %d\n") % entry.size() % m_table.size()));
   else if (entry.size() > m_table.size())
-    throw std::runtime_error(boost::str(boost::format("Table2D - Entry data is larger than table.\n") % entry.size() % m_table.size()));
+    throw std::runtime_error(boost::str(boost::format("Table2D - Entry data is larger than table. Entry size: %d Table Size: %d\n") % entry.size() % m_table.size()));
 
   // Iterate through the entry data and the table adding the table entry elements in order
   for (size_t i = 0; i < entry.size(); ++i) {
