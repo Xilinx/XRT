@@ -38,8 +38,10 @@ src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
 src/runtime_src/tools/ @rozumx
 src/runtime_src/tools/scripts/ @rozumx @stsoe
+src/runtime_src/hip/ @sonals @chvamshi-xilinx @stsoe
 src/CMake/ @rozumx @stsoe
-src/tests/xrt/ @stsoe
-src/tests/unit_test/ @stsoe
+tests/xrt/ @stsoe
+tests/unit_test/ @stsoe
+tests/hip/ @sonals @chvamshi-xilinx @stsoe
 build/ @stsoe @rozumx
 .github/workflows/* @Xilinx/xrt @SubhedarV @manikandan-xilinx
