@@ -195,7 +195,7 @@ jobs:
 
 
   extract-platforms:  
-    # needs: package-download    
+    needs: package-download    
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:      
       - name: Checkout extraction Action repository  
@@ -283,7 +283,7 @@ jobs:
           
 
   pcie-sw-emulation-tests:
-    # needs: package-download
+    needs: package-download
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
@@ -320,7 +320,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }} 
 
   pcie-hw-emulation-tests:
-    # needs: package-download
+    needs: package-download
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
