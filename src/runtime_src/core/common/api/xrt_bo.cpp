@@ -1451,15 +1451,6 @@ size() const
   }) ;
 }
 
-size_t
-bo::
-offset() const
-{
-  return xdp::native::profiling_wrapper("xrt::bo::offset", [this]{
-    return handle->get_offset();
-  }) ;
-}
-
 uint64_t
 bo::
 address() const
@@ -1973,11 +1964,18 @@ xrtBOAddress(xrtBufferHandle bhdl)
 
 namespace xrt_core::bo_int {
 
-xrt_core::buffer_handle*
+const xrt_core::buffer_handle*
 get_buffer_handle(const xrt::bo& bo)
 {
   auto handle = bo.get_handle();
   return handle->get_handle();
+}
+
+size_t
+get_offset(const xrt::bo& bo)
+{
+  auto handle = bo.get_handle();
+  return handle->get_offset();
 }
 
 } // xrt_core::bo_int

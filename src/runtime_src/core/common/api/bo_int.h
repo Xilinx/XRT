@@ -10,8 +10,11 @@
 
 namespace xrt_core::bo_int {
 
-xrt_core::buffer_handle*
+const xrt_core::buffer_handle*
 get_buffer_handle(const xrt::bo& bo);
+
+size_t
+get_offset(const xrt::bo& bo);
 
 } // bo_int, xrt_core
 

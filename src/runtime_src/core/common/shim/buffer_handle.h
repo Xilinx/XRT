@@ -83,7 +83,7 @@ public:
   // For now, this is only used when set_arg() is called upon an exec buf
   // BO where pos is the arg index.
   virtual void
-  bind_at(size_t pos, buffer_handle* bh, size_t offset, size_t size)
+  bind_at(size_t /*pos*/, const buffer_handle* /*bh*/, size_t /*offset*/, size_t /*size*/)
   {
     bool is_exec_buf = !!(get_properties().flags & XCL_BO_FLAGS_EXECBUF);
 

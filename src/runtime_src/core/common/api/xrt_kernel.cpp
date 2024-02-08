@@ -2227,7 +2227,9 @@ public:
     get_arg_setter()->set_arg_value(arg, bo);
 
     auto bh = xrt_core::bo_int::get_buffer_handle(bo);
-    cmd->get_exec_bo()->bind_at(arg.index(), bh, bo.offset(), bo.size());
+    auto off = xrt_core::bo_int::get_offset(bo);
+    auto sz = bo.size();
+    cmd->get_exec_bo()->bind_at(arg.index(), bh, off, sz);
 
     if (m_module)
       xrt_core::module_int::patch(m_module, arg.name(), bo);

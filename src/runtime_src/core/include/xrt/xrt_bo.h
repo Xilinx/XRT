@@ -470,16 +470,6 @@ public:
   size() const;
 
   /**
-   * offset() - Get the offset of this buffer
-   *
-   * @return
-   *  Offset of buffer in bytes
-   */
-  XCL_DRIVER_DLLESPEC
-  size_t
-  offset() const;
-
-  /**
    * address() - Get the device address of this buffer
    *
    * @return
