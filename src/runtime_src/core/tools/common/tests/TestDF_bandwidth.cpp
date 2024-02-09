@@ -174,8 +174,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
+  auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; i++) {
-    auto start = std::chrono::high_resolution_clock::now();
     try {
       auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
       // Wait for kernel to be done
