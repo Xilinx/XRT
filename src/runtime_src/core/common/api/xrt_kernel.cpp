@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
@@ -33,6 +33,7 @@
 #include "native_profile.h"
 #include "xclbin_int.h"
 
+#include "core/common/api/bo_int.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/cuidx_type.h"
@@ -948,6 +949,15 @@ public:
       if (callbacks)
         run_callbacks(s);
     }
+  }
+
+  void
+  bind_arg_at_index(size_t index, const xrt::bo& bo)
+  {
+    auto bh = xrt_core::bo_int::get_buffer_handle(bo);
+    auto off = xrt_core::bo_int::get_offset(bo);
+    auto sz = bo.size();
+    get_exec_bo()->bind_at(index, bh, off, sz);
   }
 
 private:
@@ -2224,6 +2234,7 @@ public:
   set_arg_value(const argument& arg, const xrt::bo& bo)
   {
     get_arg_setter()->set_arg_value(arg, bo);
+    cmd->bind_arg_at_index(arg.index(), bo);
 
     if (m_module)
       xrt_core::module_int::patch(m_module, arg.name(), bo);
