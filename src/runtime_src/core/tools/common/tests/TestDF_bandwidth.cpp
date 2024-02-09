@@ -21,6 +21,7 @@ static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size_gb = 1;
 static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
 static constexpr size_t word_count = buffer_size/4;
+static constexpr int itr_count = 600;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestDF_bandwidth::TestDF_bandwidth()
@@ -173,16 +174,18 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
-  auto start = std::chrono::high_resolution_clock::now();
-  try {
-    auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
-    // Wait for kernel to be done
-    run.wait2();
-  }
-  catch (const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
-    return ptree;
+  for (int i = 0; i < itr_count; i++) {
+    auto start = std::chrono::high_resolution_clock::now();
+    try {
+      auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
+      // Wait for kernel to be done
+      run.wait2();
+    }
+    catch (const std::exception& ex) {
+      logger(ptree, "Error", ex.what());
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
   }
   auto end = std::chrono::high_resolution_clock::now();
     busy_bar.finish();
@@ -200,7 +203,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 
   //Calculate bandwidth
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-  float bandwidth = buffer_size_gb / elapsedSecs;
+  //Data is read and written in parallel hence x2
+  float bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%.1f' GB/s") % bandwidth));
 
