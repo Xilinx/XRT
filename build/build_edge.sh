@@ -282,9 +282,11 @@ if [[ $clean == 1 ]]; then
 fi
 
 # we pick Petalinux BSP
-if [ -f $SETTINGS_FILE ]; then
+if [ -f $SETTINGS_FILE  ] && [ -z $PETALINUX ]; then
+    echo "source PETALINUX from local file"
     source $SETTINGS_FILE
 fi
+
 source $PETALINUX/settings.sh
 
 VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
