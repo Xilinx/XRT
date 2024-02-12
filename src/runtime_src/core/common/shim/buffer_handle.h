@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_CORE_BUFFER_HANDLE_H
 #define XRT_CORE_BUFFER_HANDLE_H
 
@@ -76,6 +76,15 @@ public:
   get_xcl_handle() const
   {
     return XRT_NULL_BO;
+  }
+
+  // Indicates to SHIM/driver that bh is going to be used by this BO. With
+  // offset and zie, it can also support using portion of bh (sub-BO).
+  // For now, this is only used when set_arg() is called upon an exec buf
+  // BO where pos is the arg index.
+  virtual void
+  bind_at(size_t /*pos*/, const buffer_handle* /*bh*/, size_t /*offset*/, size_t /*size*/)
+  {
   }
 };
 

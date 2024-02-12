@@ -236,7 +236,7 @@ xilinx_xrt()
   windows::adapter_list adapters;
 
   // Tight coupling with KMD driver description string
-  auto adapter = adapters.find("IPU Compute Accelerator Device");
+  auto adapter = adapters.find("NPU Compute Accelerator Device");
 
   // If no matching adapter found, return coreutil path (legacy)
   if (!adapter)

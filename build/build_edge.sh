@@ -282,9 +282,11 @@ if [[ $clean == 1 ]]; then
 fi
 
 # we pick Petalinux BSP
-if [ -f $SETTINGS_FILE ]; then
+if [ -f $SETTINGS_FILE  ] && [ -z $PETALINUX ]; then
+    echo "source PETALINUX from local file"
     source $SETTINGS_FILE
 fi
+
 source $PETALINUX/settings.sh
 
 VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
@@ -381,6 +383,10 @@ if [[ $apu_package == 1 ]]; then
   petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
   petalinux-build
+  if [ $? != 0 ]; then
+    error "XRT build failed"
+  fi  
+
   if [[ $gen_sysroot == 1 ]]; then
         petalinux-build --sdk
         echo "Run $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/sdk.sh to generate the syroot"
