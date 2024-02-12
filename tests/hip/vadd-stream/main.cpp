@@ -186,6 +186,9 @@ int mainworker() {
     vaddthread.join();
     nopthread.join();
 
+    test_hip_check(hipStreamDestroy(nopstream));
+    test_hip_check(hipStreamDestroy(vaddstream));
+
 //    mainworkerthread(vaddfunction, vaddstream, true);
 //    mainworkerthread(nopfunction, nopstream, false);
     return 0;
