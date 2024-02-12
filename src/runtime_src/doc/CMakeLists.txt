@@ -34,12 +34,12 @@ file(GLOB XRT_MAILBOX_C    ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/xocl/su
 file(MAKE_DIRECTORY ${DOC_CORE_DIR})
 file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-set(KERNELDOC "kernel-doc")
+set(KERNELDOC "${CMAKE_BINARY_DIR}/kernel-doc")
 set(KERNELDOC_URL "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52")
 
-if (NOT EXISTS ${CMAKE_BINARY_DIR}/${KERNELDOC})
+if (NOT EXISTS ${KERNELDOC})
   MESSAGE(STATUS "${KERNELDOC} downloading")
-  file(DOWNLOAD ${KERNELDOC_URL} "${CMAKE_BINARY_DIR}/${KERNELDOC}")
+  file(DOWNLOAD ${KERNELDOC_URL} ${KERNELDOC})
   execute_process(COMMAND chmod +x ${KERNELDOC})
 endif ()
 
