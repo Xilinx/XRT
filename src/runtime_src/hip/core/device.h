@@ -22,6 +22,7 @@ class device
   xrt::device m_xrt_device;
   uint32_t m_device_id = UINT32_MAX;
   unsigned int m_flags;
+  std::weak_ptr<context> pri_ctx = nullptr;
 
 public:
   explicit
@@ -43,6 +44,24 @@ public:
   set_flags(unsigned int flags)
   {
     m_flags = flags;
+  }
+
+  void
+  set_pri_ctx(std::weak_ptr<context>& ctx)
+  {
+    pri_ctx = ctx;
+  }
+
+  std::shared_ptr<context>
+  get_pri_ctx()
+  {
+    return pri_ctx.lock(); // may return nullptr
+  }
+
+  void
+  reset_pri_ctx()
+  {
+    pri_ctx = nullptr;
   }
 };
 

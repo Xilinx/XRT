@@ -19,8 +19,8 @@ hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device)
     throw xrt_core::system_error(hipErrorInvalidValue, "device requested is not available");
   }
 
-  auto hip_ctx = std::make_shared<context>(hip_dev);
   hip_dev->set_flags(flags);
+  auto hip_ctx = std::make_shared<context>(hip_dev);
   context_cache.add(hip_ctx.get(), std::move(hip_ctx));
   tls_objs.ctx_stack.push(hip_ctx);  // make it current
 
@@ -51,11 +51,11 @@ static void
 hipCtxGetDevice(hipDevice_t* device)
 {
   if (device == nullptr)
-    throw xrt_core::system_error(hipErrorInvalidValue, "Error retrieving device");
+    throw xrt_core::system_error(hipErrorInvalidValue, "device passed is nullptr");
   
   auto ctx = get_current_context();
   if (!ctx)
-    throw xrt_core::system_error(hipErrorInvalidValue, "Error retrieving device");
+    throw xrt_core::system_error(hipErrorInvalidValue, "Error retrieving context from device");
 
   *device = ctx->get_dev_id();
 }
@@ -80,11 +80,24 @@ hipCtxSetCurrent(hipCtx_t ctx)
 static void
 hipDevicePrimaryCtxRelease(hipDevice_t dev)
 {
-  auto hip_dev = device_cache.get(dev);
-  if (hip_dev == nullptr)
+  auto dev_hdl = static_cast<device_handle>(dev);
+  auto hip_dev = device_cache.get(dev_hdl);
+  if (!hip_dev)
     throw xrt_core::system_error(hipErrorInvalidDevice, "Invalid device");
 
-  throw std::runtime_error("Not implemented");
+  auto ctx = hip_dev->get_primary_ctx();
+  if (!ctx)
+    return;
+  
+  // decrement reference count for this primary ctx by removing its entry from map
+  // primary ctx is released when all its entries from map are removed
+  auto ctx_hdl = static_cast<context_handle>(std::this_thread::get_id());
+  context_cache.remove(ctx_hdl);
+  if (tls_objs.pri_ctx_info.active && tls_objs.pri_ctx_info.dev_hdl == dev_hdl) {
+    tls_objs.pri_ctx_info.active = false;
+    tls_objs.pri_ctx_info.dev_hdl = nullptr;
+    tls_objs.pri_ctx_info.ctx_hdl = nullptr;
+  }
 }
 
 // create primary context on given device if not already present
@@ -93,13 +106,28 @@ static void
 hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev)
 {
   auto hip_dev = device_cache.get(dev);
-  if (hip_dev == nullptr)
+  if (!hip_dev)
     throw xrt_core::system_error(hipErrorInvalidDevice, "Invalid device");
 
-  if (pctx == nullptr)
+  if (!pctx)
     throw xrt_core::system_error(hipErrorInvalidValue, "nullptr passed");
 
-  throw std::runtime_error("Not implemented");
+  auto dev_hdl = hip_dev.get();
+  auto hip_ctx = hip_dev->get_pri_ctx();
+  // create primary context
+  if (!hip_ctx) {
+    hip_ctx = std::make_shared<context>(hip_dev);
+    hip_dev->set_pri_ctx(hip_ctx);
+  }
+  // ref count of primary context is incremented by pushing on to map with 
+  // unqiue handle, using thread id here as primary context is unique per thread
+  auto ctx_hdl = static_cast<context_handle>(std::this_thread::get_id());
+  context_cache.add(ctx_hdl, std::move(hip_ctx));
+  
+  tls_objs.pri_ctx_info.active = true;
+  tls_objs.pri_ctx_info.ctx_hdl = ctx_hdl;
+  tls_objs.pri_ctx_info.dev_hdl = dev_hdl;
+  *pctx = reinterpret_cast<hipCtx_t>(hip_ctx.get());
 }
 } // xrt::core::hip
 

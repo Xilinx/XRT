@@ -9,13 +9,18 @@
 #include <stack>
 
 namespace xrt::core::hip {
-// thread local hip objects
-class hip_tls_objs
+struct ctx_info
 {
-public:
-  std::stack<std::shared_ptr<context>> ctx_stack;
-  bool pri_ctx_active = false;
-  std::shared_ptr<context> pri_ctx = nullptr;
+  context_handle_t ctx_hdl = nullptr;
+  device_handle dev_hdl = nullptr;
+  bool active = false;
+};
+
+// thread local hip objects
+struct hip_tls_objs
+{
+  std::stack<std::weak_ptr<context>> ctx_stack;
+  ctx_info pri_ctx_info;
 };
 extern thread_local hip_tls_objs tls_objs;
 } // xrt::core::hip
