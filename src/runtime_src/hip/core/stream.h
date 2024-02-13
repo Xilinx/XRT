@@ -6,10 +6,9 @@
 #include "context.h"
 
 namespace xrt::core::hip {
-/**
- * typedef stream_handle - opaque stream handle
- */
-typedef void* stream_handle;
+
+// stream_handle - opaque stream handle
+using stream_handle = void*;
 
 class stream
 {

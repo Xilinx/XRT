@@ -9,8 +9,8 @@
 #include "hip/core/stream.h"
 
 namespace xrt::core::hip {
-static void
-hipStreamCreateWithFlags(hipStream_t *stream, unsigned int flags)
+static hipStream_t
+hipStreamCreateWithFlags(unsigned int flags)
 {
   throw std::runtime_error("Not implemented");
 }
@@ -18,7 +18,7 @@ hipStreamCreateWithFlags(hipStream_t *stream, unsigned int flags)
 static void
 hipStreamDestroy(hipStream_t stream)
 {
-  if (stream == nullptr)
+  if (!stream)
     throw xrt_core::system_error(hipErrorInvalidHandle, "stream is nullptr");
 
   throw std::runtime_error("Not implemented");
@@ -33,7 +33,7 @@ hipStreamSynchronize(hipStream_t stream)
 static void
 hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags)
 {
-  if (event == nullptr) 
+  if (!event)
     throw xrt_core::system_error(hipErrorInvalidHandle, "event is nullptr");
 
   throw std::runtime_error("Not implemented");
@@ -43,10 +43,13 @@ hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags)
 // =========================================================================
 // Stream related apis implementation
 hipError_t
-hipStreamCreateWithFlags(hipStream_t *stream, unsigned int flags)
+hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags)
 {
   try {
-    xrt::core::hip::hipStreamCreateWithFlags(stream, flags);
+    if (!stream)
+      throw xrt_core::system_error(hipErrorInvalidValue, "stream passed is nullptr");
+    
+    *stream = xrt::core::hip::hipStreamCreateWithFlags(flags);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {

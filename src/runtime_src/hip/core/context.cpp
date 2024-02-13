@@ -8,7 +8,7 @@
 namespace xrt::core::hip {
 context::
 context(std::shared_ptr<device> device)
-  : m_device(std::move(device))
+  : m_device{std::move(device)}
 {}
 
 // Global map of contexts
@@ -27,7 +27,7 @@ get_current_context()
     return context_cache.get(tls_objs.pri_ctx_info.ctx_hdl);
 
   if (!tls_objs.ctx_stack.empty())
-    return tls_objs.ctx_stack.top();
+    return tls_objs.ctx_stack.top().lock();
 
   return nullptr;
 }

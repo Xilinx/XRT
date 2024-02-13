@@ -6,10 +6,9 @@
 #include "context.h"
 
 namespace xrt::core::hip {
-/**
- * typedef module_handle - opaque module handle
- */
-typedef void* module_handle;
+
+// module_handle - opaque module handle
+using module_handle = void*;
 
 class module
 {

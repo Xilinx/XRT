@@ -9,24 +9,23 @@
 #include <vector>
 
 namespace xrt::core::hip {
-/**
- * typedef device_handle - opaque device handle
- */
-typedef uint32_t device_handle;
+
+// device_handle - opaque device handle
+using device_handle = uint32_t;
 
 // forward declaration
 class context;
 
 class device
 {
+  uint32_t m_device_id{UINT32_MAX};
   xrt::device m_xrt_device;
-  uint32_t m_device_id = UINT32_MAX;
   unsigned int m_flags;
-  std::weak_ptr<context> pri_ctx = nullptr;
+  std::weak_ptr<context> pri_ctx;
 
 public:
   explicit
-  device(uint32_t _device_id);
+  device(uint32_t device_id);
 
   const xrt::device&
   get_xrt_device() const
@@ -47,7 +46,7 @@ public:
   }
 
   void
-  set_pri_ctx(std::weak_ptr<context>& ctx)
+  set_pri_ctx(std::shared_ptr<context> ctx)
   {
     pri_ctx = ctx;
   }
@@ -56,12 +55,6 @@ public:
   get_pri_ctx()
   {
     return pri_ctx.lock(); // may return nullptr
-  }
-
-  void
-  reset_pri_ctx()
-  {
-    pri_ctx = nullptr;
   }
 };
 

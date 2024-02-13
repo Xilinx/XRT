@@ -6,10 +6,9 @@
 #include "device.h"
 
 namespace xrt::core::hip {
-/**
- * typedef context_handle - opaque context handle
- */
-typedef void* context_handle;
+
+// context_handle - opaque context handle
+using context_handle = void*;
 
 class context
 {

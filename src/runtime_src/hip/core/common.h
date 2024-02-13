@@ -7,13 +7,14 @@
 #include "device.h"
 
 #include <stack>
+#include <thread>
 
 namespace xrt::core::hip {
 struct ctx_info
 {
-  context_handle_t ctx_hdl = nullptr;
-  device_handle dev_hdl = nullptr;
-  bool active = false;
+  context_handle ctx_hdl{nullptr};
+  device_handle dev_hdl{UINT32_MAX};
+  bool active{false};
 };
 
 // thread local hip objects

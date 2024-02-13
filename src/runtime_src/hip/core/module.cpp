@@ -6,7 +6,7 @@
 namespace xrt::core::hip {
 module::
 module(std::shared_ptr<context> ctx)
-  : m_ctx(ctx)
+  : m_ctx{std::move(ctx)}
 {}
 
 // Global map of streams
