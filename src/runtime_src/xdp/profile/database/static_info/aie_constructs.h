@@ -206,13 +206,17 @@ enum class module_type {
       std::map<uint32_t, uint32_t> group_event_config = {};
       uint32_t combo_event_input[NUM_COMBO_EVENT_INPUT] = {};
       uint32_t combo_event_control[NUM_COMBO_EVENT_CONTROL] = {};
+
       uint32_t broadcast_mask_south = BROADCAST_MASK_DEFAULT;
       uint32_t broadcast_mask_north = BROADCAST_MASK_DEFAULT;
       uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
       uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
       uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
+      
       bool port_trace_is_master[NUM_SWITCH_MONITOR_PORTS];
       int8_t port_trace_ids[NUM_SWITCH_MONITOR_PORTS];
+      int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
+      int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
       std::vector<aie_cfg_counter> pc;
 
       aie_cfg_base(uint32_t count) : pc(count) {
@@ -226,8 +230,7 @@ enum class module_type {
   /*
    * Core Module has 4 Performance counters
    * Group events 2,15,22,32,46,47,73,106,123 are defined in AIE architecture spec.
-   * Core trace uses pc trace mode so we just set that as default.
-   * "null" is a dummy string as port trace doesn't exist today.
+   * Core trace uses PC packets so we set that as default.
    */
   class aie_cfg_core : public aie_cfg_base
   {
@@ -251,8 +254,8 @@ enum class module_type {
 
   /*
    * Memory Module has 2 Performance counters.
-   * Group events exist for memory module but don't need to be defined.
-   * Memory trace uses time trace mode.
+   * Group events exist but don't need to be defined.
+   * Memory trace uses time packets.
    */
   class aie_cfg_memory : public aie_cfg_base
   {
@@ -261,15 +264,25 @@ enum class module_type {
   };
 
   /*
-   * Interface or memory tiles
-   * Uses up to 2 channel selections and 8 stream switch monitor ports
+   * Memory Tiles have 4 Performance counters.
+   * Group events exist but don't need to be defined.
+   * Memory tile trace uses time packets.
    */
-  class aie_cfg_peripheral_tile : public aie_cfg_base
+  class aie_cfg_memory_tile : public aie_cfg_base
   {
   public:
-    int8_t s2mm_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
-    int8_t mm2s_channels[NUM_CHANNEL_SELECTS] = {-1, -1};
-    aie_cfg_peripheral_tile() : aie_cfg_base(4) {}
+    aie_cfg_memory_tile() : aie_cfg_base(4) {};
+  };
+
+  /*
+   * Interface Tiles have 2 Performance counters.
+   * Group events exist but don't need to be defined.
+   * Interface tile trace uses time packets.
+   */
+  class aie_cfg_interface_tile : public aie_cfg_base
+  {
+  public:
+    aie_cfg_interface_tile() : aie_cfg_base(2) {};
   };
 
   /*
@@ -284,12 +297,12 @@ enum class module_type {
     std::string trace_metric_set;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
-    aie_cfg_peripheral_tile memory_tile_trace_config;
-    aie_cfg_peripheral_tile interface_tile_trace_config;
+    aie_cfg_memory_tile memory_tile_trace_config;
+    aie_cfg_interface_tile interface_tile_trace_config;
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
-  // Used by by IPU profiling/debug on Windows
+  // Used by client profiling/debug
   typedef struct {
     uint64_t perf_address;
   } profile_data_t;

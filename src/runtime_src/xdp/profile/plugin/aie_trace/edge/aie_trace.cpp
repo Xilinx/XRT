@@ -670,6 +670,15 @@ namespace xdp {
               cfgTile->memory_tile_trace_config.mm2s_channels[1] = channel1;
           }
         }
+        else {
+          // For simplicity, just check first event
+          // NOTE: for now, assume a single channel is monitored
+          auto channelNum = aie::trace::getChannelNumberFromEvent(memoryEvents.at(0));
+          if (aie::isInputSet(type, metricSet))
+            cfgTile->memory_trace_config.s2mm_channels[0] = channelNum;
+          else
+            cfgTile->memory_trace_config.s2mm_channels[0] = channelNum;
+        }
 
         // Configure memory trace events
         for (int i = 0; i < memoryEvents.size(); i++) {
@@ -705,9 +714,10 @@ namespace xdp {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile->memory_trace_config.traced_events[S] = aie::bcIdToEvent(bcId);
           }
-          else {
+          else if (type == xdp::module_type::mem_tile)
             cfgTile->memory_tile_trace_config.traced_events[S] = phyEvent;
-          }
+          else
+            cfgTile->memory_trace_config.traced_events[S] = phyEvent;
         }
 
         // Add trace control events to config file
@@ -720,8 +730,8 @@ namespace xdp {
             coreToMemBcMask |= (1 << bcId);
 
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
-            cfgTile->memory_trace_config.start_event = aie::bcIdToEvent(bcId);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+            cfgTile->memory_trace_config.start_event = aie::bcIdToEvent(bcId);
           }
           else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
@@ -737,8 +747,8 @@ namespace xdp {
             coreToMemBcMask |= (1 << bcId);
           
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
-            cfgTile->memory_trace_config.stop_event = aie::bcIdToEvent(bcId);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+            cfgTile->memory_trace_config.stop_event = aie::bcIdToEvent(bcId);
 
             // Use east broadcasting for AIE2+ or odd absolute rows of AIE1 checkerboard
             if ((row % 2) || (metadata->getHardwareGen() > 1))

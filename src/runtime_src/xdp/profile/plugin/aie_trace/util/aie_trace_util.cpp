@@ -427,6 +427,43 @@ namespace xdp::aie::trace {
   }
 
   /****************************************************************************
+   * Get channel number based on event
+   ***************************************************************************/
+  int8_t getChannelNumberFromEvent(XAie_Events event)
+  {
+    switch (event) {
+    case XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_START_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM:
+      return 0;
+    case XAIE_EVENT_DMA_S2MM_1_START_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_START_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM:
+      return 1;
+    default:
+      return -1;
+    }
+  }
+
+  /****************************************************************************
    * Print out resource usage statistics for a given tile
    ***************************************************************************/
   void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
