@@ -1099,9 +1099,10 @@ namespace xdp {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile->memory_trace_config.traced_events[i] = bcIdToEvent(bcId);
           }
-          else {
+          else if (type == module_type::mem_tile)
             cfgTile->memory_tile_trace_config.traced_events[i] = phyEvent;
-          }
+          else
+            cfgTile->memory_trace_config.traced_events[i] = phyEvent;
         }
 
         memoryEvents.clear();
