@@ -1,38 +1,44 @@
-name: XRT CI
-
-env:  
-  RELEASE: '2024.1'  
-  PIPELINE: 'xrt' 
-  ENV: 'test' 
-
-on:
-  pull_request_target:
-    types: [opened, edited, synchronize]
-
-concurrency:  
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-  cancel-in-progress: true 
+name: XRT CI  
   
-jobs:
-  authorize:
-    runs-on: Ubuntu-22.04
-    steps:
-      - name: Checkout private repository      
-        uses: actions/checkout@v4   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows
-          ref: variable-input
+env:    
+  RELEASE: '2024.1'    
+  PIPELINE: 'xrt'   
+  ENV: 'test'   
+  
+on:  
+  pull_request_target:  
+    types: [opened, edited, synchronize]  
+  issue_comment:  
+    types: [created]  
+  
+concurrency:    
+  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}  
+  cancel-in-progress: true   
+  
+jobs:  
+  authorize:  
+    runs-on: Ubuntu-22.04  
+    if: >  
+      (github.event_name == 'pull_request_target') ||   
+      (github.event_name == 'issue_comment' &&   
+      github.event.comment.body == '/build' &&   
+      contains('sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV', github.actor))  
+    steps:  
+      - name: Checkout private repository        
+        uses: actions/checkout@v4     
+        with:        
+          repository: actions-int/composite-workflows  
+          github-server-url: ${{ secrets.SERVER_URL }}        
+          token: ${{ secrets.ACCESS_TOKEN }}        
+          path: composite-workflows  
+          ref: main  
+  
+      - name: authorize  
+        uses: ./composite-workflows/authorize  
+        with:  
+          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}  
+          pullRequestUser: ${{ github.event.pull_request.user.login }}  
 
-      - name: authorize
-        uses: ./composite-workflows/authorize
-        with:
-          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
-          pullRequestUser: ${{ github.event.pull_request.user.login }}
-          org-name: 'Xilinx'
-          repo-name: 'preflight-check'
   build:
     needs: authorize  
     strategy:      
@@ -74,3 +80,19 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
           ref: main
+       
+      - name: XRT build     
+        uses: ./composite-workflows/build
+        with:     
+          pipeline: ${{ env.PIPELINE }} 
+          osVersion: ${{ matrix.os }}  
+          packageType: ${{ matrix.packageType }}  
+          workspace: ${{ github.workspace }}
+          buildNumber: ${{ github.run_number }}     
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
