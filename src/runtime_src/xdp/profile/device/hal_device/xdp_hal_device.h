@@ -22,6 +22,7 @@
 #include<vector>
 #include "core/include/xrt.h"
 #include "core/include/xrt/xrt_bo.h"
+#include "core/common/device.h"
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
@@ -30,6 +31,7 @@ class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
   std::vector<xrt::bo> xrt_bos;
+  std::shared_ptr<xrt_core::device> mXrtCoreDevice;
 
 public:
   HalDevice(void* halDeviceHandle);
@@ -44,7 +46,7 @@ public:
   virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data);
   virtual int initXrtIP(const char *name, uint64_t base, uint32_t range);
 
-  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret);
+  virtual std::vector<char> getDebugIpLayout();
 
   virtual double getDeviceClock();
   virtual uint64_t getTraceTime();

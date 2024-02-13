@@ -20,6 +20,7 @@
 #define _XDP_PROIFLE_XDP_BASE_DEVICE_H
 
 #include<string>
+#include<vector>
 #include "core/include/xrt.h"
 
 namespace xdp {
@@ -46,7 +47,7 @@ public:
   virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data) = 0;
   virtual int initXrtIP(const char *name, uint64_t base, uint32_t range) = 0;
 
-  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) = 0;
+  virtual std::vector<char> getDebugIpLayout() = 0;
 
   // Only device RAM
   virtual size_t alloc(size_t sz, uint64_t memoryIndex) = 0;

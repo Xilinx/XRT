@@ -584,17 +584,9 @@ void DeviceIntf::readDebugIPlayout() {
   if (ifs.gcount() > 0) {
     map = (debug_ip_layout *)(buffer);
 #else
-  size_t sz1 = 0, sectionSz = 0;
-  // Get the size of full debug_ip_layout
-  mDevice->getDebugIpLayout(nullptr, sz1, &sectionSz);
-
-  if (0 == sectionSz) {
-    return;
-  }
-
-  // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
-  std::vector<char> buffer(sectionSz);
-  mDevice->getDebugIpLayout(buffer.data(), sectionSz, &sz1);
+  //The vector<char> buffer is a chunk of raw bytes, not a string
+  std::vector<char> buffer;
+  buffer = mDevice->getDebugIpLayout();
   auto map = reinterpret_cast<debug_ip_layout *>(buffer.data());
 #endif
 

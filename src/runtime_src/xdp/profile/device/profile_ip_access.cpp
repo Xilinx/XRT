@@ -122,12 +122,7 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
     }
     uint64_t absolute_offset = ip_base_address + offset;
 
-    int read_size = device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
-    // HW Emulation xclRead will always return -1 even on success
-    if (read_size < 0 && getFlowMode() == HW) {
-        showWarning("xclRead failed");
-        return read_size;
-    }
+    device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     return 0;
 }
 
@@ -146,12 +141,7 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
     }
     uint64_t absolute_offset = ip_base_address + offset;
 
-    int write_size = device->write(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
-    // HW Emulation xclWrite will always return -1 even on success
-    if (write_size < 0 && getFlowMode() == HW) {
-        showWarning("xclWrite failed");
-        return write_size;
-    }
+    device->write(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     return 0;
 }
 
