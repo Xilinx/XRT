@@ -675,7 +675,7 @@ namespace xdp {
           // NOTE: for now, assume a single channel is monitored
           auto channelNum = aie::trace::getChannelNumberFromEvent(memoryEvents.at(0));
           if (aie::isInputSet(type, metricSet))
-            cfgTile->memory_trace_config.s2mm_channels[0] = channelNum;
+            cfgTile->memory_trace_config.mm2s_channels[0] = channelNum;
           else
             cfgTile->memory_trace_config.s2mm_channels[0] = channelNum;
         }

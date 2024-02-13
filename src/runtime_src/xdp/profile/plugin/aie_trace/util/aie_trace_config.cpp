@@ -84,15 +84,16 @@ namespace xdp::aie::trace {
           else {
             // Monitor DMA channels
             uint8_t channelNum = portnum % 2;
-            auto slaveOrMaster = (portnum < 2) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-            std::string typeName = (portnum < 2) ? "MM2S" : "S2MM";
+            bool isMaster = ((portnum >= 2) || (metricSet.find("s2mm") != std::string::npos));
+            auto slaveOrMaster = isMaster ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+            std::string typeName = isMaster ? "S2MM" : "MM2S";
             std::string msg = "Configuring core module stream switch to monitor DMA " 
                             + typeName + " channel " + std::to_string(channelNum);
             xrt_core::message::send(severity_level::debug, "XRT", msg);
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channelNum);
 
             config.port_trace_ids[portnum] = channelNum;
-            config.port_trace_is_master[portnum] = (slaveOrMaster == XAIE_STRMSW_MASTER);
+            config.port_trace_is_master[portnum] = isMaster;
           }
         }
         else if (type == module_type::shim) {
