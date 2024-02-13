@@ -533,6 +533,7 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, u
 		// Write 1 to GCQ interrupt enable register to always enable interrupt
 		xgq_reg_write32(xgq->xq_io_hdl, sqprod + XGQ_INTR_ENABLE_OFFSET, 1);
 	}
+
 	xgq_init_ring(xgq, &xgq->xq_sq, sqprod,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
 		      ring_addr + hdr.xh_sq_offset,
