@@ -10,7 +10,7 @@
 
 namespace xrt::core::hip {
 static void
-hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
+hip_module_launch_kernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
                       uint32_t gridDimZ, uint32_t blockDimX, uint32_t blockDimY,
                       uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
                       void** kernelParams, void** extra)
@@ -22,7 +22,7 @@ hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
 }
 
 static hipFunction_t
-hipModuleGetFunction(hipModule_t hmod, const char* name)
+hip_module_get_function(hipModule_t hmod, const char* name)
 {
   if (!name || strlen(name) == 0)
     throw xrt_core::system_error(hipErrorInvalidValue, "name is invalid");
@@ -34,7 +34,7 @@ hipModuleGetFunction(hipModule_t hmod, const char* name)
 }
 
 static void
-hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOptions,
+hip_module_load_data_ex(hipModule_t* module, const void* image, unsigned int numOptions,
                     hipJitOption* options, void** optionsValues)
 {
   if (!module)
@@ -44,7 +44,7 @@ hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOpti
 }
 
 static void
-hipModuleLoadData(hipModule_t* module, const void* image)
+hip_module_load_data(hipModule_t* module, const void* image)
 {
   if (!module)
     throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
@@ -53,7 +53,7 @@ hipModuleLoadData(hipModule_t* module, const void* image)
 }
 
 static void
-hipModuleUnload(hipModule_t hmod)
+hip_module_unload(hipModule_t hmod)
 {
   if (!hmod)
     throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
@@ -62,7 +62,7 @@ hipModuleUnload(hipModule_t hmod)
 }
 
 static void
-hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value)
+hip_func_set_attribute(const void* func, hipFuncAttribute attr, int value)
 {
   throw std::runtime_error("Not implemented");
 }
@@ -77,7 +77,7 @@ hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
                       void** kernelParams, void** extra)
 {
   try {
-    xrt::core::hip::hipModuleLaunchKernel(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
+    xrt::core::hip::hip_module_launch_kernel(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
                                           blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
     return hipSuccess;
   }
@@ -98,7 +98,7 @@ hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name)
     if (!hfunc)
       throw xrt_core::system_error(hipErrorInvalidHandle, "function passed is nullptr");
 
-    *hfunc = xrt::core::hip::hipModuleGetFunction(hmod, name);
+    *hfunc = xrt::core::hip::hip_module_get_function(hmod, name);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -116,7 +116,7 @@ hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOpti
                     hipJitOption* options, void** optionsValues)
 {
   try {
-    xrt::core::hip::hipModuleLoadDataEx(module, image, numOptions, options, optionsValues);
+    xrt::core::hip::hip_module_load_data_ex(module, image, numOptions, options, optionsValues);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -133,7 +133,7 @@ hipError_t
 hipModuleLoadData(hipModule_t* module, const void* image)
 {
   try {
-    xrt::core::hip::hipModuleLoadData(module, image);
+    xrt::core::hip::hip_module_load_data(module, image);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -150,7 +150,7 @@ hipError_t
 hipModuleUnload(hipModule_t hmod)
 {
   try {
-    xrt::core::hip::hipModuleUnload(hmod);
+    xrt::core::hip::hip_module_unload(hmod);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -167,7 +167,7 @@ hipError_t
 hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value)
 {
   try {
-    xrt::core::hip::hipFuncSetAttribute(func, attr, value);
+    xrt::core::hip::hip_func_set_attribute(func, attr, value);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {

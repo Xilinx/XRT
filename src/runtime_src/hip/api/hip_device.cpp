@@ -53,7 +53,7 @@ device_init()
 }
 
 static void
-hipInit(unsigned int flags)
+hip_init(unsigned int flags)
 {
   // Flags should be zero as per Hip doc
   if (flags != 0)
@@ -66,7 +66,7 @@ hipInit(unsigned int flags)
 }
 
 static int
-hipGetDeviceCount()
+hip_get_device_count()
 {
   // Get device count
   auto count = xrt::core::hip::device_cache.size();
@@ -80,7 +80,7 @@ hipGetDeviceCount()
 // Returns a handle to compute device
 // Throws on error
 static int
-hipDeviceGet(int ordinal)
+hip_device_get(int ordinal)
 {
   if (ordinal < 0 || device_cache.count(static_cast<device_handle>(ordinal)) == 0)
     throw xrt_core::system_error(hipErrorInvalidDevice, "device requested is not available");
@@ -89,7 +89,7 @@ hipDeviceGet(int ordinal)
 }
 
 static std::string
-hipDeviceGetName(hipDevice_t device)
+hip_device_get_name(hipDevice_t device)
 {
   if (device < 0 || xrt::core::hip::device_cache.count(static_cast<xrt::core::hip::device_handle>(device)) == 0)
     throw xrt_core::system_error(hipErrorInvalidDevice, " - device requested is not available");
@@ -98,7 +98,7 @@ hipDeviceGetName(hipDevice_t device)
 }
 
 static hipDeviceProp_t
-hipGetDeviceProperties(hipDevice_t device)
+hip_get_device_properties(hipDevice_t device)
 {
   if (device < 0 || xrt::core::hip::device_cache.count(static_cast<xrt::core::hip::device_handle>(device)) == 0)
     throw xrt_core::system_error(hipErrorInvalidDevice, "device requested is not available");
@@ -107,7 +107,7 @@ hipGetDeviceProperties(hipDevice_t device)
 }
 
 static hipUUID
-hipDeviceGetUuid(hipDevice_t device)
+hip_device_get_uuid(hipDevice_t device)
 {
   if (device < 0 || xrt::core::hip::device_cache.count(static_cast<xrt::core::hip::device_handle>(device)) == 0)
     throw xrt_core::system_error(hipErrorInvalidDevice, "device requested is not available");
@@ -116,7 +116,7 @@ hipDeviceGetUuid(hipDevice_t device)
 }
 
 static int
-hipDeviceGetAttribute(hipDeviceAttribute_t attr, int device)
+hip_device_get_attribute(hipDeviceAttribute_t attr, int device)
 {
   if (device < 0 || xrt::core::hip::device_cache.count(static_cast<xrt::core::hip::device_handle>(device)) == 0)
     throw xrt_core::system_error(hipErrorInvalidDevice, "device requested is not available");
@@ -131,7 +131,7 @@ hipError_t
 hipInit(unsigned int flags)
 {
   try {
-    xrt::core::hip::hipInit(flags);
+    xrt::core::hip::hip_init(flags);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -150,8 +150,8 @@ hipGetDeviceCount(int* count)
   try {
     if (!count)
       throw xrt_core::system_error(hipErrorInvalidValue, "arg passed is nullptr");
-    
-    *count = xrt::core::hip::hipGetDeviceCount();
+
+    *count = xrt::core::hip::hip_get_device_count();
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -171,7 +171,7 @@ hipDeviceGet(hipDevice_t* device, int ordinal)
     if (!device)
       throw xrt_core::system_error(hipErrorInvalidValue, "device is nullptr");
 
-    *device = xrt::core::hip::hipDeviceGet(ordinal);
+    *device = xrt::core::hip::hip_device_get(ordinal);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -191,7 +191,7 @@ hipDeviceGetName(char* name, int len, hipDevice_t device)
     if (!name || len <= 0)
       throw xrt_core::system_error(hipErrorInvalidValue, "invalid arg");
 
-    auto name_str = xrt::core::hip::hipDeviceGetName(device);
+    auto name_str = xrt::core::hip::hip_device_get_name(device);
     // Only copy partial name if size of `dest` is smaller than size of `src` including
     // trailing \0
     auto cpy_size = (static_cast<size_t>(len) <= (name_str.length() + 1) ? (len - 1) : name_str.length());
@@ -215,8 +215,8 @@ hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
   try {
     if (!props)
       throw xrt_core::system_error(hipErrorInvalidValue, "arg passed is nullptr");
-    
-    *props = xrt::core::hip::hipGetDeviceProperties(device);
+
+    *props = xrt::core::hip::hip_get_device_properties(device);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -236,7 +236,7 @@ hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device)
     if (!uuid)
       throw xrt_core::system_error(hipErrorInvalidValue, "arg passed is nullptr");
 
-    *uuid = xrt::core::hip::hipDeviceGetUuid(device);
+    *uuid = xrt::core::hip::hip_device_get_uuid(device);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -256,7 +256,7 @@ hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     if (!pi)
       throw xrt_core::system_error(hipErrorInvalidValue, "arg passed is nullptr");
 
-    *pi = xrt::core::hip::hipDeviceGetAttribute(attr, device);
+    *pi = xrt::core::hip::hip_device_get_attribute(attr, device);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {

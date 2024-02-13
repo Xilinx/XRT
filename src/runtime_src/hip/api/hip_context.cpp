@@ -12,7 +12,7 @@ namespace xrt::core::hip {
 // Returns handle to context
 // Throws on error
 static context_handle
-hipCtxCreate(unsigned int flags, hipDevice_t device)
+hip_ctx_create(unsigned int flags, hipDevice_t device)
 {
   auto hip_dev = device_cache.get(static_cast<device_handle>(device));
   if (!hip_dev)
@@ -26,7 +26,7 @@ hipCtxCreate(unsigned int flags, hipDevice_t device)
 }
 
 static void
-hipCtxDestroy(hipCtx_t ctx)
+hip_ctx_destroy(hipCtx_t ctx)
 {
   auto handle = reinterpret_cast<context_handle>(ctx);
   if (!handle) {
@@ -46,7 +46,7 @@ hipCtxDestroy(hipCtx_t ctx)
 }
 
 static device_handle
-hipCtxGetDevice()
+hip_ctx_get_device()
 {
   auto ctx = get_current_context();
   if (!ctx)
@@ -56,7 +56,7 @@ hipCtxGetDevice()
 }
 
 static void
-hipCtxSetCurrent(hipCtx_t ctx)
+hip_ctx_set_current(hipCtx_t ctx)
 {
   if (!tls_objs.ctx_stack.empty())
     tls_objs.ctx_stack.pop();
@@ -73,7 +73,7 @@ hipCtxSetCurrent(hipCtx_t ctx)
 // remove primary ctx as active
 // release resoources if it is the last reference
 static void
-hipDevicePrimaryCtxRelease(hipDevice_t dev)
+hip_device_primary_ctx_release(hipDevice_t dev)
 {
   auto dev_hdl = static_cast<device_handle>(dev);
   auto hip_dev = device_cache.get(dev_hdl);
@@ -99,7 +99,7 @@ hipDevicePrimaryCtxRelease(hipDevice_t dev)
 // create primary context on given device if not already present
 // else increment reference count
 static context_handle
-hipDevicePrimaryCtxRetain(hipDevice_t dev)
+hip_device_primary_ctx_retain(hipDevice_t dev)
 {
   auto hip_dev = device_cache.get(dev);
   if (!hip_dev)
@@ -133,8 +133,8 @@ hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device)
   try {
     if (!ctx)
       throw xrt_core::system_error(hipErrorInvalidValue, "ctx passed is nullptr");
-    
-    auto handle = xrt::core::hip::hipCtxCreate(flags, device);
+
+    auto handle = xrt::core::hip::hip_ctx_create(flags, device);
     *ctx = reinterpret_cast<hipCtx_t>(handle);
     return hipSuccess;
   }
@@ -152,7 +152,7 @@ hipError_t
 hipCtxDestroy(hipCtx_t ctx)
 {
   try {
-    xrt::core::hip::hipCtxDestroy(ctx);
+    xrt::core::hip::hip_ctx_destroy(ctx);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -171,8 +171,8 @@ hipCtxGetDevice(hipDevice_t* device)
   try {
     if (!device)
       throw xrt_core::system_error(hipErrorInvalidValue, "device passed is nullptr");
-    
-    *device = xrt::core::hip::hipCtxGetDevice();
+
+    *device = xrt::core::hip::hip_ctx_get_device();
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -189,7 +189,7 @@ hipError_t
 hipCtxSetCurrent(hipCtx_t ctx)
 {
   try {
-    xrt::core::hip::hipCtxSetCurrent(ctx);
+    xrt::core::hip::hip_ctx_set_current(ctx);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -209,7 +209,7 @@ hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev)
     if (!pctx)
       throw xrt_core::system_error(hipErrorInvalidValue, "nullptr passed");
 
-    auto handle = xrt::core::hip::hipDevicePrimaryCtxRetain(dev);
+    auto handle = xrt::core::hip::hip_device_primary_ctx_retain(dev);
     *pctx = reinterpret_cast<hipCtx_t>(handle);
     return hipSuccess;
   }
@@ -227,7 +227,7 @@ hipError_t
 hipDevicePrimaryCtxRelease(hipDevice_t dev)
 {
   try {
-    xrt::core::hip::hipDevicePrimaryCtxRelease(dev);
+    xrt::core::hip::hip_device_primary_ctx_release(dev);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
