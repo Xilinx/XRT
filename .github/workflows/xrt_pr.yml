@@ -19,12 +19,12 @@ jobs:
   setup:    
     runs-on: Ubuntu-22.04    
     outputs:    
-      repository: ${{ steps.set-vars.outputs.repository }}  
-      ref: ${{ steps.set-vars.outputs.ref }}  
+      repository: ${{ steps.set-prt-vars.outputs.repository }} || ${{ steps.set-ic-vars.outputs.repository }}
+      ref: ${{ steps.set-prt-vars.outputs.ref }} || ${{ steps.set-ic-vars.outputs.ref }}
     steps:    
       - name: Get PR details for issue_comment event    
         id: get-pr-details    
-        # if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'    
+        if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'    
         uses: octokit/request-action@v2.x    
         with:    
           route: GET ${{ github.event.issue.pull_request.url }}    
@@ -32,15 +32,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}    
     
       - name: Set variables
-        id: set-vars 
+        id: set-prt-vars
+        if: github.event_name == 'pull_request_target'
         run: |  
-          if [ "${{ github.event_name }}" = "pull_request_target" ]; then    
             echo "::set-output name=repository::${{ github.event.pull_request.head.repo.full_name }}"    
             echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"    
-          elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then    
+
+      - name: Set variables
+        id: set-ic-vars 
+        if: ${{ github.event_name }} = "issue_comment" && ${{ github.event.comment.body }} = "/build"
+        run: |
             echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"    
             echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"    
-          fi    
   
   authorize:   
     needs: setup    
