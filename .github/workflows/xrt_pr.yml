@@ -11,10 +11,6 @@ on:
   issue_comment:    
     types: [created]    
     
-concurrency:      
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}    
-  cancel-in-progress: true     
-    
 jobs:  
   setup:    
     runs-on: Ubuntu-22.04    
@@ -35,7 +31,6 @@ jobs:
         run: |   
             echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
             echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"
-
             
   authorize:   
     needs: setup    
