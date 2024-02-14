@@ -39,12 +39,19 @@ jobs:
             echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"        
           elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then        
             echo "Data: ${{ steps.get-pr-details.outputs.data }}"  
-            echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"        
-            echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"        
+            echo "::set-output name=data::${{ steps.get-pr-details.outputs.data }}"        
           fi    
+
+      - name: Install jq  
+        run: sudo apt-get install -y jq  
+        
+      - name: Parse JSON    
+        id: parse-json    
+        run: |    
+          pr_data=$(echo '${{ steps.set-vars.outputs.data }}' | jq -r '.')    
+          echo "::set-output name=repository::$(echo $pr_data | jq -r '.head.repo.full_name')"    
+          echo "::set-output name=ref::$(echo $pr_data | jq -r '.head.ref')"    
    
-  
-  
   authorize:   
     needs: setup    
     runs-on: Ubuntu-22.04    
