@@ -22,6 +22,9 @@
 #include <map>
 #include <vector>
 
+#include "core/include/xrt/xrt_hw_context.h"
+#include "core/include/experimental/xrt_ip.h"
+
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp_base_device.h"
 
@@ -46,23 +49,27 @@ public:
     const std::unique_ptr<ip_metadata>& ip_metadata_section,
     const std::string& fullname /** < fullname of the IP in IP_LAYOUT */
   );
-  ~XrtIP() {}
+  ~XrtIP(); // {}
 
   // For now, this is all we need
   std::string& getDeadlockDiagnosis(bool print=true);
 
 private:
   Device* xdpDevice;
+  xrt::hw_context hwContext;
+  xrt::ip* xrtIP;
   std::string fullname;
   std::string deadlockDiagnosis;
-  std::string kernelName;
+//  std::string kernelName;
   kernel_reginfo regInfo;
+#if 0
   int32_t index;
 
 private:
   int read(uint32_t offset, uint32_t* data);
 
   bool initialized() { return index >= 0; }
+#endif
 };
 
 } //  xdp
