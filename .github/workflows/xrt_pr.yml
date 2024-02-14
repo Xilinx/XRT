@@ -24,7 +24,7 @@ jobs:
     steps:    
       - name: Get PR details for issue_comment event    
         id: get-pr-details    
-        # if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'    
+        if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'    
         uses: octokit/request-action@v2.x    
         with:    
           route: GET ${{ github.event.issue.pull_request.url }}    
