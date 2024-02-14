@@ -377,47 +377,72 @@ std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                              boost::property_tree::ptree& ptTest)
 {
+  std::vector<std::string> platform_paths = findPlatformPaths(_dev, _ptTest);
+
+  for (const auto& path : platform_paths) {
+    if (std::filesystem::exists(path))
+      return path;
+  }
+
+  logger(_ptTest, "Details", boost::str(boost::format("No platform path available. Skipping validation.")));
+  _ptTest.put("status", test_token_skipped);
+  return "";
+}
+
+static std::vector<std::string>
+findRyzenPlatformPaths(const std::shared_ptr<xrt_core::device>& dev)
+{
+#ifdef _WIN32
+  boost::ignore_unused(_dev);
+  std::vector<std::string> paths;
+  const auto sys_paths = xrt_core::environment::xclbin_repo_paths();
+  for (const auto sys_path : sys_paths)
+    paths.push_back(sys_path.string());
+  return paths;
+#else
+  const auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
+  return {"/lib/firmware/amdnpu/" + boost::str(boost::format("%x") % device_id) + "/"};
+#endif
+}
+
+std::vector<std::string>
+TestRunner::findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
+                              boost::property_tree::ptree& ptTest)
+{
+  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::ryzen)
+    return findRyzenPlatformPaths(dev);
+
+  // Default to alveo logic
   //check if a 2RP platform
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
-  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::ryzen) {
-    const auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
-    return "/lib/firmware/amdnpu/" + boost::str(boost::format("%x") % device_id) + "/";
-  }
   if (!logic_uuid.empty())
-    return searchSSV2Xclbin(logic_uuid.front(), ptTest);
+    return {searchSSV2Xclbin(logic_uuid.front(), ptTest)};
   else {
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
     auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-    return searchLegacyXclbin(vendor, name, ptTest);
+    return {searchLegacyXclbin(vendor, name, ptTest)};
   }
 }
 
 std::string
-TestRunner::findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
-                boost::property_tree::ptree& _ptTest)
+TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
+                           boost::property_tree::ptree& ptTest)
 {
-  auto xclbin_name = _ptTest.get<std::string>("xclbin", "");
-  std::string xclbin_path;
-#ifdef _WIN32
-  boost::ignore_unused(_dev);
-  try {
-    xclbin_path = xrt_core::environment::xclbin_path(xclbin_name).string();
+  const std::string xclbin_name = _ptTest.get<std::string>("xclbin", "");
+  std::vector<std::string> platform_paths = findPlatformPaths(_dev, _ptTest);
+  const std::string xclbin_dir = _ptTest.get<std::string>("xclbin_directory", "");
+  if (!xclbin_dir.empty())
+    platform_paths.push_back(xclbin_dir);
+
+  for (const auto& path : platform_paths) {
+    const std::string xclbin_path = path + xclbin_name;
+    if (std::filesystem::exists(xclbin_path))
+      return xclbin_path;
   }
-  catch(const std::exception) {
-    const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_name;
-    logger(_ptTest, "Details", boost::str(fmt));
-    _ptTest.put("status", test_token_skipped);
-  }
-#else
-  const auto platform_path = findPlatformPath(_dev, _ptTest);
-  xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + xclbin_name;
-  if (!std::filesystem::exists(xclbin_path)) {
-    const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_path;
-    logger(_ptTest, "Details", boost::str(fmt));
-    _ptTest.put("status", test_token_skipped);
-  }
-#endif
-  return xclbin_path;
+
+  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
+  _ptTest.put("status", test_token_skipped);
+  return "";
 }
 
 std::string
@@ -435,11 +460,12 @@ TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
   prefix_path = std::filesystem::path("/opt/xilinx/xrt/test/");
 #endif
   auto dpu_instr = prefix_path / dpu_dir / dpu_name;
-  if (!std::filesystem::exists(dpu_instr)) {
-    throw std::runtime_error(boost::str(boost::format("DPU sequence file not found: '%s'") % dpu_instr));
-  }
+  if (std::filesystem::exists(dpu_instr))
+    return dpu_instr;
 
-  return dpu_instr.string();
+  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % dpu_name));
+  _ptTest.put("status", test_token_skipped);
+  return "";
 }
 
 std::vector<std::string>

@@ -135,15 +135,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   xrt::kernel kernel{hwctx, kernelName};
 
   // Find DPU instruction file
-  std::string dpu_instr;
-  try {
-    dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
-  }
-  catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+  std::string dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
+  if (!std::filesystem::exists(dpu_instr))
     return ptree;
-  }
+
   logger(ptree, "DPU-Sequence", dpu_instr);
 
   size_t instr_size = 0;
