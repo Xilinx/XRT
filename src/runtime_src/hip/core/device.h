@@ -6,6 +6,7 @@
 #include "core/common/api/handle.h"
 #include "xrt/xrt_device.h"
 
+#include <limits>
 #include <vector>
 
 namespace xrt::core::hip {
@@ -18,7 +19,7 @@ class context;
 
 class device
 {
-  uint32_t m_device_id{UINT32_MAX};
+  uint32_t m_device_id{std::numeric_limits<uint32_t>::max()};
   xrt::device m_xrt_device;
   unsigned int m_flags;
   std::weak_ptr<context> pri_ctx;

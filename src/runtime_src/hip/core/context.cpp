@@ -19,16 +19,24 @@ thread_local hip_tls_objs tls_objs;
 
 // returns current context
 // if primary context is active it is current
-// else returns top of ctx stackk
+// else returns top of ctx stack
+// this function can return null if no context is active
 std::shared_ptr<context>
 get_current_context()
 {
   if (tls_objs.pri_ctx_info.active)
     return context_cache.get(tls_objs.pri_ctx_info.ctx_hdl);
 
-  if (!tls_objs.ctx_stack.empty())
-    return tls_objs.ctx_stack.top().lock();
+  // primary ctx is not active
+  // retrun ctx from stack, top of stack can be invalid
+  // because of previous destroy calls, return valid ones
+  std::shared_ptr<context> ctx;
+  while (!ctx && !tls_objs.ctx_stack.empty()) {
+    ctx = tls_objs.ctx_stack.top().lock();
+    if (!ctx)
+      tls_objs.ctx_stack.pop();
+  }
 
-  return nullptr;
+  return ctx;
 }
 }

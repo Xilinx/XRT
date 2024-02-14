@@ -50,7 +50,7 @@ hip_ctx_get_device()
 {
   auto ctx = get_current_context();
   if (!ctx)
-    throw xrt_core::system_error(hipErrorInvalidValue, "Error retrieving context from device");
+    throw xrt_core::system_error(hipErrorInvalidValue, "Error retrieving context");
 
   return ctx->get_dev_id();
 }

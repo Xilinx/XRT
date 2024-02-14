@@ -13,7 +13,7 @@ namespace xrt::core::hip {
 struct ctx_info
 {
   context_handle ctx_hdl{nullptr};
-  device_handle dev_hdl{UINT32_MAX};
+  device_handle dev_hdl{std::numeric_limits<uint32_t>::max()};
   bool active{false};
 };
 
