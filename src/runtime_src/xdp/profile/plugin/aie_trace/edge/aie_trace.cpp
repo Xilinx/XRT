@@ -610,7 +610,7 @@ namespace xdp {
         auto traceStartEvent = (type == module_type::core) ? coreTraceStartEvent : memoryTileTraceStartEvent;
         auto traceEndEvent = (type == module_type::core) ? coreTraceEndEvent : memoryTileTraceEndEvent;
         
-        aie_cfg_base aieConfig = cfgTile->core_trace_config;
+        aie_cfg_base& aieConfig = cfgTile->core_trace_config;
         if (type == module_type::mem_tile)
           aieConfig = cfgTile->memory_tile_trace_config;
 
