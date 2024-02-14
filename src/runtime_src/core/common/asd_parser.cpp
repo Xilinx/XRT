@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "asd_parser.h"
 #include "query_requests.h"
@@ -744,7 +744,7 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
   
     // Get Aie column status from driver
     xrt_core::query::aie_tiles_status_info::parameters arg{0};
-    arg.num_cols = info.cols;
+    arg.max_num_cols = info.cols;
     arg.col_size = info.col_size;
 
     auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
