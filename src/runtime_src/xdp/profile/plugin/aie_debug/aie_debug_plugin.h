@@ -48,8 +48,7 @@ namespace xdp {
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
     uint8_t* txn_ptr;
     XAie_DevInst aieDevInst = {0};
-    boost::property_tree::ptree aie_meta;
-    std::unique_ptr<xdp::aie::BaseFiletypeImpl> filetype;
+    const aie::BaseFiletypeImpl* metadataReader = nullptr;
     aie_profile_op_t* op;
     std::size_t op_size;
 

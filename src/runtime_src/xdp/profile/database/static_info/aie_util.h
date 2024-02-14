@@ -37,12 +37,9 @@ namespace xdp::aie {
   void 
   throwIfError(bool err, const char* msg);
 
-  // A function to read the JSON from an axlf section inside the xclbin and
-  // return the type of the file
   XDP_CORE_EXPORT
-  std::unique_ptr<BaseFiletypeImpl>
-  readAIEMetadata(const char* data, size_t size,
-                  boost::property_tree::ptree& aie_project);
+  std::unique_ptr<xdp::aie::BaseFiletypeImpl>
+  determineFileType(boost::property_tree::ptree& aie_project);
 
   // A function to read the JSON from a file on disk and return the type of
   // the file

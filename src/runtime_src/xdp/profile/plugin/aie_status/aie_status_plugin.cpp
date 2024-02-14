@@ -104,9 +104,9 @@ namespace xdp {
   {
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = filetype->getValidGraphs();
+    auto graphs = metadataReader->getValidGraphs();
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = filetype->getEventTiles(graph, module_type::core);
+      mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -186,8 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = filetype->getAIETileRowOffset();
-    auto hwGen = filetype->getHardwareGeneration();
+    auto offset = metadataReader->getAIETileRowOffset();
+    auto hwGen = metadataReader->getHardwareGeneration();
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -409,9 +409,13 @@ namespace xdp {
     }
 
     // Grab AIE metadata
-    auto data = mXrtCoreDevice->get_axlf_section(AIE_METADATA);
-    filetype = aie::readAIEMetadata(data.first, data.second, mAieMeta);
-    auto hwGen = filetype->getHardwareGeneration();
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader) {
+      xrt_core::message::send(severity_level::error,
+                            "XRT", "Error parsing AIE Profiling Metadata for AIE Status.");
+      return;
+    }
+    auto hwGen =  metadataReader->getHardwareGeneration();
 
     // Update list of tiles to debug
     getTilesForStatus();

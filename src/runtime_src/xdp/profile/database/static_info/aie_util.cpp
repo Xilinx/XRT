@@ -194,19 +194,6 @@ namespace xdp::aie {
   }
 
   /****************************************************************************
-   * Read AIE metadata from axlf section
-   ***************************************************************************/
-  std::unique_ptr<xdp::aie::BaseFiletypeImpl>
-  readAIEMetadata(const char* data, size_t size, pt::ptree& aie_project)
-  {
-    std::stringstream aie_stream;
-    aie_stream.write(data,size);
-    pt::read_json(aie_stream, aie_project);
-
-    return determineFileType(aie_project);
-  }
-
-  /****************************************************************************
    * Read AIE metadata from file
    ***************************************************************************/
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
@@ -220,7 +207,16 @@ namespace xdp::aie {
       return nullptr;
     }
 
-    pt::read_json(filename, aie_project);
+    try {
+      pt::read_json(filename, aie_project);
+    }
+    catch(const std::exception& e)
+    {
+      std::stringstream msg;
+      msg << "Exception occurred while reading the aie_control_config: "<< std::string(e.what()) ;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return nullptr;
+    }
    
 
     return determineFileType(aie_project);

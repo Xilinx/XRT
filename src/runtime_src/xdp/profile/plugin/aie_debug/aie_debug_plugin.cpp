@@ -61,10 +61,8 @@ namespace xdp {
     if (!xrt_core::config::get_aie_debug())
       return;
 
-    try {
-      pt::read_json("aie_control_config.json", aie_meta);
-      filetype = aie::readAIEMetadata("aie_control_config.json", aie_meta);
-    } catch (...) {
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader) {
       std::stringstream msg;
       msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Debug.";
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
@@ -105,9 +103,9 @@ namespace xdp {
     
       std::vector<tile_type> tiles;
       if (type == module_type::shim) {
-        tiles = filetype->getInterfaceTiles("all", "all", "", -1);
+        tiles = metadataReader->getInterfaceTiles("all", "all", "", -1);
       } else {
-        tiles = filetype->getTiles("all", type, "all");
+        tiles = metadataReader->getTiles("all", type, "all");
       }
 
       if (tiles.empty()) {
@@ -309,7 +307,7 @@ namespace xdp {
   AieDebugPlugin::
   getAIEConfigMetadata()
   {
-    return filetype->getDriverConfig();
+    return metadataReader->getDriverConfig();
   }
 
 }  // end namespace xdp
