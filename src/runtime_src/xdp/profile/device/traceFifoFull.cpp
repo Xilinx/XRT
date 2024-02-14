@@ -88,7 +88,7 @@ uint32_t TraceFifoFull::readTrace(uint32_t*& traceData, uint32_t nSamples)
 void TraceFifoFull::showProperties()
 {
     std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
-    (*outputStream) << " TraceFifoFull " << std::endl;
+    (*outputStream) << " TraceFifoFull " << "\n";
     ProfileIP::showProperties();
 }
 

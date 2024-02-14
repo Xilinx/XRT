@@ -1,0 +1,353 @@
+#################################################################################
+# These pre-built images, source code and configurations are provided for demonstration purposes only.
+# May not be suitable outside of a development environment, including for production purposes.
+# Prior to production and deployment of any Linux-based system, it is recommended that all relevant security updates are applied,
+# and a mechanism for in-field updates is made available throughout the lifetime of the relevant product.
+#################################################################################
+
+#################################################################################
+# I.   Main Contents of Prebuilt						#
+# II.  BSP generation steps 							#
+# 	II.a Create and Configure a project					#
+#	II.b Configuring BSP							#
+#	II.c Project Build							#
+#	II.d Packageing a BSP							#
+# III. Software Images								#
+# IV.  Hardware Images								#
+# V.   Software Projects							#
+# VI.  Booting Prebuilt Images							#
+#################################################################################
+
+I. Main Contents of Prebuilt
+================================================================================
+|-- pre-built/ 	# Pre-built images directory
+| |-- linux/ 	# Pre-built Linux system images
+| | |-- images/
+| | | |-- plm.elf			# Platform loader and manager ELF
+| | | |-- psmfw.elf			# Processing subsystem management firmware ELF
+| | | |-- system.dtb			# Device-tree Blob(DTB) used for Linux kernel
+| | | |-- versal-qemu-multiarch-ps.dtb	# qemu hardware multiarch ps Device-tree Blob(DTB) used for qemu boot
+| | | |-- versal-qemu-multiarch-pmc.dtb	# qemu hardware multiarch pmc Device-tree Blob(DTB) used for qemu boot
+| | | |-- versal-qemu-ps.dtb		# qemu hardware ps Device-tree Blob(DTB) used for qemu boot
+| | | |-- image.ub			# FIT image including the kernel, DTB and rootfs
+| | | |-- Image				# FIT image including the kernel and DTB
+| | | |-- u-boot.elf			# U-boot ELF
+| | | |-- u-boot.bin			# U-boot bin file
+| | | |-- petalinux-sdimage.wic.xz 	# Compressed wic image for SD card with BOOT and ROOT partitions with required files
+| | | |-- bl31.elf			# Arm trusted firmware ELF file
+| | | |-- bl31.bin			# Arm trusted firmware BIN file
+| | | |-- rootfs.cpio.gz		# Rootfs CPIO image used for FIT image(image.ub)
+| | | |-- rootfs.cpio.gz.u-boot		# Rootfs CPIO image with u-boot header for loading from u-boot
+| | | |-- rootfs.tar.gz			# Rootfs tar file which can be used for SD ext4 partition
+| | | |-- rootfs.jffs2			# Rootfs jffs2 file which can be used for mounting rootfs on jffs2 file system
+| | | |-- rootfs.manifest		# Rootfs manifest file will have list of packages and version details
+| | | |-- ramdisk.cpio.gz		# Ramdisk rootfs CPIO image
+| | | |-- ramdisk.cpio.gz.tar.u-boot	# Ramdisk CPIO image with u-boot header for loading from u-boot
+| | | |-- ramdisk.tar.gz		# Ramdisk rootfs CPIO image with gz compression
+| | | |-- ramdisk.manifest		# Ramdisk manifest file will have list of packages and version details
+| | | |-- vmlinux			# Statically linked kernel executable file used for kernel debugging
+| | | |-- BOOT.BIN			# Versal boot pdi file
+| | | |-- BOOT_bh.bin			# Versal boot pdi header file
+| | | |-- bootgen.bif			# Sample bif file used for creation of prebuilt BOOT.BIN file
+| | | |-- boot.scr			# boot.scr to provide the required default boot
+| | | |-- pmc_cdo.bin			# pmc bin file for plm execution
+| | | |-- pxelinux.cfg			# pxelinux.cfg directory with default configuration file for pxe boot
+| | | |-- qemu_boot.img			# boot image for qemu boot
+| | | |-- openamp.dtb                   # Openamp device-tree blob file
+| | | |-- pl.dtbo			# PL device-tree overlay blob file
+| | |-- xen/
+| | | |-- xen.dtb			# Xen device-tree blob file
+| | | |-- xen-Image			# Xen kernel image
+| | | |-- xen-openamp.dtb		# Xen openamp device-tree blob file
+| | | |-- xen-qemu.dtb			# Xen qemu device-tree blob file
+| | | |-- xen-rootfs.cpio.gz		# Xen rootfs CPIO image
+| | | |-- xen				# Xen binary
+| | | |-- xen.cfg			# Xen config file for image builder
+| | | |-- xen_boot_sd.scr		# Xen boot file for booting from SD card
+| | | |-- xen_boot_sd.source		# Xen boot source file of SD card booting
+| | | |-- xen_boot_tftp.scr		# Xen boot file for booting through tftp
+| | | |-- xen_boot_tftp.source		# Xen boot source file of tftp booting
+
+II. BSP generation steps
+================================================================================
+This section explain about BSP generation steps.
+
+	II.a Creation and configuration of project
+
+		$ petalinux-create -t project --template versal --force -n <name of project>
+		$ cd <name of project>
+		$ petalinux-config --get-hw-description=<path to xsa directory> --silentconfig
+
+	II.b Enable openamp and its examples in rootfs
+
+		$ petalinux-config -c rootfs
+			Select following packages and save it
+				openamp-fw-echo-testd
+				openamp-fw-mat-muld
+				openamp-fw-rpc-demo
+				packagegroup-petalinux-openamp
+	II.c Configuring BSP
+
+		1. vck190 and vmk180
+		Choose any desired board and follow steps in it.
+
+		1.vck190 and vmk180
+			$ petalinux-config
+				Enter xilinx-vmk180 for YOCTO_MACHINE_NAME option for vmk180 bsp.
+				Enter versal-vmk180-reva-x-ebm-02-reva for MACHINE_NAME option ( vmk180 ebm2 DTG board parameter)
+				Enter versal-vmk180-reva-x-ebm-03-reva for MACHINE_NAME option ( vmk180 ebm3 DTG board parameter)
+				Enter xilinx-vck190 for YOCTO_MACHINE_NAME option for vck190 bsp.
+				Enter versal-vck190-reva-x-ebm-02-reva for MACHINE_NAME option ( vck190 ebm2 DTG board parameter)
+				Enter versal-vck190-reva-x-ebm-03-reva for MACHINE_NAME option ( vck190 ebm3 DTG board parameter)
+
+				mkdir -p <project root>/project-spec/dts_dir/
+				cp -r <any-versal-BSP>/project-spec/dts_dir/* <project root>/project-spec/dts_dir/
+				DTG Settings --> Extra dts/dtsi files
+				Enter dts files path <project root>/project-spec/dts_dir/default.dts <project root>/project-spec/dts_dir/vck190-rev1.dts (for vmk180 use vmk180-rev1.dts)
+				cat > <project root>/project-spec/meta-user/conf/petalinuxbsp.conf << EOL
+EXTRA_DTFILE_PREFIX = "system"
+EXTRA_DTFILES_BUNDLE = "1"
+PACKAGE_DTB_NAME = "system-vck190-revA.dtb"
+PACKAGES_LIST:append = " device-tree"
+DEVICE_TREE = "devicetree/system-default.dtb"
+EOL
+			$ mkdir -p  <project root>/project-spec/meta-user/recipes-apps/aie-oob/ ( only for vck190 )
+			$ cp -r <any-vck190-BSP>/project-spec/meta-user/recipes-apps/aie-oob/. <project root>/project-spec/meta-user/recipes-apps/aie-oob/ ( only for vck190 )
+                        $ cat >> <project root>/project-spec/meta-user/conf/user-rootfsconfig <<EOF
+CONFIG_aie-oob
+CONFIG_packagegroup-petalinux-jupyter
+CONFIG_pm-notebooks
+CONFIG_openamp-demo-notebooks
+CONFIG_python3-ipywidgets
+CONFIG_aie-notebooks
+EOF
+			$ petalinux-config --silentconfig
+			$ petalinux-config -c rootfs
+				Select following packages and save it
+					tcl
+					python3
+					libstdcPLUSPLUS
+					xrt ( only for vck190 )
+					zocl ( only for vck190 )
+					aie-oob ( only for vck190 )
+                                        packagegroup-petalinux-jupyter
+                                        pm-notebooks
+                                        openamp-demo-notebooks
+                                        aie-notebooks
+                                        python3-ipywidgets
+		2. vck5000
+
+		$ petalinux-config
+			Enter xilinx-vck5000 for YOCTO_MACHINE_NAME option for vck5000
+
+			$ echo "# CONFIG_canutils is not set"
+			$ echo 'CONFIG_cmc-deploy-vck5000' >> <project root>/project-spec/meta-user/conf/user-rootfsconfig
+			$ echo 'CONFIG_mtd-utils-misc' >> <project root>/project-spec/meta-user/conf/user-rootfsconfig
+			$ echo 'CONFIG_mtd-utils-ubifs' >> <project root>/project-spec/meta-user/conf/user-rootfsconfig
+		$ petalinux-config --silentconfig
+		$ petalinux-config -c rootfs
+				Select following packages and save it
+				cmc-deploy-vck5000
+				mtd-utils-misc
+				mtd-utils-ubifs
+		3.Tenzing se1 and se2
+
+		$ petalinux-config
+			Enter versal-vc-p-a2197-00-reva-x-prc-01-reva for MACHINE_NAME option ( se1 DTG board parameter)
+			Enter versal-vc-p-a2197-00-reva-x-prc-02-reva for MACHINE_NAME option ( se2 DTG board parameter)
+			Enter xilinx-vc-p-a2197-00 for YOCTO_MACHINE_NAME option
+			$ echo 'CONFIG_aie-matrix-multiplication' >> <project root>/project-spec/meta-user/conf/user-rootfsconfig ( only for se1 )
+			$ petalinux-config --silentconfig
+			$ petalinux-config -c rootfs
+				Select following packages and save it
+				tcl
+				python
+				libstdcPLUSPLUS
+				aie-matrix-multiplication ( only for se1 )
+
+		4. vpk120, vpk180 and vhk158
+			YOCTO_MACHINE_NAME :
+			Enter xilinx-vpk120 for YOCTO_MACHINE_NAME option for vpk120 bsp.
+			Enter xilinx-vpk180 for YOCTO_MACHINE_NAME option for vpk180 bsp.
+			Enter xilinx-vhk158 for YOCTO_MACHINE_NAME option for vhk158 bsp.
+			DTG board parameter:
+			Enter versal-vpk120-revb  for MACHINE_NAME option for vpk120 bsp.
+			Enter versal-vpk180-reva for MACHINE_NAME option for vpk180 bsp.
+			Enter versal-vhk158-reva for MACHINE_NAME option for vhk158 bsp
+			$ petalinux-config -c rootfs
+				Select following packages and save it
+				packagegroup-petalinux-jupyter
+				openamp-demo-notebooks
+				python3-ipywidgets
+				pm-notebooks
+		5. vek280
+			YOCTO_MACHINE_NAME :
+			Enter xilinx-vek280 for YOCTO_MACHINE_NAME option for vpk120 bsp.
+			$ petalinux-config -c rootfs
+				Select following packages and save it
+				aie-oob
+				aie-notebooks
+				packagegroup-petalinux-jupyter
+				openamp-demo-notebooks
+				python3-ipywidgets
+				pm-notebooks
+				packagegroup-petalinux-gstreamer
+				libvdu-omxil
+				libvdu-ctrlsw
+				kernel-module-vdu
+				vdu-firmware
+				tcl
+				python3
+				libstdcPLUSPLUS
+				xrt
+				zocl
+			$ mkdir -p  <project root>/project-spec/meta-user/recipes-apps/aie-oob/
+			$ cp -r <any-vek280-BSP>/project-spec/meta-user/recipes-apps/aie-oob/. <project root>/project-spec/meta-user/recipes-apps/aie-oob/
+
+	II.d Project Build
+
+		1. Build regular images
+			$ petalinux-build
+
+			Use system-default.dtb to generate BOOT.BIN for vck190/vmk180
+			Replace dtb= images/linux/system-default.dtb in the below command for vck190/vmk180 bsps
+			$ petalinux-package --boot --u-boot images/linux/u-boot.elf --dtb images/linux/system.dtb --plm images/linux/plm.elf --psmfw images/linux/psmfw.elf --atf images/linux/bl31.elf -o images/linux/BOOT.BIN  --force
+			$ mkdir -p pre-built/linux/images
+			$ cp <project root>/images/linux/* <project root>/pre-built/linux/images/
+
+			for vck190 and vmk180 use below command to generate WIC with dtb files
+			$ petalinux-package --wic --extra-bootfiles "rootfs.cpio.gz.u-boot,system-default.dtb,system-vck190-rev1.dtb,system-vck190-revA.dtb" --images-dir <project root>/pre-built/linux/images --outdir <project root>/pre-built/linux/images (for vck190)
+
+                        $ petalinux-package --wic --extra-bootfiles "rootfs.cpio.gz.u-boot,system-default.dtb,system-vmk180-rev1.dtb,system-vmk180-revA.dtb" --images-dir <project root>/pre-built/linux/images --outdir <project root>/pre-built/linux/images (for vmk180)
+
+			for vck5000,vpk180,vpk120,vhk158 and vek280  use below command to generate WIC image
+			$ petalinux-package --wic --extra-bootfiles "rootfs.cpio.gz.u-boot" --images-dir <project root>/pre-built/linux/images --outdir <project root>/pre-built/linux/images
+
+		2. Build openamp dtb
+                        $petalinux-config
+                                Select following config option and save it
+                                        CONFIG_SUBSYSTEM_ENABLE_OPENAMP_DTSI
+                        $petalinux-build -c device-tree
+                        $cp -r <project root>/images/linux/system.dtb <project root>/pre-built/linux/images/openamp.dtb
+
+		3. Build xen images
+			$ petalinux-config
+				Select following config and save it.
+					CONFIG_SUBSYSTEM_ENABLE_XEN_HW_DTSI
+					Image Packaging Configuration
+						Root filesystem type (INITRD)
+						INITRAMFS/INITRD Image name (petalinux-image-minimal)
+			$ petalinux-config -c rootfs
+				Select following package and save it
+					packagegroup-petalinux-xen
+			$ petalinux-build
+			$ mkdir -p pre-built/linux/xen
+			$ cp -L <project root>/images/linux/Image <project root>/pre-built/linux/xen/xen-Image
+			$ cp -L <project root>/images/linux/system.dtb <project root>/pre-built/linux/xen/xen.dtb
+			$ cp -L <project root>/images/linux/xen <project root>/pre-built/linux/xen/xen
+			$ cp -L <project root>/images/linux/rootfs.cpio.gz <project root>/pre-built/linux/xen/xen-rootfs.cpio.gz
+			$ cat > <project root>/pre-built/linux/xen/xen.cfg << EOL
+MEMORY_START="0x0"
+MEMORY_END="0x80000000"
+XEN="xen"
+DOM0_KERNEL="xen-Image"
+DEVICE_TREE="xen.dtb"
+DOM0_RAMDISK="xen-rootfs.cpio.gz"
+NUM_DOMUS="0"
+UBOOT_SOURCE="xen_boot.source"
+UBOOT_SCRIPT="xen_boot.scr"
+EOL
+			$ export XEN_CONFIG="<full path/project root>/pre-built/linux/xen/xen.cfg"
+			$ export XEN_CONFIG_SKIP="1"
+			$ export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE XEN_CONFIG XEN_CONFIG_SKIP"
+			$ petalinux-build -c kernel -x do_deploy
+			$ rsync -arz --progress --delete <project root>/images/linux/xen_boot_* <project root>/pre-built/linux/xen
+
+                4.Disabling versal BSP
+			$ petalinux-config -c rootfs
+				Disable following packages and save it
+					packagegroup-petalinux-jupyter
+					pm-notebooks
+					openamp-demo-notebooks
+					aie-notebooks
+					python3-ipywidgets
+			$ petalinux-config --silentconfig
+
+	II.e Packageing a BSP
+		Package the BSP with files generated with following command
+		$  petalinux-package --bsp -p <plnx-proj-root> --hwsource <hw-project-root> --output <name of the BSP>
+
+                NOTE: --hwsource is optional and can be removed
+
+Note - we have 3 dtbs for vck190/vmk180 bsps
+system.dtb (This is symbolic link for system-default.dtb)
+system-default.dtb (default 19Mhz one which will be in BOOT.BIN)
+system-vck190/vmk180-revA.dtb (To support old SD level shifter)
+system-vck190/vmk180-rev1.dtb (To support new SD level shifter)
+
+Based on the vck190/vmk180 board revision use symbolic link command to use board revision specific dtb as system.dtb to operate SD in HS mode
+
+Example: unlink system.db
+         ln -sf system-vck190-rev1.dtb system.dtb
+
+Steps to access jupyter-notebook
+=======================================================================
+Follow below steps to access jupyter-notebook
+ * Boot linux on versal board using prebuilts
+ * Login as a root
+ * Get the ip addr of board(ifconfig)
+ * To Enable widgets extension and launch jupyter-notebook
+   $ jupyter nbextension enable --py widgetsnbextension
+   $ jupyter notebook --ip=10.10.71.1 --allow-root --no-browser (web URL gets generated after this command)
+ * Copy paste the above URL in web browser of host machine
+
+Note - Make sure that the board and host machine are in same network
+
+III. Software Images
+================================================================================
+You can run the following command to rebuild the software images:
+ * image.ub
+ * Image
+ * u-boot.elf
+ * system.dtb
+ * psmfw.elf
+ * plm.elf
+ * bl31.elf
+
+   $ petalinux-build
+
+You can also rebuild some of the images alone as follows:
+ * u-boot.elf
+   $ petalinux-build -c u-boot
+
+ * system.dtb
+   $ petalinux-build -c device-tree
+
+ * kernel only:
+   $ petalinux-build -c kernel
+
+For more info regarding how to build images run "petalinux-build --help" command
+
+You can generate BOOT.BIN file with "petalinux-package --boot" command:
+ $ petalinux-package --boot --plm pre-built/linux/images/plm.elf \
+   --dtb pre-built/linux/images/system.dtb \
+   --u-boot pre-built/linux/images/u-boot.elf	\
+   --psmfw prebuilt/linux/images/psmfw.elf	\
+   --atf pre-built/linux/images/bl31.elf
+
+IV. Hardware Images
+================================================================================
+ * project_1.xsa
+   The hardware project source files are in "hardware/" directory. You can
+   open the hardware project with vivado, and rebuild it.
+
+V. Software Projects
+================================================================================
+ * device-tree
+   DTG xsct software components can be found at "components/plnx_workspace/" directory
+
+VI. Booting Prebuilt Images
+=====================================================================================
+   We can boot petalinux images using  petalinux-boot command.
+   For more information on booting prebuilt images please refer the "Booting and Packaging" section of ug1144.
+   For information regarding board please refer the board user guide 

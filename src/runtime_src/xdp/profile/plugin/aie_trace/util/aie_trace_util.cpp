@@ -445,7 +445,7 @@ namespace xdp::aie::trace {
       XAIEDEV_DEFAULT_GROUP_AVAIL
     };
 
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << "\n";
     for (auto& g : groups) {
       auto stats = aieDevice->getRscStat(g);
       auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
@@ -455,9 +455,9 @@ namespace xdp::aie::trace {
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
           << "Broadcast Channels : " << bc << " " 
-          << std::endl;
+          << "\n";
     }
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << "\n";
     for (auto& g : groups) {
       auto stats = aieDevice->getRscStat(g);
       auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
@@ -467,7 +467,7 @@ namespace xdp::aie::trace {
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
           << "Broadcast Channels : " << bc << " " 
-          << std::endl;
+          << "\n";
     }
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }

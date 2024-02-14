@@ -44,9 +44,9 @@ namespace xdp {
   {
     /*
     // Write header #1
-    fout << "Target device: " << mDeviceName << std::endl;
-    fout << "Sample period: " << mSamplePeriod << std::endl;
-    fout << std::endl;
+    fout << "Target device: " << mDeviceName << "\n";
+    fout << "Sample period: " << mSamplePeriod << "\n";
+    fout << "\n";
 
     // Write header #2
     fout << "name"                << ","
@@ -55,7 +55,7 @@ namespace xdp {
          << "read_traffic_class"  << ","
          << "write_qos"           << ","
          << "write_traffic_class" << ","
-         << std::endl;
+         << "\n";
 
     XclbinInfo* currentXclbin = db->getStaticInfo().getCurrentlyLoadedXclbin(mDeviceIndex);
     auto numNOC = (db->getStaticInfo()).getNumNOC(mDeviceIndex, currentXclbin);
@@ -79,7 +79,7 @@ namespace xdp {
            << readTrafficClass  << ","
            << writeQos          << ","
            << writeTrafficClass << ","
-           << std::endl;
+           << "\n";
     }
 
     // Write header #3
@@ -95,7 +95,7 @@ namespace xdp {
          << "write_total_latency" << ","
          << "write_min_latency"   << ","
          << "write_max_latency"   << ","
-         << std::endl;
+         << "\n";
 
     // Write all data elements
     std::vector<counters::Sample> samples =
@@ -115,7 +115,7 @@ namespace xdp {
       for (auto value : sample.second) {
         fout << value << ",";
       }
-      fout << std::endl;
+      fout << "\n";
     }
     */
     return true;

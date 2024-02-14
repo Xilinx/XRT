@@ -17,7 +17,7 @@ public:
     }
     virtual void serialize( void * ptr) const
     {
-        //cout << "SERIALIZE numbytes: " << op_ptr_->size_in_bytes << std::endl;
+        //cout << "SERIALIZE numbytes: " << op_ptr_->size_in_bytes << "\n";
         memcpy ( ptr, op_ptr_, op_ptr_->size_in_bytes);
     }
 

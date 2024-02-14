@@ -16,11 +16,11 @@ class op_buf
         void addOP( const instr_base & instr)
         {
             size_t ibuf_sz = ibuf_.size();
-            //std::cout << "OP TYPE: " << instr.type() << " instr size: " << instr.size() << " ibuf size: " << ibuf_.size() << std::endl;
+            //std::cout << "OP TYPE: " << instr.type() << " instr size: " << instr.size() << " ibuf size: " << ibuf_.size() << "\n";
             ibuf_.resize(ibuf_sz + instr.size() );
             instr.serialize ( (void*)&ibuf_[ibuf_sz] );
             //memcpy ( &ibuf_[ibuf_sz], op_ptr, op_ptr->size_in_bytes);
-            //std::cout << "ibuf size: " << ibuf_.size() << std::endl;
+            //std::cout << "ibuf size: " << ibuf_.size() << "\n";
         }
 
         size_t size() const{

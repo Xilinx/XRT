@@ -157,7 +157,7 @@ namespace xdp {
       available = stats.getNumRsc(loc, XAIE_PL_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
       required = interfaceTileEventSets[metricSet].size();
       if (available < required) {
-        msg << "Available interface tile trace slots for AIE trace : " << available << std::endl
+        msg << "Available interface tile trace slots for AIE trace : " << available << "\n"
             << "Required interface tile trace slots for AIE trace  : " << required;
         xrt_core::message::send(severity_level::info, "XRT", msg.str());
         return false;
@@ -169,7 +169,7 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = memoryCounterStartEvents.size();
     if (available < required) {
-      msg << "Available memory performance counters for AIE trace : " << available << std::endl
+      msg << "Available memory performance counters for AIE trace : " << available << "\n"
           << "Required memory performance counters for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
@@ -179,7 +179,7 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
     if (available < required) {
-      msg << "Available memory trace slots for AIE trace : " << available << std::endl
+      msg << "Available memory trace slots for AIE trace : " << available << "\n"
           << "Required memory trace slots for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
@@ -200,7 +200,7 @@ namespace xdp {
       ++required;
 
     if (available < required) {
-      msg << "Available core module performance counters for AIE trace : " << available << std::endl
+      msg << "Available core module performance counters for AIE trace : " << available << "\n"
           << "Required core module performance counters for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
@@ -210,7 +210,7 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
     if (available < required) {
-      msg << "Available core module trace slots for AIE trace : " << available << std::endl
+      msg << "Available core module trace slots for AIE trace : " << available << "\n"
           << "Required core module trace slots for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
@@ -220,7 +220,7 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
-      msg << "Available core module broadcast channels for AIE trace : " << available << std::endl
+      msg << "Available core module broadcast channels for AIE trace : " << available << "\n"
           << "Required core module broadcast channels for AIE trace  : " << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;

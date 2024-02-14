@@ -1,0 +1,46 @@
+menu "user packages " 
+config libvdu-ctrlsw  
+	 bool "libvdu-ctrlsw"
+	 help
+	
+config libvdu-omxil  
+	 bool "libvdu-omxil"
+	 help
+	
+config gpio-demo  
+	 bool "gpio-demo"
+	 help
+	
+config htop  
+	 bool "htop"
+	 help
+	
+config iperf3  
+	 bool "iperf3"
+	 help
+	
+config kernel-module-vdu  
+	 bool "kernel-module-vdu"
+	 help
+	
+config meson  
+	 bool "meson"
+	 help
+	
+config packagegroup-petalinux-gstreamer  
+	 bool "packagegroup-petalinux-gstreamer"
+	 help
+	
+config peekpoke  
+	 bool "peekpoke"
+	 help
+	
+config resize-part  
+	 bool "resize-part"
+	 help
+	
+config vdu-firmware  
+	 bool "vdu-firmware"
+	 help
+	
+endmenu

@@ -361,7 +361,7 @@ namespace xdp {
             }
           }
           if (!msg.str().empty()) {
-            msg << std::endl << "Graph " << graphName << " #Cur : " << graphStallCounter << " #Thr : " << graphTilesVec.size();
+            msg << "\n" << "Graph " << graphName << " #Cur : " << graphStallCounter << " #Thr : " << graphTilesVec.size();
             xrt_core::message::send(severity_level::debug, "XRT", msg.str());
           }
         }

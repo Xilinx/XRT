@@ -54,7 +54,7 @@ void TraceS2MM::write32(uint64_t offset, uint32_t val)
 void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
     if (out_stream) {
-        (*out_stream) << " TraceS2MM::init " << std::endl;
+        (*out_stream) << " TraceS2MM::init " << "\n";
     }
 
     if (isActive()) {
@@ -100,7 +100,7 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 bool TraceS2MM::isActive()
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::isActive " << std::endl;
+        (*out_stream) << " TraceS2MM::isActive " << "\n";
 
     uint32_t regValue = 0;
     read(TS2MM_AP_CTRL, 4, &regValue);
@@ -110,7 +110,7 @@ bool TraceS2MM::isActive()
 void TraceS2MM::reset()
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::reset " << std::endl;
+        (*out_stream) << " TraceS2MM::reset " << "\n";
 
     // Init Sw Reset
     write32(TS2MM_RST, 0x1);
@@ -126,7 +126,7 @@ void TraceS2MM::reset()
 uint64_t TraceS2MM::getWordCount(bool final)
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::getWordCount " << std::endl;
+        (*out_stream) << " TraceS2MM::getWordCount " << "\n";
 
     // Call flush on V2 datamover to ensure all data is written
     if (final && isVersion2())
@@ -149,7 +149,7 @@ uint64_t TraceS2MM::getWordCount(bool final)
 uint8_t TraceS2MM::getMemIndex()
 {
     if (out_stream) {
-        (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
+        (*out_stream) << " TraceS2MM::getMemIndex " << "\n";
     }
 
     return (properties >> 1);
@@ -158,7 +158,7 @@ uint8_t TraceS2MM::getMemIndex()
 void TraceS2MM::showProperties()
 {
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) << " TraceS2MM " << std::endl;
+    (*outputStream) << " TraceS2MM " << "\n";
     ProfileIP::showProperties();
 }
 
@@ -166,27 +166,27 @@ void TraceS2MM::showStatus()
 {
     uint32_t reg_read = 0;
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) <<"--------------TRACE DMA STATUS-------------" << std::endl;
+    (*outputStream) <<"--------------TRACE DMA STATUS-------------" << "\n";
     read(0x0, 4, &reg_read);
-    (*outputStream) << "INFO Trace dma control reg status : " << std::hex << reg_read << std::endl;
+    (*outputStream) << "INFO Trace dma control reg status : " << std::hex << reg_read << "\n";
     read(TS2MM_COUNT_LOW, 4, &reg_read);
-    (*outputStream) << "INFO Trace dma count status : " << reg_read << std::endl;
+    (*outputStream) << "INFO Trace dma count status : " << reg_read << "\n";
     read(TS2MM_WRITE_OFFSET_LOW, 4, &reg_read);
-    (*outputStream) << "INFO Trace low write offset : " << reg_read << std::endl;
+    (*outputStream) << "INFO Trace low write offset : " << reg_read << "\n";
     read(TS2MM_WRITE_OFFSET_HIGH, 4, &reg_read);
-    (*outputStream) << "INFO Trace high write offset : " << reg_read << std::endl;
+    (*outputStream) << "INFO Trace high write offset : " << reg_read << "\n";
     read(TS2MM_WRITTEN_LOW, 4, &reg_read);
-    (*outputStream) << "INFO Trace written low : " << reg_read << std::endl;
+    (*outputStream) << "INFO Trace written low : " << reg_read << "\n";
     read(TS2MM_WRITTEN_HIGH, 4, &reg_read);
-    (*outputStream) << "INFO Trace written high: " << reg_read << std::dec << std::endl;
+    (*outputStream) << "INFO Trace written high: " << reg_read << std::dec << "\n";
     read(TS2MM_CIRCULAR_BUF, 4, &reg_read);
-    (*outputStream) << "INFO circular buf: " << reg_read << std::dec << std::endl;
+    (*outputStream) << "INFO circular buf: " << reg_read << std::dec << "\n";
 }
 
 inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::parsePacketClockTrain " << std::endl;
+        (*out_stream) << " TraceS2MM::parsePacketClockTrain " << "\n";
 
     if (mModulus == 0) {
       uint64_t timestamp = packet & TIMESTAMP_MASK;
@@ -202,14 +202,14 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
     if (mModulus == 3 && out_stream) {
       (*out_stream) << std::hex << "Clock Training sample : "
         << partialResult.HostTimestamp << " " << partialResult.Timestamp
-        << std::dec << std::endl;
+        << std::dec << "\n";
     }
 }
 
 void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::TraceEvent &result)
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::parsePacket " << std::endl;
+        (*out_stream) << " TraceS2MM::parsePacket " << "\n";
 
     result.Timestamp = (packet & TIMESTAMP_MASK) - firstTimestamp;
     result.EventType = ((packet >> 45) & 0xF) ? xdp::TraceEventType::end :
@@ -225,7 +225,7 @@ void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::Trace
       auto packet_dec = std::bitset<64>(packet).to_string();
       (*out_stream) << std::dec << std::setw(5)
         << "  Trace sample " << ": "
-        <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19) << std::endl
+        <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19) << "\n"
         << " Timestamp : " << result.Timestamp << "   "
         << "Type : " << result.EventType << "   "
         << "ID : " << result.TraceID << "   "
@@ -233,7 +233,7 @@ void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::Trace
         << "Overflow : " << static_cast<int>(result.Overflow) << "   "
         << "Flags : " << static_cast<int>(result.EventFlags) << "   "
         << "Interval : " << result.Timestamp - previousTimestamp << "   "
-        << std::endl;
+        << "\n";
         previousTimestamp = result.Timestamp;
     }
 }
@@ -241,7 +241,7 @@ void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::Trace
 uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 {
   if (out_stream)
-      (*out_stream) << " TraceS2MM::seekClockTraining " << std::endl;
+      (*out_stream) << " TraceS2MM::seekClockTraining " << "\n";
 
   uint64_t n = NUM_CLOCK_TRAIN_PKTS;
   if (mTraceFormat < 1  || mclockTrainingdone)
@@ -264,7 +264,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xdp::TraceEvent>& traceVector)
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
+        (*out_stream) << " TraceS2MM::parseTraceBuf " << "\n";
 
     uint32_t packetSizeBytes = TRACE_PACKET_SIZE;
     traceVector.clear();

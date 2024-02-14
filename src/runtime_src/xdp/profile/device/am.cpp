@@ -42,7 +42,7 @@ AM::AM(Device* handle /** < [in] the xrt or hal device handle */,
 size_t AM::startCounter()
 {
     if(out_stream)
-        (*out_stream) << " AM::startCounter " << std::endl;
+        (*out_stream) << " AM::startCounter " << "\n";
 
     size_t size = 0;
     uint32_t regValue = 0;
@@ -63,7 +63,7 @@ size_t AM::startCounter()
 size_t AM::stopCounter()
 {
     if(out_stream)
-        (*out_stream) << " AM::stopCounter " << std::endl;
+        (*out_stream) << " AM::stopCounter " << "\n";
 
     // nothing to do ?
     return 0;
@@ -72,7 +72,7 @@ size_t AM::stopCounter()
 size_t AM::readCounter(xdp::CounterResults& counterResults)
 {
     if(out_stream)
-        (*out_stream) << " AM::readCounter " << std::endl;
+        (*out_stream) << " AM::readCounter " << "\n";
 
     if (!m_enabled)
         return 0;
@@ -90,12 +90,12 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
         (*out_stream) << "Accelerator Monitor Core vlnv : " << version
                       << " Major " << static_cast<int>(major_version)
                       << " Minor " << static_cast<int>(minor_version)
-                      << std::endl
+                      << "\n"
                       << "Accelerator Monitor config : "
                       << " 64 bit support : " << has64bit()
                       << " Dataflow support : " << hasDataflow()
                       << " Stall support : " << hasStall()
-                      << std::endl;
+                      << "\n";
     }
 
     // Read sample interval register
@@ -103,7 +103,7 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
     size += read(IP::AM::AXI_LITE::SAMPLE, 4, &sampleInterval);
 
     if(out_stream) {
-        (*out_stream) << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
+        (*out_stream) << "Accelerator Monitor Sample Interval : " << sampleInterval << "\n";
     }
 
     size += read(IP::AM::AXI_LITE::EXECUTION_COUNT, 4, &counterResults.CuExecCount[s]);
@@ -126,11 +126,11 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
 
 #if 0
         if(out_stream)
-          (*out_stream) << "Accelerator Monitor Upper 32, slot " << s << std::endl
-                        << "  CuExecCount : " << upper[0] << std::endl
-                        << "  CuExecCycles : " << upper[1] << std::endl
-                        << "  CuMinExecCycles : " << upper[2] << std::endl
-                        << "  CuMaxExecCycles : " << upper[3] << std::endl;
+          (*out_stream) << "Accelerator Monitor Upper 32, slot " << s << "\n"
+                        << "  CuExecCount : " << upper[0] << "\n"
+                        << "  CuExecCycles : " << upper[1] << "\n"
+                        << "  CuMinExecCycles : " << upper[2] << "\n"
+                        << "  CuMaxExecCycles : " << upper[3] << "\n";
 #endif
     }
 
@@ -151,13 +151,13 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
     }
 
     if(out_stream) {
-        (*out_stream) << "Reading Accelerator Monitor... SlotNum : " << s << std::endl
-                      << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << std::endl
-                      << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl
-                      << "Reading Accelerator Monitor... CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl
-                      << "Reading Accelerator Monitor... CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl
-                      << "Reading Accelerator Monitor... CuBusyCycles : " << counterResults.CuBusyCycles[s] << std::endl
-                      << "Reading Accelerator Monitor... CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << std::endl;
+        (*out_stream) << "Reading Accelerator Monitor... SlotNum : " << s << "\n"
+                      << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << "\n"
+                      << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << "\n"
+                      << "Reading Accelerator Monitor... CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << "\n"
+                      << "Reading Accelerator Monitor... CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << "\n"
+                      << "Reading Accelerator Monitor... CuBusyCycles : " << counterResults.CuBusyCycles[s] << "\n"
+                      << "Reading Accelerator Monitor... CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << "\n";
     }
 
     if(hasStall()) {
@@ -168,10 +168,10 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
 
 
     if(out_stream) {
-          (*out_stream) << "Stall Counters enabled : " << std::endl
-                        << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl
-                        << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl
-                        << "Reading Accelerator Monitor... CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
+          (*out_stream) << "Stall Counters enabled : " << "\n"
+                        << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << "\n"
+                        << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << "\n"
+                        << "Reading Accelerator Monitor... CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << "\n";
     }
     return size;
 }
@@ -227,7 +227,7 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
     write(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
 
     if(out_stream) {
-      (*out_stream) << "Dataflow enabled on slot : " << getName() << std::endl;
+      (*out_stream) << "Dataflow enabled on slot : " << getName() << "\n";
     }
 
 }
@@ -257,7 +257,7 @@ bool AM::hasStall() const
 void AM::showProperties()
 {
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) << " AM " << std::endl;
+    (*outputStream) << " AM " << "\n";
     ProfileIP::showProperties();
 }
 

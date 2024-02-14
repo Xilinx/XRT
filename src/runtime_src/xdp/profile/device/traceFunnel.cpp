@@ -73,7 +73,7 @@ void TraceFunnel::reset()
 void TraceFunnel::showProperties()
 {
     std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
-    (*outputStream) << " TraceFunnel " << std::endl;
+    (*outputStream) << " TraceFunnel " << "\n";
     ProfileIP::showProperties();
 }
 

@@ -1,0 +1,14 @@
+#Note: Mention Each package in individual line
+#These packages will get added into rootfs menu entry
+
+CONFIG_gpio-demo
+CONFIG_peekpoke
+CONFIG_resize-part
+CONFIG_iperf3
+CONFIG_htop
+CONFIG_meson
+CONFIG_packagegroup-petalinux-gstreamer
+CONFIG_libvdu-omxil
+CONFIG_libvdu-ctrlsw
+CONFIG_kernel-module-vdu
+CONFIG_vdu-firmware

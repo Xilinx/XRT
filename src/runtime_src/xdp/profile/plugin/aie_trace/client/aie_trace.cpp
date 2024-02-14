@@ -557,7 +557,7 @@ namespace xdp {
 
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as required by resource manager
-    std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << std::endl;
+    std::cout << "Config Metrics Size: " << metadata->getConfigMetrics().size() << "\n";
     for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto& metricSet = tileMetric.second;
       auto tile       = tileMetric.first;
@@ -1082,7 +1082,7 @@ namespace xdp {
 
       // Add config info to static database
       // NOTE: Do not access cfgTile after this
-      std::cout <<"log tile to device : " << deviceId << std::endl;
+      std::cout <<"log tile to device : " << deviceId << "\n";
       (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
     }  // For tiles
 

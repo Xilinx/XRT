@@ -1,0 +1,1 @@
+cmd_/scratch/predutta/XRT_clk_2/XRT_cr_clck_2/src/runtime_src/core/edge/drm/zocl/Module.symvers :=  sed 's/ko$$/o/'  /scratch/predutta/XRT_clk_2/XRT_cr_clck_2/src/runtime_src/core/edge/drm/zocl/modules.order | scripts/mod/modpost   -E   -o /scratch/predutta/XRT_clk_2/XRT_cr_clck_2/src/runtime_src/core/edge/drm/zocl/Module.symvers -e -i Module.symvers -T - 

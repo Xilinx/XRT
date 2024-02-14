@@ -1,0 +1,1 @@
+cmd_/scratch/predutta/XRT_clk_2/XRT_cr_clck_2/src/runtime_src/core/edge/drm/zocl/zocl.o := aarch64-xilinx-linux-ld.bfd   -EL  -maarch64elf -z noexecstack --no-warn-rwx-segments   -r -o /scratch/predutta/XRT_clk_2/XRT_cr_clck_2/src/runtime_src/core/edge/drm/zocl/zocl.o @/scratch/predutta/XRT_clk_2/XRT_cr_clck_2/src/runtime_src/core/edge/drm/zocl/zocl.mod 

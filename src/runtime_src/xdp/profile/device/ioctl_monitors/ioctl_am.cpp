@@ -73,7 +73,7 @@ size_t IOCtlAM::startCounter()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAM::startCounter " << std::endl;
+    (*out_stream) << " IOCtlAM::startCounter " << "\n";
 
   ioctl(driver_FD, AM_IOC_RESET);
   ioctl(driver_FD, AM_IOC_STARTCNT);
@@ -87,7 +87,7 @@ size_t IOCtlAM::stopCounter()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAM::stopCounter " << std::endl;
+    (*out_stream) << " IOCtlAM::stopCounter " << "\n";
 
   ioctl(driver_FD, AM_IOC_STOPCNT);
   return 0;
@@ -103,7 +103,7 @@ size_t IOCtlAM::readCounter(xdp::CounterResults& counterResults)
     return 0;
  
   if(out_stream)
-    (*out_stream) << " IOCtlAM::readCounter " << std::endl;
+    (*out_stream) << " IOCtlAM::readCounter " << "\n";
 
 
   if(out_stream) {
@@ -111,7 +111,7 @@ size_t IOCtlAM::readCounter(xdp::CounterResults& counterResults)
                   << " 64 bit support : " << has64bit()
                   << " Dataflow support : " << hasDataflow()
                   << " Stall support : " << hasStall()
-                  << std::endl;
+                  << "\n";
   }
 
   uint64_t s = getAMSlotId(getMIndex());
@@ -134,14 +134,14 @@ size_t IOCtlAM::readCounter(xdp::CounterResults& counterResults)
     
 
   if(out_stream) {
-    (*out_stream) << "Reading IOCtl Accelerator Monitor... " << std::endl 
-                  << "SlotNum : " << s << std::endl
-                  << "CuExecCount : " << counterResults.CuExecCount[s] << std::endl
-                  << "CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl
-                  << "CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl
-                  << "CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl
-                  << "CuBusyCycles : " << counterResults.CuBusyCycles[s] << std::endl
-                  << "CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << std::endl;
+    (*out_stream) << "Reading IOCtl Accelerator Monitor... " << "\n" 
+                  << "SlotNum : " << s << "\n"
+                  << "CuExecCount : " << counterResults.CuExecCount[s] << "\n"
+                  << "CuExecCycles : " << counterResults.CuExecCycles[s] << "\n"
+                  << "CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << "\n"
+                  << "CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << "\n"
+                  << "CuBusyCycles : " << counterResults.CuBusyCycles[s] << "\n"
+                  << "CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << "\n";
   }
 
   if(hasStall()) {
@@ -151,10 +151,10 @@ size_t IOCtlAM::readCounter(xdp::CounterResults& counterResults)
   }
 
   if(out_stream) {
-    (*out_stream) << "Stall Counters enabled : " << std::endl
-                  << "CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl
-                  << "CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl
-                  << "CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
+    (*out_stream) << "Stall Counters enabled : " << "\n"
+                  << "CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << "\n"
+                  << "CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << "\n"
+                  << "CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << "\n";
   }
   return 0;
 }
@@ -177,7 +177,7 @@ void IOCtlAM::configureDataflow(bool cuHasApCtrlChain)
   ioctl(driver_FD, AM_IOC_CONFIGDFLOW, &option);
 
   if(out_stream) {
-    (*out_stream) << "Dataflow enabled on slot : " << getName() << std::endl;
+    (*out_stream) << "Dataflow enabled on slot : " << getName() << "\n";
   }
 }
 
@@ -189,7 +189,7 @@ size_t IOCtlAM::triggerTrace(uint32_t traceOption /* starttrigger*/)
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAM::triggerTrace " << std::endl;
+    (*out_stream) << " IOCtlAM::triggerTrace " << "\n";
 
   ioctl(driver_FD, AM_IOC_STARTTRACE, &traceOption);
   return 0;

@@ -1,0 +1,3831 @@
+2023-11-29 23:59:29,770 - [DEBUG] Using xsct from : /proj/petalinux/2024.1/petalinux-v2024.1_11291502/tool/petalinux-v2024.1-final/tools/xsct/bin/xsct
+2023-11-29 23:59:29,771 - [DEBUG] Using the soc_family specified by user:versal
+2023-11-29 23:59:29,794 - [INFO] Silentconfig project
+2023-11-29 23:59:29,794 - [DEBUG] Running CMD: yes "" | env KCONFIG_CONFIG=/proj/petalinux/2024.1/petalinux-v2024.1_11291502/logs/bsps/versal-rootfs-common-2024.1/project-spec/configs/config conf /proj/petalinux/2024.1/petalinux-v2024.1_11291502/logs/bsps/versal-rootfs-common-2024.1/project-spec/configs/configs/Kconfig
+2023-11-29 23:59:29,809 - [DEBUG] *
+* PetaLinux System Configuration
+*
+VERSAL Configuration (SYSTEM_VERSAL) [Y/?] y
+*
+* Linux Components Selection
+*
+PLM (SUBSYSTEM_COMPONENT_PLM) [Y/n/?] 
+PSM Firmware (SUBSYSTEM_COMPONENT_PSM_FIRMWARE) [Y/n/?] 
+u-boot
+> 1. u-boot-xlnx (SUBSYSTEM_COMPONENT_U__BOOT_NAME_U__BOOT__XLNX)
+  2. remote (SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE)
+  3. ext-local-src (SUBSYSTEM_COMPONENT_U__BOOT_NAME_EXT__LOCAL__SRC)
+choice[1-3]: trusted-firmware-arm
+> 1. trusted-firmware-arm (SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_TRUSTED__FIRMWARE__ARM)
+  2. remote (SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE)
+  3. ext-local-src (SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_EXT__LOCAL__SRC)
+choice[1-3]: linux-kernel
+> 1. linux-xlnx (SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_LINUX__XLNX)
+  2. remote (SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE)
+  3. ext-local-src (SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_EXT__LOCAL__SRC)
+choice[1-3]: plm
+> 1. plm (SUBSYSTEM_COMPONENT_PLM_NAME_PLM)
+  2. remote (SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE)
+  3. ext-local-src (SUBSYSTEM_COMPONENT_PLM_NAME_EXT__LOCAL__SRC)
+choice[1-3]: psm-firmware
+> 1. psm-firmware (SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_PSM__FIRMWARE)
+  2. remote (SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE)
+  3. ext-local-src (SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_EXT__LOCAL__SRC)
+choice[1-3]: *
+* Auto Config Settings
+*
+Device tree autoconfig (SUBSYSTEM_AUTOCONFIG_DEVICE__TREE) [Y/n/?] 
+Specify a manual device tree include directory (SUBSYSTEM_DEVICE_TREE_MANUAL_INCLUDE) [N/y/?] 
+*
+* Subsystem AUTO Hardware Settings
+*
+Subsystem AUTO Hardware Settings (SUBSYSTEM_HARDWARE_AUTO) [Y/?] y
+  System Processor
+  > 1. CIPS_0_pspmc_0_psv_cortexa72_0 (SUBSYSTEM_PROCESSOR_CIPS_0_pspmc_0_psv_cortexa72_0_SELECT)
+  choice[1]: 1
+  *
+  * Memory Settings
+  *
+  Primary Memory
+  > 1. C0_DDR_LOW0 (SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SELECT)
+    2. C0_DDR_LOW1 (SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SELECT)
+    3. C0_DDR_CH1x2 (SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SELECT)
+    4. manual (SUBSYSTEM_MEMORY_MANUAL_SELECT)
+  choice[1-4?]:   System memory base address (SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_BASEADDR) [0x00000000] 
+  System memory size (SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SIZE) [0x80000000] 
+  u-boot text base address offset to memory base address (SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_U__BOOT_TEXTBASE_OFFSET) [0x8000000] 
+  *
+  * Serial Settings
+  *
+  PLM Serial stdin/stdout
+  > 1. CIPS_0_pspmc_0_psv_sbsauart_0 (SUBSYSTEM_PLM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT)
+    2. manual (SUBSYSTEM_PLM_SERIAL_MANUAL_SELECT)
+  choice[1-2?]:   TF-A Serial stdin/stdout
+  > 1. CIPS_0_pspmc_0_psv_sbsauart_0 (SUBSYSTEM_TF-A_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT)
+    2. manual (SUBSYSTEM_TF-A_SERIAL_MANUAL_SELECT)
+  choice[1-2?]:   DTG Serial stdin/stdout
+  > 1. CIPS_0_pspmc_0_psv_sbsauart_0 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT)
+    2. manual (SUBSYSTEM_SERIAL_MANUAL_SELECT)
+  choice[1-2?]:   System stdin/stdout baudrate for CIPS_0_pspmc_0_psv_sbsauart_0
+    1. 600 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_600)
+    2. 9600 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_9600)
+    3. 28800 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_28800)
+  > 4. 115200 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_115200)
+    5. 230400 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_230400)
+    6. 460800 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_460800)
+    7. 921600 (SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_921600)
+  choice[1-7]:   *
+  * Ethernet Settings
+  *
+  Primary Ethernet
+  > 1. CIPS_0_pspmc_0_psv_ethernet_0 (SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT)
+    2. CIPS_0_pspmc_0_psv_ethernet_1 (SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT)
+    3. manual (SUBSYSTEM_ETHERNET_MANUAL_SELECT)
+  choice[1-3?]:   Randomise MAC address (SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC_AUTO) [N/y/?] 
+    Ethernet MAC address (SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC) [ff:ff:ff:ff:ff:ff] 
+  Obtain IP address automatically (SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_USE_DHCP) [Y/n/?] 
+  *
+  * Flash Settings
+  *
+  Primary Flash
+  > 1. CIPS_0_pspmc_0_psv_pmc_qspi_0 (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_SELECT)
+    2. CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0 (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_SELECT)
+    3. manual (SUBSYSTEM_FLASH_MANUAL_SELECT)
+  choice[1-3?]:   Advanced Flash Auto Configuration (SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG) [N/y/?] 
+  *
+  * partition 0
+  *
+  name (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME) [qspi-boot] 
+  size (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_SIZE) [0x40000] 
+  *
+  * partition 1
+  *
+  name (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME) [qspi-bootenv] 
+  size (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_SIZE) [0x20000] 
+  *
+  * partition 2
+  *
+  name (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME) [qspi-config] 
+  size (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_SIZE) [0x20000] 
+  *
+  * partition 3
+  *
+  name (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME) [qspi-kernel] 
+  size (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_SIZE) [0xc00000] 
+  *
+  * partition 4
+  *
+  name (SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME) [] 
+  *
+  * SD/SDIO Settings
+  *
+  Primary SD/SDIO
+  > 1. manual (SUBSYSTEM_PRIMARY_SD_MANUAL_SELECT)
+  choice[1]: 1
+  *
+  * RTC Settings
+  *
+  Primary RTC
+  > 1. manual (SUBSYSTEM_RTC_MANUAL_SELECT)
+  choice[1]: 1
+Subsystem Architecture
+> 1. aarch64 (SUBSYSTEM_ARCH_AARCH64)
+  2. arm (SUBSYSTEM_ARCH_ARM)
+  3. microblaze (SUBSYSTEM_ARCH_MICROBLAZE)
+choice[1-3?]: *
+* DTG Settings
+*
+MACHINE_NAME (SUBSYSTEM_MACHINE_NAME) [versal-vmk180-reva-x-ebm-01-reva] 
+Device-tree workspace (SUBSYSTEM_DT_XSCT_WORKSPACE) [${PROOT}/components/plnx_workspace/device-tree] 
+Extra dts/dtsi files (SUBSYSTEM_EXTRA_DT_FILES) [] 
+*
+* Kernel Bootargs
+*
+generate boot args automatically (SUBSYSTEM_BOOTARGS_AUTO) [Y/n/?] 
+enable kernel earlyprintk (SUBSYSTEM_BOOTARGS_EARLYPRINTK) [Y/n/?] 
+Auto generated bootargs (NO EDIT!) (SUBSYSTEM_BOOTARGS_GENERATED) [console=ttyAMA0 earlycon=pl011,mmio32,0xFF000000,115200n8 clk_ignore_unused root=/dev/mmcblk0p2 ro rootwait] 
+Add extra boot args (SUBSYSTEM_EXTRA_BOOTARGS) [] 
+Devicetree compiler flags (SUBSYSTEM_DEVICETREE_COMPILER_FLAGS) [-@] 
+Devicetree overlay (SUBSYSTEM_DTB_OVERLAY) [N/y/?] 
+Remove PL from devicetree (SUBSYSTEM_REMOVE_PL_DTB) [N/y/?] 
+Enable openamp dtsi (SUBSYSTEM_ENABLE_OPENAMP_DTSI) [N/y/?] 
+Enable xen hardware dtsi (SUBSYSTEM_ENABLE_XEN_HW_DTSI) [N/y/?] 
+Enable xen QEMU dtsi (SUBSYSTEM_ENABLE_XEN_QEMU_DTSI) [N/y/?] 
+Enable board specific aliases (SUBSYSTEM_ENABLE_NO_ALIAS) [N/y/?] 
+Enable aliases generated by DTG (SUBSYSTEM_ENABLE_DTG_ALIAS) [N/y/?] 
+Enable dt verbose (SUBSYSTEM_ENABLE_DT_VERBOSE) [N/y/?] 
+Enable eeprom alias (SUBSYSTEM_ADD_EEPROM_ALIAS) [N/y/?] 
+Enable rtc alias (SUBSYSTEM_ADD_RTC_ALIAS) [N/y/?] 
+*
+* Trusted Firmware ARM (TF-A) Configuration
+*
+TF-A memory settings (SUBSYSTEM_TF-A_MEMORY_SETTINGS) [N/y/?] 
+TF-A extra compiler flags (SUBSYSTEM_TF-A_EXTRA_COMPILER_FLAGS) [] 
+TF-A debug (SUBSYSTEM_TF-A_DEBUG) [N/y/?] 
+*
+* FPGA Manager
+*
+Fpga Manager (SUBSYSTEM_FPGA_MANAGER) [N/y/?] 
+*
+* u-boot Configuration
+*
+u-boot config target (SUBSYSTEM_UBOOT_CONFIG_TARGET) [AUTO] 
+*
+* u-boot script configuration
+*
+Append base address to image offsets (SUBSYSTEM_UBOOT_APPEND_BASEADDR) [Y/n/?] 
+Pre bootenv (SUBSYSTEM_UBOOT_PRE_BOOTENV) [] 
+*
+* JTAG/DDR image offsets
+*
+Devicetree offset (SUBSYSTEM_UBOOT_DEVICETREE_OFFSET) [0x1000] 
+Kernel offset (SUBSYSTEM_UBOOT_KERNEL_OFFSET) [0x200000] 
+Ramdisk image offset (SUBSYSTEM_UBOOT_RAMDISK_IMAGE_OFFSET) [0x4000000] 
+Fit image offset (SUBSYSTEM_UBOOT_FIT_IMAGE_OFFSET) [0x10000000] 
+*
+* QSPI/OSPI image offsets
+*
+QSPI/OSPI Kernel offset (SUBSYSTEM_UBOOT_QSPI_KERNEL_OFFSET) [0xF00000] 
+QSPI/OSPI Kernel size (SUBSYSTEM_UBOOT_QSPI_KERNEL_SIZE) [0x1D00000] 
+QSPI/OSPI Ramdisk offset (SUBSYSTEM_UBOOT_QSPI_RAMDISK_OFFSET) [0x2E00000] 
+QSPI/OSPI Ramdisk size (SUBSYSTEM_UBOOT_QSPI_RAMDISK_SIZE) [0x4000000] 
+QSPI/OSPI fit image offset (SUBSYSTEM_UBOOT_QSPI_FIT_IMAGE_OFFSET) [0xF40000] 
+QSPI/OSPI fit image size (SUBSYSTEM_UBOOT_QSPI_FIT_IMAGE_SIZE) [0x6400000] 
+*
+* NAND image offsets
+*
+NAND Kernel offset (SUBSYSTEM_UBOOT_NAND_KERNEL_OFFSET) [0x4100000] 
+NAND Kernel size (SUBSYSTEM_UBOOT_NAND_KERNEL_SIZE) [0x3200000] 
+NAND Ramdisk offset (SUBSYSTEM_UBOOT_NAND_RAMDISK_OFFSET) [0x8200000] 
+NAND Ramdisk size (SUBSYSTEM_UBOOT_NAND_RAMDISK_SIZE) [0x3200000] 
+NAND fit image offset (SUBSYSTEM_UBOOT_NAND_FIT_IMAGE_OFFSET) [0x4180000] 
+NAND fit image size (SUBSYSTEM_UBOOT_NAND_FIT_IMAGE_SIZE) [0x6400000] 
+Kernel image name (SUBSYSTEM_UBOOT_KERNEL_IMAGE) [Image] 
+Fit image name (SUBSYSTEM_UBOOT_FIT_IMAGE) [image.ub] 
+u-boot-ext-dtb (SUBSYSTEM_UBOOT_EXT_DTB) [N/y/?] 
+*
+* Linux Configuration
+*
+linux config target (SUBSYSTEM_LINUX_CONFIG_TARGET) [AUTO] 
+*
+* Image Packaging Configuration
+*
+Root filesystem type
+  1. INITRAMFS (SUBSYSTEM_ROOTFS_INITRAMFS)
+  2. INITRD (SUBSYSTEM_ROOTFS_INITRD)
+  3. JFFS2 (SUBSYSTEM_ROOTFS_JFFS2)
+  4. UBI/UBIFS (SUBSYSTEM_ROOTFS_UBIFS)
+  5. NFS (SUBSYSTEM_ROOTFS_NFS)
+> 6. EXT4 (SD/eMMC/SATA/USB) (SUBSYSTEM_ROOTFS_EXT4)
+  7. other (SUBSYSTEM_ROOTFS_OTHER)
+choice[1-7]: Device node of SD device (SUBSYSTEM_SDROOT_DEV) [/dev/mmcblk0p2] 
+name for bootable kernel image (SUBSYSTEM_UIMAGE_NAME) [image.ub] 
+Root filesystem formats (SUBSYSTEM_RFS_FORMATS) [tar.gz cpio.gz cpio.gz.u-boot ext4 ext4.gz jffs2] 
+DTB padding size (SUBSYSTEM_DTB_PADDING_SIZE) [0x1000] 
+Copy final images to tftpboot (SUBSYSTEM_COPY_TO_TFTPBOOT) [Y/n/?] 
+  tftpboot directory (SUBSYSTEM_TFTPBOOT_DIR) [/tftpboot] 
+PDI File name (SUBSYSTEM_PDI_FILENAME) [] 
+*
+* Firmware Version Configuration
+*
+Host name (SUBSYSTEM_HOSTNAME) [versal-rootfs-common-2024_1] 
+Product name (SUBSYSTEM_PRODUCT) [versal-rootfs-common-2024.1] 
+Firmware Version (SUBSYSTEM_FW_VERSION) [1.00] 
+*
+* Yocto Settings
+*
+Yocto Machine Name (YOCTO_MACHINE_NAME) [versal-generic] 
+Yocto Include Machine name (YOCTO_INCLUDE_MACHINE_NAME) [] 
+Yocto Additional Overrides (YOCTO_ADD_OVERRIDES) [] 
+*
+* TMPDIR Location
+*
+TMPDIR Location (TMP_DIR_LOCATION) [/scratch/xilinx-2024.1-versal-rootfs-2023-11-29-15-19-54] 
+*
+* Devtool Workspace Location
+*
+Devtool Workspace Location (DEVTOOL_WORKSPACE_LOCATION) [${PROOT}/components/yocto/workspace] 
+PetaLinux Deploy Directory (PLNX_IMAGES_LOCATION) [${PROOT}/images/linux] 
+*
+* Parallel thread execution
+*
+Set number of bb threads (BB_NUMBER_THREADS) (YOCTO_BB_NUMBER_THREADS) [] 
+Set number of bb parse threads (BB_NUMBER_PARSE_THREADS) (YOCTO_BB_NUMBER_PARSE_THREADS) [] 
+Set number of parallel make -j (PARALLEL_MAKE) (YOCTO_PARALLEL_MAKE) [] 
+*
+* Add pre-mirror url 
+*
+pre-mirror url path (PRE_MIRROR_URL) [http://petalinux.xilinx.com/sswreleases/rel-v${PETALINUX_MAJOR_VER}/downloads] 
+*
+* Local sstate feeds settings
+*
+local sstate feeds url (YOCTO_LOCAL_SSTATE_FEEDS_URL) [] 
+Enable Network sstate feeds (YOCTO_NETWORK_SSTATE_FEEDS) [Y/n/?] 
+  *
+  * Network sstate feeds URL
+  *
+  network sstate feeds url (YOCTO_NETWORK_SSTATE_FEEDS_URL) [http://petalinux.xilinx.com/sswreleases/rel-v${PETALINUX_MAJOR_VER}/aarch64/sstate-cache] 
+Enable BB NO NETWORK (YOCTO_BB_NO_NETWORK) [N/y/?] 
+Enable Buildtools Extended (YOCTO_BUILDTOOLS_EXTENDED) [N/y/?] 
+*
+* User Layers
+*
+user layer 0 (USER_LAYER_0) [] 
+#
+# configuration written to /proj/petalinux/2024.1/petalinux-v2024.1_11291502/logs/bsps/versal-rootfs-common-2024.1/project-spec/configs/config
+#
+2023-11-29 23:59:29,918 - [INFO] Silentconfig rootfs
+2023-11-29 23:59:29,918 - [DEBUG] Running CMD: yes "" | env KCONFIG_CONFIG=/proj/petalinux/2024.1/petalinux-v2024.1_11291502/logs/bsps/versal-rootfs-common-2024.1/project-spec/configs/rootfs_config conf /proj/petalinux/2024.1/petalinux-v2024.1_11291502/logs/bsps/versal-rootfs-common-2024.1/project-spec/configs/rootfsconfigs/Kconfig
+2023-11-29 23:59:29,944 - [DEBUG] *
+* Configuration
+*
+*
+* Filesystem Packages 
+*
+*
+* admin 
+*
+*
+* sudo 
+*
+sudo (sudo) [N/y/?] 
+sudo-dev (sudo-dev) [N/y/?] 
+sudo-dbg (sudo-dbg) [N/y/?] 
+*
+* audio 
+*
+*
+* sox 
+*
+sox (sox) [N/y/?] 
+sox-dbg (sox-dbg) [N/y/?] 
+sox-dev (sox-dev) [N/y/?] 
+*
+* base 
+*
+*
+* base-files 
+*
+base-files (base-files) [N/y/?] 
+base-files-dbg (base-files-dbg) [N/y/?] 
+base-files-dev (base-files-dev) [N/y/?] 
+*
+* base-passwd 
+*
+base-passwd (base-passwd) [N/y/?] 
+base-passwd-dev (base-passwd-dev) [N/y/?] 
+base-passwd-dbg (base-passwd-dbg) [N/y/?] 
+base-passwd-update (base-passwd-update) [N/y/?] 
+*
+* bc 
+*
+bc (bc) [N/y/?] 
+bc-dev (bc-dev) [N/y/?] 
+bc-dbg (bc-dbg) [N/y/?] 
+*
+* busybox 
+*
+busybox (busybox) [N/y/?] 
+busybox-inetd (busybox-inetd) [N/y/?] 
+busybox-dbg (busybox-dbg) [N/y/?] 
+busybox-syslog (busybox-syslog) [N/y/?] 
+busybox-hwclock (busybox-hwclock) [N/y/?] 
+busybox-httpd (busybox-httpd) [N/y/?] 
+busybox-dev (busybox-dev) [N/y/?] 
+busybox-udhcpc (busybox-udhcpc) [N/y/?] 
+busybox-udhcpd (busybox-udhcpd) [N/y/?] 
+*
+* cpio 
+*
+cpio (cpio) [N/y/?] 
+cpio-dbg (cpio-dbg) [N/y/?] 
+cpio-dev (cpio-dev) [N/y/?] 
+cpio-rmt (cpio-rmt) [N/y/?] 
+*
+* crda 
+*
+crda (crda) [N/y/?] 
+crda-dbg (crda-dbg) [N/y/?] 
+crda-dev (crda-dev) [N/y/?] 
+*
+* dbus 
+*
+dbus (dbus) [N/y/?] 
+dbus-dbg (dbus-dbg) [N/y/?] 
+dbus-lib (dbus-lib) [N/y/?] 
+dbus-dev (dbus-dev) [N/y/?] 
+*
+* dbus-glib 
+*
+dbus-glib (dbus-glib) [N/y/?] 
+dbus-glib-dev (dbus-glib-dev) [N/y/?] 
+dbus-glib-bash-completion (dbus-glib-bash-completion) [N/y/?] 
+dbus-glib-tests (dbus-glib-tests) [N/y/?] 
+dbus-glib-dbg (dbus-glib-dbg) [N/y/?] 
+*
+* dbus-wait 
+*
+dbus-wait (dbus-wait) [N/y/?] 
+dbus-wait-dbg (dbus-wait-dbg) [N/y/?] 
+dbus-wait-dev (dbus-wait-dev) [N/y/?] 
+*
+* diffutils 
+*
+diffutils (diffutils) [N/y/?] 
+diffutils-dbg (diffutils-dbg) [N/y/?] 
+diffutils-dev (diffutils-dev) [N/y/?] 
+*
+* dnf
+*
+dnf (dnf) [Y/n/?] 
+*
+* e2fsprogs 
+*
+e2fsprogs (e2fsprogs) [N/y/?] 
+e2fsprogs-dev (e2fsprogs-dev) [N/y/?] 
+e2fsprogs-mke2fs (e2fsprogs-mke2fs) [Y/n/?] 
+e2fsprogs-dbg (e2fsprogs-dbg) [N/y/?] 
+e2fsprogs-resize2fs (e2fsprogs-resize2fs) [N/y/?] 
+e2fsprogs-tune2fs (e2fsprogs-tune2fs) [N/y/?] 
+libss (libss) [N/y/?] 
+libcomerr (libcomerr) [N/y/?] 
+libext2fs (libext2fs) [N/y/?] 
+libe2p (libe2p) [N/y/?] 
+e2fsprogs-e2fsck (e2fsprogs-e2fsck) [N/y/?] 
+e2fsprogs-badblocks (e2fsprogs-badblocks) [N/y/?] 
+*
+* ed 
+*
+ed (ed) [N/y/?] 
+ed-dev (ed-dev) [N/y/?] 
+ed-dbg (ed-dbg) [N/y/?] 
+*
+* elfutils 
+*
+elfutils (elfutils) [N/y/?] 
+libdw (libdw) [N/y/?] 
+elfutils-dev (elfutils-dev) [N/y/?] 
+elfutils-binutils (elfutils-binutils) [N/y/?] 
+libelf (libelf) [N/y/?] 
+elfutils-dbg (elfutils-dbg) [N/y/?] 
+libasm (libasm) [N/y/?] 
+*
+* formfactor 
+*
+formfactor (formfactor) [N/y/?] 
+formfactor-dbg (formfactor-dbg) [N/y/?] 
+formfactor-dev (formfactor-dev) [N/y/?] 
+*
+* fpga-manager-script 
+*
+fpga-manager-script (fpga-manager-script) [Y/n/?] 
+*
+* dfx-mgr
+*
+dfx-mgr (dfx-mgr) [N/y/?] 
+dfx-mgr-dbg (dfx-mgr-dbg) [N/y/?] 
+dfx-mgr-dev (dfx-mgr-dev) [N/y/?] 
+*
+* haveged 
+*
+haveged (haveged) [N/y/?] 
+*
+* i2c-tools 
+*
+i2c-tools (i2c-tools) [N/y/?] 
+i2c-tools-dev (i2c-tools-dev) [N/y/?] 
+i2c-tools-misc (i2c-tools-misc) [N/y/?] 
+i2c-tools-dbg (i2c-tools-dbg) [N/y/?] 
+*
+* init-ifupdown 
+*
+init-ifupdown (init-ifupdown) [N/y/?] 
+init-ifupdown-dev (init-ifupdown-dev) [N/y/?] 
+init-ifupdown-dbg (init-ifupdown-dbg) [N/y/?] 
+*
+* initscripts 
+*
+initscripts (initscripts) [N/y/?] 
+initscripts-functions (initscripts-functions) [N/y/?] 
+initscripts-dev (initscripts-dev) [N/y/?] 
+initscripts-dbg (initscripts-dbg) [N/y/?] 
+*
+* iproute2 
+*
+iproute2 (iproute2) [N/y/?] 
+iproute2-ss (iproute2-ss) [N/y/?] 
+iproute2-dev (iproute2-dev) [N/y/?] 
+iproute2-dbg (iproute2-dbg) [N/y/?] 
+iproute2-ifstat (iproute2-ifstat) [N/y/?] 
+iproute2-nstat (iproute2-nstat) [N/y/?] 
+iproute2-tc (iproute2-tc) [N/y/?] 
+iproute2-bash-completion (iproute2-bash-completion) [N/y/?] 
+iproute2-genl (iproute2-genl) [N/y/?] 
+iproute2-rtacct (iproute2-rtacct) [N/y/?] 
+iproute2-lnstat (iproute2-lnstat) [N/y/?] 
+*
+* kmod 
+*
+kmod (kmod) [N/y/?] 
+kmod-bash-completion (kmod-bash-completion) [N/y/?] 
+libkmod (libkmod) [N/y/?] 
+kmod-dbg (kmod-dbg) [N/y/?] 
+kmod-dev (kmod-dev) [N/y/?] 
+*
+* linuxptp 
+*
+linuxptp (linuxptp) [N/y/?] 
+linuxptp-dev (linuxptp-dev) [N/y/?] 
+linuxptp-dbg (linuxptp-dbg) [N/y/?] 
+*
+* modutils-initscripts 
+*
+modutils-initscripts (modutils-initscripts) [N/y/?] 
+modutils-initscripts-dev (modutils-initscripts-dev) [N/y/?] 
+modutils-initscripts-dbg (modutils-initscripts-dbg) [N/y/?] 
+*
+* mtd-utils 
+*
+mtd-utils (mtd-utils) [Y/n/?] 
+mtd-utils-jffs2 (mtd-utils-jffs2) [N/y/?] 
+mtd-utils-misc (mtd-utils-misc) [N/y/?] 
+mtd-utils-dev (mtd-utils-dev) [N/y/?] 
+mtd-utils-ubifs (mtd-utils-ubifs) [N/y/?] 
+mtd-utils-dbg (mtd-utils-dbg) [N/y/?] 
+*
+* netbase 
+*
+netbase (netbase) [N/y/?] 
+netbase-dev (netbase-dev) [N/y/?] 
+netbase-dbg (netbase-dbg) [N/y/?] 
+*
+* opkg 
+*
+opkg (opkg) [N/y/?] 
+libopkg (libopkg) [N/y/?] 
+opkg-dbg (opkg-dbg) [N/y/?] 
+opkg-dev (opkg-dev) [N/y/?] 
+*
+* opkg-utils 
+*
+opkg-utils (opkg-utils) [N/y/?] 
+opkg-utils-dbg (opkg-utils-dbg) [N/y/?] 
+update-alternatives-opkg (update-alternatives-opkg) [N/y/?] 
+*
+* procps 
+*
+procps (procps) [N/y/?] 
+procps-dev (procps-dev) [N/y/?] 
+procps-dbg (procps-dbg) [N/y/?] 
+*
+* pseudo 
+*
+pseudo (pseudo) [N/y/?] 
+pseudo-dev (pseudo-dev) [N/y/?] 
+pseudo-dbg (pseudo-dbg) [N/y/?] 
+*
+* psplash 
+*
+psplash (psplash) [N/y/?] 
+psplash-dbg (psplash-dbg) [N/y/?] 
+psplash-default (psplash-default) [N/y/?] 
+psplash-dev (psplash-dev) [N/y/?] 
+*
+* quota 
+*
+quota (quota) [N/y/?] 
+quota-dbg (quota-dbg) [N/y/?] 
+quota-dev (quota-dev) [N/y/?] 
+*
+* shared-mime-info 
+*
+shared-mime-info (shared-mime-info) [N/y/?] 
+shared-mime-info-dev (shared-mime-info-dev) [N/y/?] 
+shared-mime-info-dbg (shared-mime-info-dbg) [N/y/?] 
+shared-mime-info-data (shared-mime-info-data) [N/y/?] 
+*
+* shell 
+*
+*
+* bash 
+*
+bash (bash) [N/y/?] 
+bash-dbg (bash-dbg) [N/y/?] 
+bash-dev (bash-dev) [N/y/?] 
+*
+* sysvinit 
+*
+sysvinit (sysvinit) [N/y/?] 
+sysvinit-dev (sysvinit-dev) [N/y/?] 
+sysvinit-sulogin (sysvinit-sulogin) [N/y/?] 
+sysvinit-dbg (sysvinit-dbg) [N/y/?] 
+sysvinit-pidof (sysvinit-pidof) [N/y/?] 
+*
+* tar 
+*
+tar (tar) [N/y/?] 
+tar-dev (tar-dev) [N/y/?] 
+tar-dbg (tar-dbg) [N/y/?] 
+tar-rmt (tar-rmt) [N/y/?] 
+*
+* tzdata 
+*
+tzdata (tzdata) [N/y/?] 
+tzdata-pacific (tzdata-pacific) [N/y/?] 
+tzdata-posix (tzdata-posix) [N/y/?] 
+tzdata-antarctica (tzdata-antarctica) [N/y/?] 
+tzdata-africa (tzdata-africa) [N/y/?] 
+tzdata-europe (tzdata-europe) [N/y/?] 
+tzdata-americas (tzdata-americas) [N/y/?] 
+tzdata-right (tzdata-right) [N/y/?] 
+tzdata-atlantic (tzdata-atlantic) [N/y/?] 
+tzdata-australia (tzdata-australia) [N/y/?] 
+tzdata-misc (tzdata-misc) [N/y/?] 
+tzdata-asia (tzdata-asia) [N/y/?] 
+tzdata-arctic (tzdata-arctic) [N/y/?] 
+*
+* update-rc.d 
+*
+update-rc.d (update-rc.d) [N/y/?] 
+update-rc.d-dbg (update-rc.d-dbg) [N/y/?] 
+update-rc.d-dev (update-rc.d-dev) [N/y/?] 
+*
+* usbutils 
+*
+usbutils (usbutils) [N/y/?] 
+usbutils-dev (usbutils-dev) [N/y/?] 
+usbutils-dbg (usbutils-dbg) [N/y/?] 
+*
+* util-linux 
+*
+util-linux (util-linux) [N/y/?] 
+util-linux-sulogin (util-linux-sulogin) [N/y/?] 
+util-linux-losetup (util-linux-losetup) [N/y/?] 
+util-linux-hwclock (util-linux-hwclock) [N/y/?] 
+util-linux-fsck (util-linux-fsck) [N/y/?] 
+util-linux-uuidgen (util-linux-uuidgen) [N/y/?] 
+util-linux-bash-completion (util-linux-bash-completion) [N/y/?] 
+util-linux-fstrim (util-linux-fstrim) [N/y/?] 
+util-linux-cfdisk (util-linux-cfdisk) [N/y/?] 
+util-linux-umount (util-linux-umount) [N/y/?] 
+util-linux-findfs (util-linux-findfs) [N/y/?] 
+util-linux-agetty (util-linux-agetty) [N/y/?] 
+util-linux-mount (util-linux-mount) [N/y/?] 
+util-linux-sfdisk (util-linux-sfdisk) [N/y/?] 
+util-linux-swaponoff (util-linux-swaponoff) [N/y/?] 
+util-linux-fsck.cramfs (util-linux-fsck.cramfs) [N/y/?] 
+util-linux-prlimit (util-linux-prlimit) [N/y/?] 
+util-linux-mcookie (util-linux-mcookie) [N/y/?] 
+util-linux-getopt (util-linux-getopt) [N/y/?] 
+util-linux-blkid (util-linux-blkid) [N/y/?] 
+util-linux-dev (util-linux-dev) [N/y/?] 
+util-linux-partx (util-linux-partx) [N/y/?] 
+util-linux-mkfs (util-linux-mkfs) [N/y/?] 
+util-linux-readprofile (util-linux-readprofile) [N/y/?] 
+util-linux-mountpoint (util-linux-mountpoint) [N/y/?] 
+util-linux-fdisk (util-linux-fdisk) [N/y/?] 
+util-linux-lscpu (util-linux-lscpu) [N/y/?] 
+util-linux-dbg (util-linux-dbg) [N/y/?] 
+util-linux-uuidd (util-linux-uuidd) [N/y/?] 
+util-linux-mkfs.cramfs (util-linux-mkfs.cramfs) [N/y/?] 
+*
+* utils 
+*
+*
+* shadow 
+*
+shadow (shadow) [N/y/?] 
+shadow-base (shadow-base) [N/y/?] 
+shadow-dev (shadow-dev) [N/y/?] 
+shadow-dbg (shadow-dbg) [N/y/?] 
+*
+* xz 
+*
+xz (xz) [N/y/?] 
+xz-dev (xz-dev) [N/y/?] 
+xz-dbg (xz-dbg) [N/y/?] 
+liblzma (liblzma) [N/y/?] 
+*
+* baseutils 
+*
+*
+* shadow-securetty 
+*
+shadow-securetty (shadow-securetty) [N/y/?] 
+shadow-securetty-dev (shadow-securetty-dev) [N/y/?] 
+shadow-securetty-dbg (shadow-securetty-dbg) [N/y/?] 
+*
+* benchmark 
+*
+*
+* tests 
+*
+*
+* dhrystone 
+*
+dhrystone (dhrystone) [N/y/?] 
+dhrystone-dev (dhrystone-dev) [N/y/?] 
+dhrystone-dbg (dhrystone-dbg) [N/y/?] 
+*
+* linpack 
+*
+linpack (linpack) [N/y/?] 
+linpack-dbg (linpack-dbg) [N/y/?] 
+linpack-dev (linpack-dev) [N/y/?] 
+*
+* whetstone 
+*
+whetstone (whetstone) [N/y/?] 
+whetstone-dev (whetstone-dev) [N/y/?] 
+whetstone-dbg (whetstone-dbg) [N/y/?] 
+*
+* bootgen 
+*
+bootgen (bootgen) [N/y/?] 
+bootgen-dev (bootgen-dev) [N/y/?] 
+bootgen-dbg (bootgen-dbg) [N/y/?] 
+*
+* bootloader 
+*
+*
+* dtc 
+*
+dtc (dtc) [N/y/?] 
+dtc-dbg (dtc-dbg) [N/y/?] 
+dtc-misc (dtc-misc) [N/y/?] 
+dtc-dev (dtc-dev) [N/y/?] 
+*
+* console 
+*
+*
+* network 
+*
+*
+* canutils 
+*
+canutils (canutils) [N/y/?] 
+canutils-dev (canutils-dev) [N/y/?] 
+canutils-dbg (canutils-dbg) [N/y/?] 
+*
+* can-utils 
+*
+can-utils (can-utils) [Y/n/?] 
+can-utils-dbg (can-utils-dbg) [N/y/?] 
+can-utils-dev (can-utils-dev) [N/y/?] 
+*
+* curl 
+*
+curl (curl) [N/y/?] 
+curl-dbg (curl-dbg) [N/y/?] 
+libcurl (libcurl) [N/y/?] 
+curl-dev (curl-dev) [N/y/?] 
+*
+* dropbear 
+*
+dropbear (dropbear) [N/y/?] 
+dropbear-dev (dropbear-dev) [N/y/?] 
+dropbear-dbg (dropbear-dbg) [N/y/?] 
+*
+* ethtool 
+*
+ethtool (ethtool) [N/y/?] 
+ethtool-dev (ethtool-dev) [N/y/?] 
+ethtool-dbg (ethtool-dbg) [N/y/?] 
+*
+* lrzsz 
+*
+lrzsz (lrzsz) [N/y/?] 
+lrzsz-dbg (lrzsz-dbg) [N/y/?] 
+lrzsz-dev (lrzsz-dev) [N/y/?] 
+*
+* minicom 
+*
+minicom (minicom) [N/y/?] 
+minicom-dev (minicom-dev) [N/y/?] 
+minicom-dbg (minicom-dbg) [N/y/?] 
+*
+* nfs-utils 
+*
+nfs-utils (nfs-utils) [Y/n/?] 
+nfs-utils-stats (nfs-utils-stats) [N/y/?] 
+nfs-utils-dbg (nfs-utils-dbg) [N/y/?] 
+nfs-utils-dev (nfs-utils-dev) [N/y/?] 
+nfs-utils-client (nfs-utils-client) [N/y/?] 
+*
+* openssh 
+*
+openssh (openssh) [N/y/?] 
+openssh-ssh (openssh-ssh) [N/y/?] 
+openssh-sftp (openssh-sftp) [N/y/?] 
+openssh-sftp-server (openssh-sftp-server) [N/y/?] 
+openssh-keygen (openssh-keygen) [N/y/?] 
+openssh-dbg (openssh-dbg) [N/y/?] 
+openssh-dev (openssh-dev) [N/y/?] 
+openssh-misc (openssh-misc) [N/y/?] 
+openssh-sshd (openssh-sshd) [N/y/?] 
+openssh-scp (openssh-scp) [N/y/?] 
+*
+* ppp 
+*
+ppp (ppp) [N/y/?] 
+ppp-dev (ppp-dev) [N/y/?] 
+ppp-l2tp (ppp-l2tp) [N/y/?] 
+ppp-minconn (ppp-minconn) [N/y/?] 
+ppp-winbind (ppp-winbind) [N/y/?] 
+ppp-dbg (ppp-dbg) [N/y/?] 
+ppp-oe (ppp-oe) [N/y/?] 
+ppp-oa (ppp-oa) [N/y/?] 
+ppp-radius (ppp-radius) [N/y/?] 
+ppp-tools (ppp-tools) [N/y/?] 
+ppp-password (ppp-password) [N/y/?] 
+*
+* rpcbind 
+*
+rpcbind (rpcbind) [N/y/?] 
+rpcbind-dev (rpcbind-dev) [N/y/?] 
+rpcbind-dbg (rpcbind-dbg) [N/y/?] 
+*
+* rsync 
+*
+rsync (rsync) [N/y/?] 
+rsync-dev (rsync-dev) [N/y/?] 
+rsync-dbg (rsync-dbg) [N/y/?] 
+*
+* socat 
+*
+socat (socat) [N/y/?] 
+socat-dev (socat-dev) [N/y/?] 
+socat-dbg (socat-dbg) [N/y/?] 
+*
+* subversion 
+*
+subversion (subversion) [N/y/?] 
+subversion-dev (subversion-dev) [N/y/?] 
+subversion-dbg (subversion-dbg) [N/y/?] 
+*
+* tcp-wrappers 
+*
+tcp-wrappers (tcp-wrappers) [N/y/?] 
+libwrap (libwrap) [N/y/?] 
+tcp-wrappers-dbg (tcp-wrappers-dbg) [N/y/?] 
+libwrap-dev (libwrap-dev) [N/y/?] 
+*
+* wget 
+*
+wget (wget) [N/y/?] 
+wget-dev (wget-dev) [N/y/?] 
+wget-dbg (wget-dbg) [N/y/?] 
+*
+* tools 
+*
+*
+* parted 
+*
+parted (parted) [N/y/?] 
+parted-dev (parted-dev) [N/y/?] 
+parted-dbg (parted-dbg) [N/y/?] 
+*
+* xen 
+*
+xen-efi (xen-efi) [N/y/?] 
+xen-dbg (xen-dbg) [N/y/?] 
+xen-tools (xen-tools) [N/y/?] 
+*
+* utils 
+*
+*
+* alsa-tools 
+*
+alsa-tools (alsa-tools) [N/y/?] 
+alsa-tools-dbg (alsa-tools-dbg) [N/y/?] 
+alsa-tools-dev (alsa-tools-dev) [N/y/?] 
+*
+* alsa-utils 
+*
+alsa-utils (alsa-utils) [N/y/?] 
+alsa-utils-alsatplg (alsa-utils-alsatplg) [N/y/?] 
+alsa-utils-midi (alsa-utils-midi) [N/y/?] 
+alsa-utils-alsactl (alsa-utils-alsactl) [N/y/?] 
+alsa-utils-alsamixer (alsa-utils-alsamixer) [N/y/?] 
+alsa-utils-amixer (alsa-utils-amixer) [N/y/?] 
+alsa-utils-speakertest (alsa-utils-speakertest) [N/y/?] 
+alsa-utils-aplay (alsa-utils-aplay) [N/y/?] 
+alsa-utils-dev (alsa-utils-dev) [N/y/?] 
+alsa-utils-aconnect (alsa-utils-aconnect) [N/y/?] 
+alsa-utils-alsaloop (alsa-utils-alsaloop) [N/y/?] 
+alsa-utils-aseqdump (alsa-utils-aseqdump) [N/y/?] 
+alsa-utils-iecset (alsa-utils-iecset) [N/y/?] 
+alsa-utils-alsaucm (alsa-utils-alsaucm) [N/y/?] 
+alsa-utils-dbg (alsa-utils-dbg) [N/y/?] 
+alsa-utils-aseqnet (alsa-utils-aseqnet) [N/y/?] 
+*
+* bash-completion 
+*
+bash-completion (bash-completion) [N/y/?] 
+bash-completion-dbg (bash-completion-dbg) [N/y/?] 
+bash-completion-dev (bash-completion-dev) [N/y/?] 
+bash-completion-extra (bash-completion-extra) [N/y/?] 
+*
+* bzip2 
+*
+bzip2 (bzip2) [N/y/?] 
+libbz2 (libbz2) [N/y/?] 
+bzip2-dbg (bzip2-dbg) [N/y/?] 
+bzip2-dev (bzip2-dev) [N/y/?] 
+*
+* file 
+*
+file (file) [N/y/?] 
+file-dev (file-dev) [N/y/?] 
+file-dbg (file-dbg) [N/y/?] 
+*
+* findutils 
+*
+findutils (findutils) [N/y/?] 
+findutils-dbg (findutils-dbg) [N/y/?] 
+findutils-dev (findutils-dev) [N/y/?] 
+*
+* gawk 
+*
+gawk (gawk) [N/y/?] 
+gawk-dbg (gawk-dbg) [N/y/?] 
+gawk-dev (gawk-dev) [N/y/?] 
+*
+* git 
+*
+git (git) [N/y/?] 
+git-bash-completion (git-bash-completion) [N/y/?] 
+git-perltools (git-perltools) [N/y/?] 
+gitweb (gitweb) [N/y/?] 
+git-dev (git-dev) [N/y/?] 
+git-dbg (git-dbg) [N/y/?] 
+*
+* grep 
+*
+grep (grep) [N/y/?] 
+grep-dbg (grep-dbg) [N/y/?] 
+grep-dev (grep-dev) [N/y/?] 
+*
+* groff 
+*
+groff (groff) [N/y/?] 
+groff-dev (groff-dev) [N/y/?] 
+groff-dbg (groff-dbg) [N/y/?] 
+*
+* gzip 
+*
+gzip (gzip) [N/y/?] 
+gzip-dev (gzip-dev) [N/y/?] 
+gzip-dbg (gzip-dbg) [N/y/?] 
+*
+* hdparm 
+*
+hdparm (hdparm) [N/y/?] 
+hdparm-dev (hdparm-dev) [N/y/?] 
+wiper (wiper) [N/y/?] 
+hdparm-dbg (hdparm-dbg) [N/y/?] 
+*
+* less 
+*
+less (less) [N/y/?] 
+less-dbg (less-dbg) [N/y/?] 
+less-dev (less-dev) [N/y/?] 
+*
+* lmbench 
+*
+lmbench (lmbench) [N/y/?] 
+lmbench-dbg (lmbench-dbg) [N/y/?] 
+lmbench-dev (lmbench-dev) [N/y/?] 
+*
+* ltp 
+*
+ltp (ltp) [N/y/?] 
+ltp-dev (ltp-dev) [N/y/?] 
+ltp-dbg (ltp-dbg) [N/y/?] 
+*
+* man 
+*
+man (man) [N/y/?] 
+*
+* man-pages 
+*
+man-pages (man-pages) [N/y/?] 
+man-pages-dev (man-pages-dev) [N/y/?] 
+man-pages-dbg (man-pages-dbg) [N/y/?] 
+*
+* mc 
+*
+mc (mc) [N/y/?] 
+mc-fish (mc-fish) [N/y/?] 
+mc-dev (mc-dev) [N/y/?] 
+mc-dbg (mc-dbg) [N/y/?] 
+mc-helpers (mc-helpers) [N/y/?] 
+mc-helpers-perl (mc-helpers-perl) [N/y/?] 
+*
+* pciutils 
+*
+pciutils (pciutils) [Y/n/?] 
+pciutils-dbg (pciutils-dbg) [N/y/?] 
+libpci (libpci) [N/y/?] 
+pciutils-ids (pciutils-ids) [N/y/?] 
+pciutils-dev (pciutils-dev) [N/y/?] 
+*
+* pkgconfig 
+*
+pkgconfig (pkgconfig) [N/y/?] 
+pkgconfig-dev (pkgconfig-dev) [N/y/?] 
+pkgconfig-dbg (pkgconfig-dbg) [N/y/?] 
+*
+* screen 
+*
+screen (screen) [N/y/?] 
+screen-dev (screen-dev) [N/y/?] 
+screen-dbg (screen-dbg) [N/y/?] 
+*
+* sed 
+*
+sed (sed) [N/y/?] 
+sed-dev (sed-dev) [N/y/?] 
+sed-dbg (sed-dbg) [N/y/?] 
+*
+* setserial 
+*
+setserial (setserial) [N/y/?] 
+setserial-dbg (setserial-dbg) [N/y/?] 
+setserial-dev (setserial-dev) [N/y/?] 
+*
+* smartmontools 
+*
+smartmontools (smartmontools) [N/y/?] 
+smartmontools-dev (smartmontools-dev) [N/y/?] 
+smartmontools-dbg (smartmontools-dbg) [N/y/?] 
+*
+* strace 
+*
+strace (strace) [N/y/?] 
+strace-dev (strace-dev) [N/y/?] 
+strace-dbg (strace-dbg) [N/y/?] 
+*
+* sysstat 
+*
+sysstat (sysstat) [N/y/?] 
+sysstat-dbg (sysstat-dbg) [N/y/?] 
+sysstat-dev (sysstat-dev) [N/y/?] 
+*
+* texinfo 
+*
+texinfo (texinfo) [N/y/?] 
+texinfo-dbg (texinfo-dbg) [N/y/?] 
+texinfo-dev (texinfo-dev) [N/y/?] 
+info (info) [N/y/?] 
+*
+* unzip 
+*
+unzip (unzip) [N/y/?] 
+unzip-dbg (unzip-dbg) [N/y/?] 
+unzip-dev (unzip-dev) [N/y/?] 
+*
+* vim 
+*
+vim (vim) [N/y/?] 
+vim-help (vim-help) [N/y/?] 
+vim-dbg (vim-dbg) [N/y/?] 
+vim-vimrc (vim-vimrc) [N/y/?] 
+vim-dev (vim-dev) [N/y/?] 
+vim-tutor (vim-tutor) [N/y/?] 
+vim-tools (vim-tools) [N/y/?] 
+vim-common (vim-common) [N/y/?] 
+vim-syntax (vim-syntax) [N/y/?] 
+*
+* zip 
+*
+zip (zip) [N/y/?] 
+zip-dev (zip-dev) [N/y/?] 
+zip-dbg (zip-dbg) [N/y/?] 
+*
+* devel 
+*
+*
+* autoconf 
+*
+autoconf (autoconf) [N/y/?] 
+autoconf-dbg (autoconf-dbg) [N/y/?] 
+autoconf-dev (autoconf-dev) [N/y/?] 
+*
+* automake 
+*
+automake (automake) [N/y/?] 
+automake-dev (automake-dev) [N/y/?] 
+automake-dbg (automake-dbg) [N/y/?] 
+*
+* binutils 
+*
+binutils (binutils) [N/y/?] 
+binutils-dev (binutils-dev) [N/y/?] 
+binutils-dbg (binutils-dbg) [N/y/?] 
+*
+* bison 
+*
+bison (bison) [N/y/?] 
+bison-dbg (bison-dbg) [N/y/?] 
+bison-dev (bison-dev) [N/y/?] 
+*
+* ccache 
+*
+ccache (ccache) [N/y/?] 
+ccache-dbg (ccache-dbg) [N/y/?] 
+ccache-dev (ccache-dev) [N/y/?] 
+*
+* diffstat 
+*
+diffstat (diffstat) [N/y/?] 
+diffstat-dev (diffstat-dev) [N/y/?] 
+diffstat-dbg (diffstat-dbg) [N/y/?] 
+*
+* distcc 
+*
+distcc (distcc) [N/y/?] 
+distcc-dbg (distcc-dbg) [N/y/?] 
+distcc-dev (distcc-dev) [N/y/?] 
+*
+* expect 
+*
+expect (expect) [N/y/?] 
+expect-dev (expect-dev) [N/y/?] 
+expect-dbg (expect-dbg) [N/y/?] 
+*
+* flex 
+*
+flex (flex) [N/y/?] 
+flex-dbg (flex-dbg) [N/y/?] 
+flex-dev (flex-dev) [N/y/?] 
+*
+* gmp 
+*
+gmp (gmp) [N/y/?] 
+libgmpxx (libgmpxx) [N/y/?] 
+gmp-dbg (gmp-dbg) [N/y/?] 
+gmp-dev (gmp-dev) [N/y/?] 
+*
+* gnu-config 
+*
+gnu-config (gnu-config) [N/y/?] 
+*
+* gnu-efi 
+*
+gnu-efi (gnu-efi) [N/y/?] 
+gnu-efi-dbg (gnu-efi-dbg) [N/y/?] 
+gnu-efi-dev (gnu-efi-dev) [N/y/?] 
+*
+* intltool 
+*
+intltool (intltool) [N/y/?] 
+intltool-dev (intltool-dev) [N/y/?] 
+intltool-dbg (intltool-dbg) [N/y/?] 
+*
+* libarchive 
+*
+libarchive (libarchive) [N/y/?] 
+bsdcpio (bsdcpio) [N/y/?] 
+libarchive-dbg (libarchive-dbg) [N/y/?] 
+bsdtar (bsdtar) [N/y/?] 
+libarchive-dev (libarchive-dev) [N/y/?] 
+*
+* libcheck 
+*
+libcheck (libcheck) [N/y/?] 
+libcheck-dev (libcheck-dev) [N/y/?] 
+libcheck-dbg (libcheck-dbg) [N/y/?] 
+*
+* libpcre 
+*
+libpcre (libpcre) [N/y/?] 
+libpcrecpp (libpcrecpp) [N/y/?] 
+libpcre-dbg (libpcre-dbg) [N/y/?] 
+libpcreposix (libpcreposix) [N/y/?] 
+libpcre-dev (libpcre-dev) [N/y/?] 
+pcregrep (pcregrep) [N/y/?] 
+pcretest (pcretest) [N/y/?] 
+*
+* lsof 
+*
+lsof (lsof) [N/y/?] 
+lsof-dev (lsof-dev) [N/y/?] 
+lsof-dbg (lsof-dbg) [N/y/?] 
+*
+* make 
+*
+make (make) [N/y/?] 
+make-dev (make-dev) [N/y/?] 
+make-dbg (make-dbg) [N/y/?] 
+*
+* mpfr 
+*
+mpfr (mpfr) [N/y/?] 
+mpfr-dbg (mpfr-dbg) [N/y/?] 
+mpfr-dev (mpfr-dev) [N/y/?] 
+*
+* perl 
+*
+perl (perl) [N/y/?] 
+perl-misc (perl-misc) [N/y/?] 
+perl-modules (perl-modules) [N/y/?] 
+perl-module-unicore (perl-module-unicore) [N/y/?] 
+perl-dbg (perl-dbg) [N/y/?] 
+perl-module-cpan (perl-module-cpan) [N/y/?] 
+perl-pod (perl-pod) [N/y/?] 
+perl-dev (perl-dev) [N/y/?] 
+*
+* python3-numpy 
+*
+python3-numpy (python3-numpy) [N/y/?] 
+python3-numpy-dbg (python3-numpy-dbg) [N/y/?] 
+python3-numpy-dev (python3-numpy-dev) [N/y/?] 
+*
+* python3-scons 
+*
+python3-scons (python3-scons) [N/y/?] 
+python3-scons-dev (python3-scons-dev) [N/y/?] 
+python3-scons-dbg (python3-scons-dbg) [N/y/?] 
+*
+* python3-dbus 
+*
+python3-dbus (python3-dbus) [N/y/?] 
+python3-dbus-dev (python3-dbus-dev) [N/y/?] 
+python3-dbus-dbg (python3-dbus-dbg) [N/y/?] 
+*
+* python3-pygobject 
+*
+python3-pygobject (python3-pygobject) [N/y/?] 
+python3-pygobject-dbg (python3-pygobject-dbg) [N/y/?] 
+python3-pygobject-dev (python3-pygobject-dev) [N/y/?] 
+*
+* quilt 
+*
+quilt (quilt) [N/y/?] 
+quilt-dev (quilt-dev) [N/y/?] 
+quilt-dbg (quilt-dbg) [N/y/?] 
+guards (guards) [N/y/?] 
+*
+* ruby 
+*
+*
+* ruby 
+*
+ruby (ruby) [N/y/?] 
+ruby-dbg (ruby-dbg) [N/y/?] 
+ruby-dev (ruby-dev) [N/y/?] 
+ruby-rdoc (ruby-rdoc) [N/y/?] 
+*
+* run-postinsts 
+*
+run-postinsts (run-postinsts) [Y/n/?] 
+run-postinsts-dbg (run-postinsts-dbg) [N/y/?] 
+run-postinsts-dev (run-postinsts-dev) [N/y/?] 
+*
+* swig 
+*
+swig (swig) [N/y/?] 
+swig-dev (swig-dev) [N/y/?] 
+swig-dbg (swig-dbg) [N/y/?] 
+*
+* tcltk 
+*
+*
+* tcl 
+*
+tcl (tcl) [Y/n/?] 
+tcl-dbg (tcl-dbg) [N/y/?] 
+tcl-lib (tcl-lib) [N/y/?] 
+tcl-dev (tcl-dev) [N/y/?] 
+*
+* vala 
+*
+vala (vala) [N/y/?] 
+vala-dbg (vala-dbg) [N/y/?] 
+vala-dev (vala-dev) [N/y/?] 
+*
+* fonts 
+*
+*
+* cantarell-fonts 
+*
+cantarell-fonts (cantarell-fonts) [N/y/?] 
+cantarell-fonts-dbg (cantarell-fonts-dbg) [N/y/?] 
+cantarell-fonts-dev (cantarell-fonts-dev) [N/y/?] 
+*
+* kernel 
+*
+*
+* userland 
+*
+*
+* kexec-tools 
+*
+kexec-tools (kexec-tools) [N/y/?] 
+kexec-tools-dbg (kexec-tools-dbg) [N/y/?] 
+vmcore-dmesg (vmcore-dmesg) [N/y/?] 
+kdump (kdump) [N/y/?] 
+kexec (kexec) [N/y/?] 
+kexec-tools-dev (kexec-tools-dev) [N/y/?] 
+*
+* libs 
+*
+*
+* acl 
+*
+acl (acl) [N/y/?] 
+acl-dev (acl-dev) [N/y/?] 
+libacl (libacl) [N/y/?] 
+acl-dbg (acl-dbg) [N/y/?] 
+*
+* apr 
+*
+apr (apr) [N/y/?] 
+apr-dev (apr-dev) [N/y/?] 
+apr-dbg (apr-dbg) [N/y/?] 
+*
+* apr-util 
+*
+apr-util (apr-util) [N/y/?] 
+apr-util-dev (apr-util-dev) [N/y/?] 
+apr-util-dbg (apr-util-dbg) [N/y/?] 
+*
+* attr 
+*
+attr (attr) [N/y/?] 
+libattr (libattr) [N/y/?] 
+attr-dbg (attr-dbg) [N/y/?] 
+attr-dev (attr-dev) [N/y/?] 
+*
+* bluez5 
+*
+bluez5 (bluez5) [N/y/?] 
+bluez5-obex (bluez5-obex) [N/y/?] 
+bluez5-dev (bluez5-dev) [N/y/?] 
+bluez5-dbg (bluez5-dbg) [N/y/?] 
+bluez5-noinst-tools (bluez5-noinst-tools) [N/y/?] 
+bluez5-testtools (bluez5-testtools) [N/y/?] 
+*
+* cairo 
+*
+cairo (cairo) [N/y/?] 
+cairo-dbg (cairo-dbg) [N/y/?] 
+cairo-dev (cairo-dev) [N/y/?] 
+cairo-script-interpreter (cairo-script-interpreter) [N/y/?] 
+cairo-gobject (cairo-gobject) [N/y/?] 
+*
+* db 
+*
+db (db) [N/y/?] 
+db-bin (db-bin) [N/y/?] 
+db-cxx (db-cxx) [N/y/?] 
+db-dbg (db-dbg) [N/y/?] 
+db-dev (db-dev) [N/y/?] 
+*
+* devel 
+*
+*
+* libyaml 
+*
+libyaml (libyaml) [N/y/?] 
+libyaml-dev (libyaml-dev) [N/y/?] 
+libyaml-dbg (libyaml-dbg) [N/y/?] 
+*
+* expat 
+*
+expat (expat) [N/y/?] 
+expat-dev (expat-dev) [N/y/?] 
+expat-dbg (expat-dbg) [N/y/?] 
+expat-bin (expat-bin) [N/y/?] 
+*
+* faad2 
+*
+faad2 (faad2) [N/y/?] 
+faad2-dev (faad2-dev) [N/y/?] 
+faad2-dbg (faad2-dbg) [N/y/?] 
+*
+* ffmpeg 
+*
+ffmpeg (ffmpeg) [N/y/?] 
+ffmpeg-dbg (ffmpeg-dbg) [N/y/?] 
+ffmpeg-dev (ffmpeg-dev) [N/y/?] 
+*
+* flac 
+*
+flac (flac) [N/y/?] 
+libflac (libflac) [N/y/?] 
+flac-dev (flac-dev) [N/y/?] 
+libflac++ (libflacPLUSPLUS) [N/y/?] 
+flac-dbg (flac-dbg) [N/y/?] 
+*
+* fontconfig 
+*
+fontconfig (fontconfig) [N/y/?] 
+fontconfig-utils (fontconfig-utils) [N/y/?] 
+fontconfig-dev (fontconfig-dev) [N/y/?] 
+fontconfig-dbg (fontconfig-dbg) [N/y/?] 
+*
+* freetype 
+*
+freetype (freetype) [N/y/?] 
+freetype-dbg (freetype-dbg) [N/y/?] 
+freetype-dev (freetype-dev) [N/y/?] 
+*
+* gdbm 
+*
+gdbm (gdbm) [N/y/?] 
+gdbm-dbg (gdbm-dbg) [N/y/?] 
+gdbm-compat (gdbm-compat) [N/y/?] 
+gdbm-dev (gdbm-dev) [N/y/?] 
+gdbm-bin (gdbm-bin) [N/y/?] 
+*
+* gdk-pixbuf 
+*
+gdk-pixbuf (gdk-pixbuf) [N/y/?] 
+gdk-pixbuf-xlib (gdk-pixbuf-xlib) [N/y/?] 
+gdk-pixbuf-dev (gdk-pixbuf-dev) [N/y/?] 
+gdk-pixbuf-dbg (gdk-pixbuf-dbg) [N/y/?] 
+*
+* gettext 
+*
+gettext (gettext) [N/y/?] 
+libgettextsrc (libgettextsrc) [N/y/?] 
+gettext-dbg (gettext-dbg) [N/y/?] 
+gettext-runtime (gettext-runtime) [N/y/?] 
+gettext-dev (gettext-dev) [N/y/?] 
+libgettextlib (libgettextlib) [N/y/?] 
+*
+* glib-networking 
+*
+glib-networking (glib-networking) [N/y/?] 
+glib-networking-dev (glib-networking-dev) [N/y/?] 
+glib-networking-dbg (glib-networking-dbg) [N/y/?] 
+*
+* gobject-introspection 
+*
+gobject-introspection (gobject-introspection) [N/y/?] 
+gobject-introspection-dbg (gobject-introspection-dbg) [N/y/?] 
+gobject-introspection-dev (gobject-introspection-dev) [N/y/?] 
+*
+* gtk+ 
+*
+gtk+ (gtkPLUS) [N/y/?] 
+gtk+-dev (gtkPLUS-dev) [N/y/?] 
+libgail (libgail) [N/y/?] 
+gtk+-dbg (gtkPLUS-dbg) [N/y/?] 
+gtk-demo (gtk-demo) [N/y/?] 
+*
+* gtk+3 
+*
+gtk+3 (gtkPLUS3) [N/y/?] 
+gtk+3-dev (gtkPLUS3-dev) [N/y/?] 
+gtk+3-dbg (gtkPLUS3-dbg) [N/y/?] 
+gtk+3-demo (gtkPLUS3-demo) [N/y/?] 
+*
+* harfbuzz 
+*
+harfbuzz (harfbuzz) [N/y/?] 
+harfbuzz-dev (harfbuzz-dev) [N/y/?] 
+harfbuzz-bin (harfbuzz-bin) [N/y/?] 
+harfbuzz-icu-dev (harfbuzz-icu-dev) [N/y/?] 
+harfbuzz-dbg (harfbuzz-dbg) [N/y/?] 
+harfbuzz-icu (harfbuzz-icu) [N/y/?] 
+*
+* libaio 
+*
+libaio (libaio) [N/y/?] 
+libaio-dev (libaio-dev) [N/y/?] 
+libaio-dbg (libaio-dbg) [N/y/?] 
+*
+* libcap 
+*
+libcap (libcap) [N/y/?] 
+libcap-bin (libcap-bin) [N/y/?] 
+libcap-dbg (libcap-dbg) [N/y/?] 
+libcap-dev (libcap-dev) [N/y/?] 
+*
+* libcgroup 
+*
+libcgroup (libcgroup) [N/y/?] 
+libcgroup-dbg (libcgroup-dbg) [N/y/?] 
+libcgroup-dev (libcgroup-dev) [N/y/?] 
+*
+* libdaemon 
+*
+libdaemon (libdaemon) [N/y/?] 
+libdaemon-dbg (libdaemon-dbg) [N/y/?] 
+libdaemon-dev (libdaemon-dev) [N/y/?] 
+*
+* libdmx 
+*
+libdmx (libdmx) [N/y/?] 
+libdmx-dbg (libdmx-dbg) [N/y/?] 
+libdmx-dev (libdmx-dev) [N/y/?] 
+*
+* libdfx 
+*
+libdfx (libdfx) [Y/n/?] 
+libdfx-dbg (libdfx-dbg) [N/y/?] 
+libdfx-dev (libdfx-dev) [N/y/?] 
+*
+* libeigen 
+*
+libeigen-dev (libeigen-dev) [N/y/?] 
+libeigen-dbg (libeigen-dbg) [N/y/?] 
+*
+* libepoxy 
+*
+libepoxy (libepoxy) [N/y/?] 
+libepoxy-dev (libepoxy-dev) [N/y/?] 
+libepoxy-dbg (libepoxy-dbg) [N/y/?] 
+*
+* libevdev 
+*
+libevdev (libevdev) [N/y/?] 
+libevdev-dev (libevdev-dev) [N/y/?] 
+libevdev-dbg (libevdev-dbg) [N/y/?] 
+*
+* libevent 
+*
+libevent (libevent) [N/y/?] 
+libevent-dbg (libevent-dbg) [N/y/?] 
+libevent-dev (libevent-dev) [N/y/?] 
+*
+* libexif 
+*
+libexif (libexif) [N/y/?] 
+libexif-dbg (libexif-dbg) [N/y/?] 
+libexif-dev (libexif-dev) [N/y/?] 
+*
+* libffi 
+*
+libffi (libffi) [N/y/?] 
+libffi-dbg (libffi-dbg) [N/y/?] 
+libffi-dev (libffi-dev) [N/y/?] 
+*
+* libfontenc 
+*
+libfontenc (libfontenc) [N/y/?] 
+libfontenc-dev (libfontenc-dev) [N/y/?] 
+libfontenc-dbg (libfontenc-dbg) [N/y/?] 
+*
+* libgcrypt 
+*
+libgcrypt (libgcrypt) [N/y/?] 
+libgcrypt-dbg (libgcrypt-dbg) [N/y/?] 
+libgcrypt-dev (libgcrypt-dev) [N/y/?] 
+*
+* libgcc 
+*
+libgcc (libgcc) [N/y/?] 
+libgcc-dbg (libgcc-dbg) [N/y/?] 
+libgcc-dev (libgcc-dev) [N/y/?] 
+*
+* libgpg-error 
+*
+libgpg-error (libgpg-error) [N/y/?] 
+libgpg-error-dbg (libgpg-error-dbg) [N/y/?] 
+libgpg-error-dev (libgpg-error-dev) [N/y/?] 
+*
+* libgphoto2 
+*
+libgphoto2 (libgphoto2) [N/y/?] 
+libgphoto2-dbg (libgphoto2-dbg) [N/y/?] 
+libgphoto2-camlibs (libgphoto2-camlibs) [N/y/?] 
+libgphoto2-dev (libgphoto2-dev) [N/y/?] 
+libgphoto2-bin (libgphoto2-bin) [N/y/?] 
+libgphotoport (libgphotoport) [N/y/?] 
+*
+* libgpiod
+*
+libgpiod (libgpiod) [N/y/?] 
+libgpiod-dev (libgpiod-dev) [N/y/?] 
+libgpiod-dgb (libgpiod-dbg) [N/y/?] 
+*
+* libgudev 
+*
+libgudev (libgudev) [N/y/?] 
+libgudev-dev (libgudev-dev) [N/y/?] 
+libgudev-dbg (libgudev-dbg) [N/y/?] 
+*
+* libical 
+*
+libical (libical) [N/y/?] 
+libical-dev (libical-dev) [N/y/?] 
+libical-dbg (libical-dbg) [N/y/?] 
+*
+* libice 
+*
+libice (libice) [N/y/?] 
+libice-dbg (libice-dbg) [N/y/?] 
+libice-dev (libice-dev) [N/y/?] 
+*
+* libid3tag 
+*
+libid3tag (libid3tag) [N/y/?] 
+libid3tag-dev (libid3tag-dev) [N/y/?] 
+libid3tag-dbg (libid3tag-dbg) [N/y/?] 
+*
+* libidn 
+*
+libidn (libidn) [N/y/?] 
+libidn-dbg (libidn-dbg) [N/y/?] 
+idn (idn) [N/y/?] 
+libidn-dev (libidn-dev) [N/y/?] 
+*
+* libinput 
+*
+libinput (libinput) [N/y/?] 
+libinput-dev (libinput-dev) [N/y/?] 
+libinput-dbg (libinput-dbg) [N/y/?] 
+*
+* libjpeg-turbo 
+*
+libjpeg-turbo (libjpeg-turbo) [N/y/?] 
+jpeg-tools (jpeg-tools) [N/y/?] 
+libturbojpeg (libturbojpeg) [N/y/?] 
+libjpeg-turbo-dbg (libjpeg-turbo-dbg) [N/y/?] 
+libjpeg-turbo-dev (libjpeg-turbo-dev) [N/y/?] 
+*
+* libmetal 
+*
+libmetal (libmetal) [N/y/?] 
+libmetal-dev (libmetal-dev) [N/y/?] 
+libmetal-dbg (libmetal-dbg) [N/y/?] 
+libmetal-demos (libmetal-demos) [N/y/?] 
+*
+* libmpc 
+*
+libmpc (libmpc) [N/y/?] 
+libmpc-dbg (libmpc-dbg) [N/y/?] 
+libmpc-dev (libmpc-dev) [N/y/?] 
+*
+* libnet 
+*
+libnet (libnet) [N/y/?] 
+libnet-dbg (libnet-dbg) [N/y/?] 
+libnet-dev (libnet-dev) [N/y/?] 
+*
+* libnewt 
+*
+libnewt (libnewt) [N/y/?] 
+libnewt-dev (libnewt-dev) [N/y/?] 
+libnewt-dbg (libnewt-dbg) [N/y/?] 
+whiptail (whiptail) [N/y/?] 
+*
+* libnotify 
+*
+libnotify (libnotify) [N/y/?] 
+libnotify-dev (libnotify-dev) [N/y/?] 
+libnotify-dbg (libnotify-dbg) [N/y/?] 
+*
+* libnss-mdns 
+*
+libnss-mdns (libnss-mdns) [N/y/?] 
+libnss-mdns-dbg (libnss-mdns-dbg) [N/y/?] 
+libnss-mdns-dev (libnss-mdns-dev) [N/y/?] 
+*
+* libogg 
+*
+libogg (libogg) [N/y/?] 
+libogg-dev (libogg-dev) [N/y/?] 
+libogg-dbg (libogg-dbg) [N/y/?] 
+*
+* libomxil 
+*
+libomxil (libomxil) [N/y/?] 
+libomxil-dev (libomxil-dev) [N/y/?] 
+libomxil-dbg (libomxil-dbg) [N/y/?] 
+*
+* libpciaccess 
+*
+libpciaccess (libpciaccess) [N/y/?] 
+libpciaccess-dev (libpciaccess-dev) [N/y/?] 
+libpciaccess-dbg (libpciaccess-dbg) [N/y/?] 
+*
+* libpng 
+*
+libpng (libpng) [N/y/?] 
+libpng-dbg (libpng-dbg) [N/y/?] 
+libpng-dev (libpng-dev) [N/y/?] 
+libpng-tools (libpng-tools) [N/y/?] 
+*
+* libproxy 
+*
+libproxy (libproxy) [N/y/?] 
+libproxy-dbg (libproxy-dbg) [N/y/?] 
+libproxy-dev (libproxy-dev) [N/y/?] 
+*
+* libsamplerate0 
+*
+libsamplerate0 (libsamplerate0) [N/y/?] 
+libsamplerate0-dev (libsamplerate0-dev) [N/y/?] 
+libsamplerate0-dbg (libsamplerate0-dbg) [N/y/?] 
+*
+* libsecret 
+*
+libsecret (libsecret) [N/y/?] 
+libsecret-dbg (libsecret-dbg) [N/y/?] 
+libsecret-dev (libsecret-dev) [N/y/?] 
+*
+* libsm 
+*
+libsm (libsm) [N/y/?] 
+libsm-dev (libsm-dev) [N/y/?] 
+libsm-dbg (libsm-dbg) [N/y/?] 
+*
+* libtasn1 
+*
+libtasn1 (libtasn1) [N/y/?] 
+libtasn1-dbg (libtasn1-dbg) [N/y/?] 
+libtasn1-dev (libtasn1-dev) [N/y/?] 
+libtasn1-bin (libtasn1-bin) [N/y/?] 
+*
+* libtheora 
+*
+libtheora (libtheora) [N/y/?] 
+libtheora-dev (libtheora-dev) [N/y/?] 
+libtheora-dbg (libtheora-dbg) [N/y/?] 
+*
+* libtool 
+*
+libtool (libtool) [N/y/?] 
+libtool-dev (libtool-dev) [N/y/?] 
+libltdl (libltdl) [N/y/?] 
+libtool-dbg (libtool-dbg) [N/y/?] 
+*
+* liburcu 
+*
+liburcu (liburcu) [N/y/?] 
+liburcu-dbg (liburcu-dbg) [N/y/?] 
+liburcu-dev (liburcu-dev) [N/y/?] 
+*
+* libusb-compat 
+*
+libusb-compat (libusb-compat) [N/y/?] 
+libusb-compat-dbg (libusb-compat-dbg) [N/y/?] 
+libusb-compat-dev (libusb-compat-dev) [N/y/?] 
+*
+* libusb1 
+*
+libusb1 (libusb1) [N/y/?] 
+libusb1-dev (libusb1-dev) [N/y/?] 
+libusb1-dbg (libusb1-dbg) [N/y/?] 
+*
+* libvorbis 
+*
+libvorbis (libvorbis) [N/y/?] 
+libvorbis-dev (libvorbis-dev) [N/y/?] 
+libvorbis-dbg (libvorbis-dbg) [N/y/?] 
+*
+* libwebp 
+*
+libwebp (libwebp) [N/y/?] 
+libwebp-dbg (libwebp-dbg) [N/y/?] 
+libwebp-bin (libwebp-bin) [N/y/?] 
+libwebp-dev (libwebp-dev) [N/y/?] 
+*
+* libx11 
+*
+libx11 (libx11) [N/y/?] 
+libx11-xcb (libx11-xcb) [N/y/?] 
+libx11-dev (libx11-dev) [N/y/?] 
+libx11-dbg (libx11-dbg) [N/y/?] 
+*
+* libxau 
+*
+libxau (libxau) [N/y/?] 
+libxau-dbg (libxau-dbg) [N/y/?] 
+libxau-dev (libxau-dev) [N/y/?] 
+*
+* libxcomposite 
+*
+libxcomposite (libxcomposite) [N/y/?] 
+libxcomposite-dbg (libxcomposite-dbg) [N/y/?] 
+libxcomposite-dev (libxcomposite-dev) [N/y/?] 
+*
+* libxcursor 
+*
+libxcursor (libxcursor) [N/y/?] 
+libxcursor-dbg (libxcursor-dbg) [N/y/?] 
+libxcursor-dev (libxcursor-dev) [N/y/?] 
+*
+* libxdamage 
+*
+libxdamage (libxdamage) [N/y/?] 
+libxdamage-dbg (libxdamage-dbg) [N/y/?] 
+libxdamage-dev (libxdamage-dev) [N/y/?] 
+*
+* libxdmcp 
+*
+libxdmcp (libxdmcp) [N/y/?] 
+libxdmcp-dbg (libxdmcp-dbg) [N/y/?] 
+libxdmcp-dev (libxdmcp-dev) [N/y/?] 
+*
+* libxext 
+*
+libxext (libxext) [N/y/?] 
+libxext-dev (libxext-dev) [N/y/?] 
+libxext-dbg (libxext-dbg) [N/y/?] 
+*
+* libxfixes 
+*
+libxfixes (libxfixes) [N/y/?] 
+libxfixes-dev (libxfixes-dev) [N/y/?] 
+libxfixes-dbg (libxfixes-dbg) [N/y/?] 
+*
+* libxfont 
+*
+libxfont (libxfont) [N/y/?] 
+libxfont-dev (libxfont-dev) [N/y/?] 
+libxfont-dbg (libxfont-dbg) [N/y/?] 
+*
+* libxft 
+*
+libxft (libxft) [N/y/?] 
+libxft-dbg (libxft-dbg) [N/y/?] 
+libxft-dev (libxft-dev) [N/y/?] 
+*
+* libxi 
+*
+libxi (libxi) [N/y/?] 
+libxi-dbg (libxi-dbg) [N/y/?] 
+libxi-dev (libxi-dev) [N/y/?] 
+*
+* libxinerama 
+*
+libxinerama (libxinerama) [N/y/?] 
+libxinerama-dbg (libxinerama-dbg) [N/y/?] 
+libxinerama-dev (libxinerama-dev) [N/y/?] 
+*
+* libxkbcommon 
+*
+libxkbcommon (libxkbcommon) [N/y/?] 
+libxkbcommon-dev (libxkbcommon-dev) [N/y/?] 
+libxkbcommon-dbg (libxkbcommon-dbg) [N/y/?] 
+*
+* libxkbfile 
+*
+libxkbfile (libxkbfile) [N/y/?] 
+libxkbfile-dbg (libxkbfile-dbg) [N/y/?] 
+libxkbfile-dev (libxkbfile-dev) [N/y/?] 
+*
+* libxml-parser-perl 
+*
+libxml-parser-perl (libxml-parser-perl) [N/y/?] 
+libxml-parser-perl-dev (libxml-parser-perl-dev) [N/y/?] 
+libxml-parser-perl-dbg (libxml-parser-perl-dbg) [N/y/?] 
+*
+* libxml2 
+*
+libxml2 (libxml2) [N/y/?] 
+libxml2-python (libxml2-python) [N/y/?] 
+libxml2-dbg (libxml2-dbg) [N/y/?] 
+libxml2-dev (libxml2-dev) [N/y/?] 
+*
+* libxmu 
+*
+libxmu (libxmu) [N/y/?] 
+libxmu-dbg (libxmu-dbg) [N/y/?] 
+libxmuu (libxmuu) [N/y/?] 
+libxmu-dev (libxmu-dev) [N/y/?] 
+*
+* libxrandr 
+*
+libxrandr (libxrandr) [N/y/?] 
+libxrandr-dbg (libxrandr-dbg) [N/y/?] 
+libxrandr-dev (libxrandr-dev) [N/y/?] 
+*
+* libxrender 
+*
+libxrender (libxrender) [N/y/?] 
+libxrender-dev (libxrender-dev) [N/y/?] 
+libxrender-dbg (libxrender-dbg) [N/y/?] 
+*
+* libxres 
+*
+libxres (libxres) [N/y/?] 
+libxres-dbg (libxres-dbg) [N/y/?] 
+libxres-dev (libxres-dev) [N/y/?] 
+*
+* libxslt 
+*
+libxslt (libxslt) [N/y/?] 
+libxslt-dbg (libxslt-dbg) [N/y/?] 
+libxslt-bin (libxslt-bin) [N/y/?] 
+libxslt-dev (libxslt-dev) [N/y/?] 
+*
+* libxt 
+*
+libxt (libxt) [N/y/?] 
+libxt-dev (libxt-dev) [N/y/?] 
+libxt-dbg (libxt-dbg) [N/y/?] 
+*
+* libxtst 
+*
+libxtst (libxtst) [N/y/?] 
+libxtst-dbg (libxtst-dbg) [N/y/?] 
+libxtst-dev (libxtst-dev) [N/y/?] 
+*
+* libxv 
+*
+libxv (libxv) [N/y/?] 
+libxv-dbg (libxv-dbg) [N/y/?] 
+libxv-dev (libxv-dev) [N/y/?] 
+*
+* libxxf86vm 
+*
+libxxf86vm (libxxf86vm) [N/y/?] 
+libxxf86vm-dbg (libxxf86vm-dbg) [N/y/?] 
+libxxf86vm-dev (libxxf86vm-dev) [N/y/?] 
+*
+* lzo 
+*
+lzo (lzo) [N/y/?] 
+lzo-dbg (lzo-dbg) [N/y/?] 
+lzo-dev (lzo-dev) [N/y/?] 
+*
+* ai-engine
+*
+ai-engine-driver (ai-engine-driver) [N/y/?] 
+ai-engine-driver-dbg (ai-engine-driver-dbg) [N/y/?] 
+ai-engine-driver-dev (ai-engine-driver-dev) [N/y/?] 
+*
+* mtdev 
+*
+mtdev (mtdev) [N/y/?] 
+mtdev-dbg (mtdev-dbg) [N/y/?] 
+mtdev-dev (mtdev-dev) [N/y/?] 
+*
+* multimedia 
+*
+*
+* alsa-lib 
+*
+alsa-lib (alsa-lib) [N/y/?] 
+alsa-server (alsa-server) [N/y/?] 
+libasound (libasound) [N/y/?] 
+alsa-conf (alsa-conf) [N/y/?] 
+alsa-lib-dbg (alsa-lib-dbg) [N/y/?] 
+alsa-conf-base (alsa-conf-base) [N/y/?] 
+alsa-lib-dev (alsa-lib-dev) [N/y/?] 
+alsa-oss (alsa-oss) [N/y/?] 
+*
+* libsndfile1 
+*
+libsndfile1 (libsndfile1) [N/y/?] 
+libsndfile1-dev (libsndfile1-dev) [N/y/?] 
+libsndfile1-bin (libsndfile1-bin) [N/y/?] 
+libsndfile1-dbg (libsndfile1-dbg) [N/y/?] 
+*
+* pulseaudio 
+*
+pulseaudio (pulseaudio) [N/y/?] 
+pulseaudio-module-console-kit (pulseaudio-module-console-kit) [N/y/?] 
+pulseaudio-bash-completion (pulseaudio-bash-completion) [N/y/?] 
+libpulse (libpulse) [N/y/?] 
+pulseaudio-misc (pulseaudio-misc) [N/y/?] 
+pulseaudio-dev (pulseaudio-dev) [N/y/?] 
+libpulse-simple (libpulse-simple) [N/y/?] 
+pulseaudio-dbg (pulseaudio-dbg) [N/y/?] 
+libpulsecommon (libpulsecommon) [N/y/?] 
+pulseaudio-server (pulseaudio-server) [N/y/?] 
+libpulsecore (libpulsecore) [N/y/?] 
+libpulse-mainloop-glib (libpulse-mainloop-glib) [N/y/?] 
+*
+* taglib 
+*
+taglib (taglib) [N/y/?] 
+taglib-dev (taglib-dev) [N/y/?] 
+taglib-dbg (taglib-dbg) [N/y/?] 
+taglib-c (taglib-c) [N/y/?] 
+*
+* ncurses 
+*
+ncurses (ncurses) [N/y/?] 
+ncurses-terminfo (ncurses-terminfo) [N/y/?] 
+ncurses-dev (ncurses-dev) [N/y/?] 
+ncurses-terminfo-base (ncurses-terminfo-base) [N/y/?] 
+ncurses-tools (ncurses-tools) [N/y/?] 
+ncurses-dbg (ncurses-dbg) [N/y/?] 
+*
+* neon 
+*
+neon (neon) [N/y/?] 
+neon-dbg (neon-dbg) [N/y/?] 
+neon-dev (neon-dev) [N/y/?] 
+*
+* nettle 
+*
+nettle (nettle) [N/y/?] 
+nettle-dbg (nettle-dbg) [N/y/?] 
+nettle-dev (nettle-dev) [N/y/?] 
+*
+* network 
+*
+*
+* libnl 
+*
+libnl (libnl) [N/y/?] 
+libnl-dbg (libnl-dbg) [N/y/?] 
+libnl-idiag (libnl-idiag) [N/y/?] 
+libnl-dev (libnl-dev) [N/y/?] 
+libnl-cli (libnl-cli) [N/y/?] 
+libnl-nf (libnl-nf) [N/y/?] 
+libnl-route (libnl-route) [N/y/?] 
+libnl-xfrm (libnl-xfrm) [N/y/?] 
+libnl-genl (libnl-genl) [N/y/?] 
+*
+* libpcap 
+*
+libpcap (libpcap) [N/y/?] 
+libpcap-dev (libpcap-dev) [N/y/?] 
+libpcap-dbg (libpcap-dbg) [N/y/?] 
+*
+* libsocketcan 
+*
+libsocketcan (libsocketcan) [N/y/?] 
+libsocketcan-dev (libsocketcan-dev) [N/y/?] 
+libsocketcan-dbg (libsocketcan-dbg) [N/y/?] 
+*
+* libtirpc 
+*
+libtirpc (libtirpc) [N/y/?] 
+libtirpc-dbg (libtirpc-dbg) [N/y/?] 
+libtirpc-dev (libtirpc-dev) [N/y/?] 
+*
+* wolfssl
+*
+wolfssl (wolfssl) [N/y/?] 
+*
+* openssl 
+*
+openssl (openssl) [N/y/?] 
+openssl-bin (openssl-bin) [N/y/?] 
+openssl-misc (openssl-misc) [N/y/?] 
+openssl-conf (openssl-conf) [N/y/?] 
+openssl-dbg (openssl-dbg) [N/y/?] 
+libcrypto (libcrypto) [N/y/?] 
+openssl-dev (openssl-dev) [N/y/?] 
+libssl (libssl) [N/y/?] 
+openssl-engines (openssl-engines) [N/y/?] 
+*
+* open-amp 
+*
+open-amp (open-amp) [N/y/?] 
+open-amp-dev (open-amp-dev) [N/y/?] 
+open-amp-dbg (open-amp-dbg) [N/y/?] 
+open-amp-demos (open-amp-demos) [N/y/?] 
+*
+* opencv 
+*
+opencv (opencv) [N/y/?] 
+opencv-dbg (opencv-dbg) [N/y/?] 
+opencv-apps (opencv-apps) [N/y/?] 
+opencv-dev (opencv-dev) [N/y/?] 
+opencv-samples (opencv-samples) [N/y/?] 
+*
+* pango 
+*
+pango (pango) [N/y/?] 
+pango-dev (pango-dev) [N/y/?] 
+pango-dbg (pango-dbg) [N/y/?] 
+*
+* popt 
+*
+popt (popt) [N/y/?] 
+popt-dev (popt-dev) [N/y/?] 
+popt-dbg (popt-dbg) [N/y/?] 
+*
+* readline 
+*
+readline (readline) [N/y/?] 
+readline-dev (readline-dev) [N/y/?] 
+readline-dbg (readline-dbg) [N/y/?] 
+*
+* sbc 
+*
+sbc (sbc) [N/y/?] 
+sbc-dev (sbc-dev) [N/y/?] 
+sbc-dbg (sbc-dbg) [N/y/?] 
+*
+* slang 
+*
+slang (slang) [N/y/?] 
+slang-dev (slang-dev) [N/y/?] 
+slang-dbg (slang-dbg) [N/y/?] 
+*
+* speex 
+*
+speex (speex) [N/y/?] 
+speex-dev (speex-dev) [N/y/?] 
+speex-dbg (speex-dbg) [N/y/?] 
+*
+* speexdsp 
+*
+speexdsp (speexdsp) [N/y/?] 
+speexdsp-dev (speexdsp-dev) [N/y/?] 
+speexdsp-dbg (speexdsp-dbg) [N/y/?] 
+*
+* sqlite3 
+*
+sqlite3 (sqlite3) [N/y/?] 
+libsqlite3 (libsqlite3) [N/y/?] 
+libsqlite3-dev (libsqlite3-dev) [N/y/?] 
+sqlite3-dbg (sqlite3-dbg) [N/y/?] 
+*
+* startup-notification 
+*
+startup-notification (startup-notification) [N/y/?] 
+startup-notification-dev (startup-notification-dev) [N/y/?] 
+startup-notification-dbg (startup-notification-dbg) [N/y/?] 
+*
+* tremor 
+*
+tremor (tremor) [N/y/?] 
+tremor-dbg (tremor-dbg) [N/y/?] 
+tremor-dev (tremor-dev) [N/y/?] 
+*
+* which 
+*
+which (which) [N/y/?] 
+which-dev (which-dev) [N/y/?] 
+which-dbg (which-dbg) [N/y/?] 
+*
+* xrt
+*
+xrt (xrt) [Y/n/?] 
+xrt-dev (xrt-dev) [N/y/?] 
+xrt-dbg (xrt-dbg) [N/y/?] 
+*
+* zocl
+*
+zocl (zocl) [Y/n/?] 
+zocl-dev (zocl-dev) [N/y/?] 
+zocl-dbg (zocl-dbg) [N/y/?] 
+*
+* opencl-clhpp
+*
+opencl-clhpp-dev (opencl-clhpp-dev) [Y/n/?] 
+*
+* opencl-headers
+*
+opencl-headers (opencl-headers) [Y/n/?] 
+*
+* protobuf
+*
+protobuf (protobuf) [N/y/?] 
+*
+* zlib 
+*
+zlib (zlib) [N/y/?] 
+zlib-dev (zlib-dev) [N/y/?] 
+zlib-dbg (zlib-dbg) [N/y/?] 
+*
+* misc 
+*
+*
+* alsa-state 
+*
+alsa-state (alsa-state) [N/y/?] 
+alsa-state-dev (alsa-state-dev) [N/y/?] 
+alsa-states (alsa-states) [N/y/?] 
+alsa-state-dbg (alsa-state-dbg) [N/y/?] 
+*
+* alsa-utils-scripts 
+*
+alsa-utils-scripts (alsa-utils-scripts) [N/y/?] 
+*
+* apache2
+*
+apache2 (apache2) [N/y/?] 
+apache2-dbg (apache2-dbg) [N/y/?] 
+apache2-dev (apache2-dev) [N/y/?] 
+*
+* at-spi2-atk 
+*
+at-spi2-atk (at-spi2-atk) [N/y/?] 
+at-spi2-atk-dbg (at-spi2-atk-dbg) [N/y/?] 
+at-spi2-atk-dev (at-spi2-atk-dev) [N/y/?] 
+at-spi2-atk-gtk2 (at-spi2-atk-gtk2) [N/y/?] 
+at-spi2-atk-gnome (at-spi2-atk-gnome) [N/y/?] 
+*
+* at-spi2-core 
+*
+at-spi2-core (at-spi2-core) [N/y/?] 
+at-spi2-core-dev (at-spi2-core-dev) [N/y/?] 
+at-spi2-core-dbg (at-spi2-core-dbg) [N/y/?] 
+*
+* babeltrace 
+*
+babeltrace (babeltrace) [N/y/?] 
+babeltrace-dbg (babeltrace-dbg) [N/y/?] 
+babeltrace-dev (babeltrace-dev) [N/y/?] 
+*
+* blktool 
+*
+blktool (blktool) [N/y/?] 
+blktool-dbg (blktool-dbg) [N/y/?] 
+blktool-dev (blktool-dev) [N/y/?] 
+*
+* blktrace 
+*
+blktrace (blktrace) [N/y/?] 
+blktrace-dbg (blktrace-dbg) [N/y/?] 
+blktrace-dev (blktrace-dev) [N/y/?] 
+*
+* ca-certificates 
+*
+ca-certificates (ca-certificates) [N/y/?] 
+ca-certificates-dev (ca-certificates-dev) [N/y/?] 
+ca-certificates-dbg (ca-certificates-dbg) [N/y/?] 
+*
+* chrpath 
+*
+chrpath (chrpath) [N/y/?] 
+chrpath-dev (chrpath-dev) [N/y/?] 
+chrpath-dbg (chrpath-dbg) [N/y/?] 
+*
+* connman 
+*
+connman (connman) [N/y/?] 
+connman-tests (connman-tests) [N/y/?] 
+connman-dbg (connman-dbg) [N/y/?] 
+connman-dev (connman-dev) [N/y/?] 
+connman-wait-online (connman-wait-online) [N/y/?] 
+connman-client (connman-client) [N/y/?] 
+connman-tools (connman-tools) [N/y/?] 
+*
+* connman-conf 
+*
+connman-conf-dbg (connman-conf-dbg) [N/y/?] 
+*
+* consolekit 
+*
+consolekit (consolekit) [N/y/?] 
+consolekit-dbg (consolekit-dbg) [N/y/?] 
+consolekit-dev (consolekit-dev) [N/y/?] 
+*
+* coreutils 
+*
+coreutils (coreutils) [N/y/?] 
+coreutils-dbg (coreutils-dbg) [N/y/?] 
+coreutils-dev (coreutils-dev) [N/y/?] 
+*
+* cpufrequtils 
+*
+cpufrequtils (cpufrequtils) [N/y/?] 
+cpufrequtils-dbg (cpufrequtils-dbg) [N/y/?] 
+cpufrequtils-dev (cpufrequtils-dev) [N/y/?] 
+*
+* cryptodev-linux 
+*
+cryptodev-linux (cryptodev-linux) [N/y/?] 
+cryptodev-linux-dev (cryptodev-linux-dev) [N/y/?] 
+cryptodev-linux-dbg (cryptodev-linux-dbg) [N/y/?] 
+*
+* dool 
+*
+dool (dool) [N/y/?] 
+dool-dev (dool-dev) [N/y/?] 
+dool-dbg (dool-dbg) [N/y/?] 
+*
+* encodings 
+*
+encodings (encodings) [N/y/?] 
+encodings-dev (encodings-dev) [N/y/?] 
+encodings-dbg (encodings-dbg) [N/y/?] 
+*
+* libudev 
+*
+libudev (libudev) [N/y/?] 
+udev-extraconf (udev-extraconf) [Y/n/?] 
+linux-xlnx-udev-rules (linux-xlnx-udev-rules) [Y/n/?] 
+*
+* fbset 
+*
+fbset (fbset) [N/y/?] 
+fbset-dev (fbset-dev) [N/y/?] 
+fbset-dbg (fbset-dbg) [N/y/?] 
+*
+* fbset-modes 
+*
+fbset-modes (fbset-modes) [N/y/?] 
+fbset-modes-dbg (fbset-modes-dbg) [N/y/?] 
+fbset-modes-dev (fbset-modes-dev) [N/y/?] 
+*
+* font-util 
+*
+font-util (font-util) [N/y/?] 
+font-util-dev (font-util-dev) [N/y/?] 
+font-util-dbg (font-util-dbg) [N/y/?] 
+*
+* gcc-runtime 
+*
+libstdc++-dev (libstdcPLUSPLUS-dev) [N/y/?] 
+libstdc++ (libstdcPLUSPLUS) [Y/n/?] 
+*
+* gcr 
+*
+gcr (gcr) [N/y/?] 
+gcr-dev (gcr-dev) [N/y/?] 
+gcr-dbg (gcr-dbg) [N/y/?] 
+*
+* gdb 
+*
+gdb (gdb) [Y/n/?] 
+gdb-dev (gdb-dev) [N/y/?] 
+gdbserver (gdbserver) [N/y/?] 
+gdb-dbg (gdb-dbg) [N/y/?] 
+*
+* glib-2.0 
+*
+glib-2.0 (glib-2.0) [N/y/?] 
+glib-2.0-dbg (glib-2.0-dbg) [N/y/?] 
+glib-2.0-dev (glib-2.0-dev) [N/y/?] 
+glib-2.0-codegen (glib-2.0-codegen) [N/y/?] 
+glib-2.0-bash-completion (glib-2.0-bash-completion) [N/y/?] 
+glib-2.0-utils (glib-2.0-utils) [N/y/?] 
+*
+* glibc 
+*
+glibc (glibc) [N/y/?] 
+glibc-dev (glibc-dev) [N/y/?] 
+glibc-dbg (glibc-dbg) [N/y/?] 
+ldd (ldd) [N/y/?] 
+*
+* gnome-desktop-testing 
+*
+gnome-desktop-testing (gnome-desktop-testing) [N/y/?] 
+gnome-desktop-testing-dbg (gnome-desktop-testing-dbg) [N/y/?] 
+gnome-desktop-testing-dev (gnome-desktop-testing-dev) [N/y/?] 
+*
+* gnutls 
+*
+gnutls (gnutls) [N/y/?] 
+gnutls-bin (gnutls-bin) [N/y/?] 
+gnutls-xx (gnutls-xx) [N/y/?] 
+gnutls-dbg (gnutls-dbg) [N/y/?] 
+gnutls-openssl (gnutls-openssl) [N/y/?] 
+gnutls-dev (gnutls-dev) [N/y/?] 
+*
+* gsettings-desktop-schemas 
+*
+gsettings-desktop-schemas (gsettings-desktop-schemas) [N/y/?] 
+gsettings-desktop-schemas-dev (gsettings-desktop-schemas-dev) [N/y/?] 
+gsettings-desktop-schemas-dbg (gsettings-desktop-schemas-dbg) [N/y/?] 
+*
+* gst-player 
+*
+gst-player (gst-player) [N/y/?] 
+*
+* gstreamer1.0-meta-base 
+*
+gstreamer1.0-meta-base (gstreamer1.0-meta-base) [N/y/?] 
+gstreamer1.0-meta-video (gstreamer1.0-meta-video) [N/y/?] 
+gstreamer1.0-meta-video-dbg (gstreamer1.0-meta-video-dbg) [N/y/?] 
+gstreamer1.0-meta-debug-dev (gstreamer1.0-meta-debug-dev) [N/y/?] 
+gstreamer1.0-meta-x11-base-dev (gstreamer1.0-meta-x11-base-dev) [N/y/?] 
+gstreamer1.0-meta-audio-dbg (gstreamer1.0-meta-audio-dbg) [N/y/?] 
+gstreamer1.0-meta-audio (gstreamer1.0-meta-audio) [N/y/?] 
+gstreamer1.0-meta-x11-base (gstreamer1.0-meta-x11-base) [N/y/?] 
+gstreamer1.0-meta-video-dev (gstreamer1.0-meta-video-dev) [N/y/?] 
+gstreamer1.0-meta-x11-base-dbg (gstreamer1.0-meta-x11-base-dbg) [N/y/?] 
+gstreamer1.0-meta-base-dev (gstreamer1.0-meta-base-dev) [N/y/?] 
+gstreamer1.0-meta-base-dbg (gstreamer1.0-meta-base-dbg) [N/y/?] 
+gstreamer1.0-meta-debug (gstreamer1.0-meta-debug) [N/y/?] 
+gstreamer1.0-meta-audio-dev (gstreamer1.0-meta-audio-dev) [N/y/?] 
+gstreamer1.0-meta-debug-dbg (gstreamer1.0-meta-debug-dbg) [N/y/?] 
+*
+* gstreamer1.0-plugins-bad 
+*
+gstreamer1.0-plugins-bad (gstreamer1.0-plugins-bad) [N/y/?] 
+gstreamer1.0-plugins-bad-meta (gstreamer1.0-plugins-bad-meta) [N/y/?] 
+gstreamer1.0-plugins-bad-dev (gstreamer1.0-plugins-bad-dev) [N/y/?] 
+gstreamer1.0-plugins-bad-dbg (gstreamer1.0-plugins-bad-dbg) [N/y/?] 
+*
+* gstreamer1.0-plugins-base 
+*
+gstreamer1.0-plugins-base (gstreamer1.0-plugins-base) [N/y/?] 
+gstreamer1.0-plugins-base-apps (gstreamer1.0-plugins-base-apps) [N/y/?] 
+gstreamer1.0-plugins-base-dev (gstreamer1.0-plugins-base-dev) [N/y/?] 
+gstreamer1.0-plugins-base-dbg (gstreamer1.0-plugins-base-dbg) [N/y/?] 
+gstreamer1.0-plugins-base-meta (gstreamer1.0-plugins-base-meta) [N/y/?] 
+*
+* gstreamer1.0-plugins-good 
+*
+gstreamer1.0-plugins-good (gstreamer1.0-plugins-good) [N/y/?] 
+gstreamer1.0-plugins-good-dev (gstreamer1.0-plugins-good-dev) [N/y/?] 
+gstreamer1.0-plugins-good-dbg (gstreamer1.0-plugins-good-dbg) [N/y/?] 
+gstreamer1.0-plugins-good-meta (gstreamer1.0-plugins-good-meta) [N/y/?] 
+*
+* hicolor-icon-theme 
+*
+hicolor-icon-theme (hicolor-icon-theme) [N/y/?] 
+hicolor-icon-theme-dev (hicolor-icon-theme-dev) [N/y/?] 
+hicolor-icon-theme-dbg (hicolor-icon-theme-dbg) [N/y/?] 
+*
+* hdmi-module
+*
+kernel-module-hdmi (kernel-module-hdmi) [N/y/?] 
+*
+* icu 
+*
+icu (icu) [N/y/?] 
+icu-dbg (icu-dbg) [N/y/?] 
+icu-dev (icu-dev) [N/y/?] 
+libicudata (libicudata) [N/y/?] 
+libicuio (libicuio) [N/y/?] 
+libicui18n (libicui18n) [N/y/?] 
+libicuuc (libicuuc) [N/y/?] 
+libicutu (libicutu) [N/y/?] 
+*
+* iotop 
+*
+iotop (iotop) [N/y/?] 
+iotop-dev (iotop-dev) [N/y/?] 
+iotop-dbg (iotop-dbg) [N/y/?] 
+*
+* iptables 
+*
+iptables (iptables) [N/y/?] 
+iptables-dev (iptables-dev) [N/y/?] 
+iptables-dbg (iptables-dbg) [N/y/?] 
+*
+* iptraf 
+*
+iptraf (iptraf) [N/y/?] 
+*
+* iso-codes 
+*
+iso-codes (iso-codes) [N/y/?] 
+iso-codes-dbg (iso-codes-dbg) [N/y/?] 
+iso-codes-dev (iso-codes-dev) [N/y/?] 
+*
+* inetutils-tftpd 
+*
+inetutils-tftpd (inetutils-tftpd) [N/y/?] 
+inetutils-tftpd-dbg (inetutils-tftpd-dbg) [N/y/?] 
+*
+* json-c 
+*
+json-c (json-c) [N/y/?] 
+json-c-dev (json-c-dev) [N/y/?] 
+json-c-dbg (json-c-dbg) [N/y/?] 
+*
+* l3afpad 
+*
+l3afpad (l3afpad) [N/y/?] 
+l3afpad-dev (l3afpad-dev) [N/y/?] 
+l3afpad-dbg (l3afpad-dbg) [N/y/?] 
+*
+* lttng-ust 
+*
+lttng-ust (lttng-ust) [N/y/?] 
+lttng-ust-dev (lttng-ust-dev) [N/y/?] 
+lttng-ust-dbg (lttng-ust-dbg) [N/y/?] 
+lttng-ust-bin (lttng-ust-bin) [N/y/?] 
+*
+* m4 
+*
+m4 (m4) [N/y/?] 
+m4-dev (m4-dev) [N/y/?] 
+m4-dbg (m4-dbg) [N/y/?] 
+*
+* matchbox-config-gtk 
+*
+matchbox-config-gtk (matchbox-config-gtk) [N/y/?] 
+matchbox-config-gtk-dbg (matchbox-config-gtk-dbg) [N/y/?] 
+matchbox-config-gtk-dev (matchbox-config-gtk-dev) [N/y/?] 
+*
+* matchbox-panel-2 
+*
+matchbox-panel-2 (matchbox-panel-2) [N/y/?] 
+matchbox-panel-2-dbg (matchbox-panel-2-dbg) [N/y/?] 
+matchbox-panel-2-dev (matchbox-panel-2-dev) [N/y/?] 
+*
+* mdadm 
+*
+mdadm (mdadm) [N/y/?] 
+mdadm-dbg (mdadm-dbg) [N/y/?] 
+mdadm-dev (mdadm-dev) [N/y/?] 
+*
+* mesa-gl 
+*
+libgl-mesa (libgl-mesa) [N/y/?] 
+mesa-megadriver (mesa-megadriver) [N/y/?] 
+libglapi-dev (libglapi-dev) [N/y/?] 
+libglapi (libglapi) [N/y/?] 
+libgl-mesa-dev (libgl-mesa-dev) [N/y/?] 
+*
+* mkfontdir 
+*
+mkfontdir (mkfontdir) [N/y/?] 
+*
+* mkfontscale 
+*
+mkfontscale (mkfontscale) [N/y/?] 
+mkfontscale-dbg (mkfontscale-dbg) [N/y/?] 
+mkfontscale-dev (mkfontscale-dev) [N/y/?] 
+*
+* net-tools 
+*
+net-tools (net-tools) [N/y/?] 
+net-tools-dbg (net-tools-dbg) [N/y/?] 
+net-tools-dev (net-tools-dev) [N/y/?] 
+*
+* nicstat 
+*
+nicstat (nicstat) [N/y/?] 
+nicstat-dbg (nicstat-dbg) [N/y/?] 
+nicstat-dev (nicstat-dev) [N/y/?] 
+*
+* ofono 
+*
+ofono (ofono) [N/y/?] 
+ofono-dbg (ofono-dbg) [N/y/?] 
+ofono-dev (ofono-dev) [N/y/?] 
+ofono-tests (ofono-tests) [N/y/?] 
+*
+* openamp-fw-echo-testd 
+*
+openamp-fw-echo-testd (openamp-fw-echo-testd) [N/y/?] 
+openamp-fw-echo-testd-dev (openamp-fw-echo-testd-dev) [N/y/?] 
+openamp-fw-echo-testd-dbg (openamp-fw-echo-testd-dbg) [N/y/?] 
+*
+* openamp-fw-mat-muld 
+*
+openamp-fw-mat-muld (openamp-fw-mat-muld) [N/y/?] 
+openamp-fw-mat-muld-dev (openamp-fw-mat-muld-dev) [N/y/?] 
+openamp-fw-mat-muld-dbg (openamp-fw-mat-muld-dbg) [N/y/?] 
+*
+* openamp-fw-rpc-demo 
+*
+openamp-fw-rpc-demo (openamp-fw-rpc-demo) [N/y/?] 
+openamp-fw-rpc-demo-dbg (openamp-fw-rpc-demo-dbg) [N/y/?] 
+openamp-fw-rpc-demo-dev (openamp-fw-rpc-demo-dev) [N/y/?] 
+*
+* opkg-arch-config 
+*
+opkg-arch-config (opkg-arch-config) [N/y/?] 
+opkg-arch-config-dbg (opkg-arch-config-dbg) [N/y/?] 
+opkg-arch-config-dev (opkg-arch-config-dev) [N/y/?] 
+*
+* orc 
+*
+orc (orc) [N/y/?] 
+orc-dbg (orc-dbg) [N/y/?] 
+orc-dev (orc-dev) [N/y/?] 
+*
+* p11-kit 
+*
+p11-kit (p11-kit) [N/y/?] 
+p11-kit-dbg (p11-kit-dbg) [N/y/?] 
+p11-kit-dev (p11-kit-dev) [N/y/?] 
+*
+* packagegroup-core-boot 
+*
+packagegroup-core-boot (packagegroup-core-boot) [Y/n/?] 
+packagegroup-core-boot-dev (packagegroup-core-boot-dev) [N/y/?] 
+packagegroup-core-boot-dbg (packagegroup-core-boot-dbg) [N/y/?] 
+*
+* packagegroup-core-buildessential 
+*
+packagegroup-core-buildessential (packagegroup-core-buildessential) [N/y/?] 
+packagegroup-core-buildessential-dbg (packagegroup-core-buildessential-dbg) [N/y/?] 
+packagegroup-core-buildessential-dev (packagegroup-core-buildessential-dev) [N/y/?] 
+*
+* packagegroup-core-sdk 
+*
+packagegroup-core-sdk (packagegroup-core-sdk) [N/y/?] 
+packagegroup-core-sdk-dbg (packagegroup-core-sdk-dbg) [N/y/?] 
+packagegroup-core-sdk-dev (packagegroup-core-sdk-dev) [N/y/?] 
+*
+* packagegroup-core-ssh-dropbear 
+*
+packagegroup-core-ssh-dropbear (packagegroup-core-ssh-dropbear) [N/y/?] 
+packagegroup-core-ssh-dropbear-dev (packagegroup-core-ssh-dropbear-dev) [N/y/?] 
+packagegroup-core-ssh-dropbear-dbg (packagegroup-core-ssh-dropbear-dbg) [N/y/?] 
+*
+* packagegroup-core-standalone-sdk-target 
+*
+packagegroup-core-standalone-sdk-target (packagegroup-core-standalone-sdk-target) [N/y/?] 
+packagegroup-core-standalone-sdk-target-dbg (packagegroup-core-standalone-sdk-target-dbg) [N/y/?] 
+packagegroup-core-standalone-sdk-target-dev (packagegroup-core-standalone-sdk-target-dev) [N/y/?] 
+*
+* packagegroup-core-tools-debug 
+*
+packagegroup-core-tools-debug (packagegroup-core-tools-debug) [N/y/?] 
+packagegroup-core-tools-debug-dev (packagegroup-core-tools-debug-dev) [N/y/?] 
+packagegroup-core-tools-debug-dbg (packagegroup-core-tools-debug-dbg) [N/y/?] 
+*
+* packagegroup-core-tools-profile 
+*
+packagegroup-core-tools-profile (packagegroup-core-tools-profile) [N/y/?] 
+packagegroup-core-tools-profile-dev (packagegroup-core-tools-profile-dev) [N/y/?] 
+packagegroup-core-tools-profile-dbg (packagegroup-core-tools-profile-dbg) [N/y/?] 
+*
+* packagegroup-core-tools-testapps 
+*
+packagegroup-core-tools-testapps (packagegroup-core-tools-testapps) [N/y/?] 
+packagegroup-core-tools-testapps-dev (packagegroup-core-tools-testapps-dev) [N/y/?] 
+packagegroup-core-tools-testapps-dbg (packagegroup-core-tools-testapps-dbg) [N/y/?] 
+*
+* packagegroup-core-x11 
+*
+packagegroup-core-x11 (packagegroup-core-x11) [N/y/?] 
+packagegroup-core-x11-utils-dbg (packagegroup-core-x11-utils-dbg) [N/y/?] 
+packagegroup-core-x11-utils (packagegroup-core-x11-utils) [N/y/?] 
+packagegroup-core-x11-utils-dev (packagegroup-core-x11-utils-dev) [N/y/?] 
+packagegroup-core-x11-dev (packagegroup-core-x11-dev) [N/y/?] 
+packagegroup-core-x11-dbg (packagegroup-core-x11-dbg) [N/y/?] 
+*
+* packagegroup-core-x11-base 
+*
+packagegroup-core-x11-base (packagegroup-core-x11-base) [N/y/?] 
+packagegroup-core-x11-base-dev (packagegroup-core-x11-base-dev) [N/y/?] 
+packagegroup-core-x11-base-dbg (packagegroup-core-x11-base-dbg) [N/y/?] 
+*
+* packagegroup-core-x11-xserver 
+*
+packagegroup-core-x11-xserver (packagegroup-core-x11-xserver) [N/y/?] 
+packagegroup-core-x11-xserver-dev (packagegroup-core-x11-xserver-dev) [N/y/?] 
+packagegroup-core-x11-xserver-dbg (packagegroup-core-x11-xserver-dbg) [N/y/?] 
+*
+* packagegroup-self-hosted 
+*
+packagegroup-self-hosted (packagegroup-self-hosted) [N/y/?] 
+packagegroup-self-hosted-debug-dbg (packagegroup-self-hosted-debug-dbg) [N/y/?] 
+packagegroup-self-hosted-dev (packagegroup-self-hosted-dev) [N/y/?] 
+packagegroup-self-hosted-debug (packagegroup-self-hosted-debug) [N/y/?] 
+packagegroup-self-hosted-sdk (packagegroup-self-hosted-sdk) [N/y/?] 
+packagegroup-self-hosted-extended-dbg (packagegroup-self-hosted-extended-dbg) [N/y/?] 
+packagegroup-self-hosted-graphics-dbg (packagegroup-self-hosted-graphics-dbg) [N/y/?] 
+packagegroup-self-hosted-extended (packagegroup-self-hosted-extended) [N/y/?] 
+packagegroup-self-hosted-host-tools-dev (packagegroup-self-hosted-host-tools-dev) [N/y/?] 
+packagegroup-self-hosted-debug-dev (packagegroup-self-hosted-debug-dev) [N/y/?] 
+packagegroup-self-hosted-sdk-dbg (packagegroup-self-hosted-sdk-dbg) [N/y/?] 
+packagegroup-self-hosted-sdk-dev (packagegroup-self-hosted-sdk-dev) [N/y/?] 
+packagegroup-self-hosted-extended-dev (packagegroup-self-hosted-extended-dev) [N/y/?] 
+packagegroup-self-hosted-graphics (packagegroup-self-hosted-graphics) [N/y/?] 
+packagegroup-self-hosted-host-tools-dbg (packagegroup-self-hosted-host-tools-dbg) [N/y/?] 
+packagegroup-self-hosted-dbg (packagegroup-self-hosted-dbg) [N/y/?] 
+packagegroup-self-hosted-host-tools (packagegroup-self-hosted-host-tools) [N/y/?] 
+packagegroup-self-hosted-graphics-dev (packagegroup-self-hosted-graphics-dev) [N/y/?] 
+*
+* perf 
+*
+perf (perf) [N/y/?] 
+perf-python (perf-python) [N/y/?] 
+perf-dbg (perf-dbg) [N/y/?] 
+perf-dev (perf-dev) [N/y/?] 
+perf-tests (perf-tests) [N/y/?] 
+*
+* pixman 
+*
+pixman (pixman) [N/y/?] 
+pixman-dbg (pixman-dbg) [N/y/?] 
+pixman-dev (pixman-dev) [N/y/?] 
+*
+* powertop 
+*
+powertop (powertop) [N/y/?] 
+powertop-dbg (powertop-dbg) [N/y/?] 
+powertop-dev (powertop-dev) [N/y/?] 
+*
+* ptest-runner 
+*
+ptest-runner (ptest-runner) [N/y/?] 
+ptest-runner-dev (ptest-runner-dev) [N/y/?] 
+ptest-runner-dbg (ptest-runner-dbg) [N/y/?] 
+*
+* python3 
+*
+python3 (python3) [Y/n/?] 
+python3-crypt (python3-crypt) [N/y/?] 
+python3-unixadmin (python3-unixadmin) [N/y/?] 
+python3-io (python3-io) [N/y/?] 
+python3-pydoc (python3-pydoc) [N/y/?] 
+python3-codecs (python3-codecs) [N/y/?] 
+python3-pprint (python3-pprint) [N/y/?] 
+python3-datetime (python3-datetime) [N/y/?] 
+python3-2to3 (python3-2to3) [N/y/?] 
+python3-modules (python3-modules) [N/y/?] 
+python3-xml (python3-xml) [N/y/?] 
+python3-numbers (python3-numbers) [N/y/?] 
+python3-pyvenv (python3-pyvenv) [N/y/?] 
+python3-tests (python3-tests) [N/y/?] 
+python3-netclient (python3-netclient) [N/y/?] 
+python3-netserver (python3-netserver) [N/y/?] 
+python3-math (python3-math) [N/y/?] 
+python3-asyncio (python3-asyncio) [N/y/?] 
+python3-tkinter (python3-tkinter) [N/y/?] 
+python3-compression (python3-compression) [N/y/?] 
+python3-gdbm (python3-gdbm) [N/y/?] 
+python3-idle (python3-idle) [N/y/?] 
+python3-core (python3-core) [N/y/?] 
+python3-smtpd (python3-smtpd) [N/y/?] 
+python3-resource (python3-resource) [N/y/?] 
+python3-terminal (python3-terminal) [N/y/?] 
+python3-shell (python3-shell) [N/y/?] 
+python3-db (python3-db) [N/y/?] 
+python3-threading (python3-threading) [N/y/?] 
+python3-email (python3-email) [N/y/?] 
+python3-stringold (python3-stringold) [N/y/?] 
+python3-unittest (python3-unittest) [N/y/?] 
+python3-misc (python3-misc) [N/y/?] 
+python3-mailbox (python3-mailbox) [N/y/?] 
+python3-pkgutil (python3-pkgutil) [N/y/?] 
+python3-mmap (python3-mmap) [N/y/?] 
+python3-json (python3-json) [N/y/?] 
+python3-audio (python3-audio) [N/y/?] 
+python3-distutils (python3-distutils) [N/y/?] 
+python3-mime (python3-mime) [N/y/?] 
+python3-multiprocessing (python3-multiprocessing) [N/y/?] 
+python3-html (python3-html) [N/y/?] 
+python3-image (python3-image) [N/y/?] 
+python3-difflib (python3-difflib) [N/y/?] 
+python3-dev (python3-dev) [N/y/?] 
+python3-syslog (python3-syslog) [N/y/?] 
+python3-curses (python3-curses) [N/y/?] 
+libpython3 (libpython3) [N/y/?] 
+python3-logging (python3-logging) [N/y/?] 
+python3-profile (python3-profile) [N/y/?] 
+python3-xmlrpc (python3-xmlrpc) [N/y/?] 
+python3-ctypes (python3-ctypes) [N/y/?] 
+python3-sqlite3 (python3-sqlite3) [N/y/?] 
+python3-fcntl (python3-fcntl) [N/y/?] 
+python3-compile (python3-compile) [N/y/?] 
+python3-pickle (python3-pickle) [N/y/?] 
+python3-dbg (python3-dbg) [N/y/?] 
+python3-debugger (python3-debugger) [N/y/?] 
+*
+* python3-async 
+*
+python3-async (python3-async) [N/y/?] 
+python3-async-dbg (python3-async-dbg) [N/y/?] 
+python3-async-dev (python3-async-dev) [N/y/?] 
+*
+* python3-git 
+*
+python3-git (python3-git) [N/y/?] 
+python3-git-dev (python3-git-dev) [N/y/?] 
+python3-git-dbg (python3-git-dbg) [N/y/?] 
+*
+* python3-gitdb 
+*
+python3-gitdb (python3-gitdb) [N/y/?] 
+python3-gitdb-dev (python3-gitdb-dev) [N/y/?] 
+python3-gitdb-dbg (python3-gitdb-dbg) [N/y/?] 
+*
+* python3-setuptools 
+*
+python3-setuptools (python3-setuptools) [N/y/?] 
+python3-setuptools-dbg (python3-setuptools-dbg) [N/y/?] 
+python3-setuptools-dev (python3-setuptools-dev) [N/y/?] 
+*
+* python3-smmap 
+*
+python3-smmap (python3-smmap) [N/y/?] 
+python3-smmap-dev (python3-smmap-dev) [N/y/?] 
+python3-smmap-dbg (python3-smmap-dbg) [N/y/?] 
+*
+* qemu 
+*
+qemu (qemu) [N/y/?] 
+qemu-dev (qemu-dev) [N/y/?] 
+qemu-dbg (qemu-dbg) [N/y/?] 
+*
+* qtbase 
+*
+qtbase (qtbase) [N/y/?] 
+qtbase-plugins (qtbase-plugins) [N/y/?] 
+qtbase-dev (qtbase-dev) [N/y/?] 
+qtbase-dbg (qtbase-dbg) [N/y/?] 
+qtbase-tools (qtbase-tools) [N/y/?] 
+qtbase-examples (qtbase-examples) [N/y/?] 
+qtbase-mkspecs (qtbase-mkspecs) [N/y/?] 
+*
+* qtcharts 
+*
+qtcharts (qtcharts) [N/y/?] 
+qtcharts-qmlplugins (qtcharts-qmlplugins) [N/y/?] 
+qtcharts-mkspecs (qtcharts-mkspecs) [N/y/?] 
+qtcharts-dbg (qtcharts-dbg) [N/y/?] 
+qtcharts-dev (qtcharts-dev) [N/y/?] 
+qtcharts-qmldesigner (qtcharts-qmldesigner) [N/y/?] 
+*
+* qtconnectivity 
+*
+qtconnectivity (qtconnectivity) [N/y/?] 
+qtconnectivity-qmlplugins (qtconnectivity-qmlplugins) [N/y/?] 
+qtconnectivity-tools (qtconnectivity-tools) [N/y/?] 
+qtconnectivity-mkspecs (qtconnectivity-mkspecs) [N/y/?] 
+qtconnectivity-dev (qtconnectivity-dev) [N/y/?] 
+qtconnectivity-dbg (qtconnectivity-dbg) [N/y/?] 
+*
+* qtdeclarative 
+*
+qtdeclarative (qtdeclarative) [N/y/?] 
+qtdeclarative-tools (qtdeclarative-tools) [N/y/?] 
+qtdeclarative-mkspecs (qtdeclarative-mkspecs) [N/y/?] 
+qtdeclarative-dbg (qtdeclarative-dbg) [N/y/?] 
+qtdeclarative-qmlplugins (qtdeclarative-qmlplugins) [N/y/?] 
+qtdeclarative-dev (qtdeclarative-dev) [N/y/?] 
+*
+* qtimageformats 
+*
+qtimageformats (qtimageformats) [N/y/?] 
+qtimageformats-dev (qtimageformats-dev) [N/y/?] 
+qtimageformats-dbg (qtimageformats-dbg) [N/y/?] 
+qtimageformats-plugins (qtimageformats-plugins) [N/y/?] 
+*
+* qtlocation 
+*
+qtlocation (qtlocation) [N/y/?] 
+qtlocation-qmlplugins (qtlocation-qmlplugins) [N/y/?] 
+qtlocation-mkspecs (qtlocation-mkspecs) [N/y/?] 
+qtlocation-dev (qtlocation-dev) [N/y/?] 
+qtlocation-plugins (qtlocation-plugins) [N/y/?] 
+qtlocation-dbg (qtlocation-dbg) [N/y/?] 
+*
+* qtmultimedia 
+*
+qtmultimedia (qtmultimedia) [N/y/?] 
+qtmultimedia-dbg (qtmultimedia-dbg) [N/y/?] 
+qtmultimedia-plugins (qtmultimedia-plugins) [N/y/?] 
+qtmultimedia-mkspecs (qtmultimedia-mkspecs) [N/y/?] 
+qtmultimedia-dev (qtmultimedia-dev) [N/y/?] 
+qtmultimedia-qmlplugins (qtmultimedia-qmlplugins) [N/y/?] 
+*
+* qtquickcontrols 
+*
+qtquickcontrols (qtquickcontrols) [N/y/?] 
+qtquickcontrols-dev (qtquickcontrols-dev) [N/y/?] 
+qtquickcontrols-qmldesigner (qtquickcontrols-qmldesigner) [N/y/?] 
+qtquickcontrols-qmlplugins (qtquickcontrols-qmlplugins) [N/y/?] 
+qtquickcontrols-dbg (qtquickcontrols-dbg) [N/y/?] 
+*
+* qtscript 
+*
+qtscript (qtscript) [N/y/?] 
+qtscript-dbg (qtscript-dbg) [N/y/?] 
+qtscript-mkspecs (qtscript-mkspecs) [N/y/?] 
+qtscript-dev (qtscript-dev) [N/y/?] 
+*
+* qtsensors 
+*
+qtsensors (qtsensors) [N/y/?] 
+qtsensors-qmlplugins (qtsensors-qmlplugins) [N/y/?] 
+qtsensors-mkspecs (qtsensors-mkspecs) [N/y/?] 
+qtsensors-plugins (qtsensors-plugins) [N/y/?] 
+qtsensors-dbg (qtsensors-dbg) [N/y/?] 
+qtsensors-dev (qtsensors-dev) [N/y/?] 
+*
+* qtserialport 
+*
+qtserialport (qtserialport) [N/y/?] 
+qtserialport-mkspecs (qtserialport-mkspecs) [N/y/?] 
+qtserialport-dev (qtserialport-dev) [N/y/?] 
+qtserialport-dbg (qtserialport-dbg) [N/y/?] 
+*
+* qtsvg 
+*
+qtsvg (qtsvg) [N/y/?] 
+qtsvg-dev (qtsvg-dev) [N/y/?] 
+qtsvg-dbg (qtsvg-dbg) [N/y/?] 
+qtsvg-mkspecs (qtsvg-mkspecs) [N/y/?] 
+qtsvg-plugins (qtsvg-plugins) [N/y/?] 
+*
+* qtsystems 
+*
+qtsystems (qtsystems) [N/y/?] 
+qtsystems-dev (qtsystems-dev) [N/y/?] 
+qtsystems-mkspecs (qtsystems-mkspecs) [N/y/?] 
+qtsystems-qmlplugins (qtsystems-qmlplugins) [N/y/?] 
+qtsystems-dbg (qtsystems-dbg) [N/y/?] 
+qtsystems-tools (qtsystems-tools) [N/y/?] 
+*
+* qttools 
+*
+qttools (qttools) [N/y/?] 
+qttools-dbg (qttools-dbg) [N/y/?] 
+qttools-dev (qttools-dev) [N/y/?] 
+qttools-tools (qttools-tools) [N/y/?] 
+qttools-mkspecs (qttools-mkspecs) [N/y/?] 
+qttools-plugins (qttools-plugins) [N/y/?] 
+*
+* qttranslations 
+*
+qttranslations (qttranslations) [N/y/?] 
+qttranslations-qtwebengine (qttranslations-qtwebengine) [N/y/?] 
+qttranslations-qthelp (qttranslations-qthelp) [N/y/?] 
+qttranslations-qtbase (qttranslations-qtbase) [N/y/?] 
+qttranslations-dbg (qttranslations-dbg) [N/y/?] 
+qttranslations-dev (qttranslations-dev) [N/y/?] 
+qttranslations-qtscript (qttranslations-qtscript) [N/y/?] 
+qttranslations-qtdeclarative (qttranslations-qtdeclarative) [N/y/?] 
+qttranslations-assistant (qttranslations-assistant) [N/y/?] 
+qttranslations-qtwebsockets (qttranslations-qtwebsockets) [N/y/?] 
+qttranslations-linguist (qttranslations-linguist) [N/y/?] 
+qttranslations-qtserialport (qttranslations-qtserialport) [N/y/?] 
+qttranslations-qtmultimedia (qttranslations-qtmultimedia) [N/y/?] 
+qttranslations-qtconnectivity (qttranslations-qtconnectivity) [N/y/?] 
+qttranslations-qtlocation (qttranslations-qtlocation) [N/y/?] 
+qttranslations-qtxmlpatterns (qttranslations-qtxmlpatterns) [N/y/?] 
+qttranslations-qtquickcontrols (qttranslations-qtquickcontrols) [N/y/?] 
+qttranslations-designer (qttranslations-designer) [N/y/?] 
+qttranslations-qtquickcontrols2 (qttranslations-qtquickcontrols2) [N/y/?] 
+*
+* qtwebchannel 
+*
+qtwebchannel (qtwebchannel) [N/y/?] 
+qtwebchannel-mkspecs (qtwebchannel-mkspecs) [N/y/?] 
+qtwebchannel-dbg (qtwebchannel-dbg) [N/y/?] 
+qtwebchannel-qmlplugins (qtwebchannel-qmlplugins) [N/y/?] 
+qtwebchannel-dev (qtwebchannel-dev) [N/y/?] 
+*
+* qtwebkit 
+*
+qtwebkit (qtwebkit) [N/y/?] 
+qtwebkit-qmlplugins (qtwebkit-qmlplugins) [N/y/?] 
+qtwebkit-mkspecs (qtwebkit-mkspecs) [N/y/?] 
+qtwebkit-dbg (qtwebkit-dbg) [N/y/?] 
+qtwebkit-dev (qtwebkit-dev) [N/y/?] 
+*
+* qtwebsockets 
+*
+qtwebsockets (qtwebsockets) [N/y/?] 
+qtwebsockets-qmlplugins (qtwebsockets-qmlplugins) [N/y/?] 
+qtwebsockets-dbg (qtwebsockets-dbg) [N/y/?] 
+qtwebsockets-dev (qtwebsockets-dev) [N/y/?] 
+qtwebsockets-mkspecs (qtwebsockets-mkspecs) [N/y/?] 
+*
+* qtxmlpatterns 
+*
+qtxmlpatterns (qtxmlpatterns) [N/y/?] 
+qtxmlpatterns-dev (qtxmlpatterns-dev) [N/y/?] 
+qtxmlpatterns-mkspecs (qtxmlpatterns-mkspecs) [N/y/?] 
+qtxmlpatterns-dbg (qtxmlpatterns-dbg) [N/y/?] 
+qtxmlpatterns-tools (qtxmlpatterns-tools) [N/y/?] 
+*
+* rgb 
+*
+rgb (rgb) [N/y/?] 
+rgb-dev (rgb-dev) [N/y/?] 
+rgb-dbg (rgb-dbg) [N/y/?] 
+*
+* rpm 
+*
+rpm (rpm) [N/y/?] 
+rpm-build (rpm-build) [N/y/?] 
+rpm-dbg (rpm-dbg) [N/y/?] 
+rpm-dev (rpm-dev) [N/y/?] 
+*
+* rpmsg-echo-test 
+*
+rpmsg-echo-test (rpmsg-echo-test) [N/y/?] 
+rpmsg-echo-test-dbg (rpmsg-echo-test-dbg) [N/y/?] 
+rpmsg-echo-test-dev (rpmsg-echo-test-dev) [N/y/?] 
+*
+* rpmsg-mat-mul 
+*
+rpmsg-mat-mul (rpmsg-mat-mul) [N/y/?] 
+rpmsg-mat-mul-dev (rpmsg-mat-mul-dev) [N/y/?] 
+rpmsg-mat-mul-dbg (rpmsg-mat-mul-dbg) [N/y/?] 
+*
+* rpmsg-proxy-app 
+*
+rpmsg-proxy-app (rpmsg-proxy-app) [N/y/?] 
+rpmsg-proxy-app-dbg (rpmsg-proxy-app-dbg) [N/y/?] 
+rpmsg-proxy-app-dev (rpmsg-proxy-app-dev) [N/y/?] 
+*
+* serf 
+*
+serf (serf) [N/y/?] 
+serf-dev (serf-dev) [N/y/?] 
+serf-dbg (serf-dbg) [N/y/?] 
+*
+* sysfsutils 
+*
+sysfsutils (sysfsutils) [N/y/?] 
+libsysfs (libsysfs) [N/y/?] 
+sysfsutils-dbg (sysfsutils-dbg) [N/y/?] 
+sysfsutils-dev (sysfsutils-dev) [N/y/?] 
+*
+* sysvinit-inittab 
+*
+sysvinit-inittab (sysvinit-inittab) [N/y/?] 
+sysvinit-inittab-dev (sysvinit-inittab-dev) [N/y/?] 
+sysvinit-inittab-dbg (sysvinit-inittab-dbg) [N/y/?] 
+*
+* tbb 
+*
+tbb (tbb) [N/y/?] 
+tbb-dbg (tbb-dbg) [N/y/?] 
+tbb-dev (tbb-dev) [N/y/?] 
+*
+* tcf-agent 
+*
+tcf-agent (tcf-agent) [Y/n/?] 
+tcf-agent-dev (tcf-agent-dev) [N/y/?] 
+tcf-agent-dbg (tcf-agent-dbg) [N/y/?] 
+*
+* tiff 
+*
+tiff (tiff) [N/y/?] 
+tiffxx (tiffxx) [N/y/?] 
+tiff-dbg (tiff-dbg) [N/y/?] 
+tiff-utils (tiff-utils) [N/y/?] 
+tiff-dev (tiff-dev) [N/y/?] 
+*
+* tpm2 
+*
+*
+* tpm2-abrmd
+*
+tpm2-abrmd (tpm2-abrmd) [N/y/?] 
+tpm2-abrmd-dev (tpm2-abrmd-dev) [N/y/?] 
+tpm2-abrmd-dbg (tpm2-abrmd-dbg) [N/y/?] 
+*
+* tpm2-pkcs11
+*
+tpm2-pkcs11 (tpm2-pkcs11) [N/y/?] 
+tpm2-pkcs11-dev (tpm2-pkcs11-dev) [N/y/?] 
+tpm2-pkcs11-dbg (tpm2-pkcs11-dbg) [N/y/?] 
+*
+* tpm2-tools
+*
+tpm2-tools (tpm2-tools) [N/y/?] 
+tpm2-tools-dev (tpm2-tools-dev) [N/y/?] 
+tpm2-tools-dbg (tpm2-tools-dbg) [N/y/?] 
+*
+* tpm2-tss
+*
+tpm2-tss (tpm2-tss) [N/y/?] 
+tpm2-tss-dbg (tpm2-tss-dbg) [N/y/?] 
+*
+* tpm2-tss-engine
+*
+tpm2-tss-engine (tpm2-tss-engine) [N/y/?] 
+tpm2-tss-engine-dev (tpm2-tss-engine-dev) [N/y/?] 
+tpm2-tss-engine-dbg (tpm2-tss-engine-dbg) [N/y/?] 
+*
+* util-macros 
+*
+util-macros (util-macros) [N/y/?] 
+util-macros-dbg (util-macros-dbg) [N/y/?] 
+util-macros-dev (util-macros-dev) [N/y/?] 
+*
+* v4l-utils 
+*
+v4l-utils (v4l-utils) [N/y/?] 
+libv4l (libv4l) [N/y/?] 
+ir-keytable (ir-keytable) [N/y/?] 
+media-ctl (media-ctl) [N/y/?] 
+v4l-utils-dbg (v4l-utils-dbg) [N/y/?] 
+rc-keymaps (rc-keymaps) [N/y/?] 
+v4l-utils-dev (v4l-utils-dev) [N/y/?] 
+libv4l-dev (libv4l-dev) [N/y/?] 
+*
+* valgrind
+*
+valgrind (valgrind) [Y/n/?] 
+valgrind-dbg (valgrind-dbg) [N/y/?] 
+valgrind-dev (valgrind-dev) [N/y/?] 
+*
+* vte 
+*
+vte (vte) [N/y/?] 
+vte-dbg (vte-dbg) [N/y/?] 
+vte-dev (vte-dev) [N/y/?] 
+libvte (libvte) [N/y/?] 
+*
+* watchdog 
+*
+watchdog (watchdog) [N/y/?] 
+watchdog-dbg (watchdog-dbg) [N/y/?] 
+watchdog-dev (watchdog-dev) [N/y/?] 
+watchdog-keepalive (watchdog-keepalive) [N/y/?] 
+*
+* watchdog-config 
+*
+watchdog-config (watchdog-config) [N/y/?] 
+watchdog-config-dbg (watchdog-config-dbg) [N/y/?] 
+watchdog-config-dev (watchdog-config-dev) [N/y/?] 
+*
+* x11perf 
+*
+x11perf (x11perf) [N/y/?] 
+x11perf-dev (x11perf-dev) [N/y/?] 
+x11perf-dbg (x11perf-dbg) [N/y/?] 
+*
+* x264 
+*
+x264 (x264) [N/y/?] 
+x264-dev (x264-dev) [N/y/?] 
+x264-dbg (x264-dbg) [N/y/?] 
+x264-bin (x264-bin) [N/y/?] 
+*
+* xauth 
+*
+xauth (xauth) [N/y/?] 
+xauth-dbg (xauth-dbg) [N/y/?] 
+xauth-dev (xauth-dev) [N/y/?] 
+*
+* xcb-util-image 
+*
+xcb-util-image (xcb-util-image) [N/y/?] 
+xcb-util-image-dbg (xcb-util-image-dbg) [N/y/?] 
+xcb-util-image-dev (xcb-util-image-dev) [N/y/?] 
+*
+* xcb-util-keysyms 
+*
+xcb-util-keysyms (xcb-util-keysyms) [N/y/?] 
+xcb-util-keysyms-dev (xcb-util-keysyms-dev) [N/y/?] 
+xcb-util-keysyms-dbg (xcb-util-keysyms-dbg) [N/y/?] 
+*
+* xcb-util-renderutil 
+*
+xcb-util-renderutil (xcb-util-renderutil) [N/y/?] 
+xcb-util-renderutil-dev (xcb-util-renderutil-dev) [N/y/?] 
+xcb-util-renderutil-dbg (xcb-util-renderutil-dbg) [N/y/?] 
+*
+* xcb-util-wm 
+*
+xcb-util-wm (xcb-util-wm) [N/y/?] 
+xcb-util-wm-dbg (xcb-util-wm-dbg) [N/y/?] 
+xcb-util-wm-dev (xcb-util-wm-dev) [N/y/?] 
+*
+* xdg-utils 
+*
+xdg-utils (xdg-utils) [N/y/?] 
+xdg-utils-dev (xdg-utils-dev) [N/y/?] 
+xdg-utils-dbg (xdg-utils-dbg) [N/y/?] 
+*
+* xdpyinfo 
+*
+xdpyinfo (xdpyinfo) [N/y/?] 
+xdpyinfo-dev (xdpyinfo-dev) [N/y/?] 
+xdpyinfo-dbg (xdpyinfo-dbg) [N/y/?] 
+*
+* xf86-input-evdev 
+*
+xf86-input-evdev (xf86-input-evdev) [N/y/?] 
+xf86-input-evdev-dbg (xf86-input-evdev-dbg) [N/y/?] 
+xf86-input-evdev-dev (xf86-input-evdev-dev) [N/y/?] 
+*
+* xf86-input-mouse 
+*
+xf86-input-mouse (xf86-input-mouse) [N/y/?] 
+xf86-input-mouse-dbg (xf86-input-mouse-dbg) [N/y/?] 
+xf86-input-mouse-dev (xf86-input-mouse-dev) [N/y/?] 
+*
+* xf86-video-armsoc 
+*
+xf86-video-armsoc (xf86-video-armsoc) [N/y/?] 
+xf86-video-armsoc-dbg (xf86-video-armsoc-dbg) [N/y/?] 
+xf86-video-armsoc-dev (xf86-video-armsoc-dev) [N/y/?] 
+*
+* xf86-video-fbdev 
+*
+xf86-video-fbdev (xf86-video-fbdev) [N/y/?] 
+xf86-video-fbdev-dbg (xf86-video-fbdev-dbg) [N/y/?] 
+xf86-video-fbdev-dev (xf86-video-fbdev-dev) [N/y/?] 
+*
+* xhost 
+*
+xhost (xhost) [N/y/?] 
+xhost-dbg (xhost-dbg) [N/y/?] 
+xhost-dev (xhost-dev) [N/y/?] 
+*
+* xinetd 
+*
+xinetd (xinetd) [N/y/?] 
+xinetd-dbg (xinetd-dbg) [N/y/?] 
+xinetd-dev (xinetd-dev) [N/y/?] 
+*
+* xinit 
+*
+xinit (xinit) [N/y/?] 
+xinit-dbg (xinit-dbg) [N/y/?] 
+*
+* xinput 
+*
+xinput (xinput) [N/y/?] 
+xinput-dev (xinput-dev) [N/y/?] 
+xinput-dbg (xinput-dbg) [N/y/?] 
+*
+* xinput-calibrator 
+*
+xinput-calibrator (xinput-calibrator) [N/y/?] 
+xinput-calibrator-dev (xinput-calibrator-dev) [N/y/?] 
+xinput-calibrator-dbg (xinput-calibrator-dbg) [N/y/?] 
+*
+* xkbcomp 
+*
+xkbcomp (xkbcomp) [N/y/?] 
+xkbcomp-dbg (xkbcomp-dbg) [N/y/?] 
+xkbcomp-dev (xkbcomp-dev) [N/y/?] 
+*
+* xmodmap 
+*
+xmodmap (xmodmap) [N/y/?] 
+xmodmap-dbg (xmodmap-dbg) [N/y/?] 
+xmodmap-dev (xmodmap-dev) [N/y/?] 
+*
+* xprop 
+*
+xprop (xprop) [N/y/?] 
+xprop-dbg (xprop-dbg) [N/y/?] 
+xprop-dev (xprop-dev) [N/y/?] 
+*
+* xrandr 
+*
+xrandr (xrandr) [N/y/?] 
+xrandr-dbg (xrandr-dbg) [N/y/?] 
+xrandr-dev (xrandr-dev) [N/y/?] 
+*
+* xserver-common 
+*
+xserver-common (xserver-common) [N/y/?] 
+xserver-common-dbg (xserver-common-dbg) [N/y/?] 
+xserver-common-dev (xserver-common-dev) [N/y/?] 
+*
+* xset 
+*
+xset (xset) [N/y/?] 
+xset-dev (xset-dev) [N/y/?] 
+xset-dbg (xset-dbg) [N/y/?] 
+*
+* xtrans 
+*
+xtrans-dev (xtrans-dev) [N/y/?] 
+xtrans-dbg (xtrans-dbg) [N/y/?] 
+*
+* xwininfo 
+*
+xwininfo (xwininfo) [N/y/?] 
+xwininfo-dev (xwininfo-dev) [N/y/?] 
+xwininfo-dbg (xwininfo-dbg) [N/y/?] 
+*
+* yajl 
+*
+yajl (yajl) [N/y/?] 
+yajl-dev (yajl-dev) [N/y/?] 
+yajl-dbg (yajl-dbg) [N/y/?] 
+yajl-bin (yajl-bin) [N/y/?] 
+*
+* yavta 
+*
+yavta (yavta) [N/y/?] 
+yavta-dbg (yavta-dbg) [N/y/?] 
+yavta-dev (yavta-dev) [N/y/?] 
+*
+* multimedia 
+*
+*
+* alsa-plugins 
+*
+alsa-plugins (alsa-plugins) [N/y/?] 
+alsa-plugins-dbg (alsa-plugins-dbg) [N/y/?] 
+alsa-plugins-dev (alsa-plugins-dev) [N/y/?] 
+alsa-plugins-pulseaudio-conf (alsa-plugins-pulseaudio-conf) [N/y/?] 
+*
+* gstreamer1.0 
+*
+gstreamer1.0 (gstreamer1.0) [N/y/?] 
+gstreamer1.0-dev (gstreamer1.0-dev) [N/y/?] 
+gstreamer1.0-dbg (gstreamer1.0-dbg) [N/y/?] 
+*
+* gstreamer1.0-omx 
+*
+gstreamer1.0-omx (gstreamer1.0-omx) [N/y/?] 
+gstreamer1.0-omx-dbg (gstreamer1.0-omx-dbg) [N/y/?] 
+gstreamer1.0-omx-dev (gstreamer1.0-omx-dev) [N/y/?] 
+*
+* gstreamer1.0-rtsp-server 
+*
+gstreamer1.0-rtsp-server (gstreamer1.0-rtsp-server) [N/y/?] 
+gstreamer1.0-rtsp-server-dbg (gstreamer1.0-rtsp-server-dbg) [N/y/?] 
+gstreamer1.0-rtsp-server-dev (gstreamer1.0-rtsp-server-dev) [N/y/?] 
+gstreamer1.0-rtsp-server-meta (gstreamer1.0-rtsp-server-meta) [N/y/?] 
+*
+* net 
+*
+*
+* bridge-utils 
+*
+bridge-utils (bridge-utils) [Y/n/?] 
+bridge-utils-dbg (bridge-utils-dbg) [N/y/?] 
+bridge-utils-dev (bridge-utils-dev) [N/y/?] 
+*
+* net-snmp 
+*
+net-snmp (net-snmp) [N/y/?] 
+net-snmp-server-snmptrapd (net-snmp-server-snmptrapd) [N/y/?] 
+net-snmp-libs (net-snmp-libs) [N/y/?] 
+net-snmp-dev (net-snmp-dev) [N/y/?] 
+net-snmp-client (net-snmp-client) [N/y/?] 
+net-snmp-mibs (net-snmp-mibs) [N/y/?] 
+net-snmp-dbg (net-snmp-dbg) [N/y/?] 
+net-snmp-server-snmpd (net-snmp-server-snmpd) [N/y/?] 
+net-snmp-server (net-snmp-server) [N/y/?] 
+*
+* netcat 
+*
+netcat (netcat) [N/y/?] 
+netcat-dbg (netcat-dbg) [N/y/?] 
+netcat-dev (netcat-dev) [N/y/?] 
+*
+* tcpdump 
+*
+tcpdump (tcpdump) [N/y/?] 
+tcpdump-dev (tcpdump-dev) [N/y/?] 
+tcpdump-dbg (tcpdump-dbg) [N/y/?] 
+*
+* network 
+*
+*
+* avahi 
+*
+libavahi-client (libavahi-client) [N/y/?] 
+libavahi-glib (libavahi-glib) [N/y/?] 
+avahi-utils (avahi-utils) [N/y/?] 
+libavahi-common (libavahi-common) [N/y/?] 
+avahi-dnsconfd (avahi-dnsconfd) [N/y/?] 
+avahi-daemon (avahi-daemon) [N/y/?] 
+avahi-autoipd (avahi-autoipd) [N/y/?] 
+libavahi-gobject (libavahi-gobject) [N/y/?] 
+libavahi-core (libavahi-core) [N/y/?] 
+avahi-dbg (avahi-dbg) [N/y/?] 
+avahi-dev (avahi-dev) [N/y/?] 
+*
+* mobile-broadband-provider-info 
+*
+mobile-broadband-provider-info (mobile-broadband-provider-info) [N/y/?] 
+mobile-broadband-provider-info-dbg (mobile-broadband-provider-info-dbg) [N/y/?] 
+mobile-broadband-provider-info-dev (mobile-broadband-provider-info-dev) [N/y/?] 
+*
+* wpa-supplicant 
+*
+wpa-supplicant (wpa-supplicant) [N/y/?] 
+wpa-supplicant-passphrase (wpa-supplicant-passphrase) [N/y/?] 
+wpa-supplicant-dev (wpa-supplicant-dev) [N/y/?] 
+wpa-supplicant-dbg (wpa-supplicant-dbg) [N/y/?] 
+wpa-supplicant-cli (wpa-supplicant-cli) [N/y/?] 
+*
+* ntp
+*
+ntp (ntp) [N/y/?] 
+ntp-dev (ntp-dev) [N/y/?] 
+ntp-dbg (ntp-dbg) [N/y/?] 
+*
+* optional 
+*
+*
+* libatomic-ops 
+*
+libatomic-ops (libatomic-ops) [N/y/?] 
+libatomic-ops-dev (libatomic-ops-dev) [N/y/?] 
+libatomic-ops-dbg (libatomic-ops-dbg) [N/y/?] 
+*
+* mtools 
+*
+mtools (mtools) [N/y/?] 
+mtools-dev (mtools-dev) [N/y/?] 
+mtools-dbg (mtools-dbg) [N/y/?] 
+*
+* utils 
+*
+*
+* dosfstools 
+*
+dosfstools (dosfstools) [Y/n/?] 
+dosfstools-dev (dosfstools-dev) [N/y/?] 
+dosfstools-dbg (dosfstools-dbg) [N/y/?] 
+*
+* patch 
+*
+patch (patch) [N/y/?] 
+patch-dbg (patch-dbg) [N/y/?] 
+patch-dev (patch-dev) [N/y/?] 
+*
+* resize-part
+*
+resize-part (resize-part) [Y/n/?] 
+resize-part-dbg (resize-part-dbg) [N/y/?] 
+resize-part-dev (resize-part-dev) [N/y/?] 
+*
+* u-boot-tools
+*
+u-boot-tools (u-boot-tools) [Y/n/?] 
+u-boot-tools-dbg (u-boot-tools-dbg) [N/y/?] 
+u-boot-tools-dev (u-boot-tools-dev) [N/y/?] 
+*
+* x11 
+*
+*
+* base 
+*
+*
+* libdrm 
+*
+libdrm (libdrm) [N/y/?] 
+libdrm-tests (libdrm-tests) [N/y/?] 
+libdrm-drivers (libdrm-drivers) [N/y/?] 
+libdrm-amdgpu (libdrm-amdgpu) [N/y/?] 
+libdrm-nouveau (libdrm-nouveau) [N/y/?] 
+libdrm-dev (libdrm-dev) [N/y/?] 
+libdrm-freedreno (libdrm-freedreno) [N/y/?] 
+libdrm-radeon (libdrm-radeon) [N/y/?] 
+libdrm-dbg (libdrm-dbg) [N/y/?] 
+libdrm-omap (libdrm-omap) [N/y/?] 
+*
+* xcursor-transparent-theme 
+*
+xcursor-transparent-theme (xcursor-transparent-theme) [N/y/?] 
+xcursor-transparent-theme-dev (xcursor-transparent-theme-dev) [N/y/?] 
+xcursor-transparent-theme-dbg (xcursor-transparent-theme-dbg) [N/y/?] 
+*
+* xserver-xf86-config 
+*
+xserver-xf86-config (xserver-xf86-config) [N/y/?] 
+xserver-xf86-config-dev (xserver-xf86-config-dev) [N/y/?] 
+xserver-xf86-config-dbg (xserver-xf86-config-dbg) [N/y/?] 
+*
+* xserver-xorg 
+*
+xserver-xorg (xserver-xorg) [N/y/?] 
+xserver-xorg-module-exa (xserver-xorg-module-exa) [N/y/?] 
+xserver-xorg-module-libint10 (xserver-xorg-module-libint10) [N/y/?] 
+xserver-xorg-extension-record (xserver-xorg-extension-record) [N/y/?] 
+xserver-xorg-dev (xserver-xorg-dev) [N/y/?] 
+xserver-xorg-extension-dri2 (xserver-xorg-extension-dri2) [N/y/?] 
+xserver-xorg-extension-dri (xserver-xorg-extension-dri) [N/y/?] 
+xserver-xorg-module-libwfb (xserver-xorg-module-libwfb) [N/y/?] 
+xf86-video-modesetting (xf86-video-modesetting) [N/y/?] 
+xserver-xorg-extension-dbe (xserver-xorg-extension-dbe) [N/y/?] 
+xserver-xorg-extension-glx (xserver-xorg-extension-glx) [N/y/?] 
+xserver-xorg-xvfb (xserver-xorg-xvfb) [N/y/?] 
+xserver-xorg-utils (xserver-xorg-utils) [N/y/?] 
+xserver-xorg-dbg (xserver-xorg-dbg) [N/y/?] 
+xserver-xorg-extension-extmod (xserver-xorg-extension-extmod) [N/y/?] 
+*
+* builder 
+*
+builder (builder) [N/y/?] 
+builder-dbg (builder-dbg) [N/y/?] 
+builder-dev (builder-dev) [N/y/?] 
+*
+* fonts 
+*
+*
+* liberation-fonts 
+*
+liberation-fonts (liberation-fonts) [N/y/?] 
+*
+* glew 
+*
+glew (glew) [N/y/?] 
+glew-bin (glew-bin) [N/y/?] 
+glew-dev (glew-dev) [N/y/?] 
+glew-dbg (glew-dbg) [N/y/?] 
+*
+* gnome 
+*
+*
+* adwaita-icon-theme 
+*
+adwaita-icon-theme (adwaita-icon-theme) [N/y/?] 
+adwaita-icon-theme-hires (adwaita-icon-theme-hires) [N/y/?] 
+adwaita-icon-theme-symbolic (adwaita-icon-theme-symbolic) [N/y/?] 
+adwaita-icon-theme-cursors (adwaita-icon-theme-cursors) [N/y/?] 
+adwaita-icon-theme-symbolic-hires (adwaita-icon-theme-symbolic-hires) [N/y/?] 
+*
+* gconf 
+*
+gconf (gconf) [N/y/?] 
+gconf-dev (gconf-dev) [N/y/?] 
+gconf-dbg (gconf-dbg) [N/y/?] 
+*
+* gnome-common 
+*
+gnome-common (gnome-common) [N/y/?] 
+gnome-common-dev (gnome-common-dev) [N/y/?] 
+gnome-common-dbg (gnome-common-dbg) [N/y/?] 
+*
+* gnome-themes-extra 
+*
+gnome-themes-extra-dev (gnome-themes-extra-dev) [N/y/?] 
+gnome-themes-extra-dbg (gnome-themes-extra-dbg) [N/y/?] 
+gnome-theme-adwaita (gnome-theme-adwaita) [N/y/?] 
+*
+* libsoup-2.4 
+*
+libsoup-2.4 (libsoup-2.4) [N/y/?] 
+libsoup-2.4-dev (libsoup-2.4-dev) [N/y/?] 
+libsoup-2.4-dbg (libsoup-2.4-dbg) [N/y/?] 
+*
+* libglu 
+*
+libglu (libglu) [N/y/?] 
+libglu-dev (libglu-dev) [N/y/?] 
+libglu-dbg (libglu-dbg) [N/y/?] 
+*
+* libs 
+*
+*
+* atk 
+*
+atk (atk) [N/y/?] 
+atk-dev (atk-dev) [N/y/?] 
+atk-dbg (atk-dbg) [N/y/?] 
+*
+* libfm 
+*
+libfm (libfm) [N/y/?] 
+libfm-mime (libfm-mime) [N/y/?] 
+libfm-dev (libfm-dev) [N/y/?] 
+libfm-dbg (libfm-dbg) [N/y/?] 
+*
+* libfm-extra 
+*
+libfm-extra (libfm-extra) [N/y/?] 
+libfm-extra-dev (libfm-extra-dev) [N/y/?] 
+libfm-extra-dbg (libfm-extra-dbg) [N/y/?] 
+*
+* libmatchbox 
+*
+libmatchbox (libmatchbox) [N/y/?] 
+libmatchbox-dev (libmatchbox-dev) [N/y/?] 
+libmatchbox-dbg (libmatchbox-dbg) [N/y/?] 
+*
+* libpthread-stubs 
+*
+libpthread-stubs-dbg (libpthread-stubs-dbg) [N/y/?] 
+libpthread-stubs-dev (libpthread-stubs-dev) [N/y/?] 
+*
+* libwnck3 
+*
+libwnck3 (libwnck3) [N/y/?] 
+libwnck3-dev (libwnck3-dev) [N/y/?] 
+libwnck3-dbg (libwnck3-dbg) [N/y/?] 
+*
+* libxcb 
+*
+libxcb (libxcb) [N/y/?] 
+libxcb-dev (libxcb-dev) [N/y/?] 
+libxcb-dbg (libxcb-dbg) [N/y/?] 
+*
+* menu-cache 
+*
+menu-cache (menu-cache) [N/y/?] 
+menu-cache-dbg (menu-cache-dbg) [N/y/?] 
+menu-cache-dev (menu-cache-dev) [N/y/?] 
+*
+* xcb-proto 
+*
+python-xcbgen (python-xcbgen) [N/y/?] 
+xcb-proto-dev (xcb-proto-dev) [N/y/?] 
+xcb-proto-dbg (xcb-proto-dbg) [N/y/?] 
+*
+* xcb-util 
+*
+xcb-util (xcb-util) [N/y/?] 
+xcb-util-dbg (xcb-util-dbg) [N/y/?] 
+xcb-util-dev (xcb-util-dev) [N/y/?] 
+*
+* xkeyboard-config 
+*
+xkeyboard-config (xkeyboard-config) [N/y/?] 
+xkeyboard-config-dev (xkeyboard-config-dev) [N/y/?] 
+xkeyboard-config-dbg (xkeyboard-config-dbg) [N/y/?] 
+*
+* matchbox-keyboard 
+*
+matchbox-keyboard (matchbox-keyboard) [N/y/?] 
+matchbox-keyboard-im (matchbox-keyboard-im) [N/y/?] 
+matchbox-keyboard-dev (matchbox-keyboard-dev) [N/y/?] 
+matchbox-keyboard-applet (matchbox-keyboard-applet) [N/y/?] 
+matchbox-keyboard-dbg (matchbox-keyboard-dbg) [N/y/?] 
+*
+* matchbox-session 
+*
+matchbox-session (matchbox-session) [N/y/?] 
+matchbox-session-dev (matchbox-session-dev) [N/y/?] 
+matchbox-session-dbg (matchbox-session-dbg) [N/y/?] 
+*
+* matchbox-session-sato 
+*
+matchbox-session-sato (matchbox-session-sato) [N/y/?] 
+matchbox-session-sato-dev (matchbox-session-sato-dev) [N/y/?] 
+matchbox-session-sato-dbg (matchbox-session-sato-dbg) [N/y/?] 
+*
+* mesa-demos 
+*
+mesa-demos (mesa-demos) [N/y/?] 
+mesa-demos-dbg (mesa-demos-dbg) [N/y/?] 
+mesa-demos-dev (mesa-demos-dev) [N/y/?] 
+*
+* mini-x-session 
+*
+mini-x-session (mini-x-session) [N/y/?] 
+mini-x-session-dev (mini-x-session-dev) [N/y/?] 
+mini-x-session-dbg (mini-x-session-dbg) [N/y/?] 
+*
+* pcmanfm 
+*
+pcmanfm (pcmanfm) [N/y/?] 
+pcmanfm-dbg (pcmanfm-dbg) [N/y/?] 
+pcmanfm-dev (pcmanfm-dev) [N/y/?] 
+*
+* settings-daemon 
+*
+settings-daemon (settings-daemon) [N/y/?] 
+settings-daemon-dev (settings-daemon-dev) [N/y/?] 
+settings-daemon-dbg (settings-daemon-dbg) [N/y/?] 
+*
+* utils 
+*
+*
+* libcroco 
+*
+libcroco (libcroco) [N/y/?] 
+libcroco-dbg (libcroco-dbg) [N/y/?] 
+libcroco-dev (libcroco-dev) [N/y/?] 
+*
+* librsvg 
+*
+librsvg (librsvg) [N/y/?] 
+librsvg-gtk (librsvg-gtk) [N/y/?] 
+rsvg (rsvg) [N/y/?] 
+librsvg-dev (librsvg-dev) [N/y/?] 
+librsvg-dbg (librsvg-dbg) [N/y/?] 
+*
+* matchbox-terminal 
+*
+matchbox-terminal (matchbox-terminal) [N/y/?] 
+matchbox-terminal-dev (matchbox-terminal-dev) [N/y/?] 
+matchbox-terminal-dbg (matchbox-terminal-dbg) [N/y/?] 
+*
+* xrestop 
+*
+xrestop (xrestop) [N/y/?] 
+xrestop-dev (xrestop-dev) [N/y/?] 
+xrestop-dbg (xrestop-dbg) [N/y/?] 
+*
+* wm 
+*
+*
+* libfakekey 
+*
+libfakekey (libfakekey) [N/y/?] 
+libfakekey-dev (libfakekey-dev) [N/y/?] 
+libfakekey-dbg (libfakekey-dbg) [N/y/?] 
+*
+* matchbox-desktop 
+*
+matchbox-desktop (matchbox-desktop) [N/y/?] 
+matchbox-desktop-dbg (matchbox-desktop-dbg) [N/y/?] 
+matchbox-desktop-dev (matchbox-desktop-dev) [N/y/?] 
+*
+* matchbox-theme-sato 
+*
+matchbox-theme-sato (matchbox-theme-sato) [N/y/?] 
+matchbox-theme-sato-dbg (matchbox-theme-sato-dbg) [N/y/?] 
+matchbox-theme-sato-dev (matchbox-theme-sato-dev) [N/y/?] 
+*
+* matchbox-wm 
+*
+matchbox-wm (matchbox-wm) [N/y/?] 
+matchbox-wm-dev (matchbox-wm-dev) [N/y/?] 
+matchbox-wm-dbg (matchbox-wm-dbg) [N/y/?] 
+*
+* xserver-nodm-init 
+*
+xserver-nodm-init (xserver-nodm-init) [N/y/?] 
+xserver-nodm-init-dbg (xserver-nodm-init-dbg) [N/y/?] 
+xserver-nodm-init-dev (xserver-nodm-init-dev) [N/y/?] 
+*
+* Petalinux Package Groups
+*
+*
+* packagegroup-petalinux 
+*
+packagegroup-petalinux (packagegroup-petalinux) [N/y/?] 
+packagegroup-petalinux-dbg (packagegroup-petalinux-dbg) [N/y/?] 
+packagegroup-petalinux-dev (packagegroup-petalinux-dev) [N/y/?] 
+*
+* packagegroup-petalinux-audio 
+*
+packagegroup-petalinux-audio (packagegroup-petalinux-audio) [N/y/?] 
+packagegroup-petalinux-audio-dbg (packagegroup-petalinux-audio-dbg) [N/y/?] 
+packagegroup-petalinux-audio-dev (packagegroup-petalinux-audio-dev) [N/y/?] 
+*
+* packagegroup-petalinux-benchmarks 
+*
+packagegroup-petalinux-benchmarks (packagegroup-petalinux-benchmarks) [N/y/?] 
+packagegroup-petalinux-benchmarks-dbg (packagegroup-petalinux-benchmarks-dbg) [N/y/?] 
+packagegroup-petalinux-benchmarks-dev (packagegroup-petalinux-benchmarks-dev) [N/y/?] 
+*
+* packagegroup-petalinux-display-debug 
+*
+packagegroup-petalinux-display-debug (packagegroup-petalinux-display-debug) [N/y/?] 
+packagegroup-petalinux-display-debug-dbg (packagegroup-petalinux-display-debug-dbg) [N/y/?] 
+packagegroup-petalinux-display-debug-dev (packagegroup-petalinux-display-debug-dev) [N/y/?] 
+*
+* packagegroup-petalinux-gstreamer 
+*
+packagegroup-petalinux-gstreamer (packagegroup-petalinux-gstreamer) [Y/n/?] 
+packagegroup-petalinux-gstreamer-dev (packagegroup-petalinux-gstreamer-dev) [N/y/?] 
+packagegroup-petalinux-gstreamer-dbg (packagegroup-petalinux-gstreamer-dbg) [N/y/?] 
+*
+* packagegroup-petalinux-lmsensors 
+*
+packagegroup-petalinux-lmsensors (packagegroup-petalinux-lmsensors) [N/y/?] 
+packagegroup-petalinux-lmsensors-dbg (packagegroup-petalinux-lmsensors-dbg) [N/y/?] 
+packagegroup-petalinux-lmsensors-dev (packagegroup-petalinux-lmsensors-dev) [N/y/?] 
+*
+* packagegroup-petalinux-matchbox 
+*
+packagegroup-petalinux-matchbox (packagegroup-petalinux-matchbox) [N/y/?] 
+packagegroup-petalinux-matchbox-dbg (packagegroup-petalinux-matchbox-dbg) [N/y/?] 
+packagegroup-petalinux-matchbox-dev (packagegroup-petalinux-matchbox-dev) [N/y/?] 
+*
+* packagegroup-petalinux-mraa 
+*
+packagegroup-petalinux-mraa (packagegroup-petalinux-mraa) [N/y/?] 
+packagegroup-petalinux-mraa-dbg (packagegroup-petalinux-mraa-dbg) [N/y/?] 
+packagegroup-petalinux-mraa-dev (packagegroup-petalinux-mraa-dev) [N/y/?] 
+*
+* packagegroup-petalinux-multimedia 
+*
+packagegroup-petalinux-multimedia (packagegroup-petalinux-multimedia) [N/y/?] 
+packagegroup-petalinux-multimedia-dbg (packagegroup-petalinux-multimedia-dbg) [N/y/?] 
+packagegroup-petalinux-multimedia-dev (packagegroup-petalinux-multimedia-dev) [N/y/?] 
+*
+* packagegroup-petalinux-networking-debug
+*
+packagegroup-petalinux-networking-debug (packagegroup-petalinux-networking-debug) [N/y/?] 
+packagegroup-petalinux-networking-debug-dbg (packagegroup-petalinux-networking-debug-dbg) [N/y/?] 
+packagegroup-petalinux-networking-debug-dev (packagegroup-petalinux-networking-debug-dev) [N/y/?] 
+*
+* packagegroup-petalinux-networking-stack 
+*
+packagegroup-petalinux-networking-stack (packagegroup-petalinux-networking-stack) [N/y/?] 
+packagegroup-petalinux-networking-stack-dbg (packagegroup-petalinux-networking-stack-dbg) [N/y/?] 
+packagegroup-petalinux-networking-stack-dev (packagegroup-petalinux-networking-stack-dev) [N/y/?] 
+*
+* packagegroup-petalinux-ocicontainers 
+*
+packagegroup-petalinux-ocicontainers (packagegroup-petalinux-ocicontainers) [N/y/?] 
+packagegroup-petalinux-ocicontainers-dev (packagegroup-petalinux-ocicontainers-dev) [N/y/?] 
+packagegroup-petalinux-ocicontainers-dbg (packagegroup-petalinux-ocicontainers-dbg) [N/y/?] 
+*
+* packagegroup-petalinux-openamp 
+*
+packagegroup-petalinux-openamp (packagegroup-petalinux-openamp) [N/y/?] 
+packagegroup-petalinux-openamp-dev (packagegroup-petalinux-openamp-dev) [N/y/?] 
+packagegroup-petalinux-openamp-dbg (packagegroup-petalinux-openamp-dbg) [N/y/?] 
+*
+* packagegroup-petalinux-opencv 
+*
+packagegroup-petalinux-opencv (packagegroup-petalinux-opencv) [Y/n/?] 
+packagegroup-petalinux-opencv-dev (packagegroup-petalinux-opencv-dev) [N/y/?] 
+packagegroup-petalinux-opencv-dbg (packagegroup-petalinux-opencv-dbg) [N/y/?] 
+*
+* packagegroup-petalinux-python-modules 
+*
+packagegroup-petalinux-python-modules (packagegroup-petalinux-python-modules) [N/y/?] 
+packagegroup-petalinux-python-modules-dbg (packagegroup-petalinux-python-modules-dbg) [N/y/?] 
+packagegroup-petalinux-python-modules-dev (packagegroup-petalinux-python-modules-dev) [N/y/?] 
+*
+* packagegroup-petalinux-qt 
+*
+packagegroup-petalinux-qt (packagegroup-petalinux-qt) [N/y/?] 
+packagegroup-petalinux-qt-dev (packagegroup-petalinux-qt-dev) [N/y/?] 
+packagegroup-petalinux-qt-dbg (packagegroup-petalinux-qt-dbg) [N/y/?] 
+populate_sdk_qt5 (imageclass-populate-sdk-qt5) [N/y/?] 
+*
+* packagegroup-petalinux-qt-extended 
+*
+packagegroup-petalinux-qt-extended (packagegroup-petalinux-qt-extended) [N/y/?] 
+packagegroup-petalinux-qt-extended-dbg (packagegroup-petalinux-qt-extended-dbg) [N/y/?] 
+packagegroup-petalinux-qt-extended-dev (packagegroup-petalinux-qt-extended-dev) [N/y/?] 
+*
+* packagegroup-petalinux-self-hosted 
+*
+packagegroup-petalinux-self-hosted (packagegroup-petalinux-self-hosted) [N/y/?] 
+packagegroup-petalinux-self-hosted-dbg (packagegroup-petalinux-self-hosted-dbg) [N/y/?] 
+packagegroup-petalinux-self-hosted-dev (packagegroup-petalinux-self-hosted-dev) [N/y/?] 
+*
+* packagegroup-petalinux-utils 
+*
+packagegroup-petalinux-utils (packagegroup-petalinux-utils) [N/y/?] 
+packagegroup-petalinux-utils-dbg (packagegroup-petalinux-utils-dbg) [N/y/?] 
+packagegroup-petalinux-utils-dev (packagegroup-petalinux-utils-dev) [N/y/?] 
+*
+* packagegroup-petalinux-v4lutils 
+*
+packagegroup-petalinux-v4lutils (packagegroup-petalinux-v4lutils) [N/y/?] 
+packagegroup-petalinux-v4lutils-dbg (packagegroup-petalinux-v4lutils-dbg) [N/y/?] 
+packagegroup-petalinux-v4lutils-dev (packagegroup-petalinux-v4lutils-dev) [N/y/?] 
+*
+* packagegroup-petalinux-vitis-acceleration-essential 
+*
+packagegroup-petalinux-vitis-acceleration-essential (packagegroup-petalinux-vitis-acceleration-essential) [N/y/?] 
+packagegroup-petalinux-vitis-acceleration-essential-dbg (packagegroup-petalinux-vitis-acceleration-essential-dbg) [N/y/?] 
+packagegroup-petalinux-vitis-acceleration-essential-dev (packagegroup-petalinux-vitis-acceleration-essential-dev) [N/y/?] 
+*
+* packagegroup-petalinux-x11 
+*
+packagegroup-petalinux-x11 (packagegroup-petalinux-x11) [N/y/?] 
+packagegroup-petalinux-x11-dev (packagegroup-petalinux-x11-dev) [N/y/?] 
+packagegroup-petalinux-x11-dbg (packagegroup-petalinux-x11-dbg) [N/y/?] 
+*
+* packagegroup-petalinux-xen 
+*
+packagegroup-petalinux-xen (packagegroup-petalinux-xen) [N/y/?] 
+packagegroup-petalinux-xen-dev (packagegroup-petalinux-xen-dev) [N/y/?] 
+packagegroup-petalinux-xen-dbg (packagegroup-petalinux-xen-dbg) [N/y/?] 
+*
+* Image Features
+*
+ssh-server-dropbear (imagefeature-ssh-server-dropbear) [N/y/?] 
+ssh-server-openssh (imagefeature-ssh-server-openssh) [Y/n/?] 
+hwcodecs (imagefeature-hwcodecs) [Y/n/?] 
+package-management (imagefeature-package-management) [Y/n/?] 
+  package-feed-uris (package-feed-uris) [] 
+  package-feed-archs (package-feed-archs) [${@d.getVar('PACKAGE_ARCHS').replace('-','_')} versal_prime versal_premium versal_ai_core versal_ai_edge] 
+debug-tweaks (imagefeature-debug-tweaks) [N/y/?] 
+empty-root-password (imagefeature-empty-root-password) [N/y/?] 
+serial-autologin-root (imagefeature-serial-autologin-root) [N/y/?] 
+Init-manager
+> 1. systemd (Init-manager-systemd)
+  2. sysvinit (Init-manager-sysvinit)
+choice[1-2]: *
+* user packages 
+*
+libvdu-ctrlsw (libvdu-ctrlsw) [Y/n/?] 
+libvdu-omxil (libvdu-omxil) [Y/n/?] 
+gpio-demo (gpio-demo) [N/y/?] 
+htop (htop) [Y/n/?] 
+iperf3 (iperf3) [Y/n/?] 
+kernel-module-vdu (kernel-module-vdu) [Y/n/?] 
+meson (meson) [Y/n/?] 
+packagegroup-petalinux-gstreamer (packagegroup-petalinux-gstreamer) [Y/n/?] 
+peekpoke (peekpoke) [N/y/?] 
+resize-part (resize-part) [Y/n/?] 
+vdu-firmware (vdu-firmware) [Y/n/?] 
+*
+* PetaLinux RootFS Settings
+*
+Add Extra Users (ADD_EXTRA_USERS) [root:root;petalinux::passwd-expire;] 
+Create new Groups (CREATE_NEW_GROUPS) [aie;] 
+Add Users to Groups (ADD_USERS_TO_GROUPS) [petalinux:audio,video,aie,input;] 
+Add Users to Sudo users (ADD_USERS_TO_SUDOERS) [petalinux] 
+#
+# configuration written to /proj/petalinux/2024.1/petalinux-v2024.1_11291502/logs/bsps/versal-rootfs-common-2024.1/project-spec/configs/rootfs_config
+#

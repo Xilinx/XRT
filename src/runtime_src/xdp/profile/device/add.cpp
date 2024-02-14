@@ -50,7 +50,7 @@ size_t DeadlockDetector::reset()
 void DeadlockDetector::showProperties()
 {
     std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
-    (*outputStream) << " DeadlockDetector " << std::endl;
+    (*outputStream) << " DeadlockDetector " << "\n";
     ProfileIP::showProperties();
 }
 

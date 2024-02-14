@@ -24,7 +24,7 @@ using severity_level = xrt_core::message::severity_level;
 void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
     if (out_stream)
-        (*out_stream) << " TraceS2MM::init " << std::endl;
+        (*out_stream) << " TraceS2MM::init " << "\n";
 
     if (isActive())
         reset();
@@ -68,7 +68,7 @@ void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 uint64_t AIETraceS2MM::getWordCount(bool final)
 {
     if (out_stream)
-        (*out_stream) << " AIETraceS2MM::getWordCount " << std::endl;
+        (*out_stream) << " AIETraceS2MM::getWordCount " << "\n";
 
     // Call flush on V2 datamover to ensure all data is written
     if (final && isVersion2())

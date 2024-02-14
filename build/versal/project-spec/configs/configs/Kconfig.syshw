@@ -1,0 +1,1625 @@
+menuconfig SUBSYSTEM_HARDWARE_AUTO
+	bool "Subsystem AUTO Hardware Settings"
+	default y
+	help
+	  This menu is to configure system hardware.
+
+if SUBSYSTEM_HARDWARE_AUTO
+
+
+config SUBSYSTEM_PROCESSOR0_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_cortexa72_0
+
+choice
+	prompt "System Processor"
+	help
+	 Select a processor as the system processor
+config SUBSYSTEM_PROCESSOR_CIPS_0_pspmc_0_psv_cortexa72_0_SELECT
+	bool "CIPS_0_pspmc_0_psv_cortexa72_0"
+
+endchoice
+
+config SUBSYSTEM_ENABLE_ARCH64
+	bool
+	default y
+	select SUBSYSTEM_ARCH_AARCH64
+	depends on SUBSYSTEM_PROCESSOR_CIPS_0_pspmc_0_psv_cortexa72_0_SELECT
+
+if SUBSYSTEM_PROCESSOR_CIPS_0_pspmc_0_psv_cortexa72_0_SELECT
+menu "Memory Settings"
+choice
+	prompt "Primary Memory"
+	help
+	  The configuration in this menu impacts the memory settings in the device tree
+	  autoconfig files.
+	  If you select 'manual', PetaLinux will auto generate memory node based on user inputs,
+	  you will need to specify base address and memory size.
+	  To skip generating lower or upper memory node specify 0x0 offset to the memory size.
+	config SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SELECT
+	bool "C0_DDR_LOW0"
+config SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SELECT
+	bool "C0_DDR_LOW1"
+config SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SELECT
+	bool "C0_DDR_CH1x2"
+
+config SUBSYSTEM_MEMORY_MANUAL_SELECT
+	bool "manual"
+
+	endchoice
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_BASEADDR
+	hex "System memory base address"
+	default 0x00000000
+	range 0x00000000 0x7e000000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SELECT
+	help
+	  Start address of the system memory.
+	  It has to be within the selected primary memory physical address range.
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_BASEADDR
+	hex "System memory base address"
+	default 0x800000000
+	range 0x800000000 0x97e000000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SELECT
+	help
+	  Start address of the system memory.
+	  It has to be within the selected primary memory physical address range.
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_BASEADDR
+	hex "System memory base address"
+	default 0x50000000000
+	range 0x50000000000 0x501fe000000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SELECT
+	help
+	  Start address of the system memory.
+	  It has to be within the selected primary memory physical address range.
+
+
+config SUBSYSTEM_MEMORY_MANUAL_LOWER_BASEADDR
+	hex "Lower memory base address"
+	default 0x0
+	depends on SUBSYSTEM_MEMORY_MANUAL_SELECT
+	help
+	  base address of the lower memory
+	  Make sure the DT memory entry should start with provided address.
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SIZE
+	hex "System memory size"
+	default 0x80000000
+	range 0x2000000 0x80000000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SELECT
+	help
+	  Size of the system memory. Minimum is 32MB, maximum is the size of
+	  the selected primary memory physical address range.
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SIZE
+	hex "System memory size"
+	default 0x180000000
+	range 0x2000000 0x180000000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SELECT
+	help
+	  Size of the system memory. Minimum is 32MB, maximum is the size of
+	  the selected primary memory physical address range.
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SIZE
+	hex "System memory size"
+	default 0x200000000
+	range 0x2000000 0x200000000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SELECT
+	help
+	  Size of the system memory. Minimum is 32MB, maximum is the size of
+	  the selected primary memory physical address range.
+
+
+config SUBSYSTEM_MEMORY_MANUAL_LOWER_MEMORYSIZE
+	hex "Lower memory size"
+	default 0x80000000
+	depends on SUBSYSTEM_MEMORY_MANUAL_SELECT
+	help
+	  Size of the lower memory. Minimum is 32MB, maximum is the size of
+	  the selected primary memory physical address range.
+	  If you specify 0x0 offset then it will skip generating lower memory node.
+
+
+config SUBSYSTEM_MEMORY_MANUAL_UPPER_BASEADDR
+	hex "Upper memory base address"
+	default 0x800000000
+	depends on SUBSYSTEM_MEMORY_MANUAL_SELECT
+	depends on SUBSYSTEM_ARCH_AARCH64
+	help
+	  base address of the upper memory
+	  Make sure the DT memory entry should start with provided address.
+
+
+config SUBSYSTEM_MEMORY_MANUAL_UPPER_MEMORYSIZE
+	hex "Upper memory size"
+	default 0x80000000
+	depends on SUBSYSTEM_MEMORY_MANUAL_SELECT
+	depends on SUBSYSTEM_ARCH_AARCH64
+	help
+	  Size of the upper memory. Minimum is 32MB, maximum is the size of
+	  the selected primary memory physical address range.
+	  If you specify 0x0 offset then it will skip generating upper memory node.
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_U__BOOT_TEXTBASE_OFFSET
+	hex "u-boot text base address offset to memory base address"
+	default 0x8000000 if SUBSYSTEM_ARCH_AARCH64
+	default 0x4000000 if SUBSYSTEM_ARCH_ARM
+	default 0x100000 if SUBSYSTEM_ARCH_MICROBLAZE
+	range 0x100000 0x7e100000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SELECT
+	depends on !SUBSYSTEM_COMPONENT_U__BOOT_NAME_NONE
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_U__BOOT_TEXTBASE_OFFSET
+	hex "u-boot text base address offset to memory base address"
+	default 0x808000000 if SUBSYSTEM_ARCH_AARCH64
+	default 0x804000000 if SUBSYSTEM_ARCH_ARM
+	default 0x800100000 if SUBSYSTEM_ARCH_MICROBLAZE
+	range 0x800100000 0x97e100000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SELECT
+	depends on !SUBSYSTEM_COMPONENT_U__BOOT_NAME_NONE
+
+
+config SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_U__BOOT_TEXTBASE_OFFSET
+	hex "u-boot text base address offset to memory base address"
+	default 0x50008000000 if SUBSYSTEM_ARCH_AARCH64
+	default 0x50004000000 if SUBSYSTEM_ARCH_ARM
+	default 0x50000100000 if SUBSYSTEM_ARCH_MICROBLAZE
+	range 0x50000100000 0x501fe100000
+	depends on SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SELECT
+	depends on !SUBSYSTEM_COMPONENT_U__BOOT_NAME_NONE
+
+
+
+config SUBSYSTEM_MEMORY_IP_NAME
+	string
+	default C0_DDR_LOW0
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW0_BANKLESS_SELECT
+
+
+config SUBSYSTEM_MEMORY_IP_NAME
+	string
+	default C0_DDR_LOW1
+	depends on SUBSYSTEM_MEMORY_C0_DDR_LOW1_BANKLESS_SELECT
+
+
+config SUBSYSTEM_MEMORY_IP_NAME
+	string
+	default C0_DDR_CH1X2
+	depends on SUBSYSTEM_MEMORY_C0_DDR_CH1X2_BANKLESS_SELECT
+
+
+endmenu
+
+menu "Serial Settings"
+
+choice
+	prompt "PLM Serial stdin/stdout"
+
+help
+	  Select a serial as the PLM's stdin,stdout.
+	  If you select 'manual', you will need to add this variable 
+	  YAML_SERIAL_CONSOLE_STDIN:forcevariable:pn-PLM = "<serial_ipname>" 
+	  YAML_SERIAL_CONSOLE_STDOUT:forcevariable:pn-PLM = "<serial_ipname>" 
+config SUBSYSTEM_PLM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT
+	bool "CIPS_0_pspmc_0_psv_sbsauart_0"
+config SUBSYSTEM_PLM_SERIAL_MANUAL_SELECT
+bool "manual"
+	endchoice
+
+choice
+	prompt "TF-A Serial stdin/stdout"
+
+help
+	  Select a serial as the TF-A's stdin,stdout.
+	  If you select 'manual', you will need to add this variable 
+	  YAML_SERIAL_CONSOLE_STDIN:forcevariable:pn-TF-A = "<serial_ipname>" 
+	  YAML_SERIAL_CONSOLE_STDOUT:forcevariable:pn-TF-A = "<serial_ipname>" 
+
+help
+	  Select a serial as the TF-A's stdin,stdout.
+	  If you select 'manual', you will need to add this variable 
+	  ATF_CONSOLE:forcevariable = "<serial_ipname>" in petalinuxbps.conf 
+config SUBSYSTEM_TF-A_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT
+	bool "CIPS_0_pspmc_0_psv_sbsauart_0"
+config SUBSYSTEM_TF-A_SERIAL_MANUAL_SELECT
+bool "manual"
+	endchoice
+
+choice
+	prompt "DTG Serial stdin/stdout"
+
+help
+	  Select a serial as the DTG's stdin,stdout.
+	  If you select 'manual', you will need to add this variable 
+	  YAML_SERIAL_CONSOLE_STDIN:forcevariable:pn-DTG = "<serial_ipname>" 
+	  YAML_SERIAL_CONSOLE_STDOUT:forcevariable:pn-DTG = "<serial_ipname>" 
+
+help
+	  Select a serial as the U-boot and Linux's stdin,stdout.
+	  If you select 'manual', you will need to add this variable 
+	  YAML_SERIAL_CONSOLE_STDIN:forcevariable:pn-DTG = "<serial_ipname>" 
+	  YAML_SERIAL_CONSOLE_STDOUT:forcevariable:pn-DTG = "<serial_ipname>" 
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT
+	bool "CIPS_0_pspmc_0_psv_sbsauart_0"
+config SUBSYSTEM_SERIAL_MANUAL_SELECT
+bool "manual"
+	endchoice
+
+
+choice
+	prompt "System stdin/stdout baudrate for CIPS_0_pspmc_0_psv_sbsauart_0"
+	default SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_115200
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_600
+	bool "600"	
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_9600
+	bool "9600"	
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_28800
+	bool "28800"	
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_115200
+	bool "115200"	
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_230400
+	bool "230400"	
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_460800
+	bool "460800"	
+config SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_BAUDRATE_921600
+	bool "921600"	
+endchoice
+
+
+config SUBSYSTEM_SERIAL_PLM_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_sbsauart_0 if SUBSYSTEM_PLM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT
+
+config SUBSYSTEM_SERIAL_TF-A_IP_NAME
+string
+default pl011 if SUBSYSTEM_TF-A_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT
+
+config SUBSYSTEM_SERIAL_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_sbsauart_0 if SUBSYSTEM_SERIAL_CIPS_0_PSPMC_0_PSV_SBSAUART_0_SELECT
+
+endmenu
+
+menu "Ethernet Settings"
+choice
+	prompt "Primary Ethernet"
+	help
+	  Select a Ethernet used as primary Ethernet.
+	  The primary ethernet will be used for u-boot networking if u-boot is
+	  selected and will be used as eth0 in Linux.
+	  If your preferred primary ethernet is not on the list, please select
+	  'manual'.
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT
+	bool "CIPS_0_pspmc_0_psv_ethernet_0"
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT
+	bool "CIPS_0_pspmc_0_psv_ethernet_1"
+config SUBSYSTEM_ETHERNET_MANUAL_SELECT
+	bool "manual"
+
+endchoice
+
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC_AUTO
+	bool "Randomise MAC address"
+	default y if SUBSYSTEM_ARCH_MICROBLAZE
+	default n
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT
+	help
+	  randomise MAC address for the primary ethernet.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC_PATTERN
+	string "Template for randomised MAC address"
+	default "00:0a:35:00:??:??"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT && SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC_AUTO
+	help
+	  Pattern for generating random MAC addresses - question mark
+	  characters will be replaced by random hex digits
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC
+	string "Ethernet MAC address"
+	default "ff:ff:ff:ff:ff:ff"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_MAC_AUTO
+	help
+	  Default mac set to ff:ff:ff:ff:ff:ff invalid mac address to read from EEPROM
+	  if you want change with desired value you can change, example: 00:0a:35:00:22:01
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_MAC_AUTO
+	bool "Randomise MAC address"
+	default y if SUBSYSTEM_ARCH_MICROBLAZE
+	default n
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT
+	help
+	  randomise MAC address for the primary ethernet.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_MAC_PATTERN
+	string "Template for randomised MAC address"
+	default "00:0a:35:00:??:??"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT && SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_MAC_AUTO
+	help
+	  Pattern for generating random MAC addresses - question mark
+	  characters will be replaced by random hex digits
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_MAC
+	string "Ethernet MAC address"
+	default "ff:ff:ff:ff:ff:ff"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_MAC_AUTO
+	help
+	  Default mac set to ff:ff:ff:ff:ff:ff invalid mac address to read from EEPROM
+	  if you want change with desired value you can change, example: 00:0a:35:00:22:01
+
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_USE_DHCP
+	bool "Obtain IP address automatically"
+	default y
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT
+	help
+	  Set this option if you would like your SUBSYSTEM to use DHCP for
+	  obtaining an IP address.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_IP_ADDRESS
+	string "Static IP address"
+	default "192.168.0.10"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_USE_DHCP
+	help
+	  The IP address of your main network interface when static network
+	  address assignment is used.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_IP_NETMASK
+	string "Static IP netmask"
+	default "255.255.255.0"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_USE_DHCP
+	help
+	  Default netmask when static network address assignment is used.
+	  In case of systemd please specify netmask value like CIDR notation Eg: 24 instead of 255.255.255.0
+	  In case of sysvinit please specify netmask value like dot-decimal notation Eg: 255.255.255.0 instead of 24 
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_IP_GATEWAY
+	string "Static IP gateway"
+	default "192.168.0.1"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_0_USE_DHCP
+	help
+	  Default gateway when static network address assignment is used.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_USE_DHCP
+	bool "Obtain IP address automatically"
+	default y
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT
+	help
+	  Set this option if you would like your SUBSYSTEM to use DHCP for
+	  obtaining an IP address.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_IP_ADDRESS
+	string "Static IP address"
+	default "192.168.0.10"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_USE_DHCP
+	help
+	  The IP address of your main network interface when static network
+	  address assignment is used.
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_IP_NETMASK
+	string "Static IP netmask"
+	default "255.255.255.0"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_USE_DHCP
+	help
+	  Default netmask when static network address assignment is used.
+	  In case of systemd please specify netmask value like CIDR notation Eg: 24 instead of 255.255.255.0
+	  In case of sysvinit please specify netmask value like dot-decimal notation Eg: 255.255.255.0 instead of 24 
+
+config SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_IP_GATEWAY
+	string "Static IP gateway"
+	default "192.168.0.1"
+	depends on SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_SELECT && !SUBSYSTEM_ETHERNET_CIPS_0_PSPMC_0_PSV_ETHERNET_1_USE_DHCP
+	help
+	  Default gateway when static network address assignment is used.
+
+endmenu
+
+menu "Flash Settings"
+choice
+	prompt "Primary Flash"
+	help
+	  Select a Flash instance used as Primary Flash.
+	  PetaLinux auto config will apply the flash partition table settings
+	  to the primary flash.
+	  If you preferred flash is not on the list or you don't want PetaLinux
+	  to manage your flash partition, please select manual.
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_SELECT
+	bool "CIPS_0_pspmc_0_psv_pmc_qspi_0"
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_SELECT
+	bool "CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0"
+config SUBSYSTEM_FLASH_MANUAL_SELECT
+	bool "manual"
+
+endchoice
+
+
+
+config SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	bool "Advanced Flash Auto Configuration"
+	default n
+	depends on !SUBSYSTEM_FLASH_MANUAL_SELECT
+	help
+	  Select this option to enabled 
+
+
+comment "partition 0"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_SELECT
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME
+	string "name"
+	default "qspi-boot"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_SELECT
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_SIZE
+	hex "size"
+	default 0x100000
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 1"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME
+	string "name"
+	default "qspi-kernel"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_SIZE
+	hex "size"
+	default 0x1600000
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 2"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME
+	string "name"
+	default "qspi-bootenv"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_SIZE
+	hex "size"
+	default 0x40000
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 3"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 4"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 5"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 6"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 7"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 8"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 9"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 10"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 11"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 12"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 13"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 14"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 15"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 16"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 17"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 18"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 19"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART19_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART19_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART19_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART19_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART19_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+
+
+comment "partition 0"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_SELECT
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_NAME
+	string "name"
+	default "spi0-boot"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_SELECT
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_SIZE
+	hex "size"
+	default 0x100000
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 1"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_NAME
+	string "name"
+	default "spi0-kernel"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_SIZE
+	hex "size"
+	default 0x1600000
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 2"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_NAME
+	string "name"
+	default "spi0-bootenv"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_SIZE
+	hex "size"
+	default 0x40000
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 3"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 4"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 5"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 6"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 7"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 8"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 9"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 10"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 11"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 12"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 13"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 14"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 15"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 16"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 17"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 18"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+comment "partition 19"
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART19_NAME
+	string "name"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART19_SIZE
+	hex "size"
+	default 0x0
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART19_NAME != ""
+
+config SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART19_FLAGS
+	string "flash partition flags"
+	default ""
+	depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART19_NAME != "" && SUBSYSTEM_FLASH__ADVANCED_AUTOCONFIG
+	help
+	  Pass the flash partition flags to DTS. Use comma separatioon for
+	  multiple flags, e.g. abc,def,...,xyz
+	  Currently, the supported string is RO ("read-only" string) flag
+	  which marks the partition read-only
+
+
+
+
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_SELECT
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_0_BANKLESS_PART18_NAME != ""
+
+
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_SELECT
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART0_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART1_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART2_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART3_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART4_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART5_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART6_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART7_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART8_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART9_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART10_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART11_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART12_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART13_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART14_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART15_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART16_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART17_NAME != ""
+
+config SUBSYSTEM_FLASH_IP_NAME
+string
+default CIPS_0_pspmc_0_psv_pmc_qspi_ospi_flash_0
+depends on SUBSYSTEM_FLASH_CIPS_0_PSPMC_0_PSV_PMC_QSPI_OSPI_FLASH_0_BANKLESS_PART18_NAME != ""
+
+
+endmenu
+
+menu "SD/SDIO Settings"
+choice
+	prompt "Primary SD/SDIO"
+	help
+	  Select a SD instanced used as primary SD/SDIO.
+	  It allows you to select which SD controller is in the systems primary SD card interface.
+	config SUBSYSTEM_PRIMARY_SD_MANUAL_SELECT
+	bool "manual"
+
+	endchoice
+
+endmenu
+
+
+
+menu "RTC Settings"
+choice
+	prompt "Primary RTC"
+	help
+	  Select a RTC instance used as primary timer for Linux kernel.
+	  If your preferred RTC is not on the list, please select 'manual'.
+	  If 'manual' is selected, you will be responsible to enable property
+	  kernel driver for your RTC.
+	config SUBSYSTEM_RTC_MANUAL_SELECT
+	bool "manual"
+
+endchoice
+
+endmenu
+
+
+
+
+
+
+
+
+
+endif
+endif

@@ -174,7 +174,7 @@ void ProfileIP::showWarning(std::string reason) {
      * do not expect any profiling information.
      */
     std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) << "Error: profiling will not be available. Reason: " << reason << std::endl;
+    (*outputStream) << "Error: profiling will not be available. Reason: " << reason << "\n";
     return;
 }
 
@@ -184,11 +184,11 @@ void ProfileIP::showProperties()
 
     std::ios_base::fmtflags formatF = outputStream->flags();
 
-    (*outputStream) << "    IP Name : " << ip_name << std::endl
-                    << "    Index   : " << ip_index << std::endl
-                    << "    MIndex   : " << m_index << std::endl
-                    << "    Base Address : " << std::hex << ip_base_address << std::endl
-                    << std::endl;
+    (*outputStream) << "    IP Name : " << ip_name << "\n"
+                    << "    Index   : " << ip_index << "\n"
+                    << "    MIndex   : " << m_index << "\n"
+                    << "    Base Address : " << std::hex << ip_base_address << "\n"
+                    << "\n";
     outputStream->flags(formatF);
 }
 

@@ -62,7 +62,7 @@ namespace xdp {
     }
     catch (std::exception& e) {
       std::stringstream msg;
-      msg << "Unable to create result buffer for Record Timer Values. Cannot get ML Timeline info. " << e.what() << std::endl;
+      msg << "Unable to create result buffer for Record Timer Values. Cannot get ML Timeline info. " << e.what() << "\n";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       return;
     }

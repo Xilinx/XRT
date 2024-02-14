@@ -74,7 +74,7 @@ size_t IOCtlASM::startCounter()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlASM::startCounter " << std::endl;
+    (*out_stream) << " IOCtlASM::startCounter " << "\n";
 
   ioctl(driver_FD, ASM_IOC_RESET);
   ioctl(driver_FD, ASM_IOC_STARTCNT);
@@ -88,7 +88,7 @@ size_t IOCtlASM::stopCounter()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlASM::stopCounter " << std::endl;
+    (*out_stream) << " IOCtlASM::stopCounter " << "\n";
 
   ioctl(driver_FD, ASM_IOC_STOPCNT);
   return 0;
@@ -101,7 +101,7 @@ size_t IOCtlASM::readCounter(xdp::CounterResults& counterResults)
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlASM::readCounter " << std::endl;
+    (*out_stream) << " IOCtlASM::readCounter " << "\n";
 
   uint64_t s = getASMSlotId(getMIndex());
 
@@ -120,12 +120,12 @@ size_t IOCtlASM::readCounter(xdp::CounterResults& counterResults)
   }
 
   if(out_stream) {
-    (*out_stream) << "Reading IOCtl AXI Stream Monitor... SlotNum : " << s << std::endl
-                  << "Reading IOCtl AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl
-                  << "Reading IOCtl AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl
-                  << "Reading IOCtl AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl
-                  << "Reading IOCtl AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << std::endl
-                  << "Reading IOCtl AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
+    (*out_stream) << "Reading IOCtl AXI Stream Monitor... SlotNum : " << s << "\n"
+                  << "Reading IOCtl AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << "\n"
+                  << "Reading IOCtl AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << "\n"
+                  << "Reading IOCtl AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << "\n"
+                  << "Reading IOCtl AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << "\n"
+                  << "Reading IOCtl AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << "\n";
   }
 
   return 0;
@@ -138,7 +138,7 @@ size_t IOCtlASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
   }
 
   if(out_stream)
-    (*out_stream) << " IOCtlASM::triggerTrace " << std::endl;
+    (*out_stream) << " IOCtlASM::triggerTrace " << "\n";
 
   ioctl(driver_FD, ASM_IOC_STARTTRACE, &traceOption);
   return 0;

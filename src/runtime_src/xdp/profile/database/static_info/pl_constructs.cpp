@@ -280,8 +280,8 @@ namespace xdp {
   print()
   {
     std::stringstream ss;
-    ss << "Major : " << s_major << std::endl;
-    ss << "Minor : " << s_minor << std::endl;
+    ss << "Major : " << s_major << "\n";
+    ss << "Minor : " << s_minor << "\n";
     for (const auto& kernel_info : kernel_infos) {
       ss << kernel_info.first << " : \n";
       for (const auto& reginfo : kernel_info.second) {
@@ -290,7 +290,7 @@ namespace xdp {
           if (!bitstring.empty())
             ss << " " << bitstring << "\n";
       }
-      ss << std::endl;
+      ss << "\n";
     }
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", ss.str());
   }

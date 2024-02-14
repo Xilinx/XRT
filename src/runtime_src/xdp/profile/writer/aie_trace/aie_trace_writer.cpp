@@ -50,7 +50,7 @@ namespace xdp {
               + ", stream #" + std::to_string(traceStreamId) + ") trace data was not captured.";
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
-        fout << std::endl;
+        fout << "\n";
       }
     } catch (...){
       std::string msg = "Trace File: " + getcurrentFileName() + " not found.";
@@ -108,7 +108,7 @@ namespace xdp {
 
       uint32_t* dataBuffer = static_cast<uint32_t*>(buf);
       for (uint64_t i = 0; i < bufferSz; i++)
-        fout << "0x" << std::hex << dataBuffer[i] << std::endl;
+        fout << "0x" << std::hex << dataBuffer[i] << "\n";
 
       // Free the memory immediately if we own it
       if (traceData->owner)

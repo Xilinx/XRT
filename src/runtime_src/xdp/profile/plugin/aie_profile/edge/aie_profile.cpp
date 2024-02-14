@@ -346,7 +346,7 @@ namespace xdp {
     };
 
     std::stringstream msg;
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : " << moduleName << std::endl;
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : " << moduleName << "\n";
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
       auto pc = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
@@ -356,7 +356,7 @@ namespace xdp {
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
           << "Broadcast Channels : " << bc << " "
-          << std::endl;
+          << "\n";
     }
 
     xrt_core::message::send(severity_level::info, "XRT", msg.str());

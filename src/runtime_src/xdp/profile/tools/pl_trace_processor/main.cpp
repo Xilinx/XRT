@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 
   std::ifstream fin(traceFile, std::ios::binary|std::ios::in);
   if (!fin) {
-    std::cerr << "Cannot open raw trace file " << traceFile << std::endl;
+    std::cerr << "Cannot open raw trace file " << traceFile << "\n";
     return 0;
   }
 

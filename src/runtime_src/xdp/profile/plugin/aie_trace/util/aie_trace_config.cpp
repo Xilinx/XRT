@@ -369,7 +369,7 @@ namespace xdp::aie::trace {
     if (isDebugVerbosity()) {
       std::stringstream msg;
       msg << "Configuring AIE trace to start after delay of " << delay << " (low: " 
-          << delayCyclesLow << ", high: " << delayCyclesHigh << ")" << std::endl;
+          << delayCyclesLow << ", high: " << delayCyclesHigh << ")" << "\n";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 

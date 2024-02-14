@@ -1,0 +1,1518 @@
+
+mainmenu "PetaLinux System Configuration"
+config SUBSYSTEM_TYPE_LINUX
+        bool
+        default y
+        select SYSTEM_VERSAL
+config SYSTEM_VERSAL
+        bool "VERSAL Configuration"
+        help
+          VERSAL Configuration for petalinux project.
+          All these config options will be in /scratch/predutta/XRT_clk_2/XRT_cr_clck_2/build/versal/project-spec/configs/config
+
+config SUBSYSTEM_VARIANT_VERSALAI-CORE
+        bool
+        default y
+        help
+# Copyright (C) 2021-2022, Xilinx, Inc.  All rights reserved.
+# Copyright (C) 2022-2023, Advanced Micro Devices, Inc.  All rights reserved.
+#
+# SPDX-License-Identifier: MIT
+#
+menu "Linux Components Selection"
+config SUBSYSTEM_COMPONENT_DEVICE__TREE_NAME_DEVICE__TREE__GENERATOR
+	bool
+	default y
+
+config SUBSYSTEM_COMPONENT_IMG_SEL
+        bool "Image Selector"
+        default n
+	depends on SYSTEM_ZYNQMP
+        help
+          If you select this option, PetaLinux will auto generate the pre
+          bootloader through xsct.The ELF file for the same is in <PROJECT>/images/linux.
+          If you DONOT select this option, petalinux will not generate, config or
+          build your bootloader.
+
+config SUBSYSTEM_COMPONENT_BOOTLOADER_AUTO_FSBL
+	bool "First Stage Bootloader"
+	default y
+	depends on !SYSTEM_VERSAL
+	help
+	  If you select this option, PetaLinux will auto generate the first stage
+	  bootloader through xsct.The ELF file for the same is in <PROJECT>/images/linux.
+	  If you DONOT select this option, petalinux will not generate, config or
+	  build your bootloader.
+config SUBSYSTEM_COMPONENT_BOOTLOADER_NAME_FS__BOOT
+	bool
+	default y
+	depends on SUBSYSTEM_COMPONENT_BOOTLOADER_AUTO_FSBL && SUBSYSTEM_ARCH_MICROBLAZE
+config SUBSYSTEM_COMPONENT_BOOTLOADER_NAME_ZYNQ_FSBL
+	bool
+	default y
+	depends on SUBSYSTEM_COMPONENT_BOOTLOADER_AUTO_FSBL && SUBSYSTEM_ARCH_ARM
+config SUBSYSTEM_COMPONENT_BOOTLOADER_NAME_ZYNQMP_FSBL
+	bool
+	default y
+	depends on SUBSYSTEM_COMPONENT_BOOTLOADER_AUTO_FSBL && SYSTEM_ZYNQMP
+config SUBSYSTEM_COMPONENT_PMU_FIRMWARE
+	bool "PMU Firmware"
+	default y
+	depends on SYSTEM_ZYNQMP
+	help
+	 If you select this option, Petalinux will generate pmufw through xsct.
+	 If you DO NOT select this option, Petalinux will not generate build or config PMUFW
+config SUBSYSTEM_COMPONENT_PLM
+        bool "PLM"
+        default y
+        depends on SYSTEM_VERSAL
+        help
+         If you select this option, Petalinux will generate plm through xsct.
+         If you DO NOT select this option, Petalinux will not generate build or config PLM
+config SUBSYSTEM_COMPONENT_PSM_FIRMWARE
+        bool "PSM Firmware"
+        default y
+        depends on SYSTEM_VERSAL
+        help
+         If you select this option, Petalinux will generate psmfw through xsct.
+         If you DO NOT select this option, Petalinux will not generate build or config PSMFW
+
+choice
+prompt "u-boot"
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_U__BOOT__XLNX
+        bool "u-boot-xlnx"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE
+        bool "remote"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_EXT__LOCAL__SRC
+        bool "ext-local-src"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+endchoice
+menu "Remote u-boot settings"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE_DOWNLOAD_PATH
+	string "Remote u-boot git URL"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE
+        help
+         It will git clone the specified remote git url repo
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE_REFERENCE
+        string "Remote u-boot git TAG/Commit ID"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE
+        help
+         It will git clone the remote with the specified commitid
+         into the project's components dir
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE_BRANCH
+        string "Remote u-boot git BRANCH"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE
+        help
+         Specify the BRANCH of the remote repo
+         This is optional, anyway if you dont specify it will take from the component bb file
+config SUBSYSTEM_COMPONENT_U__BOOT_LIC_FILES_CHKSUM_REMOTE
+        string "Remote u-boot license checksum"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_REMOTE
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+menu "External u-boot local source settings"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_EXT__LOCAL__SRC
+config SUBSYSTEM_COMPONENT_U__BOOT_NAME_EXT_LOCAL_SRC_PATH
+        string "External u-boot local source path"
+        help
+         It will point the u-boot source path to this location
+config SUBSYSTEM_COMPONENT_U__BOOT_LIC_FILES_CHKSUM_LOCAL__SRC
+        string "External u-boot license checksum"
+        depends on SUBSYSTEM_COMPONENT_U__BOOT_NAME_EXT__LOCAL__SRC
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+if SUBSYSTEM_ARCH_AARCH64
+choice
+prompt "trusted-firmware-arm"
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_TRUSTED__FIRMWARE__ARM
+        bool "trusted-firmware-arm"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE
+        bool "remote"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_EXT__LOCAL__SRC
+        bool "ext-local-src"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+endchoice
+menu "Remote trusted-firmware-arm settings"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE_DOWNLOAD_PATH
+        string "Remote trusted-firmware-arm git URL"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE
+        help
+         It will git clone the specified remote git url repo
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE_REFERENCE
+        string "Remote trusted-firmware-arm git TAG/Commit ID"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE
+        help
+         It will git clone the remote with the specified commitid
+         into the project's components dir
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE_BRANCH
+        string "Remote trusted-firmware-arm git BRANCH"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE
+        help
+         Specify the BRANCH of the remote repo
+         This is optional, anyway if you dont specify it will take from the component bb file
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_LIC_FILES_CHKSUM_REMOTE
+        string "Remote trusted-firmware-arm license checksum"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_REMOTE
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+menu "External trusted-firmware-arm local source settings"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_EXT__LOCAL__SRC
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_EXT_LOCAL_SRC_PATH
+        string "External trusted-firmware-arm local source path"
+        help
+         It will point the trusted-firmware-arm source path to this location
+config SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_LIC_FILES_CHKSUM_LOCAL__SRC
+        string "External trusted-firmware-arm license checksum"
+        depends on SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_EXT__LOCAL__SRC
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+endif
+choice
+prompt "linux-kernel"
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_LINUX__XLNX
+        bool "linux-xlnx"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE
+        bool "remote"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_EXT__LOCAL__SRC
+        bool "ext-local-src"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+endchoice
+menu "Remote linux-kernel settings"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE_DOWNLOAD_PATH
+        string "Remote linux-kernel git URL"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE
+        help
+         It will git clone the specified remote git url repo
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE_REFERENCE
+        string "Remote linux-kernel git TAG/Commit ID"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE
+        help
+         It will git clone the remote with the specified commitid
+         into the project's components dir
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE_BRANCH
+        string "Remote linux-kernel git BRANCH"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE
+        help
+         Specify the BRANCH of the remote repo
+         This is optional, anyway if you dont specify it will take from the component bb file
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_LIC_FILES_CHKSUM_REMOTE
+        string "Remote linux-kernel license checksum"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_REMOTE
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+menu "External linux-kernel local source settings"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_EXT__LOCAL__SRC
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_EXT_LOCAL_SRC_PATH
+        string "External linux-kernel local source path"
+        help
+         It will point the linux-kernel source path to this location
+config SUBSYSTEM_COMPONENT_LINUX__KERNEL_LIC_FILES_CHKSUM_LOCAL__SRC
+        string "External linux-kernel license checksum"
+        depends on SUBSYSTEM_COMPONENT_LINUX__KERNEL_NAME_EXT__LOCAL__SRC
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+if SYSTEM_VERSAL
+if SUBSYSTEM_COMPONENT_PLM
+choice
+prompt "plm"
+config SUBSYSTEM_COMPONENT_PLM_NAME_PLM
+        bool "plm"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE
+        bool "remote"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_PLM_NAME_EXT__LOCAL__SRC
+        bool "ext-local-src"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+endchoice
+menu "Remote plm settings"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE
+config SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE_DOWNLOAD_PATH
+        string "Remote plm git URL"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE
+        help
+         It will git clone the specified remote git url repo
+config SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE_REFERENCE
+        string "Remote plm git TAG/Commit ID"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE
+        help
+         It will git clone the remote with the specified commitid
+         into the project's components dir
+config SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE_BRANCH
+        string "Remote plm git BRANCH"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE
+        help
+         Specify the BRANCH of the remote repo
+         This is optional, anyway if you dont specify it will take from the component bb file
+config SUBSYSTEM_COMPONENT_PLM_LIC_FILES_CHKSUM_REMOTE
+        string "Remote plm license checksum"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_REMOTE
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+menu "External plm local source settings"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_EXT__LOCAL__SRC
+config SUBSYSTEM_COMPONENT_PLM_NAME_EXT_LOCAL_SRC_PATH
+        string "External plm local source path"
+        help
+         It will point the plm source path to this location
+config SUBSYSTEM_COMPONENT_PLM_LIC_FILES_CHKSUM_LOCAL__SRC
+        string "External plm license checksum"
+        depends on SUBSYSTEM_COMPONENT_PLM_NAME_EXT__LOCAL__SRC
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+endif
+if SUBSYSTEM_COMPONENT_PSM_FIRMWARE
+choice
+prompt "psm-firmware"
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_PSM__FIRMWARE
+        bool "psm-firmware"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE
+        bool "remote"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_EXT__LOCAL__SRC
+        bool "ext-local-src"
+        help
+         You can find about this option
+         in UG1144 in "Steps to Configure Out-of-tree Build" section.
+endchoice
+menu "Remote psm-firmware settings"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE_DOWNLOAD_PATH
+        string "Remote psm-firmware git URL"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE
+        help
+         It will git clone the specified remote git url repo
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE_REFERENCE
+        string "Remote psm-firmware git TAG/Commit ID"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE
+        help
+         It will git clone the remote with the specified commitid
+         into the project's components dir
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE_BRANCH
+        string "Remote psm-firmware git BRANCH"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE
+        help
+         Specify the BRANCH of the remote repo
+         This is optional, anyway if you dont specify it will take from the component bb file
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_LIC_FILES_CHKSUM_REMOTE
+        string "Remote psm-firmware license checksum"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_REMOTE
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+menu "External psm-firmware local source settings"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_EXT__LOCAL__SRC
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_EXT_LOCAL_SRC_PATH
+        string "External psm-firmware local source path"
+        help
+         It will point the psm-firmware source path to this location
+config SUBSYSTEM_COMPONENT_PSM__FIRMWARE_LIC_FILES_CHKSUM_LOCAL__SRC
+        string "External psm-firmware license checksum"
+        depends on SUBSYSTEM_COMPONENT_PSM__FIRMWARE_NAME_EXT__LOCAL__SRC
+        help
+         Specify the LIC_FILES_CHKSUM of the license text in the source code for the recipe
+         This is optional, anyway if you dont specify it will take from the component bb file
+         Ex: file://license.txt;md5=xxxx
+endmenu
+endif
+endif
+endmenu
+menu "Auto Config Settings"
+
+config SUBSYSTEM_AUTOCONFIG_DEVICE__TREE
+	bool "Device tree autoconfig"
+	default y
+	select SUBSYSTEM_HARDWARE_AUTO
+	help
+	  Select this option to enable auto generation of device-tree configuration
+	  files into components/plnx_workspace/device-tree/device-tree.
+
+config SUBSYSTEM_DEVICE_TREE_MANUAL_INCLUDE
+	bool "Specify a manual device tree include directory"
+	default n
+	help
+	  Select this option to allow you to specify a custom include directory
+	  to use when compiling the device tree.
+
+config SUBSYSTEM_DEVICE_TREE_INCLUDE_DIR
+	string "Manual device tree include directory"
+	default "${STAGING_KERNEL_DIR}/include"
+	depends on SUBSYSTEM_DEVICE_TREE_MANUAL_INCLUDE
+	help
+	  This is the include directory used by DTC during device tree compliation.
+	  By default it points to "${STAGING_KERNEL_DIR}/include" which is
+	  "${TMPDIR}/work-shared/${MACHINE}/kernel-source/include"
+
+
+if SYSTEM_MICROBLAZE
+config SUBSYSTEM_AUTOCONFIG_KERNEL
+	bool "kernel autoconfig"
+	default y
+	help
+	  Choose this option to use PetaLinux kernel configuration generated based on
+	  system config.
+	  Over this petalinux auto generated fragments -- plnx_kernel.cfg applied
+
+config SUBSYSTEM_AUTOCONFIG_U__BOOT
+	bool "u-boot autoconfig"
+	default y
+	select SUBSYSTEM_HARDWARE_AUTO
+	help
+	  Choose this option to use PetaLinux u-boot configuration.
+	  See CONFIG_SUBSYSTEM_UBOOT_CONFIG_TARGET for defconfig used from U-boot src,
+	  Over this petalinux auto generated fragments -- platform-auto.h, platform-top.h, config.cfg are applied
+
+endif
+endmenu
+
+source /scratch/predutta/XRT_clk_2/XRT_cr_clck_2/build/versal/project-spec/configs/configs/Kconfig.syshw
+
+choice
+	prompt "Subsystem Architecture"
+	default SUBSYSTEM_ARCH_ARM
+	help
+	  This option is to control the processor targeted by PetaLinux.
+	  WARNING: Do not edit this option.
+
+config SUBSYSTEM_ARCH_AARCH64
+	bool "aarch64"
+	help
+	  Choose this option to specify AARCH64 as the SUBSYSTEM architecture
+
+config SUBSYSTEM_ARCH_ARM
+	bool "arm"
+	help
+	  Choose this option to specify ARM as the SUBSYSTEM architecture
+
+config SUBSYSTEM_ARCH_MICROBLAZE
+	bool "microblaze"
+	help
+	  Choose this option to specify MicroBlaze as the SUBSYSTEM architecture
+endchoice
+
+config SUBSYSTEM_ENDIAN_LITTLE
+	bool
+	default y
+
+menu "DTG Settings"
+config SUBSYSTEM_MACHINE_NAME
+        string "MACHINE_NAME"
+        default "template"
+        help
+	 Keep empty or specify auto/AUTO it will point to DTG machine name based on the
+	 yocto machine name specified in config.
+         This is machine name or board name. Ex: zcu102, zc702
+         This is used to create board related nodes.
+         Change this only when you also change the corresponding hardware design.
+         Change of hardware design or Machine_name between same architecture is allowed
+
+config SUBSYSTEM_DT_XSCT_WORKSPACE
+	string "Device-tree workspace"
+	help
+	  Provide the location to use as Device-tree XSCT workspace location.
+
+if SUBSYSTEM_AUTOCONFIG_DEVICE__TREE
+config SUBSYSTEM_EXTRA_DT_FILES
+	string "Extra dts/dtsi files"
+	default ""
+	help
+	  Provide the extra dt files path separated with space.
+	  This config should be set with dts/dtsi absolute/full path.
+	  Provided dts/dtsi will be build as part of device-tree and deploy into /boot/devicetree.
+	  NOTE: All dtsi files should be added to this config which are included in dts file.
+	  Example: /extra-dt-path/can.dtsi /extra-dt-path/test.dtsi
+
+menu "Kernel Bootargs"
+config SUBSYSTEM_BOOTARGS_AUTO
+	bool "generate boot args automatically"
+	default y
+	depends on !SUBSYSTEM_SERIAL_MANUAL_SELECT
+	help
+	  Generates the default bootargs.
+
+config SUBSYSTEM_USER_CMDLINE
+	string "user set kernel bootargs"
+	default ""
+	depends on !SUBSYSTEM_BOOTARGS_AUTO
+	help
+	  Specify any commandline arguments you wish to pass to the kernel
+	  at boot.
+
+config SUBSYSTEM_BOOTARGS_EARLYPRINTK
+	bool "enable kernel earlyprintk"
+	default y
+	depends on SUBSYSTEM_BOOTARGS_AUTO
+	help
+	  Select this option to enable kernel earlyprintk.
+
+config SUBSYSTEM_BOOTARGS_GENERATED
+	string "Auto generated bootargs (NO EDIT!)"
+	default ""
+	depends on SUBSYSTEM_BOOTARGS_AUTO
+	help
+	  system auto generated bootargs.
+	  WARNING: Do not edit, your changes will be lost.
+	  Disable SUBSYSTEM_BOOTARGS_AUTO to edit bootargs through SUBSYSTEM_USER_CMDLINE option
+
+config SUBSYSTEM_EXTRA_BOOTARGS
+	string "Add extra boot args"
+	default ""
+	depends on SUBSYSTEM_BOOTARGS_AUTO
+	help
+	  Select this option to append extra bootargs
+
+endmenu
+endif
+config SUBSYSTEM_DEVICETREE_COMPILER_FLAGS
+	string "Devicetree compiler flags"
+	default ""
+	help
+	  Mention device-tree compiler flags.
+	  These will be passed to dtc while compiling device-trees.
+	  Ex: -@
+
+if !SUBSYSTEM_ARCH_MICROBLAZE
+config SUBSYSTEM_DTB_OVERLAY
+       bool "Devicetree overlay"
+       default n
+       help
+         Select this option to separate pl from base dtb
+         and build the pl.dtsi to generate pl.dtbo.
+
+config SUBSYSTEM_REMOVE_PL_DTB
+       bool "Remove PL from devicetree"
+       default n
+       help
+	Remove PL nodes if user doesn't depend on the PL IPs and
+	if any PL IP in DTG generates an error then user can
+	simply enable this flag and DTG won't generate any PL nodes.
+
+endif
+
+if !SUBSYSTEM_ARCH_MICROBLAZE
+config SUBSYSTEM_ENABLE_OPENAMP_DTSI
+    bool "Enable openamp dtsi"
+    default n
+    help
+     Enable this config to automatically add OpenAmp device tree nodes (openamp.dtsi)
+     to the final system.dtb
+
+endif
+
+if !SUBSYSTEM_ARCH_MICROBLAZE && !SUBSYSTEM_ARCH_ARM
+config SUBSYSTEM_ENABLE_XEN_HW_DTSI
+	bool "Enable xen hardware dtsi"
+	default n
+	help
+	 Enable this config to automatically add Xen hardware related
+	 device tree nodes (xen.dtsi) to the final system.dtb
+
+config SUBSYSTEM_ENABLE_XEN_QEMU_DTSI
+	bool "Enable xen QEMU dtsi"
+	default n
+	help
+	 Enable this config to automatically add Xen qemu related
+	 device tree nodes (xen-qemu.dtsi) to the final system.dtb
+
+endif
+
+if !SUBSYSTEM_SDT_FLOW
+config SUBSYSTEM_ENABLE_NO_ALIAS
+	bool "Enable board specific aliases"
+	default n
+	help
+	 Enable board specific aliases defined in DT machine file for different evluation boards.
+
+config SUBSYSTEM_ENABLE_DTG_ALIAS
+	bool "Enable aliases generated by DTG"
+	default n
+	help
+	 Enable this option to get DTG generated aliases.
+	 NOTE: This will not effect if ENABLE_NO_ALIAS selected So final DT will have board aliases.
+
+config SUBSYSTEM_ENABLE_NO_LABELS
+	bool "Disable labels For Partial DT files"
+	default n
+	depends on SUBSYSTEM_FPGA_MANAGER
+	help
+	 Enable this option to not generated the labels in partial dtbo files.
+	 There will not be any Changes in base dtb or PL dtb or dtbo files.
+	 User should take care of the nodes if any build failures.
+
+config SUBSYSTEM_ENABLE_DT_VERBOSE
+	bool "Enable dt verbose"
+	default n
+	help
+	 Enable this option to get additional logs for device-tree.
+	 These debug prints can be seen in log.do_configure which will be saved in device-tree workspace directory.
+
+if !SUBSYSTEM_ENABLE_NO_ALIAS
+config SUBSYSTEM_ADD_EEPROM_ALIAS
+	bool "Enable eeprom alias"
+	default n
+	help
+	 Enable this option to add eeprom in aliases node
+	 E.g: nvmem0 = &eeprom
+
+config SUBSYSTEM_ADD_RTC_ALIAS
+	bool "Enable rtc alias"
+	default n
+	help
+	 Enable this option to add rtc in alias node
+	 E.g: rtc0 = &rtc
+endif
+endif
+endmenu
+
+if !SUBSYSTEM_SDT_FLOW && SYSTEM_ZYNQMP
+menu "PMUFW Configuration"
+config SUBSYSTEM_PMUFW_BSPCOMPILER_FLAGSSET
+	bool
+	default y if SUBSYSTEM_PMUFW_BSPCOMPILER_FLAGS != ""
+
+config SUBSYSTEM_PMUFW_BSPCOMPILER_FLAGS
+	string "PMUFW BSP extra compiler flags"
+	default ""
+	help
+	 PMUFW BSP extra compiler flags. You can specify multiple flags separated with space.
+	 E.g: -DXSK_ACCESS_USER_EFUSE for enabling USER EFUSE access
+
+config SUBSYSTEM_PMUFW_COMPILER_EXTRA_FLAGS
+	string "PMUFW compiler flags"
+	default ""
+	help
+	 PMUFW compilation flags. You can specify multiple flags separated with space.
+	 E.g: -DENABLE_IPI_CRC for enabling CRC check on IPI messages
+
+endmenu
+endif
+
+if !SUBSYSTEM_SDT_FLOW && (SYSTEM_ZYNQMP || SUBSYSTEM_ARCH_ARM)
+menu "FSBL Configuration"
+config SUBSYSTEM_FSBL_BSPCOMPILER_FLAGSSET
+	bool
+	default y if SUBSYSTEM_FSBL_BSPCOMPILER_FLAGS != ""
+
+config SUBSYSTEM_FSBL_BSPCOMPILER_FLAGS
+	string "FSBL BSP extra compiler flags"
+	default ""
+	help
+	 FSBL BSP extra compiler flags. You can specify multiple flags separated with space.
+	 E.g: -DENABLE_IPI_CRC for enabling CRC check on IPI messages
+
+config SUBSYSTEM_FSBL_COMPILER_EXTRA_FLAGS
+	string "FSBL compiler flags"
+	default ""
+	help
+	 FSBL compilation flags. You can specify multiple flags separated with space.
+	 E.g: -DFSBL_PROT_BYPASS
+
+endmenu
+endif
+
+if SUBSYSTEM_ARCH_AARCH64 && !SUBSYSTEM_COMPONENT_TRUSTED__FIRMWARE__ARM_NAME_NONE
+menu "Trusted Firmware ARM (TF-A) Configuration"
+config SUBSYSTEM_TF-A_MEMORY_SETTINGS
+	bool "TF-A memory settings"
+	default n
+	help
+	 Select this option, if membase and memsize settings of TF-A are to be modified.These are defined already in tfa source.
+	  Use this option inorder to over-ride these values.For further info: ref trusted-firmware-arm/docs/plat/*.md's
+if SUBSYSTEM_TF-A_MEMORY_SETTINGS
+config SUBSYSTEM_TF-A_MEM_BASE
+	hex "TF-A MEM BASE"
+	default 0xFFFEA000
+	help
+	  On default the TF-A is placed in OCM memory. Alternatively, the TF-A can be
+	  placed in DRAM by updating TF-A_MEM_BASE and TF-A_MEM_SIZE.
+config SUBSYSTEM_TF-A_MEM_SIZE
+	hex "TF-A MEM SIZE"
+	default 0x16000
+	help
+	  Mention the TF-A size.
+endif
+config SUBSYSTEM_TF-A_EXTRA_COMPILER_FLAGS
+	string "TF-A extra compiler flags"
+	default ""
+	help
+	  TF-A extra compilation flags. You can specify multiple flags separated with semicolon.
+	  (NEW!) : ZYNQMP_WDT_RESTART=1 for Special handling to cleanly restart the APU during AWDT recovery
+	  Other E.g. MAKEARCH+=RESET_TO_BL31=1 SPD=tspd; ATF_BUILD_TARGET=bl31 bl32
+
+config SUBSYSTEM_TF-A_DEBUG
+	bool "TF-A debug"
+	default n
+	help
+	 Select this option for selecting TF-A debug mode
+endmenu
+endif
+
+if SYSTEM_ZYNQMP && SUBSYSTEM_AUTOCONFIG_PMUFW && SUBSYSTEM_AUTOCONFIG_KERNEL
+config SUBSYSTEM_PMUFW_POWER_KERNEL_CONFIGURATIONS
+	bool "Power Management kernel configuration"
+	default n
+	help
+	Select this to enable/disable power management related kernel configs through plnx-kernel.cfg.
+	These configs are later applied over kernel defconfig(xilinx_zynqmp_defconfig).
+	If this is not selected the kernel configs will not be enabled/disabled by Petalinux explicitly.
+	The default configuration from linux defconfig is retained in your petalinux project.
+
+choice
+	prompt "Enable/Disable"
+	depends on SUBSYSTEM_PMUFW_POWER_KERNEL_CONFIGURATIONS
+	default SUBSYSTEM_PMUFW_POWER_KERNEL_CONFIGURATION_ENABLE
+	config SUBSYSTEM_PMUFW_POWER_KERNEL_CONFIGURATION_ENABLE
+		bool "enable"
+		help
+		Select this option to explicitly enable power management related kernel configs through plnx_kernel.cfg.
+		The list of configs enabled are:
+		SUSPEND
+		PM_WAKELOCKS
+		PM
+		CPU_IDLE
+		ARM_CPUIDLE
+		CPU_FREQ
+		CPU_FREQ_DEFAULT_GOV_USERSPACE
+		CPU_FREQ_GOV_USERSPACE
+		COMMON_CLK_ZYNQMP
+		SOC_XILINX_ZYNQMP
+		ZYNQMP_PM_DOMAINS
+		PM_SLEEP
+	config SUBSYSTEM_PMUFW_POWER_KERNEL_CONFIGURATION_DISABLE
+		bool "disable"
+		help
+		Select this option to explicitly disable power related management kernel configs.
+		Some of these configs are already enabled through kernel defconfig (Xilinx_zynqmp_defconfig) present in kernel src.
+		The list of configs disabled are:
+		SUSPEND
+		PM_WAKELOCKS
+		PM
+		CPU_IDLE
+		ARM_CPUIDLE
+		CPU_FREQ
+		CPU_FREQ_DEFAULT_GOV_USERSPACE
+		CPU_FREQ_GOV_USERSPACE
+		COMMON_CLK_ZYNQMP
+		SOC_XILINX_ZYNQMP
+		ZYNQMP_PM_DOMAINS
+		PM_SLEEP
+endchoice
+endif
+
+if !SUBSYSTEM_ARCH_MICROBLAZE && !SUBSYSTEM_SDT_FLOW
+menu "FPGA Manager"
+config SUBSYSTEM_FPGA_MANAGER
+        bool "Fpga Manager"
+        help
+	 Select this option to provides an interface to the Linux for configuring the programmable logic(PL).
+
+endmenu
+endif
+
+if !SUBSYSTEM_COMPONENT_U__BOOT_NAME_NONE
+menu "u-boot Configuration"
+config SUBSYSTEM_UBOOT_CONFIG_TARGET
+	string "u-boot config target"
+	help
+	  Keep empty or specify auto/AUTO it will point to the default
+	  defconfig file based on the yocto machine name.
+	  Specify a u-boot config target when building u-boot, it will run
+	  run u-boot XXX config target: make XXX_config to configure u-boot
+	  first.
+
+menu "u-boot script configuration"
+config SUBSYSTEM_UBOOT_APPEND_BASEADDR
+	bool "Append base address to image offsets"
+	default y
+	help
+	  Enable this to apped Memory/DDR base address to the offsets specified.
+
+config SUBSYSTEM_UBOOT_PRE_BOOTENV
+	string "Pre bootenv"
+	default ""
+	help
+	  Add uboot environment variables which will add into boot.scr script.
+
+menu "JTAG/DDR image offsets"
+config SUBSYSTEM_UBOOT_DEVICETREE_OFFSET
+	string "Devicetree offset"
+	default 0x1000 if SYSTEM_VERSAL
+	default 0x100000 if SYSTEM_ZYNQMP
+	default 0x100000 if SUBSYSTEM_ARCH_ARM
+	default 0x1e00000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Offset to load the Device-tree to the DDR/JTAG.
+
+config SUBSYSTEM_UBOOT_KERNEL_OFFSET
+	hex "Kernel offset"
+	default 0x200000 if SYSTEM_VERSAL
+	default 0x200000 if SYSTEM_ZYNQMP
+	default 0x200000 if SUBSYSTEM_ARCH_ARM
+	default 0x0 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Offset to load the Kernel image to the DDR/JTAG.
+
+config SUBSYSTEM_UBOOT_RAMDISK_IMAGE_OFFSET
+	hex "Ramdisk image offset"
+	default 0x4000000 if SYSTEM_VERSAL
+	default 0x4000000 if SYSTEM_ZYNQMP
+	default 0x4000000 if SUBSYSTEM_ARCH_ARM
+	default 0x2e00000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Offset to load the Ramdisk image to the DDR/JTAG.
+
+config SUBSYSTEM_UBOOT_FIT_IMAGE_OFFSET
+	hex "Fit image offset"
+	default "0x10000000"
+	help
+	  Offset to load the Fit image to the DDR/JTAG.
+
+endmenu
+
+menu "QSPI/OSPI image offsets"
+config SUBSYSTEM_UBOOT_QSPI_KERNEL_OFFSET
+	hex "QSPI/OSPI Kernel offset"
+	default 0xF00000 if SYSTEM_VERSAL
+	default 0x3F00000 if SUBSYSTEM_VARIANT_ZYNQMPDR
+	default 0xF00000 if SYSTEM_ZYNQMP
+	default 0xA00000 if SUBSYSTEM_ARCH_ARM
+	default 0xBC0000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the QSPI/OSPI Kernel image offset to read the Kernel image from Flash.
+
+config SUBSYSTEM_UBOOT_QSPI_KERNEL_SIZE
+	hex "QSPI/OSPI Kernel size"
+	default 0x1D00000 if SYSTEM_VERSAL
+	default 0x1D00000 if SYSTEM_ZYNQMP
+	default 0x600000 if SUBSYSTEM_ARCH_ARM
+	default 0x500000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the QSPI/OSPI Kernel image size to read the Kernel image from Flash.
+
+config SUBSYSTEM_UBOOT_QSPI_RAMDISK_OFFSET
+	hex "QSPI/OSPI Ramdisk offset"
+	default 0x2E00000 if SYSTEM_VERSAL
+	default 0x5D00000 if SUBSYSTEM_VARIANT_ZYNQMPDR
+	default 0x4000000 if SYSTEM_ZYNQMP
+	default 0x1000000 if SUBSYSTEM_ARCH_ARM
+	default 0x4000000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the QSPI/OSPI Ramdisk image offset to read the Ramdisk image from Flash.
+
+config SUBSYSTEM_UBOOT_QSPI_RAMDISK_SIZE
+	hex "QSPI/OSPI Ramdisk size"
+	default 0x4000000 if SYSTEM_VERSAL
+	default 0x1D00000 if SUBSYSTEM_VARIANT_ZYNQMPDR
+	default 0x4000000 if SYSTEM_ZYNQMP
+	default 0xF80000 if SUBSYSTEM_ARCH_ARM
+	default 0xA00000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the QSPI/OSPI Ramdisk image size to read the Ramdisk image from Flash.
+
+config SUBSYSTEM_UBOOT_QSPI_FIT_IMAGE_OFFSET
+	hex "QSPI/OSPI fit image offset"
+	default 0xF40000 if SYSTEM_VERSAL
+	default 0x3F80000 if SUBSYSTEM_VARIANT_ZYNQMPDR
+	default 0xF40000 if SYSTEM_ZYNQMP
+	default 0xA80000 if SUBSYSTEM_ARCH_ARM
+	default 0xE00000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the QSPI/OSPI Fit image offset to read the Fit image from Flash.
+
+config SUBSYSTEM_UBOOT_QSPI_FIT_IMAGE_SIZE
+	hex "QSPI/OSPI fit image size"
+	default 0x6400000 if SYSTEM_VERSAL
+	default 0x3F00000 if SUBSYSTEM_VARIANT_ZYNQMPDR
+	default 0x6400000 if SYSTEM_ZYNQMP
+	default 0x1500000 if SUBSYSTEM_ARCH_ARM
+	default 0xF00000 if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the QSPI/OSPI Fit image size to read the Fit image from Flash.
+
+endmenu
+menu "NAND image offsets"
+config SUBSYSTEM_UBOOT_NAND_KERNEL_OFFSET
+	hex "NAND Kernel offset"
+	default 0x4100000 if SYSTEM_VERSAL
+	default 0x4100000 if SYSTEM_ZYNQMP
+	default 0x1000000 if SUBSYSTEM_ARCH_ARM
+	default 0x0
+	help
+	  Specify the NAND Kernel image offset to read the Kernel image from Flash.
+
+config SUBSYSTEM_UBOOT_NAND_KERNEL_SIZE
+	hex "NAND Kernel size"
+	default 0x3200000
+	help
+	  Specify the NAND Kernel image size to read the Kernel image from Flash.
+
+config SUBSYSTEM_UBOOT_NAND_RAMDISK_OFFSET
+	hex "NAND Ramdisk offset"
+	default 0x8200000 if SYSTEM_VERSAL
+	default 0x7800000 if SYSTEM_ZYNQMP
+	default 0x4600000 if SUBSYSTEM_ARCH_ARM
+	default 0x0
+	help
+	  Specify the NAND ramdisk image offset to load the ramdisk image from Flash.
+
+config SUBSYSTEM_UBOOT_NAND_RAMDISK_SIZE
+	hex "NAND Ramdisk size"
+	default 0x3200000
+	help
+	  Specify the NAND ramdisk size to load the ramdisk image from Flash.
+
+config SUBSYSTEM_UBOOT_NAND_FIT_IMAGE_OFFSET
+	hex "NAND fit image offset"
+	default 0x4180000 if SYSTEM_VERSAL
+	default 0x4180000 if SYSTEM_ZYNQMP
+	default 0x1080000 if SUBSYSTEM_ARCH_ARM
+	default 0x0
+	help
+	  Specify the fit image offset to load the fit image from Flash.
+
+config SUBSYSTEM_UBOOT_NAND_FIT_IMAGE_SIZE
+	hex "NAND fit image size"
+	default 0x6400000
+	help
+	  Specify the NAND fit image size to load the fit image from Flash.
+
+endmenu
+config SUBSYSTEM_UBOOT_KERNEL_IMAGE
+	string "Kernel image name"
+	default "Image" if SYSTEM_VERSAL
+	default "Image" if SYSTEM_ZYNQMP
+	default "uImage" if SUBSYSTEM_ARCH_ARM
+	default "linux.bin.ub" if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specify the kernel image name.
+
+config SUBSYSTEM_UBOOT_FIT_IMAGE
+	string "Fit image name"
+	default "image.ub"
+	help
+	  Specify the fit image name.
+
+endmenu
+if SUBSYSTEM_AUTOCONFIG_U__BOOT
+	config SUBSYSTEM_NETBOOT_OFFSET
+	hex "netboot offset"
+	default 0x1000000
+	help
+	 Set this to define the memory offset to load the image of netboot command in u-boot.
+
+	config SUBSYSTEM_U__BOOT_TFTPSERVER_IP
+	string "TFTP Server IP address"
+	default "AUTO"
+	help
+	 The IP address of your TFTP file server in the main network interface.
+
+	 Specify the special value "AUTO" to use the IP address of your
+	 development host.
+
+endif
+config SUBSYSTEM_UBOOT_EXT_DTB
+	bool "u-boot-ext-dtb"
+	default n
+        help
+	 Select this option to build seperate dtb for u-boot.
+	 If user select this option the source files will come from
+	 design using DTG and user can customize the nodes by creating
+	 system-user.dtsi in <plnx-proj>/project-spec/meta-user/meta-xilinx-tools/recipes-bsp/uboot-device-tree
+
+if SUBSYSTEM_UBOOT_EXT_DTB
+config UBOOT_EXT_DTB_FROM_DTS
+	string "uboot dts file path"
+	default ""
+	help
+	 Provide the absolute path for customized .dts file. The build system will use the
+	 provided .dts file and generate the u-boot dtb in <plnx-proj>/images/linux directory.
+	 NOTE: All dtsi files should be specified here with space separator
+	 which are included in dts file
+	 Example: /u-boot-dt-path/system-top.dts /u-boot-dt-path/zcu102.dtsi
+
+config UBOOT_DTB_PACKAGE_NAME
+	string "uboot dtb package name"
+	default "u-boot.dtb"
+	help
+	 Select this option to specify desired u-boot dtb name.
+	 Default it will be set to u-boot.dtb
+endif
+endmenu
+endif
+
+menu "Linux Configuration"
+config SUBSYSTEM_LINUX_CONFIG_TARGET
+	string "linux config target"
+	help
+	  Keep empty or specify auto/AUTO it will point to the default
+	  defconfig file based on the yocto machine name.
+	  Specify a linux config target when building linux, it will run
+	  run linux XXX config target: make XXX_config to configure linux
+	  first.
+
+endmenu
+menu "Image Packaging Configuration"
+choice
+	prompt "Root filesystem type"
+	default SUBSYSTEM_ROOTFS_INITRAMFS
+
+config SUBSYSTEM_ROOTFS_INITRAMFS
+	bool "INITRAMFS"
+	help
+	  Choose this option to configure your PetaLinux build to use
+	  the kernel INITRAMFS mechanism for the root filesystem.
+
+	  The root filesystem will be writeable, but not persistent,
+	  meaning that any changes are lost upon reboot.
+
+config SUBSYSTEM_ROOTFS_INITRD
+	bool "INITRD"
+	help
+	  Choose this opion to configure your PetaLinux build to use
+	  kernel INITRD mechinsm for the root filesystem.
+
+config SUBSYSTEM_ROOTFS_JFFS2
+	bool "JFFS2"
+	help
+	  Choose this option to configure your PetaLinux build for the
+	  root filesystem to be mounted on a JFFS2 flash partition.
+
+	  You must also ensure that your Flash Partition Table (see below)
+	  contains a partition named "jffs2" and is of a suitable size.
+
+config SUBSYSTEM_ROOTFS_UBIFS
+	bool "UBI/UBIFS"
+	help
+	  Choose this option to configure your PetaLinux build for the
+	  root filesystem to be mounted on a UBI/UBIFS flash partition.
+
+	  You must also ensure that your Flash Partition Table
+          contains a partition named "ubi" and is of a suitable size.
+
+config SUBSYSTEM_ROOTFS_NFS
+	bool "NFS"
+	help
+	  Choose this setting to configure your PetaLinux build for NFS Root.
+
+	  Your workstation must be properly configured for NFS, and the
+	  NFS root directory (see below) must be exported properly.
+
+config SUBSYSTEM_ROOTFS_EXT4
+	bool "EXT4 (SD/eMMC/SATA/USB)"
+	help
+	  Choose this setting to configure your PetaLinux build for EXT4 Root.
+
+          device examples:
+          eMMC or SD root=/dev/mmcblkYpX
+          SATA or USB root=/dev/sdX
+
+config SUBSYSTEM_ROOTFS_OTHER
+	bool "other"
+	help
+	  Choose this setting to configure your PetaLinux build for other root.
+
+	  You will need to manually generate the Root FS image.
+
+endchoice
+
+choice
+	prompt "jffs2 erase block size(KByte)"
+	default SUBSYSTEM_JFFS2_ERASE_SIZE_8
+	depends on SUBSYSTEM_ROOTFS_JFFS2
+config SUBSYSTEM_JFFS2_ERASE_SIZE_4
+	bool "jffs2 erase block size: 4KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_8
+	bool "jffs2 erase block size: 8KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_16
+	bool "jffs2 erase block size: 16KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_32
+	bool "jffs2 erase block size: 32KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_64
+	bool "jffs2 erase block size: 64KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_128
+	bool "jffs2 erase block size: 128KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_256
+	bool "jffs2 erase block size: 256KiB"
+config SUBSYSTEM_JFFS2_ERASE_SIZE_512
+	 bool "jffs2 erase block size: 512KiB"
+endchoice
+
+config SUBSYSTEM_NFSROOT_DIR
+	string "Location of NFS root directory"
+	depends on SUBSYSTEM_ROOTFS_NFS
+	default "/tftpboot/nfsroot"
+
+config SUBSYSTEM_NFSSERVER_IP
+	string "NFS Server IP address"
+	default "AUTO"
+	depends on SUBSYSTEM_ROOTFS_NFS
+	help
+	 The IP address of your NFS server in the main network interface.
+
+config SUBSYSTEM_SDROOT_DEV
+	string "Device node of SD device"
+	depends on SUBSYSTEM_ROOTFS_EXT4
+	default "/dev/mmcblk0p2"
+
+config SUBSYSTEM_INITRD_RAMDISK_LOADADDR
+	hex "RAMDISK loadaddr"
+	default "0x0"
+	depends on SUBSYSTEM_ROOTFS_INITRD
+	help
+	  RAMDISK Load address if INITRD is selected as rootfs type
+
+config SUBSYSTEM_INITRAMFS_IMAGE_NAME
+	string "INITRAMFS/INITRD Image name"
+	default "petalinux-image-minimal"
+	depends on SUBSYSTEM_ROOTFS_INITRD || SUBSYSTEM_ROOTFS_INITRAMFS
+	help
+	  Specifies the PROVIDES name of an image recipe that is used to
+	  build an initial RAM filesystem (initramfs/initrd) image
+
+config SUBSYSTEM_UBI_MKUBIFS_ARGS
+	string "mkfs.ubifs args"
+	default ""
+	depends on SUBSYSTEM_ROOTFS_UBIFS
+	help
+	  Specify the arguments which needs to be used in mkfs.ubifs for creation of ubifs filesystem.
+	  Ex: -m 2048 -e 129024 -c 2047
+	  -m 2048  : is the minimum I/O unit here its 2KB.
+	  -e 129024: logical eraseblock size of the UBI volume.
+	  -c 2047  : specifies maximum file-system size in logical eraseblocks.
+	  NOTE: make sure to add "ubifs" into "SUBSYSTEM_RFS_FORMATS" to take these values into consider.
+
+config SUBSYSTEM_UBI_UBINIZE_ARGS
+	string "ubinize args"
+	default ""
+	depends on SUBSYSTEM_ROOTFS_UBIFS
+	help
+	  Specify the arguments which needs to be used in ubinize for creation of ubifs filesystem.
+	  Ex: -m 2048 -p 128KiB -s 512
+	  -m 2048  : is the minimum I/O unit here its 2KB.
+	  -p 128KiB: tells ubinize that physical eraseblock size of the flash chip the UBI image is created for is 128KiB
+	  -s 512: tells ubinize that the flash supports sub-pages and sub-page size is 512 bytes
+	  NOTE: make sure to add "ubifs" into "SUBSYSTEM_RFS_FORMATS" to take these values into consider.
+
+config SUBSYSTEM_UBI_PART_NAME
+	string "ubi part name"
+	default "ubifs"
+	depends on SUBSYSTEM_ROOTFS_UBIFS
+	help
+	  Specify the ubifs part name to be added into bootargs.
+
+config SUBSYSTEM_UIMAGE_NAME
+	string "name for bootable kernel image"
+	default "image.ub"
+	help
+	  Specify the name of uboot bootable kernel image
+
+config SUBSYSTEM_RFS_FORMATS
+	string "Root filesystem formats"
+	default "cpio cpio.gz cpio.gz.u-boot ext4 tar.gz jffs2" if SUBSYSTEM_ARCH_AARCH64
+	default "cpio cpio.gz cpio.gz.u-boot ext4 tar.gz jffs2" if SUBSYSTEM_ARCH_ARM
+	default "cpio cpio.gz cpio.gz.u-boot tar.gz jffs2" if SUBSYSTEM_ARCH_MICROBLAZE
+	help
+	  Specifies the formats the build system uses during the build
+	  when creating the root filesystem.
+	  Supported image formats:
+	  tar.gz cpio cpio.gz.u-boot cpio.gz ext4 ext3 ext3.bz2 tar.bz2 cpio.bz2 ext4.gz jffs2
+
+config SUBSYSTEM_DTB_PADDING_SIZE
+	hex "DTB padding size"
+	default 0x1000
+	help
+	  Set this value for DTB padding size
+
+config SUBSYSTEM_COPY_TO_TFTPBOOT
+	bool "Copy final images to tftpboot"
+	help
+	  Set this if you would like the final build image to be automatically
+	  copied to your TFTP server directory.
+
+config SUBSYSTEM_TFTPBOOT_DIR
+	string "tftpboot directory"
+	depends on SUBSYSTEM_COPY_TO_TFTPBOOT
+	default "/tftpboot"
+	help
+	  The directory that your TFTP server serves its files from.
+
+if SYSTEM_VERSAL
+config SUBSYSTEM_PDI_FILENAME
+	string "PDI File name"
+	default ""
+	help
+	  Specify the PDI file name If design file has a multiple .pdi files.
+
+endif
+endmenu
+
+menu "Firmware Version Configuration"
+config SUBSYSTEM_HOSTNAME
+	string "Host name"
+	default "petalinux"
+	help
+	 The host name of your SUBSYSTEM, set at startup.
+
+config SUBSYSTEM_PRODUCT
+	string "Product name"
+	default ""
+	help
+	  This is an string inserted into /etc/product during the build.
+
+config SUBSYSTEM_FW_VERSION
+	string "Firmware Version"
+	default "1.00"
+	help
+	  This is an arbitrary string value that is inserted into
+	  /etc/version during the build.
+endmenu
+
+menu "Yocto Settings"
+
+config YOCTO_MACHINE_NAME
+       string "Yocto Machine Name"
+       default "versal-net-generic" if SUBSYSTEM_VARIANT_VERSALNET
+       default "versal-generic" if SYSTEM_VERSAL
+       default "zynqmp-generic" if SYSTEM_ZYNQMP
+       default "zynq-generic" if SUBSYSTEM_ARCH_ARM
+       default "microblaze-generic" if SUBSYSTEM_ARCH_MICROBLAZE
+       help
+         You can specify MACHINE_NAME using this variable.
+	 Auto append the deviceId to Machine Name if this matches with INCLUDE_MACHINE_NAME
+
+config YOCTO_INCLUDE_MACHINE_NAME
+	string "Yocto Include Machine name"
+	default "ac701-microblazeel" if YOCTO_MACHINE_NAME = "xilinx-ac701"
+	default "kc705-microblazeel" if YOCTO_MACHINE_NAME = "xilinx-kc705"
+	default "kcu105-microblazeel" if YOCTO_MACHINE_NAME = "xilinx-kcu105"
+	default "vcu118-microblazeel" if YOCTO_MACHINE_NAME = "xilinx-vcu118"
+	default "kcu105-tmr-microblazeel" if YOCTO_MACHINE_NAME = "xilinx-sp701"
+	default "zc702-zynq7" if YOCTO_MACHINE_NAME = "xilinx-zc702"
+	default "zc706-zynq7" if YOCTO_MACHINE_NAME = "xilinx-zc706"
+	default "zedboard-zynq7" if YOCTO_MACHINE_NAME = "avnet-digilent-zedboard"
+	default "ultra96-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-ultra96-reva"
+	default "zc1751-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zc1751-dc1"
+	default "zcu102-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu102"
+	default "zcu104-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu104"
+	default "zcu106-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu106"
+	default "zcu111-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu111"
+	default "zcu208-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu208"
+	default "zcu216-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu216"
+	default "zcu670-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-zcu670"
+	default "k26-sm" if YOCTO_MACHINE_NAME = "xilinx-k26-som"
+	default "k24-sm" if YOCTO_MACHINE_NAME = "xilinx-k24-som"
+	default "k26-smk-kr" if YOCTO_MACHINE_NAME = "xilinx-k26-kr"
+	default "k26-smk-kv" if YOCTO_MACHINE_NAME = "xilinx-k26-kv"
+	default "k24-smk-kd" if YOCTO_MACHINE_NAME = "xilinx-k24-kd"
+	default "vck-sc-zynqmp" if YOCTO_MACHINE_NAME = "xilinx-vck190-sc"
+	default "eval-brd-sc-zynqmp" if YOCTO_MACHINE_NAME = "eval-brd-sc"
+	default "vck190-versal" if YOCTO_MACHINE_NAME = "xilinx-vck190"
+	default "vc-p-a2197-00-versal" if YOCTO_MACHINE_NAME = "xilinx-vc-p-a2197-00"
+	default "vck5000-versal" if YOCTO_MACHINE_NAME = "xilinx-vck5000"
+	default "vek280-versal" if YOCTO_MACHINE_NAME = "xilinx-vek280"
+	default "vhk158-versal" if YOCTO_MACHINE_NAME = "xilinx-vhk158"
+	default "vmk180-versal" if YOCTO_MACHINE_NAME = "xilinx-vmk180"
+	default "vpk120-versal" if YOCTO_MACHINE_NAME = "xilinx-vpk120"
+	default "vpk180-versal" if YOCTO_MACHINE_NAME = "xilinx-vpk180"
+	help
+	  Specify MACHINE_NAME which will need to be include into the YOCTO_MACHINE file
+
+config YOCTO_ADD_OVERRIDES
+	string "Yocto Additional Overrides"
+	default ""
+	help
+	  Specify additional overrides to the generated machine conf file
+	  Specify multiple overrides with ':' separator
+
+menu "TMPDIR Location"
+
+config TMP_DIR_LOCATION
+	string "TMPDIR Location"
+	default "${PROOT}/build/tmp"
+	help
+	  Relative path can be used with reference to ${PROOT}
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+endmenu
+
+menu "Devtool Workspace Location"
+
+config DEVTOOL_WORKSPACE_LOCATION
+	string "Devtool Workspace Location"
+	default "${PROOT}/components/yocto/workspace"
+	help
+	  Specify the devtool workspace directory, This will setup a workspace layer
+	  in an alternative specified absolute or releative path using layerpath option.
+	  Relative path can be used with reference to ${PROOT}
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+		${TOPDIR} will not be functional.
+endmenu
+
+config PLNX_IMAGES_LOCATION
+	string "PetaLinux Deploy Directory"
+	help
+	  Specify the PetaLinux deploy directory to place the generated build artifacts.
+
+if SUBSYSTEM_SDT_FLOW
+
+config MC_PLNX_IMAGES_LOCATION
+        string "PetaLinux Multiconfig Deploy Directory"
+        help
+          Specify the PetaLinux multiconfig deploy directory to place the generated build artifacts.
+
+
+
+endif
+menu "Parallel thread execution"
+
+config YOCTO_BB_NUMBER_THREADS
+	string "Set number of bb threads (BB_NUMBER_THREADS)"
+	help
+	  Sets the number of tasks BitBake should run in parallel at any one time.
+	  By default BitBake calculates the number of tasks is equal to the
+	  number of cores on the build system.
+
+config YOCTO_BB_NUMBER_PARSE_THREADS
+	string "Set number of bb parse threads (BB_NUMBER_PARSE_THREADS)"
+	help
+	  Sets the number of threads BitBake uses when parsing.
+	  By default BitBake calculates the number of threads is equal
+	  to the number of cores on the build system.
+
+config YOCTO_PARALLEL_MAKE
+	string "Set number of parallel make -j (PARALLEL_MAKE)"
+	help
+	  Specify parallel compilation on the local build host
+	  during the do_compile task.
+	  By default BitBake calculates the number of cores on the build system.
+
+endmenu
+
+menu "Add pre-mirror url "
+
+config PRE_MIRROR_URL
+        string "pre-mirror url path"
+        help
+	pre-mirrors is used by bitbake to fetch sources from specified location first.
+	If sources are not available in pre-mirrors, bitbake then fetches from SRC_URI in the recipes.
+
+        path can be ftp, http, https or local directory.examples are
+        "file::///path/to/your/downloads/"
+        "http://example.com/your/downloadsmirrors/"
+        "ftp://example.com/your/downloadsmirrors/"
+endmenu
+
+
+menu "Local sstate feeds settings"
+
+config YOCTO_LOCAL_SSTATE_FEEDS_URL
+	string "local sstate feeds url"
+	default ""
+	help
+	 Provide NFS/local sstate feed path.
+	 The sstate cache will be pulled from these path and used to build the components.
+	 E.g: /some/local/dir/sstate/
+
+
+endmenu
+
+config YOCTO_NETWORK_SSTATE_FEEDS
+	bool "Enable Network sstate feeds"
+	default y
+	help
+	 The sstate feeds which are hosted on webserver has to be provided.
+	 The sstate cache will be pulled from these servers and rootfs was generated.
+
+menu "Network sstate feeds URL"
+	depends on YOCTO_NETWORK_SSTATE_FEEDS
+config YOCTO_NETWORK_SSTATE_FEEDS_URL
+	string "network sstate feeds url"
+	default ""
+	help
+	 Provide Network sstate feed URI.
+	 The sstate cache will be pulled from these servers and used to build the components.
+	 E.g: http://someserver.tld/share/sstate/
+
+
+endmenu
+
+config YOCTO_BB_NO_NETWORK
+	bool "Enable BB NO NETWORK"
+	default n
+	help
+	 Enabling this option restricts bitbake to go to internet for fetching.
+
+config YOCTO_BUILDTOOLS_EXTENDED
+	bool "Enable Buildtools Extended"
+	default n
+	help
+	 Enabling this option to use the gcc and other libraries from $PETALINUX/components/yocto/buildtools_extended/
+	 Use this option on a machine that does not meet the minimal gcc, Git, tar, and Python requirements.
+
+menu "User Layers"
+
+config USER_LAYER_0
+	string "user layer 0"
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_1
+	string "user layer 1"
+	depends on USER_LAYER_0 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_2
+	string "user layer 2"
+	depends on USER_LAYER_1 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_3
+	string "user layer 3"
+	depends on USER_LAYER_2 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_4
+	string "user layer 4"
+	depends on USER_LAYER_3 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_5
+	string "user layer 5"
+	depends on USER_LAYER_4 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_6
+	string "user layer 6"
+	depends on USER_LAYER_5 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_7
+	string "user layer 7"
+	depends on USER_LAYER_6 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_8
+	string "user layer 8"
+	depends on USER_LAYER_7 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+config USER_LAYER_9
+	string "user layer 9"
+	depends on USER_LAYER_8 != ""
+	help
+	  You can specify relative path or absolute path of layer.
+	  To add layer at <project-root>/project-spec/meta-security
+	  Enter: ${PROOT}/project-spec/meta-security
+	  Note: ${PROOT} is a PetaLinux variable, Using bitbake variable such as
+	        ${TOPDIR} will not be functional.
+
+endmenu
+endmenu

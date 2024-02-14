@@ -327,12 +327,12 @@ void AIETraceOffload::readTracePLIO(bool final)
       // Don't read any more data
       bd.offloadDone = true;
       std::stringstream msg;
-      msg << AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE << " Stream : " << index + 1 << std::endl;
+      msg << AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE << " Stream : " << index + 1 << "\n";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       debug_stream
         << "Bytes Read : " << bytes_read
         << " Bytes Written : " << bytes_written
-        << std::endl;
+        << "\n";
 
       // Fatal condition. Abort offload
       mCircularBufOverwrite = true;
@@ -364,7 +364,7 @@ void AIETraceOffload::readTracePLIO(bool final)
         << " Bytes Read : " << bytes_read
         << " Bytes Written : " << bytes_written
         << " Rollovers : " << bd.rollover_count
-        << std::endl;
+        << "\n";
     }
 
     if (!syncAndLog(index))
@@ -380,7 +380,7 @@ void AIETraceOffload::readTracePLIO(bool final)
 
       debug_stream
         << "Circular buffer boundary read from 0x0 to 0x: "
-        << std::hex << circBufRolloverBytes << std::dec << std::endl;
+        << std::hex << circBufRolloverBytes << std::dec << "\n";
 
       syncAndLog(index);
     }
@@ -405,7 +405,7 @@ uint64_t AIETraceOffload::syncAndLog(uint64_t index)
     << "ts2mm_" << index << " : bytes : " << nBytes << " "
     << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
     << std::hex << "from 0x" << bd.offset << " to 0x"
-    << bd.usedSz << std::dec << std::endl;
+    << bd.usedSz << std::dec << "\n";
 
   if (!hostBuf) {
     bd.offloadDone = true;
@@ -561,7 +561,7 @@ uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
   uint64_t written = boundary * TRACE_PACKET_SIZE;
 
   debug_stream
-    << "Found Boundary at 0x" << std::hex << written << std::dec << std::endl;
+    << "Found Boundary at 0x" << std::hex << written << std::dec << "\n";
 
   return written;
 }

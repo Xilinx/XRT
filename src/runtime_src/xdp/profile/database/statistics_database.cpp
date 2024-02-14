@@ -442,7 +442,7 @@ namespace xdp {
 
     for (const auto& i : counts)
     {
-      fout << i.first << "," << i.second << std::endl ;
+      fout << i.first << "," << i.second << "\n" ;
     }
   }
 
@@ -451,40 +451,40 @@ namespace xdp {
     unsigned int i = 0 ; 
     for (const auto& m : memoryStats)
     {
-      fout << "Device " << i << std::endl ;
+      fout << "Device " << i << "\n" ;
 
       fout << "\tUnmanaged Reads: " 
            << m.second.channels[0].transactionCount
            << " transactions, "
            << m.second.channels[0].totalByteCount
-           << " bytes transferred" << std::endl ;
+           << " bytes transferred" << "\n" ;
       fout << "\tUnmanaged Writes: " 
            << m.second.channels[1].transactionCount
            << " transactions, "
            << m.second.channels[1].totalByteCount
-           << " bytes transferred" << std::endl ;
+           << " bytes transferred" << "\n" ;
 
       fout << "\txclRead: " 
            << m.second.channels[2].transactionCount
            << " transactions, "
            << m.second.channels[2].totalByteCount
-           << " bytes transferred" << std::endl ;
+           << " bytes transferred" << "\n" ;
       fout << "\txclWrite: " 
            << m.second.channels[3].transactionCount
            << " transactions, "
            << m.second.channels[3].totalByteCount
-           << " bytes transferred" << std::endl ;
+           << " bytes transferred" << "\n" ;
      
       fout << "\treadBuffer: " 
            << m.second.channels[4].transactionCount
            << " transactions, "
            << m.second.channels[4].totalByteCount
-           << " bytes transferred" << std::endl ;
+           << " bytes transferred" << "\n" ;
       fout << "\twriteBuffer: " 
            << m.second.channels[5].transactionCount
            << " transactions, "
            << m.second.channels[5].totalByteCount
-           << " bytes transferred" << std::endl ;
+           << " bytes transferred" << "\n" ;
     }
   }
 

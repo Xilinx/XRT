@@ -38,7 +38,7 @@ namespace xdp {
   {
     VTFEvent::dump(fout, bucket) ;
     if (label != 0) fout << "," << label ;
-    fout << std::endl ;
+    fout << "\n" ;
   }
 
   UserRange::UserRange(uint64_t s_id, double ts, bool s, 
@@ -59,7 +59,7 @@ namespace xdp {
       fout << "," << label << "," << tooltip ;
     }
 
-    fout << std::endl ;
+    fout << "\n" ;
   }
 
 } // end namespace xdp

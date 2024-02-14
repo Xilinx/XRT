@@ -373,7 +373,7 @@ void AieTrace_x86Impl::parseMessages(uint8_t *messageStruct) {
     switch (messageCode) {
     case Messages::NO_CORE_MODULE_PCS:
       msg << "Available core module performance counters for aie trace : "
-          << packet.params[0] << std::endl
+          << packet.params[0] << "\n"
           << "Required core module performance counters for aie trace : "
           << packet.params[1];
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
@@ -381,7 +381,7 @@ void AieTrace_x86Impl::parseMessages(uint8_t *messageStruct) {
 
     case Messages::NO_CORE_MODULE_TRACE_SLOTS:
       msg << "Available core module trace slots for aie trace : "
-          << packet.params[0] << std::endl
+          << packet.params[0] << "\n"
           << "Required core module trace slots for aie trace : "
           << packet.params[1];
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
@@ -389,7 +389,7 @@ void AieTrace_x86Impl::parseMessages(uint8_t *messageStruct) {
 
     case Messages::NO_CORE_MODULE_BROADCAST_CHANNELS:
       msg << "Available core module broadcast channels for aie trace : "
-          << packet.params[0] << std::endl
+          << packet.params[0] << "\n"
           << "Required core module broadcast channels for aie trace : "
           << packet.params[1];
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
@@ -397,7 +397,7 @@ void AieTrace_x86Impl::parseMessages(uint8_t *messageStruct) {
 
     case Messages::NO_MEM_MODULE_PCS:
       msg << "Available memory module performance counters for aie trace : "
-          << packet.params[0] << std::endl
+          << packet.params[0] << "\n"
           << "Required memory module performance counters for aie trace : "
           << packet.params[1];
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
@@ -405,7 +405,7 @@ void AieTrace_x86Impl::parseMessages(uint8_t *messageStruct) {
 
     case Messages::NO_MEM_MODULE_TRACE_SLOTS:
       msg << "Available memory module trace slots for aie trace : "
-          << packet.params[0] << std::endl
+          << packet.params[0] << "\n"
           << "Required memory module trace slots for aie trace : "
           << packet.params[1];
       xrt_core::message::send(severity_level::info, "XRT", msg.str());

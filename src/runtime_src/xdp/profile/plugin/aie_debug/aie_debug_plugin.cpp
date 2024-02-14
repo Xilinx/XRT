@@ -175,7 +175,7 @@ namespace xdp {
     //   instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     // } catch (std::exception &e){
     //   std::stringstream msg;
-    //   msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
+    //   msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << "\n";
     //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
     //   return;
     // }
@@ -187,7 +187,7 @@ namespace xdp {
     //   result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
     // } catch (std::exception &e) {
     //   std::stringstream msg;
-    //   msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << std::endl;
+    //   msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << "\n";
     //   xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
     //   return;
     // }
@@ -283,7 +283,7 @@ namespace xdp {
     //   run.wait2();
     // } catch (std::exception &e) {
     //   std::stringstream msg;
-    //   msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << std::endl;
+    //   msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << "\n";
     //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
     //   return;
     // }

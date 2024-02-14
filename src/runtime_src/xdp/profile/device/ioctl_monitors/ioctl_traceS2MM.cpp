@@ -74,7 +74,7 @@ void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
   }
  
   if (out_stream)
-    (*out_stream) << " IOCtlTraceS2MM::init " << std::endl;
+    (*out_stream) << " IOCtlTraceS2MM::init " << "\n";
 
   struct ts2mm_config cfg = { bo_size, static_cast<uint64_t>(bufaddr), circular };
   ioctl(driver_FD, TR_S2MM_IOC_START, &cfg);
@@ -89,7 +89,7 @@ void IOCtlTraceS2MM::reset()
   }
  
   if (out_stream)
-    (*out_stream) << " IOCtlTraceS2MM::reset " << std::endl;
+    (*out_stream) << " IOCtlTraceS2MM::reset " << "\n";
 
   ioctl(driver_FD, TR_S2MM_IOC_RESET);
 
@@ -106,7 +106,7 @@ uint64_t IOCtlTraceS2MM::getWordCount(bool final)
   }
 
   if (out_stream)
-    (*out_stream) << " IOCtlTraceS2MM::getWordCount " << std::endl;
+    (*out_stream) << " IOCtlTraceS2MM::getWordCount " << "\n";
 
   // Call flush on V2 datamover to ensure all data is written
   if (final && isVersion2())

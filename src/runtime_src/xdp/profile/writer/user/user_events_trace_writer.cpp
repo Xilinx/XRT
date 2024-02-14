@@ -40,21 +40,21 @@ namespace xdp {
   void UserEventsTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "TraceID," << traceID << std::endl;
+    fout << "TraceID," << traceID << "\n";
   }
 
   void UserEventsTraceWriter::writeStructure()
   {
-    fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,User and Internal Events" << std::endl ;
+    fout << "STRUCTURE" << "\n" ;
+    fout << "Group_Start,User and Internal Events" << "\n" ;
     fout << "Dynamic_Row," << bucketId << ",General,User Events from APIs and Internally Generated Events"
-         << std::endl ;
-    fout << "Group_End,User and Internal Events" << std::endl ;
+         << "\n" ;
+    fout << "Group_End,User and Internal Events" << "\n" ;
   }
 
   void UserEventsTraceWriter::writeStringTable()
   {
-    fout << "MAPPING" << std::endl ;
+    fout << "MAPPING" << "\n" ;
     (db->getDynamicInfo()).dumpStringTable(fout) ;
   }
 
@@ -73,20 +73,20 @@ namespace xdp {
 
   void UserEventsTraceWriter::writeDependencies()
   {
-    fout << "DEPENDENCIES" << std::endl ;
+    fout << "DEPENDENCIES" << "\n" ;
     // No dependencies in user events
   }
 
   bool UserEventsTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeStructure() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeStringTable() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeTraceEvents() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeDependencies() ;
 
     if (openNewFile) switchFiles() ;

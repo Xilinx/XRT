@@ -39,7 +39,7 @@ ASM::ASM(Device* handle /** < [in] the xrt or hal device handle */,
 size_t ASM::startCounter()
 {
     if(out_stream)
-        (*out_stream) << " ASM::startCounter " << std::endl;
+        (*out_stream) << " ASM::startCounter " << "\n";
 
     size_t size = 0;
     uint32_t regValue = 0;
@@ -60,14 +60,14 @@ size_t ASM::startCounter()
 size_t ASM::stopCounter()
 {
     if(out_stream)
-        (*out_stream) << " ASM::stopCounter " << std::endl;
+        (*out_stream) << " ASM::stopCounter " << "\n";
     return 0;
 }
 
 size_t ASM::readCounter(xdp::CounterResults& counterResults)
 {
     if(out_stream)
-        (*out_stream) << " ASM::readCounter " << std::endl;
+        (*out_stream) << " ASM::readCounter " << "\n";
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
@@ -75,7 +75,7 @@ size_t ASM::readCounter(xdp::CounterResults& counterResults)
     uint64_t s = getASMSlotId(getMIndex());
 
     if(out_stream) {
-        (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;
+        (*out_stream) << "Reading AXI Stream Monitors.." << "\n";
     }
 
     size += read(IP::ASM::AXI_LITE::SAMPLE, 4, &sampleInterval);
@@ -92,12 +92,12 @@ size_t ASM::readCounter(xdp::CounterResults& counterResults)
     }
 
     if(out_stream) {
-        (*out_stream) << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl
-                      << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl
-                      << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl
-                      << "Reading AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl
-                      << "Reading AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << std::endl
-                      << "Reading AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
+        (*out_stream) << "Reading AXI Stream Monitor... SlotNum : " << s << "\n"
+                      << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << "\n"
+                      << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << "\n"
+                      << "Reading AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << "\n"
+                      << "Reading AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << "\n"
+                      << "Reading AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << "\n";
     }
     return size;
 }
@@ -119,7 +119,7 @@ size_t ASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 void ASM::showProperties()
 {
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) << " ASM " << std::endl;
+    (*outputStream) << " ASM " << "\n";
     ProfileIP::showProperties();
 }
 

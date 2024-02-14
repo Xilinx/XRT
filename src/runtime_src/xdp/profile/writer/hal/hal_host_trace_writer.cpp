@@ -37,11 +37,11 @@ namespace xdp {
   void HALHostTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "TraceID," << traceID << std::endl
-         << "XRT  Version," << xrtVersion  << std::endl
-         << "Tool Version," << toolVersion << std::endl;
+    fout << "TraceID," << traceID << "\n"
+         << "XRT  Version," << xrtVersion  << "\n"
+         << "Tool Version," << toolVersion << "\n";
 
-    //fout << "Profiled Application," << xdp::WriterI::getCurrentExecutableName() << std::endl; // check
+    //fout << "Profiled Application," << xdp::WriterI::getCurrentExecutableName() << "\n"; // check
   }
 
   void HALHostTraceWriter::writeStructure()
@@ -51,26 +51,26 @@ namespace xdp {
     //  based upon the static structure of the loaded xclbin in the
     //  device.
     uint32_t rowCount = 0;
-    fout << "STRUCTURE" << std::endl ;
+    fout << "STRUCTURE" << "\n" ;
     
-    fout << "Group_Start,HAL Host Trace" << std::endl ;
+    fout << "Group_Start,HAL Host Trace" << "\n" ;
 
-    fout << "Dynamic_Row," << ++rowCount << ",HAL API Calls,API_CALL" << std::endl;
+    fout << "Dynamic_Row," << ++rowCount << ",HAL API Calls,API_CALL" << "\n";
     eventTypeBucketIdMap[HAL_API_CALL] = rowCount;
     
-    fout << "Group_Start,Data Transfer" << std::endl ;
-    fout << "Dynamic_Row," << ++rowCount << ",Read,READ_BUFFER" << std::endl ;
+    fout << "Group_Start,Data Transfer" << "\n" ;
+    fout << "Dynamic_Row," << ++rowCount << ",Read,READ_BUFFER" << "\n" ;
     eventTypeBucketIdMap[READ_BUFFER] = rowCount;
-    fout << "Dynamic_Row," << ++rowCount << ",Write,WRITE_BUFFER" << std::endl ;
+    fout << "Dynamic_Row," << ++rowCount << ",Write,WRITE_BUFFER" << "\n" ;
     eventTypeBucketIdMap[WRITE_BUFFER] = rowCount;
-    fout << "Group_End,Data Transfer" << std::endl ;
+    fout << "Group_End,Data Transfer" << "\n" ;
     
-    fout << "Group_End,HAL Host Trace" << std::endl ;
+    fout << "Group_End,HAL Host Trace" << "\n" ;
   }
 
   void HALHostTraceWriter::writeStringTable()
   {
-    fout << "MAPPING" << std::endl ;
+    fout << "MAPPING" << "\n" ;
     (db->getDynamicInfo()).dumpStringTable(fout) ;
   }
 
@@ -93,22 +93,22 @@ namespace xdp {
 
   void HALHostTraceWriter::writeDependencies()
   {
-    fout << "DEPENDENCIES" << std::endl ;
+    fout << "DEPENDENCIES" << "\n" ;
     // No dependencies in HAL events
   }
 
   bool HALHostTraceWriter::write(bool openNewFile)
   {
     writeHeader() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeStructure() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeStringTable() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeTraceEvents() ;
-    fout << std::endl ;
+    fout << "\n" ;
     writeDependencies() ;
-    fout << std::endl ;
+    fout << "\n" ;
 
     if (openNewFile) switchFiles() ;
     return true;

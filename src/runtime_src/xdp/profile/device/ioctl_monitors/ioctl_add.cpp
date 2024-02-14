@@ -76,7 +76,7 @@ uint32_t IOCtlDeadlockDetector::getDeadlockStatus()
     return 0;
  
   if (out_stream)
-    (*out_stream) << " IOCtlDeadlockDetector::getDeadlockStatus " << std::endl;
+    (*out_stream) << " IOCtlDeadlockDetector::getDeadlockStatus " << "\n";
 
   uint32_t status = 0;
   ioctl(driver_FD, ACCEL_DEADLOCK_DETECTOR_IOC_GET_STATUS, &status);

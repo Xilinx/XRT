@@ -74,7 +74,7 @@ void NOC::init()
 void NOC::showProperties()
 {
   std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-  (*outputStream) << " Noc " << std::endl;
+  (*outputStream) << " Noc " << "\n";
   ProfileIP::showProperties();
 }
 

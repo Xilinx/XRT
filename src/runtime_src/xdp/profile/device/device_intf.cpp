@@ -332,7 +332,7 @@ uint64_t DeviceIntf::getFifoSize() {
 size_t DeviceIntf::startCounters() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-              << ", Start device counters..." << std::endl;
+              << ", Start device counters..." << "\n";
   }
 
   // Update addresses for debug/profile IP
@@ -365,7 +365,7 @@ size_t DeviceIntf::startCounters() {
 size_t DeviceIntf::stopCounters() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-              << ", Stop and reset device counters..." << std::endl;
+              << ", Stop and reset device counters..." << "\n";
   }
 
   if (!mIsDeviceProfiling)
@@ -399,7 +399,7 @@ size_t DeviceIntf::stopCounters() {
 size_t DeviceIntf::readCounters(xdp::CounterResults &counterResults) {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-              << &counterResults << ", Read device counters..." << std::endl;
+              << &counterResults << ", Read device counters..." << "\n";
   }
 
   // Initialize all values in struct to 0
@@ -440,7 +440,7 @@ size_t DeviceIntf::startTrace(uint32_t startTrigger) {
   // Bit 4: Str Trace Ctrl        Bit 5: Ext Trace Ctrl
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-              << startTrigger << ", Start device tracing..." << std::endl;
+              << startTrigger << ", Start device tracing..." << "\n";
   }
 
   size_t size = 0;
@@ -507,7 +507,7 @@ void DeviceIntf::clockTraining(bool force) {
 size_t DeviceIntf::stopTrace() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-              << ", Stop and reset device tracing..." << std::endl;
+              << ", Stop and reset device tracing..." << "\n";
   }
 
   if (!mIsDeviceProfiling || !mFifoCtrl)
@@ -519,7 +519,7 @@ size_t DeviceIntf::stopTrace() {
 // Get trace word count
 uint32_t DeviceIntf::getTraceCount() {
   if (mVerbose) {
-    std::cout << __func__ << ", " << std::this_thread::get_id() << std::endl;
+    std::cout << __func__ << ", " << std::this_thread::get_id() << "\n";
   }
 
   if (!mIsDeviceProfiling || !mFifoCtrl)
@@ -561,7 +561,7 @@ void DeviceIntf::readDebugIPlayout() {
     std::string warnMsg =
         "Multiple live processes running on device. Hardware Debug and "
         "Profiling data will be unavailable for this process.";
-    std::cout << warnMsg << std::endl;
+    std::cout << warnMsg << "\n";
     // xrt_core::message::send(xrt_core::message::severity_level::warning,
     // "XRT", warnMsg) ;
     mIsDeviceProfiling = false;

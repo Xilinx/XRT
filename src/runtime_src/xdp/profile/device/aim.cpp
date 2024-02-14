@@ -41,7 +41,7 @@ AIM::AIM(Device* handle /** < [in] the xrt or hal device handle */,
 size_t AIM::startCounter()
 {
     if(out_stream)
-        (*out_stream) << " AIM::startCounter " << std::endl;
+        (*out_stream) << " AIM::startCounter " << "\n";
 
     size_t size = 0;
     uint32_t regValue = 0;
@@ -68,7 +68,7 @@ size_t AIM::startCounter()
 size_t AIM::stopCounter()
 {
     if(out_stream)
-        (*out_stream) << " AIM::stopCounter " << std::endl;
+        (*out_stream) << " AIM::stopCounter " << "\n";
 
     size_t size = 0;
     uint32_t regValue = 0;
@@ -85,7 +85,7 @@ size_t AIM::stopCounter()
 size_t AIM::readCounter(xdp::CounterResults& counterResults)
 {
     if(out_stream)
-        (*out_stream) << " AIM::readCounter " << std::endl;
+        (*out_stream) << " AIM::readCounter " << "\n";
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
@@ -131,30 +131,30 @@ size_t AIM::readCounter(xdp::CounterResults& counterResults)
 
 #if 0
         if(out_stream) {
-          (*out_stream) << "AXI Interface Monitor Upper 32, slot " << s << std::endl
-                        << "  WriteBytes : " << upper[0] << std::endl
-                        << "  WriteTranx : " << upper[1] << std::endl
-                        << "  WriteLatency : " << upper[2] << std::endl
-                        << "  ReadBytes : " << upper[3] << std::endl
-                        << "  ReadTranx : " << upper[4] << std::endl
-                        << "  ReadLatency : " << upper[5] << std::endl
-                        << "  ReadBusyCycles : " << upper[6] << std::endl
-                        << "  WriteBusyCycles : " << upper[7] << std::endl;
+          (*out_stream) << "AXI Interface Monitor Upper 32, slot " << s << "\n"
+                        << "  WriteBytes : " << upper[0] << "\n"
+                        << "  WriteTranx : " << upper[1] << "\n"
+                        << "  WriteLatency : " << upper[2] << "\n"
+                        << "  ReadBytes : " << upper[3] << "\n"
+                        << "  ReadTranx : " << upper[4] << "\n"
+                        << "  ReadLatency : " << upper[5] << "\n"
+                        << "  ReadBusyCycles : " << upper[6] << "\n"
+                        << "  WriteBusyCycles : " << upper[7] << "\n";
         }
 #endif
     }
 
 
     if(out_stream) {
-        (*out_stream) << "Reading AXI Interface Monitor... SlotNum : " << s << std::endl
-                      << "Reading AXI Interface Monitor... WriteBytes : " << counterResults.WriteBytes[s] << std::endl
-                      << "Reading AXI Interface Monitor... WriteTranx : " << counterResults.WriteTranx[s] << std::endl
-                      << "Reading AXI Interface Monitor... WriteLatency : " << counterResults.WriteLatency[s] << std::endl
-                      << "Reading AXI Interface Monitor... ReadBytes : " << counterResults.ReadBytes[s] << std::endl
-                      << "Reading AXI Interface Monitor... ReadTranx : " << counterResults.ReadTranx[s] << std::endl
-                      << "Reading AXI Interface Monitor... ReadLatency : " << counterResults.ReadLatency[s] << std::endl
-                      << "Reading AXI Interface Monitor... ReadBusyCycles : " << counterResults.ReadBusyCycles[s] << std::endl
-                      << "Reading AXI Interface Monitor... WriteBusyCycles : " << counterResults.WriteBusyCycles[s] << std::endl;
+        (*out_stream) << "Reading AXI Interface Monitor... SlotNum : " << s << "\n"
+                      << "Reading AXI Interface Monitor... WriteBytes : " << counterResults.WriteBytes[s] << "\n"
+                      << "Reading AXI Interface Monitor... WriteTranx : " << counterResults.WriteTranx[s] << "\n"
+                      << "Reading AXI Interface Monitor... WriteLatency : " << counterResults.WriteLatency[s] << "\n"
+                      << "Reading AXI Interface Monitor... ReadBytes : " << counterResults.ReadBytes[s] << "\n"
+                      << "Reading AXI Interface Monitor... ReadTranx : " << counterResults.ReadTranx[s] << "\n"
+                      << "Reading AXI Interface Monitor... ReadLatency : " << counterResults.ReadLatency[s] << "\n"
+                      << "Reading AXI Interface Monitor... ReadBusyCycles : " << counterResults.ReadBusyCycles[s] << "\n"
+                      << "Reading AXI Interface Monitor... WriteBusyCycles : " << counterResults.WriteBusyCycles[s] << "\n";
     }
 
     return size;
@@ -192,7 +192,7 @@ bool AIM::has64bit() const
 void AIM::showProperties()
 {
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-    (*outputStream) << " AIM " << std::endl;
+    (*outputStream) << " AIM " << "\n";
     ProfileIP::showProperties();
 }
 

@@ -74,7 +74,7 @@ size_t IOCtlAIM::startCounter()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAIM::startCounter " << std::endl;
+    (*out_stream) << " IOCtlAIM::startCounter " << "\n";
 
   ioctl(driver_FD, AIM_IOC_RESET);
   ioctl(driver_FD, AIM_IOC_STARTCNT);
@@ -88,7 +88,7 @@ size_t IOCtlAIM::stopCounter()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAIM::stopCounter " << std::endl;
+    (*out_stream) << " IOCtlAIM::stopCounter " << "\n";
 
   ioctl(driver_FD, AIM_IOC_STOPCNT);
   return 0;
@@ -101,7 +101,7 @@ size_t IOCtlAIM::readCounter(xdp::CounterResults& counterResults)
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAIM::readCounter " << std::endl;
+    (*out_stream) << " IOCtlAIM::readCounter " << "\n";
 
   uint64_t s = getAIMSlotId(getMIndex());
 
@@ -129,7 +129,7 @@ size_t IOCtlAIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlAIM::triggerTrace " << std::endl;
+    (*out_stream) << " IOCtlAIM::triggerTrace " << "\n";
 
   ioctl(driver_FD, AIM_IOC_STARTTRACE, &traceOption);
   return 0;

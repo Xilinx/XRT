@@ -211,7 +211,7 @@ namespace xdp {
     uint64_t written = boundary * TRACE_PACKET_SIZE;
 
     debug_stream << "Found Boundary at 0x" << std::hex << written << std::dec
-                 << std::endl;
+                 << "\n";
 
     return written;
   }

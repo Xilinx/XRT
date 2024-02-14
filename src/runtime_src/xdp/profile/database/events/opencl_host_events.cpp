@@ -51,7 +51,7 @@ namespace xdp {
     fout << "," << workgroupConfiguration ;
     fout << "," << workgroupSize ;
     fout << "," << 0 ; // This is the "size"
-    fout << std::endl; 
+    fout << "\n"; 
   }
 
   LOPKernelEnqueue::LOPKernelEnqueue(uint64_t s_id, double ts) :
@@ -66,7 +66,7 @@ namespace xdp {
   void LOPKernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
-    fout << std::endl ;
+    fout << "\n" ;
   }
 
   /*
@@ -100,7 +100,7 @@ namespace xdp {
     if(0 == start_id) {  // Dump the detailed information only for start event
       fout << "," << size;
     }
-    fout << std::endl;
+    fout << "\n";
   }
 
   OpenCLBufferTransfer::OpenCLBufferTransfer(uint64_t s_id, double ts,
@@ -128,7 +128,7 @@ namespace xdp {
       fout << "," << memoryResource ;
       fout << ",0x" << std::hex << threadId << std::dec ;
     }
-    fout << std::endl ;
+    fout << "\n" ;
   }
 
 
@@ -160,7 +160,7 @@ namespace xdp {
            << "," << dstMemoryResource 
            << ",0x" << std::hex << threadId << std::dec ;
     }
-    fout << std::endl ;
+    fout << "\n" ;
   }
 
   LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, double ts, 
@@ -177,7 +177,7 @@ namespace xdp {
   void LOPBufferTransfer::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
-    fout << "," << std::hex << "0x" << threadId << std::dec << std::endl ;
+    fout << "," << std::hex << "0x" << threadId << std::dec << "\n" ;
   }
 
   StreamRead::StreamRead(uint64_t s_id, double ts) :

@@ -73,7 +73,7 @@ size_t IOCtlTraceFifoLite::reset()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlTraceFifoLite::reset " << std::endl;
+    (*out_stream) << " IOCtlTraceFifoLite::reset " << "\n";
 
   ioctl(driver_FD, TR_FIFO_IOC_RESET);
 
@@ -87,7 +87,7 @@ uint32_t IOCtlTraceFifoLite::getNumTraceSamples()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlTraceFifoLite::getNumTraceSamples " << std::endl;
+    (*out_stream) << " IOCtlTraceFifoLite::getNumTraceSamples " << "\n";
 
   uint32_t numBytes = 0;
   ioctl(driver_FD, TR_FIFO_IOC_GET_NUMBYTES, &numBytes);
@@ -96,7 +96,7 @@ uint32_t IOCtlTraceFifoLite::getNumTraceSamples()
   numSamples = numBytes / (xdp::TRACE_FIFO_WORD_WIDTH/8);
 
   if(out_stream)
-    (*out_stream) << "  No. of trace samples = " << numSamples << std::endl;
+    (*out_stream) << "  No. of trace samples = " << numSamples << "\n";
   
   return numSamples;
 } 

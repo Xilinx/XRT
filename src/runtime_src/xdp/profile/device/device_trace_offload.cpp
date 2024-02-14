@@ -149,7 +149,7 @@ process_trace()
 
     // Processing takes a lot more time compared to everything else
     if (q_read) {
-      debug_stream << "Process " << size << " bytes of trace" << std::endl;
+      debug_stream << "Process " << size << " bytes of trace" << "\n";
       deviceTraceLogger->processTraceData(buf.get(), size) ;
       buf.reset();
     }
@@ -212,7 +212,7 @@ train_clock()
     dev_intf->clockTraining(m_force_clk_train);
     m_prev_clk_train_time = now;
     debug_stream
-      << "INFO Enough Time Passed.. Call Clock Training" << std::endl;
+      << "INFO Enough Time Passed.. Call Clock Training" << "\n";
   }
 
   // Don't force continuous training for old IP
@@ -223,7 +223,7 @@ void DeviceTraceOffload::
 read_trace_fifo(bool)
 {
   debug_stream
-    << "DeviceTraceOffload::read_trace_fifo " << std::endl;
+    << "DeviceTraceOffload::read_trace_fifo " << "\n";
 
   // Disable using fifo as circular buffer
   if (fifo_full)
@@ -308,7 +308,7 @@ read_trace_s2mm(bool force)
         << " Bytes Read : " << bytes_read
         << " Bytes Written : " << bytes_written
         << " Rollovers : " << bd.rollover_count
-        << std::endl;
+        << "\n";
 
       // Add warnings and user markers
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
@@ -346,7 +346,7 @@ read_trace_s2mm(bool force)
         << " Bytes Read : " << bytes_read
         << " Bytes Written : " << bytes_written
         << " Rollovers : " << bd.rollover_count
-        << std::endl;
+        << "\n";
     }
 
     if (!sync_and_log(i))
@@ -362,7 +362,7 @@ read_trace_s2mm(bool force)
 
       debug_stream
         << "Circular buffer boundary read from 0x0 to 0x: "
-        << std::hex << cir_buf_rollover_bytes << std::dec << std::endl;
+        << std::hex << cir_buf_rollover_bytes << std::dec << "\n";
 
       sync_and_log(i);
     }
@@ -386,7 +386,7 @@ sync_and_log(uint64_t index)
   debug_stream
     << "ts2mm_" << index << " : sync : "
     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-    << " µs" << " nBytes : " << nBytes << std::endl;
+    << " µs" << " nBytes : " << nBytes << "\n";
 
   if (!host_buf) {
     bd.offload_done = true;
@@ -451,7 +451,7 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 
     debug_stream
     << "DeviceTraceOffload::init_s2mm with each size : " << bd.alloc_size
-    << " initiated " << i << " ts2mm " << std::endl;
+    << " initiated " << i << " ts2mm " << "\n";
   }
   return true;
 }
@@ -459,7 +459,7 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 void DeviceTraceOffload::
 reset_s2mm()
 {
-  debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
+  debug_stream << "DeviceTraceOffload::reset_s2mm" << "\n";
   if (ts2mm_info.buffers.empty())
     return;
 

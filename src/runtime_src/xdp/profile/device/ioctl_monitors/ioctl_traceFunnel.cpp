@@ -74,7 +74,7 @@ size_t IOCtlTraceFunnel::initiateClockTraining()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlTraceFunnel::initiateClockTraining " << std::endl;
+    (*out_stream) << " IOCtlTraceFunnel::initiateClockTraining " << "\n";
 
   for(int i = 0; i < 2 ; i++) {
     uint64_t hostTimeStamp = getDevice()->getTraceTime();
@@ -91,7 +91,7 @@ void IOCtlTraceFunnel::reset()
   }
  
   if(out_stream)
-    (*out_stream) << " IOCtlTraceFunnel::reset " << std::endl;
+    (*out_stream) << " IOCtlTraceFunnel::reset " << "\n";
 
   ioctl(driver_FD, TR_FUNNEL_IOC_RESET);
 }

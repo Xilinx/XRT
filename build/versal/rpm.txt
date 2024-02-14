@@ -1,0 +1,2 @@
+xrt-dev-202320.2.16.0-r0.0.versal_ai_core.rpm
+xrt-202320.2.16.0-r0.0.versal_ai_core.rpm

@@ -54,7 +54,7 @@ uint32_t TraceFifoLite::getNumTraceSamples()
 
     if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
       (*out_stream) << "  No. of trace samples = " << std::dec << numSamples
-                    << " (fifoCount = 0x" << std::hex << fifoCount << ")" << std::dec << std::endl;
+                    << " (fifoCount = 0x" << std::hex << fifoCount << ")" << std::dec << "\n";
 
     return numSamples;
 }
@@ -73,7 +73,7 @@ size_t TraceFifoLite::reset()
 void TraceFifoLite::showProperties()
 {
     std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
-    (*outputStream) << " TraceFifoLite " << std::endl;
+    (*outputStream) << " TraceFifoLite " << "\n";
     ProfileIP::showProperties();
 }
 

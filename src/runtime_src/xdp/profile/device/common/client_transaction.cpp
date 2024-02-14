@@ -64,7 +64,7 @@ namespace xdp::aie {
         instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
       } catch (std::exception &e){
         std::stringstream msg;
-        msg << "Unable to create instruction buffer for " << transactionName << " transaction. Unable to configure " << transactionName<< ". " << e.what() << std::endl;
+        msg << "Unable to create instruction buffer for " << transactionName << " transaction. Unable to configure " << transactionName<< ". " << e.what() << "\n";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         return false;
       }
@@ -86,7 +86,7 @@ namespace xdp::aie {
         result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
       } catch (std::exception &e) {
         std::stringstream msg;
-        msg << "Unable to create result buffer for "  << transactionName << ". Cannot get " << transactionName << " Results." << e.what() << std::endl;
+        msg << "Unable to create result buffer for "  << transactionName << ". Cannot get " << transactionName << " Results." << e.what() << "\n";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         return nullptr;
       }

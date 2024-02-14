@@ -101,7 +101,7 @@ namespace xdp {
     writeStructure() ;    fout << "\n" ;
     writeStringTable() ;  fout << "\n" ;
     writeTraceEvents() ;  fout << "\n" ;
-    writeDependencies() ; fout << std::endl ; // Force a flush at the end
+    writeDependencies() ; fout << "\n" ; // Force a flush at the end
 
     if (openNewFile) switchFiles() ;
 
