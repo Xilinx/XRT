@@ -149,6 +149,25 @@ namespace xdp {
           }
 
           {
+            bpt::ptree sel_trace_config;
+            bpt::ptree s2mm_channels;
+            bpt::ptree mm2s_channels;
+
+            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
+              bpt::ptree chan1;
+              bpt::ptree chan2;
+              chan1.put("", tile->core_trace_config.s2mm_channels[i]);
+              chan2.put("", tile->core_trace_config.mm2s_channels[i]);
+              s2mm_channels.push_back(std::make_pair("", chan1));
+              mm2s_channels.push_back(std::make_pair("", chan2));
+            }
+            
+            sel_trace_config.add_child("s2mm_channels", s2mm_channels);
+            sel_trace_config.add_child("mm2s_channels", mm2s_channels);
+            core_trace_config.add_child("SelTraceConfig", sel_trace_config);
+          }
+
+          {
             bpt::ptree BroadcastTraceConfig;
             BroadcastTraceConfig.put("broadcast_mask_south", tile->core_trace_config.broadcast_mask_south);
             BroadcastTraceConfig.put("broadcast_mask_north", tile->core_trace_config.broadcast_mask_north);
@@ -247,25 +266,6 @@ namespace xdp {
             }
             BroadcastTraceConfig.add_child("internal_events_broadcast",  internal_events_broadcast);
             memory_trace_config.add_child("BroadcastTraceConfig", BroadcastTraceConfig);
-          }
-
-          {
-            bpt::ptree sel_trace_config;
-            bpt::ptree s2mm_channels;
-            bpt::ptree mm2s_channels;
-
-            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
-              bpt::ptree chan1;
-              bpt::ptree chan2;
-              chan1.put("", tile->memory_trace_config.s2mm_channels[i]);
-              chan2.put("", tile->memory_trace_config.mm2s_channels[i]);
-              s2mm_channels.push_back(std::make_pair("", chan1));
-              mm2s_channels.push_back(std::make_pair("", chan2));
-            }
-            
-            sel_trace_config.add_child("s2mm_channels", s2mm_channels);
-            sel_trace_config.add_child("mm2s_channels", mm2s_channels);
-            memory_trace_config.add_child("SelTraceConfig", sel_trace_config);
           }
 
           /*
