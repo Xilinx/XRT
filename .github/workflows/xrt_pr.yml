@@ -26,7 +26,7 @@ jobs:
         id: get-pr-details   
         uses: octokit/request-action@v2.x    
         with:    
-          route: GET ${{ github.event.issue.pull_request.url || github.event.pull_request.issue_url }}
+          route: GET ${{ github.event.issue.pull_request.url || github.event.pull_request.url }}
         env:    
           GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}    
     
