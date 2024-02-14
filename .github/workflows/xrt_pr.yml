@@ -28,9 +28,11 @@ jobs:
     
       - name: Set variables
         id: set-pr-vars
-        run: |   
-            echo "::set-output name=pr_repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
-            echo "::set-output name=pr_ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"
+        run: |
+            echo "pr_repository=${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}" >> "$GITHUB_OUTPUT"
+            echo "pr_ref=${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}" >> "$GITHUB_OUTPUT"
+            echo "::set-output name=pr_repository1::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
+            echo "::set-output name=pr_ref1::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"
             
   authorize:   
     needs: setup    
@@ -58,7 +60,7 @@ jobs:
    
   
   build:  
-    needs: authorize    
+    needs: [setup, authorize ]
     strategy:        
       matrix:        
         include:        
@@ -86,8 +88,8 @@ jobs:
       - name: Checkout PR     
         uses: actions/checkout@v4   
         with:   
-          repository: ${pr_repository}   
-          ref: "master"
+          repository:  ${{ needs.setup.outputs.pr_repository }}
+          ref: ${{ needs.setup.outputs.pr_ref }}
           fetch-depth: 0  
           path: ${{ github.workspace }}/${{ github.run_number }}    
           submodules: recursive     
