@@ -30,6 +30,12 @@ file(GLOB XDP_CORE_FILES
   "${PROFILE_DIR}/writer/vp_base/*.cpp"
   )
 
+if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
+  target_compile_definitions(xdp_core
+    PRIVATE 
+    XDP_CLIENT_BUILD=1
+    )
+
 add_library(xdp_core SHARED ${XDP_CORE_FILES})
 add_dependencies(xdp_core xrt_coreutil)
 target_link_libraries(xdp_core PRIVATE xrt_coreutil)
