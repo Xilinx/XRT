@@ -39,10 +39,10 @@ jobs:
             echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"        
           elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then        
             echo "Data: ${{ steps.get-pr-details.outputs.data }}"  
-            $pr_data = "${{ fromJson(steps.get-pr-details.outputs.data) }}"  
-            echo "::set-output name=repository::$pr_data.head.repo.full_name"        
-            echo "::set-output name=ref::$pr_data.head.ref"        
+            echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"        
+            echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"        
           fi    
+   
   
   
   authorize:   
