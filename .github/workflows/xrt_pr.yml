@@ -67,7 +67,8 @@ jobs:
         uses: ./composite-workflows/authorize    
         with:    
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}    
-          pullRequestUser: ${{ github.event.pull_request.user.login }}    
+          pullRequestUser: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.user.login || github.event_name == 'issue_comment' && github.actor }}  
+   
   
   build:  
     needs: authorize    
