@@ -2158,7 +2158,7 @@ namespace xdp {
   void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin)
   {
     #ifdef XDP_CLIENT_BUILD
-      metadataReader = aie::readAIEMetadata("aie_control_config.json", mAieMeta);
+      metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
       if(!metadataReader) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
         return;
@@ -2175,17 +2175,17 @@ namespace xdp {
     std::stringstream aie_stream;
     aie_stream.write(data.first, data.second);
     try {
-      boost::property_tree::read_json(aie_stream, mAieMeta);
+      boost::property_tree::read_json(aie_stream, aieMetadata);
     } catch (const std::exception& e) {
       std::string msg("AIE Metadata could not be read : ");
       msg += e.what();
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
 
-    if (mAieMeta.empty())
+    if (aieMetadata.empty())
       return;
 
-    metadataReader = xdp::aie::determineFileType(mAieMeta);
+    metadataReader = xdp::aie::determineFileType(aieMetadata);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully!");
   }
 
@@ -2197,7 +2197,6 @@ namespace xdp {
   const xdp::aie::BaseFiletypeImpl*
   VPStaticDatabase::getAIEmetadataReader() const
   {
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "AIE metadataReader requested");
     return metadataReader.get();
   }
 
@@ -2206,11 +2205,11 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
 
-    if (mAieMeta.empty())
+    if (aieMetadata.empty())
       return;
 
     try {
-      auto hwGen = mAieMeta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
+      auto hwGen = aieMetadata.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
       deviceInfo[deviceId]->setAIEGeneration(hwGen);
     } catch(...) {
       return;
@@ -2227,11 +2226,11 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    if (mAieMeta.empty())
+    if (aieMetadata.empty())
        return;
 
     try {
-      auto dev_node = mAieMeta.get_child("aie_metadata.DeviceData");
+      auto dev_node = aieMetadata.get_child("aie_metadata.DeviceData");
       xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
     } catch(...) {
       return;
