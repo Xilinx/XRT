@@ -168,14 +168,16 @@ class event
 {
 public:
 
-  event(const xrt::device& device, int option, const std::string& port1_name, const std::string& port2_name, uint32_t value);
+  event(const xrt::device& device);
+
+  int start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
 
   uint64_t read_profiling() const;
 
   void stop_profiling() const;
 
 private:
-    std::shared_ptr<event_impl> handle;
+    std::shared_ptr<event_impl> impl;
 };
 
 }} // aie, xrt
@@ -277,7 +279,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
 uint64_t
 xrtAIEReadProfiling(int pHandle);
 
-int
+void
 xrtAIEStopProfiling(int pHandle);
 /// @endcond
 
