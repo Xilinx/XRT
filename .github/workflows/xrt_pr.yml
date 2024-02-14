@@ -15,23 +15,35 @@ concurrency:
   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}    
   cancel-in-progress: true     
     
-jobs:    
-  setup:    
-    runs-on: Ubuntu-22.04    
-    outputs:    
-      repository: ${{ steps.set-vars.outputs.repository }}    
-      ref: ${{ steps.set-vars.outputs.ref }}    
-    steps:    
-      - name: Set variables    
-        id: set-vars    
-        run: |    
-          if [ "${{ github.event_name }}" = "pull_request_target" ]; then    
-            echo "::set-output name=repository::${{ github.event.pull_request.head.repo.full_name }}"    
-            echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"    
-          elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then    
-            echo "::set-output name=repository::${{ github.event.issue.repository.full_name }}"    
-            echo "::set-output name=ref::refs/pull/${{ github.event.issue.number }}/head"    
-          fi    
+jobs:  
+  setup:  
+    runs-on: Ubuntu-22.04  
+    outputs:  
+      repository: ${{ steps.set-vars.outputs.repository }}  
+      ref: ${{ steps.set-vars.outputs.ref }}  
+    steps:  
+      - name: Set variables for pull_request_target event  
+        id: set-vars-pr  
+        if: github.event_name == 'pull_request_target'  
+        run: |  
+          echo "::set-output name=repository::${{ github.event.pull_request.head.repo.full_name }}"  
+          echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"  
+  
+      - name: Get PR details for issue_comment event  
+        id: get-pr-details  
+        if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'  
+        uses: octokit/request-action@v2.x  
+        with:  
+          route: GET ${{ github.event.issue.pull_request.url }}  
+        env:  
+          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}  
+  
+      - name: Set variables for issue_comment event  
+        id: set-vars-comment  
+        if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'  
+        run: |  
+          echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
+          echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"    
   
   authorize:   
     needs: setup    
