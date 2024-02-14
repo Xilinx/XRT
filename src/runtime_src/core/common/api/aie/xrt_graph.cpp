@@ -124,9 +124,9 @@ public:
   using handle = int;
   static constexpr handle invalid_handle = -1;
 
-  event_impl(std::shared_ptr<xrt_core::device> dev, handle hdl)
-    : device(std::move(dev))
-    , event_hdl(hdl)
+  event_impl(std::shared_ptr<xrt_core::device> dev)
+    : device(std::move(dev)),
+      event_hdl(invalid_handle)
   {}
 
   ~event_impl()
@@ -153,15 +153,12 @@ public:
     if(event_hdl == invalid_handle)
       throw xrt_core::error(-EINVAL, "Not a valid event handle");
     device->stop_profiling(event_hdl);
-    event_hdl= invalid_handle;
+    event_hdl = invalid_handle;
   }
 
-  int& get_handle() { return event_hdl; }
 };
 
-}
-
-}
+}}
 
 namespace {
 
@@ -244,18 +241,18 @@ wait_gmio(xrtDeviceHandle dhdl, const char *gmio_name)
 static std::map<int, std::shared_ptr<xrt::aie::event_impl>> event_cache;
 
 static std::shared_ptr<xrt::aie::event_impl>
-open_event(xrtDeviceHandle dhdl)
+create_event(xrtDeviceHandle dhdl)
 {
   auto core_device = xrt_core::device_int::get_core_device(dhdl);
-  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device, xrt::aie::event_impl::invalid_handle);
+  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device);
   return phdl;
 }
 
 static std::shared_ptr<xrt::aie::event_impl>
-open_event(const xrt::device& device)
+create_event(const xrt::device& device)
 {
   auto core_device = device.get_handle();
-  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device, xrt::aie::event_impl::invalid_handle);
+  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device);
   return phdl;
 }
 
@@ -377,14 +374,14 @@ namespace xrt { namespace aie {
 
 event::
 event(const xrt::device& device)
-  : impl(open_event(device))
+  : impl(std::move(create_event(device)))
 {}
 
 int 
 event::
 start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const
 {
-return xdp::native::profiling_wrapper("xrt::aie::event::read_profiling", [=]{return (impl->start_profiling(option, port1_name, port2_name, value));});
+  return xdp::native::profiling_wrapper("xrt::aie::event::read_profiling", [=]{return (impl->start_profiling(option, port1_name, port2_name, value));});
 }
 
 uint64_t
@@ -837,15 +834,14 @@ int
 xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
 {
   try {
-    auto impl = open_event(handle);
-    auto hdl = impl->start_profiling(option, port1Name, port2Name, value);
-    impl->get_handle() = hdl;
+    auto event = create_event(handle);
+    auto hdl = event->start_profiling(option, port1Name, port2Name, value);
     if(hdl!= xrt::aie::event_impl::invalid_handle) {
-      event_cache[hdl] = impl;
+      event_cache[hdl] = event;
       return hdl;
     }
     else
-        throw xrt_core::error(-EINVAL, "Not a valid event handle");
+      throw xrt_core::error(-EINVAL, "Not a valid event handle");
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -875,7 +871,7 @@ xrtAIEReadProfiling(int pHandle)
       return it->second->read_profiling();
     }
     else
-        throw xrt_core::error(-EINVAL, "No such event handle"); 
+      throw xrt_core::error(-EINVAL, "No such event handle"); 
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -903,11 +899,11 @@ xrtAIEStopProfiling(int pHandle)
   try {
     auto it = event_cache.find(pHandle);
     if (it != event_cache.end()) {
-        it->second->stop_profiling();
-        event_cache.erase(pHandle);
+      it->second->stop_profiling();
+      event_cache.erase(pHandle);
     }
     else
-	throw xrt_core::error(-EINVAL, "No such event handle");   
+      throw xrt_core::error(-EINVAL, "No such event handle");   
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
