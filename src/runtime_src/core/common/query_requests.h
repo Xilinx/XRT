@@ -1508,9 +1508,8 @@ struct aie_tiles_status_info : request
 {
   struct parameters
   {
-    uint32_t col_size;
-    uint16_t start_col;
-    uint16_t num_cols;
+    uint32_t col_size; // The size of a status buffer for a column
+    uint16_t max_num_cols; // The maxmimum number of columns supported on the device
   };
 
   struct result
