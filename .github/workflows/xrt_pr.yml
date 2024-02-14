@@ -38,15 +38,9 @@ jobs:
             echo "::set-output name=repository::${{ github.event.pull_request.head.repo.full_name }}"      
             echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"      
           elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then      
-            if [ "${{ steps.get-pr-details.outputs.data }}" != "" ]; then  
-              echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"      
-              echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"      
-            else  
-              echo "failed to get PR details.."  
-              exit 1  
-            fi  
+            echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"      
+            echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"      
           fi    
-    
   
   authorize:   
     needs: setup    
@@ -70,8 +64,7 @@ jobs:
         uses: ./composite-workflows/authorize    
         with:    
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}    
-          pullRequestUser: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.user.login || github.event_name == 'issue_comment' && github.actor }}  
-   
+          pullRequestUser: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.user.login || github.event_name == 'issue_comment' && github.actor }} 
   
   build:  
     needs: authorize    
