@@ -69,7 +69,7 @@ namespace xdp::aie::trace {
         switchPortMap[portnum] = switchPortRsc;
 
         if (type == module_type::core) {
-          // AIE Tiles - monitor DMA channels
+          // AIE Tiles - Monitor DMA channels
           uint8_t channelNum = portnum % 2;
           bool isMaster = ((portnum >= 2) || (metricSet.find("s2mm") != std::string::npos));
           auto slaveOrMaster = isMaster ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
