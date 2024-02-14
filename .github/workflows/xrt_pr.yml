@@ -24,34 +24,24 @@ jobs:
     steps:    
       - name: Get PR details for issue_comment event    
         id: get-pr-details    
-        if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'    
+        # if: github.event_name == 'issue_comment' && github.event.comment.body == '/build'    
         uses: octokit/request-action@v2.x    
         with:    
           route: GET ${{ github.event.issue.pull_request.url }}    
         env:    
           GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}    
     
-      - name: Set variables      
-        id: set-vars      
-        run: |      
-          if [ "${{ github.event_name }}" = "pull_request_target" ]; then        
-            echo "::set-output name=repository::${{ github.event.pull_request.head.repo.full_name }}"        
-            echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"        
-          elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then        
-            echo "Data: ${{ steps.get-pr-details.outputs.data }}"  
-            echo "::set-output name=data::${{ steps.get-pr-details.outputs.data }}"        
+      - name: Set variables
+        id: set-vars 
+        run: |  
+          if [ "${{ github.event_name }}" = "pull_request_target" ]; then    
+            echo "::set-output name=repository::${{ github.event.pull_request.head.repo.full_name }}"    
+            echo "::set-output name=ref::${{ github.event.pull_request.head.ref }}"    
+          elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.comment.body }}" = "/build" ]; then    
+            echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"    
+            echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"    
           fi    
-
-      - name: Install jq  
-        run: sudo apt-get install -y jq  
-        
-      - name: Parse JSON    
-        id: parse-json    
-        run: |    
-          pr_data=$(echo '${{ steps.set-vars.outputs.data }}' | jq -r '.')    
-          echo "::set-output name=repository::$(echo $pr_data | jq -r '.head.repo.full_name')"    
-          echo "::set-output name=ref::$(echo $pr_data | jq -r '.head.ref')"    
-   
+  
   authorize:   
     needs: setup    
     runs-on: Ubuntu-22.04    
@@ -74,7 +64,8 @@ jobs:
         uses: ./composite-workflows/authorize    
         with:    
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}    
-          pullRequestUser: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.user.login || github.event_name == 'issue_comment' && github.actor }} 
+          pullRequestUser: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.user.login || github.event_name == 'issue_comment' && github.actor }}  
+   
   
   build:  
     needs: authorize    
