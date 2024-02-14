@@ -36,7 +36,7 @@ jobs:
         with:  
           route: GET ${{ github.event.issue.pull_request.url }}  
         env:  
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}  
   
       - name: Set variables for issue_comment event  
         id: set-vars-comment  
