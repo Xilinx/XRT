@@ -657,7 +657,7 @@ namespace xdp {
           // Record if these are channel-specific events
           // NOTE: for now, check first event and assume single channel
           auto channelNum = aie::trace::getChannelNumberFromEvent(memoryEvents.at(0));
-          if (channelNum > 0) {
+          if (channelNum >= 0) {
             if (aie::isInputSet(type, metricSet))
               cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
             else
