@@ -389,7 +389,7 @@ namespace xdp {
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
         if (mod == XAIE_MEM_MOD && type == module_type::core)
-          type == module_type::dma;
+          type = module_type::dma;
         if (!aie::profile::isValidType(type, mod))
           continue;
 
