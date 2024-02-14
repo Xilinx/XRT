@@ -283,7 +283,7 @@ jobs:
           
 
   pcie-sw-emulation-tests:
-    needs: [package-download,extract-platforms]
+    needs: package-download
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
@@ -318,10 +318,10 @@ jobs:
           USER: ${{ secrets.USER }}
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }} 
-          board: ${{ needs.extract-platforms.outputs.board_list }}
+
 
   pcie-hw-emulation-tests:
-    needs: [package-download,extract-platforms]
+    needs: package-download
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
@@ -356,7 +356,7 @@ jobs:
           USER: ${{ secrets.USER }}       
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}    
-          board: ${{ needs.extract-platforms.outputs.board_list }}
+          
                   
   test-summary:    
     runs-on: [self-hosted, Ubuntu-22.04]
