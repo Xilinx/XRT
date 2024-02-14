@@ -15,8 +15,8 @@ jobs:
   setup:    
     runs-on: Ubuntu-22.04    
     outputs:    
-      repository: ${{ steps.set-pr-vars.outputs.repository }}
-      ref: ${{ steps.set-pr-vars.outputs.ref }}
+      pr_repository: ${{ steps.set-pr-vars.outputs.pr_repository }}
+      pr_ref: ${{ steps.set-pr-vars.outputs.pr_ref }}
     steps:    
       - name: Get PR details for issue_comment event    
         id: get-pr-details   
@@ -29,8 +29,8 @@ jobs:
       - name: Set variables
         id: set-pr-vars
         run: |   
-            echo "::set-output name=repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
-            echo "::set-output name=ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"
+            echo "::set-output name=pr_repository::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
+            echo "::set-output name=pr_ref::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"
             
   authorize:   
     needs: setup    
@@ -79,13 +79,15 @@ jobs:
         run: |      
           echo "Setting environment variables..."        
           echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV      
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV       
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV
+          echo "pr_repository=${{ needs.setup.outputs.pr_repository }}" >> $GITHUB_ENV
+          echo "pr_ref=${{ needs.setup.outputs.pr_ref }}" >> $GITHUB_ENV
       
       - name: Checkout PR     
         uses: actions/checkout@v4   
         with:   
-          repository: "${{ needs.setup.outputs.repository }}"    
-          ref: "${{ needs.setup.outputs.ref }}"    
+          repository: ${pr_repository}   
+          ref: "master"
           fetch-depth: 0  
           path: ${{ github.workspace }}/${{ github.run_number }}    
           submodules: recursive     
