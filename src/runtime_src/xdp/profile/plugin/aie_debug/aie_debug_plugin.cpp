@@ -63,9 +63,7 @@ namespace xdp {
 
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader) {
-      std::stringstream msg;
-      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Debug.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      xrt_core::message::send(severity_level::error, "XRT", "Metadata reader could not be created for AIE debug");
       return;
     }
 

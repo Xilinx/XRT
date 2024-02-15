@@ -73,9 +73,7 @@ namespace xdp {
 
     metadataReader = (VPDatabase::Instance()->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader) {
-      std::stringstream msg;
-      msg << "Metadata reader reader couldn't be created for AIE trace";
-      xrt_core::message::send(severity_level::error, "XRT", msg.str());
+      xrt_core::message::send(severity_level::error, "XRT", "Metadata reader could not be created for AIE trace");
       return;
     }
     
