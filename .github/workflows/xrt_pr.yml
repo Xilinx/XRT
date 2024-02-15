@@ -9,7 +9,11 @@ on:
   pull_request_target:    
     types: [opened, edited, synchronize]    
   issue_comment:    
-    types: [created]    
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
     
 jobs:  
   setup:    
