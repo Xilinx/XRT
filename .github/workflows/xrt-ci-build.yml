@@ -6,8 +6,7 @@ env:
   ENV: 'test'     
     
 on:    
-  workflow_run: 
-    workflows: ["xrt-ci-authorize"]
+  workflow_call:
     
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
