@@ -1,0 +1,57 @@
+name: xrt-ci-authorize
+    
+on:    
+  pull_request_target:    
+    types: [opened, edited, synchronize]    
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+    
+jobs:  
+  setup:    
+    runs-on: Ubuntu-22.04
+    permissions:
+      issues: write
+    outputs:    
+      pr_repository: ${{ steps.set-pr-vars.outputs.pr_repository }}
+      pr_ref: ${{ steps.set-pr-vars.outputs.pr_ref }}
+    steps:    
+      - name: Get PR details for issue_comment event    
+        id: get-pr-details   
+        uses: octokit/request-action@v2.x    
+        with:    
+          route: GET ${{ github.event.issue.pull_request.url || github.event.pull_request.url }}
+        env:    
+          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}    
+    
+      - name: Set variables
+        id: set-pr-vars
+        run: |
+            echo "pr_repository=${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}" >> "$GITHUB_OUTPUT"
+            echo "pr_ref=${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}" >> "$GITHUB_OUTPUT"
+            
+  authorize:   
+    needs: setup    
+    runs-on: Ubuntu-22.04    
+    if: github.event_name == 'pull_request_target' 
+    steps:    
+      - name: Checkout private repository          
+        uses: actions/checkout@v4       
+        with:          
+          repository: actions-int/composite-workflows    
+          github-server-url: ${{ secrets.SERVER_URL }}          
+          token: ${{ secrets.ACCESS_TOKEN }}          
+          path: composite-workflows    
+          ref: main    
+    
+      - name: authorize    
+        uses: ./composite-workflows/authorize    
+        with:    
+          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}    
+          pullRequestUser: ${{ github.event.pull_request.user.login }}
+
+  run-ci-build:
+    needs: [setup, authorize]
+    uses: ./.github/workflows/xrt-ci-build.yml
+   
