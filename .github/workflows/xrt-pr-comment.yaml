@@ -1,0 +1,36 @@
+name: xrt-pr-comment    
+
+on:
+  issue_comment:    
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+    
+jobs:  
+  setup:    
+    runs-on: Ubuntu-22.04
+    permissions:
+      issues: write
+    outputs:    
+      pr_repository: ${{ steps.set-pr-vars.outputs.pr_repository }}
+      pr_ref: ${{ steps.set-pr-vars.outputs.pr_ref }}
+    steps:    
+      - name: Get PR details for issue_comment event    
+        id: get-pr-details   
+        uses: octokit/request-action@v2.x    
+        with:    
+          route: GET ${{ github.event.issue.pull_request.url }}
+        env:    
+          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}    
+    
+      - name: Set variables
+        id: set-pr-vars
+        run: |
+            echo "pr_repository=${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}" >> "$GITHUB_OUTPUT"
+            echo "pr_ref=${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}" >> "$GITHUB_OUTPUT"
+
+  run-ci-build:
+    needs: setup
+    uses: ./.github/workflows/xrt-ci-build.yml
