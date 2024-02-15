@@ -6,8 +6,9 @@ env:
   ENV: 'test'     
     
 on:    
-  workflow_call:
-
+  workflow_run: 
+    workflows: ["xrt-ci-authorize"]
+    
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
