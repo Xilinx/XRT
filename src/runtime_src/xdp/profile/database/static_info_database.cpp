@@ -1541,7 +1541,6 @@ namespace xdp {
       return;
 
     //---------------------------------------------------------------------
-    
     bool clockFlag = true;
     boost::property_tree::ptree pt;
     boost::property_tree::ptree user_regions;

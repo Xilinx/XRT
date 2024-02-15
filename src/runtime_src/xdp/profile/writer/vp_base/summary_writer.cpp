@@ -95,7 +95,7 @@ namespace {
 
 namespace xdp {
 
-  SummaryWriter::SummaryWriter(const char* filename) 
+  SummaryWriter::SummaryWriter(const char* filename)
     : VPSummaryWriter(filename), guidance()
   {
     initializeAPIs() ;
@@ -147,9 +147,9 @@ namespace xdp {
     fout << "Profiled application: " << execName << "\n" ;
     fout << "Target platform: " << "Xilinx" << "\n" ;
     fout << "Tool version: " << getToolVersion() << "\n" ;
-    fout << "XRT build version: " 
+    fout << "XRT build version: "
          << (xrtInfo.get<std::string>("version", "N/A")) << "\n" ;
-    fout << "Build version branch: " 
+    fout << "Build version branch: "
          << (xrtInfo.get<std::string>("branch", "N/A")) << "\n" ;
     fout << "Build version hash: "
          << (xrtInfo.get<std::string>("hash", "N/A")) << "\n" ;
@@ -185,7 +185,7 @@ namespace xdp {
   void
   SummaryWriter::writeAPICalls(APIType type)
   {
-    // For each function call, across all of the threads, 
+    // For each function call, across all of the threads,
     //  consolidate all the information into what we need
     std::map<std::string,
              std::tuple<uint64_t,
@@ -196,7 +196,7 @@ namespace xdp {
     std::map<std::pair<std::string, std::thread::id>,
              std::vector<std::pair<double, double>>> callCount =
       (db->getStats()).getCallCount() ;
-    
+
     for (const auto& call : callCount) {
       auto callAndThread = call.first ;
       auto APIName = callAndThread.first ;
@@ -219,7 +219,7 @@ namespace xdp {
       std::vector<std::pair<double, double>> timesOfCalls = call.second ;
 
       if (rows.find(APIName) == rows.end()) {
-        std::tuple<uint64_t, double, double, double> blank = 
+        std::tuple<uint64_t, double, double, double> blank =
           std::make_tuple<uint64_t, double, double, double>(0,0,std::numeric_limits<double>::max(),0) ;
 
         rows[APIName] = blank ;
@@ -238,7 +238,7 @@ namespace xdp {
     }
 
     for (const auto& row : rows) {
-      auto averageTime = 
+      auto averageTime =
         static_cast<double>(std::get<1>(row.second)) / static_cast<double>(std::get<0>(row.second)) ;
       if (type != OPENCL) fout << "ENTRY:" ;
       fout << row.first                      << ","     // API Name
@@ -336,7 +336,7 @@ namespace xdp {
       return;
 
     // We can get kernel executions from purely host information
-    std::map<std::string, TimeStatistics> kernelExecutions = 
+    std::map<std::string, TimeStatistics> kernelExecutions =
       (db->getStats()).getKernelExecutionStats() ;
 
     if (kernelExecutions.size() == 0)
@@ -387,7 +387,7 @@ namespace xdp {
       fout << (*iter).kernelInstanceAddress << ","
            << (*iter).kernelName << ","
            << (*iter).contextId << ","
-           << (*iter).commandQueueId << "," 
+           << (*iter).commandQueueId << ","
            << (*iter).deviceName << ","
            << static_cast<double>((*iter).startTime) / one_million << ","
            << static_cast<double>((*iter).duration) / one_million << ","
@@ -448,7 +448,7 @@ namespace xdp {
       double durationMS = static_cast<double>((*iter).duration) / one_million ;
       double rate = (static_cast<double>((*iter).size) / one_thousand) / durationMS ;
 
-      fout << (*iter).address << "," 
+      fout << (*iter).address << ","
            << (*iter).contextId << ","
            << (*iter).commandQueueId << ","
            << static_cast<double>((*iter).startTime) / one_million << "," ;
@@ -467,7 +467,7 @@ namespace xdp {
   void SummaryWriter::writeSoftwareEmulationComputeUnitUtilization()
   {
     std::map<std::tuple<std::string, std::string, std::string>,
-             TimeStatistics> cuStats = 
+             TimeStatistics> cuStats =
       (db->getStats()).getComputeUnitExecutionStats() ;
 
     if (cuStats.size() == 0)
@@ -506,8 +506,8 @@ namespace xdp {
 
       fout << (db->getStaticInfo()).getSoftwareEmulationDeviceName() << ","
            << cuName                              << ","
-           << (cuName.substr(0, cuName.size()-2)) << "," 
-           << globalWorkGroup                     << "," 
+           << (cuName.substr(0, cuName.size()-2)) << ","
+           << globalWorkGroup                     << ","
            << localWorkGroup                      << ","
            << execCount                           << ","
            << "No"                                << ","
@@ -584,7 +584,7 @@ namespace xdp {
     //  dynamic database.  Right now, the compute units are not
     //  aligned between the two.  We have to make sure this information
     //  is accessible.
-    
+
     // For every device that is connected...
     for (auto device : infos) {
       uint64_t deviceId = device->deviceId;
@@ -610,11 +610,11 @@ namespace xdp {
           std::string cuLocalDimensions = cu->getDim();
           std::string dataflowEnabled = cu->getDataflowEnabled() ? "Yes" : "No";
           double cuClockFreq = cu->getClockFrequency();
-          
+
           // For each compute unit, we can have executions from the host
-          //  with different global work sizes.  Determine the number of 
+          //  with different global work sizes.  Determine the number of
           //  execution types here
-          std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
+          std::vector<std::pair<std::string, TimeStatistics>> cuCalls =
             db->getStats().getComputeUnitExecutionStats(cuName);
 
           for (const auto& cuCall : cuCalls) {
@@ -679,13 +679,12 @@ namespace xdp {
       for (auto xclbin : device->loadedXclbins)
       {
         xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
-        uint64_t j = 0 ;      
+        uint64_t j = 0 ;
         for (const auto& cu : (xclbin->pl.cus))
         {
-          //double deviceCyclesMsec = (double)(xclbin->pl.clockRatePLMHz * one_thousand);
           double deviceCyclesMsec = static_cast<double>(((cu.second)->getClockFrequency()) * one_thousand);
 
-          fout << (cu.second)->getName()     << "," 
+          fout << (cu.second)->getName()     << ","
                << values.CuExecCount[j]      << ","
                << (values.CuExecCycles[j] / deviceCyclesMsec)     << ","
                << (values.CuStallIntCycles[j] / deviceCyclesMsec) << ","
@@ -906,7 +905,7 @@ namespace xdp {
         auto totalTimeInS   = static_cast<double>(stats.totalTime)/one_billion;
         auto totalSizeInMB  = static_cast<double>(stats.totalSize)/one_million;
         double transferRate =
-          (totalTimeInS == 0) ? 0 : totalSizeInMB / totalTimeInS; 
+          (totalTimeInS == 0) ? 0 : totalSizeInMB / totalTimeInS;
         double maxWriteBW   = db->getStaticInfo().getHostMaxWriteBW(deviceId);
         double aveBWUtil =
           (maxWriteBW == 0) ? 0 : (one_hundred * transferRate) / maxWriteBW;
@@ -931,7 +930,7 @@ namespace xdp {
   void SummaryWriter::writeStreamDataTransfers()
   {
     std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos() ;
-    
+
     bool printTable = false ;
     for (auto device : infos) {
       for (auto xclbin : device->loadedXclbins) {
@@ -940,7 +939,7 @@ namespace xdp {
                                                  xclbin->uuid) ;
         for (const auto& cu : xclbin->pl.cus) {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
-          
+
           for (auto asmMonitorId : (*asmMonitors)) {
             if (values.StrNumTranx[asmMonitorId] != 0) {
               printTable = true ;
@@ -957,7 +956,7 @@ namespace xdp {
 
     // Caption
     fout << "Data Transfer: Streams" << "\n" ;
-    
+
     // Column headers
     fout << "Device"                  << ","
          << "Master Port"             << ","
@@ -969,10 +968,10 @@ namespace xdp {
          << "Average Size (KB)"       << ","
          << "Link Utilization (%)"    << ","
          << "Link Starve (%)"         << ","
-         << "Link Stall (%)"          << "," 
+         << "Link Stall (%)"          << ","
          << "\n" ;
-    
-    for (auto device : infos) 
+
+    for (auto device : infos)
     {
       for (auto xclbin : device->loadedXclbins)
       {
@@ -980,22 +979,22 @@ namespace xdp {
         for (const auto& cu : xclbin->pl.cus)
         {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
-          
+
           for (auto asmMonitorId : (*asmMonitors))
           {
             Monitor* monitor = (db->getStaticInfo()).getASMonitor(device->deviceId, xclbin, asmMonitorId) ;
-            
+
             uint64_t numTranx = values.StrNumTranx[asmMonitorId] ;
             uint64_t busyCycles = values.StrBusyCycles[asmMonitorId];
             if(0 == numTranx) {
               continue;
             }
- 
+
             std::string masterPort = "" ;
             std::string slavePort = "" ;
             std::string masterArgs = "" ;
             std::string slaveArgs = "" ;
-            
+
             size_t dashPosition = (monitor->name).find("-") ;
             if (dashPosition != std::string::npos)
             {
@@ -1005,23 +1004,22 @@ namespace xdp {
               size_t slashPosition = firstHalf.find("/") ;
               masterPort = firstHalf;
               masterArgs = firstHalf.substr(slashPosition + 1, firstHalf.size()-slashPosition-1) ;
-              
+
               slashPosition = secondHalf.find("/") ;
               slavePort = secondHalf;
               slaveArgs = secondHalf.substr(slashPosition + 1, secondHalf.size()-slashPosition-1) ;
             }
-            
-            //double transferTime = busyCycles / xclbin->pl.clockRatePLMHz ;
+
             double transferTime = busyCycles / monitor->clockFrequency ;
             double transferRate = (transferTime == zero) ? 0 : values.StrDataBytes[asmMonitorId] / transferTime ;
-            
-            double linkStarve = (0 == busyCycles) ? 0 : 
+
+            double linkStarve = (0 == busyCycles) ? 0 :
                 static_cast<double>(values.StrStarveCycles[asmMonitorId]) / static_cast<double>(busyCycles) * one_hundred ;
-            double linkStall = (0 == busyCycles) ? 0 : 
+            double linkStall = (0 == busyCycles) ? 0 :
                 static_cast<double>(values.StrStallCycles[asmMonitorId]) / static_cast<double>(busyCycles) * one_hundred ;
             double linkUtil = one_hundred - linkStarve - linkStall ;
             double avgSizeInKB = ((values.StrDataBytes[asmMonitorId] / numTranx)) / one_thousand;
-            
+
             fout << device->getUniqueDeviceName() << ","
                  << masterPort << ","
                  << masterArgs << ","
@@ -1030,7 +1028,7 @@ namespace xdp {
                  << numTranx << ","
                  << transferRate << ","
                  << avgSizeInKB << ","
-                 << linkUtil << "," 
+                 << linkUtil << ","
                  << linkStarve << ","
                  << linkStall << ","
                  << "\n" ;
@@ -1042,7 +1040,7 @@ namespace xdp {
 
   void SummaryWriter::writeDataTransferDMA()
   {
-    // Only output this table and header if some device has 
+    // Only output this table and header if some device has
     //  DMA monitors in the shell
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
@@ -1067,7 +1065,7 @@ namespace xdp {
          << "Total Data Transfer (MB)" << ","
          << "Total Time (ms)"          << ","
          << "Average Size (KB)"        << ","
-         << "Average Latency (ns)"     << "," 
+         << "Average Latency (ns)"     << ","
          << "\n" ;
 
 
@@ -1075,8 +1073,6 @@ namespace xdp {
     {
       for (auto xclbin : device->loadedXclbins)
       {
-      
-      //uint64_t AIMIndex = 0 ;
       for (auto monitor : xclbin->pl.aims)
       {
         if (monitor->name.find("Host to Device") != std::string::npos)
@@ -1088,8 +1084,6 @@ namespace xdp {
           if (values.WriteTranx[monitor->slotIndex] > 0)
           {
             uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitor->slotIndex] ;
-            //double totalWriteTime =
-            //  (double)(totalWriteBusyCycles) / (one_thousand * xclbin->pl.clockRatePLMHz);
             double totalWriteTime =
               static_cast<double>(totalWriteBusyCycles) / (one_thousand * monitor->clockFrequency);
             double writeTransferRate = (totalWriteTime == zero) ? 0 :
@@ -1124,7 +1118,7 @@ namespace xdp {
             }
             else
             {
-              
+
               fout << ((one_thousand * values.WriteLatency[monitor->slotIndex]) / monitor->clockFrequency) / (values.WriteTranx[monitor->slotIndex]) << "," << "\n" ;
 
             }
@@ -1132,7 +1126,7 @@ namespace xdp {
           if (values.ReadTranx[monitor->slotIndex] > 0)
           {
             uint64_t totalReadBusyCycles = values.ReadBusyCycles[monitor->slotIndex] ;
-            
+
             double totalReadTime =
               static_cast<double>(totalReadBusyCycles) / (one_thousand * monitor->clockFrequency);
             double readTransferRate = (totalReadTime == zero) ? 0 :
@@ -1167,12 +1161,11 @@ namespace xdp {
             }
             else
             {
-              
               fout << ((one_thousand * values.ReadLatency[monitor->slotIndex]) / monitor->clockFrequency) / (values.ReadTranx[monitor->slotIndex]) << "," << "\n" ;
             }
           }
         }
-       
+
       }
       }
     }
@@ -1195,7 +1188,7 @@ namespace xdp {
     printTable = false ;
     for (auto device : infos) {
       for (auto xclbin : device->loadedXclbins) {
-        
+
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Peer to Peer") != std::string::npos) {
             // This is the monitor we're looking for
@@ -1208,7 +1201,7 @@ namespace xdp {
               break ;
             }
           }
-          
+
         }
         if (printTable) break ;
       }
@@ -1227,7 +1220,7 @@ namespace xdp {
          << "Total Data Transfer (MB)" << ","
          << "Total Time (ms)"          << ","
          << "Average Size (KB)"        << ","
-         << "Average Latency (ns)"     << "," 
+         << "Average Latency (ns)"     << ","
          << "\n" ;
 
     for (auto device : infos) {
@@ -1437,7 +1430,6 @@ namespace xdp {
 
     for (auto device : infos) {
       for (auto xclbin : device->loadedXclbins) {
-        //uint64_t AIMIndex = 0 ;
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Memory to Memory") != std::string::npos) {
             // This is the monitor we are looking for
@@ -1491,7 +1483,6 @@ namespace xdp {
               else {
                 fout << readTransferRate << "," ;
               }
-
               fout << (static_cast<double>(values.ReadBytes[monitor->slotIndex] / one_million)) << "," ;
 
               if (getFlowMode() == HW_EMU) {
@@ -1682,7 +1673,7 @@ namespace xdp {
          << "Total Data Transfer (MB)"   << ","
          << "Total Write (MB)"           << ","
          << "Total Read (MB)"            << ","
-         << "Total Transfer Rate (MB/s)" << "," 
+         << "Total Transfer Rate (MB/s)" << ","
          << "\n" ;
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
@@ -1697,7 +1688,7 @@ namespace xdp {
 
         for (const auto& cu : xclbin->pl.cus)
         {
-          // For each CU, we need to find the monitor that has 
+          // For each CU, we need to find the monitor that has
           //  the most transactions
           std::string computeUnitName = (cu.second)->getName() ;
           std::vector<uint32_t>* aimMonitors = (cu.second)->getAIMs() ;
@@ -1724,13 +1715,12 @@ namespace xdp {
               aveBytesPerTransfer =
                 static_cast<double>(totalReadBytes + totalWriteBytes)/static_cast<double>(numTransfers);
               // TODO: Fix bit width calculation here
-              transferEfficiency = (one_hundred * aveBytesPerTransfer) / 4096 ; 
+              transferEfficiency = (one_hundred * aveBytesPerTransfer) / 4096 ;
               totalDataTransfer = totalReadBytes + totalWriteBytes ;
               auto totalBusyCycles =
                 values.ReadBusyCycles[AIMIndex]+values.WriteBusyCycles[AIMIndex];
-              double totalTimeMSec = 
+              double totalTimeMSec =
                 static_cast<double>(totalBusyCycles) /(one_thousand * (cu.second->getClockFrequency())) ;
-
               totalTransferRate =
                 (totalTimeMSec == 0) ? zero :
                 static_cast<double>(totalDataTransfer) / (one_thousand * totalTimeMSec) ;
@@ -1783,7 +1773,7 @@ namespace xdp {
         fout << rate << "," ;
       }
       fout << "\n" ;
-    }    
+    }
   }
 
   void SummaryWriter::writeTopSyncWrites()
@@ -1908,7 +1898,7 @@ namespace xdp {
       writeNativeAPICalls() ;                            fout << "\n" ;
       writeHostReadsFromGlobalMemory() ;                 fout << "\n" ;
       writeHostWritesToGlobalMemory() ;                  fout << "\n" ;
-      writeTopSyncReads() ;                              fout << "\n" ; 
+      writeTopSyncReads() ;                              fout << "\n" ;
       writeTopSyncWrites() ;                             fout << "\n" ;
     }
 
