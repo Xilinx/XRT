@@ -146,7 +146,9 @@ class AieTraceMetadata {
     std::map <module_type, std::vector<std::string>> metricSets {
       { module_type::core,     {"functions", "functions_partial_stalls", 
                                 "functions_all_stalls", "partial_stalls",
-                                "all_stalls", "all_dma", "all_stalls_dma", 
+                                "all_stalls", "all_dma", "all_stalls_dma",
+                                "all_stalls_s2mm", "all_stalls_mm2s",
+                                "s2mm_channels", "mm2s_channels",
                                 "s2mm_channels_stalls", "mm2s_channels_stalls"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
                                 "output_channels", "output_channels_stalls",
