@@ -129,6 +129,11 @@ namespace xdp {
     //  string comparisons, we check the name in the constructor and set
     //  this boolean.
     bool shellMonitor = false ;
+
+    // A monitor acquires the clock frequency (in MHz) of the compute unit
+    // that it is assigned to
+    double clockFrequency = 300.0;
+
     inline bool isShellMonitor() const { return shellMonitor ; }
 
     Monitor(DEBUG_IP_TYPE ty, uint64_t idx, const char* n,
@@ -218,6 +223,9 @@ namespace xdp {
     // resource
     std::vector<Port> masterPorts;
 
+    //Each compute unit has a specific clock frequency (in MHz)
+    double clockFrequency = 300.0;
+
     // If this compute unit has any AIMs or ASMs attached to its ports,
     //  then these vectors will keep track of the slot IDs inside the
     //  xdp::CounterResults structure for all of the attached monitors.
@@ -244,6 +252,7 @@ namespace xdp {
     inline bool getStreamTraceEnabled() const { return asmIdsWithTrace.size() > 0 ; }
     inline bool getDataflowEnabled() const    { return dataflow ; }
     inline bool getHasFA() const              { return hasFA ; }
+    inline double getClockFrequency()         { return clockFrequency ; }
     inline bool getDataTransferTraceEnabled() const 
       { return aimIdsWithTrace.size() > 0 ; }
 
@@ -254,6 +263,8 @@ namespace xdp {
     inline void setStallEnabled(bool b)    { stall = b ; }
     inline void setDataflowEnabled(bool b) { dataflow = b ; }
     inline void setFaEnabled(bool b)       { hasFA = b ; }
+
+    void setClockFrequency(double clkfreq) { clockFrequency =  clkfreq; }
 
     // Other functions
     inline void addAIM(uint32_t id, bool trace = false)
