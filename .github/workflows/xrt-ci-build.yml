@@ -1,0 +1,72 @@
+name: xrt-ci-build    
+    
+env:      
+  RELEASE: '2024.1'      
+  PIPELINE: 'xrt'     
+  ENV: 'test'     
+    
+on:    
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+    
+jobs:  
+  build:
+    strategy:        
+      matrix:        
+        include:        
+          - os: centos78        
+            packageType: rpm        
+          - os: centos8        
+            packageType: rpm        
+          - os: rhel9        
+            packageType: rpm        
+          - os: ubuntu2004        
+            packageType: deb        
+          - os: ubuntu2204        
+            packageType: deb        
+          
+    runs-on: [self-hosted, Ubuntu-22.04]  
+    steps:    
+      - name: Set env variables      
+        run: |      
+          echo "Setting environment variables..."        
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV      
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV
+          echo "pr_repository=${{ needs.setup.outputs.pr_repository }}" >> $GITHUB_ENV
+          echo "pr_ref=${{ needs.setup.outputs.pr_ref }}" >> $GITHUB_ENV
+      
+      - name: Checkout PR     
+        uses: actions/checkout@v4   
+        with:   
+          repository:  ${{ needs.setup.outputs.pr_repository }}
+          ref: ${{ needs.setup.outputs.pr_ref }}
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ github.run_number }}    
+          submodules: recursive     
+  
+      - name: Checkout private repository        
+        uses: actions/checkout@v3     
+        with:        
+          repository: actions-int/composite-workflows  
+          github-server-url: ${{ secrets.SERVER_URL }}        
+          token: ${{ secrets.ACCESS_TOKEN }}        
+          path: composite-workflows   
+          ref: main  
+         
+      - name: XRT build       
+        uses: ./composite-workflows/build  
+        with:       
+          pipeline: ${{ env.PIPELINE }}   
+          osVersion: ${{ matrix.os }}    
+          packageType: ${{ matrix.packageType }}    
+          workspace: ${{ github.workspace }}  
+          buildNumber: ${{ github.run_number }}       
+          accessToken: ${{ secrets.ACCESS_TOKEN }}  
+          github-server-url: ${{ secrets.SERVER_URL }}  
+          appConfig: ${{ secrets.APP_CONFIG }}   
+          appConfig1: ${{ secrets.APP_CONFIG1 }}   
+          appConfig2: ${{ secrets.APP_CONFIG2 }}   
+          appConfig3: ${{ secrets.APP_CONFIG3 }}   
