@@ -1614,7 +1614,6 @@ namespace xdp {
                 if (0 == clockPortName.compare("ap_clk")) {
                   auto tmp_var = clck.second.get<std::string>("requested_frequency");
                   clckfreq = std::stod(tmp_var);
-                  //clckfreq = clck.second.get_child("requested_frequency").data();
                   break;
                 }
               }
@@ -1624,8 +1623,6 @@ namespace xdp {
         }
 
       }catch(...) {
-          // TODO: catch section
-          //fout<<"Default clock frequency assigned to the compute unit \n" ;
           clckfreq = 300.0;
       }
     }
@@ -2290,8 +2287,6 @@ namespace xdp {
 
     // Step 5 -> Fill in the details like the name of the xclbin using
     //           the SYSTEM_METADATA section
-    //std::pair<const char*, size_t> systemMetadata =
-    //   xrt_core::xclbin_int::get_axlf_section(xrtXclbin, SYSTEM_METADATA);
 
     setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
     updateSystemDiagram(systemMetadata.first, systemMetadata.second);
