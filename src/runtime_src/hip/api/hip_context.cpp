@@ -9,6 +9,14 @@
 #include "hip/core/device.h"
 
 namespace xrt::core::hip {
+// In Hip, application doesn't explicitly specify the context in API calls
+// so ctx stack is used for getting active ctx. App can call hipCtxCreate
+// multiple times and can also use hipPrimaryCtxRetain to creates ctxs so we
+// use thread local storage with ctx stack and pointer to primary ctx to decide
+// active ctx to use when API call requiring ctx is encountered
+// TODO: When no active ctx is available we create primary ctx on active device
+// and use it
+
 // Returns handle to context
 // Throws on error
 static context_handle
