@@ -10,10 +10,6 @@ on:
     types: [opened, edited, synchronize]    
   issue_comment:    
     types: [created]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
     
 jobs:  
   setup:    
