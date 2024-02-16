@@ -1,18 +1,5 @@
- /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -393,11 +380,11 @@ static std::vector<std::string>
 findRyzenPlatformPaths(const std::shared_ptr<xrt_core::device>& dev)
 {
 #ifdef _WIN32
-  boost::ignore_unused(_dev);
+  boost::ignore_unused(dev);
   std::vector<std::string> paths;
   const auto sys_paths = xrt_core::environment::xclbin_repo_paths();
   for (const auto sys_path : sys_paths)
-    paths.push_back(sys_path.string());
+    paths.push_back(sys_path.string() + "\\");
   return paths;
 #else
   const auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
@@ -446,22 +433,24 @@ TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
 }
 
 std::string
-TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& dev,
+TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& /*dev*/,
                 boost::property_tree::ptree& ptTest,
-                const std::string dpu_name)
+                const std::string& dpu_name)
 {
   const static std::string dpu_dir = "DPU_Sequence"; 
-  std::filesystem::path prefix_path;
+  std::vector<std::filesystem::path> paths;
 
 #ifdef _WIN32
-  boost::ignore_unused(dev);
-  prefix_path = xrt_core::environment::xclbin_path(ptTest.get<std::string>("xclbin", "")).parent_path();
+  paths = xrt_core::environment::xclbin_repo_paths();
 #else
-  prefix_path = std::filesystem::path("/opt/xilinx/xrt/test/");
+  paths.push_back(std::filesystem::path("/opt/xilinx/xrt/test/"));
 #endif
-  auto dpu_instr = prefix_path / dpu_dir / dpu_name;
-  if (std::filesystem::exists(dpu_instr))
-    return dpu_instr;
+
+  for (const auto& path : paths) {
+    auto dpu_instr = path / dpu_dir / dpu_name;
+    if (std::filesystem::exists(dpu_instr))
+      return dpu_instr.string();
+  }
 
   logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % dpu_name));
   ptTest.put("status", test_token_skipped);

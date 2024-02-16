@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __TestRunner_h_
 #define __TestRunner_h_
@@ -45,7 +45,7 @@ class TestRunner : public JSONConfigurable {
     std::string findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
                                boost::property_tree::ptree& ptTest);
     std::string findDPUPath(const std::shared_ptr<xrt_core::device>& dev,
-                            boost::property_tree::ptree& ptTest, const std::string dpu_name);
+                            boost::property_tree::ptree& ptTest, const std::string& dpu_name);
     int validate_binary_file(const std::string& binaryfile);
 
     const std::string test_token_skipped = "SKIPPED";
