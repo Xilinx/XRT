@@ -377,15 +377,15 @@ std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                              boost::property_tree::ptree& ptTest)
 {
-  std::vector<std::string> platform_paths = findPlatformPaths(_dev, _ptTest);
+  std::vector<std::string> platform_paths = findPlatformPaths(dev, ptTest);
 
   for (const auto& path : platform_paths) {
     if (std::filesystem::exists(path))
       return path;
   }
 
-  logger(_ptTest, "Details", boost::str(boost::format("No platform path available. Skipping validation.")));
-  _ptTest.put("status", test_token_skipped);
+  logger(ptTest, "Details", boost::str(boost::format("No platform path available. Skipping validation.")));
+  ptTest.put("status", test_token_skipped);
   return "";
 }
 
@@ -428,9 +428,9 @@ std::string
 TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
                            boost::property_tree::ptree& ptTest)
 {
-  const std::string xclbin_name = _ptTest.get<std::string>("xclbin", "");
-  std::vector<std::string> platform_paths = findPlatformPaths(_dev, _ptTest);
-  const std::string xclbin_dir = _ptTest.get<std::string>("xclbin_directory", "");
+  const std::string xclbin_name = ptTest.get<std::string>("xclbin", "");
+  std::vector<std::string> platform_paths = findPlatformPaths(dev, ptTest);
+  const std::string xclbin_dir = ptTest.get<std::string>("xclbin_directory", "");
   if (!xclbin_dir.empty())
     platform_paths.push_back(xclbin_dir);
 
@@ -440,22 +440,22 @@ TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
       return xclbin_path;
   }
 
-  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
-  _ptTest.put("status", test_token_skipped);
+  logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
+  ptTest.put("status", test_token_skipped);
   return "";
 }
 
 std::string
-TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
-                boost::property_tree::ptree& _ptTest,
+TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& dev,
+                boost::property_tree::ptree& ptTest,
                 const std::string dpu_name)
 {
   const static std::string dpu_dir = "DPU_Sequence"; 
   std::filesystem::path prefix_path;
 
 #ifdef _WIN32
-  boost::ignore_unused(_dev);
-  prefix_path = xrt_core::environment::xclbin_path(_ptTest.get<std::string>("xclbin", "")).parent_path();
+  boost::ignore_unused(dev);
+  prefix_path = xrt_core::environment::xclbin_path(ptTest.get<std::string>("xclbin", "")).parent_path();
 #else
   prefix_path = std::filesystem::path("/opt/xilinx/xrt/test/");
 #endif
@@ -463,8 +463,8 @@ TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
   if (std::filesystem::exists(dpu_instr))
     return dpu_instr;
 
-  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % dpu_name));
-  _ptTest.put("status", test_token_skipped);
+  logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % dpu_name));
+  ptTest.put("status", test_token_skipped);
   return "";
 }
 
