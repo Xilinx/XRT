@@ -1533,10 +1533,44 @@ namespace xdp {
   }
 
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
-                                            const ip_layout* ipLayoutSection)
+                                            const ip_layout* ipLayoutSection,
+                                            const char* systemMetadataSection,
+                                            size_t systemMetadataSz)
   {
     if (currentXclbin == nullptr || ipLayoutSection == nullptr)
       return;
+
+    //---------------------------------------------------------------------
+    bool clockFlag = true;
+    boost::property_tree::ptree pt;
+    boost::property_tree::ptree user_regions;
+
+    if (systemMetadataSection == nullptr || systemMetadataSz <= 0) {
+      clockFlag = false;
+    }
+
+    else {
+
+    // Parse the SYSTEM_METADATA section using boost property trees, which
+    // could throw exceptions in multiple ways.
+    try{
+        std::stringstream ss;
+        ss.write(systemMetadataSection, systemMetadataSz);
+
+        // Create a property tree based off of the JSON
+        boost::property_tree::read_json(ss, pt);
+
+        auto top = pt.get_child("system_diagram_metadata");
+
+        // Parse the xclbin section for compute unit port information
+        auto xclbin = top.get_child("xclbin");
+        user_regions = xclbin.get_child("user_regions");
+    } catch(...) {
+      // TODO: catch section
+      clockFlag = false;
+    }
+    }
+    //---------------------------------------------------------------------
 
     ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < ipLayoutSection->m_count; ++i) {
@@ -1559,6 +1593,40 @@ namespace xdp {
       if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
         cu->setFaEnabled(true);
       }
+
+      //---------------------------------------------------------------------
+      //asigning clock frequency to each compute unit
+      double clckfreq = 300.0;
+      if (clockFlag) {
+
+        try {
+          // Keep track of all the compute unit names associated with the id
+          // number so we can make the connection later.
+          for (auto& region : user_regions) {
+            for (auto& compute_unit : region.second.get_child("compute_units")) {
+              auto cuNameSysMD = compute_unit.second.get<std::string>("cu_name");
+              if ( 0 == cu->getName().compare(cuNameSysMD)) {
+              for (auto& clck :compute_unit.second.get_child("clocks")) {
+                // If the clock port name is ap clck, that is the frequency we associate
+                // with the compute unit
+                auto clockPortName = clck.second.get<std::string>("port_name");
+                if (0 == clockPortName.compare("ap_clk")) {
+                  auto tmp_var = clck.second.get<std::string>("requested_frequency");
+                  clckfreq = std::stod(tmp_var);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+
+      }catch(...) {
+          clckfreq = 300.0;
+      }
+    }
+    cu->setClockFrequency(clckfreq);
+    //---------------------------------------------------------------------
     }
   }
 
@@ -1710,6 +1778,9 @@ namespace xdp {
         if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK)
           mon->traceEnabled = true ;
 
+        // Assigning the compute unit's clock frequency to the monitor
+        mon->clockFrequency = cuObj->getClockFrequency();
+
         // Add the monitor to the list of all monitors in this xclbin
         xclbin->pl.ams.push_back(mon);
         // Associate it with this compute unit
@@ -1789,6 +1860,8 @@ namespace xdp {
 
     if (cuObj) {
       mon->cuPort = cuObj->getPort(portName);
+      // Assigning the compute unit's clock frequency to the monitor
+      mon->clockFrequency = cuObj->getClockFrequency();
     }
     if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
       mon->traceEnabled = true ;
@@ -1880,8 +1953,10 @@ namespace xdp {
                                index, debugIpData->m_name,
                                cuId);
     //mon->port = portName;
-    if (cuObj)
+    if (cuObj){
       mon->cuPort = cuObj->getPort(portName);
+      mon->clockFrequency = cuObj->getClockFrequency();
+    }
     if (debugIpData->m_properties & 0x2) {
       mon->isStreamRead = true;
     }
@@ -2169,14 +2244,17 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin, xrt::xclbin xrtXclbin)
   {
-    // Step 1 -> Create the compute units based on the IP_LAYOUT section
+    // Step 1 -> Create the compute units based on the IP_LAYOUT and SYSTEM_METADATA section
     const ip_layout* ipLayoutSection =
       reinterpret_cast<const ip_layout*>(xrt_core::xclbin_int::get_axlf_section(xrtXclbin, IP_LAYOUT).first);
+
+    std::pair<const char*, size_t> systemMetadata =
+       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, SYSTEM_METADATA);
 
     if(ipLayoutSection == nullptr)
       return true;
 
-    createComputeUnits(currentXclbin, ipLayoutSection);
+    createComputeUnits(currentXclbin, ipLayoutSection,systemMetadata.first, systemMetadata.second);
 
     // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
     const mem_topology* memTopologySection =
@@ -2208,8 +2286,6 @@ namespace xdp {
 
     // Step 5 -> Fill in the details like the name of the xclbin using
     //           the SYSTEM_METADATA section
-    std::pair<const char*, size_t> systemMetadata =
-       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, SYSTEM_METADATA);
 
     setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
     updateSystemDiagram(systemMetadata.first, systemMetadata.second);
