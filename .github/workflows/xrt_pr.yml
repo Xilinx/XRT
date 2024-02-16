@@ -5,9 +5,7 @@ env:
   PIPELINE: 'xrt'     
   ENV: 'test'     
     
-on:    
-  pull_request_target:    
-    types: [opened, edited, synchronize]    
+on: 
   issue_comment:    
     types: [created]
     
