@@ -610,7 +610,7 @@ namespace xdp {
         auto traceStartEvent = (type == module_type::core) ? coreTraceStartEvent : memoryTileTraceStartEvent;
         auto traceEndEvent = (type == module_type::core) ? coreTraceEndEvent : memoryTileTraceEndEvent;
         
-        aie_cfg_base aieConfig = cfgTile->core_trace_config;
+        aie_cfg_base& aieConfig = cfgTile->core_trace_config;
         if (type == module_type::mem_tile)
           aieConfig = cfgTile->memory_tile_trace_config;
 
@@ -650,24 +650,18 @@ namespace xdp {
           auto iter1 = configChannel1.find(tile);
           uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
           uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
-          aie::trace::configEventSelections(aieDevInst, loc, type, metricSet, channel0, channel1);
-
-          // Record for runtime config file
-          cfgTile->memory_tile_trace_config.port_trace_ids[0] = channel0;
-          cfgTile->memory_tile_trace_config.port_trace_ids[1] = channel1;
-          if (aie::isInputSet(type, metricSet)) {
-            cfgTile->memory_tile_trace_config.port_trace_is_master[0] = true;
-            cfgTile->memory_tile_trace_config.port_trace_is_master[1] = true;
-            cfgTile->memory_tile_trace_config.s2mm_channels[0] = channel0;
-            if (channel0 != channel1)
-              cfgTile->memory_tile_trace_config.s2mm_channels[1] = channel1;
-          } 
-          else {
-            cfgTile->memory_tile_trace_config.port_trace_is_master[0] = false;
-            cfgTile->memory_tile_trace_config.port_trace_is_master[1] = false;
-            cfgTile->memory_tile_trace_config.mm2s_channels[0] = channel0;
-            if (channel0 != channel1)
-              cfgTile->memory_tile_trace_config.mm2s_channels[1] = channel1;
+          aie::trace::configEventSelections(aieDevInst, loc, type, metricSet, channel0, 
+                                            channel1, cfgTile->memory_tile_trace_config);
+        }
+        else {
+          // Record if these are channel-specific events
+          // NOTE: for now, check first event and assume single channel
+          auto channelNum = aie::trace::getChannelNumberFromEvent(memoryEvents.at(0));
+          if (channelNum >= 0) {
+            if (aie::isInputSet(type, metricSet))
+              cfgTile->core_trace_config.mm2s_channels[0] = channelNum;
+            else
+              cfgTile->core_trace_config.s2mm_channels[0] = channelNum;
           }
         }
 
@@ -705,9 +699,10 @@ namespace xdp {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile->memory_trace_config.traced_events[S] = aie::bcIdToEvent(bcId);
           }
-          else {
+          else if (type == xdp::module_type::mem_tile)
             cfgTile->memory_tile_trace_config.traced_events[S] = phyEvent;
-          }
+          else
+            cfgTile->memory_trace_config.traced_events[S] = phyEvent;
         }
 
         // Add trace control events to config file
@@ -720,8 +715,8 @@ namespace xdp {
             coreToMemBcMask |= (1 << bcId);
 
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
-            cfgTile->memory_trace_config.start_event = aie::bcIdToEvent(bcId);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+            cfgTile->memory_trace_config.start_event = aie::bcIdToEvent(bcId);
           }
           else {
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
@@ -737,8 +732,8 @@ namespace xdp {
             coreToMemBcMask |= (1 << bcId);
           
             XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
-            cfgTile->memory_trace_config.stop_event = aie::bcIdToEvent(bcId);
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+            cfgTile->memory_trace_config.stop_event = aie::bcIdToEvent(bcId);
 
             // Use east broadcasting for AIE2+ or odd absolute rows of AIE1 checkerboard
             if ((row % 2) || (metadata->getHardwareGen() > 1))
@@ -812,23 +807,9 @@ namespace xdp {
         // Modify events as needed
         aie::trace::modifyEvents(type, subtype, metricSet, channel0, interfaceEvents);
 
-        // Record for runtime config file
-        if (type == module_type::shim) {
-          if (aie::isInputSet(type, metricSet)) {
-            cfgTile->interface_tile_trace_config.mm2s_channels[0] = channel0;
-            if (channel0 != channel1)
-              cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
-          } 
-          else {
-            cfgTile->interface_tile_trace_config.s2mm_channels[0] = channel0;
-            if (channel0 != channel1)
-              cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
-          }
-        }
-
-        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, 
-                                                          xaieTile, loc, type, metricSet, 
-                                                          channel0, channel1, interfaceEvents, cfgTile->interface_tile_trace_config);
+        streamPorts = aie::trace::configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, type, metricSet, 
+                                                          channel0, channel1, interfaceEvents, 
+                                                          cfgTile->interface_tile_trace_config);
 
         // Configure interface tile trace events
         for (int i = 0; i < interfaceEvents.size(); i++) {

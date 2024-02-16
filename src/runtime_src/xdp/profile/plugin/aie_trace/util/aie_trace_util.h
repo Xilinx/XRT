@@ -142,9 +142,16 @@ namespace xdp::aie::trace {
   /**
    * @brief  Get port number from event
    * @param  event Event ID to check
-   * @return Port number associated with given event
+   * @return Port number associated with given event (default: 0)
    */
   uint8_t getPortNumberFromEvent(XAie_Events event);
+
+  /**
+   * @brief  Get channel number from event
+   * @param  event Event ID to check
+   * @return Channel number associated with given event (default: -1)
+   */
+  int8_t getChannelNumberFromEvent(XAie_Events event);
 
   /**  
    * @brief Print out usage statistics for specified tile

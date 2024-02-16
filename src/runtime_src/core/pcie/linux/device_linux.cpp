@@ -907,48 +907,6 @@ struct accel_deadlock_status
   }
 };
 
-// Structure to get device specific Aie tiles information like
-// Total rows, cols and num of core, mem, shim rows and thier start row num
-// num of dma channels, locks, events etc
-struct aie_tiles_stats
-{
-  using result_type = query::aie_tiles_stats::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key)
-  {
-    uint32_t size = sizeof(result_type);
-    std::vector<char> buf(size);
-
-    // TODO : Add code to get the data
-
-    return *(reinterpret_cast<result_type*>(buf.data()));
-  }
-};
-
-// structure to get aie tiles status raw buffer
-struct aie_tiles_status_info
-{
-  using result_type = xrt_core::query::aie_tiles_status_info::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key, const std::any& param)
-  {
-    auto data = std::any_cast<xrt_core::query::aie_tiles_status_info::parameters>(param);
-    uint32_t cols_filled = 0;
-    uint32_t buf_size = data.col_size * data.num_cols;
-
-    std::vector<char> buf(buf_size);
-
-    // TODO : Add code to get the data and cols filled info
-    result_type output;
-    output.buf = buf;
-    output.cols_filled = cols_filled;
-
-    return output;
-  }
-};
-
 struct debug_ip_layout_path
 {
   using result_type = xrt_core::query::debug_ip_layout_path::result_type;
@@ -1503,9 +1461,6 @@ initialize_query_table()
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
-
-  emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
-  emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 
   emplace_func4_request<query::debug_ip_layout_path,           debug_ip_layout_path>();
   emplace_func0_request<query::num_live_processes,             num_live_processes>();

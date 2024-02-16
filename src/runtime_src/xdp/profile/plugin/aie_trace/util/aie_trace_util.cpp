@@ -59,6 +59,11 @@ namespace xdp::aie::trace {
     eventSets["all_stalls"]               = eventSets["functions"];
     eventSets["all_dma"]                  = eventSets["functions"];
     eventSets["all_stalls_dma"]           = eventSets["functions"];
+    eventSets["s2mm_channels"]            = eventSets["functions"];
+    eventSets["mm2s_channels"]            = eventSets["functions"];
+    eventSets["all_stalls_s2mm"]          = eventSets["functions"];
+    eventSets["all_stalls_mm2s"]          = eventSets["functions"];
+
     if (hwGen > 1) {
       eventSets["s2mm_channels_stalls"]   = eventSets["functions"];
       eventSets["mm2s_channels_stalls"]   = eventSets["functions"];
@@ -100,8 +105,18 @@ namespace xdp::aie::trace {
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_GROUP_CORE_STALL_CORE,                XAIE_EVENT_PORT_RUNNING_0_CORE,
           XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_RUNNING_2_CORE,
-          XAIE_EVENT_PORT_RUNNING_3_CORE}}
-    };
+          XAIE_EVENT_PORT_RUNNING_3_CORE}},
+        {"s2mm_channels",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
+          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE}},
+        {"all_stalls_s2mm",
+         {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
+          XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
+          XAIE_EVENT_CASCADE_STALL_CORE,                   XAIE_EVENT_LOCK_STALL_CORE,
+          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE}}
+     };
+    eventSets["mm2s_channels"]   = eventSets["s2mm_channels"];
+    eventSets["all_stalls_mm2s"] = eventSets["all_stalls_s2mm"];
 
     // Sets w/ DMA stall/backpressure events not supported on AIE1 
     if (hwGen > 1) {
@@ -423,6 +438,43 @@ namespace xdp::aie::trace {
       return 1;
     default:
       return 0;
+    }
+  }
+
+  /****************************************************************************
+   * Get channel number based on event
+   ***************************************************************************/
+  int8_t getChannelNumberFromEvent(XAie_Events event)
+  {
+    switch (event) {
+    case XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_START_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM:
+      return 0;
+    case XAIE_EVENT_DMA_S2MM_1_START_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_START_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM:
+      return 1;
+    default:
+      return -1;
     }
   }
 

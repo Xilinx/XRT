@@ -80,10 +80,12 @@ namespace xdp::aie::trace {
    * @param metricSet  Name of requested metric set
    * @param channel0   First specified channel number
    * @param channel1   Second specified channel number
+   * @param config     Class used to document configuration
    */
   void configEventSelections(XAie_DevInst* aieDevInst, const XAie_LocType loc,
                              const module_type type, const std::string metricSet, 
-                             const uint8_t channel0, const uint8_t channel);
+                             const uint8_t channel0, const uint8_t channel1,
+                             aie_cfg_base& config);
 
   /**
    * @brief Configure edge detection events

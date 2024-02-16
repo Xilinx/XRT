@@ -229,7 +229,8 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
 #ifdef XDP_CLIENT_BUILD
   if (AIEData.metadata->getContinuousTrace()) {
-    xrt_core::message::send(severity_level::debug, "XRT", "Periofic offload isn't supported on this platform.");
+    xrt_core::message::send(severity_level::debug, "XRT", 
+                            "Periodic offload is not supported on this platform.");
     AIEData.metadata->resetContinuousTrace();
   }
 #else

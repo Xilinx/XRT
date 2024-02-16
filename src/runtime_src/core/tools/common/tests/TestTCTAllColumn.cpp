@@ -2,7 +2,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "TestTCTOneColumn.h"
+#include "TestTCTAllColumn.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
@@ -17,15 +17,15 @@ namespace XBU = XBUtilities;
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 4;
 static constexpr size_t word_count = buffer_size/4;
-static constexpr int itr_count = 10000;
+static constexpr int itr_count = 20000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-TestTCTOneColumn::TestTCTOneColumn()
-  : TestRunner("tct-one-col", 
-                "Measure average TCT processing time for one column",
+TestTCTAllColumn::TestTCTAllColumn()
+  : TestRunner("tct-all-col", 
+                "Measure average TCT processing time for all columns",
                 "validate.xclbin")
                 {
-                  m_dpu_name = "tct_1col.txt";
+                  m_dpu_name = "tct_4col.txt";
                 }
 
 namespace {
@@ -73,7 +73,7 @@ get_instr_size(const std::string& dpu_file) {
 } //anonymous namespace
 
 boost::property_tree::ptree
-TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
+TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
