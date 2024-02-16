@@ -38,8 +38,6 @@ class TestRunner : public JSONConfigurable {
     bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
     std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                                  boost::property_tree::ptree& ptTest);
-    std::vector<std::string> findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
-                                               boost::property_tree::ptree& ptTest);
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
     std::string findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
@@ -54,6 +52,8 @@ class TestRunner : public JSONConfigurable {
     std::string m_xclbin;
  
   private:
+    std::vector<std::string> findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
+                                               boost::property_tree::ptree& ptTest);
     std::string searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, 
                       boost::property_tree::ptree& _ptTest);
     std::string searchSSV2Xclbin(const std::string& logic_uuid,
