@@ -347,6 +347,7 @@ jobs:
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
           runNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
