@@ -335,7 +335,7 @@ jobs:
         uses: actions/checkout@v3  
         with:  
           repository: actions-int/XOAH-URL-action
-          ref: 'v0.0.6' 
+          ref: 'cleanup' 
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/XOAH-URL-action
@@ -347,6 +347,7 @@ jobs:
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
           runNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
