@@ -283,7 +283,6 @@ int main_(int argc, const char** argv) {
   // Examine the options
   XUtil::setVerbose(bTrace);
   XUtil::setQuiet(bQuiet);
-  // XUtil::setTransformPdi(bTransformPdi);
 
   if (bVersion) {
     FormattedOutput::reportVersion();

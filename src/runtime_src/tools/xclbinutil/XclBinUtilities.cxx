@@ -33,8 +33,6 @@
 #include <memory>
 #include <vector>
 #include <cstdlib>  // std::system
-// #include <iostream>
-// #include <sstream>
 
 #if (BOOST_VERSION >= 106400)
 
@@ -73,19 +71,6 @@ bool
 XclBinUtilities::getVerbose() {
   return m_bVerbose;
 }
-
-#if 0
-void
-XclBinUtilities::setTransformPdi(bool _bTransformPdi) {
-  m_bTransformPdi = _bTransformPdi;
-  TRACE("Transform PDI enabled");
-}
-
-bool
-XclBinUtilities::getTransformPdi() {
-  return m_bTransformPdi;
-}
-#endif
 
 void
 XclBinUtilities::setQuiet(bool _bQuiet) {
@@ -1029,14 +1014,11 @@ int transform_PDI_file(const std::string& fileName)
 {
   // prototype 1: run the transform_static executable
   // assume transform_static is in the current working directory
-  // std::string transformedFileName = "transformed_" + fileName;
   std::string command = "./transform_static " + fileName + " " + fileName;
-  // command += " > redirect_cout";
 
   // currently transform_static prints lots of messages to console (stdout)
   // redirect the output to a file, so that console looks cleaner
   int sout = dup(fileno(stdout));
-  // freopen("redirect.txt","w",stdout);
   FILE* f = freopen("/dev/null", "w", stdout);
   if (f == nullptr)
     std::cout << "stdout redirect failed" << std::endl;
@@ -1048,7 +1030,7 @@ int transform_PDI_file(const std::string& fileName)
   dup2(sout,fileno(stdout));
   close(sout);
 
-  std::cout << "tranform_static returns " << returnCode << std::endl;
+  // std::cout << "tranform_static returns " << returnCode << std::endl;
   // returnCode is 0 for success, non-0 for error
   return returnCode;
 }
@@ -1080,7 +1062,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   // delete the temp dir
 
   // create a temp directory
-  // fs::current_path or fs::temp_directory_path
+  // fs::current_path or fs::temp_directory_path?
   std::string apJson = "aie_partition.json";
   // ap: aie_partition
   fs::path tempDir = fs::current_path() / "ap_temp";
@@ -1102,7 +1084,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
     fs::path transformDir = tempDir / sSectionIndex / "transform";
     fs::path origApJsonPath = origDir / apJson;
     fs::path tranApJsonPath = transformDir / apJson;
-    std::cout << "origDir = " << origDir.string() << std::endl;
+    // std::cout << "origDir = " << origDir.string() << std::endl;
 
     try {
       fs::create_directories(origDir);
@@ -1130,7 +1112,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
     for (const auto& entry : fs::directory_iterator(transformDir)) {
       // Check if the current entry is a regular file and matches the extension
       if (fs::is_regular_file(entry) && entry.path().extension() == ".pdi") {
-        std::cout << "pdi file found: " << entry.path() << std::endl;
+        // std::cout << "pdi file found: " << entry.path() << std::endl;
 
         if (transform_PDI_file (entry.path().string())) {
           std::cout << "pdi file transform failed: " << entry.path() << std::endl;

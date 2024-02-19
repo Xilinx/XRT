@@ -90,30 +90,22 @@ def main():
   cmd = [xclbinutil, "--add-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartition,
                      "--transform-pdi",
                      "--output", workingXclbin,
-                     # "--trace",
                      "--force"
                      ]
-  print("i am here 0")
   execCmd(step, cmd)
-  print("i am here 1")
 
   # ---------------------------------------------------------------------------
 
-  print("i am here 2")
   step = "4) Read and dump the AIE parition"
   aiePartitionOutput = "transform/aie_partition_output.json"
   if not os.path.exists("./transform"):
     os.makedirs("./transform")
-  print("i am here 3")
 
   cmd = [xclbinutil, "--input", workingXclbin,
                      "--dump-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartitionOutput,
-                     # "--trace",
                      "--force"
                      ]
-  print("i am here 4")
   execCmd(step, cmd)
-  print("i am here 5")
   # jsonFileCompare(aiePartitionOutputExpected, aiePartitionOutput2)
 
   # 1a) Check for the existance of the dumped PDI images
