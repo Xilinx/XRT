@@ -11,17 +11,26 @@
 namespace xrt::core::hip {
 static void
 hip_module_launch_kernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
-                      uint32_t gridDimZ, uint32_t blockDimX, uint32_t blockDimY,
-                      uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
-                      void** kernelParams, void** extra)
+                         uint32_t gridDimZ, uint32_t blockDimX, uint32_t blockDimY,
+                         uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
+                         void** kernelParams, void** extra)
 {
   if (!f)
     throw xrt_core::system_error(hipErrorInvalidResourceHandle, "function is nullptr");
 
+  auto func_hdl = reinterpret_cast<function_handle>(f);
+  auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
+  if (!hip_mod)
+    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "associated module of function is unloaded");
+
+  auto hip_func = hip_mod->get_function(func_hdl);
+  if (!hip_func)
+    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "invalid function passed");
+
   throw std::runtime_error("Not implemented");
 }
 
-static hipFunction_t
+static function_handle
 hip_module_get_function(hipModule_t hmod, const char* name)
 {
   if (!name || strlen(name) == 0)
@@ -30,26 +39,44 @@ hip_module_get_function(hipModule_t hmod, const char* name)
   if (!hmod)
     throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
 
-  throw std::runtime_error("Not implemented");
+  auto mod_hdl = reinterpret_cast<module_handle>(hmod);
+  auto hip_mod = module_cache.get(mod_hdl);
+  if (!hip_mod)
+    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module not available");
+
+  auto hip_func = std::make_shared<function>(mod_hdl, std::string(name));
+  auto func_hdl = hip_func.get();
+  hip_mod->add_function(func_hdl, std::move(hip_func));
+  return func_hdl;
 }
 
-static void
-hip_module_load_data_ex(hipModule_t* module, const void* image, unsigned int numOptions,
-                    hipJitOption* options, void** optionsValues)
+static module_handle
+create_module(const void* image)
 {
-  if (!module)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
-
-  throw std::runtime_error("Not implemented");
+  auto ctx = get_current_context();
+  auto hip_module = std::make_shared<module>(ctx, const_cast<void*>(image));
+  auto module_hdl = hip_module.get();
+  module_cache.add(module_hdl, std::move(hip_module));
+  return module_hdl;
 }
 
-static void
-hip_module_load_data(hipModule_t* module, const void* image)
+static module_handle
+hip_module_load_data_ex(const void* image, unsigned int numOptions,
+                        hipJitOption* options, void** optionsValues)
 {
-  if (!module)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+  // Jit options are ignored for now
+  (void)numOptions;
+  (void)options;
+  (void)optionsValues;
 
-  throw std::runtime_error("Not implemented");
+  return create_module(image);
+}
+
+// image is mapped address of program to be loaded
+static module_handle
+hip_module_load_data(const void* image)
+{
+  return create_module(image);
 }
 
 static void
@@ -58,7 +85,8 @@ hip_module_unload(hipModule_t hmod)
   if (!hmod)
     throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
 
-  throw std::runtime_error("Not implemented");
+  auto handle = reinterpret_cast<module_handle>(hmod);
+  module_cache.remove(handle);
 }
 
 static void
@@ -78,7 +106,7 @@ hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
 {
   try {
     xrt::core::hip::hip_module_launch_kernel(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
-                                          blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
+                                             blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -98,7 +126,8 @@ hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name)
     if (!hfunc)
       throw xrt_core::system_error(hipErrorInvalidHandle, "function passed is nullptr");
 
-    *hfunc = xrt::core::hip::hip_module_get_function(hmod, name);
+    auto handle = xrt::core::hip::hip_module_get_function(hmod, name);
+    *hfunc = reinterpret_cast<hipFunction_t>(handle);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -116,7 +145,12 @@ hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOpti
                     hipJitOption* options, void** optionsValues)
 {
   try {
-    xrt::core::hip::hip_module_load_data_ex(module, image, numOptions, options, optionsValues);
+    if (!module)
+      throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+
+    auto handle = xrt::core::hip::
+        hip_module_load_data_ex(image, numOptions, options, optionsValues);
+    *module = reinterpret_cast<hipModule_t>(handle);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -133,7 +167,11 @@ hipError_t
 hipModuleLoadData(hipModule_t* module, const void* image)
 {
   try {
-    xrt::core::hip::hip_module_load_data(module, image);
+    if (!module)
+      throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+
+    auto handle = xrt::core::hip::hip_module_load_data(image);
+    *module = reinterpret_cast<hipModule_t>(handle);
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {

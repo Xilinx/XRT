@@ -25,6 +25,8 @@ class device
   std::weak_ptr<context> pri_ctx;
 
 public:
+  device() = default;
+  
   explicit
   device(uint32_t device_id);
 

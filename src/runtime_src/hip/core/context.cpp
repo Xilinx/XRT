@@ -20,7 +20,8 @@ thread_local hip_tls_objs tls_objs;
 // returns current context
 // if primary context is active it is current
 // else returns top of ctx stack
-// this function can return null if no context is active
+// this function returns primary ctx on active device if
+// no context is active
 std::shared_ptr<context>
 get_current_context()
 {
@@ -37,6 +38,11 @@ get_current_context()
       tls_objs.ctx_stack.pop();
   }
 
-  return ctx;
+  if (ctx)
+    return ctx;
+
+  // if no active ctx, create primary ctx on active device
+  auto ctx_hdl = hip_device_primary_ctx_retain(tls_objs.dev_hdl);
+  return context_cache.get(ctx_hdl);
 }
 }

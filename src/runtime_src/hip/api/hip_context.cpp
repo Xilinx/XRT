@@ -29,8 +29,10 @@ hip_ctx_create(unsigned int flags, hipDevice_t device)
   hip_dev->set_flags(flags);
   auto hip_ctx = std::make_shared<context>(hip_dev);
   tls_objs.ctx_stack.push(hip_ctx);  // make it current
-  context_cache.add(hip_ctx.get(), std::move(hip_ctx));
-  return hip_ctx.get();
+  tls_objs.dev_hdl = device;
+  auto handle = hip_ctx.get();
+  context_cache.add(handle, std::move(hip_ctx));
+  return handle;
 }
 
 static void
@@ -74,8 +76,10 @@ hip_ctx_set_current(hipCtx_t ctx)
 
   auto handle = reinterpret_cast<context_handle>(ctx);
   auto hip_ctx = context_cache.get(handle);
-  if (hip_ctx)
+  if (hip_ctx) {
     tls_objs.ctx_stack.push(hip_ctx);
+    tls_objs.dev_hdl = hip_ctx->get_dev_id();
+  }
 }
 
 // remove primary ctx as active
@@ -97,17 +101,16 @@ hip_device_primary_ctx_release(hipDevice_t dev)
   auto ctx_hdl =
       reinterpret_cast<context_handle>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
   context_cache.remove(ctx_hdl);
-  if (tls_objs.pri_ctx_info.active && tls_objs.pri_ctx_info.dev_hdl == dev_hdl) {
+  if (tls_objs.pri_ctx_info.active && tls_objs.dev_hdl == dev_hdl) {
     tls_objs.pri_ctx_info.active = false;
-    tls_objs.pri_ctx_info.dev_hdl = UINT32_MAX;
     tls_objs.pri_ctx_info.ctx_hdl = nullptr;
   }
 }
 
 // create primary context on given device if not already present
 // else increment reference count
-static context_handle
-hip_device_primary_ctx_retain(hipDevice_t dev)
+context_handle
+hip_device_primary_ctx_retain(device_handle dev)
 {
   auto hip_dev = device_cache.get(dev);
   if (!hip_dev)
@@ -123,13 +126,12 @@ hip_device_primary_ctx_retain(hipDevice_t dev)
   // unqiue handle, using thread id here as primary context is unique per thread
   auto ctx_hdl =
       reinterpret_cast<context_handle>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-  auto handle = hip_ctx.get();
   context_cache.add(ctx_hdl, std::move(hip_ctx));
 
   tls_objs.pri_ctx_info.active = true;
   tls_objs.pri_ctx_info.ctx_hdl = ctx_hdl;
-  tls_objs.pri_ctx_info.dev_hdl = dev;
-  return handle;
+  tls_objs.dev_hdl = dev;
+  return ctx_hdl;
 }
 } // xrt::core::hip
 

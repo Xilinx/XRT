@@ -15,6 +15,7 @@ class stream
   std::shared_ptr<context> m_ctx;
 
 public:
+  stream() = default;
   stream(std::shared_ptr<context> ctx);
 };
 

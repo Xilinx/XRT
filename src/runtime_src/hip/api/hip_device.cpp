@@ -7,6 +7,7 @@
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
 
+#include "hip/core/common.h"
 #include "hip/core/device.h"
 
 #include <cstring>
@@ -50,6 +51,9 @@ device_init()
     auto dev = std::make_shared<xrt::core::hip::device>(i);
     device_cache.add(i, std::move(dev));
   }
+  // make first device as default device
+  if (dev_count > 0)
+    tls_objs.dev_hdl = static_cast<device_handle>(0);
 }
 
 static void
@@ -59,7 +63,7 @@ hip_init(unsigned int flags)
   if (flags != 0)
     throw xrt_core::system_error(hipErrorInvalidValue, "non zero flags passed to hipinit");
 
-  // call device_init function, device enumeration might not have happened 
+  // call device_init function, device enumeration might not have happened
   // at library load because of some exception
   // std::once_flag ensures init is called only once
   std::call_once(device_init_flag, xrt::core::hip::device_init);
