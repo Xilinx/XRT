@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -69,6 +69,7 @@ class XclBin {
 
  public:
   Section *findSection(axlf_section_kind _eKind, const std::string & _indexName = "") const;
+  std::vector<Section*> findSection(axlf_section_kind _eKind, bool _ignoreIndex, const std::string & _indexName = "") const;
 
  private:
   void updateHeaderFromSection(Section *_pSection);

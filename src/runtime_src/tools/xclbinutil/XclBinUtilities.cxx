@@ -1,6 +1,6 @@
 /**
- * Copyright (C) 2018, 2020-2023 Xilinx, Inc
- *
+ * Copyright (C) 2018, 2020-2023 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -32,6 +32,9 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <cstdlib>  // std::system
+// #include <iostream>
+// #include <sstream>
 
 #if (BOOST_VERSION >= 106400)
 
@@ -54,9 +57,11 @@
 #endif
 
 namespace XUtil = XclBinUtilities;
+namespace fs = std::filesystem;
 
 static bool m_bVerbose = false;
 static bool m_bQuiet = false;
+// static bool m_bTransformPdi = false;
 
 void
 XclBinUtilities::setVerbose(bool _bVerbose) {
@@ -68,6 +73,19 @@ bool
 XclBinUtilities::getVerbose() {
   return m_bVerbose;
 }
+
+#if 0
+void
+XclBinUtilities::setTransformPdi(bool _bTransformPdi) {
+  m_bTransformPdi = _bTransformPdi;
+  TRACE("Transform PDI enabled");
+}
+
+bool
+XclBinUtilities::getTransformPdi() {
+  return m_bTransformPdi;
+}
+#endif
 
 void
 XclBinUtilities::setQuiet(bool _bQuiet) {
@@ -1007,10 +1025,147 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
+int transform_PDI_file(const std::string& fileName)
+{
+  // prototype 1: run the transform_static executable
+  // assume transform_static is in the current working directory
+  // std::string transformedFileName = "transformed_" + fileName;
+  std::string command = "./transform_static " + fileName + " " + fileName;
+  // command += " > redirect_cout";
+
+  // currently transform_static prints lots of messages to console (stdout)
+  // redirect the output to a file, so that console looks cleaner
+  int sout = dup(fileno(stdout));
+  // freopen("redirect.txt","w",stdout);
+  FILE* f = freopen("/dev/null", "w", stdout);
+  if (f == nullptr)
+    std::cout << "stdout redirect failed" << std::endl;
+
+  XUtil::TRACE("Transform " + fileName);
+  int returnCode = std::system(command.c_str());
+
+  // restore stdout
+  dup2(sout,fileno(stdout));
+  close(sout);
+
+  std::cout << "tranform_static returns " << returnCode << std::endl;
+  // returnCode is 0 for success, non-0 for error
+  return returnCode;
+}
+
+void 
+XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
+{
+  // find all sections with type "AIE_PARTITION" in xclbin
+  // create a temp empty folder on disk, e.g. "ap_temp"
+  // for each section
+  //   dump the content (pdi files) to the temp folder
+  //      <index name>/
+  //          orig/
+  //             aie_partition.json
+  //             1.pdi, 2.pdi ...
+  //   copy orig/ to transform/          
+  //   for each pdi in transform/, call trasform_static
+  //      <index name>/
+  //          transform/
+  //             aie_partition.json
+  //             transformed 1.pdi, 2.pdi ...
+  //   construct the string for sections to be removed, add to container A
+  //   construct PSD for the sections in <temp>/<index name>/transform, add to container B
+  // }
+  // for each section in container A
+  //   removeSection(PSD)
+  // for each PSD in container B
+  //   addSection(PSD)
+  // delete the temp dir
+
+  // create a temp directory
+  // fs::current_path or fs::temp_directory_path
+  std::string apJson = "aie_partition.json";
+  // ap: aie_partition
+  fs::path tempDir = fs::current_path() / "ap_temp";
+
+  std::vector<std::string> removeSections;
+  std::vector<std::string> addSections;
+  std::vector<Section*> sections = xclbin.findSection(AIE_PARTITION, true);
+  for (auto& pSection : sections) {
+    // get the section name, index
+    std::string sSectionKind = pSection->getSectionKindAsString();
+    std::string sSectionIndex = pSection->getSectionIndexName();
+    std::string sSectionName = pSection->getName();
+    // std::cout << "sSectionKind = " << sSectionKind << std::endl;
+    // std::cout << "sSectionIndex = " << sSectionIndex << std::endl;
+    // std::cout << "sSectionName = " << sSectionName << std::endl;
+
+    // note sSectionIndex could be an empty string
+    fs::path origDir = tempDir / sSectionIndex / "orig";
+    fs::path transformDir = tempDir / sSectionIndex / "transform";
+    fs::path origApJsonPath = origDir / apJson;
+    fs::path tranApJsonPath = transformDir / apJson;
+    std::cout << "origDir = " << origDir.string() << std::endl;
+
+    try {
+      fs::create_directories(origDir);
+    }
+    catch (std::exception& e) { // Not using fs::filesystem_error since std::bad_alloc can throw too.
+        std::cout << e.what() << std::endl;
+    }
+    // std::cout << "Temporary directory created: " << origDir << std::endl;
+
+    // construct the PSD for dumpЅection
+    std::string sDumpSection = sSectionKind + "[" + sSectionIndex + "]:JSON:" + origApJsonPath.string();
+    // std::cout << "sDumpSection = " << sDumpSection << std::endl;
+    ParameterSectionData dumpPsd(sDumpSection);
+    xclbin.dumpSection(dumpPsd);
+
+    std::string sRemoveSection = sSectionKind + "[" + sSectionIndex + "]";
+    removeSections.push_back(sRemoveSection);
+
+    // after dumpSection, <temp>/<index name>/orig/ should be populated with pdi files
+    // copy it to <temp>/<index name>/transform/
+    fs::copy(origDir, transformDir);
+
+    // transform the pdi in the transform/ folder
+    // Iterate over the files in the directory
+    for (const auto& entry : fs::directory_iterator(transformDir)) {
+      // Check if the current entry is a regular file and matches the extension
+      if (fs::is_regular_file(entry) && entry.path().extension() == ".pdi") {
+        std::cout << "pdi file found: " << entry.path() << std::endl;
+
+        if (transform_PDI_file (entry.path().string())) {
+          std::cout << "pdi file transform failed: " << entry.path() << std::endl;
+        } else {
+          std::cout << "pdi file transformed: " << entry.path() << std::endl;
+        }
+      }
+    }
+
+    // construct the PSD for addЅection
+    std::string sAddSection = sSectionKind + "[" + sSectionIndex + "]:JSON:" + tranApJsonPath.string();
+    // std::cout << "sAddSection = " << sAddSection << std::endl;
+    addSections.push_back(sAddSection);
+  }
+
+  // remove the sections in removeSections
+  for (auto& sectionToRemove : removeSections) {
+    // std::cout << "remove section " << sectionToRemove << std::endl;
+    xclbin.removeSection(sectionToRemove);
+  }
+
+  // add the sections in transform folder
+  for (auto& sAddSection : addSections) {
+    // std::cout << "add section " << sAddSection << std::endl;
+    ParameterSectionData addPsd(sAddSection);
+    xclbin.addSection(addPsd);
+  }
+
+  // delete the temp dir
+  fs::remove_all(tempDir);
+}
 
 #if (BOOST_VERSION >= 106400)
 int 
-XclBinUtilities::exec(const std::filesystem::path &cmd,
+XclBinUtilities::exec(const fs::path &cmd,
                       const std::vector<std::string> &args,
                       bool bThrow,
                       std::ostringstream & os_stdout,
@@ -1056,7 +1211,7 @@ XclBinUtilities::exec(const std::filesystem::path &cmd,
 
 #else
 int 
-XclBinUtilities::exec(const std::filesystem::path &cmd,
+XclBinUtilities::exec(const fs::path &cmd,
                       const std::vector<std::string> &args,
                       bool bThrow,
                       std::ostringstream & os_stdout,

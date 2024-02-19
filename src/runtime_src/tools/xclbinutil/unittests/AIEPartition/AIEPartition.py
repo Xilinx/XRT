@@ -5,6 +5,7 @@ import filecmp
 import json
 import os
 import subprocess
+import shutil
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------
@@ -74,8 +75,59 @@ def main():
   aiePartition2222PDIOutput = "00000000-0000-0000-0000-000000002222.pdi"
   textFileCompare(aiePartition2222PDIExpected, aiePartition2222PDIOutput)
 
+  # ---------------------------------------------------------------------------
+
+  step = "3) Add the AIE parition to the xclbin image with pdi transform enabled"
+  # copy transform_static, currently the code expect the find it in CWD
+  print ("cwd : "+ os.getcwd())
+  transformTool = os.path.join(args.resource_dir, "transform_static")
+  shutil.copy(transformTool, os.getcwd())
+
+  sectionname = "Trans"
+  workingXclbin = "aiePartitionTrans.xclbin"
+  aiePartition = os.path.join(args.resource_dir, "aie_partition_trans.json")
+
+  cmd = [xclbinutil, "--add-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartition,
+                     "--transform-pdi",
+                     "--output", workingXclbin,
+                     # "--trace",
+                     "--force"
+                     ]
+  print("i am here 0")
+  execCmd(step, cmd)
+  print("i am here 1")
 
   # ---------------------------------------------------------------------------
+
+  print("i am here 2")
+  step = "4) Read and dump the AIE parition"
+  aiePartitionOutput = "transform/aie_partition_output.json"
+  if not os.path.exists("./transform"):
+    os.makedirs("./transform")
+  print("i am here 3")
+
+  cmd = [xclbinutil, "--input", workingXclbin,
+                     "--dump-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartitionOutput,
+                     # "--trace",
+                     "--force"
+                     ]
+  print("i am here 4")
+  execCmd(step, cmd)
+  print("i am here 5")
+  # jsonFileCompare(aiePartitionOutputExpected, aiePartitionOutput2)
+
+  # 1a) Check for the existance of the dumped PDI images
+  aiePartition1111PDIExpected = os.path.join(args.resource_dir, "1111_expected.pdi")
+  aiePartition1111PDIOutput = "transform/00000000-0000-0000-0000-000000001111.pdi"
+  binaryFileCompare(aiePartition1111PDIExpected, aiePartition1111PDIOutput)
+
+  # 1b) Check for the existance of the dummy PDI images
+  aiePartition2222PDIExpected = os.path.join(args.resource_dir, "2222_expected.pdi")
+  aiePartition2222PDIOutput = "transform/00000000-0000-0000-0000-000000002222.pdi"
+  binaryFileCompare(aiePartition2222PDIExpected, aiePartition2222PDIOutput)
+
+  # ---------------------------------------------------------------------------
+
 
   # If the code gets this far, all is good.
   return False
@@ -136,6 +188,18 @@ def textFileCompare(file1, file2):
 
         raise Exception("Error: The given files are not the same")
 
+def binaryFileCompare(file1, file2):
+    if not os.path.isfile(file1):
+      raise Exception("Error: The following json file does not exist: '" + file1 +"'")
+
+    if not os.path.isfile(file2):
+      raise Exception("Error: The following json file does not exist: '" + file2 +"'")
+
+    if filecmp.cmp(file1, file2) == False:
+        print ("\nFile1 : "+ file1)
+        print ("\nFile2 : "+ file2)
+
+        raise Exception("Error: The two files are not binary the same")
 
 def testDivider():
   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")

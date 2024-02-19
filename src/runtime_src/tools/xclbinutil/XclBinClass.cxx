@@ -1,7 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- * Advanced Micro Devices, Inc. 
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -42,6 +41,7 @@ static const std::string mirroDataStart("XCLBIN_MIRROR_DATA_START");
 static const std::string mirrorDataEnd("XCLBIN_MIRROR_DATA_END");
 
 namespace XUtil = XclBinUtilities;
+namespace fs = std::filesystem;
 
 static
 bool getVersionMajorMinorPath(const char* _pVersion, uint8_t& _major, uint8_t& _minor, uint16_t& _patch)
@@ -753,6 +753,24 @@ XclBin::findSection(enum axlf_section_kind _eKind,
   return nullptr;
 }
 
+// make it more flexible to return multiple Section's with the same type
+std::vector<Section*>
+XclBin::findSection(enum axlf_section_kind _eKind,
+                    bool _ignoreIndex,
+                    const std::string& _indexName) const
+{
+  std::vector<Section*> sections;
+  for (unsigned int index = 0; index < m_sections.size(); ++index) {
+    if (m_sections[index]->getSectionKind() == _eKind) {
+      if (_ignoreIndex || 
+          m_sections[index]->getSectionIndexName().compare(_indexName) == 0) {
+        sections.push_back(m_sections[index]);
+      }
+    }
+  }
+  return sections;
+}
+
 void
 XclBin::removeSection(const std::string& _sSectionToRemove)
 {
@@ -847,7 +865,7 @@ XclBin::replaceSection(ParameterSectionData& _PSD)
 
   updateHeaderFromSection(pSection);
 
-  std::filesystem::path p(sSectionFileName);
+  fs::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
@@ -949,7 +967,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
       throw std::runtime_error(boost::str(errMsg));
     }
 
-    std::filesystem::path p(_PSD.getFile());
+    fs::path p(_PSD.getFile());
     std::string sBaseName = p.stem().string();
     pSection->setName(sBaseName);
   }
@@ -1045,7 +1063,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   // Post-cleanup
-  std::filesystem::path p(sSectionFileName);
+  fs::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
