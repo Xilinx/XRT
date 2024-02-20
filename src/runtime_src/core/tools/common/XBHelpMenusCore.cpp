@@ -415,11 +415,6 @@ print_options(std::stringstream& stream,
   const auto& fh = FormatHelper::instance();
   boost::format fmtOption(fh.fgc_optionName + "  %-18s " + fh.fgc_optionBody + "- %s\n" + fh.fgc_reset);
   for (auto & option : options.options()) {
-    if ( !::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
-                         positionals) )  {
-      continue;
-    }
-
     std::string optionDisplayFormat = create_option_format_name(option.get(), report_param, remove_long_dashes);
     const unsigned int optionDescTab = 23;
     auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth - optionDescTab, false);
