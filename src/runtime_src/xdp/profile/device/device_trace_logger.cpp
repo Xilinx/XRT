@@ -38,7 +38,9 @@ namespace xdp {
       traceClockRateMHz(0),
       clockTrainSlope(0)
   {
-    traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
+    //This trace logger function is for PL only
+
+    traceClockRateMHz = db->getStaticInfo().getPLMaxClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
 
     xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId);
@@ -301,7 +303,7 @@ namespace xdp {
       if(isSingle || matchingStart.type == UNKNOWN_EVENT) {
         // add dummy start event
         strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, slot, cuId);
-        strmEvent->setDeviceTimestamp(deviceTimestamp); 
+        strmEvent->setDeviceTimestamp(deviceTimestamp);
         db->getDynamicInfo().addEvent(strmEvent);
         matchingStart.type = strmEvent->getEventType();
         matchingStart.eventID = strmEvent->getEventId();
@@ -311,7 +313,7 @@ namespace xdp {
       }
       // add end event
       strmEvent = new DeviceStreamAccess(matchingStart.eventID, hostTimestamp, streamEventType, deviceId, slot, cuId);
-      strmEvent->setDeviceTimestamp(deviceTimestamp); 
+      strmEvent->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(strmEvent);
       asmLastTrans[slot] = deviceTimestamp;
     }
@@ -383,13 +385,13 @@ namespace xdp {
           // The times are different, so we need to end the matching start
           //  and then create an additional pulse
           memEvent = new DeviceMemoryAccess(matchingStart.eventID,
-                                            hostTimestamp, ty, 
+                                            hostTimestamp, ty,
                                             deviceId, slot, cuId, memStrId);
           memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
 
           // Now create the dummy start
-          memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, 
+          memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty,
                                             deviceId, slot, cuId, memStrId);
           memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
@@ -404,7 +406,7 @@ namespace xdp {
 
       // The true end event we observed
       memEvent = new DeviceMemoryAccess(matchingStart.eventID,
-                                        hostTimestamp, ty, 
+                                        hostTimestamp, ty,
                                         deviceId, slot, cuId, memStrId);
       memEvent->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(memEvent);
@@ -660,7 +662,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
+  void DeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
                                                                  int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
                                                                  uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents)
   {
