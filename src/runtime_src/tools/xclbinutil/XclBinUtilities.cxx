@@ -1047,7 +1047,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   //             aie_partition.json
   //             1.pdi, 2.pdi ...
   //   copy orig/ to transform/          
-  //   for each pdi in transform/, call trasform_static
+  //   for each pdi in transform/, call transform_static
   //      <index name>/
   //          transform/
   //             aie_partition.json
