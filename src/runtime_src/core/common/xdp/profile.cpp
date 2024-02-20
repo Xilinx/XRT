@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/xdp/profile.h"
 
@@ -168,7 +168,7 @@ void
 register_callbacks(void* handle)
 { 
   #ifdef XDP_CLIENT_BUILD
-    (void)handle;
+    (void)handle;	// Not supported on Client Devices.
   #else
     using ftype = void (*)(void*);
 
@@ -206,7 +206,7 @@ finish_flush_device(void* handle)
     finish_flush_device_cb(handle);
 }
 
-} // end namespace xrt_core::xdp::ml_timeline
+} // end namespace xrt_core::xdp::pl_deadlock
 
 namespace xrt_core::xdp::aie::trace {
 
