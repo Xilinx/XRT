@@ -1070,7 +1070,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   std::vector<std::string> removeSections;
   std::vector<std::string> addSections;
   std::vector<Section*> sections = xclbin.findSection(AIE_PARTITION, true);
-  for (auto& pSection : sections) {
+  for (const auto& pSection : sections) {
     // get the section name, index
     std::string sSectionKind = pSection->getSectionKindAsString();
     std::string sSectionIndex = pSection->getSectionIndexName();
