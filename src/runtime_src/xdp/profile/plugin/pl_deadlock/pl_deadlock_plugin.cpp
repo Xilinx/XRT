@@ -25,6 +25,7 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
 #include "core/common/api/hw_context_int.h"
+#include "core/common/api/ip_int.h"
 
 #include "pl_deadlock_plugin.h"
 
@@ -112,19 +113,24 @@ namespace xdp {
             if (kernelName.compare(pair.first) != 0) {
               continue;
             }
+
+            xrt::ip* xrtIP = new xrt::ip(mHwContext, cuInstFullName);
+            uint32_t low  = pair.second.begin()->first;
+            uint32_t high = pair.second.rbegin()->first + 0x4;
+            xrt_core::ip_int::set_read_range(*xrtIP, low, (high-low));
+
             std::string currCUDiagnosis;
             for (const auto& entry: pair.second) { 
               auto offset = entry.first;
               auto& messages = entry.second;
-              xrt::ip* xrtIP = new xrt::ip(mHwContext, cuInstFullName);
               uint32_t kernelInstRegData = xrtIP->read_register(offset);
               for (unsigned int i=0; i < num_bits_deadlock_diagnosis; i++) {
                 if ((kernelInstRegData >> i) & 0x1) {
                   currCUDiagnosis += messages[i] + "\n";
                 }
               }
-              delete xrtIP;
             }
+            delete xrtIP;
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", currCUDiagnosis);
             allCUDiagnosis += currCUDiagnosis;
           }
