@@ -55,7 +55,7 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
 {
    std::set<std::string> normalizedInputFiles;
 
-   for( auto file : _inputFiles) {
+   for (const auto& file : _inputFiles) {
      if (!fs::exists(file)) {
        std::string errMsg = "ERROR: The following input file does not exist: " + file;
        throw std::runtime_error(errMsg);
