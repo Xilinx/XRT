@@ -3,6 +3,7 @@
 add_library(hip_core_library_objects OBJECT
   context.cpp
   device.cpp
+  memory.cpp
 )
 
 target_include_directories(hip_core_library_objects
