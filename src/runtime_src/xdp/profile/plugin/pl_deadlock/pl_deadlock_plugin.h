@@ -21,6 +21,7 @@
 #include <vector>
 #include <atomic>
 
+#include "core/include/xrt/xrt_hw_context.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
 
 namespace xdp {
@@ -28,10 +29,11 @@ namespace xdp {
   class PLDeadlockPlugin : public XDPPlugin
   {
   private:
-    virtual void pollDeadlock(void* handle, uint64_t index);
+    virtual void pollDeadlock(void*, uint64_t index);
     void forceWrite();
   
   private:
+    xrt::hw_context mHwContext;
     uint32_t mPollingIntervalMs = 100;
     std::map<void*, std::thread> mThreadMap;
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
@@ -42,8 +44,8 @@ namespace xdp {
     PLDeadlockPlugin();
     ~PLDeadlockPlugin();
 
-    virtual void updateDevice(void* handle);
-    virtual void flushDevice(void* handle);
+    virtual void updateDevice(void* hwCtxImpl);
+    virtual void flushDevice(void* hwCtxImpl);
 
     // Virtual functions from XDPPlugin
     virtual void writeAll(bool openNewFiles);

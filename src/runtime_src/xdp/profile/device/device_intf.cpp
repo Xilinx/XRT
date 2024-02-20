@@ -1226,6 +1226,7 @@ uint32_t DeviceIntf::getDeadlockStatus() {
   return 0;
 }
 
+#if 0
 void DeviceIntf::createXrtIP(
     const std::unique_ptr<ip_metadata> &ip_metadata_section,
     const std::string &fullname) {
@@ -1239,10 +1240,13 @@ std::string DeviceIntf::getDeadlockDiagnosis(bool print) {
   if (!mDeadlockDetector)
     return status;
 
+  
+
   for (auto &ip : mXrtIPList)
     status += ip->getDeadlockDiagnosis(print);
 
   return status;
 }
+#endif
 
 } // namespace xdp

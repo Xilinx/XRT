@@ -411,7 +411,7 @@ namespace xdp {
     try {
       xclbin->deviceIntf->readDebugIPlayout();
       // XRT IP are needed for deadlock diagnosis
-      initializeXrtIP(xclbin);
+//      initializeXrtIP(xclbin);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -1323,10 +1323,12 @@ namespace xdp {
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
 
+#if 0
     /*
      * Initialize xrt IP for deadlock diagnosis
      */
     parseXrtIPMetadata(deviceId, device);
+#endif
   }
 
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
@@ -1525,32 +1527,37 @@ namespace xdp {
     }
   }
 
-  void VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
+  ip_metadata* VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, void* devHandle)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return;
+      return nullptr;
 
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
     if (!xclbin)
-      return;
+      return nullptr;
 
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
     auto data = device->get_axlf_section(IP_METADATA);
     if (!data.first || !data.second)
-      return;
+      return nullptr;
 
     std::stringstream ss;
     ss.write(data.first,data.second);
     boost::property_tree::ptree pt;
     try {
       boost::property_tree::read_json(ss,pt);
-      xclbin->pl.ip_metadata_section = std::make_unique<ip_metadata>(pt);
+      xclbin->pl.ip_metadata_section = new ip_metadata(pt);
+      return xclbin->pl.ip_metadata_section;
       // Debug
       //xclbin->pl.ip_metadata_section->print();
     } catch(...) {
-      xclbin->pl.ip_metadata_section.reset();
+//      xclbin->pl.ip_metadata_section.reset();
+      return nullptr;
     }
+    return nullptr;
+    
   }
 
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
@@ -2040,6 +2047,7 @@ namespace xdp {
     xclbin->pl.usesFifo = true ;
   }
 
+#if 0
   void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
   {
     auto& ip_metadata = xclbin->pl.ip_metadata_section;
@@ -2049,6 +2057,7 @@ namespace xdp {
     for (const auto& cu : xclbin->pl.cus)
       xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname());
   }
+#endif
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {

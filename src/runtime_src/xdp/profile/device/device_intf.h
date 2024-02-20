@@ -204,7 +204,7 @@ class DeviceIntf {
     uint32_t getDeadlockStatus();
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
-
+#if 0
     XDP_CORE_EXPORT
     void createXrtIP
     (
@@ -213,6 +213,7 @@ class DeviceIntf {
     );
     XDP_CORE_EXPORT
     std::string getDeadlockDiagnosis(bool print);
+#endif
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
