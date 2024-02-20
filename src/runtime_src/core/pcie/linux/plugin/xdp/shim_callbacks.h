@@ -28,7 +28,6 @@
 #include "aie_trace.h"
 #include "aie_profile.h"
 #include "hal_device_offload.h"
-//#include "pl_deadlock.h"
 
 namespace xdp {
 
@@ -40,7 +39,6 @@ void update_device(void* handle)
 {
   hal::update_device(handle);
   aie::update_device(handle);
-//  pl_deadlock::update_device(handle);
   aie::ctr::update_device(handle);
 }
 
@@ -54,7 +52,6 @@ void flush_device(void* handle)
 {
   hal::flush_device(handle);
   aie::flush_device(handle);
-//  pl_deadlock::flush_device(handle);
 }
 
 // The finish_flush_device callback should be called in the destructor of
