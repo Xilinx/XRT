@@ -1114,7 +1114,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       if (fs::is_regular_file(entry) && entry.path().extension() == ".pdi") {
         // std::cout << "pdi file found: " << entry.path() << std::endl;
 
-        if (transform_PDI_file (entry.path().string())) {
+        if (transform_PDI_file(entry.path().string())) {
           std::cout << "pdi file transform failed: " << entry.path() << std::endl;
         } else {
           std::cout << "pdi file transformed: " << entry.path() << std::endl;
