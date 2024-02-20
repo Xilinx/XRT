@@ -76,7 +76,7 @@ namespace xdp {
     int pid ;
     uint64_t applicationStartTime = 0 ;
     bool aieApplication = false;
-    
+
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
     std::vector<std::pair<std::string, std::string> > openedFiles ;
@@ -84,11 +84,11 @@ namespace xdp {
 
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
-    std::set<std::string> enqueuedKernels ; 
+    std::set<std::string> enqueuedKernels ;
     std::map<uint64_t, uint64_t> contextIdToNumDevices ;
 
     // For OpenCL software emulation, we need a tiny bit of device info
-    std::string softwareEmulationDeviceName ; 
+    std::string softwareEmulationDeviceName ;
     std::map<std::string, uint64_t> softwareEmulationCUCounts ;
     std::map<std::string, bool> softwareEmulationMemUsage ;
     std::vector<std::string> softwareEmulationPortBitWidths ;
@@ -143,7 +143,7 @@ namespace xdp {
     double findClockRate(xrt::xclbin);
     DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
 
-    
+
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -245,7 +245,8 @@ namespace xdp {
     XDP_CORE_EXPORT void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId) ;
     XDP_CORE_EXPORT bool isDeviceReady(uint64_t deviceId) ;
     XDP_CORE_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
-    XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ; 
+    XDP_CORE_EXPORT double getPLMaxClockRateMHz(uint64_t deviceId);
+    XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ;
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
@@ -381,7 +382,7 @@ namespace xdp {
                           uint64_t slotID) ;
     XDP_CORE_EXPORT
     NoCNode* getNOC(uint64_t deviceId, XclbinInfo* xclbin, uint64_t idx) ;
-    // This function takes a pre-allocated array of bools to fill with 
+    // This function takes a pre-allocated array of bools to fill with
     //  the status of each compute unit's AM dataflow enabled status
     XDP_CORE_EXPORT
     void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size);
