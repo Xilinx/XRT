@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#if 0
 #ifndef PL_DEADLOCK_DOT_H
 #define PL_DEADLOCK_DOT_H
 
@@ -30,4 +31,5 @@ namespace pl_deadlock {
 } // end namespace pl_deadlock
 } // end namespace xdp
 
+#endif
 #endif

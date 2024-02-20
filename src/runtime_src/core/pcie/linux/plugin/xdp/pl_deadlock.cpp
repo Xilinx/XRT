@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#if 0
 #include "pl_deadlock.h"
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
@@ -62,3 +63,4 @@ namespace pl_deadlock {
 
 } // end namespace pl_deadlock
 } // end namespace xdp
+#endif

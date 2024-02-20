@@ -126,6 +126,7 @@ bool load()
                             e.what());
   }
 
+#if 0
   try {
     if (xrt_core::config::get_pl_deadlock_detection())
       xdp::pl_deadlock::load();
@@ -134,7 +135,7 @@ bool load()
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                             e.what());
   }
-
+#endif
   return true ;
 }
 
