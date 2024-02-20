@@ -112,7 +112,7 @@ namespace xdp {
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that create the overall structure of the Xclbin's PL region
-    void createComputeUnits(XclbinInfo*, const ip_layout*);
+    void createComputeUnits(XclbinInfo*, const ip_layout*,const char*,size_t);
     void createMemories(XclbinInfo*, const mem_topology*);
     void createConnections(XclbinInfo*, const ip_layout*, const mem_topology*,
                            const connectivity*);

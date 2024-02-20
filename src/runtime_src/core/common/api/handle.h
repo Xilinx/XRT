@@ -1,11 +1,13 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
  */
 
 #include "core/common/error.h"
 
 #include <map>
+#include <memory>
 #include <mutex>
 
 namespace xrt_core {
@@ -86,6 +88,13 @@ public:
   {
     std::lock_guard<std::mutex> lk(mutex);
     return handles.count(handle);
+  }
+
+  size_t
+  size() const
+  {
+    std::lock_guard<std::mutex> lk(mutex);
+    return handles.size();
   }
 };
 

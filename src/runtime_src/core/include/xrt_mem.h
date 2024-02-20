@@ -75,7 +75,8 @@ struct xcl_bo_flags
       // extension
       uint32_t access : 2;  // [33-32]
       uint32_t dir    : 2;  // [35-34]
-      uint32_t unused : 28; // [63-36]
+      uint32_t use    : 1;  // [36]
+      uint32_t unused : 27; // [63-35]
     };
   };
 };
@@ -112,6 +113,16 @@ struct xcl_bo_flags
 #define XRT_BO_ACCESS_READ    (1U << 0)
 #define XRT_BO_ACCESS_WRITE   (1U << 1)
 #define XRT_BO_ACCESS_READ_WRITE (XRT_BO_ACCESS_READ | XRT_BO_ACCESS_WRITE)
+
+/**
+ * Shim level BO Flags to distinguish use of BO
+ *
+ * The use flag is for internal use only. A debug BO
+ * is supported only on some platforms to communicate
+ * data from driver / firmware back to user space.
+ */
+#define XRT_BO_USE_NORMAL 0
+#define XRT_BO_USE_DEBUG  1
 
 /**
  * XRT Native BO flags

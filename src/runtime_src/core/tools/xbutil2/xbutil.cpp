@@ -54,7 +54,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
+      "report": ["electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
