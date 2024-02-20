@@ -45,7 +45,6 @@
 #include "xdp/profile/device/traceFifoLite.h"
 #include "xdp/profile/device/traceFunnel.h"
 #include "xdp/profile/device/traceS2MM.h"
-#include "xdp/profile/device/xrtIP.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
@@ -204,16 +203,7 @@ class DeviceIntf {
     uint32_t getDeadlockStatus();
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
-#if 0
-    XDP_CORE_EXPORT
-    void createXrtIP
-    (
-      const std::unique_ptr<ip_metadata>& ip_metadata_section,
-      const std::string& fullname
-    );
-    XDP_CORE_EXPORT
-    std::string getDeadlockDiagnosis(bool print);
-#endif
+
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
@@ -249,7 +239,6 @@ class DeviceIntf {
 
     // Deadlock Detection and Diagnosis
     DeadlockDetector*     mDeadlockDetector  = nullptr;
-    std::vector<std::unique_ptr<XrtIP>> mXrtIPList;
 
     /*
      * Set max bandwidths to reasonable defaults
