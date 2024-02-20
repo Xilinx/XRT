@@ -1,19 +1,6 @@
-/*
- * Copyright (C) 2021-2022, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx Inc. All rights reserved
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT IP APIs as declared in
 // core/include/experimental/xrt_ip.h
@@ -24,6 +11,7 @@
 #include "core/include/experimental/xrt_xclbin.h"
 
 #include "core/common/api/hw_context_int.h"
+#include "core/common/api/ip_int.h"
 #include "core/common/api/native_profile.h"
 
 #include "core/common/device.h"
@@ -151,6 +139,8 @@ class ip_impl
     xrt::xclbin::ip m_ip;
     uint64_t m_size;            // address range of ip
 
+    std::pair<uint32_t, uint32_t> m_readrange = {0,0};  // start address, size
+
     ip_context(xrt::hw_context xhwctx, const std::string& nm)
       : m_device(xrt_core::hw_context_int::get_core_device(xhwctx))
       , m_hwctx(std::move(xhwctx))
@@ -215,13 +205,20 @@ class ip_impl
     {
       return m_size;
     }
+
+    void
+    set_read_range(uint32_t start, uint32_t size)
+    {
+      m_device->set_cu_read_range(m_idx, start, size);
+      m_readrange = {start, size};
+    }
   };
 
   unsigned int
   get_cuidx_or_error(size_t offset) const
   {
     if ((offset + sizeof(uint32_t)) > m_ipctx.get_size())
-        throw std::out_of_range("Cannot read or write outside kernel register space");
+        throw std::out_of_range("Cannot read or write outside ip register space");
 
     return m_ipctx.get_idx();
   }
@@ -303,6 +300,13 @@ public:
 
     return intr;
   }
+
+  void
+  set_read_range(uint32_t start, uint32_t size)
+  {
+    m_ipctx.set_read_range(start, size);
+  }
+  
 }; // ip_impl
 
 } // namespace xrt
@@ -310,9 +314,16 @@ public:
 ////////////////////////////////////////////////////////////////
 // XRT implmentation access to internal IP APIs
 ////////////////////////////////////////////////////////////////
-namespace xrt_core { namespace ip_int {
+namespace xrt_core::ip_int {
 
-}} // ip_int, xrt_core
+void
+set_read_range(const xrt::ip& ip, uint32_t start, uint32_t size)
+{
+  auto handle = ip.get_handle();
+  handle->set_read_range(start, size);
+}
+
+} // xrt_core::ip_int
 
 
 ////////////////////////////////////////////////////////////////
