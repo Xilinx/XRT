@@ -1132,10 +1132,9 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   }
 
   // remove the sections in removeSections
-  for (const auto& sectionToRemove : removeSections) {
+  for (const auto& sectionToRemove : removeSections)
     // std::cout << "remove section " << sectionToRemove << std::endl;
     xclbin.removeSection(sectionToRemove);
-  }
 
   // add the sections in transform folder
   for (const auto& sAddSection : addSections) {
