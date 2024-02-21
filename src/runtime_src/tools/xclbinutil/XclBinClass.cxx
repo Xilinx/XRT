@@ -761,12 +761,11 @@ XclBin::findSection(enum axlf_section_kind _eKind,
 {
   std::vector<Section*> vSections;
   for (auto& section : m_sections) {
-    if (section->getSectionKind() == _eKind) {
-      if (_ignoreIndex || 
-          section->getSectionIndexName().compare(_indexName) == 0) {
-        vSections.push_back(section);
-      }
-    }
+    if (section->getSectionKind() != _eKind) 
+      continue;
+     
+    if (_ignoreIndex || section->getSectionIndexName().compare(_indexName) == 0)
+      vSections.push_back(section);
   }
   return vSections;
 }
