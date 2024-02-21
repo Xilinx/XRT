@@ -339,7 +339,28 @@ namespace xdp {
     else
       return xclbin->aie.clockRateAIEMHz ;
   }
-  
+
+  double VPStaticDatabase::getPLMaxClockRateMHz(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    // If we don't have any information on the specific ID, return
+    //  defaults.  300 MHz for PL clock rate.
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 300.0;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 300.0;
+    //We will consider the clock rate of the Compute Unit with the highest Clock Frequency
+    double plClockFreq = 0;
+      for (const auto& cu : xclbin->pl.cus) {
+        plClockFreq = std::max(plClockFreq, cu.second->getClockFrequency());
+      }
+    return plClockFreq>0 ? plClockFreq : 300.0;
+
+  }
+
   void VPStaticDatabase::setDeviceName(uint64_t deviceId, const std::string& name)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -737,7 +758,7 @@ namespace xdp {
     if (!xclbin)
       return nullptr ;
 
-    if (0 == xclbin->aie.aieList.size()) 
+    if (0 == xclbin->aie.aieList.size())
       return nullptr;
 
     return xclbin->aie.aieList[idx] ;
@@ -976,7 +997,7 @@ namespace xdp {
     deviceInfo[deviceId]->addAIEMemTileEventResources(numEvents, numTiles) ;
   }
 
-  void VPStaticDatabase::addAIECfgTile(uint64_t deviceId, 
+  void VPStaticDatabase::addAIECfgTile(uint64_t deviceId,
                                        std::unique_ptr<aie_cfg_tile>& tile)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -1282,7 +1303,7 @@ namespace xdp {
     return true;
   }
 
-  // This function is called whenever a device is loaded with an 
+  // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
   void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
@@ -1580,7 +1601,7 @@ namespace xdp {
 
       std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
       if(std::string::npos != cuName.find(":dm_")) {
-        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a
          *              data mover and it should not be identified as a "CU" in profiling
          */
         continue;
@@ -1669,7 +1690,7 @@ namespace xdp {
         }
         std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
         if(std::string::npos != cuName.find(":dm_")) {
-          /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+          /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a
            *              data mover and it should not be identified as a "CU" in profiling
            */
           continue;
@@ -1904,7 +1925,7 @@ namespace xdp {
 
     // Parse out the name of the compute unit this monitor is attached to if
     //  possible.  We expect the name in debug_ip_layout to be in the form of
-    //  compute_unit_name/port_name.  If this is a floating 
+    //  compute_unit_name/port_name.  If this is a floating
 
     size_t pos = name.find('/');
     std::string monCuName = name.substr(0, pos);
@@ -2036,7 +2057,7 @@ namespace xdp {
     commandQueueAddresses.emplace(a) ;
   }
 
-  // This function is called from "trace_processor" tool 
+  // This function is called from "trace_processor" tool
   // The tool creates events from raw PL trace data
   void VPStaticDatabase::updateDevice(uint64_t deviceId, const std::string& xclbinFile)
   {
@@ -2048,7 +2069,7 @@ namespace xdp {
   // Methods using xrt::xclbin to retrive static information
 
   DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin)
-  {    
+  {
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
@@ -2071,11 +2092,11 @@ namespace xdp {
       devInfo = itr->second.get();
       devInfo->cleanCurrentXclbinInfo() ;
     }
-    
+
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = xrtXclbin.get_uuid();
-    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
- 
+    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ;
+
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
     setAIEGeneration(deviceId, xrtXclbin);
 
@@ -2131,7 +2152,7 @@ namespace xdp {
       return;
     }
   }
-  
+
   void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -2147,7 +2168,7 @@ namespace xdp {
     std::stringstream aie_stream;
     aie_stream.write(data.first, data.second);
     boost::property_tree::read_json(aie_stream, aie_meta);
-    
+
     try {
       auto hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
       deviceInfo[deviceId]->setAIEGeneration(hwGen);
@@ -2342,6 +2363,6 @@ namespace xdp {
     }
 
     return true;
-  }  
+  }
 
 } // end namespace xdp
