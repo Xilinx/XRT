@@ -17,7 +17,7 @@
 
 #define XDP_CORE_SOURCE
 
-#include "core/common/device.h"
+#include "core/common/system.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 
@@ -37,9 +37,13 @@ namespace xdp { namespace util {
     return ((idx - min_trace_id_asm)/num_trace_id_per_asm);
   }
 
-  std::string getDebugIpLayoutPath(std::shared_ptr<xrt_core::device> coreDevice)
+  std::string getDebugIpLayoutPath(void* deviceHandle)
   {
     std::string path = "";
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::get_userpf_device(deviceHandle);
+    if (!coreDevice) {
+      return path;
+    }
     try {
       path = xrt_core::device_query<xrt_core::query::debug_ip_layout_path>(coreDevice, sysfs_max_path_length);
     } catch (const xrt_core::query::no_such_key&) {

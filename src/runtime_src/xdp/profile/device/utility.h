@@ -25,10 +25,6 @@
 #include <memory>
 #include "xdp/config.h"
 
-namespace xrt_core {
-  class device;
-}
-
 namespace xdp { namespace util {
 
   XDP_CORE_EXPORT
@@ -41,7 +37,7 @@ namespace xdp { namespace util {
   uint64_t getASMSlotId(uint64_t idx);
 
   XDP_CORE_EXPORT
-  std::string getDebugIpLayoutPath(std::shared_ptr<xrt_core::device>);
+  std::string getDebugIpLayoutPath(void* deviceHandle);
 
 
   // At compile time, each monitor inserted in the PL region is given a set 
