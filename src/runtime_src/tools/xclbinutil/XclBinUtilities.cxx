@@ -32,7 +32,6 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-#include <cstdlib>  // std::system
 
 #if (BOOST_VERSION >= 106400)
 
@@ -1093,7 +1092,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       fs::create_directories(origDir);
     }
     catch (std::exception& e) { // Not using fs::filesystem_error since std::bad_alloc can throw too.
-      // if we could create directory, usually something fundamental (e.g. user has no permission) 
+      // if we couldn't create directory, usually something fundamental is wrong (e.g. user has no permission) 
       std::string errMsg = "ERROR: couldn't create directory: " + std::string(e.what());
       throw std::runtime_error(errMsg);
     }

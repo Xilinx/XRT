@@ -743,7 +743,6 @@ Section*
 XclBin::findSection(enum axlf_section_kind _eKind,
                     const std::string& _indexName) const
 {
-  // for (unsigned int index = 0; index < m_sections.size(); ++index) {
   for (auto& section : m_sections) {
     if (section->getSectionKind() == _eKind) {
       if (section->getSectionIndexName().compare(_indexName) == 0) {
@@ -761,7 +760,6 @@ XclBin::findSection(enum axlf_section_kind _eKind,
                     const std::string& _indexName) const
 {
   std::vector<Section*> vSections;
-  // for (unsigned int index = 0; index < m_sections.size(); ++index) { 
   for (auto& section : m_sections) {
     if (section->getSectionKind() == _eKind) {
       if (_ignoreIndex || 
