@@ -1022,8 +1022,6 @@ int transform_PDI_file(const std::string& fileName)
   // const auto transformExe = findExecutablePath("transform_static");
   const std::string tranformExe = "./transform_static";
   const std::vector<std::string> cmdOptions = { fileName, fileName };
-  std::ostringstream os_stdout;
-  std::ostringstream os_stderr;
 
   // Build the command line
   std::string cmdLine = tranformExe;
@@ -1032,6 +1030,8 @@ int transform_PDI_file(const std::string& fileName)
     
   XUtil::TRACE("Cmd: " + cmdLine);
 
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
   // since we throw on error, we don't care about the return value from exec
   XUtil::exec(tranformExe, cmdOptions, true /*throw exception*/, os_stdout, os_stderr);
 
@@ -1115,15 +1115,14 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
     // transform the pdi in the transform/ folder
     // Iterate over the files in the directory
     for (const auto& entry : fs::directory_iterator(transformDir)) {
-      // Check if the current entry is a regular file and matches the extension
-      if (fs::is_regular_file(entry) && entry.path().extension() == ".pdi") {
-        // std::cout << "pdi file found: " << entry.path() << std::endl;
+      if (!fs::is_regular_file(entry) || entry.path().extension() != ".pdi")
+        continue;
 
-	// if transform_static fails, exec() throws, so no need to
-	// check the return value
-        transform_PDI_file(entry.path().string());
-        XUtil::TRACE("pdi file transformed: " + entry.path().string());
-      }
+      // std::cout << "pdi file found: " << entry.path() << std::endl;
+      // if transform_static fails, exec() throws, so no need to
+      // check the return value
+      transform_PDI_file(entry.path().string());
+      XUtil::TRACE("pdi file transformed: " + entry.path().string());
     }
 
     // construct the PSD for addЅection

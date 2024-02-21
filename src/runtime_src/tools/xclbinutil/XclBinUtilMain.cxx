@@ -65,14 +65,15 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
    }
 
    std::vector<std::string> normalizedOutputFiles;
-   for ( auto file : _outputFiles) {
-     if ( fs::exists(file)) {
-       if (_bForce == false) {
-         std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
-         throw std::runtime_error(errMsg);
-       } else {
-         normalizedOutputFiles.push_back(fs::canonical(file).string());
-       }
+   for ( const auto& file : _outputFiles) {
+     if ( !fs::exists(file))
+       continue;
+
+     if (_bForce == false) {
+       std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
+       throw std::runtime_error(errMsg);
+     } else {
+       normalizedOutputFiles.push_back(fs::canonical(file).string());
      }
    }
 
