@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,7 @@
 
 #include "xdp/profile/device/utility.h"
 
-namespace xdp {
+namespace xdp { namespace util {
 
   uint64_t getAIMSlotId(uint64_t idx) {
     return ((idx - min_trace_id_aim)/num_trace_id_per_aim);
@@ -50,5 +50,6 @@ namespace xdp {
     return path;
   }
 
+} // end namespace util
 } // end namespace xdp
 
