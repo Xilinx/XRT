@@ -92,11 +92,7 @@ uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void *handle) {
 #ifdef XDP_CLIENT_BUILD
   return db->addDevice("win_sysfspath");
 #else
-  std::array<char, sysfs_max_path_length> pathBuf = {0};
-  xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length - 1));
-  std::string sysfspath(pathBuf.data());
-  uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
-  return deviceID;
+  return db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 #endif
 }
 

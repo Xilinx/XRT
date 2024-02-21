@@ -52,13 +52,13 @@ namespace xdp {
       deviceHandles.push_back(handle) ;
 
       // Second, add all the information and a writer for this device
-      std::string path = util::getDebugIpLayoutPath(xrt_core::get_userpf_device(handle));
+      std::string path = util::getDebugIpLayoutPath(handle);
       if (path != "") {
-        addDevice(path.c_str()) ;
+        addDevice(path);
 
         // Now, keep track of the device ID for this device so we can use
         //  our own handle
-        deviceIdToHandle[db->addDevice(path.c_str())] = handle ;
+        deviceIdToHandle[db->addDevice(path)] = handle ;
       }
 
       // Move on to the next device
@@ -104,7 +104,7 @@ namespace xdp {
   void HALDeviceOffloadPlugin::flushDevice(void* handle)
   {
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
-    std::string path = util::getDebugIpLayoutPath(xrt_core::get_userpf_device(handle));
+    std::string path = util::getDebugIpLayoutPath(handle);
     if (path == "")
       return ;
     
@@ -126,7 +126,7 @@ namespace xdp {
     //  We will query information on that passed in handle, but we
     //  should user our own locally opened handle to access the physical
     //  device.
-    std::string path = util::getDebugIpLayoutPath(xrt_core::get_userpf_device(userHandle));
+    std::string path = util::getDebugIpLayoutPath(userHandle);
     if (path == "")
       return ;
 
