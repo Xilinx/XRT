@@ -71,8 +71,7 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
          std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
          throw std::runtime_error(errMsg);
        } else {
-         fs::path filePath(file);
-         normalizedOutputFiles.push_back(canonical(filePath).string());
+         normalizedOutputFiles.push_back(fs::canonical(file).string());
        }
      }
    }

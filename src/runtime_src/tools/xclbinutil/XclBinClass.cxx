@@ -743,10 +743,11 @@ Section*
 XclBin::findSection(enum axlf_section_kind _eKind,
                     const std::string& _indexName) const
 {
-  for (unsigned int index = 0; index < m_sections.size(); ++index) {
-    if (m_sections[index]->getSectionKind() == _eKind) {
-      if (m_sections[index]->getSectionIndexName().compare(_indexName) == 0) {
-        return m_sections[index];
+  // for (unsigned int index = 0; index < m_sections.size(); ++index) {
+  for (auto& section : m_sections) {
+    if (section->getSectionKind() == _eKind) {
+      if (section->getSectionIndexName().compare(_indexName) == 0) {
+        return section;
       }
     }
   }
@@ -759,16 +760,17 @@ XclBin::findSection(enum axlf_section_kind _eKind,
                     bool _ignoreIndex,
                     const std::string& _indexName) const
 {
-  std::vector<Section*> sections;
-  for (unsigned int index = 0; index < m_sections.size(); ++index) {
-    if (m_sections[index]->getSectionKind() == _eKind) {
+  std::vector<Section*> vSections;
+  // for (unsigned int index = 0; index < m_sections.size(); ++index) { 
+  for (auto& section : m_sections) {
+    if (section->getSectionKind() == _eKind) {
       if (_ignoreIndex || 
-          m_sections[index]->getSectionIndexName().compare(_indexName) == 0) {
-        sections.push_back(m_sections[index]);
+          section->getSectionIndexName().compare(_indexName) == 0) {
+        vSections.push_back(section);
       }
     }
   }
-  return sections;
+  return vSections;
 }
 
 void

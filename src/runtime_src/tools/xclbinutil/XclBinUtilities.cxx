@@ -1013,26 +1013,29 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 int transform_PDI_file(const std::string& fileName)
 {
   // prototype 1: run the transform_static executable
-  // assume transform_static is in the current working directory
-  std::string command = "./transform_static " + fileName + " " + fileName;
+  // TODO: figure out how to integrate transform_static into XRT repo
+  // for now assume transform_static is in the current working directory
+  if (!fs::exists("./transform_static")) {
+    auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s'. Please copy the executable to cwd and re-run the xclbinutil command") % fs::current_path();
+    throw std::runtime_error(errMsg.str());
+  }
 
-  // currently transform_static prints lots of messages to console (stdout)
-  // redirect the output to a file, so that console looks cleaner
-  int sout = dup(fileno(stdout));
-  FILE* f = freopen("/dev/null", "w", stdout);
-  if (f == nullptr)
-    std::cout << "stdout redirect failed" << std::endl;
+  // const auto transformExe = findExecutablePath("transform_static");
+  const std::string tranformExe = "./transform_static";
+  const std::vector<std::string> cmdOptions = { fileName, fileName };
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
 
-  XUtil::TRACE("Transform " + fileName);
-  int returnCode = std::system(command.c_str());
+  // Build the command line
+  std::string cmdLine = tranformExe;
+  for (const auto& option : cmdOptions)
+    cmdLine += " " + option;
+  XUtil::TRACE("Cmd: " + cmdLine);
 
-  // restore stdout
-  dup2(sout,fileno(stdout));
-  close(sout);
+  // since we throw on error, we don't care about the return value from exec
+  XUtil::exec(tranformExe, cmdOptions, true /*throw exception*/, os_stdout, os_stderr);
 
-  // std::cout << "tranform_static returns " << returnCode << std::endl;
-  // returnCode is 0 for success, non-0 for error
-  return returnCode;
+  return 0;
 }
 
 void 
@@ -1090,7 +1093,9 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       fs::create_directories(origDir);
     }
     catch (std::exception& e) { // Not using fs::filesystem_error since std::bad_alloc can throw too.
-        std::cout << e.what() << std::endl;
+      // if we could create directory, usually something fundamental (e.g. user has no permission) 
+      std::string errMsg = "ERROR: couldn't create directory: " + std::string(e.what());
+      throw std::runtime_error(errMsg);
     }
     // std::cout << "Temporary directory created: " << origDir << std::endl;
 
@@ -1114,11 +1119,10 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       if (fs::is_regular_file(entry) && entry.path().extension() == ".pdi") {
         // std::cout << "pdi file found: " << entry.path() << std::endl;
 
-        if (transform_PDI_file(entry.path().string())) {
-          std::cout << "pdi file transform failed: " << entry.path() << std::endl;
-        } else {
-          std::cout << "pdi file transformed: " << entry.path() << std::endl;
-        }
+	// if transform_static fails, exec() throws, so no need to
+	// check the return value
+        transform_PDI_file(entry.path().string());
+        XUtil::TRACE("pdi file transformed: " + entry.path().string());
       }
     }
 
@@ -1129,13 +1133,13 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   }
 
   // remove the sections in removeSections
-  for (auto& sectionToRemove : removeSections) {
+  for (const auto& sectionToRemove : removeSections) {
     // std::cout << "remove section " << sectionToRemove << std::endl;
     xclbin.removeSection(sectionToRemove);
   }
 
   // add the sections in transform folder
-  for (auto& sAddSection : addSections) {
+  for (const auto& sAddSection : addSections) {
     // std::cout << "add section " << sAddSection << std::endl;
     ParameterSectionData addPsd(sAddSection);
     xclbin.addSection(addPsd);
