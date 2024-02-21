@@ -17,6 +17,10 @@
 
 #define XDP_CORE_SOURCE
 
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/query_requests.h"
+
 #include "xdp/profile/device/utility.h"
 
 namespace xdp {
@@ -31,6 +35,19 @@ namespace xdp {
 
   uint64_t getASMSlotId(uint64_t idx) {
     return ((idx - min_trace_id_asm)/num_trace_id_per_asm);
+  }
+
+  std::string getDebugIpLayoutPath(std::shared_ptr<xrt_core::device> coreDevice)
+  {
+    std::string path = "";
+    try {
+      path = xrt_core::device_query<xrt_core::query::debug_ip_layout_path>(coreDevice, sysfs_max_path_length);
+    } catch (const xrt_core::query::no_such_key&) {
+      //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Device query for Debug IP Layout not implemented");
+    } catch (const std::exception &) {
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "Failed to retrieve Debug IP Layout path");
+    }
+    return path;
   }
 
 } // end namespace xdp

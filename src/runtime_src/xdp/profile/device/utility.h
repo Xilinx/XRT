@@ -21,7 +21,12 @@
 // Functions that can be used in the database, the plugins, and the writers
 
 #include <stdint.h>
+#include <string>
 #include "xdp/config.h"
+
+namespace xrt_core {
+  class device;
+}
 
 namespace xdp {
 
@@ -33,6 +38,10 @@ namespace xdp {
 
   XDP_CORE_EXPORT
   uint64_t getASMSlotId(uint64_t idx);
+
+  XDP_CORE_EXPORT
+  std::string getDebugIpLayoutPath(std::shared_ptr<xrt_core::device>);
+
 
   // At compile time, each monitor inserted in the PL region is given a set 
   // of trace IDs, regardless of if trace is enabled or not.  This ID is
