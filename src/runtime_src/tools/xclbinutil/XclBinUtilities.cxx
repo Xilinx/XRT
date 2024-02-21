@@ -1029,6 +1029,7 @@ int transform_PDI_file(const std::string& fileName)
   std::string cmdLine = tranformExe;
   for (const auto& option : cmdOptions)
     cmdLine += " " + option;
+    
   XUtil::TRACE("Cmd: " + cmdLine);
 
   // since we throw on error, we don't care about the return value from exec
