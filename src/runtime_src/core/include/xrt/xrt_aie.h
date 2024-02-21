@@ -168,13 +168,48 @@ class event
 {
 public:
 
+  /**
+   * event() - Constructor from a device
+   *
+   * @param device
+   *  The device on which the profiling event should start
+   *
+   */
   event(const xrt::device& device);
 
-  int start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
+  /**
+   * start_profiling() - Start AIE performance profiling
+   *
+   * @param option
+   *  Profiling option
+   * @param port1_name
+   *  Profiling port 1 name.
+   * @param port2_name
+   *  Profiling port 2 name.
+   * @param value
+   *  The number of bytes to trigger the profiling event.
+   *
+   * This function configures the performance counters in AI Engine by given
+   * port names and value. The port names and value will have different
+   * meanings on different options.
+   */
+  int 
+  start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
 
-  uint64_t read_profiling() const;
+  /**
+   * read_profiling() - Read the current performance counter value
+   *                    associated with the profiling handle
+   */
+  uint64_t
+  read_profiling() const;
 
-  void stop_profiling() const;
+  /**
+   * stop_profiling() - Stop the current performance profiling
+   *                    associated with the profiling handle and
+   *                    release the corresponding hardware resources.
+   */
+  void
+  stop_profiling() const;
 
 private:
     std::shared_ptr<event_impl> impl;
@@ -273,12 +308,45 @@ xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 int
 xrtResetAIEArray(xrtDeviceHandle handle);
 
+/**
+ * xrtAIEStartProfiling() - Start AIE performance profiling
+ *
+ * @handle:          Handle to the device
+ * @option:          Profiling option.
+ * @port1Name:       Profiling port 1 name
+ * @port2Name:       Profiling port 2 name
+ * @value:           The number of bytes to trigger the profiling event
+ *
+ * Return:         An integer profiling handle on success,
+ *                 or appropriate error number.
+ *
+ * This function configures the performance counters in AI Engine by given
+ * port names and value. The port names and value will have different
+ * meanings on different options.
+ */
 int
 xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value);
 
+/**
+ * xrtAIEReadProfiling() - Read the current performance counter value
+ *                         associated with the profiling handle.
+ *
+ * @pHandle:         Profiling handle.
+ *
+ * Return:         The performance counter value, or appropriate error number.
+ */
 uint64_t
 xrtAIEReadProfiling(int pHandle);
 
+/**
+ * xrtAIEStopProfiling() - Stop the current performance profiling
+ *                         associated with the profiling handle and
+ *                         release the corresponding hardware resources.
+ *
+ * @pHandle:         Profiling handle.
+ *
+ * Return:         0 on success, or appropriate error number.
+ */
 void
 xrtAIEStopProfiling(int pHandle);
 /// @endcond
