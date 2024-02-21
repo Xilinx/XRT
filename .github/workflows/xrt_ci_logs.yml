@@ -266,7 +266,7 @@ jobs:
         with:     
           organization: ${{ github.repository }}  
           runNumber: ${{ github.run_number }}  
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
