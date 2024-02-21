@@ -529,9 +529,8 @@ int main_(int argc, const char** argv) {
 
   // add support for transform-pdi 
   // transform the PDIs in AIE_PARTITION sections before writing out the output xclbin
-  if (bTransformPdi) {
-     XUtil::transformAiePartitionPDIs(xclBin);
-  }
+  if (bTransformPdi)
+    XUtil::transformAiePartitionPDIs(xclBin);
 
   // -- Remove Keys --
   for (const auto &key : keysToRemove) 
