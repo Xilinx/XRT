@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <memory>
 #include "xdp/config.h"
 
 namespace xrt_core {
