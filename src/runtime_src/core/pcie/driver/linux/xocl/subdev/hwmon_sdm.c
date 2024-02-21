@@ -370,7 +370,7 @@ static int show_sensors_raw(struct xocl_hwmon_sdm *sdm, char *buf,
 	/* Collect the SDR size from VMR */
 	xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
 
-	if (resp_len <= 0) {
+	if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
 		xocl_info(&sdm->pdev->dev, "received invalid SDR size: %d, set response length to default value", resp_len);
 		resp_len = RESP_LEN;
 	}
@@ -1499,7 +1499,7 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
     /* Collect the SDR size from VMR */
     xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
 
-	if (resp_len <= 0) {
+	if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
 		xocl_info(&pdev->dev, "received invalid SDR size: %d,  set response length to default value", resp_len);
 		resp_len = RESP_LEN;
 	}
@@ -1601,7 +1601,7 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_i
 
 		xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
 
-		if (resp_len <= 0) {
+		if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
 			xocl_info(&sdm->pdev->dev, "received invalid SDR size: %d,  set response length to default value", kind);
 			resp_len = RESP_LEN;
 		}
@@ -1680,7 +1680,7 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
     /* Collect the SDR size from VMR */
     xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
 
-	if (resp_len <= 0) {
+	if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
 		xocl_info(&sdm->pdev->dev, "received invalid SDR size: %d,  set response length to default value", kind);
 		resp_len = RESP_LEN;
 	}
