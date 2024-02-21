@@ -6,13 +6,47 @@
 namespace xrt::core::hip {
 
 bool
-event::
+command::
 submit()
 {}
 
 bool
-event::
+command::
 wait()
+{}
+
+bool
+event::
+submit() override
+{}
+
+bool
+event::
+wait() override
+{}
+
+kernel_start::
+kernel_start(xrt::kernel &, void* args)
+{}
+
+bool
+kernel_start::
+submit() override
+{}
+
+bool
+kerel_start::
+wait() override
+{}
+
+bool
+buffer_copy::
+submit() override
+{}
+
+bool
+buffer_copy::
+wait() override
 {}
 
 }
