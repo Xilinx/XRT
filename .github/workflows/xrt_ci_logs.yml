@@ -357,31 +357,31 @@ jobs:
           NPATH: ${{ secrets.NPATH }}
           github-server-url: ${{ secrets.SERVER_URL }}    
 
-  analyze-result:  
-    runs-on: [self-hosted, Ubuntu-22.04]
-    needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
-    if: always() 
-    steps:      
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows      
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}       
-          path: composite-workflows  
-          ref: xti
+  # analyze-result:  
+  #   runs-on: [self-hosted, Ubuntu-22.04]
+  #   needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
+  #   if: always() 
+  #   steps:      
+  #     - name: Checkout private repository      
+  #       uses: actions/checkout@v3   
+  #       with:      
+  #         repository: actions-int/composite-workflows      
+  #         token: ${{ secrets.ACCESS_TOKEN }}
+  #         github-server-url: ${{ secrets.SERVER_URL }}       
+  #         path: composite-workflows  
+  #         ref: xti
 
-      - name: Use composite action for analyze       
-        uses: ./composite-workflows/analyze-result
-        with:  
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
-          release: ${{ env.RELEASE }}
-          env: ${{ env.ENV }}
-          pipeline: ${{ env.PIPELINE }} 
-          NPATH: ${{ secrets.NPATH }}
-          runnerName: ${{ runner.name }}
-          accessToken: ${{ secrets.ACCESS_TOKEN }} 
-          github-server-url: ${{ secrets.SERVER_URL }} 
+  #     - name: Use composite action for analyze       
+  #       uses: ./composite-workflows/analyze-result
+  #       with:  
+  #         buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+  #         release: ${{ env.RELEASE }}
+  #         env: ${{ env.ENV }}
+  #         pipeline: ${{ env.PIPELINE }} 
+  #         NPATH: ${{ secrets.NPATH }}
+  #         runnerName: ${{ runner.name }}
+  #         accessToken: ${{ secrets.ACCESS_TOKEN }} 
+  #         github-server-url: ${{ secrets.SERVER_URL }} 
           
                   
   test-summary:    
