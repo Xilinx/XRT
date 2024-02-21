@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -52,7 +52,7 @@ namespace xdp {
       deviceHandles.push_back(handle) ;
 
       // Second, add all the information and a writer for this device
-      std::string path = getDebugIpLayoutPath(xrt_core::get_userpf_device(handle));
+      std::string path = util::getDebugIpLayoutPath(xrt_core::get_userpf_device(handle));
       if (path != "") {
         addDevice(path.c_str()) ;
 
@@ -104,7 +104,7 @@ namespace xdp {
   void HALDeviceOffloadPlugin::flushDevice(void* handle)
   {
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
-    std::string path = getDebugIpLayoutPath(xrt_core::get_userpf_device(handle));
+    std::string path = util::getDebugIpLayoutPath(xrt_core::get_userpf_device(handle));
     if (path == "")
       return ;
     
@@ -126,7 +126,7 @@ namespace xdp {
     //  We will query information on that passed in handle, but we
     //  should user our own locally opened handle to access the physical
     //  device.
-    std::string path = getDebugIpLayoutPath(xrt_core::get_userpf_device(userHandle));
+    std::string path = util::getDebugIpLayoutPath(xrt_core::get_userpf_device(userHandle));
     if (path == "")
       return ;
 
