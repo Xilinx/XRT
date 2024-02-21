@@ -134,7 +134,6 @@ static int identify_bar(struct xocl_dev_core *core, int bar)
 
 	bar_len = pci_resource_len(core->pdev, bar);
 	bar_addr = pci_iomap(core->pdev, bar, bar_len);
-
 	if (!bar_addr) {
 		xocl_err(&core->pdev->dev, "Could not map BAR #%d",
 				core->bar_idx);
