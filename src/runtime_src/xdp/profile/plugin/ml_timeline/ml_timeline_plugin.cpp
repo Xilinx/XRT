@@ -74,7 +74,7 @@ namespace xdp {
 #ifdef XDP_CLIENT_BUILD
     return db->addDevice("win_device");
 #else
-    return db->addDevice(util::getDebugIpLayoutPath(handle)); // INCORRECT handle :: Get the unique device Id
+    return db->addDevice(""); // Not supported for non-client device 
 #endif
   }
 
