@@ -45,15 +45,19 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/xclbin_parser.h"
+#include "core/include/shim_int.h"
 #include "ffi.h"
 #include "ps_kernel.h"
 #include "pscontext.h"
 #include "xclbin.h"
 #include "xclhal2_mpsoc.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_bo.h"
 
 typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, const uuid_t &uuid);
 typedef int (* kernel_fini_t)(pscontext *xrtHandles);
+
+using buf_hdl = std::unique_ptr<xrt_core::buffer_handle>;
 
 namespace xrt {
 
@@ -62,7 +66,7 @@ namespace xrt {
     size_t psize;
     size_t bo_offset;
     void *vaddr;
-    int bo_handle;
+    buf_hdl bo_handle;
   };
 
 class skd
@@ -86,7 +90,7 @@ class skd
    * @param soft kernel CU index
    *
    */
-  skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl,
+  skd(const xrtDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl,
       const std::string &kname, const uint32_t cu_index, unsigned char *uuid_in,
       const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in);
   ~skd();
@@ -109,10 +113,11 @@ class skd
   void report_fini() const;
 
  private:
-    xclDeviceHandle m_parent_devhdl = 0;
+    //xclDeviceHandle m_parent_devhdl = 0;
+    xrtDeviceHandle m_parent_devhdl = nullptr;
     // XRT Device Handle for the child process
-    xclDeviceHandle m_devhdl = 0;
-    xrtDeviceHandle m_xrtdhdl = 0;
+    xclDeviceHandle m_devhdl = nullptr;
+    xrtDeviceHandle m_xrtdhdl = nullptr;
     uuid m_xclbin_uuid;
     // Path of PS kernel object file constructed from PS kernel path and PS kernel name
     const std::filesystem::path m_sk_path;
@@ -123,11 +128,13 @@ class skd
     pscontext* m_xrtHandle = nullptr;
 
     // BO handle for PS Kernel Object and PS kernel metadata - only used in kernel initialization
-    int m_sk_bo = 0;
-    int m_sk_meta_bo = 0;
+    //int m_sk_bo = 0;
+    //int m_sk_meta_bo = 0;
+    buf_hdl m_sk_bo{nullptr}, m_sk_meta_bo{nullptr};
 
     // Member variables used when mapping the entire DDR space
-    int m_parent_bo_handle = 0;
+    //int m_parent_bo_handle = 0;
+    buf_hdl m_parent_bo_handle{nullptr};
     uint64_t m_mem_start_paddr = 0;
     uint64_t m_mem_size = 0;
     void* m_mem_start_vaddr = nullptr;
@@ -142,6 +149,7 @@ class skd
     // Arguments from host and return value offset
     std::vector<xrt_core::xclbin::kernel_argument> m_kernel_args;
     int m_cmd_boh = -1;
+    buf_hdl m_xrt_cmd_bo = nullptr;
     uint32_t *m_args_from_host = nullptr;
     std::vector<ffi_type*> m_ffi_args;
     ffi_cif m_cif = {};
@@ -149,7 +157,7 @@ class skd
     int m_return_offset = 1;
     
     int wait_next_cmd() const;
-    int create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const;
+    int create_softkernelfile(xrtDeviceHandle handle, buf_hdl& bohdl) const;
     int delete_softkernelfile() const;
     int create_softkernel(int *boh);
     int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
