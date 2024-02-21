@@ -744,11 +744,11 @@ XclBin::findSection(enum axlf_section_kind _eKind,
                     const std::string& _indexName) const
 {
   for (auto& section : m_sections) {
-    if (section->getSectionKind() == _eKind) {
-      if (section->getSectionIndexName().compare(_indexName) == 0) {
-        return section;
-      }
-    }
+    if (section->getSectionKind() != _eKind) 
+      continue;
+      
+    if (section->getSectionIndexName().compare(_indexName) == 0)
+      return section;
   }
   return nullptr;
 }
