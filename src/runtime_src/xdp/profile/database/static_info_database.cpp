@@ -1915,12 +1915,12 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < min_trace_id_asm) {
+    if (index < util::min_trace_id_asm) {
       std::stringstream msg;
       msg << "ASM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = min_trace_id_asm ;
+      index = util::min_trace_id_asm ;
     }
 
     // Parse out the name of the compute unit this monitor is attached to if
