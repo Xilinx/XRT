@@ -28,6 +28,8 @@ file(GLOB XDP_CORE_FILES
   "${PROFILE_DIR}/device/mmapped_monitors/*.cpp"
   "${PROFILE_DIR}/writer/vp_base/*.h"
   "${PROFILE_DIR}/writer/vp_base/*.cpp"
+  "${PROFILE_DIR}/util/*.h"
+  "${PROFILE_DIR}/util/*.cpp"
   )
 
 add_library(xdp_core SHARED ${XDP_CORE_FILES})
