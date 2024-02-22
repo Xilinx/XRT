@@ -38,14 +38,14 @@ jobs:
         include:      
           - os: centos78      
             packageType: rpm      
-          - os: centos8      
-            packageType: rpm      
-          - os: rhel9      
-            packageType: rpm      
-          - os: ubuntu2004      
-            packageType: deb      
-          - os: ubuntu2204      
-            packageType: deb      
+          # - os: centos8      
+          #   packageType: rpm      
+          # - os: rhel9      
+          #   packageType: rpm      
+          # - os: ubuntu2004      
+          #   packageType: deb      
+          # - os: ubuntu2204      
+          #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -71,7 +71,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
-          ref: main
+          ref: alert
        
       - name: XRT build     
         uses: ./composite-workflows/build
