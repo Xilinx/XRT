@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <sstream>
 
 namespace xrt {
 
@@ -26,6 +27,14 @@ public:
   {
     if (!m_elf.load(fnm))
       throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
+  }
+
+  elf_impl(const std::vector<char>& data)
+  {
+    std::string str(data.begin(), data.end());
+    std::istringstream isstr(str);
+    if (!m_elf.load(isstr))
+      throw std::runtime_error("not a valid ELF data");
   }
 
   const ELFIO::elfio&
@@ -83,6 +92,11 @@ namespace xrt {
 elf::
 elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(fnm)}
+{}
+
+elf::
+elf(const std::vector<char>& data)
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(data)}
 {}
 
 xrt::uuid
