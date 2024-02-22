@@ -168,3 +168,4 @@ hipEventElapsedTime (float *ms, hipEvent_t start, hipEvent_t stop)
   }
   return hipErrorUnknown;
 }
+

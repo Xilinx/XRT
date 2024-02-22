@@ -83,3 +83,4 @@ public:
 } // xrt::core::hip
 
 #endif
+
