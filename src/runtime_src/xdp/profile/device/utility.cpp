@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,9 +17,13 @@
 
 #define XDP_CORE_SOURCE
 
+#include "core/common/system.h"
+#include "core/common/message.h"
+#include "core/common/query_requests.h"
+
 #include "xdp/profile/device/utility.h"
 
-namespace xdp {
+namespace xdp { namespace util {
 
   uint64_t getAIMSlotId(uint64_t idx) {
     return ((idx - min_trace_id_aim)/num_trace_id_per_aim);
@@ -33,5 +37,23 @@ namespace xdp {
     return ((idx - min_trace_id_asm)/num_trace_id_per_asm);
   }
 
+  std::string getDebugIpLayoutPath(void* deviceHandle)
+  {
+    std::string path = "";
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::get_userpf_device(deviceHandle);
+    if (!coreDevice) {
+      return path;
+    }
+    try {
+      path = xrt_core::device_query<xrt_core::query::debug_ip_layout_path>(coreDevice, sysfs_max_path_length);
+    } catch (const xrt_core::query::no_such_key&) {
+      //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Device query for Debug IP Layout not implemented");
+    } catch (const std::exception &) {
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "Failed to retrieve Debug IP Layout path");
+    }
+    return path;
+  }
+
+} // end namespace util
 } // end namespace xdp
 

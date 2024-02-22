@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,9 +21,11 @@
 // Functions that can be used in the database, the plugins, and the writers
 
 #include <stdint.h>
+#include <string>
+#include <memory>
 #include "xdp/config.h"
 
-namespace xdp {
+namespace xdp { namespace util {
 
   XDP_CORE_EXPORT
   uint64_t getAIMSlotId(uint64_t idx);
@@ -33,6 +35,10 @@ namespace xdp {
 
   XDP_CORE_EXPORT
   uint64_t getASMSlotId(uint64_t idx);
+
+  XDP_CORE_EXPORT
+  std::string getDebugIpLayoutPath(void* deviceHandle);
+
 
   // At compile time, each monitor inserted in the PL region is given a set 
   // of trace IDs, regardless of if trace is enabled or not.  This ID is
@@ -61,6 +67,7 @@ namespace xdp {
 
   constexpr unsigned int sysfs_max_path_length = 512;
 
+} // end namespace util
 } // end namespace xdp
 
 #endif

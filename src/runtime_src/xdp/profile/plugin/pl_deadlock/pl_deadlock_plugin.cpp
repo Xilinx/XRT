@@ -135,10 +135,7 @@ namespace xdp {
 
   void PLDeadlockPlugin::updateDevice(void* handle)
   {
-    std::array<char, sysfs_max_path_length> pathBuf = {0};
-    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
-    std::string path(pathBuf.data());
-    uint64_t deviceId = db->addDevice(path);
+    uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin

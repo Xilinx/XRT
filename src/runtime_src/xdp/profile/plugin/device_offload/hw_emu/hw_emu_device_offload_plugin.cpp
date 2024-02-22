@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,12 +31,9 @@
 // Anonymous namespace for local helper functions
 namespace {
 
-  static std::string getDebugIPLayoutPath(void* handle)
+  static std::string ProcessHwEmuDebugIpLayoutPath(void* handle)
   {
-    std::array<char, xdp::sysfs_max_path_length> pathBuf = {0};
-    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (xdp::sysfs_max_path_length-1) ) ;
-    std::string path(pathBuf.data());
-
+    std::string path = xdp::util::getDebugIpLayoutPath(handle);
     if (path == "")
       return path;
 
@@ -85,7 +82,7 @@ namespace xdp {
 
   void HWEmuDeviceOffloadPlugin::flushDevice(void* handle)
   {
-    std::string path = getDebugIPLayoutPath(handle) ;
+    std::string path = ProcessHwEmuDebugIpLayoutPath(handle) ;
     if (path == "")
       return ;
     
@@ -103,7 +100,7 @@ namespace xdp {
 
   void HWEmuDeviceOffloadPlugin::updateDevice(void* userHandle)
   {
-    std::string path = getDebugIPLayoutPath(userHandle) ;
+    std::string path = ProcessHwEmuDebugIpLayoutPath(userHandle) ;
     if (path == "")
       return ;
 

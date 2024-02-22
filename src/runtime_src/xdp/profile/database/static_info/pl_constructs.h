@@ -150,13 +150,13 @@ namespace xdp {
       //  monitor in hardware
       switch (ty) {
       case ACCEL_MONITOR:
-        slotIndex = getAMSlotId(idx);
+        slotIndex = util::getAMSlotId(idx);
         break ;
       case AXI_MM_MONITOR:
-        slotIndex = getAIMSlotId(idx);
+        slotIndex = util::getAIMSlotId(idx);
         break ;
       case AXI_STREAM_MONITOR:
-        slotIndex = getASMSlotId(idx);
+        slotIndex = util::getASMSlotId(idx);
         break ;
       default:
         // Should never be reached
