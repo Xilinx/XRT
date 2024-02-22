@@ -288,12 +288,78 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 }
 
 /*
+ * Maps the PCIe BAR into user space for memory-like access using mmap().
+ * Callable even when lro->ready == false.
+ */
+static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	int rc;
+	struct xclmgmt_dev *lro;
+	unsigned long off;
+	unsigned long phys;
+	unsigned long vsize;
+	unsigned long psize;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
+	lro = (struct xclmgmt_dev *)file->private_data;
+	BUG_ON(!lro);
+
+	off = vma->vm_pgoff << PAGE_SHIFT;
+	/* BAR physical address */
+	phys = pci_resource_start(lro->core.pdev, lro->core.bar_idx) + off;
+	vsize = vma->vm_end - vma->vm_start;
+	/* complete resource */
+	psize = pci_resource_end(lro->core.pdev, lro->core.bar_idx) -
+		pci_resource_start(lro->core.pdev, lro->core.bar_idx) + 1 - off;
+
+	mgmt_info(lro, "mmap(): bar %d, phys:0x%lx, vsize:%ld, psize:%ld",
+		lro->core.bar_idx, phys, vsize, psize);
+
+	if (vsize > psize)
+		return -EINVAL;
+
+	/*
+	 * pages must not be cached as this would result in cache line sized
+	 * accesses to the end point
+	 */
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	/*
+	 * prevent touching the pages (byte access) for swap-in,
+	 * and prevent the pages from being swapped out
+	 */
+#ifndef VM_RESERVED
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+#else
+	vm_flags_set(vma, VM_IO | VM_DONTEXPAND | VM_DONTDUMP);
+#endif
+#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
+#endif
+
+	/* make MMIO accessible to user space */
+	rc = io_remap_pfn_range(vma, vma->vm_start, phys >> PAGE_SHIFT,
+				vsize, vma->vm_page_prot);
+	if (rc)
+		return -EAGAIN;
+
+	return rc;
+}
+
+/*
  * character device file operations for control bus (through control bridge)
  */
 static const struct file_operations ctrl_fops = {
 	.owner = THIS_MODULE,
 	.open = char_open,
 	.release = char_close,
+	.mmap = bridge_mmap,
 	.unlocked_ioctl = mgmt_ioctl,
 };
 
