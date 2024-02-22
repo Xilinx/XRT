@@ -31,9 +31,9 @@ public:
 
   elf_impl(const std::vector<char>& data)
   {
-    std::string str(data.begin(), data.end());
-    std::istringstream isstr(str);
-    if (!m_elf.load(isstr))
+    const std::string elf_string(data.begin(), data.end());
+    std::istringstream elf_stream(elf_string);
+    if (!m_elf.load(elf_stream))
       throw std::runtime_error("not a valid ELF data");
   }
 
