@@ -1020,15 +1020,19 @@ int transform_PDI_file(const std::string& fileName)
   // separately, it is either in the current working directory or in PATH 
   std::string transformExePath = "./transform_static";
   if (!fs::exists("./transform_static")) {
+#if (BOOST_VERSION >= 106400)
     auto path = boost::process::search_path("transform_static");
     if (!path.empty()) {
-      // found in PATH
       // std::cout << "Found executable at: " << path << std::endl;
       transformExePath = path.string();
     } else {
       auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s' or PATH. Please make sure the exetuable is in PATH or CWD") % fs::current_path();
       throw std::runtime_error(errMsg.str());
     }
+#else
+    auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s'. Please copy the executable to CWD") % fs::current_path();
+    throw std::runtime_error(errMsg.str());
+#endif
   }
 
   // const std::string transformExe = "./transform_static";
