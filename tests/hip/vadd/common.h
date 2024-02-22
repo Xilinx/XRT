@@ -64,7 +64,6 @@ test_hip_check(hipError_t status, const char *note = "") {
   }
 }
 
-
 class
 hip_test_timer {
   std::chrono::high_resolution_clock::time_point mTimeStart;
@@ -72,7 +71,7 @@ public:
   hip_test_timer() {
     reset();
   }
-  long long
+  [[nodiscard]] long long
   stop() const {
     std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
     return std::chrono::duration_cast<std::chrono::microseconds>(timeEnd - mTimeStart).count();
@@ -80,6 +79,11 @@ public:
   void
   reset() {
     mTimeStart = std::chrono::high_resolution_clock::now();
+  }
+  static long long unit() {
+    using namespace std::literals::chrono_literals;
+    std::chrono::seconds osec = 1s;
+    return std::chrono::microseconds(osec).count();
   }
 };
 
@@ -107,12 +111,12 @@ public:
 class
 hip_test_device {
 private:
-  hipDevice_t m_device;
+  hipDevice_t m_device{};
   int m_index;
   std::map<std::string, hipModule_t> mModuleTable;
 
 public:
-  hip_test_device(int index = 0) : m_index(index) {
+  explicit hip_test_device(int index = 0) : m_index(index) {
     test_hip_check(hipDeviceGet(&m_device, index));
   }
 

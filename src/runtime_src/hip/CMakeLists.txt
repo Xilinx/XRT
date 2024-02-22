@@ -7,7 +7,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(WARNING "-- clang-tidy not found, cannot enable static analysis")
   else()
     message("-- Enabling clang-tidy")
-    set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
   endif()
 endif()
 
