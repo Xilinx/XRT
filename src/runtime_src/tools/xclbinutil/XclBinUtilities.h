@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2018, 2020-2022 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -166,6 +167,9 @@ int exec(const std::filesystem::path &cmd, const std::vector<std::string> &args,
 void write_htonl(std::ostream & _buf, uint32_t _word32);
 
 void createMemoryBankGrouping(XclBin & xclbin);
+
+// temporary for 2024.1, https://jira.xilinx.com/browse/SDXFLO-6890
+void transformAiePartitionPDIs(XclBin & xclbin);
 };
 
 #endif
