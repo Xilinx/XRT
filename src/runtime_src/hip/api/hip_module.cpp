@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Device, Inc. All rights reserved.
 
-#include "core/common/error.h"
-
-#include "hip/config.h"
-#include "hip/hip_runtime_api.h"
-
+#include "hip/core/common.h"
 #include "hip/core/module.h"
 
 namespace xrt::core::hip {
@@ -15,17 +11,14 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
                          uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
                          void** kernelParams, void** extra)
 {
-  if (!f)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "function is nullptr");
+  throw_if(!f, hipErrorInvalidResourceHandle, "function is nullptr");
 
   auto func_hdl = reinterpret_cast<function_handle>(f);
   auto hip_mod = module_cache.get(static_cast<function*>(func_hdl)->get_module());
-  if (!hip_mod)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "associated module of function is unloaded");
+  throw_if(!hip_mod, hipErrorInvalidResourceHandle, "module associated with function is unloaded");
 
   auto hip_func = hip_mod->get_function(func_hdl);
-  if (!hip_func)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "invalid function passed");
+  throw_if(!hip_func, hipErrorInvalidResourceHandle, "invalid function passed");
 
   throw std::runtime_error("Not implemented");
 }
@@ -33,16 +26,13 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
 static function_handle
 hip_module_get_function(hipModule_t hmod, const char* name)
 {
-  if (!name || strlen(name) == 0)
-    throw xrt_core::system_error(hipErrorInvalidValue, "name is invalid");
+  throw_if((!name || strlen(name) == 0), hipErrorInvalidValue, "name is invalid");
 
-  if (!hmod)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+  throw_if(!hmod, hipErrorInvalidResourceHandle, "module is nullptr");
 
   auto mod_hdl = reinterpret_cast<module_handle>(hmod);
   auto hip_mod = module_cache.get(mod_hdl);
-  if (!hip_mod)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module not available");
+  throw_if(!hip_mod, hipErrorInvalidResourceHandle, "module not available");
 
   auto hip_func = std::make_shared<function>(mod_hdl, std::string(name));
   auto func_hdl = hip_func.get();
@@ -82,8 +72,7 @@ hip_module_load_data(const void* image)
 static void
 hip_module_unload(hipModule_t hmod)
 {
-  if (!hmod)
-    throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+  throw_if(!hmod, hipErrorInvalidResourceHandle, "module is nullptr");
 
   auto handle = reinterpret_cast<module_handle>(hmod);
   module_cache.remove(handle);
@@ -123,8 +112,7 @@ hipError_t
 hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name)
 {
   try {
-    if (!hfunc)
-      throw xrt_core::system_error(hipErrorInvalidHandle, "function passed is nullptr");
+    throw_if(!hfunc, hipErrorInvalidHandle, "function passed is nullptr");
 
     auto handle = xrt::core::hip::hip_module_get_function(hmod, name);
     *hfunc = reinterpret_cast<hipFunction_t>(handle);
@@ -145,8 +133,7 @@ hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOpti
                     hipJitOption* options, void** optionsValues)
 {
   try {
-    if (!module)
-      throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+    throw_if(!module, hipErrorInvalidResourceHandle, "module is nullptr");
 
     auto handle = xrt::core::hip::
         hip_module_load_data_ex(image, numOptions, options, optionsValues);
@@ -167,8 +154,7 @@ hipError_t
 hipModuleLoadData(hipModule_t* module, const void* image)
 {
   try {
-    if (!module)
-      throw xrt_core::system_error(hipErrorInvalidResourceHandle, "module is nullptr");
+    throw_if(!module, hipErrorInvalidResourceHandle, "module is nullptr");
 
     auto handle = xrt::core::hip::hip_module_load_data(image);
     *module = reinterpret_cast<hipModule_t>(handle);
@@ -217,3 +203,4 @@ hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value)
   }
   return hipErrorUnknown;
 }
+

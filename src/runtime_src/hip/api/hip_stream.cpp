@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Device, Inc. All rights reserved.
 
-#include "core/common/error.h"
-
-#include "hip/config.h"
-#include "hip/hip_runtime_api.h"
-
+#include "hip/core/common.h"
 #include "hip/core/stream.h"
 
 namespace xrt::core::hip {
@@ -18,8 +14,7 @@ hip_stream_create_with_flags(unsigned int flags)
 static void
 hip_stream_destroy(hipStream_t stream)
 {
-  if (!stream)
-    throw xrt_core::system_error(hipErrorInvalidHandle, "stream is nullptr");
+  throw_if(!stream, hipErrorInvalidHandle, "stream is nullptr");
 
   throw std::runtime_error("Not implemented");
 }
@@ -33,8 +28,7 @@ hip_stream_synchronize(hipStream_t stream)
 static void
 hip_stream_wait_event(hipStream_t stream, hipEvent_t event, unsigned int flags)
 {
-  if (!event)
-    throw xrt_core::system_error(hipErrorInvalidHandle, "event is nullptr");
+  throw_if(!event, hipErrorInvalidHandle, "event is nullptr");
 
   throw std::runtime_error("Not implemented");
 }
@@ -46,8 +40,7 @@ hipError_t
 hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags)
 {
   try {
-    if (!stream)
-      throw xrt_core::system_error(hipErrorInvalidValue, "stream passed is nullptr");
+    throw_if(!stream, hipErrorInvalidValue, "stream passed is nullptr");
 
     *stream = xrt::core::hip::hip_stream_create_with_flags(flags);
     return hipSuccess;
@@ -112,3 +105,4 @@ hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags)
   }
   return hipErrorUnknown;
 }
+

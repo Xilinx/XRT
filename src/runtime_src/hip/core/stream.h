@@ -23,3 +23,4 @@ extern xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache
 } // xrt::core::hip
 
 #endif
+

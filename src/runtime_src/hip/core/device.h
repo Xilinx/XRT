@@ -66,3 +66,4 @@ extern xrt_core::handle_map<device_handle, std::shared_ptr<device>> device_cache
 } // xrt::core::hip
 
 #endif
+

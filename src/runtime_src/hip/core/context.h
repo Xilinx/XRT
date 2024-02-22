@@ -42,3 +42,4 @@ extern xrt_core::handle_map<context_handle, std::shared_ptr<context>> context_ca
 } // xrt::core::hip
 
 #endif
+

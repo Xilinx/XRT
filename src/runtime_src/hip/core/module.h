@@ -70,3 +70,4 @@ extern xrt_core::handle_map<module_handle, std::shared_ptr<module>> module_cache
 } // xrt::core::hip
 
 #endif
+

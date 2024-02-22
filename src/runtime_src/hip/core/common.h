@@ -3,6 +3,11 @@
 #ifndef xrthip_common_h
 #define xrthip_common_h
 
+#include "core/common/error.h"
+
+#include "hip/config.h"
+#include "hip/hip_runtime_api.h"
+
 #include "context.h"
 #include "device.h"
 
@@ -26,4 +31,13 @@ struct hip_tls_objs
 extern thread_local hip_tls_objs tls_objs;
 } // xrt::core::hip
 
+namespace {
+// common function that throws hip error
+inline void
+throw_if(bool check, hipError_t err, const std::string& err_msg)
+{
+  check ? throw xrt_core::system_error(err, err_msg) : void();
+}
+}
 #endif
+
