@@ -44,6 +44,7 @@
 #include <boost/process.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/env.hpp>
+#include <boost/process/search_path.hpp>
 #endif
 
 
@@ -58,7 +59,6 @@ namespace fs = std::filesystem;
 
 static bool m_bVerbose = false;
 static bool m_bQuiet = false;
-// static bool m_bTransformPdi = false;
 
 void
 XclBinUtilities::setVerbose(bool _bVerbose) {
@@ -1020,7 +1020,7 @@ int transform_PDI_file(const std::string& fileName)
   // separately, it is either in the current working directory or in PATH 
   std::string transformExePath = "./transform_static";
   if (!fs::exists("./transform_static")) {
-    boost::filesystem::path path = boost::process::search_path("transform_static");
+    auto path = boost::process::search_path("transform_static");
     if (!path.empty()) {
       // found in PATH
       // std::cout << "Found executable at: " << path << std::endl;
