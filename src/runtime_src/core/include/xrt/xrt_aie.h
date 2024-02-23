@@ -163,29 +163,29 @@ public:
   }
 };
 
-class event_impl;
-class event 
+class profiling_impl;
+class profiling 
 {
 public:
-
+  enum class profiling_option : int { io_total_stream_running_to_idle_cycles = 0, io_stream_start_to_bytes_transferred_cycles = 1, io_stream_start_difference_cycles = 2, io_stream_running_event_count = 3 };
   /**
    * event() - Constructor from a device
    *
    * @param device
-   *  The device on which the profiling event should start
+   *  The device on which the profiling should start
    *
    */
-  event(const xrt::device& device);
+  profiling(const xrt::device& device);
 
   /**
-   * start_profiling() - Start AIE performance profiling
+   * start() - Start AIE performance profiling
    *
    * @param option
    *  Profiling option
    * @param port1_name
-   *  Profiling port 1 name.
+   *  PLIO/GMIO port 1 name.
    * @param port2_name
-   *  Profiling port 2 name.
+   *  PLIO/GMIO port 2 name.
    * @param value
    *  The number of bytes to trigger the profiling event.
    *
@@ -194,25 +194,25 @@ public:
    * meanings on different options.
    */
   int 
-  start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
+  start(profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
 
   /**
-   * read_profiling() - Read the current performance counter value
-   *                    associated with the profiling handle
+   * read() - Read the current performance counter value
+   *          associated with the profiling handle
    */
   uint64_t
-  read_profiling() const;
+  read() const;
 
   /**
-   * stop_profiling() - Stop the current performance profiling
-   *                    associated with the profiling handle and
-   *                    release the corresponding hardware resources.
+   * stop() - Stop the current performance profiling
+   *          associated with the profiling handle and
+   *          release the corresponding hardware resources.
    */
   void
-  stop_profiling() const;
+  stop() const;
 
 private:
-    std::shared_ptr<event_impl> impl;
+    std::shared_ptr<profiling_impl> impl;
 };
 
 }} // aie, xrt

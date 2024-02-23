@@ -114,46 +114,49 @@ public:
 
 namespace xrt { namespace aie {
 
-class event_impl
+class profiling_impl
 {
 private:
   std::shared_ptr<xrt_core::device> device;
-  int event_hdl;
+  int profiling_hdl;
 
 public:
   using handle = int;
   static constexpr handle invalid_handle = -1;
 
-  event_impl(std::shared_ptr<xrt_core::device> dev)
+  profiling_impl(std::shared_ptr<xrt_core::device> dev)
     : device(std::move(dev)),
-      event_hdl(invalid_handle)
+      profiling_hdl(invalid_handle)
   {}
 
-  ~event_impl()
+  ~profiling_impl()
   {}
 
-  int 
-  start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value){
-    event_hdl = device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
-    return event_hdl;
+  handle 
+  start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
+  {
+    profiling_hdl = device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
+    return profiling_hdl;
   }
 
   uint64_t
   read_profiling()
   {
-    if(event_hdl == invalid_handle)
-      throw xrt_core::error(-EINVAL, "Not a valid event handle");
-    return device->read_profiling(event_hdl);
+    if (profiling_hdl == invalid_handle)
+      throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
+
+    return device->read_profiling(profiling_hdl);
     
   }
 
   void
   stop_profiling()
   {
-    if(event_hdl == invalid_handle)
-      throw xrt_core::error(-EINVAL, "Not a valid event handle");
-    device->stop_profiling(event_hdl);
-    event_hdl = invalid_handle;
+    if (profiling_hdl == invalid_handle)
+      throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
+
+    device->stop_profiling(profiling_hdl);
+    profiling_hdl = invalid_handle;
   }
 
 };
@@ -237,22 +240,22 @@ wait_gmio(xrtDeviceHandle dhdl, const char *gmio_name)
   device->wait_gmio(gmio_name);
 }
 
-// C-API Event handles are inserted to this map.
-static std::map<int, std::shared_ptr<xrt::aie::event_impl>> event_cache;
+// C-API Profiling handles are inserted to this map.
+static std::map<int, std::shared_ptr<xrt::aie::profiling_impl>> profiling_cache;
 
-static std::shared_ptr<xrt::aie::event_impl>
-create_event(xrtDeviceHandle dhdl)
+static std::shared_ptr<xrt::aie::profiling_impl>
+create_profiling_event(xrtDeviceHandle dhdl)
 {
   auto core_device = xrt_core::device_int::get_core_device(dhdl);
-  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device);
+  auto phdl = std::make_shared<xrt::aie::profiling_impl>(core_device);
   return phdl;
 }
 
-static std::shared_ptr<xrt::aie::event_impl>
-create_event(const xrt::device& device)
+static std::shared_ptr<xrt::aie::profiling_impl>
+create_profiling_event(const xrt::device& device)
 {
   auto core_device = device.get_handle();
-  auto phdl = std::make_shared<xrt::aie::event_impl>(core_device);
+  auto phdl = std::make_shared<xrt::aie::profiling_impl>(core_device);
   return phdl;
 }
 
@@ -368,34 +371,41 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
-// xrt_aie_event C++ API implmentations (xrt_aie.h)
+// xrt_aie_profiling C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt { namespace aie {
 
-event::
-event(const xrt::device& device)
-  : impl(std::move(create_event(device)))
+profiling::
+profiling(const xrt::device& device)
+  : impl(std::move(create_profiling_event(device)))
 {}
 
 int 
-event::
-start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const
+profiling::
+start(xrt::aie::profiling::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const
 {
-  return xdp::native::profiling_wrapper("xrt::aie::event::read_profiling", [=]{return (impl->start_profiling(option, port1_name, port2_name, value));});
+  int opt = static_cast<int>(option);
+  return xdp::native::profiling_wrapper("xrt::aie::profiling::start", [this, opt, &port1_name, &port2_name, value] {
+    return impl->start_profiling(opt, port1_name, port2_name, value);
+  });
 }
 
 uint64_t
-event::
-read_profiling() const
+profiling::
+read() const
 {
-  return xdp::native::profiling_wrapper("xrt::aie::event::read_profiling", [=]{return (impl->read_profiling());});
+  return xdp::native::profiling_wrapper("xrt::aie::profiling::read", [this] {
+    return impl->read_profiling();
+  });
 }
 
 void
-event::
-stop_profiling() const
+profiling::
+stop() const
 {
-  xdp::native::profiling_wrapper("xrt::aie::event::stop_profiling", [=]{impl->stop_profiling();});
+  xdp::native::profiling_wrapper("xrt::aie::profiling::stop", [this] {
+    return impl->stop_profiling();
+  });
 }
 
 }} //namespace aie, xrt
@@ -834,14 +844,16 @@ int
 xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
 {
   try {
-    auto event = create_event(handle);
+    auto event = create_profiling_event(handle);
+    if (option < 0 || option > 3)
+      throw xrt_core::error(-EINVAL, "Not a valid profiling option");
     auto hdl = event->start_profiling(option, port1Name, port2Name, value);
-    if(hdl!= xrt::aie::event_impl::invalid_handle) {
-      event_cache[hdl] = event;
+    if (hdl != xrt::aie::profiling_impl::invalid_handle) {
+      profiling_cache[hdl] = event;
       return hdl;
     }
     else
-      throw xrt_core::error(-EINVAL, "Not a valid event handle");
+      throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -866,12 +878,11 @@ uint64_t
 xrtAIEReadProfiling(int pHandle)
 {
   try {
-    auto it = event_cache.find(pHandle);
-    if (it != event_cache.end()) {
+    auto it = profiling_cache.find(pHandle);
+    if (it != profiling_cache.end())
       return it->second->read_profiling();
-    }
     else
-      throw xrt_core::error(-EINVAL, "No such event handle"); 
+      throw xrt_core::error(-EINVAL, "No such profiling handle"); 
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -897,13 +908,13 @@ void
 xrtAIEStopProfiling(int pHandle)
 {
   try {
-    auto it = event_cache.find(pHandle);
-    if (it != event_cache.end()) {
+    auto it = profiling_cache.find(pHandle);
+    if (it != profiling_cache.end()) {
       it->second->stop_profiling();
-      event_cache.erase(pHandle);
+      profiling_cache.erase(pHandle);
     }
     else
-      throw xrt_core::error(-EINVAL, "No such event handle");   
+      throw xrt_core::error(-EINVAL, "No such profiling handle");   
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
