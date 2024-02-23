@@ -395,10 +395,7 @@ namespace xdp {
 
     mXrtCoreDevice = xrt_core::get_userpf_device(handle);
 
-    std::array<char, sysfs_max_path_length> pathBuf = {0};
-    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
-    std::string sysfspath(pathBuf.data());
-    uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
+    uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
@@ -412,8 +409,7 @@ namespace xdp {
     }
 
     // Grab AIE metadata
-    auto device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
+    auto data = mXrtCoreDevice->get_axlf_section(AIE_METADATA);
     filetype = aie::readAIEMetadata(data.first, data.second, mAieMeta);
     auto hwGen = filetype->getHardwareGeneration();
 

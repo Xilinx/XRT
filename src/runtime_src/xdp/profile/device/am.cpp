@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,7 +77,7 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
     if (!m_enabled)
         return 0;
 
-    uint64_t s = getAMSlotId(getMIndex());
+    uint64_t s = util::getAMSlotId(getMIndex());
 
     size_t size = 0;
     uint32_t sampleInterval = 0;

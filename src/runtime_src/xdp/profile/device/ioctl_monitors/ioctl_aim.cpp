@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2020-2022 Xilinx Inc - All rights reserved
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -103,7 +103,7 @@ size_t IOCtlAIM::readCounter(xdp::CounterResults& counterResults)
   if(out_stream)
     (*out_stream) << " IOCtlAIM::readCounter " << std::endl;
 
-  uint64_t s = getAIMSlotId(getMIndex());
+  uint64_t s = util::getAIMSlotId(getMIndex());
 
   counterResults.SampleIntervalUsec = 0 ;
 

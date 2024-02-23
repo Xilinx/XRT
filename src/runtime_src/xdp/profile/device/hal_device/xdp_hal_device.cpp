@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,6 +27,7 @@
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/experimental/xrt_device.h"
 
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include<iostream>
@@ -54,20 +55,7 @@ HalDevice::~HalDevice()
 
 std::string HalDevice::getDebugIPlayoutPath()
 {
-  std::string path = "";
-  try {
-    uint32_t size = 512;
-    path = xrt_core::device_query<xrt_core::query::debug_ip_layout_path>(mXrtCoreDevice, size);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    //query is not implemented
-  }
-  catch (const std::exception&) {
-    // error retrieving information
-    std::string msg = "Error while retrieving debug IP layout path.";
-    xrt_core::message::send(severity_level::error, "XRT", msg);
-  }
-  return path;
+  return util::getDebugIpLayoutPath(mXrtCoreDevice->get_user_handle());
 }
 uint32_t HalDevice::getNumLiveProcesses()
 {

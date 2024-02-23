@@ -1651,6 +1651,42 @@ bo(const xrt::hw_context& hwctx, pid_type pid, xrt::bo::export_handle ehdl)
 
 } // xrt::ext
 
+////////////////////////////////////////////////////////////////
+// XRT implmentation access to internal BO APIs
+////////////////////////////////////////////////////////////////
+namespace xrt_core::bo_int {
+
+const xrt_core::buffer_handle*
+get_buffer_handle(const xrt::bo& bo)
+{
+  auto handle = bo.get_handle();
+  return handle->get_handle();
+}
+
+size_t
+get_offset(const xrt::bo& bo)
+{
+  auto handle = bo.get_handle();
+  return handle->get_offset();
+}
+
+xrt::bo
+create_debug_bo(const xrt::hw_context& hwctx, size_t sz)
+{
+  xcl_bo_flags flags {0};  // see xrt_mem.h
+  flags.flags = XRT_BO_FLAGS_CACHEABLE;
+  flags.access = XRT_BO_ACCESS_LOCAL;
+  flags.dir = XRT_BO_ACCESS_READ_WRITE;
+  flags.use = XRT_BO_USE_DEBUG;
+
+  // While the memory group should be ignored (inferred) for debug
+  // buffers, it is still passed in as a default group 1 with no
+  // implied correlation to xclbin connectivity or memory group.
+  return xrt::bo{alloc(device_type{hwctx}, sz, flags.all, 1)};
+}
+
+} // xrt_core::bo_int
+
 #ifdef XRT_ENABLE_AIE
 ////////////////////////////////////////////////////////////////
 // xrt_aie_bo C++ API implmentations (xrt_aie.h)
@@ -1961,22 +1997,4 @@ xrtBOAddress(xrtBufferHandle bhdl)
   }
   return std::numeric_limits<uint64_t>::max();
 }
-
-namespace xrt_core::bo_int {
-
-const xrt_core::buffer_handle*
-get_buffer_handle(const xrt::bo& bo)
-{
-  auto handle = bo.get_handle();
-  return handle->get_handle();
-}
-
-size_t
-get_offset(const xrt::bo& bo)
-{
-  auto handle = bo.get_handle();
-  return handle->get_offset();
-}
-
-} // xrt_core::bo_int
 

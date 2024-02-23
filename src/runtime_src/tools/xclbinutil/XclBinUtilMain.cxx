@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -37,8 +37,8 @@
 #include <set>
 #include <string>
 
-
 namespace XUtil = XclBinUtilities;
+namespace fs = std::filesystem;
 
 namespace {
 enum ReturnCodes {
@@ -55,25 +55,25 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
 {
    std::set<std::string> normalizedInputFiles;
 
-   for( auto file : _inputFiles) {
-     if ( !std::filesystem::exists(file)) {
+   for (const auto& file : _inputFiles) {
+     if (!fs::exists(file)) {
        std::string errMsg = "ERROR: The following input file does not exist: " + file;
        throw std::runtime_error(errMsg);
      }
-     std::filesystem::path filePath(file);
+     fs::path filePath(file);
      normalizedInputFiles.insert(canonical(filePath).string());
    }
 
    std::vector<std::string> normalizedOutputFiles;
-   for ( auto file : _outputFiles) {
-     if ( std::filesystem::exists(file)) {
-       if (_bForce == false) {
-         std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
-         throw std::runtime_error(errMsg);
-       } else {
-         std::filesystem::path filePath(file);
-         normalizedOutputFiles.push_back(canonical(filePath).string());
-       }
+   for ( const auto& file : _outputFiles) {
+     if ( !fs::exists(file))
+       continue;
+
+     if (_bForce == false) {
+       std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
+       throw std::runtime_error(errMsg);
+     } else {
+       normalizedOutputFiles.push_back(fs::canonical(file).string());
      }
    }
 
@@ -199,6 +199,7 @@ int main_(int argc, const char** argv) {
   bool bSkipBankGrouping = false;
   bool bSkipUUIDInsertion = false;
   bool bTrace = false;
+  bool bTransformPdi = false;
   boost::program_options::options_description hidden("Hidden options");
   std::string sSignatureOutputFile;
   std::vector<std::string> addKernels;
@@ -215,6 +216,7 @@ int main_(int argc, const char** argv) {
     ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
+    ("transform-pdi", boost::program_options::bool_switch(&bTransformPdi), "Transform the PDIs in AIE_PARTITION")
   ;
 
   boost::program_options::options_description all("Allowed options");
@@ -525,6 +527,11 @@ int main_(int argc, const char** argv) {
       (xclBin.findSection(ASK_GROUP_CONNECTIVITY) == nullptr) &&
       (xclBin.findSection(MEM_TOPOLOGY) != nullptr))
     XUtil::createMemoryBankGrouping(xclBin);
+
+  // add support for transform-pdi 
+  // transform the PDIs in AIE_PARTITION sections before writing out the output xclbin
+  if (bTransformPdi)
+    XUtil::transformAiePartitionPDIs(xclBin);
 
   // -- Remove Keys --
   for (const auto &key : keysToRemove) 
