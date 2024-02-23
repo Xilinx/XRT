@@ -62,7 +62,7 @@ namespace xdp {
       return;
 
     // AIE Debug plugin is built only for client 
-    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     auto device = xrt_core::hw_context_int::get_core_device(context);
     auto deviceID = getDeviceIDFromHandle(handle);
     
@@ -73,7 +73,6 @@ namespace xdp {
     if (!metadataReader)
       return;
 
-    auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Debug");
     xdp::aie::driver_config meta_config = getAIEConfigMetadata();
 
@@ -312,6 +311,17 @@ namespace xdp {
   getAIEConfigMetadata()
   {
     return metadataReader->getDriverConfig();
+  }
+
+  uint64_t
+  AieDebugPlugin::
+  getDeviceIDFromHandle(void* handle)
+  { 
+    auto itr = handleToAIEData.find(handle);
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
+
+    return db->addDevice("win_device");
   }
 
 }  // end namespace xdp

@@ -37,6 +37,7 @@ namespace xdp {
     std::vector<std::string> getSettingsVector(std::string settingsString);
     std::map<module_type, std::vector<uint64_t>> parseMetrics();
     aie::driver_config getAIEConfigMetadata();
+    uint64_t getDeviceIDFromHandle(void* handle);
 
     const std::map<module_type, const char*> moduleTypes = {
       {module_type::core, "AIE"},
