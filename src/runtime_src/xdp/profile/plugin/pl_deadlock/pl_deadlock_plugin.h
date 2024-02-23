@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,27 +18,31 @@
 #ifndef PL_DEADLOCK_PLUGIN_DOT_H
 #define PL_DEADLOCK_PLUGIN_DOT_H
 
-#include <vector>
 #include <atomic>
+#include <memory>
+#include <vector>
 
-#include "core/include/xrt/xrt_hw_context.h"
-#include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
+
+  class IpMetadata;
 
   class PLDeadlockPlugin : public XDPPlugin
   {
   private:
-    virtual void pollDeadlock(void*, uint64_t index);
+    virtual void pollDeadlock(void* hwCtxImpl, uint64_t index);
     void forceWrite();
   
   private:
-    xrt::hw_context mHwContext;
+    bool mFileExists;
     uint32_t mPollingIntervalMs = 100;
+
+    std::unique_ptr<IpMetadata> mIpMetadata;
+
     std::map<void*, std::thread> mThreadMap;
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
-    bool fileExists;
-    std::mutex writeLock;
+    std::mutex mWriteLock;
 
   public:
     PLDeadlockPlugin();

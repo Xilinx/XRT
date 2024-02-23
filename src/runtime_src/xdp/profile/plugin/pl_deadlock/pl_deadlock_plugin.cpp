@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
@@ -43,11 +44,13 @@
 
 namespace xdp {
 
+  constexpr uint32_t REGSIZE_BYTES = 0x4;
+
   using severity_level = xrt_core::message::severity_level;
 
   PLDeadlockPlugin::PLDeadlockPlugin()
   : XDPPlugin()
-  , fileExists(false)
+  , mFileExists(false)
   {
     db->registerPlugin(this);
   }
@@ -79,16 +82,14 @@ namespace xdp {
     auto it = mThreadCtrlMap.find(hwCtxImpl);
     if (it == mThreadCtrlMap.end())
       return;
+
     auto& should_continue = it->second;
-//    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-    auto coreDevice = xrt_core::hw_context_int::get_core_device(mHwContext);
 
-    auto handle = coreDevice->get_user_handle();
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-
-    if (deviceIntf == nullptr)
+    if (nullptr == deviceIntf)
       return;
 
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
 
     while (should_continue) {
       if (deviceIntf->getDeadlockStatus()) {
@@ -100,23 +101,20 @@ namespace xdp {
         std::string deadlockInfo = deviceName + " :\n";
         std::string allCUDiagnosis;
 
-        ip_metadata* ipMetadata = db->getStaticInfo().parseXrtIPMetadata(deviceId, handle);
-
         XclbinInfo* currXclbin = db->getStaticInfo().getCurrentlyLoadedXclbin(deviceId);
-//        xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
         for (const auto& cu : currXclbin->pl.cus) {
           std::string cuInstFullName = cu.second->getFullname();
           std::string kernelName = cuInstFullName.substr(0, cuInstFullName.find(':')); // add in cu
 
-          kernel_reginfo kernelRegInfo;
-          for (auto& pair : ipMetadata->kernel_infos) {
+          KernelRegisterInfo kernelRegInfo;
+          for (auto& pair : mIpMetadata->kernel_infos) {
             if (kernelName.compare(pair.first) != 0) {
               continue;
             }
 
-            xrt::ip* xrtIP = new xrt::ip(mHwContext, cuInstFullName);
+            std::unique_ptr<xrt::ip> xrtIP = std::make_unique<xrt::ip>(hwContext, cuInstFullName);
             uint32_t low  = pair.second.begin()->first;
-            uint32_t high = pair.second.rbegin()->first + 0x4;
+            uint32_t high = pair.second.rbegin()->first + REGSIZE_BYTES;
             xrt_core::ip_int::set_read_range(*xrtIP, low, (high-low));
 
             std::string currCUDiagnosis;
@@ -130,7 +128,6 @@ namespace xdp {
                 }
               }
             }
-            delete xrtIP;
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", currCUDiagnosis);
             allCUDiagnosis += currCUDiagnosis;
           }
@@ -151,11 +148,11 @@ namespace xdp {
 
   void PLDeadlockPlugin::forceWrite()
   {
-    std::lock_guard<std::mutex> lock(writeLock);
+    std::lock_guard<std::mutex> lock(mWriteLock);
     std::string outputFile = "pl_deadlock_diagnosis.txt";
-    if (!fileExists) {
+    if (!mFileExists) {
       db->getStaticInfo().addOpenedFile(outputFile, "PL_DEADLOCK_DIAGNOSIS");
-      fileExists = true;
+      mFileExists = true;
     }
     // Don't allocate memory because this application is
     // potentially hung and could be killed
@@ -164,10 +161,6 @@ namespace xdp {
 
   void PLDeadlockPlugin::flushDevice(void* hwCtxImpl)
   {
-//    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-//    auto coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
-
-//    auto handle = coreDevice->get_user_handle();
     mThreadCtrlMap[hwCtxImpl] = false;
     auto it = mThreadMap.find(hwCtxImpl);
     if (it != mThreadMap.end()) {
@@ -179,13 +172,8 @@ namespace xdp {
 
   void PLDeadlockPlugin::updateDevice(void* hwCtxImpl)
   {
-    auto it = mThreadMap.find(hwCtxImpl);
-    if (it != mThreadMap.end()) {
-      return;
-    }
-    mHwContext = std::move(xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl));
-//    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
-    auto coreDevice = xrt_core::hw_context_int::get_core_device(mHwContext);
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    auto coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
     auto handle = coreDevice->get_user_handle();
 
@@ -203,22 +191,30 @@ namespace xdp {
     }
 
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if (deviceIntf == nullptr)
+    if (nullptr == deviceIntf) {
       deviceIntf = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(handle));
+      if (nullptr == deviceIntf) {
+        return;
+      }
+    }
 
-    if (deviceIntf && !deviceIntf->hasDeadlockDetector()) {
-        std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);
+    if (!deviceIntf->hasDeadlockDetector()) {
+      std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);
       std::string msg = "System Deadlock Detector not found on device " + deviceName;
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return;
     }
 
+    mIpMetadata = db->getStaticInfo().populateIpMetadata(deviceId, coreDevice);
+
+    auto it = mThreadMap.find(hwCtxImpl);
+    if (it != mThreadMap.end()) {
+      return;
+    }
+    
     // Start the PL deadlock detection thread
     mThreadCtrlMap[hwCtxImpl] = true;
-    auto pollThread = std::thread(&PLDeadlockPlugin::pollDeadlock, this, hwCtxImpl, deviceId);
-    mThreadMap[hwCtxImpl] = std::move(pollThread);
-//    pollDeadlock(deviceId);
-//    mThreadMap[handle] = std::thread { [=] { pollDeadlock(deviceId); } };
+    mThreadMap[hwCtxImpl] = std::thread { [=] { pollDeadlock(hwCtxImpl, deviceId); } };
   }
 
 } // end namespace xdp
