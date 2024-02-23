@@ -31,8 +31,8 @@ public:
 
   elf_impl(const std::vector<char>& data)
   {
-    const std::string elf_string(data.begin(), data.end());
-    std::istringstream elf_stream(elf_string);
+    std::istringstream elf_stream;
+    elf_stream.rdbuf()->pubsetbuf(const_cast<char*>(data.data()), data.size());
     if (!m_elf.load(elf_stream))
       throw std::runtime_error("not a valid ELF data");
   }
