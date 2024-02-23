@@ -68,6 +68,14 @@ namespace xdp {
     
     (db->getStaticInfo()).updateDeviceClient(deviceID, device);
     (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+
+    // Delete old data for this handle
+    if (handleToAIEData.find(handle) != handleToAIEData.end())
+      handleToAIEData.erase(handle);
+
+    //Setting up struct 
+    auto& aieData = handleToAIEData[handle];
+    aieData.deviceID = deviceID;
     
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader)
