@@ -41,9 +41,7 @@ namespace xrt::core::hip
 
   // Register host memory so it can be accessed from the current device.
   static void
-  hip_host_register(void *hostPtr,
-                  size_t sizeBytes,
-                  unsigned int flags)
+  hip_host_register(void *hostPtr, size_t sizeBytes, unsigned int flags)
   {
     throw std::runtime_error("Not implemented");
   }
@@ -57,19 +55,14 @@ namespace xrt::core::hip
 
   // Get Device pointer from Host Pointer allocated through hipHostMalloc().
   static void
-  hip_host_get_device_pointer(void **devPtr,
-                          void *hstPtr,
-                          unsigned int flags)
+  hip_host_get_device_pointer(void **devPtr, void *hstPtr, unsigned int flags)
   {
     throw std::runtime_error("Not implemented");
   }
 
   // Copy data from src to dst.
   static void
-  hip_memcpy(void *dst,
-            const void *src,
-            size_t sizeBytes,
-            hipMemcpyKind kind)
+  hip_memcpy(void *dst, const void *src, size_t sizeBytes, hipMemcpyKind kind)
   {
     throw std::runtime_error("Not implemented");
   }
@@ -85,11 +78,11 @@ hipMalloc(void **ptr, size_t size)
     *ptr = nullptr;
     return hipSuccess;
   }
-  try  {
+  try {
     xrt::core::hip::hip_malloc(ptr, size);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -104,11 +97,11 @@ hipHostMalloc(void **ptr, size_t size, unsigned int flags)
     *ptr = nullptr;
     return hipSuccess;
   }
-  try  {
+  try {
     xrt::core::hip::hip_host_malloc(ptr, size, flags);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -118,11 +111,11 @@ hipHostMalloc(void **ptr, size_t size, unsigned int flags)
 hipError_t
 hipHostFree(void *ptr)
 {
-  try  {
+  try {
     xrt::core::hip::hip_host_free(ptr);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -132,11 +125,11 @@ hipHostFree(void *ptr)
 hipError_t
 hipFree(void *ptr)
 {
-  try  {
+  try {
     xrt::core::hip::hip_free(ptr);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -144,15 +137,13 @@ hipFree(void *ptr)
 
 // Register host memory so it can be accessed from the current device.
 hipError_t
-hipHostRegister(void *hostPtr,
-                size_t sizeBytes,
-                unsigned int flags)
+hipHostRegister(void *hostPtr, size_t sizeBytes, unsigned int flags)
 {
-  try  {
+  try {
     xrt::core::hip::hip_host_register(hostPtr, sizeBytes, flags);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -162,11 +153,11 @@ hipHostRegister(void *hostPtr,
 hipError_t
 hipHostUnregister(void *hostPtr)
 {
-  try  {
+  try {
     xrt::core::hip::hip_host_unregister(hostPtr);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -174,15 +165,13 @@ hipHostUnregister(void *hostPtr)
 
 // Get Device pointer from Host Pointer allocated through hipHostMalloc.
 hipError_t
-hipHostGetDevicePointer(void **devPtr,
-                        void *hstPtr,
-                        unsigned int flags)
+hipHostGetDevicePointer(void **devPtr, void *hstPtr, unsigned int flags)
 {
-  try  {
+  try {
     xrt::core::hip::hip_host_get_device_pointer(devPtr, hstPtr, flags);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -190,16 +179,13 @@ hipHostGetDevicePointer(void **devPtr,
 
 // Copy data from src to dst.
 hipError_t
-hipMemcpy(void *dst,
-          const void *src,
-          size_t sizeBytes,
-          hipMemcpyKind kind)
+hipMemcpy(void *dst, const void *src, size_t sizeBytes, hipMemcpyKind kind)
 {
-  try  {
+  try {
     xrt::core::hip::hip_memcpy(dst, src, sizeBytes, kind);
     return hipSuccess;
   }
-  catch (const std::exception &ex)  {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
