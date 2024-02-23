@@ -244,8 +244,8 @@ namespace xdp {
     spTag = ddr;
   }
 
-  ip_metadata::
-  ip_metadata(const boost::property_tree::ptree& pt)
+  IpMetadata::
+  IpMetadata(const boost::property_tree::ptree& pt)
   : s_major(0)
   , s_minor(0)
   {
@@ -256,7 +256,7 @@ namespace xdp {
     for (const auto& k : kernels) {
       auto kname = k.second.get<std::string>("name");
       auto reglist = k.second.get_child("deadlock_register_list");
-      kernel_reginfo kinfo;
+      KernelRegisterInfo kinfo;
       for (const auto& reg : reglist) {
         std::array<std::string, num_bits_deadlock_diagnosis> reginfo;
         auto offset_str = reg.second.get<std::string>("register_word_offset");
@@ -276,7 +276,7 @@ namespace xdp {
   /*
    * Useful for debug
    */
-  void ip_metadata::
+  void IpMetadata::
   print()
   {
     std::stringstream ss;
