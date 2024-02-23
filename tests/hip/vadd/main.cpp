@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <array>
+#include <vector>
 
 #include "hip/hip_runtime_api.h"
 
@@ -24,7 +25,6 @@ static constexpr int vector_length = 0x100000;
 static constexpr int vector_size = vector_length * sizeof(float);
 static constexpr int threads_per_block_x = 32;
 static constexpr int repeat_loop = 5000;
-static constexpr double msmulti = 1000000.0;
 
 void
 runkernel(hipFunction_t function, std::array<void *, 3> &args)
@@ -32,6 +32,7 @@ runkernel(hipFunction_t function, std::array<void *, 3> &args)
   const char *name = hipKernelNameRef(function);
   std::cout << "Running " << name << ' ' << repeat_loop << " times...\n";
   hip_test_timer timer;
+  const auto msmulti = (double)hip_test_timer::unit();
 
   const int globalr = std::strcmp(name, nop_kernel_name) ? vector_length/threads_per_block_x : 1;
   const int localr = std::strcmp(name, nop_kernel_name) ? threads_per_block_x : 1;
@@ -77,9 +78,9 @@ mainworker() {
   hipFunction_t function = hdevice.get_function(kernel_filename, kernel_name);
   hipFunction_t nopfunction = hdevice.get_function(nop_kernel_filename, nop_kernel_name);
 
-  std::array<float, vector_length> host_a{};
-  std::array<float, vector_length> host_b{};
-  std::array<float, vector_length> host_c{};
+  std::vector<float> host_a(vector_length);
+  std::vector<float> host_b(vector_length);
+  std::vector<float> host_c(vector_length);
 
   // Initialize input/output vectors
   for (int i = 0; i < vector_length; i++) {
