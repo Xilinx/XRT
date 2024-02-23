@@ -1322,13 +1322,6 @@ namespace xdp {
     DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
-
-#if 0
-    /*
-     * Initialize xrt IP for deadlock diagnosis
-     */
-    parseXrtIPMetadata(deviceId, device);
-#endif
   }
 
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
@@ -1527,7 +1520,9 @@ namespace xdp {
     }
   }
 
-  ip_metadata* VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, void* devHandle)
+  std::unique_ptr<IpMetadata> VPStaticDatabase::populateIpMetadata(
+                                uint64_t deviceId, 
+                                const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -1538,7 +1533,6 @@ namespace xdp {
     if (!xclbin)
       return nullptr;
 
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
     auto data = device->get_axlf_section(IP_METADATA);
     if (!data.first || !data.second)
       return nullptr;
@@ -1548,12 +1542,12 @@ namespace xdp {
     boost::property_tree::ptree pt;
     try {
       boost::property_tree::read_json(ss,pt);
-      xclbin->pl.ip_metadata_section = new ip_metadata(pt);
-      return xclbin->pl.ip_metadata_section;
+      return std::make_unique<IpMetadata>(pt);
+//      xclbin->pl.ipMetadata = std::make_unique<IpMetadata>(pt);
+//      return xclbin->pl.ipMetadata;
       // Debug
-      //xclbin->pl.ip_metadata_section->print();
+      //xclbin->pl.ipMetadata->print();
     } catch(...) {
-//      xclbin->pl.ip_metadata_section.reset();
       return nullptr;
     }
     return nullptr;

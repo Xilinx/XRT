@@ -52,7 +52,7 @@ namespace xdp {
   // Forward declarations of device and xclbin contents
   struct DeviceInfo ;
   struct XclbinInfo ;
-  class  ip_metadata;
+  class  IpMetadata;
 
   //Forward declaration of XDP's device structure
   class Device;
@@ -163,7 +163,9 @@ namespace xdp {
     XDP_CORE_EXPORT bool getAieApplication() const ;
     XDP_CORE_EXPORT void setAieApplication() ;
 
-    XDP_CORE_EXPORT ip_metadata* parseXrtIPMetadata(uint64_t deviceId, void* handle);
+    XDP_CORE_EXPORT 
+    std::unique_ptr<IpMetadata> populateIpMetadata(uint64_t deviceId, 
+                                  const std::shared_ptr<xrt_core::device>&);
 
     // Due to changes in hardware IP, we can only support profiling on
     // xclbins built using 2019.2 or later tools.  Each xclbin is stamped
