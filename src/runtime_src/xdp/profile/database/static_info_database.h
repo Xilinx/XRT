@@ -344,7 +344,6 @@ namespace xdp {
                                   void* devHandle) ;
 
     XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin);
-    XDP_CORE_EXPORT bool metadataReaderValid();
     XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;
 
     // ************************************************************************

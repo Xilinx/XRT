@@ -2172,26 +2172,8 @@ namespace xdp {
       return;
     }
 
-    std::stringstream aie_stream;
-    aie_stream.write(data.first, data.second);
-    try {
-      boost::property_tree::read_json(aie_stream, aieMetadata);
-    } catch (const std::exception& e) {
-      std::string msg("AIE Metadata could not be read : ");
-      msg += e.what();
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-    }
-
-    if (aieMetadata.empty())
-      return;
-
-    metadataReader = xdp::aie::determineFileType(aieMetadata);
+    metadataReader = aie::readAIEMetadata(data.first, data.second, aieMetadata);
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully!");
-  }
-
-  bool VPStaticDatabase::metadataReaderValid()
-  {
-    return metadataReader != nullptr ;
   }
 
   const xdp::aie::BaseFiletypeImpl*
@@ -2205,7 +2187,7 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
 
-    if (aieMetadata.empty())
+    if (!metadataReader)
       return;
 
     try {
@@ -2226,7 +2208,7 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    if (aieMetadata.empty())
+    if (!metadataReader)
        return;
 
     try {

@@ -61,11 +61,17 @@ namespace xdp {
     if (!xrt_core::config::get_aie_debug())
       return;
 
+    // AIE Debug plugin is built only for client 
+    xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto device = xrt_core::hw_context_int::get_core_device(context);
+    auto deviceID = getDeviceIDFromHandle(handle);
+    
+    (db->getStaticInfo()).updateDeviceClient(deviceID, device);
+    (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+    
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
-    if (!metadataReader) {
-      xrt_core::message::send(severity_level::error, "XRT", "Metadata reader could not be created for AIE debug");
+    if (!metadataReader)
       return;
-    }
 
     auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Debug");

@@ -18,7 +18,6 @@
 #define BASE_FILETYPE_DOT_H
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp::aie {

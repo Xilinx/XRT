@@ -43,7 +43,6 @@ namespace xdp {
 
     metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
     if (!metadataReader) {
-      xrt_core::message::send(severity_level::error, "XRT", "Metadata reader could not be created for AIE profile");
       return;
     }
 
