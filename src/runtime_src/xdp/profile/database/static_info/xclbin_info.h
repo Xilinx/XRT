@@ -86,8 +86,7 @@ namespace xdp {
     std::vector<Monitor*> asms ;
 
     // HLS deadlock diagnosis registers
-//    std::shared_ptr<ip_metadata> ip_metadata_section;
-    ip_metadata* ip_metadata_section = nullptr;
+    std::unique_ptr<IpMetadata> ipMetadata;
 
     ~PLInfo() ;
     void addComputeUnitPorts(const std::string& kernelName,
