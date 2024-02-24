@@ -145,7 +145,7 @@ namespace xdp {
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
     double findClockRate(xrt::xclbin);
-    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild) ;
 
 
 
@@ -343,7 +343,8 @@ namespace xdp {
                                   std::function<void (void*)> deallocate,
                                   void* devHandle) ;
 
-    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin);
+    XDP_CORE_EXPORT void readAIEMetadataClient();
+    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild);
     XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;
 
     // ************************************************************************

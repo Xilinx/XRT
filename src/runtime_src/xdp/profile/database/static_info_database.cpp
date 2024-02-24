@@ -1319,7 +1319,7 @@ namespace xdp {
       return;
 
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
 
@@ -1332,7 +1332,7 @@ namespace xdp {
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
   {
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    updateDevice(deviceId, xrtXclbin);
+    updateDevice(deviceId, xrtXclbin, true);
   }
 
   // Return true if we should reset the device information.
@@ -2063,12 +2063,12 @@ namespace xdp {
   {
     xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
 
-    updateDevice(deviceId, xrtXclbin);
+    updateDevice(deviceId, xrtXclbin, false);
   }
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin)
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild)
   {
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
@@ -2097,7 +2097,7 @@ namespace xdp {
     currentXclbin->uuid = xrtXclbin.get_uuid();
     currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ;
 
-    readAIEMetadata(xrtXclbin);
+    readAIEMetadata(xrtXclbin, clientBuild);
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
     setAIEGeneration(deviceId, xrtXclbin);
 
@@ -2154,18 +2154,22 @@ namespace xdp {
     }
   }
 
-
-  void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin)
+  void VPStaticDatabase::readAIEMetadataClient()
   {
-    #ifdef XDP_CLIENT_BUILD
-      metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
-      if(!metadataReader) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
-        return;
-      }
-      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
-      return ;
-    #endif
+    metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+    if(!metadataReader) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
+      return;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
+  } 
+
+  void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild)
+  {
+    if (clientBuild) {
+      readAIEMetadataClient();
+      return;
+    }
 
     auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
     if (!data.first || !data.second) {
