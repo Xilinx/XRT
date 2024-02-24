@@ -410,8 +410,6 @@ namespace xdp {
     xclbin->deviceIntf->setDevice(dev);
     try {
       xclbin->deviceIntf->readDebugIPlayout();
-      // XRT IP are needed for deadlock diagnosis
-//      initializeXrtIP(xclbin);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -2040,18 +2038,6 @@ namespace xdp {
 
     xclbin->pl.usesFifo = true ;
   }
-
-#if 0
-  void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
-  {
-    auto& ip_metadata = xclbin->pl.ip_metadata_section;
-    if (!ip_metadata)
-      return;
-
-    for (const auto& cu : xclbin->pl.cus)
-      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname());
-  }
-#endif
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {

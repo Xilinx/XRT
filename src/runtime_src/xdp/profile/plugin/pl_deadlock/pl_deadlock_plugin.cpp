@@ -104,7 +104,7 @@ namespace xdp {
         XclbinInfo* currXclbin = db->getStaticInfo().getCurrentlyLoadedXclbin(deviceId);
         for (const auto& cu : currXclbin->pl.cus) {
           std::string cuInstFullName = cu.second->getFullname();
-          std::string kernelName = cuInstFullName.substr(0, cuInstFullName.find(':')); // add in cu
+          std::string kernelName = cuInstFullName.substr(0, cuInstFullName.find(':'));
 
           KernelRegisterInfo kernelRegInfo;
           for (auto& pair : mIpMetadata->kernel_infos) {
