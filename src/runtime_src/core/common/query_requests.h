@@ -43,6 +43,7 @@ enum class key_type
 {
   pcie_vendor,
   pcie_device,
+  pcie_revision,
   pcie_subsystem_vendor,
   pcie_subsystem_id,
   pcie_link_speed,
@@ -340,6 +341,23 @@ struct pcie_device : request
   using result_type = uint16_t;
   static const key_type key = key_type::pcie_device;
   static const char* name() { return "device"; }
+
+  virtual std::any
+  get(const device*) const = 0;
+
+
+  static std::string
+  to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
+  }
+};
+
+struct pcie_revision : request
+{
+  using result_type = uint16_t;
+  static const key_type key = key_type::pcie_revision;
+  static const char* name() { return "revision"; }
 
   virtual std::any
   get(const device*) const = 0;

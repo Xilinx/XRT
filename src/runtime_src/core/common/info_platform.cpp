@@ -465,6 +465,7 @@ pcie_info(const xrt_core::device * device)
   try {
     ptree.add("vendor", xq::pcie_vendor::to_string(xrt_core::device_query<xq::pcie_vendor>(device)));
     ptree.add("device", xq::pcie_device::to_string(xrt_core::device_query<xq::pcie_device>(device)));
+    ptree.add("revision", xq::pcie_device::to_string(xrt_core::device_query<xq::pcie_revision>(device)));
     ptree.add("sub_device", xq::pcie_subsystem_id::to_string(xrt_core::device_query<xq::pcie_subsystem_id>(device)));
     ptree.add("sub_vendor", xq::pcie_subsystem_vendor::to_string(xrt_core::device_query<xq::pcie_subsystem_vendor>(device)));
     ptree.add("link_speed_gbit_sec", xrt_core::device_query<xq::pcie_link_speed>(device));
