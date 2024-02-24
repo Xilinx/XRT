@@ -79,7 +79,7 @@ namespace xdp {
 
   void PLDeadlockPlugin::pollDeadlock(void *hwCtxImpl, uint64_t deviceId)
   {
-    auto it = mThreadCtrlMap.find(hwCtxImpl);
+    auto it = mThreadCtrlMap.find(deviceId);
     if (it == mThreadCtrlMap.end())
       return;
 
@@ -161,6 +161,22 @@ namespace xdp {
 
   void PLDeadlockPlugin::flushDevice(void* hwCtxImpl)
   {
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+    auto coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+
+    auto handle = coreDevice->get_user_handle();
+
+    uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
+
+    mThreadCtrlMap[deviceId] = false;
+    auto it = mThreadMap.find(deviceId);
+    if (it != mThreadMap.end()) {
+      it->second.join();
+      mThreadMap.erase(it);
+      mThreadCtrlMap.erase(deviceId);
+    }
+
+#if 0
     mThreadCtrlMap[hwCtxImpl] = false;
     auto it = mThreadMap.find(hwCtxImpl);
     if (it != mThreadMap.end()) {
@@ -168,6 +184,7 @@ namespace xdp {
       mThreadMap.erase(it);
       mThreadCtrlMap.erase(hwCtxImpl);
     }
+#endif
   }
 
   void PLDeadlockPlugin::updateDevice(void* hwCtxImpl)
@@ -178,6 +195,11 @@ namespace xdp {
     auto handle = coreDevice->get_user_handle();
 
     uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
+
+    auto it = mThreadMap.find(deviceId);
+    if (it != mThreadMap.end()) {
+      return;
+    }
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
@@ -207,14 +229,16 @@ namespace xdp {
 
     mIpMetadata = db->getStaticInfo().populateIpMetadata(deviceId, coreDevice);
 
+#if 0
     auto it = mThreadMap.find(hwCtxImpl);
     if (it != mThreadMap.end()) {
       return;
     }
+#endif
     
     // Start the PL deadlock detection thread
-    mThreadCtrlMap[hwCtxImpl] = true;
-    mThreadMap[hwCtxImpl] = std::thread { [=] { pollDeadlock(hwCtxImpl, deviceId); } };
+    mThreadCtrlMap[deviceId] = true;
+    mThreadMap[deviceId] = std::thread { [=] { pollDeadlock(hwCtxImpl, deviceId); } };
   }
 
 } // end namespace xdp

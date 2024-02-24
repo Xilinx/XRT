@@ -40,8 +40,10 @@ namespace xdp {
 
     std::unique_ptr<IpMetadata> mIpMetadata;
 
-    std::map<void*, std::thread> mThreadMap;
-    std::map<void*,std::atomic<bool>> mThreadCtrlMap;
+    std::map<uint64_t, std::thread> mThreadMap;
+    std::map<uint64_t,std::atomic<bool>> mThreadCtrlMap;
+//    std::map<void*, std::thread> mThreadMap;
+//    std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::mutex mWriteLock;
 
   public:
