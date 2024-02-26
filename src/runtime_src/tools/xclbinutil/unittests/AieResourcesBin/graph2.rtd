@@ -1,0 +1,8 @@
+{
+ "aie_resources_bin_metadata": {
+   "name": "graph2",
+   "version": "1.0",
+   "start_column": "8",
+   "num_columns" : "8"
+ }
+}
