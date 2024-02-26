@@ -25,6 +25,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
@@ -41,9 +42,43 @@ namespace xdp {
   {
     db->registerInfo(info::device_offload) ;
 
+    // Open all existing devices so that XDP can access the owned handles
+
+    uint32_t index = 0;
+    while (1) {
+      try {
+        xrtDevices.push_back(std::make_unique<xrt::device>(index));
+
+        auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
+        std::string path = util::getDebugIpLayoutPath(ownedHandle);
+std::cout << " opened device index " << index << " path " << path << std::endl;
+
+        if ("" != path) {
+          addDevice(path); 
+
+          // Now, map device ID of this device with device handle owned by XDP
+          deviceIdToHandle[db->addDevice(path)] = ownedHandle;
+        }
+
+        // Move on to the next device
+        ++index;
+      } catch (const std::runtime_error& e) {
+std::cout << " COULD NOT open device index " << index << " NO path " << std::endl;
+        // If no more devices can be opened, break
+        // No need to print error message
+        break;
+      }
+    }
+  }
+#if 0
+  HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
+  {
+    db->registerInfo(info::device_offload) ;
+
     // Open all of the devices that exist so we can keep our own pointer
     //  to access them.
     uint32_t index = 0 ;
+    auto xrtDevice 
     void* handle = xclOpen(index, "/dev/null", XCL_INFO) ;
     
     while (handle != nullptr)
@@ -66,7 +101,7 @@ namespace xdp {
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;
     }
   }
-
+#endif
   HALDeviceOffloadPlugin::~HALDeviceOffloadPlugin()
   {
     if (VPDatabase::alive())
@@ -83,11 +118,6 @@ namespace xdp {
     }
 
     clearOffloaders();
-
-    for (auto h : deviceHandles)
-    {
-      xclClose(h) ;
-    }
   }
 
   void HALDeviceOffloadPlugin::readTrace()
