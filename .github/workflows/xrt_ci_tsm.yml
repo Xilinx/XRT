@@ -1,4 +1,4 @@
-name: XRT CI Cleanup
+name: XRT CI
 
 env:  
   RELEASE: '2024.1'  
@@ -64,7 +64,7 @@ jobs:
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive   
 
-      - name: checkout composite workflows 
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows
@@ -102,7 +102,7 @@ jobs:
           submodules: recursive
           persist-credentials: false 
             
-      - name: checkout composite workflows
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows
@@ -141,7 +141,7 @@ jobs:
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive  
 
-      - name: checkout composite workflows
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
@@ -169,7 +169,7 @@ jobs:
     needs: build    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
-      - name: checkout composite workflows
+      - name: Checkout private repository    
         uses: actions/checkout@v3 
         with:    
           repository: actions-int/composite-workflows    
@@ -199,7 +199,7 @@ jobs:
         uses: actions/checkout@v3  
         with:  
           repository: actions-int/extraction-action
-          ref: 'cleanup' 
+          ref: 'v0.0.1' 
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/extraction-action
@@ -212,7 +212,7 @@ jobs:
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
           boardType: "pcie"
-          boardMode: "hw"    
+          boardMode: "hw"      
     outputs:    
       board_list: ${{ steps.extract.outputs.board_list }}        
 
@@ -223,21 +223,21 @@ jobs:
       matrix:      
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
     steps:      
-      - name: checkout composite workflows   
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
-          ref: cleanup
+          ref: main
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
         with:     
           organization: ${{ github.repository }}  
           runNumber: ${{ github.run_number }}  
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }}  
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
@@ -259,21 +259,21 @@ jobs:
       matrix:      
         os_list: ['centos_7.8', 'centos_8.1'] 
     steps:      
-      - name: checkout composite workflows 
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
-          ref: cleanup
+          ref: main
        
-      - name: Use composite action for sw-emulation     
+      - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -296,21 +296,21 @@ jobs:
       matrix:      
         os_list: ['centos_7.8', 'centos_8.1'] 
     steps:      
-      - name: checkout composite workflows
+      - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
           repository: actions-int/composite-workflows      
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
-          ref: cleanup
+          ref: main
        
-      - name: Use composite action for hw-emulation       
+      - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }}
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -331,11 +331,11 @@ jobs:
     needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
     if: always() 
     steps:  
-      - name: checkout composite workflows  
+      - name: Checkout test summary Action repository  
         uses: actions/checkout@v3  
         with:  
           repository: actions-int/XOAH-URL-action
-          ref: 'cleanup' 
+          ref: 'XOAH_URL_action' 
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/XOAH-URL-action
@@ -346,20 +346,10 @@ jobs:
         with:    
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
-          runNumber: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          runNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
         run: |    
-          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY    
-
-  cleanup:    
-    needs: [apu-package-build, windows-build, test-summary]  
-    runs-on: Ubuntu-22.04  
-    if: success()    
-    steps:    
-      - name: File cleanup   
-        run: |    
-          rm -rf ${{ secrets.NPATH }}/${{ env.PIPELINE }}/${{ env.ENV }}_pipeline/builds/${{ github.run_number }}/staging/artifact/* 
-          rm -rf ${{ secrets.NPATH }}/${{ env.PIPELINE }}/${{ env.ENV }}_pipeline/${{ github.run_number }}
+          # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
+          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY
