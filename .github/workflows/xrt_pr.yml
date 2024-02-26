@@ -1,119 +1,116 @@
-name: XRT CI    
-    
-env:      
-  RELEASE: '2024.1'      
-  PIPELINE: 'xrt'     
-  ENV: 'test'     
-    
-on: 
-  issue_comment:    
-    types: [created]
-    
+name: XRT CI  
+  
+env:  
+  RELEASE: '2024.1'  
+  PIPELINE: 'xrt'  
+  ENV: 'test'  
+  
+on:  
+  pull_request_target:  
+    types: [opened, edited, synchronize, labeled]  
+  
 jobs:  
-  setup:    
-    runs-on: Ubuntu-22.04
-    permissions:
-      issues: write
-    outputs:    
-      pr_repository: ${{ steps.set-pr-vars.outputs.pr_repository }}
-      pr_ref: ${{ steps.set-pr-vars.outputs.pr_ref }}
-    steps:    
-      - name: Get PR details for issue_comment event    
-        id: get-pr-details   
-        uses: octokit/request-action@v2.x    
-        with:    
-          route: GET ${{ github.event.issue.pull_request.url || github.event.pull_request.url }}
-        env:    
-          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}    
-    
-      - name: Set variables
-        id: set-pr-vars
-        run: |
-            echo "pr_repository=${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}" >> "$GITHUB_OUTPUT"
-            echo "pr_ref=${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}" >> "$GITHUB_OUTPUT"
-            echo "::set-output name=pr_repository1::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
-            echo "::set-output name=pr_ref1::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"
-            
-  authorize:   
-    needs: setup    
-    runs-on: Ubuntu-22.04    
-    if: >    
-      (github.event_name == 'pull_request_target') ||     
-      (github.event_name == 'issue_comment' &&     
-      github.event.comment.body == '/build' &&     
-      contains('sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV, pkbhaga03', github.actor))    
-    steps:    
-      - name: Checkout private repository          
-        uses: actions/checkout@v4       
-        with:          
-          repository: actions-int/composite-workflows    
-          github-server-url: ${{ secrets.SERVER_URL }}          
-          token: ${{ secrets.ACCESS_TOKEN }}          
-          path: composite-workflows    
-          ref: main    
-    
-      - name: authorize    
-        uses: ./composite-workflows/authorize    
-        with:    
-          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}    
-          pullRequestUser: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.user.login || github.event_name == 'issue_comment' && github.actor }}  
-   
+  setup:  
+    runs-on: Ubuntu-22.04  
+    permissions:  
+      issues: write  
+    outputs:  
+      pr_repository: ${{ steps.set-pr-vars.outputs.pr_repository }}  
+      pr_ref: ${{ steps.set-pr-vars.outputs.pr_ref }}  
+    steps:  
+      - name: Get PR details for issue_comment event  
+        id: get-pr-details  
+        uses: octokit/request-action@v2.x  
+        with:  
+          route: GET ${{ github.event.pull_request.url || github.event.pull_request.url }}  
+        env:  
+          GITHUB_TOKEN: ${{ secrets.CI_CLOUD_TOKEN }}  
+  
+      - name: Set variables  
+        id: set-pr-vars  
+        run: |  
+          echo "pr_repository=${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}" >> "$GITHUB_OUTPUT"  
+          echo "pr_ref=${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}" >> "$GITHUB_OUTPUT"  
+          echo "::set-output name=pr_repository1::${{ fromJson(steps.get-pr-details.outputs.data).head.repo.full_name }}"  
+          echo "::set-output name=pr_ref1::${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}"  
+  
+  authorize:  
+    needs: setup  
+    runs-on: Ubuntu-22.04  
+    if: >   
+      contains('sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV, pkbhaga03', github.actor) ||  
+      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'build'))  
+    steps:  
+      - name: Checkout private repository  
+        uses: actions/checkout@v4  
+        with:  
+          repository: actions-int/composite-workflows  
+          github-server-url: ${{ secrets.SERVER_URL }}  
+          token: ${{ secrets.ACCESS_TOKEN }}  
+          path: composite-workflows  
+          ref: main  
+  
+      - name: authorize  
+        uses: ./composite-workflows/authorize  
+        with:  
+          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}  
+          pullRequestUser: ${{ github.event.pull_request.user.login }}  
   
   build:  
-    needs: [setup, authorize ]
-    strategy:        
-      matrix:        
-        include:        
-          - os: centos78        
-            packageType: rpm        
-          - os: centos8        
-            packageType: rpm        
-          - os: rhel9        
-            packageType: rpm        
-          - os: ubuntu2004        
-            packageType: deb        
-          - os: ubuntu2204        
-            packageType: deb        
-          
-    runs-on: [self-hosted, Ubuntu-22.04]  
-    steps:    
-      - name: Set env variables      
-        run: |      
-          echo "Setting environment variables..."        
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV      
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV
-          echo "pr_repository=${{ needs.setup.outputs.pr_repository }}" >> $GITHUB_ENV
-          echo "pr_ref=${{ needs.setup.outputs.pr_ref }}" >> $GITHUB_ENV
-      
-      - name: Checkout PR     
-        uses: actions/checkout@v4   
-        with:   
-          repository:  ${{ needs.setup.outputs.pr_repository }}
-          ref: ${{ needs.setup.outputs.pr_ref }}
-          fetch-depth: 0  
-          path: ${{ github.workspace }}/${{ github.run_number }}    
-          submodules: recursive     
+    needs: [setup, authorize]  
+    strategy:  
+      matrix:  
+        include:  
+          - os: centos78  
+            packageType: rpm  
+          - os: centos8  
+            packageType: rpm  
+          - os: rhel9  
+            packageType: rpm  
+          - os: ubuntu2004  
+            packageType: deb  
+          - os: ubuntu2204  
+            packageType: deb  
   
-      - name: Checkout private repository        
-        uses: actions/checkout@v3     
-        with:        
+    runs-on: [self-hosted, Ubuntu-22.04]  
+    steps:  
+      - name: Set env variables  
+        run: |  
+          echo "Setting environment variables..."  
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV  
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV  
+          echo "pr_repository=${{ needs.setup.outputs.pr_repository }}" >> $GITHUB_ENV  
+          echo "pr_ref=${{ needs.setup.outputs.pr_ref }}" >> $GITHUB_ENV  
+  
+      - name: Checkout PR  
+        uses: actions/checkout@v4  
+        with:  
+          repository:  ${{ needs.setup.outputs.pr_repository }}  
+          ref: ${{ needs.setup.outputs.pr_ref }}  
+          fetch-depth: 0  
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive  
+  
+      - name: Checkout private repository  
+        uses: actions/checkout@v3  
+        with:  
           repository: actions-int/composite-workflows  
-          github-server-url: ${{ secrets.SERVER_URL }}        
-          token: ${{ secrets.ACCESS_TOKEN }}        
-          path: composite-workflows   
+          github-server-url: ${{ secrets.SERVER_URL }}  
+          token: ${{ secrets.ACCESS_TOKEN }}  
+          path: composite-workflows  
           ref: main  
-         
-      - name: XRT build       
+  
+      - name: XRT build  
         uses: ./composite-workflows/build  
-        with:       
-          pipeline: ${{ env.PIPELINE }}   
-          osVersion: ${{ matrix.os }}    
-          packageType: ${{ matrix.packageType }}    
+        with:  
+          pipeline: ${{ env.PIPELINE }}  
+          osVersion: ${{ matrix.os }}  
+          packageType: ${{ matrix.packageType }}  
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }}       
+          buildNumber: ${{ github.run_number }}  
           accessToken: ${{ secrets.ACCESS_TOKEN }}  
           github-server-url: ${{ secrets.SERVER_URL }}  
-          appConfig: ${{ secrets.APP_CONFIG }}   
-          appConfig1: ${{ secrets.APP_CONFIG1 }}   
-          appConfig2: ${{ secrets.APP_CONFIG2 }}   
-          appConfig3: ${{ secrets.APP_CONFIG3 }}   
+          appConfig: ${{ secrets.APP_CONFIG }}  
+          appConfig1: ${{ secrets.APP_CONFIG1 }}  
+          appConfig2: ${{ secrets.APP_CONFIG2 }}  
+          appConfig3: ${{ secrets.APP_CONFIG3 }}  
