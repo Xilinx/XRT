@@ -54,6 +54,24 @@ namespace xdp { namespace util {
     return path;
   }
 
+  std::string getDeviceName(void* deviceHandle)
+  {
+    std::string deviceName = "";
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::get_userpf_device(deviceHandle);
+    if (!coreDevice) {
+      return deviceName;
+    }
+    try {
+      deviceName = xrt_core::device_query<xrt_core::query::rom_vbnv>(coreDevice);
+      std::cout<<"Debug: Device Name "<<deviceName<<std::endl;
+    } catch (const xrt_core::query::no_such_key&) {
+      //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Device query for Debug IP Layout not implemented");
+    } catch (const std::exception &) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Failed to retrieve Device Name");
+    }
+    return deviceName;
+  }
+
 } // end namespace util
 } // end namespace xdp
 

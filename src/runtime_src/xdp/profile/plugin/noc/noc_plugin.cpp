@@ -27,6 +27,7 @@
 #include "xdp/profile/plugin/noc/noc_plugin.h"
 #include "xdp/profile/writer/noc/noc_writer.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/device/utility.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -45,9 +46,7 @@ namespace xdp {
         auto xrtDevice = std::make_unique<xrt::device>(index);
         auto ownedHandle = xrtDevice->get_handle()->get_device_handle();
         // Determine the name of the device
-        struct xclDeviceInfo2 info;
-        xclGetDeviceInfo2(ownedHandle, &info);
-        std::string deviceName = std::string(info.mName);
+        std::string deviceName = util::getDeviceName(handle);
         mDevices.push_back(deviceName);
   
         std::string outputFile = "noc_profile_" + deviceName + ".csv"; 

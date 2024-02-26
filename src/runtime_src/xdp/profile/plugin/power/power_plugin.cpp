@@ -30,6 +30,7 @@
 #include "xdp/profile/plugin/power/power_plugin.h"
 #include "xdp/profile/writer/power/power_writer.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -91,9 +92,7 @@ namespace xdp {
         filePaths.push_back(paths) ;
   
         // Determine the name of the device
-        struct xclDeviceInfo2 info ;
-        xclGetDeviceInfo2(ownedHandle, &info) ;
-        std::string deviceName = std::string(info.mName) ;
+        std::string deviceName = util::getDeviceName(handle);
   
         if (deviceNumbering.find(deviceName) == deviceNumbering.end()) {
           deviceNumbering[deviceName] = 0 ;
