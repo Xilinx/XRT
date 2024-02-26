@@ -14,7 +14,7 @@ hip_stream_create_with_flags(unsigned int flags)
 static void
 hip_stream_destroy(hipStream_t stream)
 {
-  throw_if(!stream, hipErrorInvalidHandle, "stream is nullptr");
+  throw_invalid_handle_if(!stream, "stream is nullptr");
 
   throw std::runtime_error("Not implemented");
 }
@@ -28,7 +28,7 @@ hip_stream_synchronize(hipStream_t stream)
 static void
 hip_stream_wait_event(hipStream_t stream, hipEvent_t event, unsigned int flags)
 {
-  throw_if(!event, hipErrorInvalidHandle, "event is nullptr");
+  throw_invalid_handle_if(!event, "event is nullptr");
 
   throw std::runtime_error("Not implemented");
 }
@@ -40,7 +40,7 @@ hipError_t
 hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags)
 {
   try {
-    throw_if(!stream, hipErrorInvalidValue, "stream passed is nullptr");
+    throw_invalid_value_if(!stream, "stream passed is nullptr");
 
     *stream = xrt::core::hip::hip_stream_create_with_flags(flags);
     return hipSuccess;

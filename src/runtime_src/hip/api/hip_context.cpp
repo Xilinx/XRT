@@ -20,7 +20,7 @@ static context_handle
 hip_ctx_create(unsigned int flags, hipDevice_t device)
 {
   auto hip_dev = device_cache.get(static_cast<device_handle>(device));
-  throw_if(!hip_dev, hipErrorInvalidValue, "device requested is not available");
+  throw_invalid_value_if(!hip_dev, "device requested is not available");
 
   hip_dev->set_flags(flags);
   auto hip_ctx = std::make_shared<context>(hip_dev);
@@ -35,10 +35,10 @@ static void
 hip_ctx_destroy(hipCtx_t ctx)
 {
   auto handle = reinterpret_cast<context_handle>(ctx);
-  throw_if(!handle, hipErrorInvalidValue, "device requested is not available");
+  throw_invalid_value_if(!handle, "device requested is not available");
 
   auto hip_ctx = context_cache.get(handle);
-  throw_if(!hip_ctx, hipErrorInvalidValue, "context handle not found");
+  throw_invalid_value_if(!hip_ctx, "context handle not found");
 
   // Need to remove the ctx of calling thread if its the top one
   if (!tls_objs.ctx_stack.empty() && tls_objs.ctx_stack.top().lock() == hip_ctx) {
@@ -52,7 +52,7 @@ static device_handle
 hip_ctx_get_device()
 {
   auto ctx = get_current_context();
-  throw_if(!ctx, hipErrorInvalidValue, "Error retrieving context");
+  throw_invalid_value_if(!ctx, "Error retrieving context");
 
   return ctx->get_dev_id();
 }
@@ -81,7 +81,7 @@ hip_device_primary_ctx_release(hipDevice_t dev)
 {
   auto dev_hdl = static_cast<device_handle>(dev);
   auto hip_dev = device_cache.get(dev_hdl);
-  throw_if(!hip_dev, hipErrorInvalidDevice, "Invalid device");
+  throw_invalid_device_if(!hip_dev, "Invalid device");
 
   auto ctx = hip_dev->get_pri_ctx();
   if (!ctx)
@@ -104,7 +104,7 @@ context_handle
 hip_device_primary_ctx_retain(device_handle dev)
 {
   auto hip_dev = device_cache.get(dev);
-  throw_if(!hip_dev, hipErrorInvalidDevice, "Invalid device");
+  throw_invalid_device_if(!hip_dev, "Invalid device");
 
   auto hip_ctx = hip_dev->get_pri_ctx();
   // create primary context
@@ -131,7 +131,7 @@ hipError_t
 hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device)
 {
   try {
-    throw_if(!ctx, hipErrorInvalidValue, "ctx passed is nullptr");
+    throw_invalid_value_if(!ctx, "ctx passed is nullptr");
 
     auto handle = xrt::core::hip::hip_ctx_create(flags, device);
     *ctx = reinterpret_cast<hipCtx_t>(handle);
@@ -168,7 +168,7 @@ hipError_t
 hipCtxGetDevice(hipDevice_t* device)
 {
   try {
-    throw_if(!device, hipErrorInvalidValue, "device passed is nullptr");
+    throw_invalid_value_if(!device, "device passed is nullptr");
 
     *device = xrt::core::hip::hip_ctx_get_device();
     return hipSuccess;
@@ -204,7 +204,7 @@ hipError_t
 hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev)
 {
   try {
-    throw_if(!pctx, hipErrorInvalidValue, "nullptr passed");
+    throw_invalid_value_if(!pctx, "nullptr passed");
 
     auto handle = xrt::core::hip::hip_device_primary_ctx_retain(dev);
     *pctx = reinterpret_cast<hipCtx_t>(handle);

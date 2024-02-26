@@ -32,11 +32,36 @@ extern thread_local hip_tls_objs tls_objs;
 } // xrt::core::hip
 
 namespace {
-// common function that throws hip error
+// common functions for throwing hip errors
 inline void
 throw_if(bool check, hipError_t err, const std::string& err_msg)
 {
-  check ? throw xrt_core::system_error(err, err_msg) : void();
+  if (check)
+    throw xrt_core::system_error(err, err_msg);
+}
+
+inline void
+throw_invalid_value_if(bool check, const std::string& err_msg)
+{
+  throw_if(check, hipErrorInvalidValue, err_msg);
+}
+
+inline void
+throw_invalid_handle_if(bool check, const std::string& err_msg)
+{
+  throw_if(check, hipErrorInvalidHandle, err_msg);
+}
+
+inline void
+throw_invalid_device_if(bool check, const std::string& err_msg)
+{
+  throw_if(check, hipErrorInvalidDevice, err_msg);
+}
+
+inline void
+throw_invalid_resource_if(bool check, const std::string& err_msg)
+{
+  throw_if(check, hipErrorInvalidResourceHandle, err_msg);
 }
 }
 #endif

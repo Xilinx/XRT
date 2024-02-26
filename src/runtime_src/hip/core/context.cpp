@@ -45,5 +45,5 @@ get_current_context()
   auto ctx_hdl = hip_device_primary_ctx_retain(tls_objs.dev_hdl);
   return context_cache.get(ctx_hdl);
 }
-}
+} // xrt::core::hip
 
