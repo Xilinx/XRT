@@ -126,6 +126,7 @@ SectionAIEResourcesBin::subSectionExists(const std::string& _sSubSectionName) co
       boost::property_tree::read_json(ss, pt);  
     }
     catch (const boost::property_tree::json_parser_error& e) {
+      (void)e;	    
       auto errMsg = boost::format("ERROR: Unable to parse  metadata file of section '%s'") % getSectionIndexName();
       throw std::runtime_error(errMsg.str());
     }
@@ -200,6 +201,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   }
 
   catch (const boost::property_tree::json_parser_error& e) {
+    (void)e;	  
     auto errMsg = boost::format("ERROR: Unable to parse  metadata file of section '%s'") % getSectionIndexName();
     throw std::runtime_error(errMsg.str());
   }   
@@ -511,6 +513,7 @@ SectionAIEResourcesBin::readXclBinBinary(std::istream& _istream, const axlf_sect
   }
 
   catch (const boost::property_tree::json_parser_error& e) {
+      (void)e;	  
       auto errMsg = boost::format("ERROR: Unable to parse  metadata file of section '%s'") % getSectionIndexName();
       throw std::runtime_error(errMsg.str());
   }
