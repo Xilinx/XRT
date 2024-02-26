@@ -338,6 +338,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
+            t.is_dma_only = false;
         }
 
         int num_tiles = count;
@@ -396,6 +397,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         return {};
     }
 
+    bool is_dma_only = (type == module_type::dma);
     const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
 
@@ -413,6 +415,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
+            t.is_dma_only = is_dma_only;
         }
 
         int num_tiles = count;
@@ -466,6 +469,7 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = mapping.second.get<uint8_t>("column");
         tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
+        tile.is_dma_only = false;
         tiles.emplace_back(std::move(tile));
     }
     return tiles;
