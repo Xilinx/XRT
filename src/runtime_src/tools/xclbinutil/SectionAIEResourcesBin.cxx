@@ -333,7 +333,7 @@ SectionAIEResourcesBin::createDefaultImage(std::istream& _istream, std::ostrings
 
 void
 SectionAIEResourcesBin::readSubPayload(const char* _pOrigDataSection,
-                                  unsigned int _origSectionSize,
+                                       unsigned int _origSectionSize,
                                   std::istream& _istream,
                                   const std::string& _sSubSectionName,
                                   Section::FormatType _eFormatType,
