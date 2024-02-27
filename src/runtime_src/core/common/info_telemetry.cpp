@@ -116,12 +116,7 @@ telemetry_info(const xrt_core::device* device)
     return telemetry_pt;
   case xrt_core::query::device_class::type::ryzen:
   {
-    auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(device); // Telemetry is platform specific for Ryzen devices
-    switch (device_id) {
-    case 5378: // phoenix
-    case 6128: // strix
-      telemetry_pt.add_child("telemetry", aie2_telemetry_info(device));
-    }
+    telemetry_pt.add_child("telemetry", aie2_telemetry_info(device));
     return telemetry_pt;
   }
   }

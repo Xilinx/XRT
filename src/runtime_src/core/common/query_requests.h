@@ -50,6 +50,7 @@ enum class key_type
   pcie_express_lane_width,
   pcie_express_lane_width_max,
   pcie_bdf,
+  pcie_id,
 
   instance,
   edge_vendor,
@@ -463,6 +464,44 @@ struct pcie_bdf : request
     return boost::str
       (boost::format("%04x:%02x:%02x.%01x") % std::get<0>(value) %
        std::get<1>(value) % std::get<2>(value) % std::get<3>(value));
+  }
+};
+
+/**
+ *  Useful for identifying devices that utilize revision numbers. Prefer this request over pcie_device.
+ */
+struct pcie_id : request
+{
+  struct data {
+    uint16_t device_id;
+    uint8_t revision_id;
+  };
+
+  using result_type = data;
+  static const key_type key = key_type::pcie_id;
+  static const char* name() { return "pcie_id"; }
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  device_to_string(const result_type& value)
+  {
+    return boost::str(boost::format("%04x") % value.device_id);
+  }
+
+  static std::string
+  revision_to_string(const result_type& value)
+  {
+    // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
+    return boost::str(boost::format("%02x") % static_cast<uint16_t>(value.revision_id));
+  }
+
+  static std::string
+  to_path(const result_type& value)
+  {
+    // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
+    return boost::str(boost::format("%04x_%02x") % value.device_id % static_cast<uint16_t>(value.revision_id));
   }
 };
 
