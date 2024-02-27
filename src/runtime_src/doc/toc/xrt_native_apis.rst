@@ -854,7 +854,7 @@ The ``xrt::aie::profiling::stop`` function stops the performance profiling assoc
       :number-lines: 35
            
         event.stop();
-        double throughput = (double)output_size_in_bytes / (cycle_count *0.8 * 1e-3); 
+        double throughput = output_size_in_bytes / (cycle_count *0.8 * 1e-3); 
         // Every AIE cycle is 0.8ns in production board
         std::cout << "Throughput of the graph: " << throughput << " MB/s" << std::endl;
            

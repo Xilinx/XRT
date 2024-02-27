@@ -24,6 +24,7 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_graph.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -164,10 +165,13 @@ public:
 };
 
 class profiling_impl;
-class profiling 
+class profiling : public detail::pimpl<profiling_impl>
 {
 public:
   enum class profiling_option : int { io_total_stream_running_to_idle_cycles = 0, io_stream_start_to_bytes_transferred_cycles = 1, io_stream_start_difference_cycles = 2, io_stream_running_event_count = 3 };
+
+  profiling() = default;
+
   /**
    * event() - Constructor from a device
    *
@@ -175,6 +179,7 @@ public:
    *  The device on which the profiling should start
    *
    */
+  explicit
   profiling(const xrt::device& device);
 
   /**
@@ -212,7 +217,7 @@ public:
   stop() const;
 
 private:
-    std::shared_ptr<profiling_impl> impl;
+  std::shared_ptr<profiling_impl> impl;
 };
 
 }} // aie, xrt
@@ -313,8 +318,8 @@ xrtResetAIEArray(xrtDeviceHandle handle);
  *
  * @handle:          Handle to the device
  * @option:          Profiling option.
- * @port1Name:       Profiling port 1 name
- * @port2Name:       Profiling port 2 name
+ * @port1Name:       PLIO/GMIO port 1 name
+ * @port2Name:       PLIO/GMIO port 2 name
  * @value:           The number of bytes to trigger the profiling event
  *
  * Return:         An integer profiling handle on success,

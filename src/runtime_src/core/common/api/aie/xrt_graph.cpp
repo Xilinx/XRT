@@ -130,7 +130,9 @@ public:
   {}
 
   ~profiling_impl()
-  {}
+  {
+    device->stop_profiling(profiling_hdl);
+  }
 
   handle 
   start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
