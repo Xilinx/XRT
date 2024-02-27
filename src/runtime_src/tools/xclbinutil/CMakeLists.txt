@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2023 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2024, Advanced Micro Devices, Inc. All rights Reserved.
 #
 # Signing xclbin images are currently only support on Linux
 

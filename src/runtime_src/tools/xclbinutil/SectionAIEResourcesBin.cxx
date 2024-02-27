@@ -274,8 +274,6 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Image
   _buffer.write(reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset, pHdr->m_image_size);
-  
-    
 }
 
 // -------------------------------------------------------------------------
@@ -450,8 +448,8 @@ SectionAIEResourcesBin::writeMetadata(std::ostream& _oStream) const
 
 void
 SectionAIEResourcesBin::writeSubPayload(const std::string& _sSubSectionName,
-                                   FormatType _eFormatType,
-                                   std::fstream&  _oStream) const
+                                        FormatType _eFormatType,
+                                        std::fstream&  _oStream) const
 {
   // Some basic DRC checks
   if (m_pBuffer == nullptr) {
@@ -523,7 +521,5 @@ SectionAIEResourcesBin::readXclBinBinary(std::istream& _istream, const axlf_sect
 
   XUtil::TRACE_PrintTree("Current AIE_RESOURCES_BIN contents", pt);
   std::string sName = ptAieResourcesBin.get<std::string>("name");
-
   Section::m_sIndexName = sName;
-  
 }
