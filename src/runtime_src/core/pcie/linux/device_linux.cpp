@@ -208,7 +208,7 @@ struct bdf
   }
 };
 
-struct id
+struct pcie_id
 {
   using result_type = query::pcie_id::result_type;
 
@@ -1444,7 +1444,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
-  emplace_func0_request<query::pcie_id,                        id>();
+  emplace_func0_request<query::pcie_id,                        pcie_id>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
   emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();

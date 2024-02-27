@@ -494,14 +494,14 @@ struct pcie_id : request
   revision_to_string(const result_type& value)
   {
     // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
-    return boost::str(boost::format("%02x") % (uint16_t) value.revision_id);
+    return boost::str(boost::format("%02x") % static_cast<uint16_t>(value.revision_id));
   }
 
   static std::string
   to_path(const result_type& value)
   {
     // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
-    return boost::str(boost::format("%04x_%02x") % value.device_id % (uint16_t) value.revision_id);
+    return boost::str(boost::format("%04x_%02x") % value.device_id % static_cast<uint16_t>(value.revision_id));
   }
 };
 
