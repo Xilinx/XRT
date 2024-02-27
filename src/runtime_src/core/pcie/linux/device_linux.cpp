@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -41,6 +41,87 @@ namespace {
 namespace query = xrt_core::query;
 using pdev = std::shared_ptr<xrt_core::pci::dev>;
 using key_type = query::key_type;
+
+// Specialize for other value types.
+template <typename ValueType>
+struct sysfs_fcn
+{
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+
+    return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+  }
+};
+
+template <>
+struct sysfs_fcn<std::string>
+{
+  using ValueType = std::string;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+
+    return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+  }
+};
+
+template <typename VectorValueType>
+struct sysfs_fcn<std::vector<VectorValueType>>
+{
+  //using ValueType = std::vector<std::string>;
+  using ValueType = std::vector<VectorValueType>;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+
+    return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+  }
+};
 
 static int
 get_render_value(const std::string& dir)
@@ -124,6 +205,24 @@ struct bdf
   {
     auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
+  }
+};
+
+struct id
+{
+  using result_type = query::pcie_id::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    result_type pcie_id;
+
+    const auto pdev = get_pcidev(device);
+
+    pcie_id.device_id = sysfs_fcn<uint16_t>::get(pdev, "", "device");
+    pcie_id.revision_id = sysfs_fcn<uint8_t>::get(pdev, "", "revision");
+
+    return pcie_id;
   }
 };
 
@@ -1028,87 +1127,6 @@ struct read_trace_data
   }
 };
 
-// Specialize for other value types.
-template <typename ValueType>
-struct sysfs_fcn
-{
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry)
-  {
-    std::string err;
-    ValueType value;
-    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
-  {
-    std::string err;
-    dev->sysfs_put(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-  }
-};
-
-template <>
-struct sysfs_fcn<std::string>
-{
-  using ValueType = std::string;
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry)
-  {
-    std::string err;
-    ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
-  {
-    std::string err;
-    dev->sysfs_put(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-  }
-};
-
-template <typename VectorValueType>
-struct sysfs_fcn<std::vector<VectorValueType>>
-{
-  //using ValueType = std::vector<std::string>;
-  using ValueType = std::vector<VectorValueType>;
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry)
-  {
-    std::string err;
-    ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
-  {
-    std::string err;
-    dev->sysfs_put(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-  }
-};
-
 /* Accelerator Deadlock Detector status
  * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
  */
@@ -1426,6 +1444,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
+  emplace_func0_request<query::pcie_id,                        id>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
   emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();
