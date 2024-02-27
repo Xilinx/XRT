@@ -81,6 +81,12 @@ public:
   reset() {
     mTimeStart = std::chrono::high_resolution_clock::now();
   }
+  static long long
+  unit() {
+    using namespace std::literals::chrono_literals;
+    std::chrono::seconds osec = 1s;
+    return std::chrono::microseconds(osec).count();
+  }
 };
 
 // Abstraction of device buffer so we can do automatic buffer dealocation (RAII)
