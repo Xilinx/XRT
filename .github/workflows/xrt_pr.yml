@@ -37,8 +37,7 @@ jobs:
   authorize:  
     needs: setup  
     runs-on: Ubuntu-22.04  
-    if: >   
-      contains('sonal, abalasa, stsoe, hcneema, NaAl-Xlnx, maxzhen, houlz0507, chvamshi-xilinx, salindac, dayeh-xilinx, larry9523, sadasivanshaiju, xilinxgitops, dbenusov-xilinx, sabarina, sabarinaxil, manikandan-xilinx, sabarina, SubhedarV, pkbhaga03', github.actor) ||  
+    if: 
       (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'build'))  
     steps:  
       - name: Checkout private repository  
