@@ -33,7 +33,7 @@ runkernel(hipFunction_t function, hipStream_t stream, std::array<void *, 3> &arg
   const char *name = hipKernelNameRef(function);
   std::cout << "Running " << name << ' ' << repeat_loop << " times...\n";
   hip_test_timer timer;
-  const auto msmulti = (double)hip_test_timer::unit();
+  const auto msmulti = static_cast<double>(hip_test_timer::unit());
 
   const int globalr = std::strcmp(name, nop_kernel_name) ? vector_length/threads_per_block_x : 1;
   const int localr = std::strcmp(name, nop_kernel_name) ? threads_per_block_x : 1;
@@ -48,7 +48,8 @@ runkernel(hipFunction_t function, hipStream_t stream, std::array<void *, 3> &arg
   auto delayd = timer.stop();
 
   std::cout << "Throughput metrics" << std::endl;
-  std::cout << '(' << repeat_loop << " loops, " << delayd << " us, " << (repeat_loop * msmulti)/(double)delayd
+  std::cout << '(' << repeat_loop << " loops, " << delayd << " us, "
+            << (repeat_loop * msmulti)/static_cast<double>(delayd)
             << " ops/s, " << delayd/repeat_loop << " us average pipelined latency)" << std::endl;
 
 
@@ -64,7 +65,8 @@ runkernel(hipFunction_t function, hipStream_t stream, std::array<void *, 3> &arg
   delayd = timer.stop();
 
   std::cout << "Latency metrics" << std::endl;
-  std::cout << '(' << repeat_loop << " loops, " << delayd << " us, " << (repeat_loop * msmulti)/(double)delayd
+  std::cout << '(' << repeat_loop << " loops, " << delayd << " us, "
+            << (repeat_loop * msmulti)/static_cast<double>(delayd)
             << " ops/s, " << delayd/repeat_loop << " us average start-to-finish latency)" << std::endl;
 
 }
