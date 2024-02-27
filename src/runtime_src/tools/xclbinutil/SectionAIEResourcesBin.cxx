@@ -54,6 +54,7 @@ SectionAIEResourcesBin::init::init()
 // -------------------------------------------------------------------------
 
 using SubSectionTableCollection = std::vector<std::pair<std::string, SectionAIEResourcesBin::SubSection>>;
+
 static const SubSectionTableCollection&
 getSubSectionTable()
 {
