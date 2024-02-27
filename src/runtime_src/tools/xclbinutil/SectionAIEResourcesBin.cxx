@@ -160,7 +160,7 @@ SectionAIEResourcesBin::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   }
 
   // Prepare our destination header buffer
-  aie_resources_bin aieResourcesBinHdr = { 0 };      // Header buffer
+  aie_resources_bin aieResourcesBinHdr = {};      // Header buffer
   std::ostringstream stringBlock;         // String block (stored immediately after the header)
 
   auto pHdr = reinterpret_cast<const aie_resources_bin*>(_pOrigDataSection);
