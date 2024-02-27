@@ -100,8 +100,8 @@ namespace xdp::aie::trace {
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = channel;
-          config.port_trace_is_master[portnum] = (tile.is_master != 0);
+          config.port_trace_ids[channel] = channel;
+          config.port_trace_is_master[channel] = (tile.is_master != 0);
 
           if (aie::isInputSet(type, metricSet)) {
             config.mm2s_channels[0] = channel0;
