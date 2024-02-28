@@ -18,14 +18,14 @@
 #define BINARY_WRITER_XRT_BINARYDATAWRITER_H
 
 #include "xdp/config.h"
-#include <string>
-#include <iostream>
-#include <sstream>
 #include <fstream>
+#include <iostream>
+#include <string>
+#include <sstream>
 #include <vector>
-#include "IBinaryDataWriter.h"
-#include "IBinaryDataEvent.h"
 #include "BinaryDataHeader.h"
+#include "IBinaryDataEvent.h"
+#include "IBinaryDataWriter.h"
 
 namespace xdp::AIEBinaryData
 {

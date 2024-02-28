@@ -41,7 +41,6 @@ public:
 
 public:
   static uint32_t EventTypeID() ;
-  static IBinaryDataEvent* create();
 
 public:
   IBinaryDataEvent::Time m_timeStamp1 = 0;

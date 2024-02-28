@@ -17,8 +17,8 @@
 #ifndef BINARY_WRITER_XRT_IBINARYDATAEVENT_H
 #define BINARY_WRITER_XRT_IBINARYDATAEVENT_H
 
-#include <cstdint>
 #include "xdp/config.h"
+#include <cstdint>
 
 namespace xdp::AIEBinaryData
 {

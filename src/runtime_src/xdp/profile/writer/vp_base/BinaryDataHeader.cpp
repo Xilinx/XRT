@@ -32,7 +32,7 @@ void BinaryDataHeader::copyString(const std::string& stdString, char charString[
   std::memcpy(charString, stdString.c_str(), length);
 }
 //---------------------------------------------------------------------------------------------------------------------
-#define AIE_VERSION_STR "AMD AIE DATA 01"
+constexpr const char* AIE_VERSION_STR =  "AMD AIE DATA 01";
 BinaryDataHeader::BinaryDataHeader()
 {
   copyString(AIE_VERSION_STR, m_header, AIE_HEADER_STR_LEN);
@@ -63,7 +63,7 @@ void BinaryDataHeader::print() const
   std::cout << "dateStamp = "        << m_dateStamp     << std::endl;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#define MAGIC 0xc1fc1fc1
+constexpr uint32_t MAGIC =  0xc1fc1fc1;
 PacketHeader::PacketHeader():m_magic(MAGIC)
 {
 }

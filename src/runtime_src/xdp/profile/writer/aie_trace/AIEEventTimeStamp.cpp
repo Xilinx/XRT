@@ -14,8 +14,8 @@
  * under the License.
  */
 #include <iostream>
-#include "xdp/profile/writer/vp_base/IBinaryDataWriter.h"
 #include "AIEEventTimeStamp.h"
+#include "xdp/profile/writer/vp_base/IBinaryDataWriter.h"
 
 namespace xdp::AIEBinaryData
 {
@@ -85,9 +85,4 @@ uint32_t AIEEventTimeStamp::EventTypeID()
   return 777;
 };
 
-//---------------------------------------------------------------------------------------------------------------------
-IBinaryDataEvent *AIEEventTimeStamp::create()
-{
-  return new AIEEventTimeStamp();
-}
 } // AIEBinaryData

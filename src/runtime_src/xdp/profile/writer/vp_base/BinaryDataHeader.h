@@ -21,9 +21,10 @@
 #include <string>
 #include "IBinaryDataEvent.h"
 
-#define AIE_HEADER_STR_LEN 32
 namespace xdp::AIEBinaryData
 {
+
+constexpr size_t AIE_HEADER_STR_LEN =  32;
 
 //---------------------------------------------------------------------------------------------------------------------
 struct BinaryDataHeader

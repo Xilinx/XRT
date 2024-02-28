@@ -17,12 +17,12 @@
 #define XDP_CORE_SOURCE
 
 #include <cstdlib>
-#include <string>
-#include <memory.h>
 #include <cstring>
 #include <ctime>
-#include "IBinaryDataEvent.h"
+#include <memory.h>
+#include <string>
 #include "BinaryDataWriter.h"
+#include "IBinaryDataEvent.h"
 
 namespace xdp::AIEBinaryData
 {
