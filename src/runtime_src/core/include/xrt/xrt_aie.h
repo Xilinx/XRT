@@ -168,7 +168,32 @@ class profiling_impl;
 class profiling : public detail::pimpl<profiling_impl>
 {
 public:
-  enum class profiling_option : int { io_total_stream_running_to_idle_cycles = 0, io_stream_start_to_bytes_transferred_cycles = 1, io_stream_start_difference_cycles = 2, io_stream_running_event_count = 3 };
+  
+  /**
+   * @enum profiliing_options - contains the enumerated options for performance
+   *				profiling using PLIO and GMIO objects.
+   *
+   * @var io_total_stream_running_to_idle_cycles
+   *   Total clock cycles in between the stream running event and the stream 
+   *   idle event of the stream port in the interface tile.
+   * @var io_stream_start_to_bytes_transferred_cycles
+   *   The clock cycles in between the first stream running event to the event that
+   *   the specified bytes are transferred through the stream port in the interface tile.
+   * @var io_stream_start_difference_cycles
+   *   The clock cycles elapsed between the first stream running events of
+   *   the two platform I/O objects.
+   * @var io_stream_running_event_count
+   *   Number of stream running events 
+   *   
+   * Please refer UG1079 for more details.
+   */
+  enum class profiling_option : int 
+  { 
+    io_total_stream_running_to_idle_cycles = 0, 
+    io_stream_start_to_bytes_transferred_cycles = 1,
+    io_stream_start_difference_cycles = 2,
+    io_stream_running_event_count = 3 
+  };
 
   profiling() = default;
 
@@ -194,6 +219,8 @@ public:
    * @param value
    *  The number of bytes to trigger the profiling event.
    *
+   * Please refer UG1079 for more details.
+   *
    * This function configures the performance counters in AI Engine by given
    * port names and value. The port names and value will have different
    * meanings on different options.
@@ -215,9 +242,6 @@ public:
    */
   void
   stop() const;
-
-private:
-  std::shared_ptr<profiling_impl> impl;
 };
 
 }} // aie, xrt

@@ -131,7 +131,12 @@ public:
 
   ~profiling_impl()
   {
-    device->stop_profiling(profiling_hdl);
+    try {
+      device->stop_profiling(profiling_hdl);
+    }
+    catch(...) {
+      // do nothing
+    }
   }
 
   handle 
@@ -379,7 +384,7 @@ namespace xrt { namespace aie {
 
 profiling::
 profiling(const xrt::device& device)
-  : impl(std::move(create_profiling_event(device)))
+  : detail::pimpl<profiling_impl>(std::move(create_profiling_event(device)))
 {}
 
 int 
@@ -388,7 +393,7 @@ start(xrt::aie::profiling::profiling_option option, const std::string& port1_nam
 {
   int opt = static_cast<int>(option);
   return xdp::native::profiling_wrapper("xrt::aie::profiling::start", [this, opt, &port1_name, &port2_name, value] {
-    return impl->start_profiling(opt, port1_name, port2_name, value);
+    return get_handle()->start_profiling(opt, port1_name, port2_name, value);
   });
 }
 
@@ -397,7 +402,7 @@ profiling::
 read() const
 {
   return xdp::native::profiling_wrapper("xrt::aie::profiling::read", [this] {
-    return impl->read_profiling();
+    return get_handle()->read_profiling();
   });
 }
 
@@ -406,7 +411,7 @@ profiling::
 stop() const
 {
   xdp::native::profiling_wrapper("xrt::aie::profiling::stop", [this] {
-    return impl->stop_profiling();
+    return get_handle()->stop_profiling();
   });
 }
 
