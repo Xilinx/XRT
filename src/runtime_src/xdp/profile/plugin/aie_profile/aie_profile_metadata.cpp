@@ -97,11 +97,17 @@ namespace xdp {
                             "XRT", "Finished Parsing AIE Profile Metadata."); 
   }
 
+  /****************************************************************************
+   * Compare tiles (used for sorting)
+   ***************************************************************************/
   bool tileCompare(tile_type tile1, tile_type tile2)
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
+  /****************************************************************************
+   * Check validity of settings
+   ***************************************************************************/
   void AieProfileMetadata::checkSettings()
   {
     using boost::property_tree::ptree;
@@ -148,6 +154,9 @@ namespace xdp {
     }
   }
 
+  /****************************************************************************
+   * Separate string into a vector of settings
+   ***************************************************************************/
   std::vector<std::string> AieProfileMetadata::getSettingsVector(std::string settingsString)
   {
     if (settingsString.empty())
@@ -163,14 +172,51 @@ namespace xdp {
     return settingsVector;
   }
 
-  inline void throw_if_error(bool err, const char* msg)
+  /****************************************************************************
+   * Check if metric set has an equivalent
+   ***************************************************************************/
+  int AieProfileMetadata::getPairModuleIndex(std::string metricSet, module_type mod)
   {
-    if (err)
-      throw std::runtime_error(msg);
+    if ((mod != module_type::core) && (mod != module_type::dma))
+      return -1;
+    
+    int  pairIdx = (mod == module_type::core) ? 1 : 0;
+    auto pairMod = (mod == module_type::core) ? module_type::dma : module_type::core;
+
+    // Search for name equivalent in other module (e.g., core, memory)
+    if (std::find(metricStrings.at(pairMod).begin(), metricStrings.at(pairMod).end(), metricSet) !=
+        metricStrings.at(pairMod).end())
+      return pairIdx;
+    return -1;
   }
 
-  // Resolve metrics for AIE or MEM tiles
-  void AieProfileMetadata::getConfigMetricsForTiles(const int moduleIdx, const std::vector<std::string>& metricsSettings,
+  /****************************************************************************
+   * Get index of metric set given name of set
+   ***************************************************************************/
+  uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricSet, module_type mod)
+  {
+    auto stringVector = metricStrings.at(mod);
+    auto itr = std::find(stringVector.begin(), stringVector.end(), metricSet);
+
+    if (itr != stringVector.cend())
+      return 0;
+    return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
+  }
+
+  /****************************************************************************
+   * Get driver configuration
+   ***************************************************************************/
+  aie::driver_config
+  AieProfileMetadata::getAIEConfigMetadata()
+  {
+    return metadataReader->getDriverConfig();
+  }
+
+  /****************************************************************************
+   * Resolve metrics for AIE or Memory tiles
+   ***************************************************************************/
+  void AieProfileMetadata::getConfigMetricsForTiles(const int moduleIdx, 
+      const std::vector<std::string>& metricsSettings,
       const std::vector<std::string>& graphMetricsSettings, const module_type mod)
   {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
@@ -531,6 +577,11 @@ namespace xdp {
 
         tileMetric.second = defaultSet;
       }
+
+      // Specify metric set pairs (as needed)
+      auto pairModuleIdx = getPairModuleIndex(tileMetric.second, mod);
+      if (pairModuleIdx >= 0)
+        configMetrics[pairModuleIdx][tileMetric.first] = tileMetric.second;
     }
 
     // Remove all the "off" tiles
@@ -539,7 +590,9 @@ namespace xdp {
     }
   }
 
-  // Resolve Interface metrics
+  /****************************************************************************
+   * Resolve metrics for Interface tiles
+   ***************************************************************************/
   void AieProfileMetadata::getConfigMetricsForInterfaceTiles(const int moduleIdx,
       const std::vector<std::string>& metricsSettings,
       const std::vector<std::string> graphMetricsSettings)
@@ -825,25 +878,6 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics[moduleIdx].erase(t);
     }
-  }
-
-  uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod)
-  {
-    auto stringVector = metricStrings.at(mod);
-    auto itr = std::find(stringVector.begin(), stringVector.end(), metricString);
-
-    if (itr != stringVector.cend()) {
-      return 0;
-    }
-    else {
-      return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
-    }
-  }
-
-  aie::driver_config
-  AieProfileMetadata::getAIEConfigMetadata()
-  {
-    return metadataReader->getDriverConfig();
   }
 
 }  // namespace xdp

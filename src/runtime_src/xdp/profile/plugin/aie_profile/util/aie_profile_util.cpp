@@ -61,10 +61,10 @@ namespace xdp::aie::profile {
 
     if (hwGen == 1) {
       eventSets["floating_point"]   = {XAIE_EVENT_FP_OVERFLOW_CORE,    XAIE_EVENT_FP_UNDERFLOW_CORE,
-                                        XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
+                                       XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
     } else {
       eventSets["floating_point"]   = {XAIE_EVENT_FP_HUGE_CORE,        XAIE_EVENT_INT_FP_0_CORE, 
-                                        XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
+                                       XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
     }
 
     return eventSets;
@@ -72,6 +72,8 @@ namespace xdp::aie::profile {
 
   /****************************************************************************
    * Get metric sets for memory modules
+   * 
+   * NOTE: Set names common with core module will be auto-specified when parsing
    ***************************************************************************/
   std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets(const int hwGen)
   {
@@ -84,25 +86,23 @@ namespace xdp::aie::profile {
 
     if (hwGen == 1) {
       eventSets["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
-                                        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM};
+                                       XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM};
       eventSets["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
-                                        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM};
+                                       XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM};
       eventSets["s2mm_throughputs"] = {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-                                        XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM};
+                                       XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM};
       eventSets["mm2s_throughputs"] = {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-                                        XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM};
+                                       XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM};
     } else {
       eventSets["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-                                        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM};
+                                       XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM};
       eventSets["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM,
-                                        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
+                                       XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
       eventSets["s2mm_throughputs"] = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-                                        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
+                                       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
       eventSets["mm2s_throughputs"] = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
-                                        XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
+                                       XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
     }
-    eventSets["write_throughputs"]  = eventSets["s2mm_throughputs"];
-    eventSets["read_throughputs"]   = eventSets["mm2s_throughputs"];
 
     return eventSets;
   }
