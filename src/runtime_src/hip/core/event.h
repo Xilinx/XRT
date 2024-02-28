@@ -3,8 +3,9 @@
 #ifndef xrthip_event_h
 #define xrthip_event_h
 
-#include "stream.h"
 #include "common.h"
+#include "module.h"
+#include "stream.h"
 #include "xrt/xrt_kernel.h"
 
 #include <condition_variable>
@@ -47,24 +48,24 @@ public:
 class event : public command
 {
 private:
-  std::vector<command*> dep_commands;
-  std::vector<command*> chain_commands;
+  std::vector<std::shared_ptr<command>> sync_dependent_commands;
+  std::vector<std::shared_ptr<command>> chain_of_commands;
 
 public:
-  bool submit();
-  bool wait();
+  bool submit() override;
+  bool wait() override;
 };
 
 class kernel_start : public command
 {
 private:
-  //std::shared_ptr<function> func;
+  std::shared_ptr<function> func;
   xrt::run r;
 
 public:
-  kernel_start(xrt::kernel &, void* args); //creates run object
-  bool submit();
-  bool wait();
+  kernel_start(function &f, void* args); //creates run object
+  bool submit() override;
+  bool wait() override;
 
 };
 
@@ -75,8 +76,8 @@ private:
   //direction cdirection;
 
 public:
-  bool submit();
-  bool wait();
+  bool submit() override;
+  bool wait() override;
 
 };
 

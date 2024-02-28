@@ -8,46 +8,62 @@ namespace xrt::core::hip {
 bool
 command::
 submit()
-{}
+{
+    return true; //temporary
+}
 
 bool
 command::
 wait()
-{}
+{
+    return true; //temporary
+}
 
 bool
 event::
-submit() override
-{}
+submit()
+{
+    return true; //temporary
+}
 
 bool
 event::
-wait() override
-{}
+wait()
+{
+    return true; //temporary
+}
 
 kernel_start::
-kernel_start(xrt::kernel &, void* args)
+kernel_start(function &f, void* args)
 {}
 
 bool
 kernel_start::
-submit() override
-{}
+submit()
+{
+    return true; //temporary
+}
 
 bool
-kerel_start::
-wait() override
-{}
+kernel_start::
+wait()
+{
+    return true; //temporary
+}
 
 bool
-buffer_copy::
-submit() override
-{}
+copy_buffer::
+submit()
+{
+    return true; //temporary
+}
 
 bool
-buffer_copy::
-wait() override
-{}
+copy_buffer::
+wait()
+{
+    return true; //temporary
+}
 
 }
 

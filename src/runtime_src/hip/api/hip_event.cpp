@@ -10,11 +10,6 @@
 
 namespace xrt::core::hip {
 
-void throw_if_null(hipEvent_t event)
-{
-  if (!event)
-    throw xrt_core::system_error(hipErrorInvalidHandle, "event is nullptr");
-}
 static hipEvent_t
 hip_event_create()
 {
@@ -24,36 +19,37 @@ hip_event_create()
 static void
 hip_event_destroy(hipEvent_t event)
 {
-  throw_if_null(event);
+  throw_invalid_value_if(!event, "event passed is nullptr");
   throw std::runtime_error("Not implemented");
 }
 
 static void
 hip_event_record(hipEvent_t event, hipStream_t stream)
 {
-  throw_if_null(event);
+  throw_invalid_value_if(!event, "event passed is nullptr");
+  throw_invalid_value_if(!stream, "stream passed is nullptr");
   throw std::runtime_error("Not implemented");
 }
 
 static void
 hip_event_synchronize(hipEvent_t event)
 {
- throw_if_null(event);
+ throw_invalid_value_if(!event, "event passed is nullptr");
  throw std::runtime_error("Not implemented");
 }
 
 static float
 hip_event_elapsed_time(hipEvent_t start, hipEvent_t stop)
 {
-  throw_if_null(stop);
-  throw_if_null(start);
+  throw_invalid_value_if(!start, "start event passed is nullptr");
+  throw_invalid_value_if(!stop, "stop event passed is nullptr");
   throw std::runtime_error("Not implemented");
 }
 
 static unsigned short
 hip_event_query(hipEvent_t event)
 {
-  throw_if_null(event);
+  throw_invalid_value_if(!event, "event passed is nullptr");
   throw std::runtime_error("Not implemented");
 }
 } // // xrt::core::hip
