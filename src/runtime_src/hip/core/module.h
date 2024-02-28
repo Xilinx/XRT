@@ -3,6 +3,7 @@
 #ifndef xrthip_module_h
 #define xrthip_module_h
 
+#include "common.h"
 #include "context.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
@@ -36,10 +37,10 @@ public:
   xrt::kernel
   create_kernel(std::string& name);
 
-  void
-  add_function(function_handle handle, std::shared_ptr<function>&& f)
+  function_handle
+  add_function(std::shared_ptr<function>&& f)
   {
-    function_cache.add(handle, std::move(f));
+    return insert_in_map(function_cache, f);
   }
 
   std::shared_ptr<function>

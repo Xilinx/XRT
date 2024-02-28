@@ -29,6 +29,18 @@ struct hip_tls_objs
   ctx_info pri_ctx_info;
 };
 extern thread_local hip_tls_objs tls_objs;
+
+// generic function for adding shared_ptr to handle_map
+// {key , value} -> {shared_ptr.get(), shared_ptr}
+// returns void* (handle returned to application)
+template<typename map, typename value>
+inline void*
+insert_in_map(map& m, value&& v)
+{
+  auto handle = v.get();
+  m.add(handle, std::move(v));
+  return handle;
+}
 } // xrt::core::hip
 
 namespace {

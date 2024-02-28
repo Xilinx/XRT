@@ -26,9 +26,8 @@ hip_ctx_create(unsigned int flags, hipDevice_t device)
   auto hip_ctx = std::make_shared<context>(hip_dev);
   tls_objs.ctx_stack.push(hip_ctx);  // make it current
   tls_objs.dev_hdl = device;
-  auto handle = hip_ctx.get();
-  context_cache.add(handle, std::move(hip_ctx));
-  return handle;
+  // insert handle in ctx map and return handle
+  return insert_in_map(context_cache, std::move(hip_ctx));
 }
 
 static void

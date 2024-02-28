@@ -34,31 +34,23 @@ hip_module_get_function(hipModule_t hmod, const char* name)
   auto hip_mod = module_cache.get(mod_hdl);
   throw_invalid_resource_if(!hip_mod, "module not available");
 
-  auto hip_func = std::make_shared<function>(mod_hdl, std::string(name));
-  auto func_hdl = hip_func.get();
-  hip_mod->add_function(func_hdl, std::move(hip_func));
-  return func_hdl;
+  // create function obj and store in map maintained by module
+  return hip_mod->add_function(std::make_shared<function>(mod_hdl, std::string(name)));
 }
 
 static module_handle
 create_module(const void* image)
 {
   auto ctx = get_current_context();
-  auto hip_module = std::make_shared<module>(ctx, const_cast<void*>(image));
-  auto module_hdl = hip_module.get();
-  module_cache.add(module_hdl, std::move(hip_module));
-  return module_hdl;
+  // create module and store it in module map
+  return insert_in_map(module_cache, std::make_shared<module>(ctx, const_cast<void*>(image)));
 }
 
 static module_handle
-hip_module_load_data_ex(const void* image, unsigned int numOptions,
-                        hipJitOption* options, void** optionsValues)
+hip_module_load_data_ex(const void* image, unsigned int /*numOptions*/,
+                        hipJitOption* /*options*/, void** /*optionsValues*/)
 {
   // Jit options are ignored for now
-  (void)numOptions;
-  (void)options;
-  (void)optionsValues;
-
   return create_module(image);
 }
 
