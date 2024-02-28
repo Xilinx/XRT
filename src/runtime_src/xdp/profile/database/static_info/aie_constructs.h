@@ -67,6 +67,7 @@ enum class module_type {
     uint8_t stream_id;
     uint8_t is_master;
     uint64_t itr_mem_addr;
+    bool     is_dma_only;
     bool     is_trigger;
     
     bool operator==(const tile_type &tile) const {
