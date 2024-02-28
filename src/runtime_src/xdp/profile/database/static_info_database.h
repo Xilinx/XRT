@@ -28,6 +28,8 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
 #include "xdp/config.h"
 
@@ -107,6 +109,8 @@ namespace xdp {
     void* aieDevInst = nullptr ; // XAie_DevInst
     void* aieDevice = nullptr ; // xaiefal::XAieDev
     std::function<void (void*)> deallocateAieDevice = nullptr ;
+    boost::property_tree::ptree aieMetadata;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
 
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
@@ -141,7 +145,7 @@ namespace xdp {
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
     double findClockRate(xrt::xclbin);
-    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild) ;
 
 
 
@@ -338,6 +342,10 @@ namespace xdp {
     XDP_CORE_EXPORT void* getAieDevice(std::function<void* (void*)> allocate,
                                   std::function<void (void*)> deallocate,
                                   void* devHandle) ;
+
+    XDP_CORE_EXPORT void readAIEMetadataClient();
+    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild);
+    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;
 
     // ************************************************************************
     // ***** Functions for information from a specific xclbin on a device *****

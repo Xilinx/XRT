@@ -49,7 +49,8 @@ class AieTraceMetadata {
                                   module_type type);
     void getConfigMetricsForInterfaceTiles(const std::vector<std::string>& metricsSettings,
                                            const std::vector<std::string> graphMetricsSettings);
-    
+    xdp::aie::driver_config getAIEConfigMetadata();
+
    public:
     int getHardwareGen() {
       if (metadataReader)
@@ -73,9 +74,6 @@ class AieTraceMetadata {
       else
         return metricSets[module_type::core][0];
     }
-
-    xdp::aie::driver_config getAIEConfigMetadata();
-
 
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
@@ -130,11 +128,10 @@ class AieTraceMetadata {
     
     std::string counterScheme;
     std::string metricSet;
-    boost::property_tree::ptree aie_meta;
-    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
+    const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
     std::map<module_type, std::string> defaultSets {
       { module_type::core,     "functions"},
