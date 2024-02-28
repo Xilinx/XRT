@@ -117,37 +117,37 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }}  
           appConfig3: ${{ secrets.APP_CONFIG3 }}  
 
- windows-build:
-    needs: authorize
-    runs-on: Windows
-    steps:
-      - name: Checkout PR   
-        uses: actions/checkout@v4 
-        with: 
-          repository:  ${{ needs.setup.outputs.pr_repository }}  
-          ref: ${{ needs.setup.outputs.pr_ref }}  
-          fetch-depth: 0  
-          path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive  
+ # windows-build:
+ #    needs: authorize
+ #    runs-on: Windows
+ #    steps:
+ #      - name: Checkout PR   
+ #        uses: actions/checkout@v4 
+ #        with: 
+ #          repository:  ${{ needs.setup.outputs.pr_repository }}  
+ #          ref: ${{ needs.setup.outputs.pr_ref }}  
+ #          fetch-depth: 0  
+ #          path: ${{ github.workspace }}/${{ github.run_number }}  
+ #          submodules: recursive  
             
-      - name: Checkout private repository      
-        uses: actions/checkout@v3   
-        with:      
-          repository: actions-int/composite-workflows
-          github-server-url: ${{ secrets.SERVER_URL }}      
-          token: ${{ secrets.ACCESS_TOKEN }}      
-          path: composite-workflows 
-          ref: main
+ #      - name: Checkout private repository      
+ #        uses: actions/checkout@v3   
+ #        with:      
+ #          repository: actions-int/composite-workflows
+ #          github-server-url: ${{ secrets.SERVER_URL }}      
+ #          token: ${{ secrets.ACCESS_TOKEN }}      
+ #          path: composite-workflows 
+ #          ref: main
        
-      - name: XRT windows build     
-        uses: ./composite-workflows/windows-build
-        with:     
-          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
-          buildNumber: ${{ github.run_number }}    
-          release: ${{ env.RELEASE }}
-          accessToken: ${{ secrets.ACCESS_TOKEN }} 
-          workspaceg: ${{ github.workspace }}
-          github-server-url: ${{ secrets.SERVER_URL }}
+ #      - name: XRT windows build     
+ #        uses: ./composite-workflows/windows-build
+ #        with:     
+ #          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
+ #          buildNumber: ${{ github.run_number }}    
+ #          release: ${{ env.RELEASE }}
+ #          accessToken: ${{ secrets.ACCESS_TOKEN }} 
+ #          workspaceg: ${{ github.workspace }}
+ #          github-server-url: ${{ secrets.SERVER_URL }}
 
   apu-package-build:
     needs: authorize
