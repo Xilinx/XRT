@@ -201,7 +201,14 @@ namespace xdp::aie {
   {
     std::stringstream aie_stream;
     aie_stream.write(data,size);
-    pt::read_json(aie_stream, aie_project);
+    try {
+      pt::read_json(aie_stream, aie_project);
+    } catch (const std::exception& e) {
+      std::string msg("AIE Metadata could not be read : ");
+      msg += e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      return nullptr;
+    }
 
     return determineFileType(aie_project);
   }
@@ -220,7 +227,16 @@ namespace xdp::aie {
       return nullptr;
     }
 
-    pt::read_json(filename, aie_project);
+    try {
+      pt::read_json(filename, aie_project);
+    }
+    catch(const std::exception& e)
+    {
+      std::stringstream msg;
+      msg << "Exception occurred while reading the aie_control_config.json: "<< std::string(e.what()) ;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return nullptr;
+    }
    
 
     return determineFileType(aie_project);

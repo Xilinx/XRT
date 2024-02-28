@@ -39,19 +39,10 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info,
                             "XRT", "Parsing AIE Profile Metadata.");
+    VPDatabase* db = VPDatabase::Instance();
 
-    #ifdef XDP_CLIENT_BUILD
-      metadataReader = aie::readAIEMetadata("aie_control_config.json", aie_meta);
-    #else
-      auto device = xrt_core::get_userpf_device(handle);
-      auto data = device->get_axlf_section(AIE_METADATA);
-
-      metadataReader = aie::readAIEMetadata(data.first, data.second, aie_meta);
-    #endif
-
-    if (metadataReader == nullptr) {
-      xrt_core::message::send(severity_level::error,
-                            "XRT", "Error parsing AIE Profiling Metadata.");
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader) {
       return;
     }
 
@@ -64,7 +55,6 @@ namespace xdp {
 
     // Setup Config Metrics
     // Get AIE clock frequency
-    VPDatabase* db = VPDatabase::Instance();
     clockFreqMhz = (db->getStaticInfo()).getClockRateMHz(deviceID, false);
 
     // Tile-based metrics settings

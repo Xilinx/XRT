@@ -13,3 +13,4 @@ device(uint32_t device_id)
   , m_xrt_device{device_id}
 {}
 }
+

@@ -14,31 +14,14 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_TIMESTAMPS_WRITER_DOT_H
-#define AIE_TRACE_TIMESTAMPS_WRITER_DOT_H
+#define XDP_CORE_SOURCE
 
-#include <string>
-#include "xdp/profile/writer/vp_base/vp_writer.h"
+#include "IBinaryDataWriter.h"
 
-namespace xdp {
+namespace xdp::AIEBinaryData
+{
 
-  class AIETraceTimestampsWriter : public VPWriter
-  {
-  public:
-    AIETraceTimestampsWriter(const char* fileName, const char* deviceName, 
-                             uint64_t deviceIndex);
-    ~AIETraceTimestampsWriter() override;
+IBinaryDataWriter::IBinaryDataWriter()  = default;
+IBinaryDataWriter::~IBinaryDataWriter() = default;
 
-    bool write(bool openNewFile) override;
-
-  private:
-    void writeCVSTimestampFile();
-    void writeBinaryTimestampFile();
-  private:
-    std::string mDeviceName;
-    uint64_t mDeviceIndex;
-  };
-
-} // end namespace xdp
-
-#endif
+} // AIEBinaryData
