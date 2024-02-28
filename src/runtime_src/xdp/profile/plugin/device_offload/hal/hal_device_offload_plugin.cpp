@@ -40,12 +40,14 @@ namespace xdp {
 
   HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
   {
+std::cout << " Num of devices " << (int) xrt_core::get_total_devices(true/*is_user*/).second << std::endl;
+    uint32_t numDevices = xrt_core::get_total_devices(true/*is_user*/).second;
     db->registerInfo(info::device_offload) ;
 
     // Open all existing devices so that XDP can access the owned handles
 
     uint32_t index = 0;
-    while (1) {
+    while (index < numDevices) {
       try {
         xrtDevices.push_back(std::make_unique<xrt::device>(index));
 
