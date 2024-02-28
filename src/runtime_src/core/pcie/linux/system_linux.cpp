@@ -178,9 +178,8 @@ get_device_id(const std::string& bdf) const
   if (bdf.find_first_not_of("0123456789") == std::string::npos)
     return system::get_device_id(bdf);
 
-  unsigned int i = 0;
   try {
-    while (1) {
+    for (unsigned int i = 0;; i++) {
       auto dev = get_pcidev(i);
       // [dddd:bb:dd.f]
       auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->m_domain % dev->m_bus % dev->m_dev % dev->m_func);
