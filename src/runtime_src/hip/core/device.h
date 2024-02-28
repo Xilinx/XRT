@@ -25,6 +25,8 @@ class device
   std::weak_ptr<context> pri_ctx;
 
 public:
+  device() = default;
+  
   explicit
   device(uint32_t device_id);
 
@@ -64,3 +66,4 @@ extern xrt_core::handle_map<device_handle, std::shared_ptr<device>> device_cache
 } // xrt::core::hip
 
 #endif
+
