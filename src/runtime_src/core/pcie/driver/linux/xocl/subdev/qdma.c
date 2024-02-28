@@ -50,6 +50,11 @@
 
 #define QDMA_REQ_TIMEOUT_MS	10000
 
+/* This is a temporary workaround in limiting the aperture size
+ * until the block size issue in SOFT QDMA IP is fixed.
+ */
+#define QDMA_WA_APERTURE_SIZE 0x8000
+
 /* Module Parameters */
 unsigned int qdma_max_channel = 8;
 module_param(qdma_max_channel, uint, 0644);
@@ -483,9 +488,10 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	struct platform_device *pdev = qdma->pdev;
 	struct qdma_queue_conf *qconf;
 	struct mm_channel *chan;
+	struct qdma_version_info ver_info;
 	u32	write, qidx;
 	char	ebuf[MM_EBUF_LEN + 1];
-	int	i, ret;
+	int	i, ret, rv;
 	bool	reset = false;
 
 	if (count > sizeof(qdma->channel_bitmap[0]) * 8) {
@@ -519,6 +525,12 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 		}
 	}
 
+	rv = qdma_device_version_info(qdma->dma_hndl, &ver_info);
+	if (rv < 0) {
+		xocl_err(&pdev->dev, "qdma_device_version_info failed: %d", rv);
+		goto failed_create_queue;
+	}
+
 	for (i = 0; i < qdma->channel * 2; i++) {
 		write = i / qdma->channel;
 		qidx = i % qdma->channel;
@@ -541,6 +553,11 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 		qconf->qidx = qidx;
 		qconf->irq_en = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?
 					0 : 1;
+		if (!strcmp(ver_info.ip_str, "EQDMA5.0 Soft IP"))
+		{
+			/* This is a temporary workaround to limit aperture size until we have a fix in SOFT IP */
+			qconf->aperture_size = QDMA_WA_APERTURE_SIZE;
+		}
 
 		ret = qdma_queue_add(qdma->dma_hndl, qconf, &chan->queue,
 					ebuf, MM_EBUF_LEN);
