@@ -59,6 +59,7 @@ namespace xdp::aie::trace {
 
       bool newPort = false;
       auto portnum = getPortNumberFromEvent(event);
+      uint8_t channel = (portnum == 0) ? channel0 : channel1;
 
       // New port needed: reserve, configure, and store
       if (switchPortMap.find(portnum) == switchPortMap.end()) {
@@ -99,8 +100,8 @@ namespace xdp::aie::trace {
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = streamPortId;
-          config.port_trace_is_master[portnum] = (tile.is_master != 0);
+          config.port_trace_ids[channel] = channel;
+          config.port_trace_is_master[channel] = (tile.is_master != 0);
 
           if (aie::isInputSet(type, metricSet)) {
             config.mm2s_channels[0] = channel0;
@@ -115,7 +116,6 @@ namespace xdp::aie::trace {
         }
         else {
           // Memory tiles
-          uint8_t channel = (portnum == 0) ? channel0 : channel1;
           auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
           std::string typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
           std::string msg = "Configuring memory tile stream switch to monitor " 

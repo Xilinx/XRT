@@ -212,35 +212,9 @@ jobs:
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
           boardType: "pcie"
-          boardMode: "hw"    
-  
-      - name: Checkout upload-logs-to-artifactory Action repository  
-        uses: actions/checkout@v3  
-        with:  
-          repository: actions-int/upload-logs-to-artifactory-action
-          ref: 'v0.0.1' 
-          token: ${{ secrets.ACCESS_TOKEN }}
-          github-server-url: ${{ secrets.SERVER_URL }}
-          path: ./.github/actions/upload-logs-to-artifactory-action
-
-      - name: Upload logs to Artifactory        
-        id: upload        
-        uses: ./.github/actions/upload-logs-to-artifactory-action
-        with:          
-          logFile: ${{ steps.extract.outputs.logFile }}           
-          buildNumber: ${{ github.run_number }}     
-          apiKey: ${{ secrets.apiKey }}     
-          pipeline: ${{ env.PIPELINE }} 
-          repoKeyName: 'extractBoard'  
-
-      - name: Display log file URL      
-        run: |      
-          # echo "Log file URL: ${{ steps.upload.outputs.logFileUrl }}" >> $GITHUB_STEP_SUMMARY  
-          # echo '### [logs for extracted boards](${{ steps.upload.outputs.logFileUrl }})' >> $GITHUB_STEP_SUMMARY  
-          echo "logs for extracted boards: ${{ steps.upload.outputs.logFileUrl }}"  
+          boardMode: "hw"       
     outputs:    
-      board_list: ${{ steps.extract.outputs.board_list }}        
-      logFileUrl: ${{ steps.upload.outputs.logFileUrl }} 
+      board_list: ${{ steps.extract.outputs.board_list }}      
 
   pcie-hw-tests:  
     needs: extract-platforms    
@@ -263,7 +237,7 @@ jobs:
         with:     
           organization: ${{ github.repository }}  
           runNumber: ${{ github.run_number }}  
-          buildNumber: ${{ github.run_number }}  
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
@@ -299,7 +273,7 @@ jobs:
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -336,7 +310,7 @@ jobs:
         with:  
           organization: ${{ github.repository }}
           run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -354,7 +328,8 @@ jobs:
                   
   test-summary:    
     runs-on: [self-hosted, Ubuntu-22.04]
-    needs: build
+    needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
+    if: always() 
     steps:  
       - name: Checkout test summary Action repository  
         uses: actions/checkout@v3  
@@ -371,7 +346,7 @@ jobs:
         with:    
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
-          runNumber: ${{ github.run_number }}
+          runNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 

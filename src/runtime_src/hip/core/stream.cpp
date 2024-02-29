@@ -12,3 +12,4 @@ stream(std::shared_ptr<context> ctx)
 // Global map of streams
 xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
 }
+

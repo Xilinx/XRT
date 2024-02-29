@@ -227,15 +227,35 @@ namespace xdp {
           auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
           auto streamPortId  = tile.stream_id;
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
+
+          if (aie::isDebugVerbosity()) {
+            std::string typeName = (tile.is_master == 0) ? "slave" : "master"; 
+            std::string msg = "Configuring interface tile stream switch to monitor " 
+                            + typeName + " stream port " + std::to_string(streamPortId);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
+          }
         }
         else {
           // Memory tiles
+          std::string typeName;
+          uint32_t channelNum = 0;
+
           if (metricSet.find("trace") != std::string::npos) {
+            typeName = "trace";
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
           }
           else {
             auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+
+            typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
+            channelNum = channel;
+          }
+
+          if (aie::isDebugVerbosity()) {
+            std::string msg = "Configuring memory tile stream switch to monitor " 
+                            + typeName + " stream port " + std::to_string(channelNum);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
           }
         }
       }
@@ -346,7 +366,8 @@ namespace xdp {
     };
 
     std::stringstream msg;
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : " << moduleName << std::endl;
+    msg << "Resource usage stats for Tile : (" << +col << "," << +row 
+        << ") Module : " << moduleName << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
       auto pc = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
@@ -473,8 +494,8 @@ namespace xdp {
         }
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," 
-            << row << ") using metric set " << metricSet << ".";
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col 
+            << "," << +row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }

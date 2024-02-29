@@ -387,8 +387,8 @@ findRyzenPlatformPaths(const std::shared_ptr<xrt_core::device>& dev)
     paths.push_back(sys_path.string() + "\\");
   return paths;
 #else
-  const auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
-  return {"/lib/firmware/amdnpu/" + boost::str(boost::format("%x") % device_id) + "/"};
+  const auto device_id = xrt_core::device_query<xrt_core::query::pcie_id>(dev);
+  return {"/lib/firmware/amdnpu/" + xrt_core::query::pcie_id::to_path(device_id) + "/"};
 #endif
 }
 

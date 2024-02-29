@@ -319,7 +319,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #endif
 
     // Writer for timestamp file
-    std::string outputFile = "aie_event_timestamps.csv";
+    std::string outputFile = "aie_event_timestamps.bin";
     auto tsWriter = new AIETraceTimestampsWriter(outputFile.c_str(),
                                                  deviceName.c_str(), deviceID);
     writers.push_back(tsWriter);

@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2023, Xilinx Inc
+ *  Copyright (C) 2015-2024, Advanced Micro Devices, Inc. All rights Reserved.
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -188,7 +188,8 @@ extern "C" {
         OVERLAY                = 30,
         VENDER_METADATA        = 31,
         AIE_PARTITION          = 32,
-        IP_METADATA           = 33,
+        IP_METADATA            = 33,
+	AIE_RESOURCES_BIN      = 34,
     };
 
     enum MEM_TYPE {
@@ -503,6 +504,25 @@ extern "C" {
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct soft_kernel) == 80, "soft_kernel structure no longer is 80 bytes in size");
 
+    struct aie_resources_bin {                   /* aie_resources_bin data section  */
+        // Prefix Syntax:
+        //   mpo - member, pointer, offset
+	//     This variable represents a zero terminated string
+	//     that is offseted from the beginning of the section.
+	//
+	//     The pointer to access the string is initialized as follows:
+	//     char * pCharString = (address_of_section) + (mpo value)
+	uint32_t mpo_name;         // Name of the aie_resources_bin section
+	uint32_t m_image_offset;   // Image offset
+	uint32_t m_image_size;     // Image size
+	uint32_t mpo_version;      // Version
+	uint32_t m_start_column;   // Start column
+	uint32_t m_num_columns;    // Number of columns
+	uint8_t padding[36];       // Reserved for future use
+	uint8_t reservedExt[16];   // Reserved for future extended data
+    };
+    XCLBIN_STATIC_ASSERT(sizeof(struct aie_resources_bin) == 76, "aie_resources_bin structure no longer is 76 bytes in size");
+		
     enum FLASH_TYPE
     {
         FLT_UNKNOWN = 0,

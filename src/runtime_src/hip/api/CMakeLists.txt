@@ -5,6 +5,7 @@ add_library(hip_api_library_objects OBJECT
   hip_context.cpp
   hip_module.cpp
   hip_stream.cpp
+  hip_memory.cpp
 )
 
 target_include_directories(hip_api_library_objects

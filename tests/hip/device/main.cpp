@@ -9,7 +9,7 @@
 
 int main()
 {
-  hipDevice_t device;
+  hipDevice_t device = 0;
   auto status = hipDeviceGet(&device, 0);
   return status;
 }
