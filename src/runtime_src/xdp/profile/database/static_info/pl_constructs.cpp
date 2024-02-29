@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -258,7 +258,7 @@ namespace xdp {
       auto reglist = k.second.get_child("deadlock_register_list");
       KernelRegisterInfo kinfo;
       for (const auto& reg : reglist) {
-        std::array<std::string, num_bits_deadlock_diagnosis> reginfo;
+        std::array<std::string, NUM_DEADLOCK_DIAGNOSIS_BITS> reginfo;
         auto offset_str = reg.second.get<std::string>("register_word_offset");
         uint32_t reg_offset = get_offset_from_string(offset_str);
         auto bitinfo = reg.second.get_child("register_bit_info");

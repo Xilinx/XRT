@@ -122,7 +122,7 @@ namespace xdp {
               auto offset = entry.first;
               auto& messages = entry.second;
               uint32_t kernelInstRegData = xrtIP->read_register(offset);
-              for (unsigned int i=0; i < num_bits_deadlock_diagnosis; i++) {
+              for (unsigned int i=0; i < NUM_DEADLOCK_DIAGNOSIS_BITS; i++) {
                 if ((kernelInstRegData >> i) & 0x1) {
                   currCUDiagnosis += messages[i] + "\n";
                 }
