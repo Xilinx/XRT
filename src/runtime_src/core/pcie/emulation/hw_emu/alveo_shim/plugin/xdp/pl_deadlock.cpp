@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,8 +29,7 @@
 
 #include <iostream>
 
-namespace xdp {
-namespace pl_deadlock {
+namespace xdp::hw_emu::pl_deadlock {
 
   void load()
   {
@@ -61,5 +60,4 @@ namespace pl_deadlock {
       update_device_cb(handle);
   }
 
-} // end namespace pl_deadlock
-} // end namespace xdp
+} // end namespace xdp::hw_emu::pl_deadlock
