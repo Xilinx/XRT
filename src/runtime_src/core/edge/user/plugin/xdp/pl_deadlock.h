@@ -1,3 +1,4 @@
+#if 0
 /**
  * Copyright (C) 2021 Xilinx, Inc
  *
@@ -30,4 +31,5 @@ namespace pl_deadlock {
 } // end namespace pl_deadlock
 } // end namespace xdp
 
+#endif
 #endif
