@@ -40,12 +40,10 @@ namespace xdp {
 
   HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
   {
-std::cout << " Num of devices " << (int) xrt_core::get_total_devices(true/*is_user*/).second << std::endl;
-    uint32_t numDevices = xrt_core::get_total_devices(true/*is_user*/).second;
     db->registerInfo(info::device_offload) ;
 
     // Open all existing devices so that XDP can access the owned handles
-
+    uint32_t numDevices = xrt_core::get_total_devices(true).second;
     uint32_t index = 0;
     while (index < numDevices) {
       try {
@@ -53,7 +51,6 @@ std::cout << " Num of devices " << (int) xrt_core::get_total_devices(true/*is_us
 
         auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
         std::string path = util::getDebugIpLayoutPath(ownedHandle);
-std::cout << " opened device index " << index << " path " << path << std::endl;
 
         if ("" != path) {
           addDevice(path); 
@@ -65,45 +62,13 @@ std::cout << " opened device index " << index << " path " << path << std::endl;
         // Move on to the next device
         ++index;
       } catch (const std::runtime_error& e) {
-std::cout << " COULD NOT open device index " << index << " NO path " << std::endl;
-        // If no more devices can be opened, break
-        // No need to print error message
-        break;
+        std::string msg = "Could not open device at index " + std::to_string(index);
+        xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
+        continue;
       }
     }
   }
-#if 0
-  HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
-  {
-    db->registerInfo(info::device_offload) ;
 
-    // Open all of the devices that exist so we can keep our own pointer
-    //  to access them.
-    uint32_t index = 0 ;
-    auto xrtDevice 
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    
-    while (handle != nullptr)
-    {
-      // First, keep track of all open handles
-      deviceHandles.push_back(handle) ;
-
-      // Second, add all the information and a writer for this device
-      std::string path = util::getDebugIpLayoutPath(handle);
-      if (path != "") {
-        addDevice(path);
-
-        // Now, keep track of the device ID for this device so we can use
-        //  our own handle
-        deviceIdToHandle[db->addDevice(path)] = handle ;
-      }
-
-      // Move on to the next device
-      ++index ;
-      handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    }
-  }
-#endif
   HALDeviceOffloadPlugin::~HALDeviceOffloadPlugin()
   {
     if (VPDatabase::alive())

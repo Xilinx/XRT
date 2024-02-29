@@ -41,7 +41,6 @@ namespace xdp {
     //  handles) we need to open all the devices and keep our own handles
     //  to them.
     std::vector<std::unique_ptr<xrt::device>> xrtDevices ;
-//    std::vector<void*> deviceHandles ;
     std::map<uint64_t, void*> deviceIdToHandle ;
 
     virtual void readTrace() ;
