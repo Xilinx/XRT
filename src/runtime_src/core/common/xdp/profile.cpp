@@ -262,6 +262,7 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle)
 {
+
 #ifdef XDP_CLIENT_BUILD
   /* Adding the macro guard as the static instances of the following plugins
    * get created unnecessarily when the configs are enabled on Edge.
@@ -306,7 +307,8 @@ update_device(void* handle)
     }
     xrt_core::xdp::ml_timeline::update_device(handle);
   }
-#endif
+
+#else
 
   if (xrt_core::config::get_pl_deadlock_detection() 
       && nullptr == std::getenv("XCL_EMULATION_MODE")) {
@@ -318,11 +320,13 @@ update_device(void* handle)
     }
     xrt_core::xdp::pl_deadlock::update_device(handle);
   }
+#endif
 }
 
 void 
 finish_flush_device(void* handle)
 {
+
 #ifdef XDP_CLIENT_BUILD
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
@@ -332,12 +336,14 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::debug::end_debug(handle);
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
-#endif
+
+#else
 
   if (xrt_core::config::get_pl_deadlock_detection()
       && nullptr == std::getenv("XCL_EMULATION_MODE")) {
     xrt_core::xdp::pl_deadlock::finish_flush_device(handle);
   }
+#endif
 }
 
 } // end namespace xrt_core::xdp
