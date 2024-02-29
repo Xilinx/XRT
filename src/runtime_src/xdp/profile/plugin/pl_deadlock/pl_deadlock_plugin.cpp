@@ -164,7 +164,7 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     auto coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-    auto handle = coreDevice->get_user_handle();
+    auto handle = coreDevice->get_device_handle();
 
     uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
 
@@ -175,16 +175,6 @@ namespace xdp {
       mThreadMap.erase(it);
       mThreadCtrlMap.erase(deviceId);
     }
-
-#if 0
-    mThreadCtrlMap[hwCtxImpl] = false;
-    auto it = mThreadMap.find(hwCtxImpl);
-    if (it != mThreadMap.end()) {
-      it->second.join();
-      mThreadMap.erase(it);
-      mThreadCtrlMap.erase(hwCtxImpl);
-    }
-#endif
   }
 
   void PLDeadlockPlugin::updateDevice(void* hwCtxImpl)
@@ -192,7 +182,7 @@ namespace xdp {
     xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
     auto coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-    auto handle = coreDevice->get_user_handle();
+    auto handle = coreDevice->get_device_handle();
 
     uint64_t deviceId = db->addDevice(util::getDebugIpLayoutPath(handle));
 
@@ -229,13 +219,6 @@ namespace xdp {
 
     mIpMetadata = db->getStaticInfo().populateIpMetadata(deviceId, coreDevice);
 
-#if 0
-    auto it = mThreadMap.find(hwCtxImpl);
-    if (it != mThreadMap.end()) {
-      return;
-    }
-#endif
-    
     // Start the PL deadlock detection thread
     mThreadCtrlMap[deviceId] = true;
     mThreadMap[deviceId] = std::thread { [=] { pollDeadlock(hwCtxImpl, deviceId); } };
