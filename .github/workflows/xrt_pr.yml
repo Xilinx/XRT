@@ -37,11 +37,9 @@ jobs:
   authorize:  
     needs: setup  
     runs-on: Ubuntu-22.04  
-    if: >  
-      contains(FromJSON('["sonal", "abalasa", "stsoe", "hcneema", "NaAl-Xlnx", "maxzhen", "houlz0507", "chvamshi-xilinx", "salindac", "larry9523", "sadasivanshaiju", "xilinxgitops", "dbenusov-xilinx", "sabarina", "sabarinaxil", "manikandan-xilinx", "sabarina", "SubhedarV", "pkbhaga03"]'), github.actor) || (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'build'))  
+
     steps:  
-      - name: Check the build comment is from a valid authorizer  
-        run: echo "${{ github.actor }} is a valid authorizer, running the build" 
+ 
 
       - name: Checkout private repository  
         uses: actions/checkout@v4  
