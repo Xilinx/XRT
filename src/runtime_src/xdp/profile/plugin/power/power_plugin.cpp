@@ -114,7 +114,7 @@ namespace xdp {
         // Move on to the next device
         ++index;
       } catch (const std::runtime_error& e) {
-        std::string msg = "Could not open device at index " + std::to_string(index);
+        std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
         xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
         continue;
       }  

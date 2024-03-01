@@ -56,7 +56,7 @@ namespace xdp {
                                                   index) ;
         writers.push_back(writer);
         db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
-      } catch (const std::runtime_error &e) {
+      } catch (const std::runtime_error &) {
         break;
       }
       ++index; 
