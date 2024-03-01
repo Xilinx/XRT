@@ -96,6 +96,7 @@ struct xocl_hwmon_sdm {
 	bool                    sysfs_created;
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
+	size_t                  sensor_size[SDR_TYPE_MAX];
 	bool                    sensor_data_avail[SDR_TYPE_MAX];
 	uint16_t                sensor_ids[SDR_TYPE_MAX][SENSOR_IDS_MAX];
 	uint16_t                sensor_ids_max[SDR_TYPE_MAX];
@@ -215,6 +216,11 @@ static int get_sdr_type(enum xcl_group_kind kind)
 	}
 
 	return type;
+}
+
+static int sdr_get_size(struct xocl_hwmon_sdm *sdm, enum xgq_cmd_sensor_page_id repo_id)
+{
+	return ((sdm->sensor_size[repo_id]) ? sdm->sensor_size[repo_id] : RESP_LEN);
 }
 
 static void update_cache_expiry_time(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
@@ -361,19 +367,12 @@ static int show_sensors_raw(struct xocl_hwmon_sdm *sdm, char *buf,
 {
 	xdev_handle_t xdev = xocl_get_xdev(sdm->pdev);
 	int ret = 0, kind;
-	size_t resp_len = 0;
+	size_t resp_len = sdr_get_size(sdm, repo_id);
 	char* sdr_buf;
 	int repo_type;
 	uint64_t data_args = 0;
 
 	mutex_lock(&sdm->sdm_lock);
-	/* Collect the SDR size from VMR */
-	xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
-
-	if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
-		xocl_info(&sdm->pdev->dev, "received invalid SDR size: %d, set response length to default value", resp_len);
-		resp_len = RESP_LEN;
-	}
 
 	sdr_buf = vzalloc(resp_len);
 	if (!sdr_buf) {
@@ -1431,6 +1430,7 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_hwmon_sdm *sdm;
 	int err = 0;
+	int repo_id = 0;
 
 	sdm = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_hwmon_sdm));
 	if (!sdm)
@@ -1448,8 +1448,25 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	} else {
 		xocl_dbg(&pdev->dev, "in mgmtpf driver");
 		sdm->privileged = true;
+		/* Collect the SDR size information from VMR for the respective repo types */
+		memset(sdm->sensor_size, 0, sizeof(sdm->sensor_size));
+		repo_id = sdr_get_id(SDR_TYPE_BDINFO);
+		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
+		repo_id = sdr_get_id(SDR_TYPE_TEMP);
+		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
+		repo_id = sdr_get_id(SDR_TYPE_VOLTAGE);
+		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
+		repo_id = sdr_get_id(SDR_TYPE_CURRENT);
+		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
+		repo_id = sdr_get_id(SDR_TYPE_POWER);
+		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
 	}
 
+    int ii=0;
+	for(ii=0;ii<SDR_TYPE_MAX; ii++)
+	{
+		xocl_err(&pdev->dev, "karthik hwmon_sdm_probe %d",sdm->sensor_size[ii]);
+	}
 	err = sysfs_create_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
 	if (err) {
 		xocl_err(&pdev->dev, "unable to create sysfs group for bdinfo, err: %d", err);
@@ -1495,15 +1512,13 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
 		xocl_err(&pdev->dev, "received invalid sdr repo type: %d", repo_type);
 		return -EINVAL;
 	}
-
-    /* Collect the SDR size from VMR */
-    xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
-
-	if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
-		xocl_info(&pdev->dev, "received invalid SDR size: %d,  set response length to default value", resp_len);
-		resp_len = RESP_LEN;
+    int ii=0;
+	for(ii=0;ii<SDR_TYPE_MAX; ii++)
+	{
+		xocl_err(&pdev->dev, "karthik hwmon_sdm_probe %d",sdm->sensor_size[ii]);
 	}
-
+	resp_len = sdr_get_size(sdm, repo_id);
+    xocl_err(&pdev->dev, " karthik len=%d", resp_len);
 	if (!sdm->privileged) {
 		char *in_buf = NULL;
 		in_buf = vzalloc(resp_len);
@@ -1585,7 +1600,6 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_i
                                     uint64_t data_args)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	uint8_t sensor_id = data_args & 0xFF;
 	int repo_type;
 	int ret = 0, kind = 0;
@@ -1595,16 +1609,9 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_i
 	if (sdm->privileged) {
 		ret = hwmon_sdm_update_sensors_by_type(pdev, repo_type, false, data_args, NULL);
 	} else {
-		size_t resp_len = 0;
+		size_t resp_len = sdr_get_size(sdm, repo_id);
 		char *in_buf = NULL;
 		in_buf = vzalloc(resp_len);
-
-		xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
-
-		if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
-			xocl_info(&sdm->pdev->dev, "received invalid SDR size: %d,  set response length to default value", kind);
-			resp_len = RESP_LEN;
-		}
 		if (!in_buf)
 			return -ENOMEM;
 		kind = to_xcl_sdr_type(repo_type);
@@ -1660,10 +1667,8 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
                                           enum xcl_group_kind kind)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int repo_type, repo_id;
 	int ret = 0;
-	size_t resp_len = 0;
 
 	repo_type = get_sdr_type(kind);
 	if (repo_type < 0) {
@@ -1677,16 +1682,8 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-    /* Collect the SDR size from VMR */
-    xocl_xgq_collect_sensors_get_size(xdev, &resp_len, repo_id);
-
-	if ((resp_len <= 0) || (resp_len > RESP_LEN)) {
-		xocl_info(&sdm->pdev->dev, "received invalid SDR size: %d,  set response length to default value", kind);
-		resp_len = RESP_LEN;
-	}
-
 	if (!sdm->sensor_data[repo_id])
-		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * resp_len, GFP_KERNEL);
+		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * sdr_get_size(sdm, repo_id), GFP_KERNEL);
 	memcpy(sdm->sensor_data[repo_id], in_buf, len);
 
 	ret = parse_sdr_info(in_buf, sdm, true);
@@ -1696,10 +1693,17 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 	return ret;
 }
 
+static int hwmon_sdm_get_sensor_size(struct platform_device *pdev, enum xcl_group_kind kind)
+{
+	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
+	return sdr_get_size(sdm, sdr_get_id(get_sdr_type(kind)));
+}
+
 static struct xocl_sdm_funcs sdm_ops = {
 	.hwmon_sdm_get_sensors_list = hwmon_sdm_get_sensors_list,
 	.hwmon_sdm_get_sensors = hwmon_sdm_get_sensors,
 	.hwmon_sdm_create_sensors_sysfs = hwmon_sdm_create_sensors_sysfs,
+	.hwmon_sdm_get_sensor_size = hwmon_sdm_get_sensor_size,
 };
 
 struct xocl_drv_private sdm_priv = {

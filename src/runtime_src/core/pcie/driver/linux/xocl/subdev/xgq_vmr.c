@@ -2316,7 +2316,9 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_collect_sensors_get_size(struct platform_device *pdev, size_t *sensor_size, int repo_id)
+
+
+static int xgq_collect_sensors_request_size(struct platform_device *pdev, size_t *sensor_size, int repo_id)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -3688,7 +3690,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_sensors_get_size = xgq_collect_sensors_get_size,
+	.xgq_collect_sensors_request_size = xgq_collect_sensors_request_size,
 	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
