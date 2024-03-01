@@ -1,10 +1,9 @@
-name: XRT CI  
+name: XRT Pr Comment 
   
 env:    
   RELEASE: '2024.1'    
   PIPELINE: 'xrt'   
   ENV: 'test'   
-  AUTHORIZED_USERS: '["manikandan-xilinx", "SubhedarV"]'  
   
 on:  
   pull_request_target:  
@@ -17,7 +16,7 @@ concurrency:
 jobs:  
   authorize:  
     runs-on: Ubuntu-22.04  
-    if: (github.event.label.name == 'build' && contains(fromJson(env.AUTHORIZED_USERS), github.actor)) || github.event_name == 'pull_request_target'  
+    if: (github.event.label.name == 'build' && contains(fromJson('["manikandan-xilinx", "SubhedarV"]'), github.actor)) || github.event_name == 'pull_request_target'  
     steps:  
       - name: Checkout private repository        
         uses: actions/checkout@v4     
@@ -90,4 +89,3 @@ jobs:
           appConfig1: ${{ secrets.APP_CONFIG1 }}   
           appConfig2: ${{ secrets.APP_CONFIG2 }}   
           appConfig3: ${{ secrets.APP_CONFIG3 }}   
-
