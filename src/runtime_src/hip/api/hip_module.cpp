@@ -2,14 +2,16 @@
 // Copyright (C) 2023-2024 Advanced Micro Device, Inc. All rights reserved.
 
 #include "hip/core/common.h"
+#include "hip/core/event.h"
 #include "hip/core/module.h"
+#include "hip/core/stream.h"
 
 namespace xrt::core::hip {
 static void
-hip_module_launch_kernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
-                         uint32_t gridDimZ, uint32_t blockDimX, uint32_t blockDimY,
-                         uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
-                         void** kernelParams, void** extra)
+hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*gridDimY*/,
+                         uint32_t /*gridDimZ*/, uint32_t /*blockDimX*/, uint32_t /*blockDimY*/,
+                         uint32_t /*blockDimZ*/, uint32_t sharedMemBytes, hipStream_t hStream,
+                         void** kernelParams, void** /*extra*/)
 {
   throw_invalid_resource_if(!f, "function is nullptr");
 
@@ -20,7 +22,15 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
   auto hip_func = hip_mod->get_function(func_hdl);
   throw_invalid_resource_if(!hip_func, "invalid function passed");
 
-  throw std::runtime_error("Not implemented");
+  // TODO : add num of kernel launches calculation based on grid and block dimensions
+
+  auto hip_stream = get_stream(hStream);
+  auto s_hdl = hip_stream.get();
+  auto cmd_hdl = insert_in_map(command_cache,
+                               std::make_shared<kernel_start>(std::move(hip_stream),
+                                                              std::move(hip_func),
+                                                              kernelParams));
+  s_hdl->enqueue(command_cache.get(cmd_hdl));
 }
 
 static function_handle
@@ -42,6 +52,7 @@ static module_handle
 create_module(const void* image)
 {
   auto ctx = get_current_context();
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
   // create module and store it in module map
   return insert_in_map(module_cache, std::make_shared<module>(ctx, const_cast<void*>(image)));
 }
