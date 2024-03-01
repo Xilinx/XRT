@@ -20,6 +20,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
 #include <vector>
+#include <set>
 
 #include "core/common/device.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -27,7 +28,6 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
-
 
 namespace xdp {
 
@@ -88,6 +88,7 @@ class AieProfileMetadata {
     xrt::hw_context hwContext;
 
     std::vector<std::map<tile_type, std::string>> configMetrics;
+    std::map<tile_type, std::string> pairConfigMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
@@ -109,8 +110,8 @@ class AieProfileMetadata {
     void getConfigMetricsForInterfaceTiles(const int moduleIdx,
                                            const std::vector<std::string>& metricsSettings,
                                            const std::vector<std::string> graphMetricsSettings);
-    int getPairModuleIndex(std::string metricSet, module_type mod);
-    uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
+    int getPairModuleIndex(const std::string& metricSet, module_type mod);
+    uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
     
     std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
