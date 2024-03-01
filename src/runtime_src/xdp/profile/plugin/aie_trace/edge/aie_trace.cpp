@@ -329,6 +329,9 @@ namespace xdp {
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
       
+      if ((type == module_type::core) && tile.is_dma_only && !aie::trace::isDmaSet(metricSet))
+        continue;
+
       std::string tileName = (type == module_type::mem_tile) ? "memory" 
                            : ((type == module_type::shim) ? "interface" : "AIE");
       tileName.append(" tile (" + std::to_string(col) + "," + std::to_string(row) + ")");

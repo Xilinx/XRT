@@ -187,6 +187,21 @@ failed:
 	unmap_bars(lro);
 	return ret;
 }
+/* function to map the bar, read the value and unmap the bar */
+uint32_t mgmt_bar_read32(struct xclmgmt_dev *lro, uint32_t bar_off)
+{
+	int rc = 0;
+	uint32_t val = 0;
+
+	rc = map_bars(lro);
+	if (rc)
+		return val;
+
+	val = ioread32(lro->core.bar_addr + bar_off);
+
+	unmap_bars(lro);
+	return val;
+}
 
 void store_pcie_link_info(struct xclmgmt_dev *lro)
 {
@@ -1481,11 +1496,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_fill_dsa_priv(lro, (struct xocl_board_private *)id->driver_data);
 	dev_info = &lro->core.priv;
 
-	/* map BARs */
-	rc = map_bars(lro);
-	if (rc)
-		goto err_map;
-
 	lro->instance = XOCL_DEV_ID(pdev);
 	rc = create_char(lro);
 	if (rc) {
@@ -1574,8 +1584,6 @@ err_init_sysfs:
 err_create_wq:
 	destroy_sg_char(&lro->user_char_dev);
 err_cdev:
-	unmap_bars(lro);
-err_map:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
 	xocl_subdev_fini(lro);
@@ -1624,9 +1632,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	/* remove user character device */
 	destroy_sg_char(&lro->user_char_dev);
-
-	/* unmap the BARs */
-	unmap_bars(lro);
 
 	pci_disable_device(pdev);
 

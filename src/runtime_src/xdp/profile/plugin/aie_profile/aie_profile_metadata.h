@@ -91,8 +91,7 @@ class AieProfileMetadata {
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    boost::property_tree::ptree aie_meta;
-    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
+    const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -123,8 +122,8 @@ class AieProfileMetadata {
     int getNumCountersMod(const int module){ return numCountersMod[module]; }
     module_type getModuleType(const int module) { return moduleTypes[module]; }
 
-    uint8_t getAIETileRowOffset() { return metadataReader->getAIETileRowOffset();}
-    int getHardwareGen() { return metadataReader->getHardwareGeneration();}
+    uint8_t getAIETileRowOffset() const { return metadataReader->getAIETileRowOffset(); }
+    int getHardwareGen() const { return metadataReader->getHardwareGeneration(); }
 
     double getClockFreqMhz() {return clockFreqMhz;}
     int getNumModules() {return NUM_MODULES;}

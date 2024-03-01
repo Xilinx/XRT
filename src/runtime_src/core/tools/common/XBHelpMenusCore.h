@@ -45,7 +45,6 @@ namespace XBUtilities {
   void
     report_option_help( const std::string & _groupName, 
                         const boost::program_options::options_description& _optionDescription,
-                        const boost::program_options::positional_options_description & _positionalDescription,
                         const bool _bReportParameter = true,
                         const bool removeLongOptDashes = false,
                         const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& device_options =

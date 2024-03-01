@@ -55,13 +55,6 @@
 
 #define DRV_NAME "xclmgmt"
 
-#define	MGMT_READ_REG32(lro, off)	\
-	ioread32(lro->core.bar_addr + off)
-#define	MGMT_WRITE_REG32(lro, off, val)	\
-	iowrite32(val, lro->core.bar_addr + off)
-#define	MGMT_WRITE_REG8(lro, off, val)	\
-	iowrite8(val, lro->core.bar_addr + off)
-
 #define	mgmt_err(lro, fmt, args...)	\
 	dev_err(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
 #define	mgmt_warn(lro, fmt, args...)	\
@@ -231,4 +224,6 @@ void mgmt_fini_mb(struct xclmgmt_dev *lro);
 int mgmt_start_mb(struct xclmgmt_dev *lro);
 int mgmt_stop_mb(struct xclmgmt_dev *lro);
 
+uint32_t mgmt_bar_read32(struct xclmgmt_dev *lro, uint32_t bar_off);
+#define	MGMT_READ_REG32(lro, off) mgmt_bar_read32(lro, off)
 #endif

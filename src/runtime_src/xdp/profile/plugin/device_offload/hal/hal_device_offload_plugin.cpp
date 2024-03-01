@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -52,11 +52,9 @@ namespace xdp {
       deviceHandles.push_back(handle) ;
 
       // Second, add all the information and a writer for this device
-      std::array<char, sysfs_max_path_length> pathBuf = {0};
-      xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
-      std::string path(pathBuf.data());
+      std::string path = util::getDebugIpLayoutPath(handle);
       if (path != "") {
-        addDevice(path) ;
+        addDevice(path);
 
         // Now, keep track of the device ID for this device so we can use
         //  our own handle
@@ -106,11 +104,7 @@ namespace xdp {
   void HALDeviceOffloadPlugin::flushDevice(void* handle)
   {
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
-    char pathBuf[maxPathLength] ;
-    memset(pathBuf, 0, maxPathLength) ;
-    xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
-
-    std::string path(pathBuf) ;
+    std::string path = util::getDebugIpLayoutPath(handle);
     if (path == "")
       return ;
     
@@ -132,11 +126,7 @@ namespace xdp {
     //  We will query information on that passed in handle, but we
     //  should user our own locally opened handle to access the physical
     //  device.
-    char pathBuf[maxPathLength] ;
-    memset(pathBuf, 0, maxPathLength) ;
-    xclGetDebugIPlayoutPath(userHandle, pathBuf, maxPathLength-1) ;
-
-    std::string path(pathBuf) ;
+    std::string path = util::getDebugIpLayoutPath(userHandle);
     if (path == "")
       return ;
 

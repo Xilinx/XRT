@@ -1,5 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  find_program(CLANG_TIDY "clang-tidy")
+  if(NOT CLANG_TIDY)
+    message(WARNING "-- clang-tidy not found, cannot enable static analysis")
+  else()
+    message("-- Enabling clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+  endif()
+endif()
+
 add_subdirectory(core)
 add_subdirectory(api)
 

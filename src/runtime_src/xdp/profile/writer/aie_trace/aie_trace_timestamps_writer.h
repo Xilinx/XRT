@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,10 +27,13 @@ namespace xdp {
   public:
     AIETraceTimestampsWriter(const char* fileName, const char* deviceName, 
                              uint64_t deviceIndex);
-    ~AIETraceTimestampsWriter();
+    ~AIETraceTimestampsWriter() override;
 
-    virtual bool write(bool openNewFile);
-    
+    bool write(bool openNewFile) override;
+
+  private:
+    void writeCVSTimestampFile();
+    void writeBinaryTimestampFile();
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;

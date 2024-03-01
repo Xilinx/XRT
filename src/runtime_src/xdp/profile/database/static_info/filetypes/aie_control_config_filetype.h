@@ -31,38 +31,38 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         ~AIEControlConfigFiletype() = default;
 
         driver_config
-        getDriverConfig() override;
+        getDriverConfig() const override;
 
-        int getHardwareGeneration() override;
+        int getHardwareGeneration() const override;
 
         aiecompiler_options
-        getAIECompilerOptions() override;
+        getAIECompilerOptions() const override;
 
-        uint8_t getAIETileRowOffset() override;
-
-        std::vector<std::string>
-        getValidGraphs() override;
+        uint8_t getAIETileRowOffset() const override;
 
         std::vector<std::string>
-        getValidPorts() override;
+        getValidGraphs() const override;
 
         std::vector<std::string>
-        getValidKernels() override;
+        getValidPorts() const override;
+
+        std::vector<std::string>
+        getValidKernels() const override;
 
         std::unordered_map<std::string, io_config>
-        getTraceGMIOs();
+        getTraceGMIOs() const;
 
         std::unordered_map<std::string, io_config>
-        getAllIOs();
+        getAllIOs() const;
 
         std::unordered_map<std::string, io_config> 
-        getPLIOs();
+        getPLIOs() const;
     
         std::unordered_map<std::string, io_config>
-        getChildGMIOs(const std::string& childStr);
+        getChildGMIOs(const std::string& childStr) const;
         
         std::unordered_map<std::string, io_config>
-        getGMIOs();
+        getGMIOs() const;
 
         std::vector<tile_type>
         getInterfaceTiles(const std::string& graphName,
@@ -71,29 +71,29 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
                           int16_t channelId = -1,
                           bool useColumn = false, 
                           uint8_t minCol = 0, 
-                          uint8_t maxCol = 0) override; 
+                          uint8_t maxCol = 0) const override;
 
         std::vector<tile_type>
         getMemoryTiles(const std::string& graphName,
-                       const std::string& bufferName = "all") override;
+                       const std::string& bufferName = "all") const override;
         
         std::vector<tile_type>
-        getAIETiles(const std::string& graphName) override;
+        getAIETiles(const std::string& graphName) const override;
 
         std::vector<tile_type>
-        getAllAIETiles(const std::string& graphName) override;
+        getAllAIETiles(const std::string& graphName) const override;
 
         std::vector<tile_type>
         getEventTiles(const std::string& graph_name,
-                      module_type type) override;
+                      module_type type) const override;
 
         std::vector<tile_type>
         getTiles(const std::string& graph_name,
                  module_type type, 
-                 const std::string& kernel_name = "all") override;
+                 const std::string& kernel_name = "all") const override;
 
     private:
-        std::string getMessage(std::string secName);
+        std::string getMessage(std::string secName) const;
         
 };
 

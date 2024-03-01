@@ -150,13 +150,13 @@ namespace xdp {
       //  monitor in hardware
       switch (ty) {
       case ACCEL_MONITOR:
-        slotIndex = getAMSlotId(idx);
+        slotIndex = util::getAMSlotId(idx);
         break ;
       case AXI_MM_MONITOR:
-        slotIndex = getAIMSlotId(idx);
+        slotIndex = util::getAIMSlotId(idx);
         break ;
       case AXI_STREAM_MONITOR:
-        slotIndex = getASMSlotId(idx);
+        slotIndex = util::getASMSlotId(idx);
         break ;
       default:
         // Should never be reached
@@ -252,7 +252,7 @@ namespace xdp {
     inline bool getStreamTraceEnabled() const { return asmIdsWithTrace.size() > 0 ; }
     inline bool getDataflowEnabled() const    { return dataflow ; }
     inline bool getHasFA() const              { return hasFA ; }
-    inline double getClockFrequency()         { return clockFrequency ; }
+    inline double getClockFrequency()         { return clockFrequency > 0 ? clockFrequency : 300 ; }
     inline bool getDataTransferTraceEnabled() const
       { return aimIdsWithTrace.size() > 0 ; }
 

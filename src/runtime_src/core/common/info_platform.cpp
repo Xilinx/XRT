@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE
 #include "info_platform.h"
 #include "query_requests.h"
@@ -464,7 +464,9 @@ pcie_info(const xrt_core::device * device)
 
   try {
     ptree.add("vendor", xq::pcie_vendor::to_string(xrt_core::device_query<xq::pcie_vendor>(device)));
-    ptree.add("device", xq::pcie_device::to_string(xrt_core::device_query<xq::pcie_device>(device)));
+    const auto pcie_id = xrt_core::device_query<xq::pcie_id>(device);
+    ptree.add("device", xq::pcie_id::device_to_string(pcie_id));
+    ptree.add("revision", xq::pcie_id::revision_to_string(pcie_id));
     ptree.add("sub_device", xq::pcie_subsystem_id::to_string(xrt_core::device_query<xq::pcie_subsystem_id>(device)));
     ptree.add("sub_vendor", xq::pcie_subsystem_vendor::to_string(xrt_core::device_query<xq::pcie_subsystem_vendor>(device)));
     ptree.add("link_speed_gbit_sec", xrt_core::device_query<xq::pcie_link_speed>(device));

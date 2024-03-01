@@ -37,6 +37,7 @@ namespace xdp {
     std::vector<std::string> getSettingsVector(std::string settingsString);
     std::map<module_type, std::vector<uint64_t>> parseMetrics();
     aie::driver_config getAIEConfigMetadata();
+    uint64_t getDeviceIDFromHandle(void* handle);
 
     const std::map<module_type, const char*> moduleTypes = {
       {module_type::core, "AIE"},
@@ -48,8 +49,7 @@ namespace xdp {
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
     uint8_t* txn_ptr;
     XAie_DevInst aieDevInst = {0};
-    boost::property_tree::ptree aie_meta;
-    std::unique_ptr<xdp::aie::BaseFiletypeImpl> filetype;
+    const aie::BaseFiletypeImpl* metadataReader = nullptr;
     aie_profile_op_t* op;
     std::size_t op_size;
 

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1319,7 +1319,7 @@ namespace xdp {
       return;
 
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
 
@@ -1332,7 +1332,7 @@ namespace xdp {
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
   {
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    updateDevice(deviceId, xrtXclbin);
+    updateDevice(deviceId, xrtXclbin, true);
   }
 
   // Return true if we should reset the device information.
@@ -1915,12 +1915,12 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < min_trace_id_asm) {
+    if (index < util::min_trace_id_asm) {
       std::stringstream msg;
       msg << "ASM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = min_trace_id_asm ;
+      index = util::min_trace_id_asm ;
     }
 
     // Parse out the name of the compute unit this monitor is attached to if
@@ -2063,12 +2063,12 @@ namespace xdp {
   {
     xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
 
-    updateDevice(deviceId, xrtXclbin);
+    updateDevice(deviceId, xrtXclbin, false);
   }
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin)
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild)
   {
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
@@ -2097,6 +2097,7 @@ namespace xdp {
     currentXclbin->uuid = xrtXclbin.get_uuid();
     currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ;
 
+    readAIEMetadata(xrtXclbin, clientBuild);
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
     setAIEGeneration(deviceId, xrtXclbin);
 
@@ -2153,24 +2154,48 @@ namespace xdp {
     }
   }
 
+  void VPStaticDatabase::readAIEMetadataClient()
+  {
+    metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+    if(!metadataReader) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
+      return;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
+  } 
+
+  void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild)
+  {
+    if (clientBuild) {
+      readAIEMetadataClient();
+      return;
+    }
+
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    if (!data.first || !data.second) {
+      return;
+    }
+
+    metadataReader = aie::readAIEMetadata(data.first, data.second, aieMetadata);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully!");
+  }
+
+  const xdp::aie::BaseFiletypeImpl*
+  VPStaticDatabase::getAIEmetadataReader() const
+  {
+    return metadataReader.get();
+  }
+
   void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
-
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-    if (!data.first || !data.second)
+    if (!metadataReader)
       return;
 
-    boost::property_tree::ptree aie_meta;
-
-    std::stringstream aie_stream;
-    aie_stream.write(data.first, data.second);
-    boost::property_tree::read_json(aie_stream, aie_meta);
-
     try {
-      auto hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
+      auto hwGen = aieMetadata.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
       deviceInfo[deviceId]->setAIEGeneration(hwGen);
     } catch(...) {
       return;
@@ -2187,18 +2212,11 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-    if (!data.first || !data.second)
-      return;
-
-    boost::property_tree::ptree aie_meta;
-
-    std::stringstream aie_stream;
-    aie_stream.write(data.first, data.second);
-    boost::property_tree::read_json(aie_stream,aie_meta);
+    if (!metadataReader)
+       return;
 
     try {
-      auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+      auto dev_node = aieMetadata.get_child("aie_metadata.DeviceData");
       xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
     } catch(...) {
       return;

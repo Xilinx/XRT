@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2023 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2024, Advanced Micro Devices, Inc. All rights Reserved.
 #
 # Signing xclbin images are currently only support on Linux
 
@@ -150,6 +150,11 @@ if(NOT WIN32)
   # -- IP_MEDATADA Section
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/IPMetadata")
   xrt_add_test("ip-metadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/IPMetadata/IPMetadata.py ${TEST_OPTIONS}")
+
+  # -- AIE RESOURCES BIN Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin")
+  xrt_add_test("AieResourcesBin" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin/SectionAieResourcesBin.py ${TEST_OPTIONS}")
+  
 endif()
 
 

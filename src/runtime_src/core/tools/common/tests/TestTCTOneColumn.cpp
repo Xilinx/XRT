@@ -78,15 +78,20 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
+  #ifdef _WIN32
   // workaround: can't rename files when copying to driver store
   // so need to name the files as _phx and _stx
   // will revisit this after the current release
-  auto device_id = xrt_core::query::pcie_device::to_string(xrt_core::device_query<xrt_core::query::pcie_device>(dev));
-  if (device_id.compare("0x1502") == 0)
-    m_xclbin = "validate_phx.xclbin";
-  else if (device_id.compare("0x17f0") == 0)
-    m_xclbin = "validate_stx.xclbin";
-  ptree.put("xclbin", m_xclbin);
+  auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
+  switch (device_id) {
+  case 5378: // 0x1502
+    ptree.put("xclbin", "validate_phx.xclbin");
+    break;
+  case 6128: // 0x17f0
+    ptree.put("xclbin", "validate_stx.xclbin");
+    break;
+  }
+  #endif
 
 
   auto xclbin_path = findXclbinPath(dev, ptree);
@@ -125,7 +130,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   auto kernelName = xkernel.get_name();
   logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
-  auto working_dev = xrt::device{dev->get_device_id()};
+  auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel kernel{hwctx, kernelName};

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBHelpMenusCore.h"
@@ -370,10 +370,10 @@ XBUtilities::report_commands_help( const std::string &_executable,
     }
   }
 
-  report_option_help("OPTIONS", _optionDescription, emptyPOD);
+  report_option_help("OPTIONS", _optionDescription);
 
   if (XBU::getShowHidden())
-    report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden, emptyPOD);
+    report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden);
 }
 
 static std::string
@@ -408,18 +408,12 @@ create_option_format_name(const boost::program_options::option_description * _op
 static void
 print_options(std::stringstream& stream,
               const boost::program_options::options_description& options,
-              const boost::program_options::positional_options_description& positionals,
               const bool report_param,
               const bool remove_long_dashes)
 {
   const auto& fh = FormatHelper::instance();
   boost::format fmtOption(fh.fgc_optionName + "  %-18s " + fh.fgc_optionBody + "- %s\n" + fh.fgc_reset);
   for (auto & option : options.options()) {
-    if ( !::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
-                         positionals) )  {
-      continue;
-    }
-
     std::string optionDisplayFormat = create_option_format_name(option.get(), report_param, remove_long_dashes);
     const unsigned int optionDescTab = 23;
     auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth - optionDescTab, false);
@@ -430,7 +424,6 @@ print_options(std::stringstream& stream,
 void
 XBUtilities::report_option_help(const std::string & _groupName,
                                 const boost::program_options::options_description& _optionDescription,
-                                const boost::program_options::positional_options_description& _positionalDescription,
                                 const bool _bReportParameter,
                                 const bool removeLongOptDashes,
                                 const std::map<std::string, std::vector<std::shared_ptr<JSONConfigurable>>>& all_device_options,
@@ -465,7 +458,7 @@ XBUtilities::report_option_help(const std::string & _groupName,
 
   // Generate the common options
   std::stringstream commonOutput;
-  print_options(commonOutput, common_options, _positionalDescription, _bReportParameter, removeLongOptDashes);
+  print_options(commonOutput, common_options, _bReportParameter, removeLongOptDashes);
 
   if (!printAllOptions) {
     std::cout << commonOutput.str();
@@ -487,7 +480,7 @@ XBUtilities::report_option_help(const std::string & _groupName,
 
       boost::program_options::options_description options;
       options.add_options()(subOption->getConfigName().c_str(), subOption->getConfigDescription().c_str());
-      print_options(deviceSpecificOutput, options, _positionalDescription, _bReportParameter, removeLongOptDashes);
+      print_options(deviceSpecificOutput, options, _bReportParameter, removeLongOptDashes);
     }
 
     const auto deviceSpecificOutputStr = deviceSpecificOutput.str();
@@ -583,10 +576,10 @@ display_subcommand_options(const std::string& executable,
       hiddenJsonOptions.emplace(devicePair.first, hidden);
   }
 
-  report_option_help("OPTIONS", options, positionals, false, false, commonJsonOptions, deviceClass); // Make a new report_option_help that prints the separated by device class?
+  report_option_help("OPTIONS", options, false, false, commonJsonOptions, deviceClass); // Make a new report_option_help that prints the separated by device class?
 
   if (XBU::getShowHidden())
-    report_option_help("OPTIONS (Hidden)", hiddenOptions, positionals, false, false, hiddenJsonOptions, deviceClass);
+    report_option_help("OPTIONS (Hidden)", hiddenOptions, false, false, hiddenJsonOptions, deviceClass);
 }
 
 void
@@ -625,7 +618,7 @@ XBUtilities::report_subcommand_help(const std::string& _executableName,
   std::cout << customHelpSection << "\n";
 
   // -- Global Options
-  report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
+  report_option_help("GLOBAL OPTIONS", _globalOptions, false);
 
   // Extended help
   {

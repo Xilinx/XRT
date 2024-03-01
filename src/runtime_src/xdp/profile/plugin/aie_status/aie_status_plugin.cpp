@@ -104,9 +104,9 @@ namespace xdp {
   {
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = filetype->getValidGraphs();
+    auto graphs = metadataReader->getValidGraphs();
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = filetype->getEventTiles(graph, module_type::core);
+      mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -186,8 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = filetype->getAIETileRowOffset();
-    auto hwGen = filetype->getHardwareGeneration();
+    auto offset = metadataReader->getAIETileRowOffset();
+    auto hwGen = metadataReader->getHardwareGeneration();
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -395,10 +395,7 @@ namespace xdp {
 
     mXrtCoreDevice = xrt_core::get_userpf_device(handle);
 
-    std::array<char, sysfs_max_path_length> pathBuf = {0};
-    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
-    std::string sysfspath(pathBuf.data());
-    uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
+    uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
@@ -412,10 +409,10 @@ namespace xdp {
     }
 
     // Grab AIE metadata
-    auto device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    filetype = aie::readAIEMetadata(data.first, data.second, mAieMeta);
-    auto hwGen = filetype->getHardwareGeneration();
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader)
+      return;
+    auto hwGen =  metadataReader->getHardwareGeneration();
 
     // Update list of tiles to debug
     getTilesForStatus();
