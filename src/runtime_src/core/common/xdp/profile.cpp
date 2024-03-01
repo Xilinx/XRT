@@ -8,6 +8,10 @@
 #include "core/common/module_loader.h"
 #include <functional>
 
+#ifdef _WIN32
+#pragma warning( disable : 4996 ) /* Disable warning for getenv */
+#endif
+
 // This file makes the connections between all xrt_coreutil level hooks
 // to the corresponding xdp plugins.  It is responsible for loading all of
 // modules.
