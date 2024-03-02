@@ -1540,14 +1540,10 @@ namespace xdp {
     boost::property_tree::ptree pt;
     try {
       boost::property_tree::read_json(ss,pt);
-      xclbin->pl.ipMetadata = std::make_unique<IpMetadata>(pt);
-      return std::move(xclbin->pl.ipMetadata);
-      // Debug
-      //xclbin->pl.ipMetadata->print();
+      return std::make_unique<IpMetadata>(pt);
     } catch(...) {
       return nullptr;
     }
-    return nullptr;
     
   }
 
