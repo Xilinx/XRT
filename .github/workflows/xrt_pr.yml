@@ -13,10 +13,10 @@ concurrency:
   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}  
   cancel-in-progress: true   
   
-jobs:  
-  authorize:  
-    runs-on: Ubuntu-22.04  
-    if: (github.event.label.name == 'build' && contains(fromJson('["manikandan-xilinx", "SubhedarV"]'), github.actor)) || github.event_name == 'pull_request_target'  
+jobs:    
+  authorize:    
+    runs-on: Ubuntu-22.04    
+    if: (github.event.label.name == 'build' && contains(fromJson('["manikandan-xilinx", "SubhedarV"]'), github.actor)) || contains(fromJson('["manikandan-xilinx", "SubhedarV"]'), github.event.pull_request.user.login)  
     steps:  
       - name: Checkout private repository        
         uses: actions/checkout@v4     
