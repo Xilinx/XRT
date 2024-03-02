@@ -63,7 +63,6 @@ namespace xdp { namespace util {
     }
     try {
       deviceName = xrt_core::device_query<xrt_core::query::rom_vbnv>(coreDevice);
-      std::cout<<"Debug: Device Name "<<deviceName<<std::endl;
     } catch (const xrt_core::query::no_such_key&) {
       //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Device query for Debug IP Layout not implemented");
     } catch (const std::exception &) {
