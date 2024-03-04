@@ -48,7 +48,7 @@ public:
 class event : public command
 {
 private:
-  std::vector<std::shared_ptr<command>> sync_dependent_commands;
+  std::vector<std::shared_ptr<command>> recorded_commands;
   std::vector<std::shared_ptr<command>> chain_of_commands;
 
 public:
@@ -71,10 +71,6 @@ public:
 
 class copy_buffer : public command
 {
-private:
-  //std::shared_ptr<buffer> buff;
-  //direction cdirection;
-
 public:
   bool submit() override;
   bool wait() override;
