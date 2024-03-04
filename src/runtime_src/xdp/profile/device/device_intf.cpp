@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1224,25 +1224,6 @@ uint32_t DeviceIntf::getDeadlockStatus() {
     return mDeadlockDetector->getDeadlockStatus();
 
   return 0;
-}
-
-void DeviceIntf::createXrtIP(
-    const std::unique_ptr<ip_metadata> &ip_metadata_section,
-    const std::string &fullname) {
-  mXrtIPList.emplace_back(
-      std::make_unique<XrtIP>(mDevice, ip_metadata_section, fullname));
-}
-
-std::string DeviceIntf::getDeadlockDiagnosis(bool print) {
-  std::string status;
-
-  if (!mDeadlockDetector)
-    return status;
-
-  for (auto &ip : mXrtIPList)
-    status += ip->getDeadlockDiagnosis(print);
-
-  return status;
 }
 
 } // namespace xdp

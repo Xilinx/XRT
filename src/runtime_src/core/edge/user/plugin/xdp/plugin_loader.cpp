@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2020-2024 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,7 +28,6 @@
 #include "aie_trace.h"
 #include "hal_device_offload.h"
 #include "noc_profile.h"
-#include "pl_deadlock.h"
 #include "sc_profile.h"
 #include "vart_profile.h"
 #else
@@ -75,9 +74,6 @@ bool load()
 
   if (xrt_core::config::get_vitis_ai_profile())
     xdp::vart::profile::load();
-
-  if (xrt_core::config::get_pl_deadlock_detection())
-    xdp::pl_deadlock::load();
 
 #endif
   return true ;

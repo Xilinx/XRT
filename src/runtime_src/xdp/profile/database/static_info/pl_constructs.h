@@ -346,23 +346,25 @@ namespace xdp {
   } ;
 
 
-  constexpr uint32_t num_bits_deadlock_diagnosis = 32;
+  constexpr uint32_t NUM_DEADLOCK_DIAGNOSIS_BITS = 32;
+
   // Deadlock Diagnosis registers
   // Each entry in map looks like:
   // Register Offset -> {message[0], message[1]...message[31]}
-  using kernel_reginfo = std::map<uint32_t, std::array<std::string, num_bits_deadlock_diagnosis>>;
+  using KernelRegisterInfo = std::map<uint32_t, std::array<std::string, NUM_DEADLOCK_DIAGNOSIS_BITS>>;
+
   /* Class to handle parsing of IP_METADATA section in xclbin*/
-  class ip_metadata {
+  class IpMetadata {
   private:
     uint32_t s_major;
     uint32_t s_minor;
 
   public:
-    std::vector<std::pair<std::string, kernel_reginfo>> kernel_infos;
+    std::vector<std::pair<std::string, KernelRegisterInfo>> kernel_infos;
 
   public:
-    ip_metadata() = delete;
-    ip_metadata(const boost::property_tree::ptree& pt);
+    IpMetadata() = delete;
+    IpMetadata(const boost::property_tree::ptree& pt);
     void print();
     inline uint32_t get_offset_from_string(const std::string& str)
     {
