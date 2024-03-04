@@ -145,7 +145,7 @@ namespace xdp {
           values.push_back(data);
           data = xrt_core::device_query<xrt_core::query::cage_temp_1>(coreDevice);
           values.push_back(data);
-          data = xrt_core::device_query<xrt_core::query::cage_temp_3>(coreDevice);
+          data = xrt_core::device_query<xrt_core::query::cage_temp_2>(coreDevice);
           values.push_back(data);
           data = xrt_core::device_query<xrt_core::query::cage_temp_3>(coreDevice);
           values.push_back(data);
