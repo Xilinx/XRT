@@ -1,19 +1,6 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2018-2022 Xilinx, Inc
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -32,6 +19,8 @@
 #include <algorithm>
 #include "core/common/config_reader.h"
 #include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/system.h"
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -98,7 +87,8 @@ void xma_thread1() {
 
         while (!list1.empty()) {
             auto itr1 = list1.begin();
-            xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+            xrt_core::message::send(static_cast<xrt_core::message::severity_level>(itr1->level),
+                                    "XMA", itr1->msg.c_str());
             list1.pop_front();
         }
 
@@ -214,13 +204,15 @@ void xma_thread1() {
     //Print all stats here
     std::lock_guard lock(g_xma_singleton->m_mutex);
 
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "=== Session CU Command Relative Stats: ===");
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+                            "XMA-Session-Stats", "=== Session CU Command Relative Stats: ===");
     for (auto& itr1: g_xma_singleton->all_sessions_vec) {
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XMA-Session-Stats", "--------");
         XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.hw_session.private_do_not_use;
         if (priv1->kernel_complete_count != 0 && !priv1->using_cu_cmd_status) {
-            xclLogMsg(NULL, XRT_WARNING, "XMA-Session-Stats", "Session id: %d, type: %s still has unused completd cu cmds", itr1.session_id, 
-                xma_core::get_session_name(itr1.session_type).c_str());
+            xrt_core::message::send(xrt_core::message::severity_level::info,
+                                    "XMA-Session-Stats", "Session id: %d, type: %s still has unused completd cu cmds",
+                                    itr1.session_id, xma_core::get_session_name(itr1.session_type).c_str());
         }
         float avg_cmds = 0;
         if (priv1->num_cu_cmds_avg != 0) {
@@ -228,10 +220,23 @@ void xma_thread1() {
         } else if (priv1->num_samples > 0) {
             avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
         }
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, 
-            xma_core::get_session_name(itr1.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+        xrt_core::message::send(
+            xrt_core::message::severity_level::info,
+            "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d",
+            itr1.session_id,
+            xma_core::get_session_name(itr1.session_type).c_str(),
+            avg_cmds,
+            (uint32_t)priv1->cmd_busy,
+            (uint32_t)priv1->cmd_idle);
 
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.session_id, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
+        xrt_core::message::send(
+            xrt_core::message::severity_level::info,
+            "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d",
+            itr1.session_id,
+            (uint32_t)priv1->cmd_busy_ticks,
+            (uint32_t)priv1->cmd_idle_ticks,
+            (uint32_t)priv1->kernel_complete_total);
+
         XmaHwKernel* kernel_info = priv1->kernel_info;
         if (kernel_info == NULL) {
             continue;
@@ -244,16 +249,35 @@ void xma_thread1() {
         } else if (kernel_info->num_samples > 0) {
             avg_cmds = kernel_info->num_cu_cmds_avg_tmp / ((float)kernel_info->num_samples);
         }
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
+        xrt_core::message::send(
+            xrt_core::message::severity_level::info,
+            "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d",
+            itr1.session_id,
+            kernel_info->name,
+            avg_cmds,
+            (uint32_t)kernel_info->cu_busy,
+            (uint32_t)kernel_info->cu_idle);
     }
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Admins: %d", (uint32_t)g_xma_singleton->num_admins);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------\n");
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XMA-Session-Stats", "--------");
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+			    "XMA-Session-Stats", "Num of Decoders: %d",
+			    (uint32_t)g_xma_singleton->num_decoders);
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+			    "XMA-Session-Stats", "Num of Scalers: %d",
+			    (uint32_t)g_xma_singleton->num_scalers);
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+			    "XMA-Session-Stats", "Num of Encoders: %d",
+			    (uint32_t)g_xma_singleton->num_encoders);
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+			    "XMA-Session-Stats", "Num of Filters: %d",
+			    (uint32_t)g_xma_singleton->num_filters);
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+			    "XMA-Session-Stats", "Num of Kernels: %d",
+			    (uint32_t)g_xma_singleton->num_kernels);
+    xrt_core::message::send(xrt_core::message::severity_level::info,
+			    "XMA-Session-Stats", "Num of Admins: %d",
+			    (uint32_t)g_xma_singleton->num_admins);
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XMA-Session-Stats", "--------\n");
 }
 
 void xma_thread2(uint32_t hw_dev_index) {
@@ -316,7 +340,7 @@ int32_t xma_num_devices() {
             return XMA_ERROR;
         }
     }
-    return xclProbe();
+    return xrt_core::get_total_devices(true).first;
 }
 
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
