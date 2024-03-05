@@ -1,96 +1,96 @@
-name: XRT Pr Comment 
+name: XRT CI Pr Comment 
+
+env:  
+  RELEASE: '2024.1'  
+  PIPELINE: 'xrt' 
+  ENV: 'test' 
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, labeled]
+
+concurrency:  
+  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true 
   
-env:    
-  RELEASE: '2024.1'    
-  PIPELINE: 'xrt'   
-  ENV: 'test'   
-  
-on:  
-  pull_request_target:  
-    types: [opened, edited, synchronize, labeled]  
-  
-concurrency:    
-  group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}  
-  cancel-in-progress: true   
-  
-jobs:    
-  authorize:    
-    runs-on: Ubuntu-22.04    
-    steps:  
-      - name: Checkout private repository        
-        uses: actions/checkout@v4     
-        with:        
-          repository: actions-int/composite-workflows  
-          github-server-url: ${{ secrets.SERVER_URL }}        
-          token: ${{ secrets.ACCESS_TOKEN }}        
-          path: composite-workflows  
+jobs:
+  authorize:
+    runs-on: Ubuntu-22.04
+    steps:
+      - name: Checkout private repository      
+        uses: actions/checkout@v4   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows
           ref: collab   
-  
-      - name: authorize  
-        uses: ./composite-workflows/authorize  
-        with:  
-          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}  
+
+      - name: authorize
+        uses: ./composite-workflows/authorize
+        with:
+          accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
           pullRequestUser: ${{ github.actor }}  
           githubEventType: ${{ github.event.action }}
           labelName: ${{ github.event.label.name }} 
-  
-  build:  
-    needs: authorize    
-    strategy:        
-      matrix:        
-        include:        
-          - os: centos78        
-            packageType: rpm        
-          - os: centos8        
-            packageType: rpm        
-          - os: rhel9        
-            packageType: rpm        
-          - os: ubuntu2004        
-            packageType: deb        
-          - os: ubuntu2204        
-            packageType: deb        
-          
-    runs-on: [self-hosted, Ubuntu-22.04]  
-    steps:    
-      - name: Set env variables      
-        run: |      
-          echo "Setting environment variables..."        
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV      
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV       
-  
-      - name: Checkout PR     
-        uses: actions/checkout@v4   
-        with:   
-          repository: "${{ github.event.pull_request.head.repo.full_name }}"  
-          ref: "${{ github.event.pull_request.head.ref }}"  
-          fetch-depth: 0  
-          path: ${{ github.workspace }}/${{ github.run_number }}    
-          submodules: recursive     
-  
-      - name: Checkout private repository        
-        uses: actions/checkout@v3     
-        with:        
-          repository: actions-int/composite-workflows  
-          github-server-url: ${{ secrets.SERVER_URL }}        
-          token: ${{ secrets.ACCESS_TOKEN }}        
-          path: composite-workflows   
-          ref: main  
-         
-      - name: XRT build       
-        uses: ./composite-workflows/build  
-        with:       
-          pipeline: ${{ env.PIPELINE }}   
-          osVersion: ${{ matrix.os }}    
-          packageType: ${{ matrix.packageType }}    
-          workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }}       
-          accessToken: ${{ secrets.ACCESS_TOKEN }}  
-          github-server-url: ${{ secrets.SERVER_URL }}  
-          appConfig: ${{ secrets.APP_CONFIG }}   
-          appConfig1: ${{ secrets.APP_CONFIG1 }}   
-          appConfig2: ${{ secrets.APP_CONFIG2 }}   
-          appConfig3: ${{ secrets.APP_CONFIG3 }}   
-          
+
+  build:
+    needs: authorize  
+    strategy:      
+      matrix:      
+        include:      
+          - os: centos78      
+            packageType: rpm      
+          - os: centos8      
+            packageType: rpm      
+          - os: rhel9      
+            packageType: rpm      
+          - os: ubuntu2004      
+            packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
+        
+    runs-on: [self-hosted, Ubuntu-22.04]
+    steps:  
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+    
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive   
+
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows 
+          ref: main
+       
+      - name: XRT build     
+        uses: ./composite-workflows/build
+        with:     
+          pipeline: ${{ env.PIPELINE }} 
+          osVersion: ${{ matrix.os }}  
+          packageType: ${{ matrix.packageType }}  
+          workspace: ${{ github.workspace }}
+          buildNumber: ${{ github.run_number }}     
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
   windows-build:
     needs: authorize
     runs-on: Windows
@@ -355,4 +355,4 @@ jobs:
       - name: Print test summary URL 
         run: |    
           # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
+          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
