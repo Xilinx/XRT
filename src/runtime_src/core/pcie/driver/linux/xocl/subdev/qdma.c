@@ -526,11 +526,12 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	}
 
 	rv = qdma_device_version_info(qdma->dma_hndl, &ver_info);
-	is_soft_qdma = (strcmp(ver_info.ip_str, "EQDMA5.0 Soft IP") == 0)? true : false ;
+
 	if (rv < 0) {
 		xocl_err(&pdev->dev, "qdma_device_version_info failed: %d", rv);
 		goto failed_create_queue;
 	}
+	is_soft_qdma = (strcmp(ver_info.ip_str, "EQDMA5.0 Soft IP") == 0)? true : false;
 
 	for (i = 0; i < qdma->channel * 2; i++) {
 		write = i / qdma->channel;
