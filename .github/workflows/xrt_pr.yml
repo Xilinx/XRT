@@ -32,6 +32,7 @@ jobs:
           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}  
           pullRequestUser: ${{ github.actor }}  
           githubEventType: ${{ github.event.action }}
+          labelName: ${{ github.event.label.name }} 
   
   build:  
     needs: authorize    
