@@ -1576,10 +1576,12 @@ struct aie_partition_info : request
     hw_context_info::metadata metadata;
     uint64_t    start_col;
     uint64_t    num_cols;
-    uint64_t    usage_count;
-    uint64_t    migration_count;
-    uint64_t    bo_sync_count;
-
+    int         pid;
+    uint64_t    command_submissions;
+    uint64_t    command_completions;
+    uint64_t    migrations;
+    uint64_t    preemptions;
+    uint64_t    errors;
   };
 
   using result_type = std::vector<struct data>;

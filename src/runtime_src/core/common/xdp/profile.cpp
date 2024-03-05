@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/xdp/profile.h"
 
@@ -7,6 +7,10 @@
 #include "core/common/dlfcn.h"
 #include "core/common/module_loader.h"
 #include <functional>
+
+#ifdef _WIN32
+#pragma warning( disable : 4996 ) /* Disable warning for getenv */
+#endif
 
 // This file makes the connections between all xrt_coreutil level hooks
 // to the corresponding xdp plugins.  It is responsible for loading all of
@@ -159,6 +163,55 @@ finish_flush_device(void* handle)
 
 } // end namespace xrt_core::xdp::ml_timeline
 
+namespace xrt_core::xdp::pl_deadlock {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> finish_flush_device_cb;
+
+void
+register_callbacks(void* handle)
+{ 
+  #ifdef XDP_CLIENT_BUILD
+    (void)handle;	// Not supported on Client Devices.
+  #else
+    using ftype = void (*)(void*);
+
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDevicePLDeadlock"));
+    finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "flushDevicePLDeadlock"));
+  #endif
+
+}
+
+void
+warning_callbacks()
+{
+}
+
+void
+load()
+{
+  static xrt_core::module_loader xdp_loader("xdp_pl_deadlock_plugin",
+                                                register_callbacks,
+                                                warning_callbacks);
+}
+
+// Make connections
+void
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void
+finish_flush_device(void* handle)
+{
+  if (finish_flush_device_cb)
+    finish_flush_device_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::pl_deadlock
+
 namespace xrt_core::xdp::aie::trace {
 
 std::function<void (void*)> update_device_cb;
@@ -213,6 +266,11 @@ namespace xrt_core::xdp {
 void 
 update_device(void* handle)
 {
+
+#ifdef XDP_CLIENT_BUILD
+  /* Adding the macro guard as the static instances of the following plugins
+   * get created unnecessarily when the configs are enabled on Edge.
+   */
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
@@ -253,11 +311,27 @@ update_device(void* handle)
     }
     xrt_core::xdp::ml_timeline::update_device(handle);
   }
+
+#else
+
+  if (xrt_core::config::get_pl_deadlock_detection() 
+      && nullptr == std::getenv("XCL_EMULATION_MODE")) {
+    try {
+      xrt_core::xdp::pl_deadlock::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::pl_deadlock::update_device(handle);
+  }
+#endif
 }
 
 void 
 finish_flush_device(void* handle)
 {
+
+#ifdef XDP_CLIENT_BUILD
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
   if (xrt_core::config::get_aie_trace())
@@ -266,6 +340,14 @@ finish_flush_device(void* handle)
     xrt_core::xdp::aie::debug::end_debug(handle);
   if (xrt_core::config::get_ml_timeline())
     xrt_core::xdp::ml_timeline::finish_flush_device(handle);
+
+#else
+
+  if (xrt_core::config::get_pl_deadlock_detection()
+      && nullptr == std::getenv("XCL_EMULATION_MODE")) {
+    xrt_core::xdp::pl_deadlock::finish_flush_device(handle);
+  }
+#endif
 }
 
 } // end namespace xrt_core::xdp

@@ -3,7 +3,7 @@
 
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
  *          : Tianhao Zhou
@@ -45,7 +45,6 @@
 #include "xdp/profile/device/traceFifoLite.h"
 #include "xdp/profile/device/traceFunnel.h"
 #include "xdp/profile/device/traceS2MM.h"
-#include "xdp/profile/device/xrtIP.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
@@ -205,14 +204,6 @@ class DeviceIntf {
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
 
-    XDP_CORE_EXPORT
-    void createXrtIP
-    (
-      const std::unique_ptr<ip_metadata>& ip_metadata_section,
-      const std::string& fullname
-    );
-    XDP_CORE_EXPORT
-    std::string getDeadlockDiagnosis(bool print);
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
@@ -248,7 +239,6 @@ class DeviceIntf {
 
     // Deadlock Detection and Diagnosis
     DeadlockDetector*     mDeadlockDetector  = nullptr;
-    std::vector<std::unique_ptr<XrtIP>> mXrtIPList;
 
     /*
      * Set max bandwidths to reasonable defaults
