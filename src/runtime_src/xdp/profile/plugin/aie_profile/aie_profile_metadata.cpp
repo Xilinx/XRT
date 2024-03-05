@@ -87,11 +87,17 @@ namespace xdp {
                             "XRT", "Finished Parsing AIE Profile Metadata."); 
   }
 
+  /****************************************************************************
+   * Compare tiles (used for sorting)
+   ***************************************************************************/
   bool tileCompare(tile_type tile1, tile_type tile2)
   {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
+  /****************************************************************************
+   * Check validity of settings
+   ***************************************************************************/
   void AieProfileMetadata::checkSettings()
   {
     using boost::property_tree::ptree;
@@ -138,7 +144,11 @@ namespace xdp {
     }
   }
 
-  std::vector<std::string> AieProfileMetadata::getSettingsVector(std::string settingsString)
+  /****************************************************************************
+   * Separate string into a vector of settings
+   ***************************************************************************/
+  std::vector<std::string> 
+  AieProfileMetadata::getSettingsVector(std::string settingsString)
   {
     if (settingsString.empty())
       return {};
@@ -153,14 +163,51 @@ namespace xdp {
     return settingsVector;
   }
 
-  inline void throw_if_error(bool err, const char* msg)
+  /****************************************************************************
+   * Check if metric set has an equivalent
+   ***************************************************************************/
+  int AieProfileMetadata::getPairModuleIndex(const std::string& metricSet, module_type mod)
   {
-    if (err)
-      throw std::runtime_error(msg);
+    if ((mod != module_type::core) && (mod != module_type::dma))
+      return -1;
+    
+    int  pairIdx = (mod == module_type::core) ? 1 : 0;
+    auto pairMod = (mod == module_type::core) ? module_type::dma : module_type::core;
+
+    // Search for name equivalent in other module (e.g., core, memory)
+    if (std::find(metricStrings.at(pairMod).begin(), metricStrings.at(pairMod).end(), metricSet) !=
+        metricStrings.at(pairMod).end())
+      return pairIdx;
+    return -1;
   }
 
-  // Resolve metrics for AIE or MEM tiles
-  void AieProfileMetadata::getConfigMetricsForTiles(const int moduleIdx, const std::vector<std::string>& metricsSettings,
+  /****************************************************************************
+   * Get index of metric set given name of set
+   ***************************************************************************/
+  uint8_t AieProfileMetadata::getMetricSetIndex(const std::string& metricSet, module_type mod)
+  {
+    auto stringVector = metricStrings.at(mod);
+    auto itr = std::find(stringVector.begin(), stringVector.end(), metricSet);
+
+    if (itr != stringVector.cend())
+      return 0;
+    return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
+  }
+
+  /****************************************************************************
+   * Get driver configuration
+   ***************************************************************************/
+  aie::driver_config
+  AieProfileMetadata::getAIEConfigMetadata()
+  {
+    return metadataReader->getDriverConfig();
+  }
+
+  /****************************************************************************
+   * Resolve metrics for AIE or Memory tiles
+   ***************************************************************************/
+  void AieProfileMetadata::getConfigMetricsForTiles(const int moduleIdx, 
+      const std::vector<std::string>& metricsSettings,
       const std::vector<std::string>& graphMetricsSettings, const module_type mod)
   {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty()))
@@ -168,7 +215,7 @@ namespace xdp {
 
     if ((metadataReader->getHardwareGeneration() == 1) && (mod == module_type::mem_tile)) {
       xrt_core::message::send(severity_level::warning, "XRT",
-                              "MEM tiles are not available in AIE1. Profile "
+                              "Memory tiles are not available in AIE1. Profile "
                               "settings will be ignored.");
       return;
     }
@@ -194,8 +241,9 @@ namespace xdp {
      * graph_based_aie_metrics = <graph name|all>:<kernel name|all>
      *   :<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
      * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>
-     *   :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs> MEM Tiles
-     *
+     *   :<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>
+     * 
+     * Memory Tiles
      * Memory tiles (AIE2 and beyond)
      * graph_based_memory_tile_metrics = <graph name|all>:<buffer name|all>
      *   :<off|input_channels|input_channels_details|output_channels|output_channels_details|memory_stats|mem_trace>[:<channel>]
@@ -231,7 +279,7 @@ namespace xdp {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() == 5) {
         try {
           for (auto& e : tiles) {
@@ -273,7 +321,7 @@ namespace xdp {
         configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() == 5) {
         try {
           for (auto& e : tiles) {
@@ -330,7 +378,7 @@ namespace xdp {
         configMetrics[moduleIdx][e] = metrics[i][1];
       }
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       // One channel specified
       if (metrics[i].size() == 3) {
         try {
@@ -411,7 +459,8 @@ namespace xdp {
         }
         catch (...) {
           std::stringstream msg;
-          msg << "Channel specifications in tile_based_" << modName << "_metrics are not valid and hence ignored.";
+          msg << "Channel specifications in tile_based_" << modName 
+              << "_metrics are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
@@ -425,15 +474,15 @@ namespace xdp {
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
             std::stringstream msg;
-            msg << "Specified Tile {" << std::to_string(tile.col) << "," << std::to_string(tile.row)
-                << "} is not active. Hence skipped.";
+            msg << "Specified Tile (" << std::to_string(tile.col) << "," 
+                << std::to_string(tile.row) << ") is not active. Hence skipped.";
             xrt_core::message::send(severity_level::warning, "XRT", msg.str());
             continue;
           }
 
           configMetrics[moduleIdx][tile] = metrics[i][2];
 
-          // Grab channel numbers (if specified; MEM tiles only)
+          // Grab channel numbers (if specified; memory tiles only)
           if (metrics[i].size() == 5) {
             configChannel0[tile] = channel0;
             configChannel1[tile] = channel1;
@@ -445,7 +494,8 @@ namespace xdp {
     // Pass 3 : process only single tile metric setting
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Check if already processed
-      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() == 3) || (metrics[i].size() == 5))
+      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() == 3) 
+          || (metrics[i].size() == 5))
         continue;
 
       uint8_t col = 0;
@@ -462,7 +512,8 @@ namespace xdp {
       }
       catch (...) {
         std::stringstream msg;
-        msg << "Tile specification in tile_based_" << modName << "_metrics is not valid format and hence skipped.";
+        msg << "Tile specification in tile_based_" << modName 
+            << "_metrics is not valid format and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -474,15 +525,15 @@ namespace xdp {
       // Make sure tile is used
       if (allValidTiles.find(tile) == allValidTiles.end()) {
         std::stringstream msg;
-        msg << "Specified Tile {" << std::to_string(tile.col) << "," << std::to_string(tile.row)
-            << "} is not active. Hence skipped.";
+        msg << "Specified Tile (" << std::to_string(tile.col) << "," 
+            << std::to_string(tile.row) << ") is not active. Hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
 
       configMetrics[moduleIdx][tile] = metrics[i][1];
 
-      // Grab channel numbers (if specified; MEM tiles only)
+      // Grab channel numbers (if specified; memory tiles only)
       if (metrics[i].size() == 4) {
         try {
           configChannel0[tile] = aie::convertStringToUint8(metrics[i][2]);
@@ -502,24 +553,61 @@ namespace xdp {
     std::vector<tile_type> offTiles;
 
     for (auto& tileMetric : configMetrics[moduleIdx]) {
+      auto tile = tileMetric.first;
+      auto metricSet = tileMetric.second;
+
       // Save list of "off" tiles
-      if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
-        offTiles.push_back(tileMetric.first);
+      if (metricSet.empty() || (metricSet.compare("off") == 0)) {
+        offTiles.push_back(tile);
         continue;
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (std::find(metricStrings.at(mod).begin(), metricStrings.at(mod).end(), tileMetric.second) ==
+      if (std::find(metricStrings.at(mod).begin(), metricStrings.at(mod).end(), metricSet) ==
           metricStrings.at(mod).end()) {
         if (showWarning) {
           std::stringstream msg;
-          msg << "Unable to find " << moduleNames[moduleIdx] << " metric set " << tileMetric.second
+          msg << "Unable to find " << moduleNames[moduleIdx] << " metric set " << metricSet
               << ". Using default of " << defaultSet << ".";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
           showWarning = false;
         }
 
         tileMetric.second = defaultSet;
+      }
+
+      // Specify complementary metric sets (as needed)
+      // NOTE 1: Issue warning when we replace their setting
+      // NOTE 2: This is agnostic to order and which setting is specified
+      auto pairModuleIdx = getPairModuleIndex(metricSet, mod);
+      if (pairModuleIdx >= 0) {
+        auto pairItr = configMetrics[pairModuleIdx].find(tile);
+        if ((pairItr != configMetrics[pairModuleIdx].end())
+            && (pairItr->second != metricSet)) {
+          std::stringstream msg;
+          msg << "Replacing metric set " << pairItr->second << " with complementary set " 
+              << metricSet << " for tile (" << std::to_string(tile.col) << ","
+              << std::to_string(tile.row) << ").";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        }
+
+        configMetrics[pairModuleIdx][tile] = metricSet;
+        // Protect this setting by adding it to secondary map
+        pairConfigMetrics[tile] = metricSet;
+      }
+      else {
+        // Check if this tile/module was previously protected
+        auto pairItr2 = pairConfigMetrics.find(tile);
+        if (pairItr2 != pairConfigMetrics.end()) {
+          std::stringstream msg;
+          msg << "Replacing metric set " << metricSet << " with complementary set " 
+              << pairItr2->second << " for tile (" << std::to_string(tile.col) << ","
+              << std::to_string(tile.row) << ").";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        
+          auto pairModuleIdx2 = getPairModuleIndex(pairItr2->second, mod);
+          configMetrics[pairModuleIdx2][tile] = pairItr2->second;
+        }
       }
     }
 
@@ -529,7 +617,9 @@ namespace xdp {
     }
   }
 
-  // Resolve Interface metrics
+  /****************************************************************************
+   * Resolve metrics for Interface tiles
+   ***************************************************************************/
   void AieProfileMetadata::getConfigMetricsForInterfaceTiles(const int moduleIdx,
       const std::vector<std::string>& metricsSettings,
       const std::vector<std::string> graphMetricsSettings)
@@ -815,25 +905,6 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics[moduleIdx].erase(t);
     }
-  }
-
-  uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod)
-  {
-    auto stringVector = metricStrings.at(mod);
-    auto itr = std::find(stringVector.begin(), stringVector.end(), metricString);
-
-    if (itr != stringVector.cend()) {
-      return 0;
-    }
-    else {
-      return static_cast<uint8_t>(std::distance(stringVector.begin(), itr));
-    }
-  }
-
-  aie::driver_config
-  AieProfileMetadata::getAIEConfigMetadata()
-  {
-    return metadataReader->getDriverConfig();
   }
 
 }  // namespace xdp

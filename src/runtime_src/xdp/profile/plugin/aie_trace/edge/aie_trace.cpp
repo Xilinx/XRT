@@ -361,6 +361,7 @@ namespace xdp {
       auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
+      cfgTile->active_core = (tile.is_dma_only == false);
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events

@@ -59,6 +59,8 @@ namespace xdp {
           AieTileTraceConfig_C.put("column", tile->column);
           AieTileTraceConfig_C.put("row", tile->row);
           AieTileTraceConfig_C.put("event_trace_name", tile->trace_metric_set);
+          AieTileTraceConfig_C.put("active_core", tile->active_core);
+          AieTileTraceConfig_C.put("active_memory", tile->active_memory);
 
           /*
           * Core Trace

@@ -383,7 +383,15 @@ AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name) const
     std::vector<tile_type> tiles;
     tiles = getEventTiles(graph_name, module_type::core);
     auto dmaTiles = getEventTiles(graph_name, module_type::dma);
-    std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
+
+    // Identify and add DMA-only tiles to list
+    for (auto& tile : dmaTiles) {
+      if (std::find(tiles.begin(), tiles.end(), tile) == tiles.end()) {
+        tile.is_dma_only = true;
+        tiles.push_back(tile);
+      }
+    }
+    //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
     return tiles;
 }
 
@@ -400,7 +408,6 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         return {};
     }
 
-    bool is_dma_only = (type == module_type::dma);
     const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
 
@@ -418,7 +425,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
-            t.is_dma_only = is_dma_only;
+            t.is_dma_only = false;
         }
 
         int num_tiles = count;
