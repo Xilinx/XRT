@@ -492,7 +492,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	u32	write, qidx;
 	char	ebuf[MM_EBUF_LEN + 1];
 	int	i, ret, rv;
-	bool	reset = false, is_soft_adma = false;
+	bool	reset = false, is_soft_qdma = false;
 
 	if (count > sizeof(qdma->channel_bitmap[0]) * 8) {
 		xocl_info(&pdev->dev, "Invalide number of channels set %d", count);
@@ -526,7 +526,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	}
 
 	rv = qdma_device_version_info(qdma->dma_hndl, &ver_info);
-	is_soft_adma = (strcmp(ver_info.ip_str, "EQDMA5.0 Soft IP") == 0)? true : false ;
+	is_soft_qdma = (strcmp(ver_info.ip_str, "EQDMA5.0 Soft IP") == 0)? true : false ;
 	if (rv < 0) {
 		xocl_err(&pdev->dev, "qdma_device_version_info failed: %d", rv);
 		goto failed_create_queue;
@@ -554,7 +554,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 		qconf->qidx = qidx;
 		qconf->irq_en = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?
 					0 : 1;
-		if (is_soft_adma)
+		if (is_soft_qdma)
 		{
 			/* This is a temporary workaround to limit aperture size until we have a fix in SOFT IP */
 			qconf->aperture_size = QDMA_WA_APERTURE_SIZE;
