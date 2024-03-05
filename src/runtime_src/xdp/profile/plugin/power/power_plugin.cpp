@@ -51,11 +51,11 @@ namespace xdp {
    uint32_t index = 0;
    while (index < numDevices) {
      try {
-       auto xrtDevice = std::make_unique<xrt::device>(index);
-       auto ownedHandle = xrtDevice->get_handle()->get_device_handle();
-  
+       xrtDevices.push_back(std::make_unique<xrt::device>(index));
+       auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
+
         // Determine the name of the device
-        std::string deviceName = util::getDeviceName(handle);
+        std::string deviceName = util::getDeviceName(ownedHandle);
   
         if (deviceNumbering.find(deviceName) == deviceNumbering.end()) {
           deviceNumbering[deviceName] = 0 ;
@@ -100,11 +100,6 @@ namespace xdp {
 
       db->unregisterPlugin(this) ;
     }
-
-    for (auto h : deviceHandles)
-    {
-      xclClose(h) ;
-    }
   }
 
   void PowerProfilingPlugin::pollPower()
@@ -115,10 +110,11 @@ namespace xdp {
       double timestamp = xrt_core::time_ns() / 1.0e6 ;
       uint64_t index = 0 ;
 
-      for(auto& handle : deviceHandles)
+      for(auto& xrtDevice : xrtDevices)
       {
         std::vector<uint64_t> values ;
-        std::shared_ptr<xrt_core::device> coreDevice = xrt_core::get_userpf_device(handle);
+        std::shared_ptr<xrt_core::device> coreDevice = xrtDevice->get_handle();
+        
         if (!coreDevice) {
           continue;
         }

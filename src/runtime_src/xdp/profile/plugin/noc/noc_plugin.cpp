@@ -46,7 +46,7 @@ namespace xdp {
         auto xrtDevice = std::make_unique<xrt::device>(index);
         auto ownedHandle = xrtDevice->get_handle()->get_device_handle();
         // Determine the name of the device
-        std::string deviceName = util::getDeviceName(handle);
+        std::string deviceName = util::getDeviceName(ownedHandle);
         mDevices.push_back(deviceName);
   
         std::string outputFile = "noc_profile_" + deviceName + ".csv"; 
