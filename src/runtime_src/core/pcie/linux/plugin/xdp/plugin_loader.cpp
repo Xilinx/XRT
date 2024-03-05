@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,6 @@
 #include "plugin/xdp/hal_device_offload.h"
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/noc_profile.h"
-#include "plugin/xdp/pl_deadlock.h"
 #include "plugin/xdp/power_profile.h"
 #include "plugin/xdp/sc_profile.h"
 #include "plugin/xdp/vart_profile.h"
@@ -120,15 +119,6 @@ bool load()
   try {
     if (xrt_core::config::get_vitis_ai_profile())
       xdp::vart::profile::load();
-  }
-  catch (std::exception& e) {
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                            e.what());
-  }
-
-  try {
-    if (xrt_core::config::get_pl_deadlock_detection())
-      xdp::pl_deadlock::load();
   }
   catch (std::exception& e) {
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
