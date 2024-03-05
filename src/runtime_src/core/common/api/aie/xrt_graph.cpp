@@ -882,7 +882,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
  * Return:         The performance counter value, or appropriate error number.
  */
 uint64_t
-xrtAIEReadProfiling(int pHandle)
+xrtAIEReadProfiling(xrtDeviceHandle /*handle*/, int pHandle)
 {
   try {
     auto it = profiling_cache.find(pHandle);
@@ -912,7 +912,7 @@ xrtAIEReadProfiling(int pHandle)
  * Return:         0 on success, or appropriate error number.
  */
 void
-xrtAIEStopProfiling(int pHandle)
+xrtAIEStopProfiling(xrtDeviceHandle /*handle*/, int pHandle)
 {
   try {
     auto it = profiling_cache.find(pHandle);
