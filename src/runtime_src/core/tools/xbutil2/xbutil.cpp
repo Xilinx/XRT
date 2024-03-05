@@ -54,7 +54,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
+      "report": ["electrical", "host", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
