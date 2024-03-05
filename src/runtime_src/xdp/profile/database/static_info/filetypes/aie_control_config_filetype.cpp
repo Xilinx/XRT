@@ -341,7 +341,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
-            t.is_dma_only = false;
+            t.active_core = true;
         }
 
         int num_tiles = count;
@@ -360,8 +360,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
             tiles.at(count++).stream_id = xdp::aie::convertStringToUint8(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
-        count = startCount;
-        for (auto& node : graph.second.get_child("iteration_memory_addresses"))
+        count = startCount;        for (auto& node : graph.second.get_child("iteration_memory_addresses"))
             tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
@@ -384,12 +383,17 @@ AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name) const
     tiles = getEventTiles(graph_name, module_type::core);
     auto dmaTiles = getEventTiles(graph_name, module_type::dma);
 
+    // Specify if active core tiles also have active DMAs
+    for (auto& tile : tiles)
+        tile.active_memory = (std::find(dmaTiles.begin(), dmaTiles.end(), tile) != dmaTiles.end());
+
     // Identify and add DMA-only tiles to list
     for (auto& tile : dmaTiles) {
-      if (std::find(tiles.begin(), tiles.end(), tile) == tiles.end()) {
-        tile.is_dma_only = true;
-        tiles.push_back(tile);
-      }
+        if (std::find(tiles.begin(), tiles.end(), tile) == tiles.end()) {
+            tile.active_core = false;
+            tile.active_memory = true;
+            tiles.push_back(tile);
+        }
     }
     //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
     return tiles;
@@ -425,7 +429,10 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
-            t.is_dma_only = false;
+            if (type == module_type::core)
+              t.active_core = true;
+            else
+              t.active_memory = true;
         }
 
         int num_tiles = count;
@@ -479,7 +486,8 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = mapping.second.get<uint8_t>("column");
         tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
-        tile.is_dma_only = false;
+        tile.active_core = true;
+        tile.active_memory = true;
         tiles.emplace_back(std::move(tile));
     }
     return tiles;
