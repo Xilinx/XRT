@@ -96,7 +96,7 @@ struct xocl_hwmon_sdm {
 	bool                    sysfs_created;
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
-	size_t                  sensor_size[SDR_TYPE_MAX];
+	uint16_t                sensor_size[SDR_TYPE_MAX];
 	bool                    sensor_data_avail[SDR_TYPE_MAX];
 	uint16_t                sensor_ids[SDR_TYPE_MAX][SENSOR_IDS_MAX];
 	uint16_t                sensor_ids_max[SDR_TYPE_MAX];
@@ -1430,7 +1430,6 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_hwmon_sdm *sdm;
 	int err = 0;
-	int repo_id = 0;
 
 	sdm = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_hwmon_sdm));
 	if (!sdm)
@@ -1448,25 +1447,8 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	} else {
 		xocl_dbg(&pdev->dev, "in mgmtpf driver");
 		sdm->privileged = true;
-		/* Collect the SDR size information from VMR for the respective repo types */
-		memset(sdm->sensor_size, 0, sizeof(sdm->sensor_size));
-		repo_id = sdr_get_id(SDR_TYPE_BDINFO);
-		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
-		repo_id = sdr_get_id(SDR_TYPE_TEMP);
-		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
-		repo_id = sdr_get_id(SDR_TYPE_VOLTAGE);
-		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
-		repo_id = sdr_get_id(SDR_TYPE_CURRENT);
-		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
-		repo_id = sdr_get_id(SDR_TYPE_POWER);
-		(void)	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[repo_id], repo_id);
 	}
 
-    int ii=0;
-	for(ii=0;ii<SDR_TYPE_MAX; ii++)
-	{
-		xocl_err(&pdev->dev, "karthik hwmon_sdm_probe %d",sdm->sensor_size[ii]);
-	}
 	err = sysfs_create_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
 	if (err) {
 		xocl_err(&pdev->dev, "unable to create sysfs group for bdinfo, err: %d", err);
@@ -1512,13 +1494,7 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
 		xocl_err(&pdev->dev, "received invalid sdr repo type: %d", repo_type);
 		return -EINVAL;
 	}
-    int ii=0;
-	for(ii=0;ii<SDR_TYPE_MAX; ii++)
-	{
-		xocl_err(&pdev->dev, "karthik hwmon_sdm_probe %d",sdm->sensor_size[ii]);
-	}
 	resp_len = sdr_get_size(sdm, repo_id);
-    xocl_err(&pdev->dev, " karthik len=%d", resp_len);
 	if (!sdm->privileged) {
 		char *in_buf = NULL;
 		in_buf = vzalloc(resp_len);
@@ -1582,6 +1558,18 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
  */
 static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create_sysfs)
 {
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
+
+	/* Collect sensor size information from VMR. sensor size information is collected only once during
+	 * mgmtpf driver load and/or during PCIe secondary bus reset.
+	 */
+	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[XGQ_CMD_SENSOR_SID_BDINFO], XGQ_CMD_SENSOR_SID_BDINFO);
+	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[XGQ_CMD_SENSOR_SID_TEMP], XGQ_CMD_SENSOR_SID_TEMP);
+	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[XGQ_CMD_SENSOR_SID_CURRENT], XGQ_CMD_SENSOR_SID_CURRENT);
+	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[XGQ_CMD_SENSOR_SID_POWER], XGQ_CMD_SENSOR_SID_POWER);
+	xocl_xgq_collect_sensors_request_size(xdev, &sdm->sensor_size[XGQ_CMD_SENSOR_SID_VOLTAGE], XGQ_CMD_SENSOR_SID_VOLTAGE);
+
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_BDINFO, create_sysfs, 0, NULL);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_TEMP, create_sysfs, 0, NULL);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_CURRENT, create_sysfs, 0, NULL);

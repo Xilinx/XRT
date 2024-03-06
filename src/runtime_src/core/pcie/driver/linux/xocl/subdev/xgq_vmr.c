@@ -2316,9 +2316,7 @@ acquire_failed:
 	return ret;
 }
 
-
-
-static int xgq_collect_sensors_request_size(struct platform_device *pdev, size_t *sensor_size, int repo_id)
+static int xgq_collect_sensors_request_size(struct platform_device *pdev, uint16_t *sensor_size, int repo_id)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
