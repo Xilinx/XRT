@@ -360,7 +360,8 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
             tiles.at(count++).stream_id = xdp::aie::convertStringToUint8(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
-        count = startCount;        for (auto& node : graph.second.get_child("iteration_memory_addresses"))
+        count = startCount;
+        for (auto& node : graph.second.get_child("iteration_memory_addresses"))
             tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_addresses < num_tiles");
 
