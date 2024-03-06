@@ -48,16 +48,22 @@ protected:
   state cstate;
 
 public:
+  command()
+    : cstate{state::init}
+  {}
+
   command(std::shared_ptr<stream> s)
     : cstream{std::move(s)}
     , cstate{state::init}
   {}
-  
+
   virtual bool submit() = 0;
   virtual bool wait() = 0;
   state get_state() const { return cstate; }
   std::chrono::time_point<std::chrono::system_clock> get_time() { return ctime; }
   void set_state(state newstate) { cstate = newstate; };
+  type
+  get_type() const { return ctype; }
 };
 
 class event : public command
@@ -68,7 +74,7 @@ private:
   std::vector<std::shared_ptr<command>> chain_of_commands;
 
 public:
-  event(std::shared_ptr<stream> s);
+  event();
 
   void record(std::shared_ptr<stream> s);
   bool submit() override;
@@ -89,7 +95,7 @@ private:
   xrt::run r;
 
 public:
-  kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &f, void** args);
+  kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args);
   bool submit() override;
   bool wait() override;
 };

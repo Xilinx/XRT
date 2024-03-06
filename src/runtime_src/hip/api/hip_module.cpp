@@ -22,13 +22,14 @@ hip_module_launch_kernel(hipFunction_t f, uint32_t /*gridDimX*/, uint32_t /*grid
   auto hip_func = hip_mod->get_function(func_hdl);
   throw_invalid_resource_if(!hip_func, "invalid function passed");
 
-  // TODO : add num of kernel launches calculation based on grid and block dimensions
+  // All the RyzenAI kernels run only once, so ignoring grid and block dimensions
+  // Revisit if we need to launch multiple times
 
   auto hip_stream = get_stream(hStream);
   auto s_hdl = hip_stream.get();
   auto cmd_hdl = insert_in_map(command_cache,
-                               std::make_shared<kernel_start>(std::move(hip_stream),
-                                                              std::move(hip_func),
+                               std::make_shared<kernel_start>(hip_stream,
+                                                              hip_func,
                                                               kernelParams));
   s_hdl->enqueue(command_cache.get(cmd_hdl));
 }

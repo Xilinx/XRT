@@ -61,9 +61,15 @@ public:
   function(module_handle mod_hdl, std::string&& name);
 
   module*
-  get_module()
+  get_module() const
   {
     return m_module;
+  }
+
+  xrt::kernel&
+  get_kernel()
+  {
+    return m_kernel;
   }
 };
 
