@@ -1,19 +1,6 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2018-2022 Xilinx, Inc
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include <assert.h>
 #include <stdio.h>
@@ -38,6 +25,7 @@
 #include "app/xmalogger.h"
 #include "lib/xmalogger.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 #ifdef XMA_DEBUG
 #define XMA_DBG_PRINTF(format, ...) \
@@ -95,7 +83,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
                 //Else application may exit/crash early
                 while (!g_xma_singleton->log_msg_list.empty()) {
                     auto itr1 = g_xma_singleton->log_msg_list.begin();
-                    xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+                    xrt_core::message::send(static_cast<xrt_core::message::severity_level>(itr1->level),
+                                            "XMA", itr1->msg.c_str());
                     g_xma_singleton->log_msg_list.pop_front();
                 }
             }
@@ -103,7 +92,7 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
             //Release log msg list lock
             g_xma_singleton->log_msg_list_locked = false;
         } else {
-            xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
+            xrt_core::message::send(static_cast<xrt_core::message::severity_level>(level), "XMA", msg_buff);
         }
     }
 }

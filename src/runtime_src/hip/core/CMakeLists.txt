@@ -3,6 +3,7 @@
 add_library(hip_core_library_objects OBJECT
   context.cpp
   device.cpp
+  event.cpp
   memory.cpp
   module.cpp
   stream.cpp

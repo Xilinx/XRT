@@ -25,6 +25,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
@@ -41,29 +42,30 @@ namespace xdp {
   {
     db->registerInfo(info::device_offload) ;
 
-    // Open all of the devices that exist so we can keep our own pointer
-    //  to access them.
-    uint32_t index = 0 ;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    
-    while (handle != nullptr)
-    {
-      // First, keep track of all open handles
-      deviceHandles.push_back(handle) ;
+    // Open all existing devices so that XDP can access the owned handles
+    uint32_t numDevices = xrt_core::get_total_devices(true).second;
+    uint32_t index = 0;
+    while (index < numDevices) {
+      try {
+        xrtDevices.push_back(std::make_unique<xrt::device>(index));
 
-      // Second, add all the information and a writer for this device
-      std::string path = util::getDebugIpLayoutPath(handle);
-      if (path != "") {
-        addDevice(path);
+        auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
+        std::string path = util::getDebugIpLayoutPath(ownedHandle);
 
-        // Now, keep track of the device ID for this device so we can use
-        //  our own handle
-        deviceIdToHandle[db->addDevice(path)] = handle ;
+        if ("" != path) {
+          addDevice(path); 
+
+          // Now, map device ID of this device with device handle owned by XDP
+          deviceIdToHandle[db->addDevice(path)] = ownedHandle;
+        }
+
+        // Move on to the next device
+        ++index;
+      } catch (const std::runtime_error& e) {
+        std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
+        continue;
       }
-
-      // Move on to the next device
-      ++index ;
-      handle = xclOpen(index, "/dev/null", XCL_INFO) ;
     }
   }
 
@@ -83,11 +85,6 @@ namespace xdp {
     }
 
     clearOffloaders();
-
-    for (auto h : deviceHandles)
-    {
-      xclClose(h) ;
-    }
   }
 
   void HALDeviceOffloadPlugin::readTrace()

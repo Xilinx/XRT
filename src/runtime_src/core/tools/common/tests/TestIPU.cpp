@@ -14,7 +14,7 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr size_t buffer_size = 128;
+static constexpr size_t buffer_size = 20;
 static constexpr int itr_count = 10000; 
 
 // ----- C L A S S   M E T H O D S -------------------------------------------

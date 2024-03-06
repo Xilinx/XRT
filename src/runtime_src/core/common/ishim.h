@@ -540,7 +540,7 @@ struct shim : public DeviceType
   stop_profiling(int phdl) override
   {
     if (auto ret = xclStopProfiling(DeviceType::get_device_handle(), phdl))
-      throw system_error(ret, "fail to wait gmio");
+      throw system_error(ret, "failed to stop profiling");
   }
 
   void

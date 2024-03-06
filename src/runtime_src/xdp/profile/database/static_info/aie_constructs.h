@@ -292,6 +292,8 @@ enum class module_type {
   class aie_cfg_tile
   {
   public:
+    bool active_core = true;
+    bool active_memory = true;
     uint32_t column;
     uint32_t row;
     module_type type;
