@@ -154,7 +154,7 @@ if(NOT WIN32)
   # -- AIE RESOURCES BIN Section
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin")
   xrt_add_test("AieResourcesBin" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin/SectionAieResourcesBin.py ${TEST_OPTIONS}")
-  
+
 endif()
 
 
@@ -195,5 +195,11 @@ if (GTEST_FOUND)
 
 else()
   message (STATUS "GTest was not found, skipping generation of test executables")
+endif()
+
+# ==-- a i e - p d i - t r a n s f o r m --==================================================
+# aie-pdi-transform only supports linux build currently
+if(NOT WIN32)
+  add_subdirectory(aie-pdi-transform)
 endif()
 # -----------------------------------------------------------------------------
