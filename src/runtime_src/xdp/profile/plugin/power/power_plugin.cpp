@@ -78,6 +78,7 @@ namespace xdp {
       } catch (const std::runtime_error& e) {
         std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
         xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
+        ++index;
         continue;
       }  
     }
@@ -116,6 +117,7 @@ namespace xdp {
         std::shared_ptr<xrt_core::device> coreDevice = xrtDevice->get_handle();
         
         if (!coreDevice) {
+          ++index;
           continue;
         }
 
