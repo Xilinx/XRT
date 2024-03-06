@@ -7,6 +7,7 @@ add_library(hip_api_library_objects OBJECT
   hip_stream.cpp
   hip_memory.cpp
   hip_event.cpp
+  hip_error_state.cpp
 )
 
 target_include_directories(hip_api_library_objects
