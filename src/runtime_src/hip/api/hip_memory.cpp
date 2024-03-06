@@ -3,6 +3,7 @@
 
 #include <string>
 #include "core/common/error.h"
+#include "core/common/unistd.h"
 #include "hip/config.h"
 #include "hip/core/device.h"
 #include "hip/core/memory.h"
@@ -175,6 +176,21 @@ namespace xrt::core::hip
     };
   }
 
+  // fill data to dst.
+  static void
+  hip_memset(void *dst, int value, size_t sizeBytes)
+  {
+    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_addr(dst);
+    assert(hip_mem->get_type() != xrt::core::hip::memory_type::hip_memory_type_invalid);
+
+    auto host_src = aligned_alloc(xrt_core::getpagesize(), sizeBytes);
+    memset(host_src, value, sizeBytes);
+
+    hip_mem->copy_from(host_src, sizeBytes);
+
+    free(host_src);
+  }
+
 } // xrt::core::hip
 
 // Allocate memory on the device.
@@ -286,6 +302,19 @@ hipMemcpy(void *dst, const void *src, size_t sizeBytes, hipMemcpyKind kind)
 {
   try {
     xrt::core::hip::hip_memcpy(dst, src, sizeBytes, kind);
+    return hipSuccess;
+  } catch (const std::exception &ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return hipErrorUnknown;
+}
+
+// Fills the first sizeBytes bytes of the memory area pointed to by dest with the constant byte value value.
+hipError_t
+hipMemset(void *dst, int value, size_t sizeBytes)
+{
+  try {
+    xrt::core::hip::hip_memset(dst, value, sizeBytes);
     return hipSuccess;
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
