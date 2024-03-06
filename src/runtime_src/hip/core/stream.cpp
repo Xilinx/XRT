@@ -15,7 +15,7 @@ stream(std::shared_ptr<context> ctx, unsigned int flags, bool is_null)
   , m_flags{flags}
   , null{is_null}
 {
-  // instream stream handle in list maintained by context
+  // insert stream handle in list maintained by context
   m_ctx->add_stream(this);
 }
 
@@ -29,44 +29,70 @@ void
 stream::
 enqueue(std::shared_ptr<command>&& cmd)
 {
-  // if there is top event dont start command
-  // add command to chain list of event
-  bool start = top_event ? false : true;
-  cmd->submit(start);
+  // if there is top event add command chain list of this event
+  // else submit the command
   if (top_event)
     top_event->add_to_chain(cmd);
+  else
+    cmd->submit();
 
-  std::lock_guard<std::mutex> lock(m);
-  cmd_queue.emplace(std::move(cmd));
+  std::lock_guard<std::mutex> lock(m_cmd_lock);
+  cmd_queue.emplace_back(std::move(cmd));
 }
 
 std::shared_ptr<command>
 stream::
 dequeue()
 {
-  std::lock_guard<std::mutex> lock(m);
+  std::lock_guard<std::mutex> lock(m_cmd_lock);
   if (cmd_queue.empty()) {
     return nullptr;
   }
   auto cmd = std::move(cmd_queue.front());
-  cmd_queue.pop();
+  cmd_queue.pop_front();
   return cmd;
+}
+
+bool
+stream::
+erase_cmd(std::shared_ptr<command> cmd)
+{
+  std::lock_guard<std::mutex> lock(m_cmd_lock);
+  auto it = std::find(cmd_queue.begin(), cmd_queue.end(), cmd);
+  if (it != cmd_queue.end()) {
+    cmd_queue.erase(it);
+    return true;
+  }
+  return false;
 }
 
 void
 stream::
-synchronize()
+enqueue_event(std::shared_ptr<event>&& ev)
 {
-  if (m_flags & hipStreamNonBlocking)
-    return; // non blocking stream
+  {
+    // iterate over commands and add them to recorded list of event
+    std::lock_guard<std::mutex> lock(m_cmd_lock);
+    for (const auto& cmd : cmd_queue) {
+      ev->add_dependency(cmd);
+    }
+  }
+  enqueue(std::move(ev));
+}
 
-  // lock streams before accessing
-  std::lock_guard<std::mutex> lock(streams.mutex);
+void
+stream::
+synchronize_streams()
+{
+  // non blocking stream doesn't wait on any other streams
+  if (m_flags & hipStreamNonBlocking)
+    return;
+
   // iterate over streams in this ctx
   for (auto stream_handle : this->m_ctx->get_stream_handles()) {
     // check if valid stream, stream is blocking
     // and stream is not current stream
-    auto hip_stream = streams.stream_cache.get(stream_handle);
+    auto hip_stream = stream_cache.get(stream_handle);
     if (!hip_stream)
      continue;
 
@@ -75,6 +101,7 @@ synchronize()
       // null stream waits on all blocking streams
       if (!null && !hip_stream->is_null())
         continue;
+      // complete commands
       hip_stream->await_completion();
     }
   }
@@ -84,27 +111,40 @@ void
 stream::
 await_completion()
 {
-  std::lock_guard<std::mutex> lk(m);
+  std::lock_guard<std::mutex> lk(m_cmd_lock);
   while(!cmd_queue.empty()) {
     auto cmd = cmd_queue.front();
     cmd->wait();
-    cmd_queue.pop();
+    // kernel_start and copy_buffer cmds needs to be explicitly removed from cache
+    // there is no destroy call for them
+    if (cmd->get_type() != command::type::event)
+      command_cache.remove(cmd.get());
+    cmd_queue.pop_front();
   }
+}
+
+void
+stream::
+synchronize()
+{
+  // synchronize among streams in this ctx
+  synchronize_streams();
+
+  // complete commands in this stream
+  await_completion();
 }
 
 void
 stream::
 record_top_event(event* ev)
 {
-  std::lock_guard<std::mutex> lk(m);
+  std::lock_guard<std::mutex> lk(m_cmd_lock);
   top_event = ev;
 }
 
 std::shared_ptr<stream>
 get_stream(hipStream_t stream)
 {
-  // lock before getting any stream
-  std::lock_guard<std::mutex> lock(streams.mutex);
   // app dint pass stream, use legacy default stream (null stream)
   if (!stream) {
     auto ctx = get_current_context();
@@ -115,10 +155,9 @@ get_stream(hipStream_t stream)
   // if (stream == hipStreamPerThread)
   //   return get_per_thread_stream();
 
-  return streams.stream_cache.get(stream);
+  return stream_cache.get(stream);
 }
 
 // Global map of streams
-stream_set streams;
+xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
 }
-

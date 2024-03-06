@@ -6,7 +6,7 @@
 #include "context.h"
 
 #include <condition_variable>
-#include <queue>
+#include <list>
 
 namespace xrt::core::hip {
 
@@ -20,8 +20,8 @@ class stream
   unsigned int m_flags;
   bool null;
 
-  std::queue<std::shared_ptr<command>> cmd_queue;
-  std::mutex m;
+  std::list<std::shared_ptr<command>> cmd_queue;
+  std::mutex m_cmd_lock;
   std::condition_variable cv;
   event* top_event{nullptr};
 
@@ -49,22 +49,27 @@ public:
   std::shared_ptr<command>
   dequeue();
 
+  bool
+  erase_cmd(std::shared_ptr<command> cmd);
+
   void
-  synchronize();
+  enqueue_event(std::shared_ptr<event>&& ev);
+
+  void
+  synchronize_streams();
 
   void
   await_completion();
 
   void
+  synchronize();
+
+  void
   record_top_event(event* ev);
 };
 
-struct stream_set
-{
-  std::mutex mutex;
-  xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
-};
-extern stream_set streams;
+// Global map of streams
+extern xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
 
 std::shared_ptr<stream>
 get_stream(hipStream_t stream);
