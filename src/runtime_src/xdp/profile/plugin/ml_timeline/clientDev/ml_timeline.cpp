@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,7 +25,6 @@
 
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "core/common/system.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -37,14 +36,15 @@ namespace xdp {
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
     : MLTimelineImpl(dB)
   {
+    xrt_core::message::send(xrt_core::message::debug, "XRT", "Created ML Timeline for Client Device.");
   }
 
-  void MLTimelineClientDevImpl::finishflushDevice(void* /*handle*/)
+  void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
   {
     xrt::kernel instKernel;
     try {
       // Currently this kernel helps in creating XRT BO connected to SRAM memory
-      instKernel = xrt::kernel(hwContext, "XDP_KERNEL");
+      instKernel = xrt::kernel(mHwContext, "XDP_KERNEL");
     }
     catch (std::exception& e) {
       std::stringstream msg;
@@ -58,7 +58,7 @@ namespace xdp {
     // Read Record Timer TS buffer
     xrt::bo resultBO;
     try {
-      resultBO = xrt::bo(hwContext.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, instKernel.group_id(1));
+      resultBO = xrt::bo(mHwContext.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, instKernel.group_id(1));
     }
     catch (std::exception& e) {
       std::stringstream msg;
@@ -72,6 +72,13 @@ namespace xdp {
 
     uint32_t* ptr = reinterpret_cast<uint32_t*>(resultBOMap);
 
+    // Assuming correct Stub has been called and Write Buffer contains valid data
+    uint32_t numEntries = *ptr;    // First 32bits contains the total num of entries
+
+    std::string msg = "Found " + std::to_string(numEntries) + " ML timestamps have been recorded.";
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+
+    // Record Timer TS in JSON
     boost::property_tree::ptree ptTop;
     boost::property_tree::ptree ptHeader;
     boost::property_tree::ptree ptRecordTimerTS;
@@ -88,11 +95,6 @@ namespace xdp {
     ptHeader.put("device", "Client");
     ptHeader.put("clock_freq_MHz", 1000);
     ptTop.add_child("header", ptHeader);
-
-    // Record Timer TS in JSON
-    // Assuming correct Stub has been called and Write Buffer contains valid data
-
-    uint32_t numEntries = *ptr;    // First 32bits contains the total num of entries
 
     /* Each record timer entry has 32bit ID and 32bit AIE Timer low value.
      * Also, the first 32 bit in the buffer is used to store total number 
@@ -132,6 +134,7 @@ namespace xdp {
     fOut.open("record_timer_ts.json");
     fOut << result;
     fOut.close();
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Completed writing recorded timestamps to record_timer_ts.json.");
   }
 }
 
