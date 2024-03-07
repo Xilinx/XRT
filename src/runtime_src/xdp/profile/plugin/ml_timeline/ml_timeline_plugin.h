@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,25 +30,21 @@ namespace xdp {
     MLTimelinePlugin();
     ~MLTimelinePlugin();
 
-    void updateDevice(void* handle);
-    void finishflushDevice(void* handle);
+    void updateDevice(void* hwCtxImpl);
+    void finishflushDevice(void* hwCtxImpl);
     void writeAll(bool openNewFiles);
 
     static bool alive();
-
-    private:
-    uint64_t getDeviceIDFromHandle(void* handle);
 
     private:
     static bool live;
 
     struct DeviceData {
       bool valid;
-      uint64_t deviceID;
       std::unique_ptr<MLTimelineImpl> implementation;
     };
- 
-    std::map<void*, DeviceData>  handleToDeviceData;
+
+    void* mHwCtxImpl = nullptr;
 
   };
 
