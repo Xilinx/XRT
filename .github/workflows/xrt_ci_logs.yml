@@ -96,7 +96,7 @@ jobs:
         uses: actions/checkout@v4 
         with: 
           repository: "Xilinx/XRT"
-          ref: "253d71dc2746f5308b0c82128874062b8a1ae2da"
+          ref: "f8f30d122a67844f8f8b85c63c9c1ed0a3ac40ef"
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive
