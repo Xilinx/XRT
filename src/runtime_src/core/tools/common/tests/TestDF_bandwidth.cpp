@@ -26,12 +26,9 @@ static constexpr int itr_count = 600;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestDF_bandwidth::TestDF_bandwidth()
-  : TestRunner("df-bw", 
-                "Run bandwidth test on data fabric",
-                "validate.xclbin")
-                {
-                  m_dpu_name = "df_bw.txt";
-                }
+  : TestRunner("df-bw", "Run bandwidth test on data fabric", xrt_core::query::xclbin_name::type::validate)
+  , m_dpu_name("df_bw.txt")
+{}
 
 namespace {
 

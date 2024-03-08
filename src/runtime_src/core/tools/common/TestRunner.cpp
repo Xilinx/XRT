@@ -5,7 +5,6 @@
 // Local - Include Files
 #include "TestRunner.h"
 #include "core/common/error.h"
-#include "core/common/query_requests.h"
 #include "core/common/module_loader.h"
 #include "core/tools/common/Process.h"
 #include "tools/common/BusyBar.h"
@@ -18,7 +17,6 @@ namespace XBU = XBUtilities;
 #include <boost/property_tree/json_parser.hpp>
 
 // System - Include Files
-#include <filesystem>
 #include <iostream>
 #include <regex>
 #include <thread>
@@ -86,7 +84,19 @@ TestRunner::TestRunner (const std::string & test_name,
   //Empty
 }
 
-boost::property_tree::ptree 
+TestRunner::TestRunner(const std::string& test_name,
+                       const std::string& description,
+                       const xrt_core::query::xclbin_name::type type,
+                       bool is_explicit)
+    : m_xclbin_type(type)
+    , m_name(test_name)
+    , m_description(description) 
+    , m_explicit(is_explicit)
+{
+  //Empty
+}
+
+boost::property_tree::ptree
 TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
 {
   XBUtilities::BusyBar busy_bar("Running Test", std::cout);
@@ -364,11 +374,9 @@ std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                              boost::property_tree::ptree& ptTest)
 {
-  std::vector<std::string> platform_paths = findPlatformPaths(dev, ptTest);
-
-  for (const auto& path : platform_paths) {
+  for (const auto& path : findPlatformPaths(dev, ptTest)) {
     if (std::filesystem::exists(path))
-      return path;
+      return path.string();
   }
 
   logger(ptTest, "Details", boost::str(boost::format("No platform path available. Skipping validation.")));
@@ -376,55 +384,50 @@ TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
   return "";
 }
 
-static std::vector<std::string>
-findRyzenPlatformPaths(const std::shared_ptr<xrt_core::device>& dev)
-{
-#ifdef _WIN32
-  boost::ignore_unused(dev);
-  std::vector<std::string> paths;
-  const auto sys_paths = xrt_core::environment::xclbin_repo_paths();
-  for (const auto sys_path : sys_paths)
-    paths.push_back(sys_path.string() + "\\");
-  return paths;
-#else
-  const auto device_id = xrt_core::device_query<xrt_core::query::pcie_id>(dev);
-  return {"/lib/firmware/amdnpu/" + xrt_core::query::pcie_id::to_path(device_id) + "/"};
-#endif
-}
-
-std::vector<std::string>
+std::vector<std::filesystem::path>
 TestRunner::findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
                               boost::property_tree::ptree& ptTest)
 {
-  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::ryzen)
-    return findRyzenPlatformPaths(dev);
-
-  // Default to alveo logic
-  //check if a 2RP platform
-  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
-  if (!logic_uuid.empty())
-    return {searchSSV2Xclbin(logic_uuid.front(), ptTest)};
-  else {
-    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
-    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-    return {searchLegacyXclbin(vendor, name, ptTest)};
+  // Check if we need to use the legacy method of getting the platform path
+  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::alveo) {
+    const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
+    if (!logic_uuid.empty())
+      return {std::filesystem::path(searchSSV2Xclbin(logic_uuid.front(), ptTest))};
+    else {
+      auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
+      auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
+      return {std::filesystem::path(searchLegacyXclbin(vendor, name, ptTest))};
+    }
   }
+
+  return xrt_core::environment::xclbin_repo_paths();
+}
+
+std::string
+TestRunner::getXclbinName(const std::shared_ptr<xrt_core::device>& dev,
+                           boost::property_tree::ptree& ptTest)
+{
+  // Legacy devices store the xclbin name within the test ptree
+  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::alveo)
+    return ptTest.get<std::string>("xclbin", "");
+
+  return xrt_core::device_query<xrt_core::query::xclbin_name>(dev, m_xclbin_type);
 }
 
 std::string
 TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
                            boost::property_tree::ptree& ptTest)
 {
-  const std::string xclbin_name = ptTest.get<std::string>("xclbin", "");
-  std::vector<std::string> platform_paths = findPlatformPaths(dev, ptTest);
-  const std::string xclbin_dir = ptTest.get<std::string>("xclbin_directory", "");
+  const std::string xclbin_name = getXclbinName(dev, ptTest);
+  auto platform_paths = findPlatformPaths(dev, ptTest);
+  const auto xclbin_dir = std::filesystem::path(ptTest.get<std::string>("xclbin_directory", ""));
   if (!xclbin_dir.empty())
     platform_paths.push_back(xclbin_dir);
 
   for (const auto& path : platform_paths) {
-    const std::string xclbin_path = path + xclbin_name;
+    const auto xclbin_path = path / xclbin_name;
     if (std::filesystem::exists(xclbin_path))
-      return xclbin_path;
+      return xclbin_path.string();
   }
 
   logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
@@ -433,21 +436,14 @@ TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
 }
 
 std::string
-TestRunner::findDPUPath( const std::shared_ptr<xrt_core::device>& /*dev*/,
-                boost::property_tree::ptree& ptTest,
-                const std::string& dpu_name)
+TestRunner::findDPUPath(const std::shared_ptr<xrt_core::device>& dev,
+                        boost::property_tree::ptree& ptTest,
+                        const std::string& dpu_name)
 {
-  const static std::string dpu_dir = "DPU_Sequence"; 
-  std::vector<std::filesystem::path> paths;
-
-#ifdef _WIN32
-  paths = xrt_core::environment::xclbin_repo_paths();
-#else
-  paths.push_back(std::filesystem::path("/opt/xilinx/xrt/test/"));
-#endif
+  const auto paths = findPlatformPaths(dev, ptTest);
 
   for (const auto& path : paths) {
-    auto dpu_instr = path / dpu_dir / dpu_name;
+    const auto dpu_instr = path / "DPU_Sequence" / dpu_name;
     if (std::filesystem::exists(dpu_instr))
       return dpu_instr.string();
   }

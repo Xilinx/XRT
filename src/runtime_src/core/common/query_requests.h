@@ -55,6 +55,7 @@ enum class key_type
   instance,
   edge_vendor,
   device_class,
+  xclbin_name,
 
   dma_threads_raw,
 
@@ -496,13 +497,6 @@ struct pcie_id : request
     // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
     return boost::str(boost::format("%02x") % static_cast<uint16_t>(value.revision_id));
   }
-
-  static std::string
-  to_path(const result_type& value)
-  {
-    // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
-    return boost::str(boost::format("%04x_%02x") % value.device_id % static_cast<uint16_t>(value.revision_id));
-  }
 };
 
 struct edge_vendor : request
@@ -519,6 +513,30 @@ struct edge_vendor : request
   {
     return boost::str(boost::format("0x%x") % val);
   }
+};
+
+struct xclbin_name : request
+{
+  enum class type {
+    validate
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::validate:
+        return "validate";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::xclbin_name;
+  static const char* name() { return "xclbin_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const = 0;
 };
 
 struct device_class : request

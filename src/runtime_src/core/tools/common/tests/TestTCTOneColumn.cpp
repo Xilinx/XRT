@@ -22,12 +22,9 @@ static constexpr int itr_count = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTOneColumn::TestTCTOneColumn()
-  : TestRunner("tct-one-col", 
-                "Measure average TCT processing time for one column",
-                "validate.xclbin")
-                {
-                  m_dpu_name = "tct_1col.txt";
-                }
+  : TestRunner("tct-one-col", "Measure average TCT processing time for one column", xrt_core::query::xclbin_name::type::validate)
+  , m_dpu_name("tct_1col.txt")
+{}
 
 namespace {
 

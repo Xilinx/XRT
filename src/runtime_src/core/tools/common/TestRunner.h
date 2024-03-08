@@ -5,6 +5,7 @@
 #define __TestRunner_h_
 
 // Local - Include Files
+#include "core/common/query_requests.h"
 #include "JSONConfigurable.h"
 #include "xrt/xrt_device.h"
 
@@ -12,6 +13,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 // System - Include Files
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -30,8 +32,10 @@ class TestRunner : public JSONConfigurable {
 
   // Child class helper methods
   protected:
-    TestRunner(const std::string & test_name, const std::string & description, 
+    TestRunner(const std::string & test_name, const std::string & description,
             const std::string & xclbin = "", bool is_explicit = false);
+    TestRunner(const std::string & test_name, const std::string & description, 
+            const xrt_core::query::xclbin_name::type type, bool is_explicit = false);
     void runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
              boost::property_tree::ptree& _ptTest);
     void logger(boost::property_tree::ptree& ptree, const std::string& tag, const std::string& msg);
@@ -52,15 +56,18 @@ class TestRunner : public JSONConfigurable {
     std::string m_xclbin;
  
   private:
-    std::vector<std::string> findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
-                                               boost::property_tree::ptree& ptTest);
+    std::string getXclbinName(const std::shared_ptr<xrt_core::device>& dev,
+                              boost::property_tree::ptree& ptTest);
+    std::vector<std::filesystem::path> findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
+                                                         boost::property_tree::ptree& ptTest);
     std::string searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, 
-                      boost::property_tree::ptree& _ptTest);
+                                   boost::property_tree::ptree& _ptTest);
     std::string searchSSV2Xclbin(const std::string& logic_uuid,
-                      boost::property_tree::ptree& _ptTest);
+                                 boost::property_tree::ptree& _ptTest);
   
   //variables
   private:
+    xrt_core::query::xclbin_name::type m_xclbin_type;
     std::string m_name;
     std::string m_description;
     bool m_explicit;

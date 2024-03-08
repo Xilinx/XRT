@@ -19,32 +19,18 @@ static constexpr int itr_count = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
-  : TestRunner("verify", 
-                "Run 'Hello World' test on IPU",
-                "validate.xclbin"
-              ){}
+  : TestRunner("verify", "Run 'Hello World' test on IPU", xrt_core::query::xclbin_name::type::validate)
+{}
 
 boost::property_tree::ptree
 TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  #ifdef _WIN32
-  auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
-  switch (device_id) {
-  case 5378: // 0x1502
-    ptree.put("xclbin", "validate_phx.xclbin");
-    break;
-  case 6128: // 0x17f0
-    ptree.put("xclbin", "validate_stx.xclbin");
-    break;
-  }
-  #endif
-
   auto xclbin_path = findXclbinPath(dev, ptree);
-  if (!std::filesystem::exists(xclbin_path)) {
+  if (!std::filesystem::exists(xclbin_path))
     return ptree;
-  }
+
   // log xclbin test dir for debugging purposes
   logger(ptree, "Xclbin", xclbin_path);
 
