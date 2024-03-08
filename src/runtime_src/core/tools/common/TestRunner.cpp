@@ -370,6 +370,13 @@ TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& d
   return true;
 }
 
+/**
+ * @deprecated
+ * This function should be used ONLY for any legacy devices. IE versal/alveo only.
+ * Ideally this will be removed soon.
+ * 
+ * Children of TestRunner should call into something like getXclbinPath or getDPUPath.
+ */
 std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                              boost::property_tree::ptree& ptTest)
