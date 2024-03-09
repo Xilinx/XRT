@@ -1341,6 +1341,10 @@ initialize_query_table()
   emplace_sysfs_get<query::cage_temp_1>                        ("xmc", "xmc_cage_temp1");
   emplace_sysfs_get<query::cage_temp_2>                        ("xmc", "xmc_cage_temp2");
   emplace_sysfs_get<query::cage_temp_3>                        ("xmc", "xmc_cage_temp3");
+  emplace_sysfs_get<query::dimm_temp_0>                        ("xmc", "xmc_dimm_temp0");
+  emplace_sysfs_get<query::dimm_temp_1>                        ("xmc", "xmc_dimm_temp1");
+  emplace_sysfs_get<query::dimm_temp_2>                        ("xmc", "xmc_dimm_temp2");
+  emplace_sysfs_get<query::dimm_temp_3>                        ("xmc", "xmc_dimm_temp3");
   emplace_sysfs_get<query::v12v_pex_millivolts>                ("xmc", "xmc_12v_pex_vol");
   emplace_sysfs_get<query::v12v_pex_milliamps>                 ("xmc", "xmc_12v_pex_curr");
   emplace_sysfs_get<query::v12v_aux_millivolts>                ("xmc", "xmc_12v_aux_vol");

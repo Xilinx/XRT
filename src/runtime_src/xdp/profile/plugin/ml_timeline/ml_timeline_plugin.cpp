@@ -106,9 +106,9 @@ namespace xdp {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);
       {
-        struct xclDeviceInfo2 info;
-        if (xclGetDeviceInfo2(handle, &info) == 0)
-          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+        std::string deviceName = util::getDeviceName(handle);
+        if (deviceName != "")
+          (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
       }
     }
 #endif

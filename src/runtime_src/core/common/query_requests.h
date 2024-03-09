@@ -167,6 +167,11 @@ enum class key_type
   cage_temp_2,
   cage_temp_3,
 
+  dimm_temp_0,
+  dimm_temp_1,
+  dimm_temp_2,
+  dimm_temp_3,
+
   v12v_pex_millivolts,
   v12v_pex_milliamps,
 
@@ -2030,6 +2035,66 @@ struct cage_temp_3 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_3;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_0 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_0;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_1 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_1;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_2 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_2;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_3 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_3;
 
   virtual std::any
   get(const device*) const = 0;

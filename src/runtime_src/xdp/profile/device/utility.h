@@ -39,6 +39,9 @@ namespace xdp { namespace util {
   XDP_CORE_EXPORT
   std::string getDebugIpLayoutPath(void* deviceHandle);
 
+  XDP_CORE_EXPORT
+  std::string getDeviceName(void* deviceHandle);
+
 
   // At compile time, each monitor inserted in the PL region is given a set 
   // of trace IDs, regardless of if trace is enabled or not.  This ID is
