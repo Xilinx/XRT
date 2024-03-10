@@ -20,7 +20,6 @@
 #include <string>
 
 #include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
