@@ -389,18 +389,15 @@ static bool is_valid_firmware(struct platform_device *pdev,
 	return true;
 }
 
+/* Return the length of the string or -E2BIG in case of error */
 static int get_vendor_firmware_dir(u16 vendor, char *buf, size_t len) {
-	size_t ret;
 	switch (vendor) {
 		case XOCL_ARISTA_VEN:
-			ret = strlcpy(buf, "arista", len);
-			break;
+			return strscpy(buf, "arista", len);
 		default:
 		case XOCL_XILINX_VEN:
-			ret = strlcpy(buf, "xilinx", len);
-			break;
+			return strscpy(buf, "xilinx", len);
 	}
-	return (ret >= len) ? -E2BIG : 0;
 }
 
 static int load_firmware_from_flash(struct platform_device *pdev,
