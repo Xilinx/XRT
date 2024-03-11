@@ -9,7 +9,7 @@
 
 #ifdef __cplusplus
 # include <string>
-# include <vector>
+# include <istream>
 #endif
 
 #ifdef __cplusplus
@@ -42,7 +42,7 @@ public:
    *
    */
   XRT_API_EXPORT
-  elf(const std::vector<char>& data);
+  elf(std::istream& stream);
 
   XRT_API_EXPORT
   xrt::uuid
