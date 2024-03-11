@@ -56,6 +56,7 @@ enum class key_type
   edge_vendor,
   device_class,
   xclbin_name,
+  sequence_name,
 
   dma_threads_raw,
 
@@ -515,6 +516,12 @@ struct edge_vendor : request
   }
 };
 
+/**
+ * Used to retrieve the path to an xclbin file required for the
+ * current device assuming a valid xclbin "type" is passed. The shim
+ * decides the appropriate path and name to return, absolving XRT of
+ * needing to know where to look.
+ */
 struct xclbin_name : request
 {
   enum class type {
@@ -534,6 +541,42 @@ struct xclbin_name : request
   using result_type = std::string;
   static const key_type key = key_type::xclbin_name;
   static const char* name() { return "xclbin_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const = 0;
+};
+
+/**
+ * Used to retrieve the path to the dpu sequence file required for the
+ * current device assuming a valid sequence "type" is passed. The shim
+ * decides the appropriate path and name to return, absolving XRT of
+ * needing to know where to look.
+ */
+struct sequence_name : request
+{
+  enum class type {
+    df_bandwidth,
+    tct_one_column,
+    tct_all_column,
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::df_bandwidth:
+        return "df_bandwidth";
+      case type::tct_one_column:
+        return "tct_one_column";
+      case type::tct_all_column:
+        return "tct_all_column";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::sequence_name;
+  static const char* name() { return "sequence_name"; }
 
   virtual std::any
   get(const device*, const std::any& req_type) const = 0;

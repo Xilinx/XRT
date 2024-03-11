@@ -1,20 +1,6 @@
-/*
- * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_xclbin.h
@@ -99,7 +85,7 @@ read_xclbin(const std::string& fnm)
   if (fnm.empty())
     throw std::runtime_error("No xclbin specified");
 
-  auto path = xrt_core::environment::xclbin_path(fnm);
+  auto path = xrt_core::environment::platform_path(fnm);
   return read_file(path.string());
 }
 
@@ -997,7 +983,7 @@ class xclbin_repository_impl
 
 public:
   xclbin_repository_impl()
-    : m_paths(xrt_core::environment::xclbin_repo_paths())
+    : m_paths(xrt_core::environment::platform_repo_paths())
     , m_xclbin_paths(get_xclbin_paths(m_paths))
   {}
   

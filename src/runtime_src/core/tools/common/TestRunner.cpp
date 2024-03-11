@@ -84,18 +84,6 @@ TestRunner::TestRunner (const std::string & test_name,
   //Empty
 }
 
-TestRunner::TestRunner(const std::string& test_name,
-                       const std::string& description,
-                       const xrt_core::query::xclbin_name::type type,
-                       bool is_explicit)
-    : m_xclbin_type(type)
-    , m_name(test_name)
-    , m_description(description) 
-    , m_explicit(is_explicit)
-{
-  //Empty
-}
-
 boost::property_tree::ptree
 TestRunner::startTest(std::shared_ptr<xrt_core::device> dev)
 {
@@ -239,6 +227,30 @@ TestRunner::searchLegacyXclbin(const uint16_t vendor, const std::string& dev_nam
   return "";
 }
 
+/**
+ * @deprecated
+ * This function should be used ONLY for any legacy devices. IE versal/alveo only.
+ * Ideally this will be removed soon.
+ * 
+ * Children of TestRunner should call into findPlatformFile
+ */
+std::string
+TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
+                           boost::property_tree::ptree& ptTest)
+{
+  const std::string xclbin_name = ptTest.get<std::string>("xclbin", "");
+  const auto config_dir = ptTest.get<std::string>("xclbin_directory", "");
+  const std::filesystem::path platform_path = !config_dir.empty() ? config_dir : findPlatformPath(dev, ptTest);
+
+  const auto xclbin_path = platform_path / xclbin_name;
+  if (std::filesystem::exists(xclbin_path))
+    return xclbin_path.string();
+
+  logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
+  ptTest.put("status", test_token_skipped);
+  return "";
+}
+
 /*
  * helper funtion for kernel and bandwidth python test cases when there is no platform.json
  * Steps:
@@ -252,22 +264,19 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
              boost::property_tree::ptree& _ptTest)
 {
   const auto xclbin = _ptTest.get<std::string>("xclbin", "");
-  const auto xclbinPath = findXclbinPath(_dev, _ptTest);
+  const auto xclbin_path = std::filesystem::path(findXclbinPath(_dev, _ptTest));
 
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
-  if (!logic_uuid.empty() && !std::filesystem::exists(xclbinPath)) {
+  if (!logic_uuid.empty() && !std::filesystem::exists(xclbin_path)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     return;
   }
 
-  // log xclbin test dir for debugging purposes
-  std::filesystem::path xclbin_path(xclbinPath);
-  auto xclbin_parent_path = xclbin_path.parent_path().string();
-  logger(_ptTest, "Xclbin", xclbin_parent_path);
+  logger(_ptTest, "Xclbin", xclbin_path.parent_path().string());
 
   std::string platform_path = findPlatformPath(_dev, _ptTest);
 
@@ -298,7 +307,7 @@ TestRunner::runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const 
   // log testcase path for debugging purposes
   logger(_ptTest, "Testcase", xrtTestCasePath);
 
-  std::vector<std::string> args = { "-k", xclbinPath,
+  std::vector<std::string> args = { "-k", xclbin_path.string(),
                                     "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
   int exit_code;
   try {
@@ -356,10 +365,10 @@ TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& d
   xuid_t uuid;
   uuid_parse(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev).c_str(), uuid);
 
-  std::string xclbinPath = findXclbinPath(dev, ptTest);
+  const std::string xclbin_path = findXclbinPath(dev, ptTest);
 
   try {
-    program_xclbin(dev, xclbinPath);
+    program_xclbin(dev, xclbin_path);
   }
   catch (const std::exception& e) {
     logger(ptTest, "Error", e.what());
@@ -375,89 +384,34 @@ TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& d
  * This function should be used ONLY for any legacy devices. IE versal/alveo only.
  * Ideally this will be removed soon.
  * 
- * Children of TestRunner should call into something like getXclbinPath or getDPUPath.
+ * Children of TestRunner should call into findPlatformFile
  */
 std::string
 TestRunner::findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
                              boost::property_tree::ptree& ptTest)
 {
-  for (const auto& path : findPlatformPaths(dev, ptTest)) {
-    if (std::filesystem::exists(path))
-      return path.string();
+  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
+  if (!logic_uuid.empty())
+    return searchSSV2Xclbin(logic_uuid.front(), ptTest);
+  else {
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
+    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
+    return searchLegacyXclbin(vendor, name, ptTest);
   }
-
-  logger(ptTest, "Details", boost::str(boost::format("No platform path available. Skipping validation.")));
-  ptTest.put("status", test_token_skipped);
-  return "";
-}
-
-std::vector<std::filesystem::path>
-TestRunner::findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
-                              boost::property_tree::ptree& ptTest)
-{
-  // Check if we need to use the legacy method of getting the platform path
-  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::alveo) {
-    const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(dev, {});
-    if (!logic_uuid.empty())
-      return {std::filesystem::path(searchSSV2Xclbin(logic_uuid.front(), ptTest))};
-    else {
-      auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
-      auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-      return {std::filesystem::path(searchLegacyXclbin(vendor, name, ptTest))};
-    }
-  }
-
-  return xrt_core::environment::xclbin_repo_paths();
 }
 
 std::string
-TestRunner::getXclbinName(const std::shared_ptr<xrt_core::device>& dev,
-                           boost::property_tree::ptree& ptTest)
+TestRunner::findPlatformFile(const std::string& file_path,
+                             boost::property_tree::ptree& ptTest)
 {
-  // Legacy devices store the xclbin name within the test ptree
-  if (xrt_core::device_query<xrt_core::query::device_class>(dev) == xrt_core::query::device_class::type::alveo)
-    return ptTest.get<std::string>("xclbin", "");
-
-  return xrt_core::device_query<xrt_core::query::xclbin_name>(dev, m_xclbin_type);
-}
-
-std::string
-TestRunner::findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
-                           boost::property_tree::ptree& ptTest)
-{
-  const std::string xclbin_name = getXclbinName(dev, ptTest);
-  auto platform_paths = findPlatformPaths(dev, ptTest);
-  const auto xclbin_dir = std::filesystem::path(ptTest.get<std::string>("xclbin_directory", ""));
-  if (!xclbin_dir.empty())
-    platform_paths.push_back(xclbin_dir);
-
-  for (const auto& path : platform_paths) {
-    const auto xclbin_path = path / xclbin_name;
-    if (std::filesystem::exists(xclbin_path))
-      return xclbin_path.string();
+  try {
+    return xrt_core::environment::platform_path(file_path).string();
   }
-
-  logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin_name));
-  ptTest.put("status", test_token_skipped);
-  return "";
-}
-
-std::string
-TestRunner::findDPUPath(const std::shared_ptr<xrt_core::device>& dev,
-                        boost::property_tree::ptree& ptTest,
-                        const std::string& dpu_name)
-{
-  const auto paths = findPlatformPaths(dev, ptTest);
-
-  for (const auto& path : paths) {
-    const auto dpu_instr = path / "DPU_Sequence" / dpu_name;
-    if (std::filesystem::exists(dpu_instr))
-      return dpu_instr.string();
+  catch (const std::exception&) {
+    logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % file_path));
+    ptTest.put("status", test_token_skipped);
+    return "";
   }
-
-  logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % dpu_name));
-  ptTest.put("status", test_token_skipped);
-  return "";
 }
 
 std::vector<std::string>

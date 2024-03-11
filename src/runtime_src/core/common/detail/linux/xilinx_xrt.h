@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -19,9 +20,8 @@ xilinx_xrt()
 }
 
 std::vector<sfs::path>
-xclbin_repo_path()
+platform_repo_path()
 {
-  // current directory
   return {sfs::path("/lib/firmware/amdnpu"), sfs::path("/opt/xilinx/xrt/amdxdna")};
 }
 

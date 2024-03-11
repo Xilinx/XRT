@@ -33,21 +33,17 @@ class TestRunner : public JSONConfigurable {
   // Child class helper methods
   protected:
     TestRunner(const std::string & test_name, const std::string & description,
-            const std::string & xclbin = "", bool is_explicit = false);
-    TestRunner(const std::string & test_name, const std::string & description, 
-            const xrt_core::query::xclbin_name::type type, bool is_explicit = false);
+               const std::string & xclbin = "", bool is_explicit = false);
     void runPyTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
              boost::property_tree::ptree& _ptTest);
     void logger(boost::property_tree::ptree& ptree, const std::string& tag, const std::string& msg);
     bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
-    std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
-                                 boost::property_tree::ptree& ptTest);
-    std::vector<std::string> findDependencies( const std::string& test_path,
-                      const std::string& ps_kernel_name);
+    std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
+    std::string findPlatformFile(const std::string& file_path, boost::property_tree::ptree& ptTest);
     std::string findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
                                boost::property_tree::ptree& ptTest);
-    std::string findDPUPath(const std::shared_ptr<xrt_core::device>& dev,
-                            boost::property_tree::ptree& ptTest, const std::string& dpu_name);
+    std::vector<std::string> findDependencies( const std::string& test_path,
+                      const std::string& ps_kernel_name);
     int validate_binary_file(const std::string& binaryfile);
 
     const std::string test_token_skipped = "SKIPPED";
@@ -56,10 +52,6 @@ class TestRunner : public JSONConfigurable {
     std::string m_xclbin;
  
   private:
-    std::string getXclbinName(const std::shared_ptr<xrt_core::device>& dev,
-                              boost::property_tree::ptree& ptTest);
-    std::vector<std::filesystem::path> findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
-                                                         boost::property_tree::ptree& ptTest);
     std::string searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, 
                                    boost::property_tree::ptree& _ptTest);
     std::string searchSSV2Xclbin(const std::string& logic_uuid,

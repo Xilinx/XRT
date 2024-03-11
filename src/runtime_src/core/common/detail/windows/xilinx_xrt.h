@@ -251,9 +251,9 @@ xilinx_xrt()
 }
 
 std::vector<sfs::path>
-xclbin_repo_path()
+platform_repo_path()
 {
-  // For time being, xclbin repo is same as xilinx_xrt
+  // For time being, platform repo is same as xilinx_xrt
   return {xilinx_xrt()};
 }
 

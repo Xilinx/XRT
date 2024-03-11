@@ -19,7 +19,7 @@ static constexpr int itr_count = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
-  : TestRunner("verify", "Run 'Hello World' test on IPU", xrt_core::query::xclbin_name::type::validate)
+  : TestRunner("verify", "Run 'Hello World' test on IPU")
 {}
 
 boost::property_tree::ptree
@@ -27,11 +27,11 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  auto xclbin_path = findXclbinPath(dev, ptree);
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
     return ptree;
 
-  // log xclbin test dir for debugging purposes
   logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
