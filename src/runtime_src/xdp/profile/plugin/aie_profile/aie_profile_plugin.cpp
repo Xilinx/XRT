@@ -128,9 +128,9 @@ namespace xdp {
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
       (db->getStaticInfo()).updateDevice(deviceID, handle);
-      struct xclDeviceInfo2 info;
-      if (xclGetDeviceInfo2(handle, &info) == 0) {
-        (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+      std::string deviceName = util::getDeviceName(handle);
+      if (deviceName != "") {
+        (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
       }
 #endif
     }
@@ -176,9 +176,7 @@ auto time = std::time(nullptr);
     std::string deviceName = "win_device";
 #else
     auto tm = *std::localtime(&time);
-    struct xclDeviceInfo2 info;
-    xclGetDeviceInfo2(handle, &info);
-    std::string deviceName = std::string(info.mName);
+    std::string deviceName = util::getDeviceName(handle);
 #endif
 
     std::ostringstream timeOss;
