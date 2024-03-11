@@ -94,6 +94,12 @@ wait_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_core::b
 // exec_buf() - Exec Buf with hw ctx handle.
 void
 exec_buf(xclDeviceHandle handle, xrt_core::buffer_handle* bohdl, xrt_core::hwctx_handle* ctxhdl);
+
+// get_buffer_handle - get xrt_core::buffer handle from
+// raw handle returned by shim, this function is implemented
+// only in edge shim
+std::unique_ptr<xrt_core::buffer_handle>
+get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl);
 }} // shim_int, xrt
 
 #endif
