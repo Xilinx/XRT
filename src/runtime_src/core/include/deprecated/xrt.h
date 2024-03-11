@@ -46,8 +46,10 @@
 #else
 #define XCL_DRIVER_DLLESPEC __declspec(dllimport)
 #endif
+#define XCL_DRIVER_DLLHIDDEN
 #else
 #define XCL_DRIVER_DLLESPEC __attribute__((visibility("default")))
+#define XCL_DRIVER_DLLHIDDEN __attribute__((visibility("hidden")))
 #endif
 
 #ifdef __cplusplus
@@ -252,7 +254,7 @@ struct xclBOProperties {
  *
  * Return: count of devices found
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 unsigned int
 xclProbe();
 
@@ -265,7 +267,7 @@ xclProbe();
  *
  * Return:         Device handle
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char* unused1, enum xclVerbosityLevel unused2);
 
@@ -274,7 +276,7 @@ xclOpen(unsigned int deviceIndex, const char* unused1, enum xclVerbosityLevel un
  *
  * @handle:        Device handle
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 void
 xclClose(xclDeviceHandle handle);
 
@@ -285,7 +287,7 @@ xclClose(xclDeviceHandle handle);
  * @info:          Information record
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclGetDeviceInfo2(xclDeviceHandle handle, struct xclDeviceInfo2 *info);
 
@@ -296,7 +298,7 @@ xclGetDeviceInfo2(xclDeviceHandle handle, struct xclDeviceInfo2 *info);
  * @info:          Information record
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclGetUsageInfo(xclDeviceHandle handle, struct xclDeviceUsage *info);
 
@@ -307,7 +309,7 @@ xclGetUsageInfo(xclDeviceHandle handle, struct xclDeviceUsage *info);
  * @info:          Information record
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclGetErrorStatus(xclDeviceHandle handle, struct xclErrorStatus *info);
 
@@ -324,7 +326,7 @@ xclGetErrorStatus(xclDeviceHandle handle, struct xclErrorStatus *info);
  *
  * This API also downloads OVERLAY (dtbo) section (Edge only).
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
 
@@ -343,7 +345,7 @@ xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
  * queried. The info and the size contain the return binary value of
  * the subsection and its size.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclGetSectionInfo(xclDeviceHandle handle, void* info, size_t *size,
                   enum axlf_section_kind kind, int index);
@@ -357,7 +359,7 @@ xclGetSectionInfo(xclDeviceHandle handle, void* info, size_t *size,
  *                 the PR region
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclReClock2(xclDeviceHandle handle, unsigned short region,
             const unsigned short *targetFreqMHz);
@@ -378,7 +380,7 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
  * Shared contexts can be concurrently allocated by many
  * processes on the same compute units.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
                bool shared);
@@ -393,14 +395,14 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
  *
  * Close a previously allocated shared/exclusive context for a hardware IP.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex);
 
 /*
  * Get the version number. 1 => Hal1 ; 2 => Hal2
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 unsigned int
 xclVersion();
 
@@ -415,7 +417,7 @@ xclVersion();
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag,
           const char* format, ...);
@@ -429,7 +431,7 @@ xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag,
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 xclBufferHandle
 xclAllocBO(xclDeviceHandle handle, size_t size,int unused, unsigned int flags);
 
@@ -442,7 +444,7 @@ xclAllocBO(xclDeviceHandle handle, size_t size,int unused, unsigned int flags);
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 xclBufferHandle
 xclAllocUserPtrBO(xclDeviceHandle handle,void *userptr, size_t size,
                   unsigned int flags);
@@ -453,7 +455,7 @@ xclAllocUserPtrBO(xclDeviceHandle handle,void *userptr, size_t size,
  * @handle:        Device handle
  * @boHandle:      BO handle
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 void
 xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
@@ -471,7 +473,7 @@ xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle);
  * memory. ``seek`` specifies how many bytes to skip at the beginning
  * of the BO before copying-in ``size`` bytes of host buffer.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 size_t
 xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle,
            const void *src, size_t size, size_t seek);
@@ -491,7 +493,7 @@ xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle,
  * beginning of the BO before copying-out ``size`` bytes of device
  * buffer.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 size_t
 xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle,
           void *dst, size_t size, size_t skip);
@@ -507,7 +509,7 @@ xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle,
  * Map the contents of the buffer object into host memory
  * To unmap the buffer call xclUnmapBO().
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 void*
 xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
 
@@ -518,7 +520,7 @@ xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
  * @boHandle:      BO handle
  * @addr:          The mapped void * pointer returned from xclMapBO()
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
 
@@ -536,7 +538,7 @@ xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
  * on the memory model this may require DMA to/from device or CPU
  * cache flushing/invalidation
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle,
           enum xclBOSyncDirection dir, size_t size, size_t offset);
@@ -557,7 +559,7 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle,
  * achieve better performance, destination buffer can be on device or
  * host require DMA from device
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
           xclBufferHandle srcBoHandle, size_t size, size_t dst_offset,
@@ -575,7 +577,7 @@ xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
  * framework.  The file handle must be explicitly closed when no
  * longer needed.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 xclBufferExportHandle
 xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
@@ -590,7 +592,7 @@ xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
  * Import a BO exported by another device.     *
  * This operation is backed by Linux DMA-BUF framework
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 xclBufferHandle
 xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned int flags);
 
@@ -604,7 +606,7 @@ xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned int flags
  *
  * This is the prefered method for obtaining BO property information.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
                    struct xclBOProperties *properties);
@@ -620,7 +622,7 @@ xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
  * like xclOpenContext().
  *
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclIPName2Index(xclDeviceHandle handle, const char *ipName);
 
@@ -638,7 +640,7 @@ xclIPName2Index(xclDeviceHandle handle, const char *ipName);
  * location specified. As stated before this API is for use by
  * debuggers and profilers. Do not use it in your application.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 ssize_t
 xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf,
               size_t size, uint64_t offset);
@@ -657,7 +659,7 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf,
  * location specified. As stated before this API is for use by
  * debuggers and profilers. Do not use it in your application.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf,
                size_t size, uint64_t offset);
@@ -673,7 +675,7 @@ xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf,
  * defined by struct ert_packet which is defined in file *ert.h*. The
  * BO should been allocated with DRM_XOCL_BO_EXECBUF flag.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO);
 
@@ -692,59 +694,59 @@ xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO);
  * you may lose wakeup for some of them. So, use different handle in
  * different threads.
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
 
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 const struct axlf_section_header*
 wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
 /* Use xbutil to reset device */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclLockDevice(xclDeviceHandle handle);
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclUnlockDevice(xclDeviceHandle handle);
 
 /* Use xbmgmt to flash device */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName);
 
 /* Use xbmgmt to flash device */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclUpgradeFirmware2(xclDeviceHandle handle, const char *file1, const char* file2);
 
 /* Use xbmgmt to flash device */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index);
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclBootFPGA(xclDeviceHandle handle);
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclRemoveAndScanFPGA();
 
@@ -768,21 +770,21 @@ xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 
 /* Use xclRegWrite */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 size_t
 xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
          const void *hostBuf, size_t size);
 
 /* Use xclRegRead */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 size_t
 xclRead(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
         void *hostbuf, size_t size);
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt,
                            int fd);
@@ -854,14 +856,14 @@ struct xclReqCompletion {
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
                        size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 size_t
 xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                      void* debugResults);
@@ -884,9 +886,14 @@ xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
   * the first xclRegRead().
   * This function returns error when called in an exclusive context.
   */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size);
+
+#ifdef XCL_DRIVER_DLLHIDDEN
+#undef XCL_DRIVER_DLLHIDDEN
+#define XCL_DRIVER_DLLHIDDEN __attribute__((visibility("default")))
+#endif
 
 #ifdef __cplusplus
 }
