@@ -94,6 +94,9 @@ namespace xdp::aie {
   XDP_CORE_EXPORT
   uint8_t convertStringToUint8(const std::string& input);
 
+  XDP_CORE_EXPORT
+  std::vector<uint64_t> getPartitionStartColumns(void* handle);
+
 } // namespace xdp::aie
 
 #endif

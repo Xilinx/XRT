@@ -16,6 +16,15 @@
 
 #define XDP_CORE_SOURCE
 
+#include "aie_util.h"
+#include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query.h"
+#include "core/common/query_requests.h"
+#include "filetypes/aie_control_config_filetype.h"
+#include "filetypes/aie_trace_config_filetype.h"
+
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <cstdint>
@@ -23,11 +32,6 @@
 #include <memory>
 #include <optional>
 #include <set>
-
-#include "aie_util.h"
-#include "core/common/message.h"
-#include "filetypes/aie_control_config_filetype.h"
-#include "filetypes/aie_trace_config_filetype.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
@@ -347,10 +351,34 @@ namespace xdp::aie {
     return modNames[mod];
   }
 
+  /****************************************************************************
+   * Convert string to uint8
+   ***************************************************************************/
   uint8_t
   convertStringToUint8(const std::string& input) {
     return static_cast<uint8_t>(std::stoi(input));
   }
 
+  /****************************************************************************
+   * Get AIE partition information
+   ***************************************************************************/
+  std::vector<uint64_t>
+  getPartitionStartColumns(void* handle)
+  {
+    std::shared_ptr<xrt_core::device> dev = xrt_core::get_userpf_device(handle);
+    auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(dev);
+    if (infoVector.empty()) {
+      std::cout << "!!!!!!!!!! getPartitionStartColumns: infoVector is empty!" << std::endl;
+      return {};
+    }
+
+    std::vector<uint64_t> startCols;
+    for (auto& info : infoVector) {
+      startCols.push_back(info.start_col);
+      std::cout << "!!!!!!!!!! getPartitionStartColumns: start_col = " << info.start_col
+                << ", num_col = " << info.num_cols << std::endl;
+    }
+    return startCols;
+  }
 
 } // namespace xdp::aie
