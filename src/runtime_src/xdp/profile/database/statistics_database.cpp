@@ -209,36 +209,56 @@ namespace xdp {
   void VPStatisticsDatabase::logFunctionCallStart(const std::string& name,
                                                   double timestamp)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::lock_guard<std::mutex> lock(dbLock);
 
-    auto threadId = std::this_thread::get_id() ;
-    auto key      = std::make_pair(name, threadId) ;
-    auto value    = std::make_pair(timestamp, (double)0.0) ;
+    // Each function that we are tracking will have two distinct entry
+    // points that we need to keep track of, the starting point
+    // and the ending point.  In this function, we log the starting point
+    // of a function call.  Since the calls could be coming in simultaneously
+    // from different threads, we also use the thread id to create
+    // a unique identifier.
 
-    if (callCount.find(key) == callCount.end())
-    {
-      std::vector<std::pair<double, double>> newVector ;
-      newVector.push_back(value) ;
-      callCount[key] = newVector ;
+    auto threadId = std::this_thread::get_id();
+    auto key      = std::make_pair(name, threadId);
+    auto value    = std::make_pair(timestamp, (double)0.0);
+
+    // Since a single thread can call a function multiple times, we store
+    // the starts in a vector.  If the thread makes a recursive call, we'll
+    // have multiple elements where the start value is set but the end value
+    // needs to be filled in.
+    if (callCount.find(key) == callCount.end()) {
+      std::vector<std::pair<double, double>> newVector;
+      newVector.push_back(value);
+      callCount[key] = newVector;
     }
     else
-    {
-      callCount[key].push_back(value) ;
-    }
+      callCount[key].push_back(value);
 
     // OpenCL specific information 
-    if (name == "clEnqueueMigrateMemObjects") addMigrateMemCall() ;
+    if (name == "clEnqueueMigrateMemObjects")
+      addMigrateMemCall();
   }
 
   void VPStatisticsDatabase::logFunctionCallEnd(const std::string& name,
-                                                 double timestamp)
+                                                double timestamp)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::lock_guard<std::mutex> lock(dbLock);
 
-    auto threadId = std::this_thread::get_id() ;
-    auto key      = std::make_pair(name, threadId) ;
-    
-    callCount[key].back().second = timestamp ;
+    auto threadId = std::this_thread::get_id();
+    auto key      = std::make_pair(name, threadId);
+
+    // Since some calls might be recursive, we must go backwards to find
+    // the first call that has a start time set but no end time.  Since we've
+    // incorporated the thread id as part of our key, we will match recursive
+    // calls correctly
+    for (auto iter = callCount[key].rbegin();
+         iter != callCount[key].rend();
+         ++iter) {
+      if ((*iter).second == 0) {
+        (*iter).second = timestamp;
+        break;
+      }
+    }
   }
 
   void VPStatisticsDatabase::logMemoryTransfer(uint64_t deviceId,
