@@ -27,6 +27,7 @@
 #include "aie_util.h"
 #include "core/common/message.h"
 #include "filetypes/aie_control_config_filetype.h"
+#include "filetypes/aie_trace_config_filetype.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
@@ -61,6 +62,16 @@ namespace xdp::aie {
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   determineFileType(boost::property_tree::ptree& aie_project)
   {
+    // aie_trace_config.json format
+    try {
+      int majorVersion = aie_project.get("schema_version.major", 1);
+      if (majorVersion == 2)
+        return std::make_unique<xdp::aie::AIETraceConfigFiletype>(aie_project);
+    }
+    catch(...) {
+      // Most likely not an aie_trace_config
+    }
+
     // aie_control_config.json format
     try {
       auto c = aie_project.get_child_optional("aie_metadata.aiecompiler_options");

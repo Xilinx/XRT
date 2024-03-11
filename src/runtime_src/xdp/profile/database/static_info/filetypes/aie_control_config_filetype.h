@@ -97,6 +97,6 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         
 };
 
-}
+} // namespace xdp::aie
 
 #endif 
