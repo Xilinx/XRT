@@ -97,6 +97,23 @@ struct softkernel_object
   char *sk_buf;
 };
 
+// struct aieresourcesbin_object - wrapper for a aie resources object
+//
+// @symbol_name: aie resources symbol name
+// @size: size of aie resources image
+// @start_col: start column
+// @num_col: number of columns
+// @ar_buf: pointer to the aie resourecs buffer
+struct aieresourcesbin_object
+{
+  std::string mpo_name;
+  std::string mpo_version;
+  uint32_t start_col;
+  uint32_t num_col;
+  size_t size;
+  const char *ar_buf;
+};
+
 // struct aie_cdo_obj - wrapper for an AIE CDO group object
 //
 // @cdo_name: CDO group name
@@ -319,6 +336,12 @@ get_softkernels(const axlf* top);
 XRT_CORE_COMMON_EXPORT
 aie_partition_obj
 get_aie_partition(const axlf* top);
+
+/**
+ * get_aieresourcesbin() - Get aie resources information.
+ */
+std::vector<aieresourcesbin_object>
+get_aieresourcesbin(const axlf* top);
 
 /**
  * get_kernel_freq() - Get kernel frequency.

@@ -733,6 +733,7 @@ xclLoadAxlf(const axlf *buffer)
 
     /* Get the AIE_METADATA and get the hw_gen information */
     uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
+    uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -743,6 +744,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
       .za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
       .hw_gen = hw_gen,
+      .partition_id = partition_id,
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();

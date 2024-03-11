@@ -194,6 +194,14 @@ uint8_t
 get_hw_gen(const xrt_core::device* device);
 
 /**
+ * get_partition_id - calculate aie_partition_id from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+uint32_t
+get_partition_id(const xrt_core::device* device);
+
+/**
  * get_trace_gmios() - get trace gmio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data

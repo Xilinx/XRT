@@ -244,8 +244,47 @@ zocl_cleanup_aie(struct drm_zocl_dev *zdev)
 	return 0;
 }
 
+int 
+zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *xclbin, enum axlf_section_kind kind)
+{
+	struct axlf_section_header *header = NULL;
+	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
+	while (header) {
+		void* aie_res = NULL;	
+		int err = 0;
+
+		aie_res = vmalloc(header->m_sectionSize);
+		err = copy_from_user(aie_res, &xclbin[header->m_sectionOffset], header->m_sectionSize);
+		if (err) {
+			vfree(aie_res);
+			return 0;
+		}
+		
+		struct aie_resources_bin *aie_p = (struct aie_resources_bin *)aie_res;
+       		char *data_portion = (char *)aie_p + aie_p->m_image_offset; 	
+		size_t data_size = aie_p->m_image_size;
+        	void *res = NULL;
+        
+        	res = kmalloc(data_size, GFP_KERNEL);
+        	if (!res) 
+            		return -ENOMEM;
+        	
+        	memcpy(res, data_portion, data_size);
+
+		//Call the AIE Driver API 
+//		int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, aie_p->m_start_column, aie_p->m_num_columns, res);
+//		if (ret != 0) {
+//			return ret;
+//		}
+
+        	header = xrt_xclbin_get_section_hdr_next(axlf, kind, header);
+	}
+	return 0;
+}
+
+
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uint8_t hw_gen)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, void *aie_res_bin, uint8_t hw_gen, uint32_t part_id)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -255,7 +294,7 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
 		return rval;
-
+	
 	mutex_lock(&zdev->aie_lock);
 
 	/* AIE is reset and no PDI is loaded after reset */
@@ -299,9 +338,18 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
-	/* only aie-1 supports resources */
-	if (hw_gen == 1)
+	req.meta_data = 0;
+
+	if (aie_res) 
 		req.meta_data = (u64)aie_res;
+
+	zdev->aie->aie_dev = aie_partition_request(&req);
+
+	if (aie_res_bin) {
+		int res = zocl_read_aieresbin(zdev, axlf, xclbin, AIE_RESOURCES_BIN);
+		if (res)
+			goto done;
+	}
 
 	if (zdev->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",
