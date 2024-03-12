@@ -362,21 +362,23 @@ namespace xdp::aie {
   /****************************************************************************
    * Get AIE partition information
    ***************************************************************************/
-  std::vector<uint64_t>
+  std::vector<uint8_t>
   getPartitionStartColumns(void* handle)
   {
+    std::vector<uint8_t> startCols;
     std::shared_ptr<xrt_core::device> dev = xrt_core::get_userpf_device(handle);
     auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(dev);
+    
     if (infoVector.empty()) {
       std::cout << "!!!!!!!!!! getPartitionStartColumns: infoVector is empty!" << std::endl;
-      return {};
+      startCols.push_back(0);
     }
-
-    std::vector<uint64_t> startCols;
-    for (auto& info : infoVector) {
-      startCols.push_back(info.start_col);
-      std::cout << "!!!!!!!!!! getPartitionStartColumns: start_col = " << info.start_col
-                << ", num_col = " << info.num_cols << std::endl;
+    else {
+      for (auto& info : infoVector) {
+        startCols.push_back( static_cast<uint8_t>(info.start_col) );
+        std::cout << "!!!!!!!!!! getPartitionStartColumns: start_col = " << info.start_col
+                  << ", num_col = " << info.num_cols << std::endl;
+      }
     }
     return startCols;
   }
