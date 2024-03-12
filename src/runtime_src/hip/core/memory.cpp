@@ -15,28 +15,51 @@
 #include "device.h"
 #include "memory.h"
 
-// TODO: use xrt::ext::bo in stead of xrt::bo
-#define USE_XRT_EXT_BO 0 // USE_XRT_EXT_BO=0 works on XRT sw_emu, both USE_XRT_EXT_BO=0 and USE_XRT_EXT_BO=1 works on npu
-
 namespace xrt::core::hip
 {
 
   memory::memory(size_t sz, std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_upload_from_host_mem_required(false), m_sync_host_mem_required(false)
+      : m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(false)
   {
     assert(m_device);
+
+    // TODO: support non-npu device that may require delayed xrt::bo allocation until xrt kernel is created
     init_xrt_bo();
   }
 
   memory::memory(size_t sz, unsigned int flags, std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_upload_from_host_mem_required(false), m_sync_host_mem_required(false)
+      : m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(false)
   {
     assert(m_device);
-    init_xrt_bo();
+
+    switch (m_hip_flags)
+    {
+    case hipHostMallocDefault:
+    case hipHostMallocPortable:
+      // allocate pinned memory on host only, xrt::bo object will not be allcated.
+      m_host_mem = reinterpret_cast<unsigned char *>(aligned_alloc(xrt_core::getpagesize(), m_size));
+      assert(m_host_mem);
+      lock_pages(m_host_mem, m_size);
+      break;
+
+    case hipHostMallocMapped:
+      init_xrt_bo();
+      m_host_mem = reinterpret_cast<unsigned char*>(m_bo->map());
+      break;
+
+    case hipHostMallocWriteCombined:
+      init_xrt_bo();
+      m_host_mem = reinterpret_cast<unsigned char *>(m_bo->map());
+      lock_pages(m_host_mem, m_size);
+      break;
+
+    default:
+      break;
+    }
   }
 
   void
-  memory::lock_pages(void* addr, size_t size)
+  memory::lock_pages(void *addr, size_t size)
   {
 #ifdef _WIN32
     VirtualLock(addr, size);
@@ -48,84 +71,28 @@ namespace xrt::core::hip
   void
   memory::init_xrt_bo()
   {
-    #if (USE_XRT_EXT_BO)
-    {
-        void* maddr = nullptr;
-        if (m_bo == nullptr)
-        {
-          auto xrt_device = m_device->get_xrt_device();
-          switch (m_type)
-          {
-          case memory_type::hip_memory_type_device:
-            m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
-            break;
-
-          case memory_type::hip_memory_type_host:
-            m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
-            maddr = m_bo->map();
-            lock_pages(maddr, m_size);
-            break;
-
-          case memory_type::hip_memory_type_registered:
-            m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
-            break;
-
-          case memory_type::hip_memory_type_managed:
-            // TODO: implement managed memory once xdna-driver support Linux HMM
-            m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
-            break;
-
-          default:
-            break;
-          };
-        }
-    }
-    #else
-      // if xrt::ext::bo is not used , a host mem copy is created to store user data before xrt::bo is created
-      m_host_mem = reinterpret_cast<unsigned char *>(aligned_alloc(xrt_core::getpagesize(), m_size));    
-    #endif //USE_XRT_EXT_BO
+    auto xrt_device = m_device->get_xrt_device();
+    m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
   }
 
   void
   memory::validate()
   {
-    #if !(USE_XRT_EXT_BO)
+    // validate() is requied only on non-npu device that require delayed xrt::bo allocation until xrt kernel is created
+    assert(m_type == memory_type::hip_memory_type_device);
+
+    if (m_bo == nullptr)
     {
-      void* maddr = nullptr;
-      if (m_bo == nullptr)
-      {
-        // TODO: use correct XRT_BO_FLAGS on different type of device
-        auto xrt_device = m_device->get_xrt_device();
-        switch (m_type)
-        {
-        case memory_type::hip_memory_type_device:
-          m_bo = std::make_shared<xrt::bo>(xrt_device, m_size, XRT_BO_FLAGS_HOST_ONLY, m_group);
-          break;
+      auto xrt_device = m_device->get_xrt_device();
+      m_bo = std::make_shared<xrt::bo>(xrt_device, m_size, XRT_BO_FLAGS_HOST_ONLY, m_group);
 
-        case memory_type::hip_memory_type_host:
-          m_bo = std::make_shared<xrt::bo>(xrt_device, m_size, XRT_BO_FLAGS_HOST_ONLY, m_group);
-          maddr = m_bo->map();
-          lock_pages(maddr, m_size);
-          break;
-
-        case memory_type::hip_memory_type_registered:
-          m_bo = std::make_shared<xrt::bo>(xrt_device, m_size, XRT_BO_FLAGS_HOST_ONLY, m_group);
-          m_sync_host_mem_required = true;
-          break;
-
-        default:
-          break;
-        };
-      }
-
-      if (m_upload_from_host_mem_required == true)
+      if (m_sync_host_mem_required == true)
       {
         m_bo->write(m_host_mem, m_size, 0);
         m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        m_upload_from_host_mem_required = false;
+        m_sync_host_mem_required = false;
       }
     }
-    #endif // ! USE_XRT_EXT_BO
   }
 
   void
@@ -143,7 +110,7 @@ namespace xrt::core::hip
   memory::post_kernel_run_sync_host_mem()
   {
     assert(m_bo);
-        
+
     if (m_sync_host_mem_required)
     {
       m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -159,19 +126,6 @@ namespace xrt::core::hip
     {
       free(m_host_mem);
     }
-  }
-
-  void *
-  memory::get_host_addr()
-  {
-    if (m_bo == nullptr ||
-        m_type == memory_type::hip_memory_type_registered)
-    {
-      // user ptr BO is not supported on NPU Linux driver
-      m_sync_host_mem_required = true;
-      return m_host_mem;
-    }
-    return m_bo->map();
   }
 
   void *
@@ -197,13 +151,23 @@ namespace xrt::core::hip
     else
     {
       src->copy_to(m_host_mem, size, offset, src_offset);
-      m_upload_from_host_mem_required = true;
+      m_sync_host_mem_required = true;
     }
   }
 
   void
   memory::copy_from(const void *host_src, size_t size, size_t src_offset, size_t offset)
   {
+    auto src_hip_mem = memory_database::GetInstance()->get_hip_mem_from_host_addr(host_src);
+    if (src_hip_mem != nullptr &&
+        src_hip_mem->get_type() == memory_type::hip_memory_type_host)
+    {
+        // pinned hip mem
+        assert(src_hip_mem->get_hip_flags() == hipHostMallocDefault || src_hip_mem->get_hip_flags() == hipHostMallocPortable);
+
+        // TODO: get better performance by avoiding two step copy in case of copying from pinned host mem
+    }
+
     const unsigned char *src_ptr = reinterpret_cast<const unsigned char *>(host_src);
     src_ptr += src_offset;
     if (m_bo != nullptr)
@@ -214,7 +178,7 @@ namespace xrt::core::hip
     else
     {
       memcpy(m_host_mem, src_ptr, size);
-      m_upload_from_host_mem_required = true;
+      m_sync_host_mem_required = true;
     }
   }
 

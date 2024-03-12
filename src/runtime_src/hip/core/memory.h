@@ -28,7 +28,7 @@ namespace xrt::core::hip
 
   public:
     memory(std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(0), m_type(memory_type::hip_memory_type_invalid), m_hip_flags(0), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_upload_from_host_mem_required(false), m_sync_host_mem_required(false)
+      : m_size(0), m_type(memory_type::hip_memory_type_invalid), m_hip_flags(0), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(false)
     {
       assert(m_device);
       init_xrt_bo();
@@ -38,9 +38,12 @@ namespace xrt::core::hip
 
     // construct from user host buffer
     memory(size_t sz, void *host_mem, unsigned int flags, std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(sz), m_type(memory_type::hip_memory_type_registered), m_hip_flags(flags), m_host_mem(reinterpret_cast<unsigned char *>(host_mem)), m_device(dev), m_bo(nullptr), m_upload_from_host_mem_required(false), m_sync_host_mem_required(false)
+      : m_size(sz), m_type(memory_type::hip_memory_type_registered), m_hip_flags(flags), m_host_mem(reinterpret_cast<unsigned char *>(host_mem)), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(true)
     {
       assert(m_device);
+
+      // user ptr BO is not supported on NPU Linux driver, hence sync between host_mem and internal xrt::bo object is required before and after kernel run
+      // TODO: set m_sync_host_mem_required to true for device that support user ptr BO 
       init_xrt_bo();
     }
 
@@ -67,8 +70,13 @@ namespace xrt::core::hip
       m_device = device; 
     }
 
-    void *get_host_addr();
-    void *get_device_addr();
+    void*
+    get_host_addr()
+    {
+      return m_host_mem;
+    }
+
+    void* get_device_addr();
 
     const std::shared_ptr<xrt::bo> get_xrt_bo() const 
     { 
@@ -78,6 +86,11 @@ namespace xrt::core::hip
     std::shared_ptr<xrt::bo> get_xrt_bo() 
     { 
       return m_bo; 
+    }
+
+    unsigned int get_hip_flags() const
+    { 
+      return m_hip_flags; 
     }
 
     memory_type get_type() const
@@ -109,7 +122,6 @@ namespace xrt::core::hip
     std::shared_ptr<xrt::core::hip::device>  m_device;
     std::shared_ptr<xrt::bo> m_bo;
     xrt::memory_group m_group;
-    bool m_upload_from_host_mem_required;
     bool m_sync_host_mem_required;
 
     void free_mem();

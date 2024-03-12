@@ -52,6 +52,14 @@ namespace xrt::core::hip
   {
     // TODO: get current hip device
     auto dev = device_cache.get(0);
+    if (dev == nullptr)
+    {
+      if (hipInit(0) != hipSuccess)
+      {
+        throw std::runtime_error("hipInit() failed!");
+      }
+      dev = device_cache.get(0);
+    }
     assert(dev);
 
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(size, flags, dev);
@@ -88,6 +96,14 @@ namespace xrt::core::hip
   {
     // TODO: get current hip device
     auto dev = device_cache.get(0);
+    if (dev == nullptr)
+    {
+      if (hipInit(0) != hipSuccess)
+      {
+        throw std::runtime_error("hipInit() failed!");
+      }
+      dev = device_cache.get(0);
+    }
     assert(dev);
 
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(sizeBytes, hostPtr, flags, dev);
