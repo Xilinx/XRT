@@ -28,11 +28,6 @@
 
 using severity_level = xrt_core::message::severity_level;
 
-xclDeviceHandle initXRTHandle(unsigned deviceIndex)
-{
-  return xclOpen(deviceIndex, nullptr, XCL_QUIET);
-}
-
 static std::unique_ptr<xrt::skd> skd_inst;
 
 /* Define a signal handler for the child to handle signals */
@@ -75,7 +70,7 @@ static void sigLog(const int sig)
 }
 
 #define PNAME_LEN	(16)
-void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size)
+void configSoftKernel(const xrtDeviceHandle handle, xclSKCmd* cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size)
 {
   for (int i = cmd->start_cuidx; i < (cmd->start_cuidx + cmd->cu_nums); i++) {
     /*

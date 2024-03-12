@@ -130,10 +130,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #else
   // Update the static database with information from xclbin
   (db->getStaticInfo()).updateDevice(deviceID, handle);
-  struct xclDeviceInfo2 info;
-
-  if (xclGetDeviceInfo2(handle, &info) == 0)
-    (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+  std::string deviceName = util::getDeviceName(handle);
+  if (deviceName != "")
+    (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
 
 #endif
 
@@ -313,9 +312,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #ifdef _WIN32
     std::string deviceName = "win_device";
 #else
-    struct xclDeviceInfo2 info;
-    xclGetDeviceInfo2(handle, &info);
-    std::string deviceName = std::string(info.mName);
+    std::string deviceName = util::getDeviceName(handle);
 #endif
 
     // Writer for timestamp file

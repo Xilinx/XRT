@@ -818,27 +818,27 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, void *data_ptr, void
 			subdev_req->size, resp, &current_sz);
 		break;
 	case XCL_SDR_BDINFO:
-		current_sz = SIZE_4KB;
+		current_sz = xocl_hwmon_sdm_get_sensor_size(lro, XCL_SDR_BDINFO);
 		*resp = vzalloc(current_sz);
 		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO, req->flags);
 		break;
 	case XCL_SDR_TEMP:
-		current_sz = SIZE_4KB;
+		current_sz = xocl_hwmon_sdm_get_sensor_size(lro, XCL_SDR_TEMP);
 		*resp = vzalloc(current_sz);
 		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP, req->flags);
 		break;
 	case XCL_SDR_VOLTAGE:
-		current_sz = SIZE_4KB;
+		current_sz = xocl_hwmon_sdm_get_sensor_size(lro, XCL_SDR_VOLTAGE);
 		*resp = vzalloc(current_sz);
 		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE, req->flags);
 		break;
 	case XCL_SDR_CURRENT:
-		current_sz = SIZE_4KB;
+		current_sz = xocl_hwmon_sdm_get_sensor_size(lro, XCL_SDR_CURRENT);
 		*resp = vzalloc(current_sz);
 		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT, req->flags);
 		break;
 	case XCL_SDR_POWER:
-		current_sz = SIZE_4KB;
+		current_sz = xocl_hwmon_sdm_get_sensor_size(lro, XCL_SDR_POWER);
 		*resp = vzalloc(current_sz);
 		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER, req->flags);
 		break;
