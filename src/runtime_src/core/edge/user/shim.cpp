@@ -2183,7 +2183,6 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 static int
 xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 {
-
   return xdp::hal::profiling_wrapper("xclLoadXclbin", [handle, buffer, meta] {
 
   try {
@@ -2225,7 +2224,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
         #endif
         xdp::aie::ctr::update_device(handle);
         xdp::aie::sts::update_device(handle);
-        
+
         #ifndef __HWEM__
         xdp::pl_deadlock::update_device(handle);
 
@@ -2236,7 +2235,6 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 
         return 0;
     }
-    // TODO: add updateDevice here.
 
     // Skipping if only loading xclbin metadata
     if (!meta) {
