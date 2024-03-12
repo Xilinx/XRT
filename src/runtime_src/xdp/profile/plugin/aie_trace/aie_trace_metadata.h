@@ -28,6 +28,7 @@
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
 #include "core/common/device.h"
+#include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/include/xrt/xrt_hw_context.h"
 
@@ -107,6 +108,7 @@ class AieTraceMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
+    bool aieMetadataEmpty() { return metadataReader==nullptr; }
 
   private:
     bool useDelay = false;

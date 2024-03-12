@@ -2183,6 +2183,7 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 static int
 xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 {
+
   return xdp::hal::profiling_wrapper("xclLoadXclbin", [handle, buffer, meta] {
 
   try {
@@ -2217,8 +2218,25 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #endif
 
     /* If PDI is the only section, return here */
-    if (xrt_core::xclbin::is_pdi_only(buffer))
+    if (xrt_core::xclbin::is_pdi_only(buffer)) {
+        #ifndef __HWEM__
+          xdp::hal::update_device(handle);
+          xdp::aie::update_device(handle);
+        #endif
+        xdp::aie::ctr::update_device(handle);
+        xdp::aie::sts::update_device(handle);
+        
+        #ifndef __HWEM__
+        xdp::pl_deadlock::update_device(handle);
+
+        START_DEVICE_PROFILING_CB(handle);
+        #else
+        xdp::hal::hw_emu::update_device(handle);
+        #endif
+
         return 0;
+    }
+    // TODO: add updateDevice here.
 
     // Skipping if only loading xclbin metadata
     if (!meta) {

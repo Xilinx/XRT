@@ -26,6 +26,7 @@
 #include "core/common/system.h"
 
 #include "xdp/config.h"
+#include "xdp/profile/database/static_info/xclbin_types.h"
 
 namespace xdp {
 
@@ -34,6 +35,7 @@ namespace xdp {
   struct Monitor ;
   struct NoCNode ;
   class aie_cfg_tile ;
+  struct ConfigInfo ;
 
   // An application may be run on a system that has multiple physical
   //  (or emulated) devices.  The DeviceInfo struct collects all of the
@@ -65,7 +67,7 @@ namespace xdp {
     // *******************************************************************
     // ****** Information specific to all previously loaded XCLBINs ******
     // *******************************************************************
-    std::vector<XclbinInfo*> loadedXclbins ;
+    std::vector<ConfigInfo*> loadedConfigInfos ;
 
     // Our AMs don't currently support profiling kernels that were compiled
     //  as multiple context kernels.  We call the XRT function
@@ -84,11 +86,18 @@ namespace xdp {
 
     ~DeviceInfo() ;
 
+    // ****** Functions for Device ConfigInfo ******
+    XDP_CORE_EXPORT XclbinInfo* createXclbinFromLastConfig(XclbinInfoType xclbinQueryType) ;
+    XDP_CORE_EXPORT ConfigInfo* createConfig(XclbinInfo* xclbin) ;
+    
     // ****** Functions for information on the device ******
     XDP_CORE_EXPORT std::string getUniqueDeviceName() const ;
     XDP_CORE_EXPORT xrt_core::uuid currentXclbinUUID() ;
-    inline std::vector<XclbinInfo*> getLoadedXclbins() { return loadedXclbins ;}
-    XDP_CORE_EXPORT void cleanCurrentXclbinInfo() ;
+
+    // ****** Functions for information on the device for the current config ******
+    inline std::vector<ConfigInfo*> getLoadedConfigs() const { return loadedConfigInfos ;}
+    XDP_CORE_EXPORT ConfigInfo* currentConfig() const ;
+    XDP_CORE_EXPORT void cleanCurrentXclbinInfo(XclbinInfoType type);
     inline bool isNoDMA() const { return isNoDMADevice ; }
     double getMaxClockRatePLMHz();
 
@@ -97,7 +106,6 @@ namespace xdp {
 
     // ****** Functions for information on the currently loaded xclbin *******
     XDP_CORE_EXPORT XclbinInfo* currentXclbin() ;
-    XDP_CORE_EXPORT void addXclbin(XclbinInfo* xclbin) ;
     XDP_CORE_EXPORT bool hasDMAMonitor() ;
     XDP_CORE_EXPORT bool hasDMABypassMonitor() ;
     XDP_CORE_EXPORT bool hasKDMAMonitor() ;

@@ -122,8 +122,8 @@ class AieProfileMetadata {
     int getNumCountersMod(const int module){ return numCountersMod[module]; }
     module_type getModuleType(const int module) { return moduleTypes[module]; }
 
-    uint8_t getAIETileRowOffset() const { return metadataReader->getAIETileRowOffset(); }
-    int getHardwareGen() const { return metadataReader->getHardwareGeneration(); }
+    uint8_t getAIETileRowOffset() const { return metadataReader == nullptr ? 0 : metadataReader->getAIETileRowOffset(); }
+    int getHardwareGen() const { return  metadataReader == nullptr ? 0 : metadataReader->getHardwareGeneration(); }
 
     double getClockFreqMhz() {return clockFreqMhz;}
     int getNumModules() {return NUM_MODULES;}
@@ -131,6 +131,7 @@ class AieProfileMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
+    bool aieMetadataEmpty() { return metadataReader==nullptr; }
 };
 
 } // end XDP namespace

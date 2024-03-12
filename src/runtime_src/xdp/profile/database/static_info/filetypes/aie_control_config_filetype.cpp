@@ -406,6 +406,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
+    int allTilesIdx = 0;
 
     for (auto& graph : graphsMetadata.get()) {
         auto currGraph = graph.second.get<std::string>("name");
@@ -416,15 +417,17 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         int count = 0;
         for (auto& node : graph.second.get_child(col_name)) {
             tiles.push_back(tile_type());
-            auto& t = tiles.at(count++);
+            auto& t = tiles.at(allTilesIdx);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
             t.is_dma_only = is_dma_only;
+            allTilesIdx++;
+            count++;
         }
 
         int num_tiles = count;
         count = 0;
         for (auto& node : graph.second.get_child(row_name))
-            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
+            tiles.at(allTilesIdx-num_tiles+count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
     }
 

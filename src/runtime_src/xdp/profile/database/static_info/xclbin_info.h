@@ -28,6 +28,7 @@
 
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/xclbin_types.h"
 
 namespace xdp {
 
@@ -87,7 +88,11 @@ namespace xdp {
 
     // HLS deadlock diagnosis registers
     std::unique_ptr<ip_metadata> ip_metadata_section = nullptr;
+    
+    // Informs if this PLInfo is valid for current xclbins configuration
+    bool valid = true ;
 
+    PLInfo& operator=(const PLInfo& other) ;
     ~PLInfo() ;
     void addComputeUnitPorts(const std::string& kernelName,
                              const std::string& portName,
@@ -101,6 +106,8 @@ namespace xdp {
                             int32_t memId);
     // Collect all compute units of a kernel
     std::vector<ComputeUnitInstance*> collectCUs(const std::string& kernelName);
+
+    // std::string print() const;
   } ;
 
   // The AIEInfo struct keeps track of all of the information associated
@@ -146,7 +153,13 @@ namespace xdp {
     //  gain information on NoC traffic, but today is unused.
     std::vector<NoCNode*> nocList ;
 
+    // Informs if this AIEInfo is valid for current xclbins configuration
+    bool valid = true ;
+
+    AIEInfo& operator=(const AIEInfo& other) ;
     ~AIEInfo() ;
+    
+    // std::string print() const;
   } ;
 
   // The struct XclbinInfo contains all of the information and configuration
@@ -161,6 +174,7 @@ namespace xdp {
     //  xclbin is loaded multiple times in the same application.
     xrt_core::uuid uuid ;
     std::string name ;
+    XclbinInfoType type {XCLBIN_AIE_PL} ;
 
     // The interface with actually communicating with the device.  This
     //  handles the abstractions necessary for communicating in emulation,
@@ -173,7 +187,84 @@ namespace xdp {
     // The configuration of the AIE portion of the design (if applicable)
     AIEInfo aie ;
 
+    XclbinInfo(XclbinInfoType xclbinType) ;
     ~XclbinInfo() ;
+    // std::string print() const;
+  } ;
+
+  // The config struct stores multiple xclbins
+  struct ConfigInfo {
+  // This defines what kind of xclbininfo is loaded on the device.
+    ConfigInfoType type {CONFIG_AIE_PL} ;
+
+  // The currently loaded XCLbinInfo for the device.
+    std::vector<XclbinInfo*> currentXclbins ;
+
+    ConfigInfo() ;
+    ConfigInfo(XclbinInfo* xclbin) ;
+    ~ConfigInfo() ;
+
+    std::vector<xrt_core::uuid> getConfigUuids() ;
+    xrt_core::uuid getConfigUuid() ;
+
+    void addXclbin(XclbinInfo* newXclbin) ;
+    void updateType(ConfigInfoType cfgType) ; 
+
+    bool containsXclbin(xrt_core::uuid& uuid) ; 
+
+    XclbinInfo* getPlXclbin() ;
+    XclbinInfo* getAieXclbin() ;
+    std::string getXclbinNames() ;
+
+    bool isAiePlusPl() ;
+    bool isAieOnly();
+    bool isPlOnly();
+    bool hasXclbin(XclbinInfo* xclbin);
+   
+    bool hasFloatingAIMWithTrace(XclbinInfo* xclbin);
+    bool hasFloatingASMWithTrace(XclbinInfo* xclbin);
+    uint64_t getNumAM(XclbinInfo* xclbin) ;
+    uint64_t getNumUserAMWithTrace(XclbinInfo* xclbin) ;
+    uint64_t getNumAIM(XclbinInfo* xclbin) ;
+    uint64_t getNumUserAIM(XclbinInfo* xclbin) ;
+    uint64_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
+
+    uint64_t getNumASM(XclbinInfo* xclbin) const ;
+    uint64_t getNumUserASM(XclbinInfo* xclbin) const ;
+    uint64_t getNumUserASMWithTrace(XclbinInfo* xclbin) ;
+
+    uint64_t getNumNOC(XclbinInfo* xclbin) ;
+    Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
+    Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
+    Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
+    NoCNode* getNOC(XclbinInfo* xclbin, uint64_t idx) ;
+    std::vector<Monitor*>* getAIMonitors(XclbinInfo* xclbin) ;
+    std::vector<Monitor*>* getASMonitors(XclbinInfo* xclbin) ;
+    std::vector<Monitor*> getUserAIMsWithTrace(XclbinInfo* xclbin) ;
+    std::vector<Monitor*> getUserASMsWithTrace(XclbinInfo* xclbin) ;
+
+    void addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
+                                uint16_t stream, uint16_t len) ;
+    void addAIECounter(uint32_t i, uint16_t col, uint16_t r,
+                                 uint8_t num, uint16_t start, uint16_t end,
+                                 uint8_t reset, uint32_t load, double freq,
+                                 const std::string& mod,
+                                 const std::string& aieName) ;
+    void addAIECounterResources(uint32_t numCounters,
+                                            uint32_t numTiles,
+                                            uint8_t moduleType) ;
+    void addAIECoreEventResources(uint32_t numEvents,
+                                            uint32_t numTiles) ;
+    void addAIEMemoryEventResources(uint32_t numEvents,
+                                            uint32_t numTiles) ;
+    void addAIEShimEventResources(uint32_t numEvents,
+                                              uint32_t numTiles) ;
+    void addAIEMemTileEventResources(uint32_t numEvents,
+                                              uint32_t numTiles) ;
+    void addAIECfgTile(std::unique_ptr<aie_cfg_tile>&& tile) ;
+    void cleanCurrentXclbinInfos(XclbinInfoType xclbinType) ;
+    bool hasAIMNamed(const std::string& name) ;
+    // void print(std::string callerLoc) const;
   } ;
 
 } // end namespace xdp
