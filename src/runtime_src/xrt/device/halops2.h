@@ -54,88 +54,14 @@ public:
 
 private:
 
-  /* TBD */
-  typedef unsigned int (* probeFuncType)();
-  typedef xclDeviceHandle (* openFuncType)(unsigned int deviceIndex, const char *logFileName,
-                                           xclVerbosityLevel level);
-  typedef void (* closeFuncType)(xclDeviceHandle handle);
-  typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
-  typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef xclBufferHandle (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned int flags);
-  typedef xclBufferHandle (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags);
-
-  typedef xclBufferHandle (*importBOFuncType)(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned int flags);
-  typedef xclBufferExportHandle (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
-  typedef int (*getBOPropertiesFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOProperties*);
-  typedef int (*execBOFuncType)(xclDeviceHandle handle, xclBufferHandle cmdBO);
-  typedef int (*execWaitFuncType)(xclDeviceHandle handle, int timeoutMS);
-
-  typedef void (* freeBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
-  typedef size_t (* writeBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek);
-  typedef size_t (* readBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip);
-  typedef int (* syncBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection dir,
-                                 size_t size, size_t offset);
-  typedef int (* copyBOFuncType)(xclDeviceHandle handle, xclBufferHandle dstBoHandle, xclBufferHandle srcBoHandle,
-                                 size_t size, size_t dst_offset, size_t src_offset);
-
-  typedef void* (* mapBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
-  typedef int   (* unmapBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
-
-  typedef int (* reClock2FuncType)(xclDeviceHandle handle, unsigned short region,
-                                   const unsigned short *targetFreqMHz);
-  //These are for readControl() and writeControl() functions
-  typedef size_t (* writeFuncType)(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
-                                   const void *hostBuf, size_t size);
-  typedef size_t (* readFuncType)(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
-                                  void *hostbuf, size_t size);
-  typedef ssize_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned int flags, void *buf, size_t count, uint64_t offset);
-
-  typedef int (* lockDeviceFuncType)(xclDeviceHandle handle);
-  typedef int (* unlockDeviceFuncType)(xclDeviceHandle handle);
-
-  typedef int (* getDeviceInfoFuncType)(xclDeviceHandle handle, xclDeviceInfo2 *info);
-
   typedef size_t (* getDeviceTimeFuncType)(xclDeviceHandle handle);
-  typedef double (* getDeviceClockFuncType)(xclDeviceHandle handle);
-  typedef double (* getHostMaxReadFuncType)(xclDeviceHandle handle);
-  typedef double (* getHostMaxWriteFuncType)(xclDeviceHandle handle);
-  typedef double (* getKernelMaxReadFuncType)(xclDeviceHandle handle);
-  typedef double (* getKernelMaxWriteFuncType)(xclDeviceHandle handle);
-  typedef void (* setSlotFuncType)(xclDeviceHandle handle, xdp::MonitorType type, uint32_t numSlots);
-  typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
-  typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xdp::MonitorType type, uint32_t slotnum,
-                                       char* slotName, uint32_t length);
-  typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xdp::MonitorType type, uint32_t slotnum);
-  typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
-  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xdp::MonitorType type, unsigned int *ip_config);
-  typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
-  typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
   typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
                                           xdp::CounterResults& counterResults);
-  typedef size_t (* startTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
-                                        uint32_t options);
-  typedef size_t (* stopTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
-  typedef uint32_t (* countTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
-  typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
-                                       xdp::TraceEventsVector& traceVector);
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
-
-  typedef int (* openContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
-                                      bool shared);
-  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex);
-
-  typedef void (*getDebugIpLayoutType)(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
-
-  //APIs using sysfs
-  typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
-  typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
-  typedef int     (*xclGetSubdevPathFuncType)(xclDeviceHandle handle, const char* subdev, uint32_t idx, char* path, size_t size);
-
-  typedef int     (*xclGetDebugIPlayoutPathFuncType)(xclDeviceHandle handle, char* layoutPath, size_t size);
-
-  typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
-  typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+  typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
+                                       xdp::TraceEventsVector& traceVector);
+  typedef int (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
 private:
   const std::string mFileName;
@@ -143,70 +69,11 @@ private:
   const unsigned int mDeviceCount;
 
 public:
-
-  probeFuncType mProbe;
-  openFuncType mOpen;
-  closeFuncType mClose;
-  //loadBitstreamFuncType mLoadBitstream;
-  loadXclBinFuncType mLoadXclBin;
-  allocBOFuncType mAllocBO;
-  allocUserPtrBOFuncType mAllocUserPtrBO;
-  importBOFuncType mImportBO;
-  exportBOFuncType mExportBO;
-  getBOPropertiesFuncType mGetBOProperties;
-
-  execBOFuncType mExecBuf;
-  execWaitFuncType mExecWait;
-
-  openContextFuncType mOpenContext;
-  closeContextFuncType mCloseContext;
-
-  freeBOFuncType mFreeBO;
-  writeBOFuncType mWriteBO;
-  readBOFuncType mReadBO;
-  syncBOFuncType mSyncBO;
-  copyBOFuncType mCopyBO;
-  mapBOFuncType mMapBO;
-  unmapBOFuncType mUnmapBO;
-  writeFuncType mWrite;
-  readFuncType mRead;
-  unmgdPreadFuncType mUnmgdPread;
-  reClock2FuncType mReClock2;
-  lockDeviceFuncType mLockDevice;
-  unlockDeviceFuncType mUnlockDevice;
-  getDeviceInfoFuncType mGetDeviceInfo;
-
   getDeviceTimeFuncType mGetDeviceTime;
-  getDeviceClockFuncType mGetDeviceClock;
-  getHostMaxReadFuncType mGetHostMaxRead;
-  getHostMaxWriteFuncType mGetHostMaxWrite;
-  getKernelMaxReadFuncType mGetKernelMaxRead;
-  getKernelMaxWriteFuncType mGetKernelMaxWrite;
-  setSlotFuncType mSetProfilingSlots;
-  getSlotFuncType mGetProfilingSlots;
-  getSlotNameFuncType mGetProfilingSlotName;
-  getSlotPropertiesFuncType mGetProfilingSlotProperties;
-  clockTrainingFuncType mClockTraining;
-  configureDataflowFuncType mConfigureDataflow;
-  startCountersFuncType mStartCounters;
-  stopCountersFuncType mStopCounters;
   readCountersFuncType mReadCounters;
-  startTraceFuncType mStartTrace;
-  stopTraceFuncType mStopTrace;
-  countTraceFuncType mCountTrace;
   readTraceFuncType mReadTrace;
   debugReadIPStatusFuncType mDebugReadIPStatus;
-
-  getDebugIpLayoutType mGetDebugIpLayout;
-
-  // APIs using sysfs
-  xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
   xclGetSysfsPathFuncType mGetSysfsPath;
-  xclGetSubdevPathFuncType mGetSubdevPath;
-
-  xclGetDebugIPlayoutPathFuncType mGetDebugIPlayoutPath;
-  xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;
-  xclReadTraceDataFuncType mReadTraceData;
 
   const std::string&
   getFileName() const
@@ -220,23 +87,6 @@ public:
     return mDeviceCount;
   }
 
-  size_t
-  mGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle) const
-  {
-    xclBOProperties p;
-    return mGetBOProperties(handle,boHandle,&p)
-      ? -1
-      : p.size;
-  }
-
-  uint64_t
-  mGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle) const
-  {
-    xclBOProperties p;
-    return mGetBOProperties(handle,boHandle,&p)
-      ? -1
-      : p.paddr;
-  }
 
 };
 

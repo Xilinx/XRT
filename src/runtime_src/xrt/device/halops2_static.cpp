@@ -24,126 +24,19 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   : mFileName(fileName)
   ,mDriverHandle(fileHandle)
   ,mDeviceCount(count)
-  ,mProbe(0)
-  ,mOpen(0)
-  ,mClose(0)
-  ,mLoadXclBin(0)
-  ,mAllocBO(0)
-  ,mAllocUserPtrBO(0)
-  ,mImportBO(0)
-  ,mExportBO(0)
-  ,mGetBOProperties(0)
-  ,mExecBuf(0)
-  ,mExecWait(0)
-  ,mOpenContext(0)
-  ,mCloseContext(0)
-  ,mFreeBO(0)
-  ,mWriteBO(0)
-  ,mReadBO(0)
-  ,mSyncBO(0)
-  ,mCopyBO(0)
-  ,mMapBO(0)
-  ,mUnmapBO(0)
-  ,mWrite(0)
-  ,mRead(0)
-  ,mUnmgdPread(0)
-  ,mReClock2(0)
-  ,mLockDevice(0)
-  ,mUnlockDevice(0)
-  ,mGetDeviceInfo(0)
   ,mGetDeviceTime(0)
-  ,mGetDeviceClock(0)
-  ,mGetHostMaxRead(0)
-  ,mGetHostMaxWrite(0)
-  ,mGetKernelMaxRead(0)
-  ,mGetKernelMaxWrite(0)
-  ,mSetProfilingSlots(0)
-  ,mGetProfilingSlots(0)
-  ,mGetProfilingSlotName(0)
-  ,mGetProfilingSlotProperties(0)
-  ,mClockTraining(0)
-  ,mConfigureDataflow(0)
-  ,mStartCounters(0)
-  ,mStopCounters(0)
   ,mReadCounters(0)
-  ,mStartTrace(0)
-  ,mStopTrace(0)
-  ,mCountTrace(0)
   ,mReadTrace(0)
   ,mDebugReadIPStatus(0)
-  ,mGetDebugIpLayout(0)
-  ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
-  ,mGetSubdevPath(0)
-  ,mGetDebugIPlayoutPath(0)
-  ,mGetTraceBufferInfo(0)
-  ,mReadTraceData(0)
 {
-  mProbe = &xclProbe;
-  mOpen = &xclOpen;
-  mClose = &xclClose;
-
- // mLoadBitstream = &xclLoadBitstream;
-
-  mLoadXclBin = &xclLoadXclBin;
-  mAllocBO = &xclAllocBO;
-  mAllocUserPtrBO = &xclAllocUserPtrBO;
-  mImportBO = &xclImportBO;
-  mExportBO = &xclExportBO;
-  mGetBOProperties = &xclGetBOProperties;
-  mExecBuf = &xclExecBuf;
-  mExecWait = &xclExecWait;
-
-  mOpenContext = &xclOpenContext;
-  mCloseContext = &xclCloseContext;
-
-  mFreeBO   = &xclFreeBO;
-  mWriteBO  = &xclWriteBO;
-  mReadBO   = &xclReadBO;
-  mSyncBO   = &xclSyncBO;
-  mCopyBO   = &xclCopyBO;
-  mMapBO    = &xclMapBO;
-  mUnmapBO  = &xclUnmapBO;
-
-  mWrite      = &xclWrite;
-  mRead       = &xclRead;
-  mUnmgdPread = &xclUnmgdPread;
-
-  mReClock2 = &xclReClock2;
-  mLockDevice = &xclLockDevice;
-  mUnlockDevice = &xclUnlockDevice;
-  mGetDeviceInfo = &xclGetDeviceInfo2;
-
 #if 0
   // Profiling Functions
   mGetDeviceTime = &xclGetDeviceTimestamp;
-  mGetDeviceClock = &xclGetDeviceClockFreqMHz;
-  mGetHostMaxRead = &xclGetHostReadMaxBandwidthMBps;
-  mGetHostMaxWrite = &xclGetHostWriteMaxBandwidthMBps;
-  mGetKernelMaxRead = &xclGetKernelReadMaxBandwidthMBps;
-  mGetKernelMaxWrite = &xclGetKernelWriteMaxBandwidthMBps;
-  mSetProfilingSlots = &xclSetProfilingNumberSlots;
-  mGetProfilingSlots = &xclGetProfilingNumberSlots;
-  mGetProfilingSlotName = &xclGetProfilingSlotName;
-  mGetProfilingSlotProperties = &xclGetProfilingSlotProperties;
-  mClockTraining = &xclPerfMonClockTraining;
-  mConfigureDataflow = &xclPerfMonConfigureDataflow;
-  mStartCounters = &xclPerfMonStartCounters;
-  mStopCounters = &xclPerfMonStopCounters;
   mReadCounters = &xclPerfMonReadCounters;
-  mStartTrace = &xclPerfMonStartTrace;
-  mStopTrace = &xclPerfMonStopTrace;
-  mCountTrace = &xclPerfMonGetTraceCount;
   mReadTrace = &xclPerfMonReadTrace;
   mDebugReadIPStatus = &xclDebugReadIPStatus;
-  mGetNumLiveProcesses = &xclGetNumLiveProcesses;
   mGetSysfsPath = &xclGetSysfsPath;
-  mGetSubdevPath = &xclGetSubdevPath;
-  mGetDebugIPlayoutPath = &xclGetDebugIPlayoutPath;
-  mGetTraceBufferInfo = &xclGetTraceBufferInfo;
-  mReadTraceData = &xclReadTraceData;
-
-  mGetDebugIpLayout = &xclGetDebugIpLayout;
 #endif
 }
 

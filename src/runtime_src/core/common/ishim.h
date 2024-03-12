@@ -48,6 +48,9 @@ struct ishim
   virtual void
   close_device() = 0;
 
+  virtual void
+  get_device_info(xclDeviceInfo2 *info) = 0;
+
   // Legacy, to be removed
   virtual void
   open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
@@ -264,6 +267,13 @@ struct shim : public DeviceType
   close_device() override
   {
     xclClose(DeviceType::get_device_handle());
+  }
+
+  void
+  get_device_info(xclDeviceInfo2 *info) override
+  {
+    if (auto ret = xclGetDeviceInfo2(DeviceType::get_device_handle(), info))
+      throw system_error(ret, "failed to get device info");
   }
 
   // Legacy, to be removed

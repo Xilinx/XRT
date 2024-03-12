@@ -254,7 +254,7 @@ struct xclBOProperties {
  *
  * Return: count of devices found
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 unsigned int
 xclProbe();
 
@@ -287,7 +287,7 @@ xclClose(xclDeviceHandle handle);
  * @info:          Information record
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 int
 xclGetDeviceInfo2(xclDeviceHandle handle, struct xclDeviceInfo2 *info);
 
@@ -402,7 +402,7 @@ xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIn
 /*
  * Get the version number. 1 => Hal1 ; 2 => Hal2
  */
-XCL_DRIVER_DLLESPEC
+XCL_DRIVER_DLLHIDDEN
 unsigned int
 xclVersion();
 
@@ -863,7 +863,7 @@ xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
 
 /* Not supported */
 XRT_DEPRECATED
-XCL_DRIVER_DLLHIDDEN
+XCL_DRIVER_DLLESPEC
 size_t
 xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                      void* debugResults);
