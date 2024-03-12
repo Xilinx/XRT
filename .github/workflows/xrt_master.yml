@@ -6,6 +6,7 @@ env:
   ENV: 'prod'
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 17,7 * * *' 
   
