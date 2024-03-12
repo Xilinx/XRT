@@ -36,7 +36,7 @@ namespace xrt::core::hip
     {
     case hipHostMallocDefault:
     case hipHostMallocPortable:
-      // allocate pinned memory on host only, xrt::bo object will not be allcated.
+      // allocate pinned memory on host only, xrt::bo object will not be allocated.
       m_host_mem = reinterpret_cast<unsigned char *>(aligned_alloc(xrt_core::getpagesize(), m_size));
       assert(m_host_mem);
       lock_pages(m_host_mem, m_size);
