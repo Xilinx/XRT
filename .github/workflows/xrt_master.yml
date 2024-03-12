@@ -385,7 +385,7 @@ jobs:
       - name: Use composite action release-all-sites download     
         uses: ./composite-workflows/release-all-sites   
         with: 
-          isProd: 'false'  
+          isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
           release: '2024.1'      
@@ -420,7 +420,7 @@ jobs:
       - name: Use composite action release-all-sites download     
         uses: ./composite-workflows/release-all-sites   
         with: 
-          isProd: 'false'  
+          isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
           release: '2024.1'      
@@ -448,7 +448,7 @@ jobs:
       - name: Use composite action artifactory upload     
         uses: ./composite-workflows/artifactory-upload   
         with: 
-          isProd: 'false'  
+          isProd: 'true'  
           pipeline: 'xrt'        
           release: '2024.1'      
           runNumber: ${{ github.run_number }} 
