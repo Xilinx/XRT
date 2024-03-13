@@ -92,7 +92,7 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
                  module_type type, 
                  const std::string& kernel_name = "all") const override;
 
-    private:
+    protected:
         std::string getMessage(std::string secName) const;
         
 };
