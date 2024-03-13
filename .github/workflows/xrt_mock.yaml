@@ -98,5 +98,6 @@ jobs:
         with:  
           status: ${{ job.status }}  
           fields: repo,message,commit,author,action  
+          text: 'Job "${{ github.job }}" in workflow "${{ github.workflow }}" failed!!!' 
         env:  
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}  
