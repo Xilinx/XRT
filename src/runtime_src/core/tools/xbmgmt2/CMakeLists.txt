@@ -19,6 +19,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/BusyBar.cpp"
   "../common/Process.cpp"
   "../common/reports/*.cpp"
+  "../common/reports/aie/*.cpp"
   "../common/Report.cpp"
   "../common/PsKernelUtilities.cpp"
   "../common/Table2D.cpp"

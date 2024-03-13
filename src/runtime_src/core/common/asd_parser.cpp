@@ -124,14 +124,13 @@ get_dma_mm2s_status(uint32_t status, aie_tile_type tile_type)
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_status) :
           val &= dma_channel_status;
           if (val == 0)
-            dma_status_int.channel_status.emplace_back("Idle");
+            dma_status_int.channel_status = "Idle";
           else if (val == 1)
-            dma_status_int.channel_status.emplace_back("Starting");
+            dma_status_int.channel_status = "Starting";
           else if (val == 2)
-            dma_status_int.channel_status.emplace_back("Running");
+            dma_status_int.channel_status = "Running";
           else
-            dma_status_int.channel_status.emplace_back("Invalid State");
-            
+            dma_status_int.channel_status = "Invalid State";
           break;
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_task_queue_overflow) :
           val &= dma_queue_overflow;
@@ -139,7 +138,6 @@ get_dma_mm2s_status(uint32_t status, aie_tile_type tile_type)
             dma_status_int.queue_status = "okay";
           else
             dma_status_int.queue_status = "channel_overflow";
-
           break;
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_task_queue_size) :
           dma_status_int.queue_size = (val & dma_queue_size);
@@ -147,10 +145,11 @@ get_dma_mm2s_status(uint32_t status, aie_tile_type tile_type)
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_current_bd) :
           dma_status_int.current_bd = (val & dma_current_bd);
           break;
-        default :
+        default:
           val &= dma_default;
           if (val)
-            dma_status_int.channel_status.emplace_back(dma_mm2s_map[flag]); 
+            dma_status_int.channel_status = dma_mm2s_map[flag]; 
+          break;
       }
     }
   }
@@ -184,14 +183,13 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
         case static_cast<u32>(dma_s2mm_status::xaie_dma_status_s2mm_status) :
           val &= dma_channel_status;
           if (val == 0)
-            dma_status_int.channel_status.emplace_back("Idle");
+            dma_status_int.channel_status = "Idle";
           else if (val == 1)
-            dma_status_int.channel_status.emplace_back("Starting");
+            dma_status_int.channel_status = "Starting";
           else if (val == 2)
-            dma_status_int.channel_status.emplace_back("Running");
+            dma_status_int.channel_status = "Running";
           else
-            dma_status_int.channel_status.emplace_back("Invalid State");
-            
+            dma_status_int.channel_status = "Invalid State";
           break;
         case static_cast<u32>(dma_s2mm_status::xaie_dma_status_s2mm_task_queue_overflow) :
           val &= dma_queue_overflow;
@@ -199,7 +197,6 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
             dma_status_int.queue_status = "okay";
           else
             dma_status_int.queue_status = "channel_overflow";
-
           break;
         case static_cast<u32>(dma_s2mm_status::xaie_dma_status_s2mm_channel_running) :
           dma_status_int.queue_size = (val & dma_queue_size);
@@ -210,7 +207,8 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
         default :
           val &= dma_default;
           if (val)
-            dma_status_int.channel_status.emplace_back(dma_s2mm_map[flag]); 
+            dma_status_int.channel_status = dma_s2mm_map[flag];
+          break;
       }
     }
   }
@@ -219,83 +217,36 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
 }
 
 static bpt::ptree
+populate_channel(const aie_dma_int& channel)
+{
+  bpt::ptree pt_channel;
+
+  pt_channel.put("status", channel.channel_status);
+  pt_channel.put("queue_size", std::to_string(channel.queue_size));
+  pt_channel.put("queue_status", channel.queue_status);
+  pt_channel.put("current_bd", std::to_string(channel.current_bd));
+
+  return pt_channel;
+}
+
+static bpt::ptree
 populate_dma(const std::vector<aie_dma_status>& dma, aie_tile_type tile_type)
 {
   bpt::ptree dma_pt;
-  bpt::ptree channel_status_mm2s_array;
-  bpt::ptree channel_status_s2mm_array;
-  bpt::ptree queue_size_mm2s_array;
-  bpt::ptree queue_size_s2mm_array;
-  bpt::ptree queue_status_mm2s_array;
-  bpt::ptree queue_status_s2mm_array;
-  bpt::ptree current_bd_mm2s_array;
-  bpt::ptree current_bd_s2mm_array;
+  bpt::ptree mm2s_channels;
+  bpt::ptree s2mm_channels;
 
   for (uint32_t i = 0; i < dma.size(); i++)
   {
-    // channel status
-    bpt::ptree channel_status_mm2s;
-    bpt::ptree channel_status_s2mm;
+    bpt::ptree mm2s_channel = populate_channel(get_dma_mm2s_status(dma[i].mm2s_status, tile_type));
+    bpt::ptree s2mm_channel = populate_channel(get_dma_s2mm_status(dma[i].s2mm_status, tile_type));
 
-    auto dma_mm2s_status = get_dma_mm2s_status(dma[i].mm2s_status, tile_type);
-    auto dma_s2mm_status = get_dma_s2mm_status(dma[i].s2mm_status, tile_type);
-
-    std::string mm2s_channel_status = "";
-    for (auto &status : dma_mm2s_status.channel_status)
-      mm2s_channel_status.append(status.append(", "));
-
-    mm2s_channel_status.erase(mm2s_channel_status.length() - 2); //remove last comma
-    channel_status_mm2s.put("", mm2s_channel_status);
-
-    std::string s2mm_channel_status = "";
-    for (auto &status : dma_s2mm_status.channel_status)
-      s2mm_channel_status.append(status.append(", "));
-
-    s2mm_channel_status.erase(s2mm_channel_status.length() - 2); //remove last comma
-    channel_status_s2mm.put("", s2mm_channel_status);
-
-    channel_status_mm2s_array.push_back(std::make_pair("", channel_status_mm2s));
-    channel_status_s2mm_array.push_back(std::make_pair("", channel_status_s2mm)); 
-
-    // queue size
-    bpt::ptree queue_size_mm2s;
-    bpt::ptree queue_size_s2mm;
-
-    queue_size_mm2s.put("", std::to_string(dma_mm2s_status.queue_size));
-    queue_size_mm2s_array.push_back(std::make_pair("", queue_size_mm2s));
-    queue_size_s2mm.put("", std::to_string(dma_s2mm_status.queue_size)); 
-    queue_size_s2mm_array.push_back(std::make_pair("", queue_size_s2mm));
-      
-    // queue status
-    bpt::ptree queue_status_mm2s;
-    bpt::ptree queue_status_s2mm;
-
-    queue_status_mm2s.put("", dma_mm2s_status.queue_status);
-    queue_status_mm2s_array.push_back(std::make_pair("", queue_status_mm2s));
-    queue_status_s2mm.put("", dma_s2mm_status.queue_status);
-    queue_status_s2mm_array.push_back(std::make_pair("", queue_status_s2mm));
-
-    // current bd
-    bpt::ptree bd_mm2s;
-    bpt::ptree bd_s2mm;
-
-    bd_mm2s.put("", std::to_string(dma_mm2s_status.current_bd));
-    current_bd_mm2s_array.push_back(std::make_pair("", bd_mm2s));
-    bd_s2mm.put("", std::to_string(dma_s2mm_status.current_bd));
-    current_bd_s2mm_array.push_back(std::make_pair("", bd_mm2s));
+    mm2s_channels.push_back(std::make_pair("", mm2s_channel));
+    s2mm_channels.push_back(std::make_pair("", s2mm_channel));
   }
 
-  dma_pt.add_child("channel_status.mm2s", channel_status_mm2s_array);
-  dma_pt.add_child("channel_status.s2mm", channel_status_s2mm_array);
-
-  dma_pt.add_child("queue_size.mm2s", queue_size_mm2s_array);
-  dma_pt.add_child("queue_size.s2mm", queue_size_s2mm_array);
-
-  dma_pt.add_child("queue_status.mm2s", queue_status_mm2s_array);
-  dma_pt.add_child("queue_status.s2mm", queue_status_s2mm_array);
-
-  dma_pt.add_child("current_bd.mm2s", current_bd_mm2s_array);
-  dma_pt.add_child("current_bd.s2mm", current_bd_s2mm_array);
+  dma_pt.add_child("mm2s_channels", mm2s_channels);
+  dma_pt.add_child("s2mm_channels", s2mm_channels);
 
   return dma_pt;
 }
@@ -303,20 +254,17 @@ populate_dma(const std::vector<aie_dma_status>& dma, aie_tile_type tile_type)
 static bpt::ptree
 populate_locks(const std::vector<uint8_t>& locks)
 {
-  bpt::ptree lock_pt;
+  bpt::ptree pt_locks;
 
   for (uint32_t i = 0; i < locks.size(); i++)
   {
-    bpt::ptree lock;
-    bpt::ptree lock_array;
-      
-    lock.put("", locks[i] & lock_mask);
-    lock_array.push_back(std::make_pair("", lock));
+    bpt::ptree pt_lock;
 
-    lock_pt.add_child(std::to_string(i), lock_array);
+    pt_lock.put("", locks[i] & lock_mask);
+    pt_locks.push_back(std::make_pair("", pt_lock));
   }
 
-  return lock_pt;
+  return pt_locks;
 }
 
 static std::vector<std::string>
@@ -430,45 +378,23 @@ get_core_tile_info(const aie_core_tile_status& core)
   bpt::ptree pt;
   bpt::ptree core_pt;
   bpt::ptree status_array;
-  bpt::ptree tmp;
-  bpt::ptree tmp_array;
 
-  auto status_vec = core_status_to_string_array(core.core_status);
-  for (auto &x : status_vec) {
-    if (x.empty())
+  for (const auto& status_str : core_status_to_string_array(core.core_status)) {
+    if (status_str.empty())
       continue;
     bpt::ptree status_pt;
-    status_pt.put("", x);
+    status_pt.put("", status_str);
     status_array.push_back(std::make_pair("", status_pt));
   }
   core_pt.add_child("status", status_array);
 
-  // fill program counter as array
-  tmp.put("", (boost::format("0x%08x") % core.program_counter).str());
-  tmp_array.push_back(std::make_pair("", tmp));
-  core_pt.add_child("pc", tmp_array);
-
-  // fill stack pointer as array
-  tmp_array = {};
-  tmp.put("", (boost::format("0x%08x") % core.stack_ptr).str());
-  tmp_array.push_back(std::make_pair("", tmp));
-  core_pt.add_child("sp", tmp_array);
-
-  // fill link register as array
-  tmp_array = {};
-  tmp.put("", (boost::format("0x%08x") % core.link_reg).str());
-  tmp_array.push_back(std::make_pair("", tmp));
-  core_pt.add_child("lr", tmp_array);
+  core_pt.put("pc", (boost::format("0x%08x") % core.program_counter).str());
+  core_pt.put("sp", (boost::format("0x%08x") % core.stack_ptr).str());
+  core_pt.put("lr", (boost::format("0x%08x") % core.link_reg).str());
 
   pt.add_child("core", core_pt);
-
-  // fill DMA status
-  auto dma_pt = populate_dma(core.dma, aie_tile_type::core);
-  pt.add_child("dma", dma_pt);
-
-  // fill Lock's info
-  auto lock_pt = populate_locks(core.lock_value);
-  pt.add_child("lock", lock_pt);
+  pt.add_child("dma", populate_dma(core.dma, aie_tile_type::core));
+  pt.add_child("locks", populate_locks(core.lock_value));
 
   return pt;
 }
@@ -478,27 +404,37 @@ aie_core_tile_status::
 format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
               uint32_t cols_filled)
 {
-  bpt::ptree pt_array;
+  bpt::ptree pt_aie_core;
+  bpt::ptree pt_cols;
+
   uint32_t col_count = 0;
 
   for (uint32_t col = 0; col < cols; col++) {
-    // check if this col is filled else skip
-    if (!(cols_filled & (1 << col)))
+    bpt::ptree pt_col;
+    pt_col.put("col", col);
+
+    if (!(cols_filled & (1 << col))) {
+      pt_col.put("status", "inactive");
+      pt_cols.push_back(std::make_pair("", pt_col));
       continue;
-
-    for (uint32_t row = 0; row < tiles_info.core_rows; row++) {
-      bpt::ptree pt = get_core_tile_info(aie_status[col_count].core_tiles[row]);
-      pt.put("col", col);
-      pt.put("row", row + tiles_info.core_row_start);
-
-      pt_array.push_back(std::make_pair(std::to_string(col) + "_" +
-          std::to_string(row + tiles_info.core_row_start), pt));
     }
+
+    pt_col.put("status", "active");
+
+    bpt::ptree pt_tiles;
+    for (uint32_t row = 0; row < tiles_info.core_rows; row++) {
+      bpt::ptree pt_tile = get_core_tile_info(aie_status[col_count].core_tiles[row]);
+      pt_tile.put("row", row + tiles_info.core_row_start);
+
+      pt_tiles.push_back(std::make_pair("", pt_tile));
+    }
+    pt_col.add_child("tiles", pt_tiles);
+    pt_cols.push_back(std::make_pair("", pt_col));
+
     col_count++;
   }
 
-  bpt::ptree pt_aie_core;
-  pt_aie_core.add_child("aie_core", pt_array);  
+  pt_aie_core.add_child("columns", pt_cols);
   return pt_aie_core;
 }
 

@@ -77,7 +77,7 @@ struct aie_dma_status
 // Data structure for dma status internals
 struct aie_dma_int
 {
-  std::vector<std::string> channel_status;
+  std::string channel_status;
   std::string queue_status;
   uint32_t queue_size;
   uint32_t current_bd;

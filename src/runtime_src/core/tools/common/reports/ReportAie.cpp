@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2020-2022 Xilinx, Inc. - All rights reserved
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 
-// ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
 #include "ReportAie.h"
+#include "aie/ReportAie2Core.h"
+
 #include "core/common/info_aie.h"
+#include "core/common/query_requests.h"
+
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -39,7 +41,14 @@ ReportAie::
 getPropertyTree20202(const xrt_core::device * _pDevice, 
                      boost::property_tree::ptree &_pt) const
 {
-  _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
+  switch (xrt_core::device_query<xrt_core::query::device_class>(_pDevice)) {
+  case xrt_core::query::device_class::type::alveo:
+    _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
+    break;
+  case xrt_core::query::device_class::type::ryzen:
+    ReportAie2Core{}.getPropertyTree20202(_pDevice, _pt);
+    break;
+  }
 }
 
 static void
@@ -103,11 +112,20 @@ print_gmios(const boost::property_tree::ptree& _pt,
 
 void
 ReportAie::
-writeReport(const xrt_core::device* /*_pDevice*/,
+writeReport(const xrt_core::device* _pDevice,
             const boost::property_tree::ptree& _pt,
             const std::vector<std::string>& _elementsFilter,
             std::ostream & _output) const
 {
+  switch (xrt_core::device_query<xrt_core::query::device_class>(_pDevice)) {
+  case xrt_core::query::device_class::type::ryzen:
+    ReportAie2Core{}.writeReport(_pDevice, _pt, _elementsFilter, _output);
+    return;
+  case xrt_core::query::device_class::type::alveo:
+    break;
+  }
+
+
   boost::property_tree::ptree empty_ptree;
   std::vector<std::string> aieCoreList;
   bool is_less = false;
