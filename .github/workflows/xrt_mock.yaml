@@ -8,48 +8,22 @@ env:
 on:  
   workflow_dispatch:
   workflow_call:
-
-# on:
-#   pull_request_target:
-#     types: [opened, edited, synchronize]
-
-# concurrency:  
-#   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
-#   cancel-in-progress: true 
   
 jobs:
-#   authorize:
-#     runs-on: Ubuntu-22.04
-#     steps:
-#       - name: Checkout private repository      
-#         uses: actions/checkout@v4   
-#         with:      
-#           repository: actions-int/composite-workflows
-#           github-server-url: ${{ secrets.SERVER_URL }}      
-#           token: ${{ secrets.ACCESS_TOKEN }}      
-#           path: composite-workflows
-#           ref: main
-
-#       - name: authorize
-#         uses: ./composite-workflows/authorize
-#         with:
-#           accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
-#           pullRequestUser: ${{ github.event.pull_request.user.login }}
   build:
-    # needs: authorize  
     strategy:      
       matrix:      
         include:      
           - os: centos78      
             packageType: rpm      
-          # - os: centos8      
-          #   packageType: rpm      
-          # - os: rhel9      
-          #   packageType: rpm      
-          # - os: ubuntu2004      
-          #   packageType: deb      
-          # - os: ubuntu2204      
-          #   packageType: deb      
+          - os: centos8      
+            packageType: rpm      
+          - os: rhel9      
+            packageType: rpm      
+          - os: ubuntu2004      
+            packageType: deb      
+          - os: ubuntu2204      
+            packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -75,7 +49,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
-          ref: alert
+          ref: main
        
       - name: XRT build     
         uses: ./composite-workflows/build
@@ -92,12 +66,141 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
+  windows-build:
+    runs-on: Windows
+    steps:
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive
+          persist-credentials: false 
+            
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows 
+          ref: main
+       
+      - name: XRT windows build     
+        uses: ./composite-workflows/windows-build
+        with:     
+          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
+          buildNumber: ${{ github.run_number }}    
+          release: ${{ env.RELEASE }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }} 
+          workspaceg: ${{ github.workspace }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+
+  apu-package-build:
+    runs-on: apu
+    # runs-on: Ubuntu-20.04
+    steps:      
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+    
+      - name: Checkout PR   
+        uses: actions/checkout@v3 
+        with: 
+          repository: "${{ github.event.pull_request.head.repo.full_name }}"
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive  
+
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}       
+          path: composite-workflows  
+          ref: main
+       
+      - name: Apu package build for XRT     
+        uses: ./composite-workflows/apu-package
+        with:     
+          pipeline: ${{ env.PIPELINE }}   
+          workspace: ${{ github.workspace }}  
+          buildNumber: ${{ github.run_number }}    
+          apuPackage: 'True' 
+          release: ${{ env.RELEASE }}  
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          appConfig: ${{ secrets.APP_CONFIG }} 
+          appConfig1: ${{ secrets.APP_CONFIG1 }} 
+          appConfig2: ${{ secrets.APP_CONFIG2 }} 
+          appConfig3: ${{ secrets.APP_CONFIG3 }} 
+
+  package-download:    
+    needs: build    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:    
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
+    
+      - name: Use composite action package download     
+        uses: ./composite-workflows/package-download   
+        with:    
+          runNumber: ${{ github.run_number }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+
+
+  extract-platforms:  
+    needs: package-download    
+    runs-on: [self-hosted, Ubuntu-22.04]
+    steps:      
+      - name: Checkout extraction Action repository  
+        uses: actions/checkout@v3  
+        with:  
+          repository: actions-int/extraction-action
+          ref: 'v0.0.1' 
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}
+          path: ./.github/actions/extraction-action
+
+      - name: Extracting ${{ inputs.boardType }} ${{ inputs.boardMode }} platforms      
+        uses: ./.github/actions/extraction-action 
+        id: extract      
+        with:      
+          release: ${{ env.RELEASE }}
+          env: ${{ env.ENV }}
+          pipeline: ${{ env.PIPELINE }} 
+          boardType: "pcie"
+          boardMode: "hw"       
+    outputs:    
+      board_list: ${{ steps.extract.outputs.board_list }}     
+
+  notify-slack:  
+    needs: [build, windows-build, apu-package-build, package-download, extract-platforms]  
+    runs-on: Ubuntu-22.04
+    if: always() && contains(needs.*.result, 'failure')  
+    steps:  
       - name: Notify Slack on failure  
-        if: failure()  
         uses: 8398a7/action-slack@v3  
         with:  
           status: ${{ job.status }}  
-          fields: repo,message,commit,author,action  
-          text: 'Job "${{ github.job }}" in workflow "${{ github.workflow }}" failed!!!' 
+          fields: repo,message,commit,author,action   
         env:  
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}  
