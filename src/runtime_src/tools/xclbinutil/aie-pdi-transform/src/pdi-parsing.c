@@ -41,8 +41,8 @@
 /***************** Macros (Inline Functions) Definitions *********************/
 /************************** Variable Definitions *****************************/
 #ifndef __LX6__
-extern const char _binary_aie_pdi_start[];
-extern const char _binary_aie_pdi_end[];
+extern const char binary_aie_pdi_start[];
+extern const char binary_aie_pdi_end[];
 #else
 #define DRAM_MGMT_BASE_ADDR 0x18000000U
 #endif
@@ -53,7 +53,7 @@ int SetChecksum(void *Buffer)
   	const uint32_t Len = XIH_IHT_LEN / XIH_PRTN_WORD_LEN;
 	// int Status;
 	uint32_t Checksum = 0U;
-	uint32_t Count;
+	uint32_t Count = 0;
 	uint32_t *BufferPtr = (uint32_t *)Buffer;
 
 	/* Len has to be at least equal to 2 */
@@ -84,7 +84,7 @@ int SetHeaderChecksum(void *CdoPtr)
 {
 	uint32_t *CdoHdr = (uint32_t *)CdoPtr;
 	uint32_t CheckSum = 0U;
-	uint32_t Index;
+	uint32_t Index = 0;
 
 	for (Index = 0U; Index < (XCDO_CDO_HDR_LEN - 1U); Index++) {
 		CheckSum += CdoHdr[Index];
@@ -99,7 +99,7 @@ int SetHeaderChecksum(void *CdoPtr)
 
 void test_read_pdi(char* pdi, char** data, int* len)
 {
-	#define BUF_SIZE 1024*1024
+	#define BUF_SIZE (1024*1024)
 	*data = NULL;
 	*len = 0;
   	int fd = open(pdi, O_RDONLY | O_CREAT, 0644);
@@ -108,8 +108,8 @@ void test_read_pdi(char* pdi, char** data, int* len)
      		printf("%s create failed Error Number % d\n", pdi, errno);
      		return;
   	}
-  	*data = (char *)malloc(BUF_SIZE);
-  	*len = read(fd, *data, BUF_SIZE);
+  	*data = (char *)malloc((size_t)BUF_SIZE);
+  	*len = (int)read(fd, *data, (size_t)BUF_SIZE);
   	close(fd);
 }
 
@@ -134,8 +134,8 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
 	#define MAX_DEBUG_PDI_LEN (1024*500)
 	const uint8_t cmpDmaData = 1;
 	char DebugPdi[MAX_DEBUG_PDI_LEN], DebugTransformPdi[MAX_DEBUG_PDI_LEN];
-	memset((char*)DebugPdi, 0, MAX_DEBUG_PDI_LEN);
-	memset((char*)DebugTransformPdi, 0, MAX_DEBUG_PDI_LEN);
+	memset((char*)DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
+	memset((char*)DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
 	SetDebugPdi((uint32_t *)DebugPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
 	printf("Original ");
 	XPdi_Load(&PdiLoad);

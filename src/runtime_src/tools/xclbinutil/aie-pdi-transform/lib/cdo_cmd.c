@@ -109,8 +109,8 @@ static inline int XCdo_Write(XCdoCmd *Cmd)
  *****************************************************************************/
 static int XCdo_DmaWrite(XCdoCmd *Cmd)
 {
-	uint64_t DestAddr;
-	const uint32_t *Src;
+	uint64_t DestAddr = 0;
+	const uint32_t *Src = NULL;
 	uint32_t Len = Cmd->PayloadLen;
 	int Ret = XCDO_OK;
 
@@ -122,7 +122,7 @@ static int XCdo_DmaWrite(XCdoCmd *Cmd)
 	XCdo_PDebug("%s DestAddr: 0x%x%08x, Len(32): 0x%u\n\r", __func__,
 			(uint32_t)(DestAddr >> 32U), (uint32_t)(DestAddr & 0xFFFFFFFFU), Len);
 
-	if ((uint32_t)XCdo_IoMemcpy((Cmd->BasePtr + DestAddr), Src, Len * 4) != Len * 4) {
+	if ((uint32_t)XCdo_IoMemcpy((Cmd->BasePtr + DestAddr), Src, (size_t)Len * 4) != Len * 4) {
 		XCdo_PError("Failed DMA write src: %p, dest: %p, Len: %u(Bytes).\n",
 				(Cmd->BasePtr + DestAddr), Src, Len);
 		Ret = XCDO_EIO;
@@ -201,7 +201,7 @@ static int XCdo_CdoVerifyHeader(const void *CdoPtr)
 {
 	const uint32_t *CdoHdr = (const uint32_t *)CdoPtr;
 	uint32_t CheckSum = 0U;
-	uint32_t Index;
+	uint32_t Index = 0;
 
 	if (CdoHdr[1U] != XCDO_CDO_HDR_IDN_WRD) {
 		XCdo_PError("CDO Header Identification Failed\n\r");
@@ -248,8 +248,8 @@ int XCdo_Header_Verify(XCdoLoad *CdoLoad) {
 	if (Ret != XCDO_OK) {
 		return Ret;
 	}
-	uint32_t BufLen;
-	uint32_t *Buf;
+	uint32_t BufLen = 0;
+	uint32_t *Buf = NULL;
 	ParseBufFromCDO(&Buf, &BufLen, CdoLoad);
 	if (BufLen > CdoLoad->CdoLen/sizeof(*Buf) - XCDO_CDO_HDR_LEN) {
 		XCdo_PError("Failed to load CDO, invalid cdo length %u, Buflen %u, header len:%u.\n\r",
@@ -285,7 +285,7 @@ int XCdo_LoadTransCdo(XCdoLoad *CdoLoad, char* Buf, const char* dataBuf,
 		Buf += sizeof(uint32_t); // make sizeof(uint32_t) as a MACRO
 		uint32_t CmdNum = (*((uint32_t* )Buf));
 		Buf += sizeof(uint32_t);
-		CmdLen -= Buf - oBuf;
+		CmdLen -= (int32_t)(Buf - oBuf);
 		uint32_t cmdLen = 0; // move declaration out of while name: ExeCmdLen
 		uint32_t i = 0;
 		switch (CmdId) {
@@ -293,7 +293,7 @@ int XCdo_LoadTransCdo(XCdoLoad *CdoLoad, char* Buf, const char* dataBuf,
 				cmdLen = (sizeof(uint32_t) * 3); // Change this to MACRO
 				for (i = 0; i < CmdNum; i++) {
 					// Check whether the command buffer length is enough
-					CmdLen -= cmdLen;
+					CmdLen -= (int32_t)cmdLen;
 					if (CmdLen < 0) {
 						XCdo_PDebug("cmd write64 need additional %d Bytes\n", -1 * CmdLen);
 						break;
@@ -306,7 +306,7 @@ int XCdo_LoadTransCdo(XCdoLoad *CdoLoad, char* Buf, const char* dataBuf,
 			case XCDO_CMD_MASKWRITE64:
 				cmdLen = (sizeof(uint32_t) * 4);
 				for (i = 0; i < CmdNum; i++) {
-					CmdLen -= cmdLen;
+					CmdLen -= (int32_t)cmdLen;
 					if (CmdLen < 0) {
 						XCdo_PDebug("cmd mask write 64 need additional %d Bytes\n", -1 * CmdLen);
 						break;
@@ -319,7 +319,7 @@ int XCdo_LoadTransCdo(XCdoLoad *CdoLoad, char* Buf, const char* dataBuf,
 			case XCDO_CMD_MASK_WRITE:
 				cmdLen = (sizeof(uint32_t) * 3);
 				for ( i = 0; i < CmdNum; i++) {
-					CmdLen -= cmdLen;
+					CmdLen -= (int32_t)cmdLen;
 					if (CmdLen < 0) {
 						XCdo_PDebug("cmd mask write need additional %d Bytes\n", -1 * CmdLen);
 						break;
@@ -333,7 +333,7 @@ int XCdo_LoadTransCdo(XCdoLoad *CdoLoad, char* Buf, const char* dataBuf,
 				cmdLen = (sizeof(uint32_t) * 2);
 				for (i = 0; i < CmdNum; i++) {
 					// if the left command header length is not enough break
-					CmdLen -= cmdLen;
+					CmdLen -= (int32_t)cmdLen;
 					if (CmdLen < 0) {
 						XCdo_PDebug("cmd write need additional %d Bytes\n", -1 * CmdLen);
 						break;
@@ -346,7 +346,7 @@ int XCdo_LoadTransCdo(XCdoLoad *CdoLoad, char* Buf, const char* dataBuf,
 			case XCDO_CMD_DMAWRITE:
 				cmdLen = (sizeof(uint32_t) * 4);
 				for (i = 0; i < CmdNum; i++) {
-					CmdLen -= cmdLen;
+					CmdLen -= (int32_t)cmdLen;
 					if (CmdLen < 0) {
 						XCdo_PDebug("dma write need additional %d Bytes\n", -1 * CmdLen);
 						break;
@@ -430,13 +430,15 @@ int XCdo_LoadTransCdo_Asm(XCdoLoad *CdoLoad, int32_t CmdLen)
 	while (CmdLen > 0) {
 		cache = (char*)static_cache;
 		char * ocache = cache; //PLocalBuf
-		int cacheCopyLen = cacheLen;
+		// uint32_t cacheCopyLen = cacheLen;
+		// uint32_t leftLen = 0;
+		int cacheCopyLen = (int)cacheLen;
 		int leftLen = 0;
 		if (cmdLeft.bLeft) {
 			if (cmdLeft.cmd_id == XCDO_CMD_NOP) {
 				memcpy(cache, (char*)(cmdLeft.cmdHeaderLeft), cmdLeft.cmdHeaderLeftLen);
 				cache += cmdLeft.cmdHeaderLeftLen;
-				leftLen = cmdLeft.cmdHeaderLeftLen;
+				leftLen = (int)cmdLeft.cmdHeaderLeftLen;
 				cacheCopyLen -= leftLen;
 			} else {
 				*(uint32_t*)cache = cmdLeft.cmd_id;
@@ -445,7 +447,7 @@ int XCdo_LoadTransCdo_Asm(XCdoLoad *CdoLoad, int32_t CmdLen)
 				cache += sizeof(uint32_t);
 				memcpy(cache, (char*)(cmdLeft.cmdHeaderLeft), cmdLeft.cmdHeaderLeftLen);
 				cache += cmdLeft.cmdHeaderLeftLen;
-				leftLen = cmdLeft.cmdHeaderLeftLen + sizeof(uint32_t) + sizeof(uint32_t);
+				leftLen = (int)(cmdLeft.cmdHeaderLeftLen + sizeof(uint32_t) + sizeof(uint32_t));
 				cacheCopyLen -= leftLen;
 			}
 		}
@@ -454,9 +456,9 @@ int XCdo_LoadTransCdo_Asm(XCdoLoad *CdoLoad, int32_t CmdLen)
 		uint32_t cpyLen = CmdLen > cacheCopyLen ? cacheCopyLen : CmdLen;
 		XCdo_Dma_Copy(cache, (void *)Buf, cpyLen);
 		CACHE_INVALIDATE(cache, cpyLen);
-		int ret = XCdo_LoadTransCdo(CdoLoad, ocache, dataBuf, cpyLen + leftLen, &cmdLeft);
+		int ret = XCdo_LoadTransCdo(CdoLoad, ocache, dataBuf, (int32_t)cpyLen + leftLen, &cmdLeft);
 		if(ret == 1) return 1;
-		CmdLen -= cpyLen;
+		CmdLen -= (int32_t)cpyLen;
 		Buf += cpyLen;
 	}
 	return 0;
@@ -473,9 +475,9 @@ int XCdo_LoadTransCdo_Asm(XCdoLoad *CdoLoad, int32_t CmdLen)
  *****************************************************************************/
 int XCdo_LoadCdo(XCdoLoad *CdoLoad)
 {
-	int Ret;
-	uint32_t BufLen;
-	uint32_t *Buf;
+	int Ret = 0;
+	uint32_t BufLen = 0;
+	uint32_t *Buf = NULL;
 #ifdef _ENABLE_FW_PDI_HEADER_CHECK_
 	Ret = XCdo_Header_Verify(CdoLoad);
 	if (Ret != XCDO_OK) {
@@ -487,7 +489,7 @@ int XCdo_LoadCdo(XCdoLoad *CdoLoad)
 		 CdoLoad->CdoLen, BufLen, XCDO_CDO_HDR_LEN);
 
 	uint32_t Cid = -1;
-	int snum = 0, tnum = 0;
+	// int snum = 0, tnum = 0;
 
 	while (BufLen) {
 		XCdoCmd Cmd;
@@ -503,9 +505,9 @@ int XCdo_LoadCdo(XCdoLoad *CdoLoad)
 		if (Cid != CmdId && CmdId != XCDO_CMD_NOP) {
 			Cid = CmdId;
 			XCdo_PDebug("CMDID = %x\n", CmdId);
-		  snum++;
+		   // snum++;
 		}
-		tnum += CmdId != XCDO_CMD_NOP;
+		// tnum += CmdId != XCDO_CMD_NOP;
 		switch (CmdId) {
 			case XCDO_CMD_MASK_WRITE:
 				Ret = XCdo_MaskWrite(&Cmd);

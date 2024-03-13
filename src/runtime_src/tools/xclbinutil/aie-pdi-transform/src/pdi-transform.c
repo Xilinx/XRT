@@ -30,7 +30,7 @@
 #include <errno.h>
 uint8_t XPdi_Cmd_Match(uint32_t CmdId)
 {
-	uint8_t ret;
+	uint8_t ret = 0;
 	switch (CmdId) {
 		case XCDO_CMD_MASK_WRITE:
 		case XCDO_CMD_WRITE:
@@ -175,7 +175,7 @@ uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const 
 						cmd_len += sizeof(uint32_t);
 					}
 				}
-				pdi_buf += num * cmd_len;
+				pdi_buf += (size_t)(num * cmd_len);
 				break;
 			case XCDO_CMD_DMAWRITE:
 				cmd_len += sizeof(uint32_t) * 4;
@@ -227,8 +227,16 @@ void XPdi_Export(const XPdiLoad* PdiLoad, const char* pdi_file_out)
 		printf("%s create failed Error Number % d\n", pdi_file, errno);
 		return;
 	}
-	fwrite(Buf,sizeof(char),len,fp);
-	fclose(fp);
+	size_t elements_written = fwrite(Buf,sizeof(char),len,fp);
+   if (elements_written < len) {
+		printf("Failed to write the buffer to %s\n", pdi_file);
+      return;
+   }
+	// fclose(fp);
+   if (fclose(fp) != 0) {
+		printf("Failed to close file %s\n", pdi_file);
+		return;
+   }
 	printf("the new transform file %s created!\n ", pdi_file);
 }
 
@@ -259,8 +267,8 @@ void XPdi_CdoHeader_String(uint32_t* header) {
 ********************************************************************************/
 void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 {
-	uint32_t BufLen/*, Ret*/;
-	/*const*/ uint32_t *Buf;
+	uint32_t BufLen = 0/*, Ret*/;
+	/*const*/ uint32_t *Buf = NULL;
 	//Check whether the PDI already get transformed or not.
 	if (XPdi_Header_Transform_Type(PdiLoad, NULL) != NOTRANFORM) {
 		printf("PDI is in tranform format can not compress again, do normal pdi load.");
@@ -272,7 +280,7 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 	XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
 	ParseBufFromCDO(&Buf, &BufLen, &CdoLoad);
 	//Prepare the new PDI memory
-	char* pdi_buf = (char *)malloc(BufLen * 2 * 4);
+	char* pdi_buf = (char *)malloc((size_t)BufLen * 2 * 4);
 	uint32_t HdrLen = PDI_IMAGE_HDR_TABLE_OFFSET + sizeof(XilPdi_ImgHdrTbl) +
 				sizeof(XilPdi_ImgHdr) + sizeof(XilPdi_PrtnHdr);
 	//copy the PDI header

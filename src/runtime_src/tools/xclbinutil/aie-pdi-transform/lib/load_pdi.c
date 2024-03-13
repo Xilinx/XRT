@@ -49,9 +49,9 @@
 *****************************************************************************/
 static int XPdi_ValidateChecksum(const void *Buffer, const uint32_t Len)
 {
-	int Status;
+	int Status = 0;
 	uint32_t Checksum = 0U;
-	uint32_t Count;
+	uint32_t Count = 0;
 	const uint32_t *BufferPtr = (const uint32_t *)Buffer;
 
 	/* Len has to be at least equal to 2 */
@@ -134,7 +134,7 @@ static int XilPdi_ValidateImgHdrTbl(const XilPdi_ImgHdrTbl * ImgHdrTbl)
  *****************************************************************************/
 static inline int XPdi_Header_Validate(XPdiLoad *PdiLoad)
 {
-	int Ret;
+	int Ret = 0;
 	if (PdiLoad == NULL || PdiLoad->PdiPtr == NULL) {
 		XCdo_PError("Failed to load Pdi, PdiLoad or PdiPtr is NULL.\n\r");
 		return XCDO_INVALID_ARGS;
@@ -199,7 +199,7 @@ void XPdi_GetFirstPrtn(XPdiLoad* PdiLoad, XCdoLoad* CdoLoad)
  *****************************************************************************/
 int XPdi_Load(XPdiLoad *PdiLoad)
 {
-	int Ret;
+	int Ret = 0;
 	// uint32_t HdrLen;
 	XCdoLoad CdoLoad = {0};
 
@@ -212,9 +212,9 @@ int XPdi_Load(XPdiLoad *PdiLoad)
 	XCdo_PDebug("******************XPDI_LOAD PdiLen =%d**************\n", PdiLoad->PdiLen);
 
 	XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
-	uint32_t cmdLen;
+	uint32_t cmdLen = 0;
 	if (CMDDATASPERATE == XPdi_Header_Transform_Type(PdiLoad, &cmdLen)) {
-		Ret = XCdo_LoadTransCdo_Asm(&CdoLoad, cmdLen);
+		Ret = XCdo_LoadTransCdo_Asm(&CdoLoad, (int32_t)cmdLen);
 		return Ret;
 	} else {
 		Ret = XCdo_LoadCdo(&CdoLoad);

@@ -59,5 +59,5 @@ int XPdi_Header_Transform_Type(const XPdiLoad *PdiLoad, uint32_t* cmdLen)
 	if (cmdLen) {
 		*cmdLen = PrtnHdr->TInfo.CmdZoneLen;
 	}
-	return tinfo.TransformType;
+	return (int)tinfo.TransformType;
 }
