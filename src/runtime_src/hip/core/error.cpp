@@ -12,16 +12,17 @@
 namespace xrt::core::hip
 {
 
-  thread_local static error_state *hip_error_state = nullptr;
+  thread_local static error_state* hip_error_state = nullptr;
 
   error_state::error_state()
     : m_last_error(hipSuccess)
   {
     if (hip_error_state)
+    {
       throw std::runtime_error
         ("Multiple instances of hip error_state detected, only one per thread\n"
         "can be loaded at any given time.");
-
+    }
     hip_error_state = this;    
   }
 
@@ -30,11 +31,13 @@ namespace xrt::core::hip
   {
     if (!hip_error_state)
     {
-      static error_state err_st;
+      thread_local static error_state err_st;
     }
 
     if (hip_error_state)
+    {
       return *hip_error_state;
+    }
 
     throw std::runtime_error("error_state singleton is not loaded");  
   }
