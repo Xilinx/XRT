@@ -28,6 +28,12 @@ public:
       throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
   }
 
+  elf_impl(std::istream& stream)
+  {
+    if (!m_elf.load(stream))
+      throw std::runtime_error("not a valid ELF stream");
+  }
+
   const ELFIO::elfio&
   get_elfio() const
   {
@@ -83,6 +89,11 @@ namespace xrt {
 elf::
 elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(fnm)}
+{}
+
+elf::
+elf(std::istream& stream)
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(stream)}
 {}
 
 xrt::uuid
