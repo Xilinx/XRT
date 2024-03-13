@@ -2,7 +2,7 @@
 // Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
-#include "error_state.h"
+#include "error.h"
 
 #define HIP_ERROR_NAME_PAIR(x) \
   {                            \
@@ -12,16 +12,31 @@
 namespace xrt::core::hip
 {
 
-  error_state *error_state::m_error_state = nullptr;
-  thread_local hipError_t error_state::m_last_error = hipSuccess;
+  thread_local static error_state *hip_error_state = nullptr;
 
-  error_state *error_state::GetInstance()
+  error_state::error_state()
+    : m_last_error(hipSuccess)
   {
-    if (m_error_state == nullptr)
+    if (hip_error_state)
+      throw std::runtime_error
+        ("Multiple instances of hip error_state detected, only one per thread\n"
+        "can be loaded at any given time.");
+
+    hip_error_state = this;    
+  }
+
+  error_state&
+  error_state::instance()
+  {
+    if (!hip_error_state)
     {
-      m_error_state = new error_state();
+      static error_state err_st;
     }
-    return m_error_state;
+
+    if (hip_error_state)
+      return *hip_error_state;
+
+    throw std::runtime_error("error_state singleton is not loaded");  
   }
 
   static std::map<hipError_t, std::string> hip_error_names =
@@ -111,7 +126,7 @@ namespace xrt::core::hip
   {
     const char *error_name = nullptr;
 
-    std::map<hipError_t, std::string>::iterator itr = hip_error_names.find(err);
+    auto itr = hip_error_names.find(err);
     if (itr != hip_error_names.end())
     {
       error_name = itr->second.c_str();

@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
 
-#ifdef _WIN32
-#pragma warning(disable : 4201)
-#pragma warning(disable : 4100)
-#endif
-
 #include <string>
 
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
 #include "hip/core/device.h"
 #include "core/common/error.h"
-#include "hip/core/error_state.h"
+#include "hip/core/error.h"
 
 namespace xrt::core::hip
 {
@@ -20,15 +15,15 @@ namespace xrt::core::hip
   static hipError_t
   hip_peek_last_error()
   {
-    hipError_t last_error = xrt::core::hip::error_state::GetInstance()->peek_last_error();
+    hipError_t last_error = error_state::instance().peek_last_error();
     return last_error;
   }
 
   static hipError_t
   hip_get_last_error()
   {
-    hipError_t last_error = xrt::core::hip::error_state::GetInstance()->peek_last_error();
-    xrt::core::hip::error_state::GetInstance()->reset_last_error();
+    hipError_t last_error = error_state::instance().peek_last_error();
+    error_state::instance().reset_last_error();
     return last_error;
   }
 
