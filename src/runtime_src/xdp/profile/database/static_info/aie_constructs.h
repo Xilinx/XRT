@@ -61,13 +61,14 @@ enum class module_type {
 
   struct tile_type
   { 
-    uint8_t row;
-    uint8_t col;
-    uint8_t subtype;
-    uint8_t stream_id;
-    uint8_t is_master;
+    uint8_t  row;
+    uint8_t  col;
+    uint8_t  subtype;
+    uint8_t  stream_id;
+    uint8_t  is_master;
     uint64_t itr_mem_addr;
-    bool     is_dma_only;
+    bool     active_core;
+    bool     active_memory;
     bool     is_trigger;
     
     bool operator==(const tile_type &tile) const {

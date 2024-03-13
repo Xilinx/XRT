@@ -384,10 +384,10 @@ namespace xrt { namespace aie {
 
 profiling::
 profiling(const xrt::device& device)
-  : detail::pimpl<profiling_impl>(std::move(create_profiling_event(device)))
+  : detail::pimpl<profiling_impl>(create_profiling_event(device))
 {}
 
-int 
+int
 profiling::
 start(xrt::aie::profiling::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const
 {
