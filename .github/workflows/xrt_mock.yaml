@@ -199,8 +199,5 @@ jobs:
     steps:  
       - name: Notify Slack on failure  
         uses: 8398a7/action-slack@v3  
-        with:  
-          status: ${{ job.status }}  
-          fields: repo,message,commit,author,action   
         env:  
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}  
