@@ -808,6 +808,19 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_instr_buf(m_instr_buf, data);
 
+    {
+        std::string filename = "m_instr_buf.bin";
+        std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+        if (!ofs.is_open()) {
+            std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
+            abort();
+        }
+        char* buf = static_cast<char*>(m_instr_buf.map());
+        ofs.write((char*)buf, m_instr_buf.size());
+        ofs.close();
+    }
+
     if (m_ctrlpkt_buf) {
       // The current assembler uses "mc_code" to represent control-packet
       // buffer. We should change the name to "control-packet" which is not
@@ -834,6 +847,19 @@ class module_sram : public module_impl
 
       // copy instruction into bo
       fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
+      {
+          std::string filename = "m_ctrlpkt_buf.bin";
+          std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+          if (!ofs.is_open()) {
+              std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
+              abort();
+          }
+          char* buf = static_cast<char*>(m_ctrlpkt_buf.map());
+          ofs.write((char*)buf, m_ctrlpkt_buf.size());
+          ofs.close();
+      }
+
       XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
     }
   }
