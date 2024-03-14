@@ -3,7 +3,7 @@
 
 #include "ReportAie2Core.h"
 
-
+#include "Aie2Utilities.h"
 #include "core/common/info_aie.h"
 #include "tools/common/Table2D.h"
 #include "tools/common/XBUtilities.h"
@@ -73,41 +73,13 @@ writeReport(const xrt_core::device* /*dev*/,
       if (!XBUtilities::getVerbose())
         continue;
 
-      {
+      output << "        DMA MM2S Channels:\n";
+      Table2D mm2s_table = generate_channel_table(tile.get_child("dma.mm2s_channels"));
+      output << mm2s_table.toString("          ");
 
-        const std::vector<Table2D::HeaderData> dma_table_headers = {
-          {"Status", Table2D::Justification::left},
-          {"Queue Size", Table2D::Justification::left},
-          {"Queue Status", Table2D::Justification::left},
-          {"Current BD", Table2D::Justification::left}
-        };
-
-        output << "      DMA MM2S Channels:\n";
-        Table2D mm2s_table(dma_table_headers);
-        for (const auto& [node_name, node] : tile.get_child("dma.mm2s_channels")) {
-          const std::vector<std::string> entry_data = {
-            node.get<std::string>("status"),
-            node.get<std::string>("queue_size") ,
-            node.get<std::string>("queue_status"),
-            node.get<std::string>("current_bd")
-          };
-          mm2s_table.addEntry(entry_data);
-        }
-        output << mm2s_table.toString("        ");
-
-        output << "      DMA S2MM Channels:\n";
-        Table2D s2mm_table(dma_table_headers);
-        for (const auto& [node_name, node] : tile.get_child("dma.s2mm_channels")) {
-          const std::vector<std::string> entry_data = {
-            node.get<std::string>("status"),
-            node.get<std::string>("queue_size") ,
-            node.get<std::string>("queue_status"),
-            node.get<std::string>("current_bd")
-          };
-          s2mm_table.addEntry(entry_data);
-        }
-        output << s2mm_table.toString("        ");
-      }
+      output << "        DMA S2MM Channels:\n";
+      Table2D s2mm_table = generate_channel_table(tile.get_child("dma.s2mm_channels"));
+      output << s2mm_table.toString("          ");
 
       output << "      Locks:\n";
       for (const auto& [lock_name, lock] : tile.get_child("locks")) {

@@ -4,8 +4,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportAieMem.h"
-#include "aie/ReportAie2Mem.h"
 
+#include "aie/ReportAie2Mem.h"
 #include "core/common/info_aie.h"
 #include "core/common/query_requests.h"
 

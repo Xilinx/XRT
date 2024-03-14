@@ -3,8 +3,8 @@
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "ReportAie.h"
-#include "aie/ReportAie2Core.h"
 
+#include "aie/ReportAie2Core.h"
 #include "core/common/info_aie.h"
 #include "core/common/query_requests.h"
 

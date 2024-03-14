@@ -18,5 +18,3 @@ class ReportAie2Mem : public Report {
 };
 
 #endif
-
-

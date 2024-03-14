@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
 
-#include "ReportAie2Mem.h"
+#include "ReportAie2Shim.h"
 
 #include "Aie2Utilities.h"
 #include "core/common/info_aie.h"
@@ -14,7 +14,7 @@
 #define fmt8(x) boost::format("%8s%-22s: " x "\n") % " "
 
 void
-ReportAie2Mem::
+ReportAie2Shim::
 getPropertyTreeInternal(const xrt_core::device* dev,
                         boost::property_tree::ptree& pt) const
 {
@@ -24,15 +24,15 @@ getPropertyTreeInternal(const xrt_core::device* dev,
 }
 
 void 
-ReportAie2Mem::
+ReportAie2Shim::
 getPropertyTree20202(const xrt_core::device* dev,
                      boost::property_tree::ptree& pt) const
 {
-  pt.add_child("aie_mem", asd_parser::get_formated_tiles_info(dev, asd_parser::aie_tile_type::mem));
+  pt.add_child("aie_shim", asd_parser::get_formated_tiles_info(dev, asd_parser::aie_tile_type::shim));
 }
 
 void
-ReportAie2Mem::
+ReportAie2Shim::
 writeReport(const xrt_core::device* /*dev*/,
             const boost::property_tree::ptree& pt,
             const std::vector<std::string>& /*filter*/,
@@ -41,14 +41,14 @@ writeReport(const xrt_core::device* /*dev*/,
   boost::property_tree::ptree empty_ptree;
   std::vector<std::string> aieCoreList;
 
-  output << "AIE Mem Tiles\n";
+  output << "AIE Shim Tiles\n";
 
-  if (!pt.get_child_optional("aie_mem.columns")) {
+  if (!pt.get_child_optional("aie_shim.columns")) {
     output << "  No AIE columns are active on the device\n\n";
     return;
   }
 
-  for (const auto& [column_name, column] : pt.get_child("aie_mem.columns")) {
+  for (const auto& [column_name, column] : pt.get_child("aie_shim.columns")) {
 
     output << boost::format("  Column %s\n") % column.get<std::string>("col");
 
