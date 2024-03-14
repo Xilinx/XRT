@@ -1554,6 +1554,11 @@ struct aie_tiles_status_info : request
   struct result
   {
     std::vector<char> buf;
+    /**
+     * A bitmap where the bit position indicates a column index.
+     * A one indicates to an active column.
+     * Ex. 00001100 Indicates columns 3 and 4 are active.
+     */
     uint32_t cols_filled;
   };
 

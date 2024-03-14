@@ -291,15 +291,6 @@ core_status_to_string_array(uint32_t status)
 /* Functions related to Core Tile */
 uint64_t
 aie_core_tile_status::
-size()
-{
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * core_mode_events.size() +
-      sizeof(uint32_t) * core_mode_events.size() + sizeof(uint8_t) * lock_value.size() + 
-      sizeof(uint32_t) * 4 /*(cs,pc,sp,lr)*/;
-}
-
-uint64_t
-aie_core_tile_status::
 size(const aie_tiles_info& info)
 {
   return sizeof(aie_dma_status) * info.core_dma_channels + sizeof(uint32_t) * info.core_events * 2 /*core, mem mode*/ +
@@ -317,9 +308,8 @@ size(const aie_tiles_info& info)
 // |-----------------------------------|
 // |          .........                |  col N
 // +-----------------------------------+
-void
-aie_core_tile_status::
-parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+static void
+parse_core_tile_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
   auto buf = raw_buf.data();
 
@@ -399,54 +389,7 @@ get_core_tile_info(const aie_core_tile_status& core)
   return pt;
 }
 
-bpt::ptree
-aie_core_tile_status::
-format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
-              uint32_t cols_filled)
-{
-  bpt::ptree pt_aie_core;
-  bpt::ptree pt_cols;
-
-  uint32_t col_count = 0;
-
-  for (uint32_t col = 0; col < cols; col++) {
-    bpt::ptree pt_col;
-    pt_col.put("col", col);
-
-    if (!(cols_filled & (1 << col))) {
-      pt_col.put("status", "inactive");
-      pt_cols.push_back(std::make_pair("", pt_col));
-      continue;
-    }
-
-    pt_col.put("status", "active");
-
-    bpt::ptree pt_tiles;
-    for (uint32_t row = 0; row < tiles_info.core_rows; row++) {
-      bpt::ptree pt_tile = get_core_tile_info(aie_status[col_count].core_tiles[row]);
-      pt_tile.put("row", row + tiles_info.core_row_start);
-
-      pt_tiles.push_back(std::make_pair("", pt_tile));
-    }
-    pt_col.add_child("tiles", pt_tiles);
-    pt_cols.push_back(std::make_pair("", pt_col));
-
-    col_count++;
-  }
-
-  pt_aie_core.add_child("columns", pt_cols);
-  return pt_aie_core;
-}
-
 /* Functions related to Mem Tile */
-uint64_t
-aie_mem_tile_status::
-size()
-{
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * events.size() +
-      sizeof(uint8_t) * lock_value.size();
-}
-
 uint64_t
 aie_mem_tile_status::
 size(const aie_tiles_info& info)
@@ -457,9 +400,8 @@ size(const aie_tiles_info& info)
 
 // Convert Raw buffer data received from driver to mem tile status
 // Sanity checks on buffer size is done in previous calls, so there will be no overflow
-void
-aie_mem_tile_status::
-parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+static void
+parse_mem_tile_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
   auto buf = raw_buf.data();
 
@@ -500,49 +442,12 @@ get_mem_tile_info(const aie_mem_tile_status& mem)
 
   //fill Lock's info
   auto lock_pt = populate_locks(mem.lock_value);
-  pt.add_child("lock", lock_pt);
+  pt.add_child("locks", lock_pt);
 
   return pt;
 }
 
-bpt::ptree
-aie_mem_tile_status::
-format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
-              uint32_t cols_filled)
-{
-  bpt::ptree pt_array;
-  uint32_t col_count = 0;
-   
-  for (uint32_t col = 0; col < cols; col++) {
-    // check if this col is filled else skip
-    if (!(cols_filled & (1 << col)))
-      continue;
-
-    for (uint32_t row = 0; row < tiles_info.mem_rows; row++) {
-      bpt::ptree pt = get_mem_tile_info(aie_status[col_count].mem_tiles[row]);
-      pt.put("col", col);
-      pt.put("row", row + tiles_info.mem_row_start);
-
-      pt_array.push_back(std::make_pair(std::to_string(col) + "_" + 
-          std::to_string(row + tiles_info.mem_row_start), pt));
-    }
-    col_count++;
-  }
-    
-  bpt::ptree pt_aie_mem;
-  pt_aie_mem.add_child("aie_mem", pt_array);
-  return pt_aie_mem;
-}
-
 /* Functions related to Shim Tile */
-uint64_t
-aie_shim_tile_status::
-size()
-{
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * events.size() +
-     sizeof(uint8_t) * lock_value.size();
-}
-
 uint64_t
 aie_shim_tile_status::
 size(const aie_tiles_info& info)
@@ -553,9 +458,8 @@ size(const aie_tiles_info& info)
 
 // Convert Raw buffer data received from driver to shim tile status
 // Sanity checks on buffer size is done in previous calls, so there will be no overflow
-void
-aie_shim_tile_status::
-parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+static void
+parse_shim_tile_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
   auto buf = raw_buf.data();
 
@@ -598,35 +502,6 @@ get_shim_tile_info(const aie_shim_tile_status& shim)
   return pt;
 }
 
-bpt::ptree
-aie_shim_tile_status::
-format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
-              uint32_t cols_filled)
-{
-  bpt::ptree pt_array;
-  uint32_t col_count = 0;
-  
-  for (uint32_t col = 0; col < cols; col++) {
-    // check if this col is filled else skip
-    if (!(cols_filled & (1 << col)))
-      continue;
-
-    for (uint32_t row = 0; row < tiles_info.shim_rows; row++) {
-      bpt::ptree pt = get_shim_tile_info(aie_status[col_count].shim_tiles[row]);
-      pt.put("col", col);
-      pt.put("row", row + tiles_info.shim_row_start);
-
-      pt_array.push_back(std::make_pair(std::to_string(col) + "_" + 
-                         std::to_string(row + tiles_info.shim_row_start), pt));
-    }
-    col_count++;
-  }
-    
-  bpt::ptree pt_aie_shim;
-  pt_aie_shim.add_child("aie_shim", pt_array);
-  return pt_aie_shim;
-}
-
 /* Common functions*/
 static void
 aie_status_version_check(uint16_t major_ver, uint16_t minor_ver)
@@ -659,58 +534,116 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type)
   return get_formated_tiles_info(device, tile_type, info, cols_filled);
 }
 
+struct aie_status {
+  std::vector<aie_tiles_status> status;
+  uint32_t columns_filled;
+};
+
+static aie_status
+get_aie_data(const xrt_core::device* device, const aie_tiles_info& info, aie_tile_type tile_type)
+{
+  xrt_core::query::aie_tiles_status_info::parameters arg{0};
+  arg.max_num_cols = info.cols;
+  arg.col_size = info.col_size;
+
+  auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
+  if (tiles_status.cols_filled == 0)
+    throw std::runtime_error("No open HW-Context\n");
+
+  std::vector<asd_parser::aie_tiles_status> aie_status;
+
+  // Allocate an entry for each active column
+  // See core/xrt/src/runtime_src/core/common/design_notes.md entry 1
+  uint32_t cols_filled = tiles_status.cols_filled;
+  while (cols_filled) {
+    if (cols_filled & 0x1)
+      aie_status.emplace_back(info);
+
+    cols_filled >>= 1;
+  }
+
+  switch (tile_type) {
+    case aie_tile_type::core:
+      parse_core_tile_buf(tiles_status.buf, info, aie_status);
+      break;
+    case aie_tile_type::shim:
+      parse_shim_tile_buf(tiles_status.buf, info, aie_status);
+      break;
+    case aie_tile_type::mem:
+      parse_mem_tile_buf(tiles_status.buf, info, aie_status);
+      break;
+    default :
+      throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
+  }
+
+  return {.status = aie_status, .columns_filled = tiles_status.cols_filled};
+}
+
+static bpt::ptree
+format_status(const xrt_core::device* device, const aie_tiles_info& info, const aie_tile_type tile_type)
+{
+  bpt::ptree pt_aie_core;
+  bpt::ptree pt_cols;
+
+  const auto aie_data = get_aie_data(device, info, tile_type);
+
+  uint32_t active_columns = 0;
+  for (uint16_t col = 0; col < info.cols; col++) {
+    bpt::ptree pt_col;
+
+    // See core/xrt/src/runtime_src/core/common/design_notes.md entry 1
+    pt_col.put("col", col);
+    if (!(aie_data.columns_filled & (1 << col))) {
+      pt_col.put("status", "inactive");
+      pt_cols.push_back(std::make_pair("", pt_col));
+      continue;
+    }
+    pt_col.put("status", "active");
+
+    bpt::ptree pt_tiles;
+    for (uint16_t row = 0; row < info.get_tile_count(tile_type); row++) {
+      bpt::ptree pt_tile;
+      switch (tile_type) {
+        case aie_tile_type::core:
+          pt_tile = get_core_tile_info(aie_data.status[active_columns].core_tiles[row]);
+          break;
+        case aie_tile_type::shim:
+          pt_tile = get_shim_tile_info(aie_data.status[active_columns].shim_tiles[row]);
+          break;
+        case aie_tile_type::mem:
+          pt_tile = get_mem_tile_info(aie_data.status[active_columns].mem_tiles[row]);
+          break;
+      }
+      pt_tile.put("row", row + info.get_tile_start(tile_type));
+
+      pt_tiles.push_back(std::make_pair("", pt_tile));
+    }
+    pt_col.add_child("tiles", pt_tiles);
+    pt_cols.push_back(std::make_pair("", pt_col));
+
+    active_columns++;
+  }
+
+  pt_aie_core.add_child("columns", pt_cols);
+  return pt_aie_core;
+}
+
 boost::property_tree::ptree
 get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info,
                         uint32_t& cols_filled)
 {
   boost::property_tree::ptree pt;
   try {
-    // Get Aie status version and check compatibility
     auto version = xrt_core::device_query<xrt_core::query::aie_status_version>(device);
     aie_status_version_check(version.major, version.minor);
 
-    // Get Aie tiles metadata info from driver
     info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
-    // verify version to check consistency of aie_tiles_info struct with firmware
     if (!((info.major == asd_parser::aie_tiles_info_version_major) && (info.minor == asd_parser::aie_tiles_info_version_minor)))
       throw std::runtime_error("version mismatch for aie_tiles_info structure");
 
-    // sanity checks
     aie_info_sanity_check(info);
-  
-    // Get Aie column status from driver
-    xrt_core::query::aie_tiles_status_info::parameters arg{0};
-    arg.max_num_cols = info.cols;
-    arg.col_size = info.col_size;
 
-    auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
-    cols_filled = tiles_status.cols_filled;
-
-    if (cols_filled == 0)
-      throw std::runtime_error("No open HW-Context\n");
-
-    std::vector<asd_parser::aie_tiles_status> aie_status;
-    // convert buffer into respective structure and format
-    switch (tile_type) {
-      case aie_tile_type::core :
-        aie_status = parse_data_from_buf<aie_core_tile_status>(tiles_status.buf, info, cols_filled);
-        pt = format_aie_info<aie_core_tile_status>(aie_status, info.cols, info, cols_filled);
-
-        // fill version info for core tile which is used in top layer
-        pt.put("schema_version.major", version.major);
-        pt.put("schema_version.minor", version.minor);
-        break;
-      case aie_tile_type::shim :
-        aie_status = parse_data_from_buf<aie_shim_tile_status>(tiles_status.buf, info, cols_filled);
-        pt = format_aie_info<aie_shim_tile_status>(aie_status, info.cols, info, cols_filled);
-        break;
-      case aie_tile_type::mem :
-        aie_status = parse_data_from_buf<aie_mem_tile_status>(tiles_status.buf, info, cols_filled);
-        pt = format_aie_info<aie_mem_tile_status>(aie_status, info.cols, info, cols_filled);
-        break;
-      default :
-        throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
-    }
+    pt = format_status(device, info, tile_type);
   }
   catch (const std::exception&) {
     return pt;
