@@ -31,7 +31,8 @@ jobs:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -40,7 +41,7 @@ jobs:
           # repository: "${{ github.event.pull_request.head.repo.full_name }}"
           # ref: "${{ github.event.pull_request.head.ref }}"
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           submodules: recursive   
 
       - name: Checkout private repository      
@@ -59,7 +60,7 @@ jobs:
           osVersion: ${{ matrix.os }}  
           packageType: ${{ matrix.packageType }}  
           workspace: ${{ github.workspace }}
-          buildNumber: ${{ github.run_number }}     
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}     
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           appConfig: ${{ secrets.APP_CONFIG }} 
@@ -71,11 +72,18 @@ jobs:
   windows-build:
     runs-on: Windows
     steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout PR   
         uses: actions/checkout@v4 
         with: 
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           submodules: recursive
           persist-credentials: false 
             
@@ -91,7 +99,7 @@ jobs:
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
         with:     
-          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
+          workspace: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/build   
           buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
@@ -100,18 +108,26 @@ jobs:
 
   apu-package-build:
     runs-on: apu
-    steps:      
+    steps:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
-          echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV        
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
         uses: actions/checkout@v3 
         with: 
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           submodules: recursive  
 
       - name: Checkout private repository      
@@ -128,7 +144,7 @@ jobs:
         with:     
           pipeline: ${{ env.PIPELINE }}   
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }}    
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}    
           apuPackage: 'True' 
           release: ${{ env.RELEASE }}  
           accessToken: ${{ secrets.ACCESS_TOKEN }}
@@ -141,7 +157,14 @@ jobs:
   package-download:    
     needs: [build, apu-package-build, windows-build]    
     runs-on: [self-hosted, Ubuntu-22.04]    
-    steps:    
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout private repository    
         uses: actions/checkout@v3 
         with:    
@@ -154,7 +177,7 @@ jobs:
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
         with:    
-          runNumber: ${{ github.run_number }}    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
@@ -166,7 +189,14 @@ jobs:
   extract-platforms:  
     needs: package-download    
     runs-on: [self-hosted, Ubuntu-22.04]
-    steps:      
+    steps: 
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout extraction Action repository  
         uses: actions/checkout@v3  
         with:  
@@ -194,7 +224,14 @@ jobs:
     strategy:      
       matrix:      
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
-    steps:      
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
@@ -208,8 +245,8 @@ jobs:
         uses: ./composite-workflows/pcie-hw  
         with:     
           organization: ${{ github.repository }}  
-          runNumber: ${{ github.run_number }}  
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          runNumber: ${{ env.XRT_VERSION_PATCH }}  
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}  
           pipeline: ${{ env.PIPELINE }} 
@@ -230,7 +267,14 @@ jobs:
     strategy:      
       matrix:      
         os_list: ['centos_7.8', 'centos_8.1'] 
-    steps:      
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
@@ -244,8 +288,8 @@ jobs:
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
-          run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          run_number: ${{ env.XRT_VERSION_PATCH }}
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -267,7 +311,14 @@ jobs:
     strategy:      
       matrix:      
         os_list: ['centos_7.8', 'centos_8.1'] 
-    steps:      
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout private repository      
         uses: actions/checkout@v3   
         with:      
@@ -281,8 +332,8 @@ jobs:
         uses: ./composite-workflows/emulation
         with:  
           organization: ${{ github.repository }}
-          run_number: ${{ github.run_number }}
-          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          run_number: ${{ env.XRT_VERSION_PATCH }}
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}_${{ github.run_attempt }} 
           release: ${{ env.RELEASE }}
           env: ${{ env.ENV }}
           pipeline: ${{ env.PIPELINE }} 
@@ -302,7 +353,14 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     needs: [pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests]  
     if: always() 
-    steps:  
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout test summary Action repository  
         uses: actions/checkout@v3  
         with:  
@@ -318,7 +376,7 @@ jobs:
         with:    
           pipeline: ${{ env.PIPELINE }} 
           release: ${{ env.RELEASE }}
-          runNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          runNumber: ${{ env.XRT_VERSION_PATCH }}_${{ github.run_attempt }} 
           env: ${{ env.ENV }}  
     
       - name: Print test summary URL 
@@ -330,6 +388,12 @@ jobs:
     needs: test-summary    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout PR   
         uses: actions/checkout@v4 
@@ -337,7 +401,7 @@ jobs:
           repository: devops/setenv-XRT
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           
       - name: Checkout private repository    
         uses: actions/checkout@v3 
@@ -351,11 +415,11 @@ jobs:
       - name: Use composite action package download     
         uses: ./composite-workflows/setenv   
         with:    
-          runNumber: ${{ github.run_number }}    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }} 
+          buildNumber: ${{ env.XRT_VERSION_PATCH }} 
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
@@ -368,7 +432,14 @@ jobs:
     strategy:        
       matrix:        
         site: ['xco'] 
-    steps:      
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Extract branch name      
         id: extract_branch      
         run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
@@ -390,20 +461,27 @@ jobs:
           pipeline: 'xrt'        
           release: '2024.1'      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
-          runNumber: ${{ github.run_number }} 
+          runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
-          buildNumber: ${{ github.run_number }}       
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}       
           runnerName: ${{ runner.name }}      
           branch: ${{ steps.extract_branch.outputs.branch }}    
           github-server-url: ${{ secrets.SERVER_URL }}  
 
   Release_to_all_sites:      
     needs: Release_to_xco  
-    runs-on: [self-hosted, Ubuntu-22.04]     
+    runs-on: [xrt, trx]     
     strategy:        
       matrix:        
         site: ['xsj', 'xir', 'xhd', 'xdc'] 
-    steps:      
+    steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Extract branch name      
         id: extract_branch      
         run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})" 
@@ -425,9 +503,9 @@ jobs:
           pipeline: 'xrt'        
           release: '2024.1'      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
-          runNumber: ${{ github.run_number }} 
+          runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
-          buildNumber: ${{ github.run_number }}       
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}       
           runnerName: ${{ runner.name }}      
           branch: ${{ steps.extract_branch.outputs.branch }}    
           github-server-url: ${{ secrets.SERVER_URL }}
@@ -435,7 +513,14 @@ jobs:
   Upload_packages_to_Artifactory:  
     runs-on: [self-hosted, Ubuntu-22.04]  
     needs: Release_to_xco  
-    steps:  
+    steps: 
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout private repository    
         uses: actions/checkout@v3 
         with:    
@@ -451,7 +536,7 @@ jobs:
           isProd: 'true'  
           pipeline: 'xrt'        
           release: '2024.1'      
-          runNumber: ${{ github.run_number }} 
+          runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
           github-server-url: ${{ secrets.SERVER_URL }}
 
@@ -459,6 +544,12 @@ jobs:
     needs: Upload_packages_to_Artifactory    
     runs-on: [self-hosted, Ubuntu-22.04]   
     steps:
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+200))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Extract branch name      
         id: extract_branch      
@@ -470,7 +561,7 @@ jobs:
           repository: devops/gradle-artifactory-publish-script
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
-          path: ${{ github.workspace }}/${{ github.run_number }}  
+          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
           
       - name: Checkout private repository    
         uses: actions/checkout@v3 
@@ -484,11 +575,11 @@ jobs:
       - name: Use composite action package download     
         uses: ./composite-workflows/gradle-artifactory-upload   
         with:    
-          runNumber: ${{ github.run_number }}    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ github.run_number }} 
+          buildNumber: ${{ env.XRT_VERSION_PATCH }} 
           branch: ${{ steps.extract_branch.outputs.branch }}
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
