@@ -12,7 +12,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     xrt_add_subdirectory(xbtop)
     if (XRT_DKMS_ALVEO STREQUAL "ON")
       xrt_add_subdirectory(xbflash2)
-    endif
+    endif()
     xrt_add_subdirectory(nagios)
   endif()
 endif()
