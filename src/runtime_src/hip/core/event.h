@@ -80,7 +80,7 @@ public:
   std::shared_ptr<stream> get_stream();
   void add_to_chain(std::shared_ptr<command> cmd);
   void add_dependency(std::shared_ptr<command> cmd);
-  float elapsed_time(std::shared_ptr<command> end);
+  float elapsed_time(const std::shared_ptr<command>& end);
 };
 
 class kernel_start : public command

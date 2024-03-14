@@ -88,7 +88,7 @@ void event::add_dependency(std::shared_ptr<command> cmd)
   // lock and add
 }
 
-float event::elapsed_time (const std::shared_ptr<command> end)
+float event::elapsed_time (const std::shared_ptr<command>& end)
 {
   auto duration = end->get_time() - get_time();
   auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
