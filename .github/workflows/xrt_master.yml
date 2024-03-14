@@ -100,7 +100,7 @@ jobs:
         uses: ./composite-workflows/windows-build
         with:     
           workspace: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/build   
-          buildNumber: ${{ env.XRT_VERSION_PATCH }}    
+          buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
