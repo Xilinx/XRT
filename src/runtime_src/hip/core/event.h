@@ -7,9 +7,9 @@
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
+//#include "xrt.h"
 #include "xrt/xrt_bo.h"
 #include "core/common/api/kernel_int.h"
-//#include "core/common/xclbin_parser.h"
 
 #include <condition_variable>
 #include <future>
@@ -35,11 +35,6 @@ public:
     abort
   };
 
-  enum hipBOSyncDirection {
-    HIP_BO_SYNC_BO_TO_DEVICE = 0,
-    HIP_BO_SYNC_BO_FROM_DEVICE,
-  };
-
   enum class type : uint8_t
   {
     event,
@@ -54,18 +49,14 @@ protected:
   state cstate;
 
 public:
-  command(std::shared_ptr<stream> &&s)
+  command(std::shared_ptr<stream> s)
     : cstream{std::move(s)}
     , cstate{state::init}
   {}
   
-  virtual bool submit(bool) = 0;
+  virtual bool submit() = 0;
   virtual bool wait() = 0;
-  virtual void record(std::shared_ptr<stream>) = 0;
-  virtual bool synchronize() = 0;
-  virtual bool query() = 0;
-  virtual float elapsedtimecalc (std::shared_ptr<command> end) = 0;
-  state get_state() { return cstate; }
+  state get_state() const { return cstate; }
   std::chrono::time_point<std::chrono::system_clock> get_time() { return ctime; }
   void set_state(state newstate) { cstate = newstate; };
 };
@@ -78,23 +69,18 @@ private:
   std::vector<std::shared_ptr<command>> chain_of_commands;
 
 public:
-  event(std::shared_ptr<stream>&& s);
+  event(std::shared_ptr<stream> s);
 
-  void record(std::shared_ptr<stream> s) override;
-  bool submit(bool) override;
+  void record(std::shared_ptr<stream> s);
+  bool submit() override;
   bool wait() override;
-  bool synchronize() override;
-  bool query() override;
-
-  bool is_recorded();
-
+  bool synchronize();
+  bool query();
+  bool is_recorded() const;
   std::shared_ptr<stream> get_stream();
-
   void add_to_chain(std::shared_ptr<command> cmd);
-
   void add_dependency(std::shared_ptr<command> cmd);
-
-  float elapsedtimecalc (std::shared_ptr<command> end);
+  float elapsed_time(std::shared_ptr<command> end);
 };
 
 class kernel_start : public command
@@ -104,20 +90,20 @@ private:
   xrt::run r;
 
 public:
-  kernel_start(std::shared_ptr<stream>&& s, std::shared_ptr<function> &&f, void** args);
-  bool submit(bool) override;
+  kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &&f, void** args);
+  bool submit() override;
   bool wait() override;
 };
 
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream>&& s);
-  bool submit(bool) override;
+  copy_buffer(std::shared_ptr<stream> s);
+  bool submit() override;
   bool wait() override;
 
 private:
-  hipBOSyncDirection cdirection;
+  xclBOSyncDirection cdirection;
   xrt::bo cbo;
   std::future<void> handle;
 };
