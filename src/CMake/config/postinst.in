@@ -43,6 +43,8 @@ rmmodules()
 
 installdir=@CMAKE_INSTALL_PREFIX@/xrt
 systemddir=/etc/systemd/system
+test -e /usr/src/xrt-@XRT_VERSION_STRING@/dkms.conf
+alveo=$?
 
 msd_active=`systemctl is-active msd`
 mpd_active=`systemctl is-active mpd`
@@ -78,9 +80,13 @@ done
 rmmodules
 
 DRACUT_CONF_PATH=/etc/dracut.conf.d
-if [ -e $DRACUT_CONF_PATH ]; then
+if [ -e $DRACUT_CONF_PATH ] && [ $alveo == 1]; then
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
+fi
+
+if [ $alveo == 0]; then
+    exit 0
 fi
 
 echo "Invoking DKMS common.postinst for xrt"
