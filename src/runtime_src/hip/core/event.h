@@ -90,7 +90,7 @@ private:
   xrt::run r;
 
 public:
-  kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &&f, void** args);
+  kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &f, void** args);
   bool submit() override;
   bool wait() override;
 };

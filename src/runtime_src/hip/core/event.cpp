@@ -34,8 +34,8 @@ bool event::is_recorded() const
 
 bool event::query()
 {
-  for (auto it = recorded_commands.begin(); it != recorded_commands.end(); it++){
-    state command_state = (*it)->get_state();
+  for (auto it : recorded_commands){
+    state command_state = it->get_state();
     if (command_state != state::completed){
       return false;
     }
@@ -95,7 +95,7 @@ float event::elapsed_time (const std::shared_ptr<command> end)
   return millis;
 }
 
-kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &&f, void** args)
+kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &f, void** args)
   : command(std::move(s))
 {
   ctype = type::kernel_start;
