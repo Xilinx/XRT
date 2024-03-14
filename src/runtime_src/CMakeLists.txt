@@ -35,7 +35,11 @@ xrt_add_subdirectory(xdp)
 xrt_add_subdirectory(tools/xclbinutil)
 xrt_add_subdirectory(xocl)
 xrt_add_subdirectory(xrt)
-xrt_add_subdirectory(ert)
+
+if (XRT_DKMS_ALVEO STREQUAL "ON")
+  xrt_add_subdirectory(ert)
+endif()
+
 if (XRT_ENABLE_HIP)
   xrt_add_subdirectory(hip)
 endif(XRT_ENABLE_HIP)

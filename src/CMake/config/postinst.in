@@ -86,6 +86,7 @@ if [ -e $DRACUT_CONF_PATH ] && [ $alveo == 1]; then
 fi
 
 if [ $alveo == 0]; then
+    echo "Skipping XRT Alveo driver install"
     exit 0
 fi
 
