@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __TestRunner_h_
 #define __TestRunner_h_
@@ -13,6 +13,7 @@
 
 // System - Include Files
 #include <string>
+#include <vector>
 
 class TestRunner : public JSONConfigurable {
   public:
@@ -26,10 +27,6 @@ class TestRunner : public JSONConfigurable {
     const std::string & getConfigName() const { return get_name(); };
     virtual const std::string& getConfigDescription() const { return m_description; };
     boost::property_tree::ptree get_test_header();
-    std::string findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
-                      boost::property_tree::ptree& _ptTest);
-    std::string findDPUPath( const std::shared_ptr<xrt_core::device>& _dev,
-                              boost::property_tree::ptree& _ptTest, const std::string dpu_name);
 
   // Child class helper methods
   protected:
@@ -39,10 +36,14 @@ class TestRunner : public JSONConfigurable {
              boost::property_tree::ptree& _ptTest);
     void logger(boost::property_tree::ptree& ptree, const std::string& tag, const std::string& msg);
     bool search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest);
-    std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
-                  boost::property_tree::ptree& _ptTest);
+    std::string findPlatformPath(const std::shared_ptr<xrt_core::device>& dev,
+                                 boost::property_tree::ptree& ptTest);
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
+    std::string findXclbinPath(const std::shared_ptr<xrt_core::device>& dev,
+                               boost::property_tree::ptree& ptTest);
+    std::string findDPUPath(const std::shared_ptr<xrt_core::device>& dev,
+                            boost::property_tree::ptree& ptTest, const std::string& dpu_name);
     int validate_binary_file(const std::string& binaryfile);
 
     const std::string test_token_skipped = "SKIPPED";
@@ -51,6 +52,8 @@ class TestRunner : public JSONConfigurable {
     std::string m_xclbin;
  
   private:
+    std::vector<std::string> findPlatformPaths(const std::shared_ptr<xrt_core::device>& dev,
+                                               boost::property_tree::ptree& ptTest);
     std::string searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, 
                       boost::property_tree::ptree& _ptTest);
     std::string searchSSV2Xclbin(const std::string& logic_uuid,

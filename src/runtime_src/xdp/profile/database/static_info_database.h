@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,6 +28,8 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
 #include "xdp/config.h"
 
@@ -52,6 +54,7 @@ namespace xdp {
   // Forward declarations of device and xclbin contents
   struct DeviceInfo ;
   struct XclbinInfo ;
+  class  IpMetadata;
 
   //Forward declaration of XDP's device structure
   class Device;
@@ -76,7 +79,7 @@ namespace xdp {
     int pid ;
     uint64_t applicationStartTime = 0 ;
     bool aieApplication = false;
-    
+
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
     std::vector<std::pair<std::string, std::string> > openedFiles ;
@@ -84,11 +87,11 @@ namespace xdp {
 
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
-    std::set<std::string> enqueuedKernels ; 
+    std::set<std::string> enqueuedKernels ;
     std::map<uint64_t, uint64_t> contextIdToNumDevices ;
 
     // For OpenCL software emulation, we need a tiny bit of device info
-    std::string softwareEmulationDeviceName ; 
+    std::string softwareEmulationDeviceName ;
     std::map<std::string, uint64_t> softwareEmulationCUCounts ;
     std::map<std::string, bool> softwareEmulationMemUsage ;
     std::vector<std::string> softwareEmulationPortBitWidths ;
@@ -107,11 +110,13 @@ namespace xdp {
     void* aieDevInst = nullptr ; // XAie_DevInst
     void* aieDevice = nullptr ; // xaiefal::XAieDev
     std::function<void (void*)> deallocateAieDevice = nullptr ;
+    boost::property_tree::ptree aieMetadata;
+    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
 
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that create the overall structure of the Xclbin's PL region
-    void createComputeUnits(XclbinInfo*, const ip_layout*);
+    void createComputeUnits(XclbinInfo*, const ip_layout*,const char*,size_t);
     void createMemories(XclbinInfo*, const mem_topology*);
     void createConnections(XclbinInfo*, const ip_layout*, const mem_topology*,
                            const connectivity*);
@@ -119,7 +124,6 @@ namespace xdp {
     void setXclbinName(XclbinInfo*, const char*, size_t);
     void updateSystemDiagram(const char*, size_t);
     void addPortInfo(XclbinInfo*, const char*, size_t);
-    void parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that initialize the structure of the debug/profiling IP
     void initializeAM(DeviceInfo* devInfo, const std::string& name,
@@ -133,7 +137,6 @@ namespace xdp {
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
     void initializeFIFO(DeviceInfo* devInfo) ;
-    void initializeXrtIP(XclbinInfo* xclbin);
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
     void setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
@@ -141,9 +144,9 @@ namespace xdp {
     bool initializeStructure(XclbinInfo*, xrt::xclbin);
     bool initializeProfileMonitors(DeviceInfo*, xrt::xclbin);
     double findClockRate(xrt::xclbin);
-    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
+    DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild) ;
 
-    
+
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -162,6 +165,10 @@ namespace xdp {
 
     XDP_CORE_EXPORT bool getAieApplication() const ;
     XDP_CORE_EXPORT void setAieApplication() ;
+
+    XDP_CORE_EXPORT 
+    std::unique_ptr<IpMetadata> populateIpMetadata(uint64_t deviceId, 
+                                  const std::shared_ptr<xrt_core::device>&);
 
     // Due to changes in hardware IP, we can only support profiling on
     // xclbins built using 2019.2 or later tools.  Each xclbin is stamped
@@ -245,7 +252,8 @@ namespace xdp {
     XDP_CORE_EXPORT void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId) ;
     XDP_CORE_EXPORT bool isDeviceReady(uint64_t deviceId) ;
     XDP_CORE_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
-    XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ; 
+    XDP_CORE_EXPORT double getPLMaxClockRateMHz(uint64_t deviceId);
+    XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ;
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
@@ -305,10 +313,10 @@ namespace xdp {
     std::vector<std::unique_ptr<aie_cfg_tile>>*
     getAIECfgTiles(uint64_t deviceId) ;
     XDP_CORE_EXPORT TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx) ;
-    XDP_CORE_EXPORT void addTraceGMIO(uint64_t deviceId, uint32_t i, uint16_t col,
-                                 uint16_t num, uint16_t stream, uint16_t len) ;
-    XDP_CORE_EXPORT void addAIECounter(uint64_t deviceId, uint32_t i, uint16_t col,
-                                  uint16_t r, uint8_t num, uint16_t start,
+    XDP_CORE_EXPORT void addTraceGMIO(uint64_t deviceId, uint32_t i, uint8_t col,
+                                 uint8_t num, uint8_t stream, uint8_t len) ;
+    XDP_CORE_EXPORT void addAIECounter(uint64_t deviceId, uint32_t i, uint8_t col,
+                                  uint8_t row, uint8_t num, uint16_t start,
                                   uint16_t end, uint8_t reset, uint32_t load,
                                   double freq, const std::string& mod,
                                   const std::string& aieName) ;
@@ -337,6 +345,10 @@ namespace xdp {
     XDP_CORE_EXPORT void* getAieDevice(std::function<void* (void*)> allocate,
                                   std::function<void (void*)> deallocate,
                                   void* devHandle) ;
+
+    XDP_CORE_EXPORT void readAIEMetadataClient();
+    XDP_CORE_EXPORT void readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild);
+    XDP_CORE_EXPORT const aie::BaseFiletypeImpl* getAIEmetadataReader() const;
 
     // ************************************************************************
     // ***** Functions for information from a specific xclbin on a device *****
@@ -381,7 +393,7 @@ namespace xdp {
                           uint64_t slotID) ;
     XDP_CORE_EXPORT
     NoCNode* getNOC(uint64_t deviceId, XclbinInfo* xclbin, uint64_t idx) ;
-    // This function takes a pre-allocated array of bools to fill with 
+    // This function takes a pre-allocated array of bools to fill with
     //  the status of each compute unit's AM dataflow enabled status
     XDP_CORE_EXPORT
     void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size);

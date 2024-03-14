@@ -29,7 +29,18 @@ set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/rocm/lib/cmake/hip;/opt/rocm/li
 include(hip-config)
 message("-- Found at ${HIP_INCLUDE_DIR}")
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  find_program(CLANG_TIDY "clang-tidy")
+  if(NOT CLANG_TIDY)
+    message(WARNING "-- clang-tidy not found, cannot enable static analysis")
+  else()
+    message("-- Enabling clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+  endif()
+endif()
+
 include_directories(${HIP_INCLUDE_DIRS})
 
 add_subdirectory(device)
 add_subdirectory(vadd)
+add_subdirectory(vadd-stream)

@@ -61,17 +61,26 @@ namespace xdp {
     if (!xrt_core::config::get_aie_debug())
       return;
 
-    try {
-      pt::read_json("aie_control_config.json", aie_meta);
-      filetype = aie::readAIEMetadata("aie_control_config.json", aie_meta);
-    } catch (...) {
-      std::stringstream msg;
-      msg << "The file aie_control_config.json is required in the same directory as the host executable to run AIE Debug.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      return;
-    }
-
+    // AIE Debug plugin is built only for client 
     auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto device = xrt_core::hw_context_int::get_core_device(context);
+    auto deviceID = getDeviceIDFromHandle(handle);
+    
+    (db->getStaticInfo()).updateDeviceClient(deviceID, device);
+    (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
+
+    // Delete old data for this handle
+    if (handleToAIEData.find(handle) != handleToAIEData.end())
+      handleToAIEData.erase(handle);
+
+    //Setting up struct 
+    auto& aieData = handleToAIEData[handle];
+    aieData.deviceID = deviceID;
+    
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader)
+      return;
+
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Debug");
     xdp::aie::driver_config meta_config = getAIEConfigMetadata();
 
@@ -105,9 +114,9 @@ namespace xdp {
     
       std::vector<tile_type> tiles;
       if (type == module_type::shim) {
-        tiles = filetype->getInterfaceTiles("all", "all", "", -1);
+        tiles = metadataReader->getInterfaceTiles("all", "all", "", -1);
       } else {
-        tiles = filetype->getTiles("all", type, "all");
+        tiles = metadataReader->getTiles("all", type, "all");
       }
 
       if (tiles.empty()) {
@@ -309,7 +318,18 @@ namespace xdp {
   AieDebugPlugin::
   getAIEConfigMetadata()
   {
-    return filetype->getDriverConfig();
+    return metadataReader->getDriverConfig();
+  }
+
+  uint64_t
+  AieDebugPlugin::
+  getDeviceIDFromHandle(void* handle)
+  { 
+    auto itr = handleToAIEData.find(handle);
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
+
+    return db->addDevice("win_device");
   }
 
 }  // end namespace xdp

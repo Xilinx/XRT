@@ -32,23 +32,26 @@ AIEControlConfigFiletype::AIEControlConfigFiletype(boost::property_tree::ptree& 
 : BaseFiletypeImpl(aie_project) {}
 
 std::string
-AIEControlConfigFiletype::getMessage(std::string secName)
+AIEControlConfigFiletype::getMessage(std::string secName) const
 {
     return "Ignoring AIE metadata section " + secName + " since not found.";
 }
 
 driver_config
-AIEControlConfigFiletype::getDriverConfig() {
+AIEControlConfigFiletype::getDriverConfig() const
+{
     return xdp::aie::getDriverConfig(aie_meta, "aie_metadata.driver_config");
 }
 
 int 
-AIEControlConfigFiletype::getHardwareGeneration() {
+AIEControlConfigFiletype::getHardwareGeneration() const
+{
     return xdp::aie::getHardwareGeneration(aie_meta, "aie_metadata.driver_config.hw_gen");
 }
 
 aiecompiler_options
-AIEControlConfigFiletype::getAIECompilerOptions() {
+AIEControlConfigFiletype::getAIECompilerOptions() const
+{
     aiecompiler_options aiecompiler_options;
     aiecompiler_options.broadcast_enable_core = 
         aie_meta.get("aie_metadata.aiecompiler_options.broadcast_enable_core", false);
@@ -59,18 +62,20 @@ AIEControlConfigFiletype::getAIECompilerOptions() {
     return aiecompiler_options;
 }
 
-uint16_t 
-AIEControlConfigFiletype::getAIETileRowOffset() {
+uint8_t 
+AIEControlConfigFiletype::getAIETileRowOffset() const {
     return xdp::aie::getAIETileRowOffset(aie_meta, "aie_metadata.driver_config.aie_tile_row_start");
 }
 
 std::vector<std::string>
-AIEControlConfigFiletype::getValidGraphs() {
+AIEControlConfigFiletype::getValidGraphs() const
+{
     return xdp::aie::getValidGraphs(aie_meta, "aie_metadata.graphs");
 }
 
 std::vector<std::string>
-AIEControlConfigFiletype::getValidPorts() {
+AIEControlConfigFiletype::getValidPorts() const
+{
     auto ios = getAllIOs();
     if (ios.empty()) {
         xrt_core::message::send(severity_level::info, "XRT", "No valid ports found.");
@@ -90,7 +95,8 @@ AIEControlConfigFiletype::getValidPorts() {
 }
 
 std::vector<std::string>
-AIEControlConfigFiletype::getValidKernels() {
+AIEControlConfigFiletype::getValidKernels() const
+{
     std::vector<std::string> kernels;
 
     // Grab all kernel to tile mappings
@@ -99,6 +105,7 @@ AIEControlConfigFiletype::getValidKernels() {
         xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
         return {};
     }
+    xrt_core::message::send(severity_level::info, "XRT", "metadataReader found key: TileMapping.AIEKernelToTileMapping");
 
     for (auto const &mapping : kernelToTileMapping.get()) {
         std::vector<std::string> names;
@@ -111,12 +118,13 @@ AIEControlConfigFiletype::getValidKernels() {
 }
 
 std::unordered_map<std::string, io_config>
-AIEControlConfigFiletype::getTraceGMIOs(){
+AIEControlConfigFiletype::getTraceGMIOs() const
+{
     return getChildGMIOs("aie_metadata.TraceGMIOs");
 }
 
 std::unordered_map<std::string, io_config> 
-AIEControlConfigFiletype::getPLIOs()
+AIEControlConfigFiletype::getPLIOs() const
 {
     auto pliosMetadata = aie_meta.get_child_optional("aie_metadata.PLIOs");
     if (!pliosMetadata) {
@@ -133,8 +141,8 @@ AIEControlConfigFiletype::getPLIOs()
         plio.id = plio_node.second.get<uint32_t>("id");
         plio.name = plio_node.second.get<std::string>("name");
         plio.logicalName = plio_node.second.get<std::string>("logical_name");
-        plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
-        plio.streamId = plio_node.second.get<uint16_t>("stream_id");
+        plio.shimColumn = plio_node.second.get<uint8_t>("shim_column");
+        plio.streamId = plio_node.second.get<uint8_t>("stream_id");
         plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
         plio.channelNum = 0;
         plio.burstLength = 0;
@@ -146,13 +154,13 @@ AIEControlConfigFiletype::getPLIOs()
 }
 
 std::unordered_map<std::string, io_config>
-AIEControlConfigFiletype::getGMIOs()
+AIEControlConfigFiletype::getGMIOs() const
 {
     return getChildGMIOs("aie_metadata.GMIOs");
 }
 
 std::unordered_map<std::string, io_config>
-AIEControlConfigFiletype::getAllIOs()
+AIEControlConfigFiletype::getAllIOs() const
 {
     auto ios = getPLIOs();
     auto gmios = getGMIOs();
@@ -161,7 +169,7 @@ AIEControlConfigFiletype::getAllIOs()
 }
 
 std::unordered_map<std::string, io_config>
-AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr)
+AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
 {
     auto gmiosMetadata = aie_meta.get_child_optional(childStr);
     if (!gmiosMetadata) {
@@ -179,18 +187,18 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr)
         //   1 : S2MM channel 1
         //   2 : MM2S channel 0 (slave/input)
         //   3 : MM2S channel 1
-        auto slaveOrMaster = gmio_node.second.get<uint16_t>("type");
-        auto channelNumber = gmio_node.second.get<uint16_t>("channel_number");
+        auto slaveOrMaster = gmio_node.second.get<uint8_t>("type");
+        auto channelNumber = gmio_node.second.get<uint8_t>("channel_number");
 
         gmio.type = 1;
         gmio.id = gmio_node.second.get<uint32_t>("id");
         gmio.name = gmio_node.second.get<std::string>("name");
         gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
         gmio.slaveOrMaster = slaveOrMaster;
-        gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
+        gmio.shimColumn = gmio_node.second.get<uint8_t>("shim_column");
         gmio.channelNum = (slaveOrMaster == 0) ? (channelNumber - 2) : channelNumber;
-        gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
-        gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+        gmio.streamId = gmio_node.second.get<uint8_t>("stream_id");
+        gmio.burstLength = gmio_node.second.get<uint8_t>("burst_length_in_16byte");
 
         gmios[gmio.name] = gmio;
     }
@@ -204,17 +212,12 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                                             const std::string& metricStr,
                                             int16_t channelId,
                                             bool useColumn,
-                                            uint32_t minCol,
-                                            uint32_t maxCol)
+                                            uint8_t minCol,
+                                            uint8_t maxCol) const
 {
     std::vector<tile_type> tiles;
 
-    // PLIO metadata not valid in XDP_MINIMAL_BUILD builds
-    #ifdef XDP_MINIMAL_BUILD
-    auto ios = getGMIOs();
-    #else
     auto ios = getAllIOs();
-    #endif
 
     for (auto& io : ios) {
         auto isMaster    = io.second.slaveOrMaster;
@@ -246,7 +249,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                 || metricStr.find("s2mm") != std::string::npos))))
             continue;
         // Make sure column is within specified range (if specified)
-        if (useColumn && !((minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol)))
+        if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
 
         if ((channelId >= 0) && (channelId != io.second.channelNum)) 
@@ -257,8 +260,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         tile.row = 0;
         tile.subtype = type;
         // Grab stream ID and slave/master (used in configStreamSwitchPorts())
-        tile.itr_mem_col = isMaster;
-        tile.itr_mem_row = streamId;
+        tile.is_master = isMaster;
+        tile.stream_id = streamId;
 
         tiles.emplace_back(std::move(tile));
     }
@@ -274,7 +277,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
 
 std::vector<tile_type>
 AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
-                                         const std::string& buffer_name)
+                                         const std::string& buffer_name) const
 {
     if (getHardwareGeneration() == 1) 
         return {};
@@ -291,7 +294,7 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
     std::vector<tile_type> allTiles;
     std::vector<tile_type> memTiles;
     // Always one row of interface tiles
-    uint16_t rowOffset = 1;
+    uint8_t rowOffset = 1;
 
     // Now parse all shared buffers
     for (auto const &shared_buffer : sharedBufferTree.get()) {
@@ -305,8 +308,8 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
             continue;
 
         tile_type tile;
-        tile.col = shared_buffer.second.get<uint16_t>("column");
-        tile.row = shared_buffer.second.get<uint16_t>("row") + rowOffset;
+        tile.col = shared_buffer.second.get<uint8_t>("column");
+        tile.row = shared_buffer.second.get<uint8_t>("row") + rowOffset;
         allTiles.emplace_back(std::move(tile));
     }
 
@@ -316,7 +319,7 @@ AIEControlConfigFiletype::getMemoryTiles(const std::string& graph_name,
 
 // Find all AIE tiles in a graph that use the core (kernel_name = all)
 std::vector<tile_type> 
-AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
+AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
 {
     auto graphsMetadata = aie_meta.get_child_optional("aie_metadata.graphs");
     if (!graphsMetadata) {
@@ -337,23 +340,24 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
         for (auto& node : graph.second.get_child("core_columns")) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            t.col = xdp::aie::convertStringToUint8(node.second.data());
+            t.active_core = true;
         }
 
         int num_tiles = count;
         count = startCount;
         for (auto& node : graph.second.get_child("core_rows"))
-            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"core_rows < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_columns"))
-            tiles.at(count++).itr_mem_col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.at(count++).is_master = xdp::aie::convertStringToUint8(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_columns < num_tiles");
 
         count = startCount;
         for (auto& node : graph.second.get_child("iteration_memory_rows"))
-            tiles.at(count++).itr_mem_row = static_cast<uint16_t>(std::stoul(node.second.data()));
+            tiles.at(count++).stream_id = xdp::aie::convertStringToUint8(node.second.data());
         xdp::aie::throwIfError(count < num_tiles,"iteration_memory_rows < num_tiles");
 
         count = startCount;
@@ -374,18 +378,31 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name)
 
 // Find all AIE tiles in a graph that use core and/or memories (kernel_name = all)
 std::vector<tile_type>
-AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name)
+AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name) const
 {
     std::vector<tile_type> tiles;
     tiles = getEventTiles(graph_name, module_type::core);
     auto dmaTiles = getEventTiles(graph_name, module_type::dma);
-    std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
+
+    // Specify if active core tiles also have active DMAs
+    for (auto& tile : tiles)
+        tile.active_memory = (std::find(dmaTiles.begin(), dmaTiles.end(), tile) != dmaTiles.end());
+
+    // Identify and add DMA-only tiles to list
+    for (auto& tile : dmaTiles) {
+        if (std::find(tiles.begin(), tiles.end(), tile) == tiles.end()) {
+            tile.active_core = false;
+            tile.active_memory = true;
+            tiles.push_back(tile);
+        }
+    }
+    //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
     return tiles;
 }
 
 std::vector<tile_type>
 AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
-                                        module_type type)
+                                        module_type type) const
 {
     if ((type == module_type::shim) || (type == module_type::mem_tile))
         return {};
@@ -401,6 +418,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
+    int startCount = 0;
 
     for (auto& graph : graphsMetadata.get()) {
         auto currGraph = graph.second.get<std::string>("name");
@@ -408,18 +426,24 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
             && (graph_name.compare("all") != 0))
             continue;
 
-        int count = 0;
+        int count = startCount;
         for (auto& node : graph.second.get_child(col_name)) {
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
-            t.col = static_cast<uint16_t>(std::stoul(node.second.data()));
+            t.col = xdp::aie::convertStringToUint8(node.second.data());
+            if (type == module_type::core)
+              t.active_core = true;
+            else
+              t.active_memory = true;
         }
 
         int num_tiles = count;
-        count = 0;
+        count = startCount;
         for (auto& node : graph.second.get_child(row_name))
-            tiles.at(count++).row = static_cast<uint16_t>(std::stoul(node.second.data())) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
+
+        startCount = count;
     }
 
     return tiles;
@@ -431,7 +455,7 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
 std::vector<tile_type>
 AIEControlConfigFiletype::getTiles(const std::string& graph_name,
                                    module_type type,
-                                   const std::string& kernel_name)
+                                   const std::string& kernel_name) const
 {
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
@@ -453,7 +477,7 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
     for (auto const &mapping : kernelToTileMapping.get()) {
         auto currGraph = mapping.second.get<std::string>("graph");
         if ((currGraph.find(graph_name) == std::string::npos)
-            && (graph_name.compare("all") != 0))
+            && (graph_name.compare("all") != 0)) 
             continue;
         if (kernel_name.compare("all") != 0) {
             std::vector<std::string> names;
@@ -464,8 +488,10 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
         }
 
         tile_type tile;
-        tile.col = mapping.second.get<uint16_t>("column");
-        tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
+        tile.col = mapping.second.get<uint8_t>("column");
+        tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
+        tile.active_core = true;
+        tile.active_memory = true;
         tiles.emplace_back(std::move(tile));
     }
     return tiles;

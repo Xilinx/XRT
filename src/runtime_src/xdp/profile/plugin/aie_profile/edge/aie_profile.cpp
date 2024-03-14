@@ -77,20 +77,20 @@ namespace xdp {
   {
     auto hwGen = metadata->getHardwareGen();
 
-    mCoreStartEvents = aie::profile::getCoreEventSets(hwGen);
-    mCoreEndEvents = mCoreStartEvents;
+    coreStartEvents = aie::profile::getCoreEventSets(hwGen);
+    coreEndEvents = coreStartEvents;
 
-    mMemoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
-    mMemoryEndEvents = mMemoryStartEvents;
+    memoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
+    memoryEndEvents = memoryStartEvents;
 
-    mShimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
-    mShimEndEvents = mShimStartEvents;
+    shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
+    shimEndEvents = shimStartEvents;
 
-    mMemTileStartEvents = aie::profile::getMemoryTileEventSets();
-    mMemTileEndEvents = mMemTileStartEvents;
+    memTileStartEvents = aie::profile::getMemoryTileEventSets();
+    memTileEndEvents = memTileStartEvents;
   }
 
-  bool AieProfile_EdgeImpl::checkAieDevice(uint64_t deviceId, void* handle)
+  bool AieProfile_EdgeImpl::checkAieDevice(const uint64_t deviceId, void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
     aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
@@ -148,7 +148,7 @@ namespace xdp {
     }
   }
 
-  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(XAie_Events event)
+  uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(const XAie_Events event)
   {
     switch (event) {
     case XAIE_EVENT_PORT_RUNNING_1_CORE:
@@ -224,18 +224,38 @@ namespace xdp {
         else if (type == module_type::shim) {
           // Interface tiles (e.g., PLIO, GMIO)
           // Grab slave/master and stream ID
-          auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+          auto streamPortId  = tile.stream_id;
           switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
+
+          if (aie::isDebugVerbosity()) {
+            std::string typeName = (tile.is_master == 0) ? "slave" : "master"; 
+            std::string msg = "Configuring interface tile stream switch to monitor " 
+                            + typeName + " stream port " + std::to_string(streamPortId);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
+          }
         }
         else {
           // Memory tiles
+          std::string typeName;
+          uint32_t channelNum = 0;
+
           if (metricSet.find("trace") != std::string::npos) {
+            typeName = "trace";
             switchPortRsc->setPortToSelect(XAIE_STRMSW_SLAVE, TRACE, 0);
           }
           else {
             auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
+
+            typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
+            channelNum = channel;
+          }
+
+          if (aie::isDebugVerbosity()) {
+            std::string msg = "Configuring memory tile stream switch to monitor " 
+                            + typeName + " stream port " + std::to_string(channelNum);
+            xrt_core::message::send(severity_level::debug, "XRT", msg);
           }
         }
       }
@@ -256,7 +276,7 @@ namespace xdp {
 
       if (newPort) {
         switchPortRsc->start();
-        mStreamPorts.push_back(switchPortRsc);
+        streamPorts.push_back(switchPortRsc);
       }
     }
 
@@ -268,8 +288,8 @@ namespace xdp {
   AieProfile_EdgeImpl::getCounterPayload(XAie_DevInst* aieDevInst, 
                                          const tile_type& tile, 
                                          const module_type type, 
-                                         uint16_t column, 
-                                         uint16_t row, 
+                                         uint8_t column, 
+                                         uint8_t row, 
                                          uint16_t startEvent, 
                                          const std::string metricSet,
                                          const uint8_t channel)
@@ -277,7 +297,7 @@ namespace xdp {
     // 1. Stream IDs for interface tiles
     if (type == module_type::shim) {
       // NOTE: value = ((master or slave) << 8) & (stream ID)
-      return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
+      return ((tile.is_master << 8) | tile.stream_id);
     }
 
     // 2. Channel IDs for memory tiles
@@ -346,7 +366,8 @@ namespace xdp {
     };
 
     std::stringstream msg;
-    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : " << moduleName << std::endl;
+    msg << "Resource usage stats for Tile : (" << +col << "," << +row 
+        << ") Module : " << moduleName << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
       auto pc = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
@@ -364,7 +385,7 @@ namespace xdp {
 
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
-  AieProfile_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
+  AieProfile_EdgeImpl::setMetricsSettings(const uint64_t deviceId, void* handle)
   {
     int counterId = 0;
     bool runtimeCounters = false;
@@ -387,8 +408,15 @@ namespace xdp {
         auto col         = tile.col;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
-        auto type        = aie::getModuleType(row, mod);
+        auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
+        if ((mod == XAIE_MEM_MOD) && (type == module_type::core))
+          type = module_type::dma;
+
+        // Ignore invalid types and inactive modules
         if (!aie::profile::isValidType(type, mod))
+          continue;
+        if (((type == module_type::core) && !tile.active_core)
+            || ((type == module_type::dma) && !tile.active_memory))
           continue;
 
         auto& metricSet  = tileMetric.second;
@@ -398,14 +426,14 @@ namespace xdp {
                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
                          : xaieTile.pl());
 
-        auto startEvents = (type  == module_type::core) ? mCoreStartEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryStartEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimStartEvents[metricSet]
-                         : mMemTileStartEvents[metricSet]));
-        auto endEvents   = (type  == module_type::core) ? mCoreEndEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryEndEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimEndEvents[metricSet]
-                         : mMemTileEndEvents[metricSet]));
+        auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
+                         : ((type == module_type::shim) ? shimStartEvents[metricSet]
+                         : memTileStartEvents[metricSet]));
+        auto endEvents   = (type  == module_type::core) ? coreEndEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryEndEvents[metricSet]
+                         : ((type == module_type::shim) ? shimEndEvents[metricSet]
+                         : memTileEndEvents[metricSet]));
 
         int numCounters  = 0;
         auto numFreeCtr  = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
@@ -446,7 +474,7 @@ namespace xdp {
           // Start the counter
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
-          mPerfCounters.push_back(perfCounter);
+          perfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
           uint8_t tmpStart;
@@ -470,8 +498,8 @@ namespace xdp {
         }
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," 
-            << row << ") using metric set " << metricSet << ".";
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col 
+            << "," << +row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
@@ -495,7 +523,7 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::poll(uint32_t index, void* handle)
+  void AieProfile_EdgeImpl::poll(const uint32_t index, void* handle)
   {
     // Wait until xclbin has been loaded and device has been updated in database
     if (!(db->getStaticInfo().isDeviceReady(index)))
@@ -525,14 +553,14 @@ namespace xdp {
 
       // Read counter value from device
       uint32_t counterValue;
-      if (mPerfCounters.empty()) {
+      if (perfCounters.empty()) {
         // Compiler-defined counters
         XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row);
         XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
       }
       else {
         // Runtime-defined counters
-        auto perfCounter = mPerfCounters.at(c);
+        auto perfCounter = perfCounters.at(c);
         perfCounter->readResult(counterValue);
       }
       values.push_back(counterValue);
@@ -559,12 +587,12 @@ namespace xdp {
 
   void AieProfile_EdgeImpl::freeResources() 
   {
-    for (auto& c : mPerfCounters){
+    for (auto& c : perfCounters){
       c->stop();
       c->release();
     }
 
-    for (auto& c : mStreamPorts){
+    for (auto& c : streamPorts){
       c->stop();
       c->release();
     }

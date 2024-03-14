@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -104,9 +104,9 @@ namespace xdp {
   {
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
-    auto graphs = filetype->getValidGraphs();
+    auto graphs = metadataReader->getValidGraphs();
     for (auto& graph : graphs) {
-      mGraphCoreTilesMap[graph] = filetype->getEventTiles(graph, module_type::core);
+      mGraphCoreTilesMap[graph] = metadataReader->getEventTiles(graph, module_type::core);
     }
 
     // Report tiles (debug only)
@@ -186,8 +186,8 @@ namespace xdp {
 
     // AIE core register offsets
     constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
-    auto offset = filetype->getAIETileRowOffset();
-    auto hwGen = filetype->getHardwareGeneration();
+    auto offset = metadataReader->getAIETileRowOffset();
+    auto hwGen = metadataReader->getHardwareGeneration();
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -393,35 +393,32 @@ namespace xdp {
     if (!xrt_core::config::get_aie_status())
       return;
 
-    std::array<char, sysfs_max_path_length> pathBuf = {0};
-    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
-    std::string sysfspath(pathBuf.data());
-    uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
+    mXrtCoreDevice = xrt_core::get_userpf_device(handle);
+
+    uint64_t deviceID = db->addDevice(util::getDebugIpLayoutPath(handle)); // Get the unique device Id
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);
       {
-        struct xclDeviceInfo2 info;
-        if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+        std::string deviceName = util::getDeviceName(handle);
+        if(deviceName != "") {
+          (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
         }
       }
     }
 
     // Grab AIE metadata
-    auto device = xrt_core::get_userpf_device(handle);
-    auto data = device->get_axlf_section(AIE_METADATA);
-    filetype = aie::readAIEMetadata(data.first, data.second, mAieMeta);
-    auto hwGen = filetype->getHardwareGeneration();
+    metadataReader = (db->getStaticInfo()).getAIEmetadataReader();
+    if (!metadataReader)
+      return;
+    auto hwGen =  metadataReader->getHardwareGeneration();
 
     // Update list of tiles to debug
     getTilesForStatus();
 
     // Open the writer for this device
-    struct xclDeviceInfo2 info;
-    xclGetDeviceInfo2(handle, &info);
-    std::string devicename { info.mName };
+    std::string devicename = util::getDeviceName(handle);
 
     std::string currentTime = "0000_00_00_0000";
     auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -434,7 +431,7 @@ namespace xdp {
 
     // Create and register AIE status writer
     std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
-    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen);
+    VPWriter* aieWriter = new AIEStatusWriter(filename.c_str(), devicename.c_str(), deviceID, hwGen, mXrtCoreDevice);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 

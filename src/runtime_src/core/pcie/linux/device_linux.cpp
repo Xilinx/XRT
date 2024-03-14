@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -41,6 +41,87 @@ namespace {
 namespace query = xrt_core::query;
 using pdev = std::shared_ptr<xrt_core::pci::dev>;
 using key_type = query::key_type;
+
+// Specialize for other value types.
+template <typename ValueType>
+struct sysfs_fcn
+{
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+
+    return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+  }
+};
+
+template <>
+struct sysfs_fcn<std::string>
+{
+  using ValueType = std::string;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+
+    return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+  }
+};
+
+template <typename VectorValueType>
+struct sysfs_fcn<std::vector<VectorValueType>>
+{
+  //using ValueType = std::vector<std::string>;
+  using ValueType = std::vector<VectorValueType>;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+
+    return value;
+  }
+
+  static void
+  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
+  {
+    std::string err;
+    dev->sysfs_put(subdev, entry, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error(err);
+  }
+};
 
 static int
 get_render_value(const std::string& dir)
@@ -124,6 +205,24 @@ struct bdf
   {
     auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
+  }
+};
+
+struct pcie_id
+{
+  using result_type = query::pcie_id::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    result_type pcie_id;
+
+    const auto pdev = get_pcidev(device);
+
+    pcie_id.device_id = sysfs_fcn<uint16_t>::get(pdev, "", "device");
+    pcie_id.revision_id = sysfs_fcn<uint8_t>::get(pdev, "", "revision");
+
+    return pcie_id;
   }
 };
 
@@ -907,48 +1006,6 @@ struct accel_deadlock_status
   }
 };
 
-// Structure to get device specific Aie tiles information like
-// Total rows, cols and num of core, mem, shim rows and thier start row num
-// num of dma channels, locks, events etc
-struct aie_tiles_stats
-{
-  using result_type = query::aie_tiles_stats::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key)
-  {
-    uint32_t size = sizeof(result_type);
-    std::vector<char> buf(size);
-
-    // TODO : Add code to get the data
-
-    return *(reinterpret_cast<result_type*>(buf.data()));
-  }
-};
-
-// structure to get aie tiles status raw buffer
-struct aie_tiles_status_info
-{
-  using result_type = xrt_core::query::aie_tiles_status_info::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key, const std::any& param)
-  {
-    auto data = std::any_cast<xrt_core::query::aie_tiles_status_info::parameters>(param);
-    uint32_t cols_filled = 0;
-    uint32_t buf_size = data.col_size * data.num_cols;
-
-    std::vector<char> buf(buf_size);
-
-    // TODO : Add code to get the data and cols filled info
-    result_type output;
-    output.buf = buf;
-    output.cols_filled = cols_filled;
-
-    return output;
-  }
-};
-
 struct debug_ip_layout_path
 {
   using result_type = xrt_core::query::debug_ip_layout_path::result_type;
@@ -1067,87 +1124,6 @@ struct read_trace_data
     xclReadTraceData(device->get_user_handle(), trace_buf.data(),
                      args.buf_size, args.samples, args.ip_base_addr, args.words_per_sample);
     return trace_buf;
-  }
-};
-
-// Specialize for other value types.
-template <typename ValueType>
-struct sysfs_fcn
-{
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry)
-  {
-    std::string err;
-    ValueType value;
-    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const pdev& dev, const char* subdev, const char* entry, ValueType value)
-  {
-    std::string err;
-    dev->sysfs_put(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-  }
-};
-
-template <>
-struct sysfs_fcn<std::string>
-{
-  using ValueType = std::string;
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry)
-  {
-    std::string err;
-    ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
-  {
-    std::string err;
-    dev->sysfs_put(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-  }
-};
-
-template <typename VectorValueType>
-struct sysfs_fcn<std::vector<VectorValueType>>
-{
-  //using ValueType = std::vector<std::string>;
-  using ValueType = std::vector<VectorValueType>;
-
-  static ValueType
-  get(const pdev& dev, const char* subdev, const char* entry)
-  {
-    std::string err;
-    ValueType value;
-    dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
-  {
-    std::string err;
-    dev->sysfs_put(subdev, entry, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
   }
 };
 
@@ -1365,6 +1341,10 @@ initialize_query_table()
   emplace_sysfs_get<query::cage_temp_1>                        ("xmc", "xmc_cage_temp1");
   emplace_sysfs_get<query::cage_temp_2>                        ("xmc", "xmc_cage_temp2");
   emplace_sysfs_get<query::cage_temp_3>                        ("xmc", "xmc_cage_temp3");
+  emplace_sysfs_get<query::dimm_temp_0>                        ("xmc", "xmc_dimm_temp0");
+  emplace_sysfs_get<query::dimm_temp_1>                        ("xmc", "xmc_dimm_temp1");
+  emplace_sysfs_get<query::dimm_temp_2>                        ("xmc", "xmc_dimm_temp2");
+  emplace_sysfs_get<query::dimm_temp_3>                        ("xmc", "xmc_dimm_temp3");
   emplace_sysfs_get<query::v12v_pex_millivolts>                ("xmc", "xmc_12v_pex_vol");
   emplace_sysfs_get<query::v12v_pex_milliamps>                 ("xmc", "xmc_12v_pex_curr");
   emplace_sysfs_get<query::v12v_aux_millivolts>                ("xmc", "xmc_12v_aux_vol");
@@ -1468,6 +1448,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
+  emplace_func0_request<query::pcie_id,                        pcie_id>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
   emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();
@@ -1503,9 +1484,6 @@ initialize_query_table()
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
-
-  emplace_func0_request<query::aie_tiles_stats,                aie_tiles_stats>();
-  emplace_func4_request<query::aie_tiles_status_info,          aie_tiles_status_info>();
 
   emplace_func4_request<query::debug_ip_layout_path,           debug_ip_layout_path>();
   emplace_func0_request<query::num_live_processes,             num_live_processes>();

@@ -265,13 +265,13 @@ namespace {
     int numTileMemTileTraceEvents[params->NUM_MEM_TILE_TRACE_EVENTS + 1] = {0};
 
     // Create ConfigMetrics Map
-    std::map<xrt_core::edge::aie::tile_type, uint8_t> configMetrics;
+    std::map<xdp::tile_type, uint8_t> configMetrics;
     // Create Channel Map
-    std::map<xrt_core::edge::aie::tile_type, uint8_t> configChannel0;
-    std::map<xrt_core::edge::aie::tile_type, uint8_t> configChannel1;
+    std::map<xdp::tile_type, uint8_t> configChannel0;
+    std::map<xdp::tile_type, uint8_t> configChannel1;
 
     for (int i = 0; i < params->numTiles; i++) {
-      auto tile = xrt_core::edge::aie::tile_type();
+      auto tile = xdp::tile_type();
       tile.row = params->tiles[i].row;
       tile.col = params->tiles[i].col;
       configMetrics.insert({tile, params->tiles[i].metricSet});

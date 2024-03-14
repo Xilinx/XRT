@@ -2,7 +2,7 @@
 # Copyright (C) 2022-2023 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
-if (XDP_MINIMAL_BUILD STREQUAL "yes")
+if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
 
   add_subdirectory(native)
   add_subdirectory(user)
@@ -49,5 +49,5 @@ else()
 
 endif()
 
-# Matches XDP_MINIMAL_BUILD
+# Matches XDP_CLIENT_BUILD_CMAKE
 endif()

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // Sub Commands
 #include "SubCmdAdvanced.h"
@@ -46,11 +46,15 @@ R"(
     "validate": [{
       "test": ["aux-connection", "pcie-link", "sc-version", "verify", "dma", "iops", "mem-bw", "p2p", "m2m", "hostmem-bw", "bist", "vcu", "aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"]
     }]
+  },{
+    "reset": [{}]
+  },{
+    "program": [{}]
   }]
 },{
   "aie": [{
     "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions"]
+      "report": ["electrical", "host", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
@@ -62,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["verify", "df-bw", "tct-one-col"]
+      "test": ["verify", "df-bw", "tct-one-col", "tct-all-col"]
     }]
   }]
 }]
@@ -111,7 +115,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, executable, description, subCommands);
+    main_( argc, argv, executable, description, subCommands, configTree);
     return 0;
   } catch (const xrt_core::error& e) {
     // Clean exception exit

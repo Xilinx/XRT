@@ -96,23 +96,23 @@ std::shared_ptr<pci::dev>
 system_linux::
 get_pcidev(unsigned index, bool is_user) const
 {
-  try {
-    if (is_user) {
-      if (index < user_ready_list.size())
-        return user_ready_list[index];
+  if (is_user) {
+    if (index < user_ready_list.size())
+      return user_ready_list[index];
 
-      if ((index - user_ready_list.size()) < user_nonready_list.size())
-        return user_nonready_list.at(index - user_ready_list.size());
-    }
-
+    if ((index - user_ready_list.size()) < user_nonready_list.size())
+      return user_nonready_list.at(index - user_ready_list.size());
+  }
+  else {
     if (index < mgmt_ready_list.size())
       return mgmt_ready_list[index];
 
-    return mgmt_nonready_list.at(index - mgmt_ready_list.size());
+    if ((index - mgmt_ready_list.size()) < mgmt_nonready_list.size())
+      return mgmt_nonready_list.at(index - mgmt_ready_list.size());
   }
-  catch (const std::exception&) {
-    return nullptr;
-  }
+
+  // given index is not present in list
+  throw std::runtime_error(" No such device with index '"+ std::to_string(index) + "'");
 }
 
 size_t
@@ -178,21 +178,24 @@ get_device_id(const std::string& bdf) const
   if (bdf.find_first_not_of("0123456789") == std::string::npos)
     return system::get_device_id(bdf);
 
-  unsigned int i = 0;
-  for (auto dev = get_pcidev(0); dev; dev = get_pcidev(++i)) {
+  try {
+    for (unsigned int i = 0;; i++) {
+      auto dev = get_pcidev(i);
       // [dddd:bb:dd.f]
       auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->m_domain % dev->m_bus % dev->m_dev % dev->m_func);
       if (dev_bdf == bdf)
         return i;
-      //consider default domain as 0000 and try to find a matching device
-      if(dev->m_domain == 0) {
+      // consider default domain as 0000 and try to find a matching device
+      if (dev->m_domain == 0) {
         dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % dev->m_bus % dev->m_dev % dev->m_func);
-        if(dev_bdf == bdf)
+        if (dev_bdf == bdf)
           return i;
       }
+    }
   }
-
-  throw xrt_core::system_error(EINVAL, "No such device '" + bdf + "'");
+  catch (...) {
+    throw xrt_core::system_error(EINVAL, "No such device '" + bdf + "'");
+  }
 }
 
 std::pair<device::id_type, device::id_type>

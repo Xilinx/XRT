@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 
@@ -51,7 +51,6 @@
 #include "plugin/xdp/hal_device_offload.h"
 
 #include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/pl_deadlock.h"
 #else
 #include "plugin/xdp/hw_emu_device_offload.h"
 #endif
@@ -1903,7 +1902,14 @@ import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
   return shim->xclImportBO(ehdl, 0);
 }
 
-
+// Function for converting raw buffer handle returned by some of the
+// shim functions into xrt_core::buffer_handle
+std::unique_ptr<xrt_core::buffer_handle>
+get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl)
+{
+  auto shim = get_shim_object(handle);
+  return std::make_unique<ZYNQ::shim::buffer_object>(shim, bhdl);
+}
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
 
@@ -2192,7 +2198,6 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #ifndef __HWEM__
     xdp::hal::flush_device(handle);
     xdp::aie::flush_device(handle);
-    xdp::pl_deadlock::flush_device(handle);
 #else
     xdp::hal::hw_emu::flush_device(handle);
 #endif
@@ -2246,8 +2251,6 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::aie::ctr::update_device(handle);
     xdp::aie::sts::update_device(handle);
 #ifndef __HWEM__
-    xdp::pl_deadlock::update_device(handle);
-
     START_DEVICE_PROFILING_CB(handle);
 #else
     xdp::hal::hw_emu::update_device(handle);

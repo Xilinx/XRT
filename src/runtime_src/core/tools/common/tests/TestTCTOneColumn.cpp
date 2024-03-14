@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -22,7 +23,7 @@ static constexpr int itr_count = 10000;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTOneColumn::TestTCTOneColumn()
   : TestRunner("tct-one-col", 
-                "Measure average TCT processing time",
+                "Measure average TCT processing time for one column",
                 "validate.xclbin")
                 {
                   m_dpu_name = "tct_1col.txt";
@@ -77,10 +78,21 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  auto device_id = xrt_core::query::pcie_device::to_string(xrt_core::device_query<xrt_core::query::pcie_device>(dev));
-  std::filesystem::path xpath{device_id};
-  xpath /= m_xclbin;
-  ptree.put("xclbin", xpath.string());
+  #ifdef _WIN32
+  // workaround: can't rename files when copying to driver store
+  // so need to name the files as _phx and _stx
+  // will revisit this after the current release
+  auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
+  switch (device_id) {
+  case 5378: // 0x1502
+    ptree.put("xclbin", "validate_phx.xclbin");
+    break;
+  case 6128: // 0x17f0
+    ptree.put("xclbin", "validate_stx.xclbin");
+    break;
+  }
+  #endif
+
 
   auto xclbin_path = findXclbinPath(dev, ptree);
   if (!std::filesystem::exists(xclbin_path)) {
@@ -118,21 +130,16 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   auto kernelName = xkernel.get_name();
   logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
-  auto working_dev = xrt::device{dev->get_device_id()};
+  auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel kernel{hwctx, kernelName};
 
   // Find DPU instruction file
-  std::string dpu_instr;
-  try {
-    dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
-  }
-  catch(const std::exception& ex) {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
+  std::string dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
+  if (!std::filesystem::exists(dpu_instr))
     return ptree;
-  }
+
   logger(ptree, "DPU-Sequence", dpu_instr);
 
   size_t instr_size = 0;

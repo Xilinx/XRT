@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -188,11 +188,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
       else
         std::cout << "Device list" << std::endl;
 
-      for(auto& kd : dev_pt) {
-        const boost::property_tree::ptree& dev = kd.second;
-        const std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-        std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
-      }
+      std::cout << XBUtilities::str_available_devs(m_isUserDomain) << std::endl;
     }
   }
 

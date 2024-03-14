@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,10 +18,15 @@
 #ifndef HAL_DEVICE_OFFLOAD_PLUGIN_DOT_H
 #define HAL_DEVICE_OFFLOAD_PLUGIN_DOT_H
 
-#include <vector>
 #include <map>
+#include <memory>
+#include <vector>
 
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
+
+namespace xrt {
+  class device;
+}
 
 namespace xdp {
 
@@ -35,7 +40,7 @@ namespace xdp {
     //  from a device at any time (even if the user has closed their
     //  handles) we need to open all the devices and keep our own handles
     //  to them.
-    std::vector<void*> deviceHandles ;
+    std::vector<std::unique_ptr<xrt::device>> xrtDevices ;
     std::map<uint64_t, void*> deviceIdToHandle ;
 
     virtual void readTrace() ;

@@ -800,6 +800,66 @@ The above code shows
 
 
 
+Profiling
+---------
+
+In Versal ACAPs with AI Engines, the XRT Profiling class (``xrt::aie::profiling``) and its member functions can be used to configure AI Engine hardware resources for performance profiling and event tracing.
+
+Create Profiling Event
+~~~~~~~~~~~~~~~~~~~~~~
+
+The class constructor ``xrt::aie::profiling`` is used to create profiling event object as shown below 
+
+.. code:: c
+      :number-lines: 35
+           
+           auto event = xrt::aie::profiling(device);
+           
+The profling object can be used to execute the profiling functions and collect profile statistics by calling profiling APIs.
+
+Start Profiling
+~~~~~~~~~~~~~~~
+
+The member function ``xrt::aie::profiling::start()`` is used to start performance counters in AI Engine as per the profiling option passed as an argument. This function configures the performance counters in the AI Engine and starts profiling.
+
+
+.. code:: c
+      :number-lines: 45
+           
+           auto graph = xrt::graph(device, xclbin_uuid, "graph_name");
+           auto handle = event.start(xrt::aie::profiling::profiling_option option, std::string& port1, std::string& port2, int value);
+           
+           // run graph 
+           ...
+           s2mm_run.wait();
+           
+It returns a handle to be used by read and stop.
+
+Read Profiling
+~~~~~~~~~~~~~~
+
+The ``xrt::aie::profiling::read`` function will return the current performance counter value associated with the profiling handle. It can be used using profiling event object as shown below
+
+.. code:: c
+      :number-lines: 35
+           
+           long long cycle_count = profile.read();
+           
+Stop Profiling
+~~~~~~~~~~~~~~
+
+The ``xrt::aie::profiling::stop`` function stops the performance profiling associated with the profiling handle and releases the corresponding hardware resources.
+
+.. code:: c
+      :number-lines: 35
+           
+        event.stop();
+        double throughput = output_size_in_bytes / (cycle_count *0.8 * 1e-3); 
+        // Every AIE cycle is 0.8ns in production board
+        std::cout << "Throughput of the graph: " << throughput << " MB/s" << std::endl;
+           
+
+
 Asynchornous Programming with XRT (experimental)
 ------------------------------------------------
 

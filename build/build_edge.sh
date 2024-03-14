@@ -81,8 +81,8 @@ enable_vdu_init()
     INIT_SCRIPT=$APU_RECIPES_DIR/vdu-init
 
     if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n vdu-init --enable
+        petalinux-config --silentconfig
+        petalinux-create -t apps --template install -n vdu-init --enable
     fi
 
     cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
@@ -167,8 +167,8 @@ config_versal_project()
     INIT_SCRIPT=$APU_RECIPES_DIR/init-apu
 
     if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-	$PETA_BIN/petalinux-create -t apps --template install -n init-apu --enable
+        petalinux-config --silentconfig
+	petalinux-create -t apps --template install -n init-apu --enable
     fi
 
     cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu/files
@@ -181,8 +181,8 @@ config_versal_project()
     INIT_SCRIPT=$APU_RECIPES_DIR/apu-boot
 
     if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n apu-boot --enable
+        petalinux-config --silentconfig
+        petalinux-create -t apps --template install -n apu-boot --enable
     fi
 
     cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
@@ -195,8 +195,8 @@ config_versal_project()
     INIT_SCRIPT=$APU_RECIPES_DIR/skd.sh
 
     if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n skd --enable
+        petalinux-config --silentconfig
+        petalinux-create -t apps --template install -n skd --enable
     fi
 
     cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
@@ -282,9 +282,11 @@ if [[ $clean == 1 ]]; then
 fi
 
 # we pick Petalinux BSP
-if [ -f $SETTINGS_FILE ]; then
+if [ -f $SETTINGS_FILE  ] && [ -z $PETALINUX ]; then
+    echo "source PETALINUX from local file"
     source $SETTINGS_FILE
 fi
+
 source $PETALINUX/settings.sh
 
 VITIS_FILE="${THIS_SCRIPT_DIR}/vitis.build"
@@ -322,7 +324,6 @@ fi
 
 PETA_CONFIG_OPT="--silentconfig"
 ORIGINAL_DIR=`pwd`
-PETA_BIN="$PETALINUX/tools/common/petalinux/bin"
 
 echo "** START [${BASH_SOURCE[0]}] **"
 echo " PETALINUX: $PETALINUX"
@@ -343,7 +344,7 @@ PETA_CREATE_OPT="-s $PETA_BSP"
 if [ ! -d $PETALINUX_NAME ]; then
     echo " * Create PetaLinux Project: $PETALINUX_NAME"
     echo "[CMD]: petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT"
-    $PETA_BIN/petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT
+    petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT
     cd ${PETALINUX_NAME}/project-spec/meta-user/
     install_recipes .
 else
@@ -377,13 +378,17 @@ if [[ $apu_package == 1 ]]; then
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
-  $PETA_BIN/petalinux-config -c kernel --silentconfig
+  petalinux-config -c kernel --silentconfig
   echo "[CMD]: petalinux-config -c rootfs --silentconfig"
-  $PETA_BIN/petalinux-config -c rootfs --silentconfig
+  petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
-  $PETA_BIN/petalinux-build
+  petalinux-build
+  if [ $? != 0 ]; then
+    error "XRT build failed"
+  fi  
+
   if [[ $gen_sysroot == 1 ]]; then
-        $PETA_BIN/petalinux-build --sdk
+        petalinux-build --sdk
         echo "Run $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/sdk.sh to generate the syroot"
   fi
   
@@ -396,13 +401,13 @@ if [[ $apu_package == 1 ]]; then
   
   # Generate archiver for petalinux project
   if [[ $archiver == 1 ]]; then
-        $PETA_BIN/petalinux-build --archiver
+        petalinux-build --archiver
   fi
   
 else
   # Run just xrt build if -full option is not provided
   echo "[CMD]: petalinux-build -c xrt"
-  $PETA_BIN/petalinux-build -c xrt
+  petalinux-build -c xrt
   if [ $? != 0 ]; then
     error "XRT build failed"
   fi

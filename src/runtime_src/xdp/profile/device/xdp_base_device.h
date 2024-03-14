@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,6 +20,7 @@
 #define _XDP_PROIFLE_XDP_BASE_DEVICE_H
 
 #include<string>
+#include<vector>
 #include "core/include/xrt.h"
 
 namespace xdp {
@@ -42,11 +43,7 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) = 0;
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
-  // Access to IP in IP_LAYOUT
-  virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data) = 0;
-  virtual int initXrtIP(const char *name, uint64_t base, uint32_t range) = 0;
-
-  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) = 0;
+  virtual std::vector<char> getDebugIpLayout() = 0;
 
   // Only device RAM
   virtual size_t alloc(size_t sz, uint64_t memoryIndex) = 0;

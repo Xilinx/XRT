@@ -35,7 +35,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for core modules
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(int hwGen)
+  std::map<std::string, std::vector<XAie_Events>> getCoreEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
@@ -61,10 +61,10 @@ namespace xdp::aie::profile {
 
     if (hwGen == 1) {
       eventSets["floating_point"]   = {XAIE_EVENT_FP_OVERFLOW_CORE,    XAIE_EVENT_FP_UNDERFLOW_CORE,
-                                        XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
+                                       XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_DIV_BY_ZERO_CORE};
     } else {
       eventSets["floating_point"]   = {XAIE_EVENT_FP_HUGE_CORE,        XAIE_EVENT_INT_FP_0_CORE, 
-                                        XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
+                                       XAIE_EVENT_FP_INVALID_CORE,     XAIE_EVENT_FP_INF_CORE};
     }
 
     return eventSets;
@@ -72,8 +72,10 @@ namespace xdp::aie::profile {
 
   /****************************************************************************
    * Get metric sets for memory modules
+   * 
+   * NOTE: Set names common with core module will be auto-specified when parsing
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets(int hwGen)
+  std::map<std::string, std::vector<XAie_Events>> getMemoryEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
 
@@ -84,25 +86,23 @@ namespace xdp::aie::profile {
 
     if (hwGen == 1) {
       eventSets["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
-                                        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM};
+                                       XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM};
       eventSets["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
-                                        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM};
+                                       XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM};
       eventSets["s2mm_throughputs"] = {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-                                        XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM};
+                                       XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM};
       eventSets["mm2s_throughputs"] = {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-                                        XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM};
+                                       XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM};
     } else {
       eventSets["dma_stalls_s2mm"]  = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-                                        XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM};
+                                       XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_MEM};
       eventSets["dma_stalls_mm2s"]  = {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM,
-                                        XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
+                                       XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM};
       eventSets["s2mm_throughputs"] = {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
-                                        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
+                                       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_MEM};
       eventSets["mm2s_throughputs"] = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM,
-                                        XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
+                                       XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM};
     }
-    eventSets["write_throughputs"]  = eventSets["s2mm_throughputs"];
-    eventSets["read_throughputs"]   = eventSets["mm2s_throughputs"];
 
     return eventSets;
   }
@@ -110,7 +110,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    * Get metric sets for interface tiles
    ***************************************************************************/
-  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(int hwGen)
+  std::map<std::string, std::vector<XAie_Events>> getInterfaceTileEventSets(const int hwGen)
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
@@ -205,8 +205,8 @@ namespace xdp::aie::profile {
   /****************************************************************************
   * Modify configured events based on the channel and hardware generation
   ***************************************************************************/
-  void modifyEvents(module_type type, uint16_t subtype, uint8_t channel,
-                                         std::vector<XAie_Events>& events, int hwGen)
+  void modifyEvents(const module_type type, const uint16_t subtype, const uint8_t channel,
+                                        std::vector<XAie_Events>& events, const int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
       return;
@@ -283,7 +283,7 @@ namespace xdp::aie::profile {
    * Get XAie module enum at the module index 
    ***************************************************************************/
 
-  XAie_ModuleType getFalModuleType(int moduleIndex)
+  XAie_ModuleType getFalModuleType(const int moduleIndex)
   {
     return falModuleTypes[moduleIndex];
   }
@@ -292,7 +292,7 @@ namespace xdp::aie::profile {
    * Get base event number for a module
    ***************************************************************************/
 
-  uint16_t getCounterBase(xdp::module_type type)
+  uint16_t getCounterBase(const xdp::module_type type)
   {
     return counterBases.at(type);
   }
@@ -300,7 +300,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
    *  Check the match of the XAie enum module type with our xdp::module_type
    ***************************************************************************/
-  bool isValidType(module_type type, XAie_ModuleType mod)
+  bool isValidType(const module_type type, const XAie_ModuleType mod)
   {
     if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
         || (type == module_type::dma)))

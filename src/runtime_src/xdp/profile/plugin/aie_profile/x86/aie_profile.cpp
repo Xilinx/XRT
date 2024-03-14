@@ -64,7 +64,7 @@ namespace xdp {
     setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
   }
 
-  bool AieProfile_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle)
+  bool AieProfile_x86Impl::setMetricsSettings(const uint64_t deviceId, void* handle)
   {
     int NUM_MODULES = metadata->getNumModules();
 
@@ -92,8 +92,8 @@ namespace xdp {
       for (auto& tileMetric : configMetrics) {
         profileTiles[tile_idx].col = tileMetric.first.col;
         profileTiles[tile_idx].row = tileMetric.first.row;
-        profileTiles[tile_idx].itr_mem_row = tileMetric.first.itr_mem_row;
-        profileTiles[tile_idx].itr_mem_col = tileMetric.first.itr_mem_col;
+        profileTiles[tile_idx].stream_id = tileMetric.first.stream_id;
+        profileTiles[tile_idx].is_master = tileMetric.first.is_master;
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
         profileTiles[tile_idx].metricSet =
@@ -172,7 +172,7 @@ namespace xdp {
     return true;
   }
 
-  void AieProfile_x86Impl::poll(uint32_t index, void* handle)
+  void AieProfile_x86Impl::poll(const uint32_t index, void* handle)
   {
     try {
       // input bo

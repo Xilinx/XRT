@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,12 +18,16 @@
 
 #include "xdp_hal_device.h"
 #include "core/common/time.h"
+#include "core/common/ishim.h"
 #include "core/common/system.h"
+#include "core/common/message.h"
+#include "core/common/query_requests.h"
 #include "core/common/xrt_profiling.h"
 
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/experimental/xrt_device.h"
 
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include<iostream>
@@ -36,11 +40,13 @@
 
 namespace xdp {
 
+using severity_level = xrt_core::message::severity_level;
 
 HalDevice::HalDevice(void* halDeviceHandle)
           : Device(),
             mHalDevice(halDeviceHandle)
 {
+  mXrtCoreDevice = xrt_core::get_userpf_device(mHalDevice);
 }
 
 HalDevice::~HalDevice()
@@ -49,13 +55,23 @@ HalDevice::~HalDevice()
 
 std::string HalDevice::getDebugIPlayoutPath()
 {
-  char layoutPath[512];
-  xclGetDebugIPlayoutPath(mHalDevice, layoutPath, 512);
-  return std::string(layoutPath);
+  return util::getDebugIpLayoutPath(mXrtCoreDevice->get_user_handle());
 }
 uint32_t HalDevice::getNumLiveProcesses()
 {
-  return xclGetNumLiveProcesses(mHalDevice);
+  uint32_t liveProcessesOnDevice = 0;
+  try {
+    liveProcessesOnDevice = xrt_core::device_query<xrt_core::query::num_live_processes>(mXrtCoreDevice);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving number of live processes. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+  return liveProcessesOnDevice;
 }
 int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
@@ -63,7 +79,14 @@ int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-  return xclWrite(mHalDevice, space, offset, hostBuf, size);
+  try{
+    mXrtCoreDevice->xwrite(space, offset, hostBuf, size);
+  }
+  catch(const std::exception&){
+    std::string msg = "Profiling will not be available. Reason: xwrite failed";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
+  }
+  return 0;
 #ifndef _WIN32
 #pragma GCC diagnostic pop
 #endif
@@ -74,63 +97,63 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-  return xclRead(mHalDevice, space, offset, hostBuf, size);
+  try{
+    mXrtCoreDevice->xread(space, offset, hostBuf, size);
+  }
+  catch(const std::exception&){
+    std::string msg = "Profiling will not be available. Reason: xread failed";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
+  }
+  return 0;
 #ifndef _WIN32
 #pragma GCC diagnostic pop
 #endif
 }
 
-// This uses mmap and is recommended way to access an XRT IP
-int HalDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
+int HalDevice::unmgdRead(unsigned , void *buf, size_t count, uint64_t offset)
 {
-  return xclRegRead(mHalDevice, index, offset, data);
-}
-
-#if defined(_WIN32) || defined(XDP_HWEMU_USING_HAL_BUILD)
-int HalDevice::initXrtIP(const char * /*name*/, uint64_t /*base*/, uint32_t /*range*/)
-{
-  // The required APIs are missing from windows and hw emulation shim
-  return -1;
-}
-#else
-int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
-{
-  // We cannot always get index from ip_layout
-  // For some cases, this is determined by the driver
-  int index = xclIPName2Index(mHalDevice, name);
-  if (index < 0)
-    return index;
-
-  // A shared context is needed
-  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(mHalDevice);
-  int ret = xclOpenContext(mHalDevice, device->get_xclbin_uuid().get(), index, true);
-  if (ret < 0)
-    return ret;
-
-  // Open access to IP Registers. base should be > 0x10
-  ret = xclIPSetReadRange(mHalDevice, index, base, range);
-  if (ret < 0)
-    return ret;
-
-  return index;
-}
-#endif
-
-
-int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
-{
-  return xclUnmgdPread(mHalDevice, flags, buf, count, offset);
+  try{
+    mXrtCoreDevice->unmgd_pread(buf, count, offset);
+  }
+  catch(const std::exception& ex){
+    xrt_core::message::send(severity_level::error, "XRT", ex.what());
+  }
+  return 0;
 }
 
 
-void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+std::vector<char> HalDevice::getDebugIpLayout()
 {
-  xclGetDebugIpLayout(mHalDevice, buffer, size, size_ret);
-}
+  std::vector<char> bufferData;
+  try {
+    bufferData = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(mXrtCoreDevice);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving debug IP layout.";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
+  }
+  return bufferData;
+ }
 
 double HalDevice::getDeviceClock()
 {
-  return xclGetDeviceClockFreqMHz(mHalDevice);
+  double deviceClockFreqMHz = 0.0;
+  try {
+    deviceClockFreqMHz = xrt_core::device_query<xrt_core::query::device_clock_freq_mhz>(mXrtCoreDevice);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving device clock frequency. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+  return deviceClockFreqMHz;
 }
 
 uint64_t HalDevice::getTraceTime()
@@ -140,12 +163,39 @@ uint64_t HalDevice::getTraceTime()
 
 int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  return xclGetTraceBufferInfo(mHalDevice, nSamples, traceSamples, traceBufSz);
+  try {
+    auto traceBufInfo = xrt_core::device_query<xrt_core::query::trace_buffer_info>(mXrtCoreDevice, nSamples);
+    traceSamples = traceBufInfo.samples;
+    traceBufSz = traceBufInfo.buf_size;
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving trace buffer information. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+  return 0;
 }
 
 int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
 {
-  return xclReadTraceData(mHalDevice, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  std::vector<uint32_t> traceData(traceBufSz);
+  xrt_core::query::read_trace_data::args traceDataArgs = {traceBufSz, numSamples, ipBaseAddress, wordsPerSample};
+  try {
+    traceData = xrt_core::device_query<xrt_core::query::read_trace_data>(mXrtCoreDevice, traceDataArgs);
+    std::memcpy(traceBuf, traceData.data(), traceData.size()*sizeof(uint32_t));
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving trace data.";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
+  }
+  return 0;
 }
 
 size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
@@ -201,32 +251,88 @@ uint64_t HalDevice::getBufferDeviceAddr(size_t id)
 
 double HalDevice::getHostMaxBwRead()
 {
-  return xclGetHostReadMaxBandwidthMBps(mHalDevice);
+  double hostMaxReadBW = 0.0;
+  try {
+    hostMaxReadBW = xrt_core::device_query<xrt_core::query::host_max_bandwidth_mbps>(mXrtCoreDevice, true);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented 
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving host max read bandwidth. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+  return hostMaxReadBW;
 }
 
 double HalDevice::getHostMaxBwWrite()
 {
-   return xclGetHostWriteMaxBandwidthMBps(mHalDevice);
+  double hostMaxWriteBW = 0.0;
+  try {
+    hostMaxWriteBW = xrt_core::device_query<xrt_core::query::host_max_bandwidth_mbps>(mXrtCoreDevice, false);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving host max write bandwidth. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+   return hostMaxWriteBW;
 }
 
 double HalDevice::getKernelMaxBwRead()
 {
-  return xclGetKernelReadMaxBandwidthMBps(mHalDevice);
+  double kernelMaxReadBW = 0.0;
+  try {
+    kernelMaxReadBW = xrt_core::device_query<xrt_core::query::kernel_max_bandwidth_mbps>(mXrtCoreDevice, true);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving kernel max read bandwidth. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+  return kernelMaxReadBW;
 }
 
 double HalDevice::getKernelMaxBwWrite()
 {
-   return xclGetKernelWriteMaxBandwidthMBps(mHalDevice);
+  double kernelMaxWriteBW = 0.0;
+  try {
+    kernelMaxWriteBW = xrt_core::device_query<xrt_core::query::kernel_max_bandwidth_mbps>(mXrtCoreDevice, false);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving kernel max write bandwidth. Using default value.";
+    xrt_core::message::send(severity_level::warning, "XRT", msg);
+  }
+  return kernelMaxWriteBW;
 }
 
 std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
 {
-  constexpr size_t maxSz = 256;
-  char buffer[maxSz];
-  buffer[maxSz - 1] = '\0';
-  xclGetSubdevPath(mHalDevice, subdev.c_str(), index, buffer, maxSz);
-
-  return std::string(buffer);
+  std::string subDevicePath = "" ;
+  xrt_core::query::sub_device_path::args subDevicePathArgs = {subdev, index};
+  try {
+    subDevicePath = xrt_core::device_query<xrt_core::query::sub_device_path>(mXrtCoreDevice, subDevicePathArgs);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    //query is not implemented
+  }
+  catch (const std::exception&) {
+    // error retrieving information
+    std::string msg = "Error while retrieving sub device path.";
+    xrt_core::message::send(severity_level::error, "XRT", msg);
+  }
+  return subDevicePath;
 }
 
 }

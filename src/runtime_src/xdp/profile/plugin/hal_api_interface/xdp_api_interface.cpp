@@ -115,17 +115,15 @@ namespace xdp {
     
     // readDebugIPlayout called from startProfiling : check other cases
 
-    xclDeviceInfo2 devInfo;
-    if (xclGetDeviceInfo2(deviceHandle, &devInfo) != 0)
+    std::string deviceName = util::getDeviceName(deviceHandle);
+    if (deviceName == "")
     {
       // If we cannot get device information, return an empty profile result
       return ;
     }
     
-    auto deviceNameSz = strlen(devInfo.mName);
-    results->deviceName = (char*)malloc(deviceNameSz+1);
-    memcpy(results->deviceName, devInfo.mName, deviceNameSz);
-    results->deviceName[deviceNameSz] = '\0';
+    results->deviceName = (char*)malloc(deviceName.length()+1);
+    strcpy(results->deviceName, deviceName.c_str());
     
     results->numAIM = currDevice->getNumMonitors(xdp::MonitorType::memory);
     results->numAM  = currDevice->getNumMonitors(xdp::MonitorType::accel);

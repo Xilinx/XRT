@@ -9,9 +9,9 @@ target_include_directories(core_common_xdp_profile_objects
   ${XRT_SOURCE_DIR}/runtime_src
   )
 
-if (XDP_MINIMAL_BUILD STREQUAL "yes")
+if (XDP_CLIENT_BUILD_CMAKE STREQUAL "yes")
   target_compile_definitions(core_common_xdp_profile_objects
     PRIVATE 
-    XDP_MINIMAL_BUILD=1
+    XDP_CLIENT_BUILD=1
     )
 endif()

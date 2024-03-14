@@ -38,37 +38,37 @@ namespace xdp {
     ~AieProfile_WinImpl() = default;
 
     void updateDevice();
-    void poll(uint32_t index, void* handle);
+    void poll(const uint32_t index, void* handle);
     void freeResources();
-    bool setMetricsSettings(uint64_t deviceId);
+    bool setMetricsSettings(const uint64_t deviceId);
     void configStreamSwitchPorts(
       const tile_type& tile, const XAie_LocType& loc,
       const module_type& type, const std::string& metricSet,
-      uint8_t channel
+      const uint8_t channel
     );
    private:
-      std::vector<XAie_ModuleType> falModuleTypes = {
+      const std::vector<XAie_ModuleType> falModuleTypes = {
         XAIE_CORE_MOD,
         XAIE_MEM_MOD,
         XAIE_PL_MOD,
         XAIE_MEM_MOD
       };
 
-      std::map<module_type, std::vector<uint64_t>> regValues {
+      const std::map<module_type, std::vector<uint64_t>> regValues {
         {module_type::core, {0x31520,0x31524,0x31528,0x3152C}}, 
         {module_type::dma, {0x11020,0x11024}}, 
         {module_type::shim, {0x31020, 0x31024}}, 
         {module_type::mem_tile, {0x91020,0x91024,0x91028,0x9102C}}, 
       };
 
-      std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> coreStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> coreEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memoryEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> shimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> memTileEndEvents;
 
       std::unique_ptr<aie::ClientTransaction> transactionHandler;
       aie_profile_op_t* op;

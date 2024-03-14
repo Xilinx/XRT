@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -38,7 +38,9 @@ namespace xdp {
       traceClockRateMHz(0),
       clockTrainSlope(0)
   {
-    traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
+    //This trace logger function is for PL only
+
+    traceClockRateMHz = db->getStaticInfo().getPLMaxClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
 
     xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId);
@@ -176,8 +178,8 @@ namespace xdp {
     uint64_t traceID = getTraceId(trace);
     uint64_t deviceTimestamp = getDeviceTimestamp(trace);
 
-    uint32_t slot = (traceID - min_trace_id_am) / 16;
-    uint64_t monTraceID = slot * 16 + min_trace_id_am;
+    uint32_t slot = (traceID - util::min_trace_id_am) / 16;
+    uint64_t monTraceID = slot * 16 + util::min_trace_id_am;
 
     Monitor* mon = db->getStaticInfo().getAMonitor(deviceId, xclbin, slot);
     if (!mon) {
@@ -251,7 +253,7 @@ namespace xdp {
     auto traceId = getTraceId(trace);
     auto eventFlags = getEventFlags(trace);
     auto deviceTimestamp = getDeviceTimestamp(trace);
-    auto slot = traceId - min_trace_id_asm;
+    auto slot = traceId - util::min_trace_id_asm;
 
     Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, slot);
     if (!mon) {
@@ -301,7 +303,7 @@ namespace xdp {
       if(isSingle || matchingStart.type == UNKNOWN_EVENT) {
         // add dummy start event
         strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, slot, cuId);
-        strmEvent->setDeviceTimestamp(deviceTimestamp); 
+        strmEvent->setDeviceTimestamp(deviceTimestamp);
         db->getDynamicInfo().addEvent(strmEvent);
         matchingStart.type = strmEvent->getEventType();
         matchingStart.eventID = strmEvent->getEventId();
@@ -311,7 +313,7 @@ namespace xdp {
       }
       // add end event
       strmEvent = new DeviceStreamAccess(matchingStart.eventID, hostTimestamp, streamEventType, deviceId, slot, cuId);
-      strmEvent->setDeviceTimestamp(deviceTimestamp); 
+      strmEvent->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(strmEvent);
       asmLastTrans[slot] = deviceTimestamp;
     }
@@ -383,13 +385,13 @@ namespace xdp {
           // The times are different, so we need to end the matching start
           //  and then create an additional pulse
           memEvent = new DeviceMemoryAccess(matchingStart.eventID,
-                                            hostTimestamp, ty, 
+                                            hostTimestamp, ty,
                                             deviceId, slot, cuId, memStrId);
           memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
 
           // Now create the dummy start
-          memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, 
+          memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty,
                                             deviceId, slot, cuId, memStrId);
           memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
@@ -404,7 +406,7 @@ namespace xdp {
 
       // The true end event we observed
       memEvent = new DeviceMemoryAccess(matchingStart.eventID,
-                                        hostTimestamp, ty, 
+                                        hostTimestamp, ty,
                                         deviceId, slot, cuId, memStrId);
       memEvent->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(memEvent);
@@ -571,7 +573,7 @@ namespace xdp {
          aimIndex < (db->getStaticInfo()).getNumAIM(deviceId, xclbin);
          ++aimIndex) {
 
-      uint64_t aimSlotID = (aimIndex * 2) + min_trace_id_aim;
+      uint64_t aimSlotID = (aimIndex * 2) + util::min_trace_id_aim;
       Monitor* mon =
         db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
       if (!mon)
@@ -603,7 +605,7 @@ namespace xdp {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
     for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumUserASMWithTrace(deviceId, xclbin); ++asmIndex) {
-      uint64_t asmTraceID = asmIndex + min_trace_id_asm;
+      uint64_t asmTraceID = asmIndex + util::min_trace_id_asm;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
       if(!mon) {
         continue;
@@ -660,7 +662,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
+  void DeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
                                                                  int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
                                                                  uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents)
   {
@@ -802,11 +804,11 @@ namespace xdp {
         continue;
       }
 
-      bool AMPacket  = (traceId >= min_trace_id_am &&
-                        traceId <= max_trace_id_am);
-      bool AIMPacket = (traceId <= max_trace_id_aim); // min trace id aim == 0
-      bool ASMPacket = (traceId >= min_trace_id_asm &&
-                        traceId <  max_trace_id_asm);
+      bool AMPacket  = (traceId >= util::min_trace_id_am &&
+                        traceId <= util::max_trace_id_am);
+      bool AIMPacket = (traceId <= util::max_trace_id_aim); // min trace id aim == 0
+      bool ASMPacket = (traceId >= util::min_trace_id_asm &&
+                        traceId <  util::max_trace_id_asm);
       if (!AMPacket && !AIMPacket && !ASMPacket) {
         continue;
       }

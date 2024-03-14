@@ -1,6 +1,7 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
- *
+ * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -117,11 +118,6 @@ constexpr unsigned int BYTES_128BIT = 16;
 constexpr uint32_t NUM_TRACE_EVENTS = 8;
 constexpr uint32_t NUM_OUTPUT_TRACE_EVENTS = 9;
 constexpr uint32_t NUM_BROADCAST_EVENTS = 16;
-constexpr uint32_t EVENT_CORE_ACTIVE = 28;
-constexpr uint32_t EVENT_CORE_DISABLED = 29;
-constexpr uint16_t EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK = 35;
-constexpr uint16_t EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION = 37;
-constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t NUM_TRACE_PCS = 4;
 constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
@@ -129,9 +125,26 @@ constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
 constexpr uint32_t NUM_SWITCH_MONITOR_PORTS = 8;
 constexpr uint32_t NUM_CHANNEL_SELECTS = 2;
 
+constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t CORE_BROADCAST_EVENT_BASE = 107;
 constexpr uint32_t ES1_TRACE_COUNTER = 1020;
 constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
+
+constexpr uint32_t EVENT_CORE_ACTIVE = 28;
+constexpr uint32_t EVENT_CORE_DISABLED = 29;
+constexpr uint16_t EVENT_MEM_DMA_MM2S_0_STALLED_LOCK = 33;
+constexpr uint16_t EVENT_MEM_DMA_MM2S_1_STALLED_LOCK = 34;
+constexpr uint16_t EVENT_MEM_DMA_S2MM_0_STREAM_STARVATION = 35;
+constexpr uint16_t EVENT_MEM_DMA_S2MM_1_STREAM_STARVATION = 36;
+constexpr uint16_t EVENT_MEM_TILE_DMA_MM2S_SEL0_STALLED_LOCK = 35;
+constexpr uint16_t EVENT_MEM_TILE_DMA_S2MM_SEL0_STREAM_STARVATION = 37;
+
+constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
+constexpr uint32_t GROUP_CORE_FUNCTIONS_MASK        = 0x0000000C;
+constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x00002222;
+
+constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM_TILE = 0x94408;
+constexpr uint64_t AIE_OFFSET_EDGE_CONTROL_MEM      = 0x14408;
 
 }
 

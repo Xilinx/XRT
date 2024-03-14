@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -50,6 +50,7 @@ enum class key_type
   pcie_express_lane_width,
   pcie_express_lane_width_max,
   pcie_bdf,
+  pcie_id,
 
   instance,
   edge_vendor,
@@ -128,6 +129,15 @@ enum class key_type
   aie_tiles_status_info,
   aie_partition_info,
 
+  misc_telemetry,
+  aie_telemetry,
+  opcode_telemetry,
+  rtos_telemetry,
+  stream_buffer_telemetry,
+
+
+  firmware_version,
+
   idcode,
   data_retention,
   sec_level,
@@ -156,6 +166,11 @@ enum class key_type
   cage_temp_1,
   cage_temp_2,
   cage_temp_3,
+
+  dimm_temp_0,
+  dimm_temp_1,
+  dimm_temp_2,
+  dimm_temp_3,
 
   v12v_pex_millivolts,
   v12v_pex_milliamps,
@@ -454,6 +469,44 @@ struct pcie_bdf : request
     return boost::str
       (boost::format("%04x:%02x:%02x.%01x") % std::get<0>(value) %
        std::get<1>(value) % std::get<2>(value) % std::get<3>(value));
+  }
+};
+
+/**
+ *  Useful for identifying devices that utilize revision numbers. Prefer this request over pcie_device.
+ */
+struct pcie_id : request
+{
+  struct data {
+    uint16_t device_id;
+    uint8_t revision_id;
+  };
+
+  using result_type = data;
+  static const key_type key = key_type::pcie_id;
+  static const char* name() { return "pcie_id"; }
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  device_to_string(const result_type& value)
+  {
+    return boost::str(boost::format("%04x") % value.device_id);
+  }
+
+  static std::string
+  revision_to_string(const result_type& value)
+  {
+    // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
+    return boost::str(boost::format("%02x") % static_cast<uint16_t>(value.revision_id));
+  }
+
+  static std::string
+  to_path(const result_type& value)
+  {
+    // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
+    return boost::str(boost::format("%04x_%02x") % value.device_id % static_cast<uint16_t>(value.revision_id));
   }
 };
 
@@ -939,7 +992,7 @@ struct device_status : request
       case 2:
         return "UNKNOWN";
       default:
-        throw xrt_core::system_error(EINVAL, "Invalid device status: " + status);
+        throw xrt_core::system_error(EINVAL, "Invalid device status: " + std::to_string(status));
     }
   }
 };
@@ -954,7 +1007,7 @@ struct kds_cu_info : request
     uint32_t status;
     uint64_t usages;
   };
-  using result_type = std::vector<struct data>;
+  using result_type = std::vector<data>;
   using data_type = struct data;
   static const key_type key = key_type::kds_cu_info;
 
@@ -1499,9 +1552,8 @@ struct aie_tiles_status_info : request
 {
   struct parameters
   {
-    uint32_t col_size;
-    uint16_t start_col;
-    uint16_t num_cols;
+    uint32_t col_size; // The size of a status buffer for a column
+    uint16_t max_num_cols; // The maxmimum number of columns supported on the device
   };
 
   struct result
@@ -1529,10 +1581,12 @@ struct aie_partition_info : request
     hw_context_info::metadata metadata;
     uint64_t    start_col;
     uint64_t    num_cols;
-    uint64_t    usage_count;
-    uint64_t    migration_count;
-    uint64_t    bo_sync_count;
-
+    int         pid;
+    uint64_t    command_submissions;
+    uint64_t    command_completions;
+    uint64_t    migrations;
+    uint64_t    preemptions;
+    uint64_t    errors;
   };
 
   using result_type = std::vector<struct data>;
@@ -1542,9 +1596,118 @@ struct aie_partition_info : request
   get(const device* device) const = 0;
 };
 
+// Retrieves the AIE telemetry info for the device
+// While the AIE status is for live information. This is historical information
+// of the AIE column operation.
+// This query is available for Ryzen devices
+struct aie_telemetry : request
+{
+  struct data {
+    uint64_t deep_sleep_count;
+  };
+
+  using result_type = std::vector<data>;
+  static const key_type key = key_type::aie_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the miscellaneous telemetry info for the device
+// Various bits of information are not tied to anything in AIE devices.
+// This is how to get them!
+// This query is available for Ryzen devices
+struct misc_telemetry : request
+{
+  struct data {
+    uint64_t l1_interrupts;
+  };
+
+  using result_type = data;
+  static const key_type key = key_type::misc_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the opcode telemetry info for the device
+// Opcodes are the commands that are sent to the device such as EXEC_BUF or SYNC_BO
+// This query is available for Ryzen devices
+struct opcode_telemetry : request
+{
+  struct data {
+    uint64_t count;
+  };
+
+  using result_type = std::vector<data>;
+  static const key_type key = key_type::opcode_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the rtos telemetry info for the device
+// Returns historical data about how the rtos tasks operate
+// This query is available for Ryzen devices
+struct rtos_telemetry : request
+{
+  struct dtlb_data {
+    uint64_t misses;
+  };
+
+  struct data {
+    uint64_t context_starts;
+    uint64_t schedules;
+    uint64_t syscalls;
+    uint64_t dma_access;
+    uint64_t resource_acquisition;
+    std::vector<dtlb_data> dtlbs;
+  };
+
+  using result_type = std::vector<data>;
+  static const key_type key = key_type::rtos_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieve the stream buffer telemetry from the device
+// Returns historical data about how the stream buffers operate
+// Applicable to Ryzen devices
+struct stream_buffer_telemetry : request
+{
+  struct data {
+    uint64_t tokens;
+  };
+
+  using result_type = std::vector<data>;
+  static const key_type key = key_type::stream_buffer_telemetry;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
+// Retrieves the firmware version of the device.
+struct firmware_version : request
+{
+  struct data
+  {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
+    uint32_t build;
+  };
+
+  using result_type = data;
+  static const key_type key = key_type::firmware_version;
+
+  virtual std::any
+  get(const device* device) const = 0;
+};
+
 struct clock_freqs_mhz : request
 {
-  using result_type = std::vector<std::string> ;
+  using result_type = std::vector<std::string>;
   static const key_type key = key_type::clock_freqs_mhz;
   static const char* name() { return "clocks"; }
 
@@ -1872,6 +2035,66 @@ struct cage_temp_3 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_3;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_0 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_0;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_1 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_1;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_2 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_2;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_3 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_3;
 
   virtual std::any
   get(const device*) const = 0;
@@ -3415,7 +3638,7 @@ struct performance_mode : request
       case 3:
         return "High";
       default:
-        throw xrt_core::system_error(EINVAL, "Invalid performance status: " + status);
+        throw xrt_core::system_error(EINVAL, "Invalid performance status: " + std::to_string(status));
     }
   }
 };

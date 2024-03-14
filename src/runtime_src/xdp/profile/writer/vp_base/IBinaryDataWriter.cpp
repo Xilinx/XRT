@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,14 @@
  * under the License.
  */
 
-#ifndef PL_DEADLOCK_DOT_H
-#define PL_DEADLOCK_DOT_H
+#define XDP_CORE_SOURCE
 
-namespace xdp {
-namespace pl_deadlock {
+#include "IBinaryDataWriter.h"
 
-  void load();
-  void register_callbacks(void* handle);
-  void warning_callbacks();
+namespace xdp::AIEBinaryData
+{
 
-  void update_device(void* handle);
-  void flush_device(void* handle);
+IBinaryDataWriter::IBinaryDataWriter()  = default;
+IBinaryDataWriter::~IBinaryDataWriter() = default;
 
-} // end namespace pl_deadlock
-} // end namespace xdp
-
-#endif
+} // AIEBinaryData

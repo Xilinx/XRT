@@ -91,7 +91,7 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
       uint32_t regValue = 0;
       read(TS2MM_AP_CTRL, BYTES_PER_WORD, &regValue);
       std::stringstream msg;
-      msg << "AIE TraceS2MM AP control register after first start: 0x" << std::hex << regValue;
+      msg << "AIE TraceS2MM AP control register after second start: 0x" << std::hex << regValue;
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
     // End of temporary code

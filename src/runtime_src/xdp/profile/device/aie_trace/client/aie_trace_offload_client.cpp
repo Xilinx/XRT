@@ -107,8 +107,8 @@ namespace xdp {
       // Todo: get this from aie metadata
       XAie_LocType loc;
       XAie_DmaDesc DmaDesc;
-      loc = XAie_TileLoc(static_cast<uint8_t>(traceGMIO->shimColumn), 0);
-      uint8_t s2mm_ch_id = static_cast<uint8_t>(traceGMIO->channelNumber);
+      loc = XAie_TileLoc(traceGMIO->shimColumn, 0);
+      uint8_t s2mm_ch_id = traceGMIO->channelNumber;
       uint8_t s2mm_bd_id = 15; /* for now use last bd */
 
       // S2MM BD

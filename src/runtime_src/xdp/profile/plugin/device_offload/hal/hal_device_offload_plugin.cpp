@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
@@ -41,31 +42,31 @@ namespace xdp {
   {
     db->registerInfo(info::device_offload) ;
 
-    // Open all of the devices that exist so we can keep our own pointer
-    //  to access them.
-    uint32_t index = 0 ;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    
-    while (handle != nullptr)
-    {
-      // First, keep track of all open handles
-      deviceHandles.push_back(handle) ;
+    // Open all existing devices so that XDP can access the owned handles
+    uint32_t numDevices = xrt_core::get_total_devices(true).second;
+    uint32_t index = 0;
+    while (index < numDevices) {
+      try {
+        xrtDevices.push_back(std::make_unique<xrt::device>(index));
 
-      // Second, add all the information and a writer for this device
-      std::array<char, sysfs_max_path_length> pathBuf = {0};
-      xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
-      std::string path(pathBuf.data());
-      if (path != "") {
-        addDevice(path) ;
+        auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
+        std::string path = util::getDebugIpLayoutPath(ownedHandle);
 
-        // Now, keep track of the device ID for this device so we can use
-        //  our own handle
-        deviceIdToHandle[db->addDevice(path)] = handle ;
+        if ("" != path) {
+          addDevice(path); 
+
+          // Now, map device ID of this device with device handle owned by XDP
+          deviceIdToHandle[db->addDevice(path)] = ownedHandle;
+        }
+
+        // Move on to the next device
+        ++index;
+      } catch (const std::runtime_error& e) {
+        std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
+        ++index;
+        continue;
       }
-
-      // Move on to the next device
-      ++index ;
-      handle = xclOpen(index, "/dev/null", XCL_INFO) ;
     }
   }
 
@@ -85,11 +86,6 @@ namespace xdp {
     }
 
     clearOffloaders();
-
-    for (auto h : deviceHandles)
-    {
-      xclClose(h) ;
-    }
   }
 
   void HALDeviceOffloadPlugin::readTrace()
@@ -106,11 +102,7 @@ namespace xdp {
   void HALDeviceOffloadPlugin::flushDevice(void* handle)
   {
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
-    char pathBuf[maxPathLength] ;
-    memset(pathBuf, 0, maxPathLength) ;
-    xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
-
-    std::string path(pathBuf) ;
+    std::string path = util::getDebugIpLayoutPath(handle);
     if (path == "")
       return ;
     
@@ -132,11 +124,7 @@ namespace xdp {
     //  We will query information on that passed in handle, but we
     //  should user our own locally opened handle to access the physical
     //  device.
-    char pathBuf[maxPathLength] ;
-    memset(pathBuf, 0, maxPathLength) ;
-    xclGetDebugIPlayoutPath(userHandle, pathBuf, maxPathLength-1) ;
-
-    std::string path(pathBuf) ;
+    std::string path = util::getDebugIpLayoutPath(userHandle);
     if (path == "")
       return ;
 
@@ -161,9 +149,9 @@ namespace xdp {
     //  will be needed later
     (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
     {
-      struct xclDeviceInfo2 info ;
-      if (xclGetDeviceInfo2(userHandle, &info) == 0)
-        (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+      std::string deviceName = util::getDeviceName(userHandle);
+      if (deviceName != "")
+        (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
     }
 
     // For the HAL level, we must create a device interface using 

@@ -59,6 +59,8 @@ namespace xdp {
           AieTileTraceConfig_C.put("column", tile->column);
           AieTileTraceConfig_C.put("row", tile->row);
           AieTileTraceConfig_C.put("event_trace_name", tile->trace_metric_set);
+          AieTileTraceConfig_C.put("active_core", tile->active_core);
+          AieTileTraceConfig_C.put("active_memory", tile->active_memory);
 
           /*
           * Core Trace
@@ -130,7 +132,41 @@ namespace xdp {
           }
 
           {
-            core_trace_config.put("PortTraceConfig", tile->core_trace_config.port_trace);
+            bpt::ptree port_trace_config;
+            bpt::ptree port_trace_ids;
+            bpt::ptree port_trace_is_master;
+
+            for (uint32_t i=0; i < NUM_SWITCH_MONITOR_PORTS; ++i) {
+              bpt::ptree port1;
+              bpt::ptree port2;
+              port1.put("", tile->core_trace_config.port_trace_ids[i]);
+              port2.put("", tile->core_trace_config.port_trace_is_master[i]);
+              port_trace_ids.push_back(std::make_pair("", port1));
+              port_trace_is_master.push_back(std::make_pair("", port2));
+            }
+
+            port_trace_config.add_child("traced_port_ids", port_trace_ids);
+            port_trace_config.add_child("master_str", port_trace_is_master);
+            core_trace_config.add_child("PortTraceConfig", port_trace_config);
+          }
+
+          {
+            bpt::ptree sel_trace_config;
+            bpt::ptree s2mm_channels;
+            bpt::ptree mm2s_channels;
+
+            for (uint32_t i=0; i < NUM_CHANNEL_SELECTS; ++i) {
+              bpt::ptree chan1;
+              bpt::ptree chan2;
+              chan1.put("", tile->core_trace_config.s2mm_channels[i]);
+              chan2.put("", tile->core_trace_config.mm2s_channels[i]);
+              s2mm_channels.push_back(std::make_pair("", chan1));
+              mm2s_channels.push_back(std::make_pair("", chan2));
+            }
+            
+            sel_trace_config.add_child("s2mm_channels", s2mm_channels);
+            sel_trace_config.add_child("mm2s_channels", mm2s_channels);
+            core_trace_config.add_child("SelTraceConfig", sel_trace_config);
           }
 
           {
@@ -243,8 +279,9 @@ namespace xdp {
           AieTileTraceConfig.push_back(std::make_pair("", AieTileTraceConfig_C));
         }
         else if ((tile->type == module_type::mem_tile) || (tile->type == module_type::shim)) {
-          aie_cfg_peripheral_tile tile_trace_config = (tile->type == module_type::mem_tile) ? 
-              tile->memory_tile_trace_config : tile->interface_tile_trace_config;
+          aie_cfg_base tile_trace_config = tile->memory_tile_trace_config;
+          if (tile->type == module_type::shim) 
+            tile_trace_config = tile->interface_tile_trace_config;
 
           bpt::ptree TileTraceConfig_C;
           TileTraceConfig_C.put("column", tile->column);

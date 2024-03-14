@@ -63,8 +63,8 @@ namespace xdp {
     struct ProfileTileType {
       uint16_t row;
       uint16_t col;
-      uint16_t itr_mem_row;
-      uint16_t itr_mem_col;
+      uint16_t stream_id;
+      uint16_t is_master;
       uint64_t itr_mem_addr;
       bool is_trigger;
       uint8_t metricSet;

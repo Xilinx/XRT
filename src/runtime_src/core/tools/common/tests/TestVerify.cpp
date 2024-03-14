@@ -1,4 +1,5 @@
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -23,16 +24,15 @@ TestVerify::TestVerify()
 boost::property_tree::ptree
 TestVerify::run(std::shared_ptr<xrt_core::device> dev)
 {
-  auto device_name = xrt_core::device_query_default<xrt_core::query::rom_vbnv>(dev, "");
   boost::property_tree::ptree ptree;
-  //to-do: Do it in a cleaner way
-  if (device_name.find("Ryzen") != std::string::npos) {
-    //run ipu verify
+  switch (xrt_core::device_query<xrt_core::query::device_class>(dev)) {
+  case xrt_core::query::device_class::type::ryzen:
     ptree = TestIPU{}.run(dev);
-  }
-  else {
+    break;
+  case xrt_core::query::device_class::type::alveo:
     ptree = get_test_header();
     runTest(dev, ptree);
+    break;
   }
   return ptree;
 }
@@ -40,7 +40,7 @@ TestVerify::run(std::shared_ptr<xrt_core::device> dev)
 void
 TestVerify::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::ptree& ptree)
 {
-  xrt::device device(dev->get_device_id());
+  xrt::device device(dev);
 
   const std::string test_path = findPlatformPath(dev, ptree);
   if (test_path.empty()) {

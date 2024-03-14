@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -91,7 +91,7 @@ namespace xdp {
 
     // Each monitor can be configured either as counters only, or as
     //  counters + trace during compilation.  This keeps track of that
-    //  information and is set based on the properties field in debug_ip_layout 
+    //  information and is set based on the properties field in debug_ip_layout
     bool traceEnabled = false ;
 
     // The index of the Compute Unit in the IP_LAYOUT section of the xclbin
@@ -129,6 +129,11 @@ namespace xdp {
     //  string comparisons, we check the name in the constructor and set
     //  this boolean.
     bool shellMonitor = false ;
+
+    // A monitor acquires the clock frequency (in MHz) of the compute unit
+    // that it is assigned to
+    double clockFrequency = 300.0;
+
     inline bool isShellMonitor() const { return shellMonitor ; }
 
     Monitor(DEBUG_IP_TYPE ty, uint64_t idx, const char* n,
@@ -145,13 +150,13 @@ namespace xdp {
       //  monitor in hardware
       switch (ty) {
       case ACCEL_MONITOR:
-        slotIndex = getAMSlotId(idx);
+        slotIndex = util::getAMSlotId(idx);
         break ;
       case AXI_MM_MONITOR:
-        slotIndex = getAIMSlotId(idx);
+        slotIndex = util::getAIMSlotId(idx);
         break ;
       case AXI_STREAM_MONITOR:
-        slotIndex = getASMSlotId(idx);
+        slotIndex = util::getASMSlotId(idx);
         break ;
       default:
         // Should never be reached
@@ -167,7 +172,7 @@ namespace xdp {
   } ;
 
   // The ComputeUnitInstance class collects all of the information on
-  //  a specific compute unit of a kernel.  Each xclbin will have a 
+  //  a specific compute unit of a kernel.  Each xclbin will have a
   //  different combination of compute units, and this is orthogonal to
   //  what is being monitored.  By keeping track of all compute units
   //  we can explicitly show what hardware resources exist that are and
@@ -218,6 +223,9 @@ namespace xdp {
     // resource
     std::vector<Port> masterPorts;
 
+    //Each compute unit has a specific clock frequency (in MHz)
+    double clockFrequency = 300.0;
+
     // If this compute unit has any AIMs or ASMs attached to its ports,
     //  then these vectors will keep track of the slot IDs inside the
     //  xdp::CounterResults structure for all of the attached monitors.
@@ -244,7 +252,8 @@ namespace xdp {
     inline bool getStreamTraceEnabled() const { return asmIdsWithTrace.size() > 0 ; }
     inline bool getDataflowEnabled() const    { return dataflow ; }
     inline bool getHasFA() const              { return hasFA ; }
-    inline bool getDataTransferTraceEnabled() const 
+    inline double getClockFrequency()         { return clockFrequency > 0 ? clockFrequency : 300 ; }
+    inline bool getDataTransferTraceEnabled() const
       { return aimIdsWithTrace.size() > 0 ; }
 
     // Inlined Setters
@@ -254,6 +263,8 @@ namespace xdp {
     inline void setStallEnabled(bool b)    { stall = b ; }
     inline void setDataflowEnabled(bool b) { dataflow = b ; }
     inline void setFaEnabled(bool b)       { hasFA = b ; }
+
+    void setClockFrequency(double clkfreq) { clockFrequency =  clkfreq; }
 
     // Other functions
     inline void addAIM(uint32_t id, bool trace = false)
@@ -335,23 +346,25 @@ namespace xdp {
   } ;
 
 
-  constexpr uint32_t num_bits_deadlock_diagnosis = 32;
+  constexpr uint32_t NUM_DEADLOCK_DIAGNOSIS_BITS = 32;
+
   // Deadlock Diagnosis registers
   // Each entry in map looks like:
   // Register Offset -> {message[0], message[1]...message[31]}
-  using kernel_reginfo = std::map<uint32_t, std::array<std::string, num_bits_deadlock_diagnosis>>;
+  using KernelRegisterInfo = std::map<uint32_t, std::array<std::string, NUM_DEADLOCK_DIAGNOSIS_BITS>>;
+
   /* Class to handle parsing of IP_METADATA section in xclbin*/
-  class ip_metadata {
+  class IpMetadata {
   private:
     uint32_t s_major;
     uint32_t s_minor;
 
   public:
-    std::vector<std::pair<std::string, kernel_reginfo>> kernel_infos;
+    std::vector<std::pair<std::string, KernelRegisterInfo>> kernel_infos;
 
   public:
-    ip_metadata() = delete;
-    ip_metadata(const boost::property_tree::ptree& pt);
+    IpMetadata() = delete;
+    IpMetadata(const boost::property_tree::ptree& pt);
     void print();
     inline uint32_t get_offset_from_string(const std::string& str)
     {
@@ -363,7 +376,7 @@ namespace xdp {
       return offset;
     }
   };
-  
+
 } // end namespace xdp
 
 #endif

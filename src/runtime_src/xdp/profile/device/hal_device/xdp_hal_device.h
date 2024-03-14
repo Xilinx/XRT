@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +22,7 @@
 #include<vector>
 #include "core/include/xrt.h"
 #include "core/include/xrt/xrt_bo.h"
+#include "core/common/device.h"
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
@@ -30,6 +31,7 @@ class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
   std::vector<xrt::bo> xrt_bos;
+  std::shared_ptr<xrt_core::device> mXrtCoreDevice;
 
 public:
   HalDevice(void* halDeviceHandle);
@@ -41,10 +43,7 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset);
 
-  virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data);
-  virtual int initXrtIP(const char *name, uint64_t base, uint32_t range);
-
-  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret);
+  virtual std::vector<char> getDebugIpLayout();
 
   virtual double getDeviceClock();
   virtual uint64_t getTraceTime();

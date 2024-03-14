@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <map>
 #include <vector>
+#include <string>
 
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -60,7 +61,7 @@ namespace xdp::aie {
                 const std::string& root);
   
   XDP_CORE_EXPORT
-  uint16_t
+  uint8_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
                     const std::string& location);
   
@@ -79,16 +80,19 @@ namespace xdp::aie {
   bool isInputSet(const module_type type, const std::string metricSet);
   
   XDP_CORE_EXPORT
-  uint16_t getRelativeRow(uint16_t absRow, uint16_t rowOffset);
+  uint8_t getRelativeRow(uint8_t absRow, uint8_t rowOffset);
   
   XDP_CORE_EXPORT
-  module_type getModuleType(uint16_t absRow, uint16_t rowOffset);
+  module_type getModuleType(uint8_t absRow, uint8_t rowOffset);
   
   XDP_CORE_EXPORT
   uint32_t bcIdToEvent(int bcId);
   
   XDP_CORE_EXPORT
   std::string getModuleName(module_type mod);
+
+  XDP_CORE_EXPORT
+  uint8_t convertStringToUint8(const std::string& input);
 
 } // namespace xdp::aie
 

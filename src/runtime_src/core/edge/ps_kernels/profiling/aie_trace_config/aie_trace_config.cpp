@@ -245,9 +245,9 @@ namespace {
     int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS + 1] = {0};
     int numTileMemoryTraceEvents[params->NUM_MEMORY_TRACE_EVENTS + 1] = {0};
 
-    std::map<xrt_core::edge::aie::tile_type, xdp::built_in::MetricSet> configMetrics;
+    std::map<xdp::tile_type, xdp::built_in::MetricSet> configMetrics;
     for (int i = 0; i < params->numTiles; i++) {
-      auto tile = xrt_core::edge::aie::tile_type();
+      auto tile = xdp::tile_type();
       tile.row = params->tiles[i].row;
       tile.col = params->tiles[i].col;
       configMetrics.insert({tile, static_cast<xdp::built_in::MetricSet>(params->tiles[i].metricSet)});

@@ -20,6 +20,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <memory>
 #include <vector>
+#include <set>
 
 #include "core/common/device.h"
 #include "core/include/xrt/xrt_hw_context.h"
@@ -27,7 +28,6 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
-
 
 namespace xdp {
 
@@ -41,7 +41,7 @@ class AieProfileMetadata {
     // Currently supporting Core, Memory, Interface Tiles, and Memory Tiles
     static constexpr int NUM_MODULES = 4;
 
-    std::map <module_type, std::vector<std::string>> metricStrings {
+    const std::map <module_type, std::vector<std::string>> metricStrings {
       {
         module_type::core, {
           "heat_map", "stalls", "execution", "floating_point", 
@@ -52,8 +52,7 @@ class AieProfileMetadata {
       {
         module_type::dma, {
           "conflicts", "dma_locks", "dma_stalls_s2mm",
-          "dma_stalls_mm2s", "write_throughputs", "read_throughputs",
-          "s2mm_throughputs", "mm2s_throughputs"}
+          "dma_stalls_mm2s", "s2mm_throughputs", "mm2s_throughputs"}
       },
       { 
         module_type::shim, {
@@ -74,13 +73,13 @@ class AieProfileMetadata {
     };
 
     const std::vector<std::string> moduleNames =
-    {"aie", "aie_memory", "interface_tile", "memory_tile"};
+      {"aie", "aie_memory", "interface_tile", "memory_tile"};
     const std::string defaultSets[NUM_MODULES] =
-    {"write_throughputs", "write_throughputs", "input_throughputs", "input_channels"};
+      {"write_throughputs", "write_throughputs", "input_throughputs", "input_channels"};
     const int numCountersMod[NUM_MODULES] =
-    {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, NUM_MEM_TILE_COUNTERS};
+      {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS, NUM_MEM_TILE_COUNTERS};
     const module_type moduleTypes[NUM_MODULES] =
-    {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
+      {module_type::core, module_type::dma, module_type::shim, module_type::mem_tile};
 
     uint32_t pollingInterval;
     uint64_t deviceID;
@@ -89,10 +88,10 @@ class AieProfileMetadata {
     xrt::hw_context hwContext;
 
     std::vector<std::map<tile_type, std::string>> configMetrics;
+    std::map<tile_type, std::string> pairConfigMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
-    boost::property_tree::ptree aie_meta;
-    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
+    const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -104,27 +103,28 @@ class AieProfileMetadata {
 
     std::vector<std::string> getSettingsVector(std::string settingsString);
 
-    void getConfigMetricsForTiles(int moduleIdx,
+    void getConfigMetricsForTiles(const int moduleIdx,
                                   const std::vector<std::string>& metricsSettings,
                                   const std::vector<std::string>& graphMetricsSettings,
                                   const module_type mod);
-    void getConfigMetricsForInterfaceTiles(int moduleIdx,
-                                            const std::vector<std::string>& metricsSettings,
-                                            const std::vector<std::string> graphMetricsSettings);
-    uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
+    void getConfigMetricsForInterfaceTiles(const int moduleIdx,
+                                           const std::vector<std::string>& metricsSettings,
+                                           const std::vector<std::string> graphMetricsSettings);
+    int getPairModuleIndex(const std::string& metricSet, module_type mod);
+    uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
     
-    std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
+    std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
     xdp::aie::driver_config getAIEConfigMetadata();
 
-    bool checkModule(int module) { return (module >= 0 && module < NUM_MODULES);}
-    std::string getModuleName(int module) { return moduleNames[module]; }
-    int getNumCountersMod(int module){ return numCountersMod[module]; }
-    module_type getModuleType(int module) { return moduleTypes[module]; }
+    bool checkModule(const int module) { return (module >= 0 && module < NUM_MODULES);}
+    std::string getModuleName(const int module) { return moduleNames[module]; }
+    int getNumCountersMod(const int module){ return numCountersMod[module]; }
+    module_type getModuleType(const int module) { return moduleTypes[module]; }
 
-    uint16_t getAIETileRowOffset() { return metadataReader->getAIETileRowOffset();}
-    int getHardwareGen() { return metadataReader->getHardwareGeneration();}
+    uint8_t getAIETileRowOffset() const { return metadataReader->getAIETileRowOffset(); }
+    int getHardwareGen() const { return metadataReader->getHardwareGeneration(); }
 
     double getClockFreqMhz() {return clockFreqMhz;}
     int getNumModules() {return NUM_MODULES;}

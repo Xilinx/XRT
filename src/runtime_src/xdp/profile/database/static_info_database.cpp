@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -339,7 +339,28 @@ namespace xdp {
     else
       return xclbin->aie.clockRateAIEMHz ;
   }
-  
+
+  double VPStaticDatabase::getPLMaxClockRateMHz(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    // If we don't have any information on the specific ID, return
+    //  defaults.  300 MHz for PL clock rate.
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 300.0;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 300.0;
+    //We will consider the clock rate of the Compute Unit with the highest Clock Frequency
+    double plClockFreq = 0;
+      for (const auto& cu : xclbin->pl.cus) {
+        plClockFreq = std::max(plClockFreq, cu.second->getClockFrequency());
+      }
+    return plClockFreq>0 ? plClockFreq : 300.0;
+
+  }
+
   void VPStaticDatabase::setDeviceName(uint64_t deviceId, const std::string& name)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -389,8 +410,6 @@ namespace xdp {
     xclbin->deviceIntf->setDevice(dev);
     try {
       xclbin->deviceIntf->readDebugIPlayout();
-      // XRT IP are needed for deadlock diagnosis
-      initializeXrtIP(xclbin);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -737,7 +756,7 @@ namespace xdp {
     if (!xclbin)
       return nullptr ;
 
-    if (0 == xclbin->aie.aieList.size()) 
+    if (0 == xclbin->aie.aieList.size())
       return nullptr;
 
     return xclbin->aie.aieList[idx] ;
@@ -895,8 +914,8 @@ namespace xdp {
   }
 
   void VPStaticDatabase::addTraceGMIO(uint64_t deviceId, uint32_t i,
-                                      uint16_t col, uint16_t num,
-                                      uint16_t stream, uint16_t len)
+                                      uint8_t col, uint8_t num,
+                                      uint8_t stream, uint8_t len)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -906,7 +925,7 @@ namespace xdp {
   }
 
   void VPStaticDatabase::addAIECounter(uint64_t deviceId, uint32_t i,
-                                       uint16_t col, uint16_t r, uint8_t num,
+                                       uint8_t col, uint8_t row, uint8_t num,
                                        uint16_t start, uint16_t end,
                                        uint8_t reset, uint32_t load,
                                        double freq, const std::string& mod,
@@ -916,7 +935,7 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
-    deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
+    deviceInfo[deviceId]->addAIECounter(i, col, row, num, start, end, reset,
                                         load, freq, mod, aieName) ;
   }
 
@@ -976,7 +995,7 @@ namespace xdp {
     deviceInfo[deviceId]->addAIEMemTileEventResources(numEvents, numTiles) ;
   }
 
-  void VPStaticDatabase::addAIECfgTile(uint64_t deviceId, 
+  void VPStaticDatabase::addAIECfgTile(uint64_t deviceId,
                                        std::unique_ptr<aie_cfg_tile>& tile)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -1282,7 +1301,7 @@ namespace xdp {
     return true;
   }
 
-  // This function is called whenever a device is loaded with an 
+  // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
   void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
@@ -1298,20 +1317,15 @@ namespace xdp {
       return;
 
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
-
-    /*
-     * Initialize xrt IP for deadlock diagnosis
-     */
-    parseXrtIPMetadata(deviceId, device);
   }
 
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
   {
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    updateDevice(deviceId, xrtXclbin);
+    updateDevice(deviceId, xrtXclbin, true);
   }
 
   // Return true if we should reset the device information.
@@ -1504,39 +1518,74 @@ namespace xdp {
     }
   }
 
-  void VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
+  std::unique_ptr<IpMetadata> VPStaticDatabase::populateIpMetadata(
+                                uint64_t deviceId, 
+                                const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return;
+      return nullptr;
 
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
     if (!xclbin)
-      return;
+      return nullptr;
 
     auto data = device->get_axlf_section(IP_METADATA);
     if (!data.first || !data.second)
-      return;
+      return nullptr;
 
     std::stringstream ss;
     ss.write(data.first,data.second);
     boost::property_tree::ptree pt;
     try {
       boost::property_tree::read_json(ss,pt);
-      xclbin->pl.ip_metadata_section = std::make_unique<ip_metadata>(pt);
-      // Debug
-      //xclbin->pl.ip_metadata_section->print();
+      return std::make_unique<IpMetadata>(pt);
     } catch(...) {
-      xclbin->pl.ip_metadata_section.reset();
+      return nullptr;
     }
+    
   }
 
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
-                                            const ip_layout* ipLayoutSection)
+                                            const ip_layout* ipLayoutSection,
+                                            const char* systemMetadataSection,
+                                            size_t systemMetadataSz)
   {
     if (currentXclbin == nullptr || ipLayoutSection == nullptr)
       return;
+
+    //---------------------------------------------------------------------
+    bool clockFlag = true;
+    boost::property_tree::ptree pt;
+    boost::property_tree::ptree user_regions;
+
+    if (systemMetadataSection == nullptr || systemMetadataSz <= 0) {
+      clockFlag = false;
+    }
+
+    else {
+
+    // Parse the SYSTEM_METADATA section using boost property trees, which
+    // could throw exceptions in multiple ways.
+    try{
+        std::stringstream ss;
+        ss.write(systemMetadataSection, systemMetadataSz);
+
+        // Create a property tree based off of the JSON
+        boost::property_tree::read_json(ss, pt);
+
+        auto top = pt.get_child("system_diagram_metadata");
+
+        // Parse the xclbin section for compute unit port information
+        auto xclbin = top.get_child("xclbin");
+        user_regions = xclbin.get_child("user_regions");
+    } catch(...) {
+      // TODO: catch section
+      clockFlag = false;
+    }
+    }
+    //---------------------------------------------------------------------
 
     ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < ipLayoutSection->m_count; ++i) {
@@ -1546,7 +1595,7 @@ namespace xdp {
 
       std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
       if(std::string::npos != cuName.find(":dm_")) {
-        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+        /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a
          *              data mover and it should not be identified as a "CU" in profiling
          */
         continue;
@@ -1559,6 +1608,40 @@ namespace xdp {
       if((ipData->properties >> IP_CONTROL_SHIFT) & FAST_ADAPTER) {
         cu->setFaEnabled(true);
       }
+
+      //---------------------------------------------------------------------
+      //asigning clock frequency to each compute unit
+      double clckfreq = 300.0;
+      if (clockFlag) {
+
+        try {
+          // Keep track of all the compute unit names associated with the id
+          // number so we can make the connection later.
+          for (auto& region : user_regions) {
+            for (auto& compute_unit : region.second.get_child("compute_units")) {
+              auto cuNameSysMD = compute_unit.second.get<std::string>("cu_name");
+              if ( 0 == cu->getName().compare(cuNameSysMD)) {
+              for (auto& clck :compute_unit.second.get_child("clocks")) {
+                // If the clock port name is ap clck, that is the frequency we associate
+                // with the compute unit
+                auto clockPortName = clck.second.get<std::string>("port_name");
+                if (0 == clockPortName.compare("ap_clk")) {
+                  auto tmp_var = clck.second.get<std::string>("requested_frequency");
+                  clckfreq = std::stod(tmp_var);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+
+      }catch(...) {
+          clckfreq = 300.0;
+      }
+    }
+    cu->setClockFrequency(clckfreq);
+    //---------------------------------------------------------------------
     }
   }
 
@@ -1601,7 +1684,7 @@ namespace xdp {
         }
         std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
         if(std::string::npos != cuName.find(":dm_")) {
-          /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
+          /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a
            *              data mover and it should not be identified as a "CU" in profiling
            */
           continue;
@@ -1710,6 +1793,9 @@ namespace xdp {
         if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK)
           mon->traceEnabled = true ;
 
+        // Assigning the compute unit's clock frequency to the monitor
+        mon->clockFrequency = cuObj->getClockFrequency();
+
         // Add the monitor to the list of all monitors in this xclbin
         xclbin->pl.ams.push_back(mon);
         // Associate it with this compute unit
@@ -1789,6 +1875,8 @@ namespace xdp {
 
     if (cuObj) {
       mon->cuPort = cuObj->getPort(portName);
+      // Assigning the compute unit's clock frequency to the monitor
+      mon->clockFrequency = cuObj->getClockFrequency();
     }
     if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
       mon->traceEnabled = true ;
@@ -1821,17 +1909,17 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < min_trace_id_asm) {
+    if (index < util::min_trace_id_asm) {
       std::stringstream msg;
       msg << "ASM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = min_trace_id_asm ;
+      index = util::min_trace_id_asm ;
     }
 
     // Parse out the name of the compute unit this monitor is attached to if
     //  possible.  We expect the name in debug_ip_layout to be in the form of
-    //  compute_unit_name/port_name.  If this is a floating 
+    //  compute_unit_name/port_name.  If this is a floating
 
     size_t pos = name.find('/');
     std::string monCuName = name.substr(0, pos);
@@ -1880,8 +1968,10 @@ namespace xdp {
                                index, debugIpData->m_name,
                                cuId);
     //mon->port = portName;
-    if (cuObj)
+    if (cuObj){
       mon->cuPort = cuObj->getPort(portName);
+      mon->clockFrequency = cuObj->getClockFrequency();
+    }
     if (debugIpData->m_properties & 0x2) {
       mon->isStreamRead = true;
     }
@@ -1944,16 +2034,6 @@ namespace xdp {
     xclbin->pl.usesFifo = true ;
   }
 
-  void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
-  {
-    auto& ip_metadata = xclbin->pl.ip_metadata_section;
-    if (!ip_metadata)
-      return;
-
-    for (const auto& cu : xclbin->pl.cus)
-      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname());
-  }
-
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
     std::lock_guard<std::mutex> lock(openCLLock) ;
@@ -1961,19 +2041,19 @@ namespace xdp {
     commandQueueAddresses.emplace(a) ;
   }
 
-  // This function is called from "trace_processor" tool 
+  // This function is called from "trace_processor" tool
   // The tool creates events from raw PL trace data
   void VPStaticDatabase::updateDevice(uint64_t deviceId, const std::string& xclbinFile)
   {
     xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
 
-    updateDevice(deviceId, xrtXclbin);
+    updateDevice(deviceId, xrtXclbin, false);
   }
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin)
-  {    
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild)
+  {
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
@@ -1996,11 +2076,12 @@ namespace xdp {
       devInfo = itr->second.get();
       devInfo->cleanCurrentXclbinInfo() ;
     }
-    
+
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = xrtXclbin.get_uuid();
-    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ; 
- 
+    currentXclbin->pl.clockRatePLMHz = findClockRate(xrtXclbin) ;
+
+    readAIEMetadata(xrtXclbin, clientBuild);
     setDeviceNameFromXclbin(deviceId, xrtXclbin);
     setAIEGeneration(deviceId, xrtXclbin);
 
@@ -2056,25 +2137,49 @@ namespace xdp {
       return;
     }
   }
-  
+
+  void VPStaticDatabase::readAIEMetadataClient()
+  {
+    metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+    if(!metadataReader) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
+      return;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
+  } 
+
+  void VPStaticDatabase::readAIEMetadata(xrt::xclbin xrtXclbin, bool clientBuild)
+  {
+    if (clientBuild) {
+      readAIEMetadataClient();
+      return;
+    }
+
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    if (!data.first || !data.second) {
+      return;
+    }
+
+    metadataReader = aie::readAIEMetadata(data.first, data.second, aieMetadata);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully!");
+  }
+
+  const xdp::aie::BaseFiletypeImpl*
+  VPStaticDatabase::getAIEmetadataReader() const
+  {
+    return metadataReader.get();
+  }
+
   void VPStaticDatabase::setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) {
     std::lock_guard<std::mutex> lock(deviceLock) ;
-
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return;
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-    if (!data.first || !data.second)
+    if (!metadataReader)
       return;
 
-    boost::property_tree::ptree aie_meta;
-
-    std::stringstream aie_stream;
-    aie_stream.write(data.first, data.second);
-    boost::property_tree::read_json(aie_stream, aie_meta);
-    
     try {
-      auto hwGen = aie_meta.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
+      auto hwGen = aieMetadata.get_child("aie_metadata.driver_config.hw_gen").get_value<uint8_t>();
       deviceInfo[deviceId]->setAIEGeneration(hwGen);
     } catch(...) {
       return;
@@ -2091,18 +2196,11 @@ namespace xdp {
     if (!xclbin)
       return;
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
-    if (!data.first || !data.second)
-      return;
-
-    boost::property_tree::ptree aie_meta;
-
-    std::stringstream aie_stream;
-    aie_stream.write(data.first, data.second);
-    boost::property_tree::read_json(aie_stream,aie_meta);
+    if (!metadataReader)
+       return;
 
     try {
-      auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+      auto dev_node = aieMetadata.get_child("aie_metadata.DeviceData");
       xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
     } catch(...) {
       return;
@@ -2169,14 +2267,17 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin, xrt::xclbin xrtXclbin)
   {
-    // Step 1 -> Create the compute units based on the IP_LAYOUT section
+    // Step 1 -> Create the compute units based on the IP_LAYOUT and SYSTEM_METADATA section
     const ip_layout* ipLayoutSection =
       reinterpret_cast<const ip_layout*>(xrt_core::xclbin_int::get_axlf_section(xrtXclbin, IP_LAYOUT).first);
+
+    std::pair<const char*, size_t> systemMetadata =
+       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, SYSTEM_METADATA);
 
     if(ipLayoutSection == nullptr)
       return true;
 
-    createComputeUnits(currentXclbin, ipLayoutSection);
+    createComputeUnits(currentXclbin, ipLayoutSection,systemMetadata.first, systemMetadata.second);
 
     // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
     const mem_topology* memTopologySection =
@@ -2208,8 +2309,6 @@ namespace xdp {
 
     // Step 5 -> Fill in the details like the name of the xclbin using
     //           the SYSTEM_METADATA section
-    std::pair<const char*, size_t> systemMetadata =
-       xrt_core::xclbin_int::get_axlf_section(xrtXclbin, SYSTEM_METADATA);
 
     setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
     updateSystemDiagram(systemMetadata.first, systemMetadata.second);
@@ -2266,6 +2365,6 @@ namespace xdp {
     }
 
     return true;
-  }  
+  }
 
 } // end namespace xdp

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -29,6 +29,7 @@
 #include "tools/common/reports/platform/ReportPlatforms.h"
 #include "tools/common/reports/ReportPsKernels.h"
 #include "tools/common/reports/ReportQspiStatus.h"
+#include "tools/common/reports/ReportTelemetry.h"
 #include "tools/common/reports/ReportThermal.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
@@ -55,6 +56,7 @@
     std::make_shared<ReportMechanical>(),
     std::make_shared<ReportQspiStatus>(),
     std::make_shared<ReportThermal>(),
+    std::make_shared<ReportTelemetry>(),
   #endif
   };
 

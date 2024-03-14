@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,15 +17,17 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/plugin/noc/noc_plugin.h"
-#include "xdp/profile/writer/noc/noc_writer.h"
-#include "xdp/profile/plugin/vp_base/info.h"
-
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
+#include "core/include/xrt/xrt_device.h"
+
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/noc/noc_plugin.h"
+#include "xdp/profile/writer/noc/noc_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/device/utility.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -36,28 +38,27 @@ namespace xdp {
   {
     db->registerPlugin(this);
     db->registerInfo(info::noc);
-    // Just like HAL and power profiling, go through devices 
-    //  that exist and open a file for each
-    uint64_t index = 0;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO);
-    while (handle != nullptr) {
-      // Determine the name of the device
-      struct xclDeviceInfo2 info;
-      xclGetDeviceInfo2(handle, &info);
-      std::string deviceName = std::string(info.mName);
-      mDevices.push_back(deviceName);
 
-      std::string outputFile = "noc_profile_" + deviceName + ".csv"; 
-      VPWriter* writer = new NOCProfilingWriter(outputFile.c_str(),
-                                                deviceName.c_str(),
-                                                index) ;
-      writers.push_back(writer);
-      db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
-
-      // Move on to next device
-      xclClose(handle);
-      ++index;
-      handle = xclOpen(index, "/dev/null", XCL_INFO);
+    uint32_t numDevices = xrt_core::get_total_devices(true).second;
+    uint32_t index = 0;
+    while (index < numDevices) {
+      try {
+        auto xrtDevice = std::make_unique<xrt::device>(index);
+        auto ownedHandle = xrtDevice->get_handle()->get_device_handle();
+        // Determine the name of the device
+        std::string deviceName = util::getDeviceName(ownedHandle);
+        mDevices.push_back(deviceName);
+  
+        std::string outputFile = "noc_profile_" + deviceName + ".csv"; 
+        VPWriter* writer = new NOCProfilingWriter(outputFile.c_str(),
+                                                  deviceName.c_str(),
+                                                  index) ;
+        writers.push_back(writer);
+        db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
+      } catch (const std::runtime_error &) {
+        break;
+      }
+      ++index; 
     }
 
     // Get polling interval (in msec)

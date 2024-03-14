@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
 #include "core/include/xdp/app_debug.h"
@@ -445,7 +445,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     device->register_axlf(buffer);
     // Call update_device only when xclbin is loaded and registered successfully
     xdp::hw_emu::update_device(handle);
-    xdp::pl_deadlock::update_device(handle);
+    xdp::hw_emu::pl_deadlock::update_device(handle);
     ret = xrt_core::scheduler::init(handle, buffer);
   }
   return ret;

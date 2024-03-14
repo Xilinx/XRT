@@ -1430,7 +1430,7 @@ namespace xclhwemhal2 {
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
           xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
-          return -1;
+          return size;
         }
        case XCL_ADDR_SPACE_DEVICE_CHECKER:
          {

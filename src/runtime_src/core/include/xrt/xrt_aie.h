@@ -24,6 +24,7 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_graph.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -163,7 +164,129 @@ public:
   }
 };
 
+class profiling_impl;
+class profiling : public detail::pimpl<profiling_impl>
+{
+public:
+  
+  /**
+   * @enum profiliing_options - contains the enumerated options for performance
+   *				profiling using PLIO and GMIO objects.
+   *
+   * @var io_total_stream_running_to_idle_cycles
+   *   Total clock cycles in between the stream running event and the stream 
+   *   idle event of the stream port in the interface tile.
+   * @var io_stream_start_to_bytes_transferred_cycles
+   *   The clock cycles in between the first stream running event to the event that
+   *   the specified bytes are transferred through the stream port in the interface tile.
+   * @var io_stream_start_difference_cycles
+   *   The clock cycles elapsed between the first stream running events of
+   *   the two platform I/O objects.
+   * @var io_stream_running_event_count
+   *   Number of stream running events 
+   *   
+   * Please refer UG1079 for more details.
+   */
+  enum class profiling_option : int 
+  { 
+    io_total_stream_running_to_idle_cycles = 0, 
+    io_stream_start_to_bytes_transferred_cycles = 1,
+    io_stream_start_difference_cycles = 2,
+    io_stream_running_event_count = 3 
+  };
+
+  profiling() = default;
+
+  /**
+   * event() - Constructor from a device
+   *
+   * @param device
+   *  The device on which the profiling should start
+   *
+   */
+  explicit
+  profiling(const xrt::device& device);
+
+  /**
+   * start() - Start AIE performance profiling
+   *
+   * @param option
+   *  Profiling option
+   * @param port1_name
+   *  PLIO/GMIO port 1 name.
+   * @param port2_name
+   *  PLIO/GMIO port 2 name.
+   * @param value
+   *  The number of bytes to trigger the profiling event.
+   *
+   * Please refer UG1079 for more details.
+   *
+   * This function configures the performance counters in AI Engine by given
+   * port names and value. The port names and value will have different
+   * meanings on different options.
+   */
+  int 
+  start(profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const;
+
+  /**
+   * read() - Read the current performance counter value
+   *          associated with the profiling handle
+   */
+  uint64_t
+  read() const;
+
+  /**
+   * stop() - Stop the current performance profiling
+   *          associated with the profiling handle and
+   *          release the corresponding hardware resources.
+   */
+  void
+  stop() const;
+};
+
 }} // aie, xrt
+
+/**
+ * xrtAIEStartProfiling() - Start AIE performance profiling
+ *
+ * @handle:          Handle to the device
+ * @option:          Profiling option.
+ * @port1Name:       PLIO/GMIO port 1 name
+ * @port2Name:       PLIO/GMIO port 2 name
+ * @value:           The number of bytes to trigger the profiling event
+ *
+ * Return:         An integer profiling handle on success,
+ *                 or appropriate error number.
+ *
+ * This function configures the performance counters in AI Engine by given
+ * port names and value. The port names and value will have different
+ * meanings on different options.
+ */
+int
+xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value);
+
+/**
+ * xrtAIEReadProfiling() - Read the current performance counter value
+ *                         associated with the profiling handle.
+ *
+ * @pHandle:         Profiling handle.
+ *
+ * Return:         The performance counter value, or appropriate error number.
+ */
+uint64_t
+xrtAIEReadProfiling(xrtDeviceHandle /*handle*/, int pHandle);
+
+/**
+ * xrtAIEStopProfiling() - Stop the current performance profiling
+ *                         associated with the profiling handle and
+ *                         release the corresponding hardware resources.
+ *
+ * @pHandle:         Profiling handle.
+ *
+ * Return:         0 on success, or appropriate error number.
+ */
+void
+xrtAIEStopProfiling(xrtDeviceHandle /*handle*/, int pHandle);
 
 /// @cond
 extern "C" {
@@ -255,7 +378,6 @@ xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 /* Provide this API for backward compatibility. */
 int
 xrtResetAIEArray(xrtDeviceHandle handle);
-
 /// @endcond
 
 #ifdef __cplusplus

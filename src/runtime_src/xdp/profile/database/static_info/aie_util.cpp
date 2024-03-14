@@ -167,13 +167,13 @@ namespace xdp::aie {
   /****************************************************************************
    * Get first row offset of AIE tiles in array
    ***************************************************************************/
-  uint16_t
+  uint8_t
   getAIETileRowOffset(const boost::property_tree::ptree& aie_meta,
                     const std::string& location)
   {
-    static std::optional<uint16_t> rowOffset;
+    static std::optional<uint8_t> rowOffset;
     if (!rowOffset.has_value()) {
-      rowOffset = aie_meta.get_child(location).get_value<uint16_t>();
+      rowOffset = aie_meta.get_child(location).get_value<uint8_t>();
     }
     return *rowOffset;
   }
@@ -201,7 +201,14 @@ namespace xdp::aie {
   {
     std::stringstream aie_stream;
     aie_stream.write(data,size);
-    pt::read_json(aie_stream, aie_project);
+    try {
+      pt::read_json(aie_stream, aie_project);
+    } catch (const std::exception& e) {
+      std::string msg("AIE Metadata could not be read : ");
+      msg += e.what();
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      return nullptr;
+    }
 
     return determineFileType(aie_project);
   }
@@ -220,7 +227,16 @@ namespace xdp::aie {
       return nullptr;
     }
 
-    pt::read_json(filename, aie_project);
+    try {
+      pt::read_json(filename, aie_project);
+    }
+    catch(const std::exception& e)
+    {
+      std::stringstream msg;
+      msg << "Exception occurred while reading the aie_control_config.json: "<< std::string(e.what()) ;
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      return nullptr;
+    }
    
 
     return determineFileType(aie_project);
@@ -272,8 +288,8 @@ namespace xdp::aie {
   /****************************************************************************
    * Get relative row of given tile
    ***************************************************************************/
-  uint16_t 
-  getRelativeRow(uint16_t absRow, uint16_t rowOffset)
+  uint8_t 
+  getRelativeRow(uint8_t absRow, uint8_t rowOffset)
   {
     if (absRow == 0)
       return 0;
@@ -286,7 +302,7 @@ namespace xdp::aie {
    * Get module type
    ***************************************************************************/
   module_type 
-  getModuleType(uint16_t absRow, uint16_t rowOffset)
+  getModuleType(uint8_t absRow, uint8_t rowOffset)
   {
     if (absRow == 0)
       return module_type::shim;
@@ -319,5 +335,11 @@ namespace xdp::aie {
 
     return modNames[mod];
   }
+
+  uint8_t
+  convertStringToUint8(const std::string& input) {
+    return static_cast<uint8_t>(std::stoi(input));
+  }
+
 
 } // namespace xdp::aie

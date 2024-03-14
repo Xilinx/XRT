@@ -45,25 +45,32 @@ namespace xdp {
                         const std::string metricSet, uint8_t channel, 
                         std::vector<XAie_Events>& events);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
-      module_type getTileType(uint16_t row);
+      module_type getTileType(uint8_t row);
       uint16_t getRelativeRow(uint16_t absRow);
+      uint32_t bcIdToEvent(int bcId);
       
       bool isInputSet(const module_type type, const std::string metricSet);
       bool isStreamSwitchPortEvent(const XAie_Events event);
       bool isPortRunningEvent(const XAie_Events event);
+      bool isCoreModuleEvent(const XAie_Events event);
+      bool isDmaSet(const std::string metricSet);
+
       uint8_t getPortNumberFromEvent(XAie_Events event);
-      void configStreamSwitchPorts(const tile_type& tile,
-                                   /*xaiefal::XAieTile& xaieTile,*/ const XAie_LocType loc,
+      void configStreamSwitchPorts(const tile_type& tile, const XAie_LocType loc,
                                    const module_type type, const std::string metricSet, 
                                    const uint8_t channel0, const uint8_t channel1,
-                                  std::vector<XAie_Events>& events);
+                                  std::vector<XAie_Events>& events, aie_cfg_base& config);
+      std::vector<XAie_Events> configComboEvents(const XAie_LocType loc, const XAie_ModuleType mod, 
+                                                 const module_type type, const std::string metricSet, 
+                                                 aie_cfg_base& config);
+      void configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod, 
+                             const module_type type, const std::string metricSet);
       void configEventSelections(const XAie_LocType loc, const module_type type, 
                                  const std::string metricSet, const uint8_t channel0,
                                  const uint8_t channel);
       void configEdgeEvents(const tile_type& tile, const module_type type,
-                            const std::string metricSet, const XAie_Events event);
-
-      uint32_t bcIdToEvent(int bcId);
+                            const std::string metricSet, const XAie_Events event,
+                            const uint8_t channel = 0);
     
     private:
       typedef XAie_Events EventType;
@@ -74,24 +81,24 @@ namespace xdp {
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
 
-      std::map<std::string, EventVector> mCoreEventSets;
-      std::map<std::string, EventVector> mMemoryEventSets;
-      std::map<std::string, EventVector> mMemoryTileEventSets;
-      std::map<std::string, EventVector> mInterfaceTileEventSets;
+      std::map<std::string, EventVector> coreEventSets;
+      std::map<std::string, EventVector> memoryEventSets;
+      std::map<std::string, EventVector> memoryTileEventSets;
+      std::map<std::string, EventVector> interfaceTileEventSets;
 
       // Trace metrics (same for all sets)
-      EventType mCoreTraceStartEvent;
-      EventType mCoreTraceEndEvent;
-      EventType mMemoryModTraceStartEvent;
-      EventType mMemoryTileTraceStartEvent;
-      EventType mMemoryTileTraceEndEvent;
-      EventType mInterfaceTileTraceStartEvent;
-      EventType mInterfaceTileTraceEndEvent;
+      EventType coreTraceStartEvent;
+      EventType coreTraceEndEvent;
+      EventType memoryModTraceStartEvent;
+      EventType memoryTileTraceStartEvent;
+      EventType memoryTileTraceEndEvent;
+      EventType interfaceTileTraceStartEvent;
+      EventType interfaceTileTraceEndEvent;
 
       // Tile locations to apply trace end and flush
-      std::vector<XAie_LocType> mTraceFlushLocs;
-      std::vector<XAie_LocType> mMemoryTileTraceFlushLocs;
-      std::vector<XAie_LocType> mInterfaceTileTraceFlushLocs;
+      std::vector<XAie_LocType> traceFlushLocs;
+      std::vector<XAie_LocType> memoryTileTraceFlushLocs;
+      std::vector<XAie_LocType> interfaceTileTraceFlushLocs;
 
       // Keep track of number of events reserved per module and/or tile
       int mNumTileTraceEvents[static_cast<int>(module_type::num_types)][NUM_TRACE_EVENTS + 1];

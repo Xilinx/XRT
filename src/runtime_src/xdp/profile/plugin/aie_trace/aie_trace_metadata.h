@@ -49,14 +49,15 @@ class AieTraceMetadata {
                                   module_type type);
     void getConfigMetricsForInterfaceTiles(const std::vector<std::string>& metricsSettings,
                                            const std::vector<std::string> graphMetricsSettings);
-    
+    xdp::aie::driver_config getAIEConfigMetadata();
+
    public:
     int getHardwareGen() {
       if (metadataReader)
         return metadataReader->getHardwareGeneration();
       return 0;
     }
-    uint16_t getRowOffset() {
+    uint8_t getRowOffset() {
       if (metadataReader)
         return metadataReader->getAIETileRowOffset();
       return 0;
@@ -73,9 +74,6 @@ class AieTraceMetadata {
       else
         return metricSets[module_type::core][0];
     }
-
-    xdp::aie::driver_config getAIEConfigMetadata();
-
 
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
@@ -130,21 +128,25 @@ class AieTraceMetadata {
     
     std::string counterScheme;
     std::string metricSet;
-    boost::property_tree::ptree aie_meta;
-    std::unique_ptr<aie::BaseFiletypeImpl> metadataReader;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
+    const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
     std::map<module_type, std::string> defaultSets {
       { module_type::core,     "functions"},
+      { module_type::dma,      "functions"},
       { module_type::mem_tile, "input_channels"},
       { module_type::shim,     "input_ports"}
     };
 
     std::map <module_type, std::vector<std::string>> metricSets {
       { module_type::core,     {"functions", "functions_partial_stalls", 
-                                "functions_all_stalls", "all"} },
+                                "functions_all_stalls", "partial_stalls",
+                                "all_stalls", "all_dma", "all_stalls_dma",
+                                "all_stalls_s2mm", "all_stalls_mm2s",
+                                "s2mm_channels", "mm2s_channels",
+                                "s2mm_channels_stalls", "mm2s_channels_stalls"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
                                 "output_channels", "output_channels_stalls",
                                 "s2mm_channels", "s2mm_channels_stalls", 

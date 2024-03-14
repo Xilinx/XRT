@@ -56,17 +56,17 @@ namespace xdp {
   {
     auto hwGen = metadata->getHardwareGen();
 
-    mCoreStartEvents = aie::profile::getCoreEventSets(hwGen);
-    mCoreEndEvents = mCoreStartEvents;
+    coreStartEvents = aie::profile::getCoreEventSets(hwGen);
+    coreEndEvents = coreStartEvents;
 
-    mMemoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
-    mMemoryEndEvents = mMemoryStartEvents;
+    memoryStartEvents = aie::profile::getMemoryEventSets(hwGen);
+    memoryEndEvents = memoryStartEvents;
 
-    mShimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
-    mShimEndEvents = mShimStartEvents;
+    shimStartEvents = aie::profile::getInterfaceTileEventSets(hwGen);
+    shimEndEvents = shimStartEvents;
 
-    mMemTileStartEvents = aie::profile::getMemoryTileEventSets();
-    mMemTileEndEvents = mMemTileStartEvents;
+    memTileStartEvents = aie::profile::getMemoryTileEventSets();
+    memTileEndEvents = memTileStartEvents;
 
     auto context = metadata->getHwContext();
     transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Profile Setup");
@@ -82,7 +82,7 @@ namespace xdp {
 
   bool
   AieProfile_WinImpl::
-  setMetricsSettings(uint64_t deviceId)
+  setMetricsSettings(const uint64_t deviceId)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Setting AIE Profile Metrics Settings.");
 
@@ -136,15 +136,15 @@ namespace xdp {
           continue;
 
         auto& metricSet  = tileMetric.second;
-        auto loc         = XAie_TileLoc(static_cast<uint8_t>(col), static_cast<uint8_t>(row));
-        auto startEvents = (type  == module_type::core) ? mCoreStartEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryStartEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimStartEvents[metricSet]
-                         : mMemTileStartEvents[metricSet]));
-        auto endEvents   = (type  == module_type::core) ? mCoreEndEvents[metricSet]
-                         : ((type == module_type::dma)  ? mMemoryEndEvents[metricSet]
-                         : ((type == module_type::shim) ? mShimEndEvents[metricSet]
-                         : mMemTileEndEvents[metricSet]));
+        auto loc         = XAie_TileLoc(col, row);
+        auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
+                         : ((type == module_type::shim) ? shimStartEvents[metricSet]
+                         : memTileStartEvents[metricSet]));
+        auto endEvents   = (type  == module_type::core) ? coreEndEvents[metricSet]
+                         : ((type == module_type::dma)  ? memoryEndEvents[metricSet]
+                         : ((type == module_type::shim) ? shimEndEvents[metricSet]
+                         : memTileEndEvents[metricSet]));
 
         uint8_t numFreeCtr = (type == module_type::dma) ? 2 : static_cast<uint8_t>(startEvents.size());
 
@@ -165,9 +165,15 @@ namespace xdp {
 
           // No resource manager - manually manage the counters:
           RC = XAie_PerfCounterReset(&aieDevInst, loc, mod, i);
-          if(RC != XAIE_OK) break;
+          if(RC != XAIE_OK) {
+            xrt_core::message::send(severity_level::error, "XRT", "AIE Performance Counter Reset Failed.");
+            break;
+          }
           RC = XAie_PerfCounterControlSet(&aieDevInst, loc, mod, i, startEvent, endEvent);
-          if(RC != XAIE_OK) break;
+          if(RC != XAIE_OK) {
+            xrt_core::message::send(severity_level::error, "XRT", "AIE Performance Counter Set Failed.");
+            break;
+          }
 
           aie::profile::configGroupEvents(&aieDevInst, loc, mod, type, metricSet, startEvent, channel0);
           if (aie::profile::isStreamSwitchPortEvent(startEvent))
@@ -190,7 +196,7 @@ namespace xdp {
                 phyStartEvent, phyEndEvent, resetEvent, payload, metadata->getClockFreqMhz(), 
                 metadata->getModuleName(module), counterName);
 
-          std::vector<uint64_t> Regs = regValues[type];
+          std::vector<uint64_t> Regs = regValues.at(type);
           // 25 is column offset and 20 is row offset for IPU
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20)});
 
@@ -240,7 +246,7 @@ namespace xdp {
   AieProfile_WinImpl::
   configStreamSwitchPorts( 
     const tile_type& tile, const XAie_LocType& loc,
-    const module_type& type, const std::string& metricSet, uint8_t channel)
+    const module_type& type, const std::string& metricSet, const uint8_t channel)
   {
     // Hardcoded
     uint8_t rscId = 0;
@@ -259,8 +265,8 @@ namespace xdp {
     if (type == module_type::shim) {
       // Grab slave/master and stream ID
       // NOTE: stored in getTilesForProfiling() above
-      auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-      auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
+      auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+      auto streamPortId  = tile.stream_id;
       // Define stream switch port to monitor interface 
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
       std::stringstream msg;
@@ -281,7 +287,7 @@ namespace xdp {
 
   void
   AieProfile_WinImpl::
-  poll(uint32_t index, void* handle)
+  poll(const uint32_t index, void* handle)
   {
     if (finishedPoll)
       return;
