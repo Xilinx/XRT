@@ -62,10 +62,9 @@ class device : public xrt_xocl::hal::device
 
   std::shared_ptr<hal2::operations> m_ops;
   unsigned int m_idx;
-  std::string mFileName;
+  std::string m_filename;
 
   xrt::device m_handle;
-  std::shared_ptr<xrt_core::device> m_core_dev_hdl;
   mutable boost::optional<hal2::device_info> m_devinfo;
 
   mutable std::mutex m_mutex;
@@ -140,7 +139,7 @@ public:
 # pragma GCC diagnostic pop
 #endif
 public:
-  device(std::shared_ptr<hal2::operations> ops, unsigned int idx, const std::string& dll);
+  device(std::shared_ptr<hal2::operations> ops, unsigned int idx, std::string dll);
   ~device();
 
   /**
@@ -198,7 +197,7 @@ public:
   virtual std::string
   getDriverLibraryName() const override
   {
-    return mFileName;
+    return m_filename;
   }
 
   virtual std::string
@@ -323,8 +322,8 @@ public:
   readKernelCtrl(uint64_t offset,void* hbuf,size_t size) override
   {
     try {
-      m_core_dev_hdl->xread(XCL_ADDR_KERNEL_CTRL, offset, hbuf, size);
-      return size;
+      get_core_device()->xread(XCL_ADDR_KERNEL_CTRL, offset, hbuf, size);
+      return static_cast<ssize_t>(size);
     }
     catch (...) {
       return hal::operations_result<ssize_t>();
@@ -335,8 +334,8 @@ public:
   writeKernelCtrl(uint64_t offset,const void* hbuf,size_t size) override
   {
     try {
-      m_core_dev_hdl->xwrite(XCL_ADDR_KERNEL_CTRL, offset, hbuf, size);
-      return size;
+      get_core_device()->xwrite(XCL_ADDR_KERNEL_CTRL, offset, hbuf, size);
+      return static_cast<ssize_t>(size);
     }
     catch (...) {
       return hal::operations_result<ssize_t>();
@@ -347,7 +346,7 @@ public:
   reClock2(unsigned short region, unsigned short *freqMHz) override
   {
     try{
-      m_core_dev_hdl->reclock(freqMHz);
+      get_core_device()->reclock(freqMHz);
       return 0;
     }
     catch (...) {
@@ -374,7 +373,7 @@ public:
   getDeviceClock() override
   {
     try {
-      return xrt_core::device_query<xrt_core::query::device_clock_freq_mhz>(m_core_dev_hdl);
+      return xrt_core::device_query<xrt_core::query::device_clock_freq_mhz>(get_core_device());
     }
     catch (...) {
       return hal::operations_result<double>();
@@ -385,7 +384,7 @@ public:
   getHostMaxRead() override
   {
     try {
-      return xrt_core::device_query<xrt_core::query::host_max_bandwidth_mbps>(m_core_dev_hdl, true);
+      return xrt_core::device_query<xrt_core::query::host_max_bandwidth_mbps>(get_core_device(), true);
     }
     catch (...) {
       return hal::operations_result<double>();
@@ -396,7 +395,7 @@ public:
   getHostMaxWrite() override
   {
     try {
-      return xrt_core::device_query<xrt_core::query::host_max_bandwidth_mbps>(m_core_dev_hdl, false);
+      return xrt_core::device_query<xrt_core::query::host_max_bandwidth_mbps>(get_core_device(), false);
     }
     catch (...) {
       return hal::operations_result<double>();
@@ -407,7 +406,7 @@ public:
   getKernelMaxRead() override
   {
     try {
-      return xrt_core::device_query<xrt_core::query::kernel_max_bandwidth_mbps>(m_core_dev_hdl, true);
+      return xrt_core::device_query<xrt_core::query::kernel_max_bandwidth_mbps>(get_core_device(), true);
     }
     catch (...) {
       return hal::operations_result<double>();
@@ -418,7 +417,7 @@ public:
   getKernelMaxWrite() override
   {
     try {
-      return xrt_core::device_query<xrt_core::query::kernel_max_bandwidth_mbps>(m_core_dev_hdl, false);
+      return xrt_core::device_query<xrt_core::query::kernel_max_bandwidth_mbps>(get_core_device(), false);
     }
     catch (...) {
       return hal::operations_result<double>();
@@ -429,8 +428,8 @@ public:
   xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) override
   {
     try {
-      m_core_dev_hdl->xread(space, offset, hostBuf, size);
-      return size;
+      get_core_device()->xread(space, offset, hostBuf, size);
+      return static_cast<int>(size);
     }
     catch (...) {
       return hal::operations_result<void>(0);
@@ -441,8 +440,8 @@ public:
   xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) override
   {
     try {
-      m_core_dev_hdl->xwrite(space, offset, hostBuf, size);
-      return size;
+      get_core_device()->xwrite(space, offset, hostBuf, size);
+      return static_cast<int>(size);
     }
     catch (...) {
       return hal::operations_result<void>(0);
@@ -453,7 +452,7 @@ public:
   xclUnmgdPread(unsigned /*flags*/, void *buf, size_t count, uint64_t offset) override
   {
     try {
-      m_core_dev_hdl->unmgd_pread(buf, count, offset);
+      get_core_device()->unmgd_pread(buf, count, offset);
       return 0;
     }
     catch (...) {
@@ -535,7 +534,7 @@ public:
   getNumLiveProcesses() override
   {
     try {
-      return xrt_core::device_query<xrt_core::query::num_live_processes>(m_core_dev_hdl);
+      return xrt_core::device_query<xrt_core::query::num_live_processes>(get_core_device());
     }
     catch (...) {
       return hal::operations_result<uint32_t>();
@@ -547,7 +546,7 @@ public:
   {
     try {
       xrt_core::query::sub_device_path::args arg = {subdev, idx};
-      return xrt_core::device_query<xrt_core::query::sub_device_path>(m_core_dev_hdl, arg);
+      return xrt_core::device_query<xrt_core::query::sub_device_path>(get_core_device(), arg);
     }
     catch (...) {
       return hal::operations_result<std::string>("");
@@ -559,7 +558,7 @@ public:
   {
     try {
       constexpr unsigned int sysfs_max_path_length = 512;
-      return xrt_core::device_query<xrt_core::query::debug_ip_layout_path>(m_core_dev_hdl, sysfs_max_path_length);
+      return xrt_core::device_query<xrt_core::query::debug_ip_layout_path>(get_core_device(), sysfs_max_path_length);
     }
     catch (...) {
       return hal::operations_result<std::string>("");
@@ -570,7 +569,7 @@ public:
   getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz) override
   {
     try {
-      auto result = xrt_core::device_query<xrt_core::query::trace_buffer_info>(m_core_dev_hdl, nSamples);
+      auto result = xrt_core::device_query<xrt_core::query::trace_buffer_info>(get_core_device(), nSamples);
       traceSamples = result.samples;
       traceBufSz = result.buf_size;
       return 0;
@@ -587,9 +586,9 @@ public:
     std::vector<uint32_t> trace_data(size);
     xrt_core::query::read_trace_data::args arg = {traceBufSz, numSamples, ipBaseAddress, wordsPerSample};
     try {
-      trace_data = xrt_core::device_query<xrt_core::query::read_trace_data>(m_core_dev_hdl, arg);
+      trace_data = xrt_core::device_query<xrt_core::query::read_trace_data>(get_core_device(), arg);
       std::copy(trace_data.data(), trace_data.data() + size, static_cast<uint32_t*>(traceBuf));
-      return traceBufSz;
+      return static_cast<int>(traceBufSz);
     }
     catch (...) {
       return hal::operations_result<int>();
@@ -600,7 +599,7 @@ public:
   getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) override
   {
     try {
-      auto vec_data = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(m_core_dev_hdl);
+      auto vec_data = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(get_core_device());
       std::copy(vec_data.data(), vec_data.data() + size, buffer);
       return hal::operations_result<void>(0);
     }

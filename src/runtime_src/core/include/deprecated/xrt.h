@@ -890,11 +890,6 @@ XCL_DRIVER_DLLHIDDEN
 int
 xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size);
 
-#ifdef XCL_DRIVER_DLLHIDDEN
-#undef XCL_DRIVER_DLLHIDDEN
-#define XCL_DRIVER_DLLHIDDEN __attribute__((visibility("default")))
-#endif
-
 #ifdef __cplusplus
 }
 #endif

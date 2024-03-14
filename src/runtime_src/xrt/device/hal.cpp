@@ -55,22 +55,6 @@ directoryOrError(const sfs::path& path)
     throw std::runtime_error("No such directory '" + path.string() + "'");
 }
 
-#if 0
-static std::string&
-propeFunc()
-{
-  static std::string sPropeFunc = "xclProbe";
-  return sPropeFunc;
-}
-
-static std::string&
-versionFunc()
-{
-  static std::string sVersionFunc = "xclVersion";
-  return sVersionFunc;
-}
-#endif
-
 static std::filesystem::path&
 dllExt()
 {

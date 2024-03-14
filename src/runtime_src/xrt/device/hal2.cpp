@@ -51,17 +51,12 @@ send_exception_message(const std::string& msg)
 namespace xrt_xocl { namespace hal2 {
 
 device::
-device(std::shared_ptr<operations> ops, unsigned int idx, const std::string& dll)
+device(std::shared_ptr<operations> ops, unsigned int idx, std::string dll)
   : m_ops{std::move(ops)}
   , m_idx(idx)
-  , mFileName{std::move(dll)}
+  , m_filename{std::move(dll)}
   , m_devinfo{}
-{
-  // creating xrt device ahead so that other functions can
-  // be called using the same
-  open();
-  m_core_dev_hdl = m_handle.get_handle();
-}
+{}
 
 device::
 ~device()
@@ -206,7 +201,7 @@ get_device_info_nolock() const
   xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, dev->open_nolock()));
 
   std::memset(dinfo,0,sizeof(hal2::device_info));
-  m_core_dev_hdl->get_device_info(dinfo);
+  get_core_device()->get_device_info(dinfo);
   return dinfo;
 }
 
@@ -222,7 +217,13 @@ std::shared_ptr<xrt_core::device>
 device::
 get_core_device() const
 {
-  return m_core_dev_hdl;
+  if (m_handle) {
+    if (auto cdev = m_handle.get_handle())
+      return cdev;
+  }
+
+  // xrt::device has not been created yet
+  throw std::runtime_error("Internal Error : device has not been opened\n");
 }
 
 bool
@@ -237,17 +238,18 @@ void
 device::
 acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
 {
-  if (m_handle) {
-    try {
-      m_core_dev_hdl->open_context(uuid, cuidx, shared);
-    }
-    catch(...) {
-      throw std::runtime_error(std::string("failed to acquire CU(")
-                               + std::to_string(cuidx)
-                               + ") context '"
-                               + std::strerror(errno)
-                               + "'");
-    }
+  try {
+    get_core_device()->open_context(uuid, cuidx, shared);
+  }
+  catch (const std::runtime_error& e) {
+    throw std::runtime_error(e.what());
+  }
+  catch (...) {
+    throw std::runtime_error(std::string("failed to acquire CU(")
+                             + std::to_string(cuidx)
+                             + ") context '"
+                             + std::strerror(errno)
+                             + "'");
   }
 }
 
@@ -255,17 +257,18 @@ void
 device::
 release_cu_context(const uuid& uuid,size_t cuidx)
 {
-  if (m_handle) {
-    try {
-      m_core_dev_hdl->close_context(uuid, cuidx);
-    }
-    catch(...) {
-      throw std::runtime_error(std::string("failed to release CU(")
-                               + std::to_string(cuidx)
-                               + ") context '"
-                               + std::strerror(errno)
-                               + "'");
-    }
+  try {
+    get_core_device()->close_context(uuid, cuidx);
+  }
+  catch (const std::runtime_error& e) {
+    throw std::runtime_error(e.what());
+  }
+  catch (...) {
+    throw std::runtime_error(std::string("failed to release CU(")
+                             + std::to_string(cuidx)
+                             + ") context '"
+                             + std::strerror(errno)
+                             + "'");
   }
 }
 
@@ -295,7 +298,10 @@ allocExecBuffer(size_t sz)
 
   auto ubo = std::make_unique<ExecBufferObject>();
   try {
-    ubo->handle = m_core_dev_hdl->alloc_bo(sz, XCL_BO_FLAGS_EXECBUF);
+    ubo->handle = get_core_device()->alloc_bo(sz, XCL_BO_FLAGS_EXECBUF);
+  }
+  catch (const std::runtime_error& e) {
+    throw std::runtime_error(e.what());
   }
   catch(...) {
     throw std::bad_alloc();
@@ -403,7 +409,7 @@ device::
 read_register(size_t offset, void* buffer, size_t size)
 {
   try {
-    m_core_dev_hdl->xread(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
+    get_core_device()->xread(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
     return size;
   }
   catch (const xrt_core::system_error& e) {
@@ -416,7 +422,7 @@ device::
 write_register(size_t offset, const void* buffer, size_t size)
 {
   try {
-    m_core_dev_hdl->xwrite(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
+    get_core_device()->xwrite(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
     return size;
   }
   catch (const xrt_core::system_error& e) {
@@ -470,8 +476,11 @@ exec_buf(const execbuffer_object_handle& boh)
 {
   auto bo = getExecBufferObject(boh);
   try {
-    m_core_dev_hdl->exec_buf(bo->handle.get());
+    get_core_device()->exec_buf(bo->handle.get());
     return 0;
+  }
+  catch (const std::runtime_error& e) {
+    throw std::runtime_error(e.what());
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
@@ -482,7 +491,7 @@ int
 device::
 exec_wait(int timeout_ms) const
 {
-  auto retval = m_core_dev_hdl->exec_wait(timeout_ms);
+  auto retval = get_core_device()->exec_wait(timeout_ms);
   if (retval==-1) {
     // We should not treat interrupted syscall as an error
     if (errno == EINTR)
