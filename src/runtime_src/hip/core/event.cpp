@@ -103,8 +103,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
   xrt::kernel k; // just for compilation purpose we have to get it from function.
   const auto& m_arginfo = std::move(xrt_core::kernel_int::get_args(k));
   size_t idx = 0;
-  for (auto itr : m_arginfo) {
-    xrt_core::kernel_int::set_arg_at_index(r, itr->index, args[idx++], itr->size);
+  for (auto m_arg : m_arginfo) {
+    xrt_core::kernel_int::set_arg_at_index(r, m_arg->index, args[idx++], m_arg->size);
   }
   r = xrt::run(k);
   r.start();
