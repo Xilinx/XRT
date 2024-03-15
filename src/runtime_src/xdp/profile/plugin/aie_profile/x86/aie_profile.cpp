@@ -25,7 +25,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/common/xrt_profiling.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
