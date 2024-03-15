@@ -16,15 +16,20 @@ jobs:
       matrix:      
         include:      
           - os: centos78      
-            packageType: rpm      
+            packageType: rpm
+            os_ver: centos_7.8      
           - os: centos8      
-            packageType: rpm      
+            packageType: rpm
+            os_ver: centos_8.1      
           - os: rhel9      
-            packageType: rpm      
+            packageType: rpm
+            os_ver: rhel_9.1      
           - os: ubuntu2004      
-            packageType: deb      
+            packageType: deb
+            os_ver: ubuntu_20.04      
           - os: ubuntu2204      
-            packageType: deb      
+            packageType: deb
+            os_ver: ubuntu_22.04      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     steps:  
@@ -58,7 +63,8 @@ jobs:
         with:     
           pipeline: ${{ env.PIPELINE }} 
           osVersion: ${{ matrix.os }}  
-          packageType: ${{ matrix.packageType }}  
+          packageType: ${{ matrix.packageType }}
+          os_ver: ${{ matrix.os_ver }}  
           workspace: ${{ github.workspace }}
           buildNumber: ${{ env.XRT_VERSION_PATCH }}     
           accessToken: ${{ secrets.ACCESS_TOKEN }}
