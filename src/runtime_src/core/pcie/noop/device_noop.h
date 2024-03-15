@@ -49,6 +49,13 @@ private:
   {
     return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
   }
+
+  void
+  get_device_info(xclDeviceInfo2 *info) override
+  {
+    if (auto ret = xclGetDeviceInfo2(get_device_handle(), info))
+      throw system_error(ret, "failed to get device info");
+  }
 };
 
 }} // noop, xrt_core

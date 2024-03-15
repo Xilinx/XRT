@@ -123,22 +123,8 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
   if (!count)
     count = xrt::system::enumerate_devices();
 
-#ifndef XRT_STATIC_BUILD
-  auto delHandle = [](void* handle) {
-    xrt_core::dlclose(handle);
-  };
-  using handle_type = std::unique_ptr<void,decltype(delHandle)>;
-
-  auto handle = handle_type(xrt_core::dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);
-  if (!handle)
-    throw std::runtime_error("Failed to open HAL driver '" + dll + "'\n" + xrt_core::dlerror());
-
-  hal2::createDevices(devices, dll, handle.release(), count);
-#else
   if (count)
-    hal2::createDevices(devices, dll, nullptr, count);
-#endif
-
+    hal2::createDevices(devices, dll, count);
 }
 
 } // namespace

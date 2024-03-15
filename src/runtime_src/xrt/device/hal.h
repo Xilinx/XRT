@@ -668,7 +668,7 @@ namespace hal2 {
  *   Number of devices probed by the dll
  */
 void
-createDevices(hal::device_list&, const std::string&, void*, unsigned int);
+createDevices(hal::device_list&, const std::string&, unsigned int);
 
 } // namespace hal2
 

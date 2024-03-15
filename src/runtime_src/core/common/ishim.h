@@ -10,6 +10,7 @@
 
 #include "core/common/shim/hwctx_handle.h"
 #include "core/include/shim_int.h"
+#include "core/include/xdp/counters.h"
 
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
@@ -47,9 +48,6 @@ struct ishim
 
   virtual void
   close_device() = 0;
-
-  virtual void
-  get_device_info(xclDeviceInfo2 *info) = 0;
 
   // Legacy, to be removed
   virtual void
@@ -102,6 +100,18 @@ struct ishim
 
   virtual void
   user_reset(xclResetKind kind) = 0;
+
+  virtual void
+  get_device_info(xclDeviceInfo2*)
+  { throw not_supported_error{__func__}; }
+
+  virtual size_t
+  get_device_timestamp()
+  { throw not_supported_error{__func__}; }
+
+  virtual std::string
+  get_sysfs_path(const std::string&, const std::string&)
+  { throw not_supported_error{__func__}; }
 
   ////////////////////////////////////////////////////////////////
   // Interfaces for buffer handling
@@ -267,13 +277,6 @@ struct shim : public DeviceType
   close_device() override
   {
     xclClose(DeviceType::get_device_handle());
-  }
-
-  void
-  get_device_info(xclDeviceInfo2 *info) override
-  {
-    if (auto ret = xclGetDeviceInfo2(DeviceType::get_device_handle(), info))
-      throw system_error(ret, "failed to get device info");
   }
 
   // Legacy, to be removed

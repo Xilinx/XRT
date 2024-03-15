@@ -51,9 +51,8 @@ send_exception_message(const std::string& msg)
 namespace xrt_xocl { namespace hal2 {
 
 device::
-device(std::shared_ptr<operations> ops, unsigned int idx, std::string dll)
-  : m_ops{std::move(ops)}
-  , m_idx(idx)
+device(unsigned int idx, std::string dll)
+  : m_idx(idx)
   , m_filename{std::move(dll)}
   , m_devinfo{}
 {}
@@ -241,8 +240,8 @@ acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
   try {
     get_core_device()->open_context(uuid, cuidx, shared);
   }
-  catch (const std::runtime_error& e) {
-    throw std::runtime_error(e.what());
+  catch (const xrt_core::system_error&) {
+    throw; // handle exception from ishim
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to acquire CU(")
@@ -260,8 +259,8 @@ release_cu_context(const uuid& uuid,size_t cuidx)
   try {
     get_core_device()->close_context(uuid, cuidx);
   }
-  catch (const std::runtime_error& e) {
-    throw std::runtime_error(e.what());
+  catch (const xrt_core::system_error&) {
+    throw; // handle exception from ishim
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to release CU(")
@@ -300,10 +299,10 @@ allocExecBuffer(size_t sz)
   try {
     ubo->handle = get_core_device()->alloc_bo(sz, XCL_BO_FLAGS_EXECBUF);
   }
-  catch (const std::runtime_error& e) {
-    throw std::runtime_error(e.what());
+  catch (const xrt_core::system_error&) {
+    throw; // handle exception from ishim
   }
-  catch(...) {
+  catch (...) {
     throw std::bad_alloc();
   }
 
@@ -408,26 +407,16 @@ size_t
 device::
 read_register(size_t offset, void* buffer, size_t size)
 {
-  try {
-    get_core_device()->xread(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
-    return size;
-  }
-  catch (const xrt_core::system_error& e) {
-    return e.get_code();
-  }
+  get_core_device()->xread(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
+  return size;
 }
 
 size_t
 device::
 write_register(size_t offset, const void* buffer, size_t size)
 {
-  try {
-    get_core_device()->xwrite(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
-    return size;
-  }
-  catch (const xrt_core::system_error& e) {
-    return e.get_code();
-  }
+  get_core_device()->xwrite(XCL_ADDR_KERNEL_CTRL, offset, buffer, size);
+  return size;
 }
 
 void*
@@ -479,8 +468,8 @@ exec_buf(const execbuffer_object_handle& boh)
     get_core_device()->exec_buf(bo->handle.get());
     return 0;
   }
-  catch (const std::runtime_error& e) {
-    throw std::runtime_error(e.what());
+  catch (const xrt_core::system_error&) {
+    throw; // handle exception from ishim
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
@@ -544,11 +533,10 @@ getBufferFromFd(int fd, size_t& size, unsigned flags)
 
 void
 createDevices(hal::device_list& devices,
-              const std::string& dll, void* driverHandle, unsigned int deviceCount)
+              const std::string& dll, unsigned int deviceCount)
 {
-  auto halops = std::make_shared<operations>(dll, driverHandle, deviceCount);
   for (unsigned int idx=0; idx<deviceCount; ++idx)
-    devices.emplace_back(std::make_unique<xrt_xocl::hal2::device>(halops, idx, dll));
+    devices.emplace_back(std::make_unique<xrt_xocl::hal2::device>(idx, dll));
 }
 
 

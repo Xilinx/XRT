@@ -94,6 +94,12 @@ public:
     return xrt::shim_int::alloc_bo(get_device_handle(), userptr, size, xcl_bo_flags{flags}.flags);
   }
 
+  void
+  get_device_info(xclDeviceInfo2 *info) override;
+
+  std::string
+  get_sysfs_path(const std::string& subdev, const std::string& entry) override;
+
 protected:
   pci::dev*
   get_dev() const
