@@ -70,10 +70,10 @@ writeReport(const xrt_core::device* /*dev*/,
       Table2D s2mm_table = generate_channel_table(tile.get_child("dma.s2mm_channels"));
       output << s2mm_table.toString("          ");
 
-      output << "        Locks:\n";
-      for (const auto& [lock_name, lock] : tile.get_child("locks")) {
-        output << boost::format("          %s\n") % lock.get_value<std::string>();
-      }
+      output << "      Locks:\n";
+      Table2D lock_table = generate_lock_table(tile.get_child("locks"));
+      output << lock_table.toString("        ");
+
       output << std::endl;
     }
   }

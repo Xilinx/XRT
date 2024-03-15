@@ -256,11 +256,11 @@ populate_locks(const std::vector<uint8_t>& locks)
 {
   bpt::ptree pt_locks;
 
-  for (uint32_t i = 0; i < locks.size(); i++)
-  {
+  for (uint32_t i = 0; i < locks.size(); i++) {
     bpt::ptree pt_lock;
 
-    pt_lock.put("", locks[i] & lock_mask);
+    pt_lock.put("id", std::to_string(i));
+    pt_lock.put("events", locks[i] & lock_mask);
     pt_locks.push_back(std::make_pair("", pt_lock));
   }
 
@@ -497,7 +497,7 @@ get_shim_tile_info(const aie_shim_tile_status& shim)
 
   //fill Lock's info
   auto lock_pt = populate_locks(shim.lock_value);
-  pt.add_child("lock", lock_pt);
+  pt.add_child("locks", lock_pt);
 
   return pt;
 }

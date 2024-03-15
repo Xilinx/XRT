@@ -7,8 +7,6 @@
 #include "core/common/info_aie.h"
 #include "tools/common/Table2D.h"
 
-#include <boost/property_tree/ptree.hpp>
-
 static const std::vector<Table2D::HeaderData> dma_table_headers = {
   {"Status", Table2D::Justification::left},
   {"Queue Size", Table2D::Justification::left},
@@ -30,6 +28,25 @@ generate_channel_table(const boost::property_tree::ptree& channels)
       table.addEntry(entry_data);
     }
     return table;
+}
+
+static const std::vector<Table2D::HeaderData> lock_table_headers = {
+  {"Lock ID", Table2D::Justification::left},
+  {"Events", Table2D::Justification::left}
+};
+
+static Table2D
+generate_lock_table(const boost::property_tree::ptree& locks)
+{
+  Table2D table(lock_table_headers);
+  for (const auto& [lock_name, lock] : locks) {
+    const std::vector<std::string> entry_data = {
+      lock.get<std::string>("id"),
+      lock.get<std::string>("events")
+    };
+    table.addEntry(entry_data);
+  }
+  return table;
 }
 
 #endif
