@@ -103,6 +103,8 @@ struct drm_xocl_bo {
 	unsigned              flags;
 	unsigned              mem_idx;
 	unsigned	      user_flags;
+	/* variable to store the actual bo size instead of aligned size*/
+	uint64_t 	      actual_bo_size;
 };
 
 struct drm_xocl_unmgd {
