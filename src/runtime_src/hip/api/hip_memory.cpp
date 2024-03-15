@@ -37,12 +37,12 @@ namespace xrt::core::hip
     auto dev_addr = hip_mem->get_device_addr();
     if (dev_addr != 0)
     {
-      memory_database::GetInstance()->insert_device_addr(reinterpret_cast<uint64_t>(dev_addr), size, hip_mem);
+      memory_database::instance().insert_device_addr(reinterpret_cast<uint64_t>(dev_addr), size, hip_mem);
       *ptr = reinterpret_cast<void *>(dev_addr);
       return;
     }
     auto host_addr = hip_mem->get_host_addr();
-    memory_database::GetInstance()->insert_host_addr(host_addr, size, hip_mem);
+    memory_database::instance().insert_host_addr(host_addr, size, hip_mem);
     *ptr = host_addr;
   }
 
@@ -64,7 +64,7 @@ namespace xrt::core::hip
 
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(size, flags, dev);
     auto host_addr = hip_mem->get_host_addr();
-    memory_database::GetInstance()->insert_host_addr(host_addr, size, hip_mem);
+    memory_database::instance().insert_host_addr(host_addr, size, hip_mem);
     *ptr = host_addr;
   }
 
@@ -72,10 +72,10 @@ namespace xrt::core::hip
   static void
   hip_host_free(void *ptr)
   {
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_host_addr(ptr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_host_addr(ptr);
     if (hip_mem != nullptr)
     {
-      memory_database::GetInstance()->delete_host_addr(ptr);
+      memory_database::instance().delete_host_addr(ptr);
     }
   }
 
@@ -83,10 +83,10 @@ namespace xrt::core::hip
   static void
   hip_free(void *ptr)
   {
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_addr(ptr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
     if (hip_mem != nullptr)
     {
-      memory_database::GetInstance()->delete_addr(reinterpret_cast<uint64_t>(ptr));
+      memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
     }
   }
 
@@ -108,17 +108,17 @@ namespace xrt::core::hip
 
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(sizeBytes, hostPtr, flags, dev);
     auto host_addr = hip_mem->get_host_addr();
-    memory_database::GetInstance()->insert_host_addr(host_addr, sizeBytes, hip_mem);
+    memory_database::instance().insert_host_addr(host_addr, sizeBytes, hip_mem);
   }
 
   // Un-register host pointer.
   static void
   hip_host_unregister(void *hostPtr)
   {
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_host_addr(hostPtr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_host_addr(hostPtr);
     if (hip_mem != nullptr)
     {
-      memory_database::GetInstance()->delete_host_addr(hostPtr);
+      memory_database::instance().delete_host_addr(hostPtr);
     }
   }
 
@@ -129,7 +129,7 @@ namespace xrt::core::hip
     assert(devPtr);
 
     *devPtr = nullptr;
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_host_addr(hstPtr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_host_addr(hstPtr);
     if (hip_mem != nullptr)
     {
       *devPtr = hip_mem->get_device_addr();
@@ -139,7 +139,7 @@ namespace xrt::core::hip
   static void
   hip_memcpy_host2device(void *dst, const void *src, size_t sizeBytes)
   {
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_addr(dst);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
     hip_mem->copy_from(src, sizeBytes);
   }
 
@@ -152,15 +152,15 @@ namespace xrt::core::hip
   static void
   hip_memcpy_device2host(void *dst, const void *src, size_t sizeBytes)
   {
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_addr(src);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
     hip_mem->copy_to(dst, sizeBytes);
   }
 
   static void
   hip_memcpy_device2device(void *dst, const void *src, size_t sizeBytes)
   {
-    auto hip_mem_src = memory_database::GetInstance()->get_hip_mem_from_addr(src);
-    auto hip_mem_dst = memory_database::GetInstance()->get_hip_mem_from_addr(dst);
+    auto hip_mem_src = memory_database::instance().get_hip_mem_from_addr(src);
+    auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
 
     hip_mem_dst->copy_from(hip_mem_src.get(), sizeBytes);
   }
@@ -196,7 +196,7 @@ namespace xrt::core::hip
   static void
   hip_memset(void *dst, int value, size_t sizeBytes)
   {
-    auto hip_mem = memory_database::GetInstance()->get_hip_mem_from_addr(dst);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
     assert(hip_mem->get_type() != xrt::core::hip::memory_type::hip_memory_type_invalid);
 
     auto host_src = aligned_alloc(xrt_core::getpagesize(), sizeBytes);

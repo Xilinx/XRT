@@ -158,7 +158,7 @@ namespace xrt::core::hip
   void
   memory::copy_from(const void *host_src, size_t size, size_t src_offset, size_t offset)
   {
-    auto src_hip_mem = memory_database::GetInstance()->get_hip_mem_from_host_addr(host_src);
+    auto src_hip_mem = memory_database::instance().get_hip_mem_from_host_addr(host_src);
     if (src_hip_mem != nullptr &&
         src_hip_mem->get_type() == memory_type::hip_memory_type_host)
     {
@@ -199,20 +199,27 @@ namespace xrt::core::hip
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  memory_database *memory_database::m_memory_database = nullptr;
+  memory_database* memory_database::m_memory_database = nullptr;
 
-  memory_database *memory_database::GetInstance()
+  memory_database& memory_database::instance()
   {
-    if (m_memory_database == nullptr)
+    if (!m_memory_database)
     {
-      m_memory_database = new memory_database();
+      static memory_database mem_db;
     }
-    return m_memory_database;
+    return *m_memory_database;
   }
 
   memory_database::memory_database()
       : m_hostAddrMap(), m_devAddrMap()
   {
+    if (m_memory_database)
+    {
+      throw std::runtime_error
+        ("Multiple instances of hip memory_database detected, only one\n"
+        "can be loaded at any given time.");
+    }
+    m_memory_database = this;
   }
 
   memory_database::~memory_database()

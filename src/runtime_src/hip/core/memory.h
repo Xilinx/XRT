@@ -164,7 +164,7 @@ protected:
 public:
     ~memory_database();
 
-    static memory_database* GetInstance();
+    static memory_database& instance();
 
     XRT_HIP_ADDR_MAP& get_hostaddr_map() 
     {
