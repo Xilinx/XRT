@@ -19,7 +19,6 @@
 #include "xdp_client_device.h"
 #include "core/common/time.h"
 #include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/experimental/xrt_device.h"
