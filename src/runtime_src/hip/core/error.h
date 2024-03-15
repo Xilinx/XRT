@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 #ifndef xrthip_error_h
 #define xrthip_error_h
 
@@ -11,15 +11,9 @@
 
 namespace xrt::core::hip
 {
-
   class error_state
   {
-
   public:
-    ~error_state()
-    {
-    }
-
     static error_state& instance();
 
     static const char* get_error_name(hipError_t err);
@@ -48,6 +42,5 @@ namespace xrt::core::hip
   private:
     hipError_t m_last_error;
   }; // class error_state
-
 }
 #endif // xrthip_error_h

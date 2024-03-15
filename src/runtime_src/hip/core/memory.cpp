@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -9,11 +9,10 @@
 #endif
 
 #include "core/common/unistd.h"
-#include "hip/config.h"
-#include "hip/hip_runtime_api.h"
-
 #include "device.h"
 #include "memory.h"
+#include "hip/config.h"
+#include "hip/hip_runtime_api.h"
 
 namespace xrt::core::hip
 {
@@ -231,7 +230,7 @@ namespace xrt::core::hip
   void
   memory_database::insert_host_addr(void *host_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
   {
-    m_hostAddrMap.insert(std::pair(address_range_key(reinterpret_cast<uint64_t>(host_addr), size), hip_mem));
+    m_hostAddrMap.insert({address_range_key(reinterpret_cast<uint64_t>(host_addr), size), hip_mem});
   }
 
   void
@@ -243,7 +242,7 @@ namespace xrt::core::hip
   void
   memory_database::insert_device_addr(uint64_t dev_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
   {
-    m_devAddrMap.insert(std::pair(address_range_key(dev_addr, size), hip_mem));
+    m_devAddrMap.insert({address_range_key(dev_addr, size), hip_mem});
   }
 
   void
@@ -262,7 +261,7 @@ namespace xrt::core::hip
   std::shared_ptr<xrt::core::hip::memory>
   memory_database::get_hip_mem_from_host_addr(void *host_addr)
   {
-    XRT_HIP_ADDR_MAP_ITR itr = m_hostAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
+    auto itr = m_hostAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
     if (itr == m_hostAddrMap.end())
     {
       return nullptr;
@@ -276,7 +275,7 @@ namespace xrt::core::hip
   std::shared_ptr<const xrt::core::hip::memory>
   memory_database::get_hip_mem_from_host_addr(const void *host_addr)
   {
-    XRT_HIP_ADDR_MAP_ITR itr = m_hostAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
+    auto itr = m_hostAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
     if (itr == m_hostAddrMap.end())
     {
       return nullptr;
@@ -290,7 +289,7 @@ namespace xrt::core::hip
   std::shared_ptr<xrt::core::hip::memory>
   memory_database::get_hip_mem_from_device_addr(void *dev_addr)
   {
-    XRT_HIP_ADDR_MAP_ITR itr = m_devAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(dev_addr), 0));
+    auto itr = m_devAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(dev_addr), 0));
     if (itr == m_devAddrMap.end())
     {
       return nullptr;
@@ -304,7 +303,7 @@ namespace xrt::core::hip
   std::shared_ptr<const xrt::core::hip::memory>
   memory_database::get_hip_mem_from_device_addr(const void *dev_addr)
   {
-    XRT_HIP_ADDR_MAP_ITR itr = m_devAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(dev_addr), 0));
+    auto itr = m_devAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(dev_addr), 0));
     if (itr == m_devAddrMap.end())
     {
       return nullptr;

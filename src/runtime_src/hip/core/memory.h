@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 #ifndef xrthip_memory_h
 #define xrthip_memory_h
 
-#include "xrt/config.h"
-#include "xrt/device/hal.h"
-#include "xrt/util/range.h"
 #include "core/common/device.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_ext.h"
 #include "device.h"
+#include "xrt/config.h"
+#include "xrt/device/hal.h"
+#include "xrt/util/range.h"
 
 namespace xrt::core::hip
 {
-
   enum class memory_type : int
   {
     hip_memory_type_host = 0,
@@ -56,16 +55,26 @@ namespace xrt::core::hip
 
     static void lock_pages(void* addr, size_t size);
 
-    void validate();
-    void pre_kernel_run_sync_host_mem();
-    void post_kernel_run_sync_host_mem();
+    void
+    validate();
+    
+    void
+    pre_kernel_run_sync_host_mem();
+    
+    void
+    post_kernel_run_sync_host_mem();
 
-    void copy_from(const xrt::core::hip::memory *src, size_t size, size_t src_offset = 0, size_t offset = 0);
-    void copy_from(const void *host_src, size_t size, size_t src_offset = 0, size_t offset = 0);
+    void
+    copy_from(const xrt::core::hip::memory *src, size_t size, size_t src_offset = 0, size_t offset = 0);
+    
+    void
+    copy_from(const void *host_src, size_t size, size_t src_offset = 0, size_t offset = 0);
 
-    void copy_to(void *host_dst, size_t size, size_t dst_offset = 0, size_t offset = 0) const;
+    void
+    copy_to(void *host_dst, size_t size, size_t dst_offset = 0, size_t offset = 0) const;
 
-    void set_device(std::shared_ptr<xrt::core::hip::device> device)
+    void
+    set_device(std::shared_ptr<xrt::core::hip::device> device)
     { 
       m_device = device; 
     }
@@ -78,32 +87,38 @@ namespace xrt::core::hip
 
     void* get_device_addr();
 
-    const std::shared_ptr<xrt::bo> get_xrt_bo() const 
+    std::shared_ptr<xrt::bo>
+    get_xrt_bo() const
     { 
       return m_bo; 
     }
     
-    std::shared_ptr<xrt::bo> get_xrt_bo() 
+    std::shared_ptr<xrt::bo>
+    get_xrt_bo() 
     { 
       return m_bo; 
     }
 
-    unsigned int get_hip_flags() const
+    unsigned int
+    get_hip_flags() const
     { 
       return m_hip_flags; 
     }
 
-    memory_type get_type() const
+    memory_type
+    get_type() const
     { 
       return m_type; 
     }
 
-    memory_group get_group() const
+    memory_group
+    get_group() const
     { 
       return m_group; 
     }
     
-    void set_group(memory_group group)
+    void
+    set_group(memory_group group)
     {
       m_group = group; 
     }
@@ -117,16 +132,18 @@ namespace xrt::core::hip
   private:
     size_t m_size;
     memory_type m_type;
-    unsigned int m_hip_flags;
-    unsigned char *m_host_mem;
+    unsigned int m_hip_flags; // hipHostMallocMapped etc.
+    unsigned char *m_host_mem; // host copy to store user data
     std::shared_ptr<xrt::core::hip::device>  m_device;
     std::shared_ptr<xrt::bo> m_bo;
     xrt::memory_group m_group;
-    bool m_sync_host_mem_required;
+    bool m_sync_host_mem_required; //true if sync between host copy and bo is required.
 
-    void free_mem();
+    void
+    free_mem();
 
-    void init_xrt_bo();
+    void
+    init_xrt_bo();
   };
 
 class address_range_key
@@ -147,14 +164,13 @@ struct addre_sz_key_compare
     }
 };
 
-typedef std::map<address_range_key, std::shared_ptr<xrt::core::hip::memory>, addre_sz_key_compare> XRT_HIP_ADDR_MAP;
-typedef XRT_HIP_ADDR_MAP::iterator XRT_HIP_ADDR_MAP_ITR;
+using addr_map = std::map<address_range_key, std::shared_ptr<xrt::core::hip::memory>, addre_sz_key_compare>;
 
 class memory_database
 {
 private:
-    XRT_HIP_ADDR_MAP m_hostAddrMap;
-    XRT_HIP_ADDR_MAP m_devAddrMap;
+    addr_map m_hostAddrMap;
+    addr_map m_devAddrMap;
 
 protected:
     memory_database();
@@ -164,29 +180,47 @@ protected:
 public:
     ~memory_database();
 
-    static memory_database& instance();
+    static memory_database&
+    instance();
 
-    XRT_HIP_ADDR_MAP& get_hostaddr_map() 
+    addr_map&
+    get_hostaddr_map() 
     {
         return m_hostAddrMap;
     }
 
-    void insert_host_addr(void* host_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
-    void delete_host_addr(void* host_addr);
+    void
+    insert_host_addr(void* host_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
+    
+    void
+    delete_host_addr(void* host_addr);
 
-    void insert_device_addr(uint64_t dev_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
-    void delete_device_addr(uint64_t dev_addr);
+    void
+    insert_device_addr(uint64_t dev_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
+    
+    void
+    delete_device_addr(uint64_t dev_addr);
 
-    void delete_addr(uint64_t addr);
+    void
+    delete_addr(uint64_t addr);
 
-    std::shared_ptr<xrt::core::hip::memory> get_hip_mem_from_addr(void* addr);
-    std::shared_ptr<const xrt::core::hip::memory> get_hip_mem_from_addr(const void* addr);
+    std::shared_ptr<xrt::core::hip::memory>
+    get_hip_mem_from_addr(void* addr);
+    
+    std::shared_ptr<const xrt::core::hip::memory>
+    get_hip_mem_from_addr(const void* addr);
 
-    std::shared_ptr<xrt::core::hip::memory> get_hip_mem_from_host_addr(void* host_addr);
-    std::shared_ptr<const xrt::core::hip::memory> get_hip_mem_from_host_addr(const void* host_addr);
+    std::shared_ptr<xrt::core::hip::memory>
+    get_hip_mem_from_host_addr(void* host_addr);
+    
+    std::shared_ptr<const xrt::core::hip::memory>
+    get_hip_mem_from_host_addr(const void* host_addr);
 
-    std::shared_ptr<xrt::core::hip::memory> get_hip_mem_from_device_addr(void* dev_addr);
-    std::shared_ptr<const xrt::core::hip::memory> get_hip_mem_from_device_addr(const void* dev_addr);
+    std::shared_ptr<xrt::core::hip::memory>
+    get_hip_mem_from_device_addr(void* dev_addr);
+    
+    std::shared_ptr<const xrt::core::hip::memory>
+    get_hip_mem_from_device_addr(const void* dev_addr);
 };
 
 

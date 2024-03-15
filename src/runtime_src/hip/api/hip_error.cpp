@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 
 #include <string>
-
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
-#include "hip/core/device.h"
 #include "core/common/error.h"
+#include "hip/core/device.h"
 #include "hip/core/error.h"
+
 
 namespace xrt::core::hip
 {
-
   static hipError_t
   hip_peek_last_error()
   {
-    hipError_t last_error = error_state::instance().peek_last_error();
-    return last_error;
+    return error_state::instance().peek_last_error();
   }
 
   static hipError_t
@@ -49,7 +47,7 @@ hipDrvGetErrorString(hipError_t hipError,
                      const char **errorString)
 {
   try {
-    // TODO: return more detailed erro string instead of error name
+    // TODO: return more detailed error string instead of error name
     *errorString = xrt::core::hip::error_state::get_error_name(hipError);
     return hipSuccess;
   } catch (const std::exception &ex) {
@@ -78,7 +76,7 @@ hipGetErrorString(hipError_t hipError)
 {
   const char *error_string = nullptr;
   try {
-    // TODO: return more detailed erro string instead of error name
+    // TODO: return more detailed error string instead of error name
     error_string = xrt::core::hip::error_state::get_error_name(hipError);
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());

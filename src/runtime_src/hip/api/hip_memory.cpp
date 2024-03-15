@@ -72,22 +72,16 @@ namespace xrt::core::hip
   static void
   hip_host_free(void *ptr)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_host_addr(ptr);
-    if (hip_mem != nullptr)
-    {
+    if (memory_database::instance().get_hip_mem_from_host_addr(ptr))
       memory_database::instance().delete_host_addr(ptr);
-    }
   }
 
   // Free memory allocated by the hipMalloc().
   static void
   hip_free(void *ptr)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
-    if (hip_mem != nullptr)
-    {
+    if (memory_database::instance().get_hip_mem_from_addr(ptr))
       memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
-    }
   }
 
   // Register host memory so it can be accessed from the current device.
