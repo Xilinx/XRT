@@ -210,13 +210,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	size_t num_of_sections;
 	void *kernels = NULL;
 	void *aie_res = 0;
-	void *aie_res_bin = 0;
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = 0;
 	uint32_t qos = 0;
 	uint8_t hw_gen = axlf_obj->hw_gen;
-	uint32_t part_id = axlf_obj->partition_id;
 
 	/* Download the XCLBIN from user space to kernel space and validate */
 	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
@@ -276,7 +274,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 */
 
 	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
-	zocl_read_sect(AIE_RESOURCES_BIN, &aie_res_bin, axlf, xclbin);
 
 	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
 	 * can be opened and/or closed
@@ -407,7 +404,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, slot);
 
 	/* Createing AIE Partition */
-	zocl_create_aie(zdev, axlf,xclbin, aie_res, aie_res_bin, hw_gen, part_id);
+	zocl_create_aie(zdev, axlf, xclbin, aie_res, hw_gen);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.

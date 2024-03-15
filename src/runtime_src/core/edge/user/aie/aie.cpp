@@ -55,7 +55,6 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
     /* TODO get partition id and uid from XCLBIN or PDI */
-//    uint32_t partition_id = xrt_core::edge::aie::get_partition_id(device.get());
     uint32_t partition_id = 1;
     uint32_t uid = 0;
     drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };

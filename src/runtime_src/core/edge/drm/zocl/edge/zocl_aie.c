@@ -245,7 +245,7 @@ zocl_cleanup_aie(struct drm_zocl_dev *zdev)
 }
 
 int 
-zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *xclbin, enum axlf_section_kind kind)
+zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *xclbin)
 {
 	struct axlf_section_header *header = NULL;
 	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
@@ -272,19 +272,19 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
         	memcpy(res, data_portion, data_size);
 
 		//Call the AIE Driver API 
-//		int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, aie_p->m_start_column, aie_p->m_num_columns, res);
-//		if (ret != 0) {
-//			return ret;
-//		}
+		//int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, aie_p->m_start_column, aie_p->m_num_columns, res);
+		//if (ret != 0) {
+		//	return ret;
+		//}
 
-        	header = xrt_xclbin_get_section_hdr_next(axlf, kind, header);
+        	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
 	}
 	return 0;
 }
 
 
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, void *aie_res_bin, uint8_t hw_gen, uint32_t part_id)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, uint8_t hw_gen)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -294,7 +294,6 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
 		return rval;
-	
 	mutex_lock(&zdev->aie_lock);
 
 	/* AIE is reset and no PDI is loaded after reset */
@@ -345,8 +344,8 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbi
 
 	zdev->aie->aie_dev = aie_partition_request(&req);
 
-	if (aie_res_bin) {
-		int res = zocl_read_aieresbin(zdev, axlf, xclbin, AIE_RESOURCES_BIN);
+	if (!aie_res) {
+		int res = zocl_read_aieresbin(zdev, axlf, xclbin);
 		if (res)
 			goto done;
 	}

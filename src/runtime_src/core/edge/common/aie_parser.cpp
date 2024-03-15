@@ -80,7 +80,7 @@ get_hw_gen(const pt::ptree& aie_meta)
   return aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
 }
 
-uint32_t
+static uint32_t
 get_partition_id(const pt::ptree& aie_meta)
 {
   auto num_col = aie_meta.get<uint8_t>("aie_metadata.driver_config.partition_num_cols");
