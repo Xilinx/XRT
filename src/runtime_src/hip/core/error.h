@@ -11,10 +11,10 @@
 
 namespace xrt::core::hip
 {
-  class error_state
+  class error
   {
   public:
-    static error_state& instance();
+    static error& instance();
 
     static const char* get_error_name(hipError_t err);
 
@@ -37,10 +37,10 @@ namespace xrt::core::hip
     }
 
   protected:
-    error_state();
+    error();
 
   private:
     hipError_t m_last_error;
-  }; // class error_state
+  }; // class error
 }
 #endif // xrthip_error_h

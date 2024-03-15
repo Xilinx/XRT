@@ -14,14 +14,14 @@ namespace xrt::core::hip
   static hipError_t
   hip_peek_last_error()
   {
-    return error_state::instance().peek_last_error();
+    return error::instance().peek_last_error();
   }
 
   static hipError_t
   hip_get_last_error()
   {
-    hipError_t last_error = error_state::instance().peek_last_error();
-    error_state::instance().reset_last_error();
+    hipError_t last_error = error::instance().peek_last_error();
+    error::instance().reset_last_error();
     return last_error;
   }
 
@@ -33,7 +33,7 @@ hipDrvGetErrorName(hipError_t hipError,
                    const char **errorName)
 {
   try {
-    *errorName = xrt::core::hip::error_state::get_error_name(hipError);
+    *errorName = xrt::core::hip::error::get_error_name(hipError);
     return hipSuccess;
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
@@ -48,7 +48,7 @@ hipDrvGetErrorString(hipError_t hipError,
 {
   try {
     // TODO: return more detailed error string instead of error name
-    *errorString = xrt::core::hip::error_state::get_error_name(hipError);
+    *errorString = xrt::core::hip::error::get_error_name(hipError);
     return hipSuccess;
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
@@ -77,7 +77,7 @@ hipGetErrorString(hipError_t hipError)
   const char *error_string = nullptr;
   try {
     // TODO: return more detailed error string instead of error name
-    error_string = xrt::core::hip::error_state::get_error_name(hipError);
+    error_string = xrt::core::hip::error::get_error_name(hipError);
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
@@ -90,7 +90,7 @@ hipGetErrorName(hipError_t hipError)
 {
   const char *error_name = nullptr;
   try {
-    error_name = xrt::core::hip::error_state::get_error_name(hipError);
+    error_name = xrt::core::hip::error::get_error_name(hipError);
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
