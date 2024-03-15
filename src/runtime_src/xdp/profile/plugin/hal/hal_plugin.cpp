@@ -28,7 +28,6 @@
 
 #include "xdp/profile/database/database.h"
 
-#include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
 
 namespace xdp {

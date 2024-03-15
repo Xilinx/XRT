@@ -26,7 +26,6 @@
 
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
 #include "core/edge/common/aie_parser.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/tracedefs.h"
