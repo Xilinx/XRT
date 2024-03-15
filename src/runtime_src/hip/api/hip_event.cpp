@@ -37,6 +37,7 @@ static void hip_event_synchronize(hipEvent_t eve)
 {
   throw_invalid_value_if(!eve, "event passed is nullptr");
   auto hip_ev = std::dynamic_pointer_cast<event>(command_cache.get(eve));
+  throw_invalid_value_if(!hip_ev, "dynamic_pointer_cast failed");
   hip_ev->synchronize();
 }
 
@@ -45,7 +46,9 @@ static float hip_event_elapsed_time(hipEvent_t start, hipEvent_t stop)
   throw_invalid_value_if(!start, "start event passed is nullptr");
   throw_invalid_value_if(!stop, "stop event passed is nullptr");
   auto hip_ev_start = std::dynamic_pointer_cast<event>(command_cache.get(start));
+  throw_invalid_value_if(!hip_ev_start, "dynamic_pointer_cast failed");
   auto hip_ev_stop = std::dynamic_pointer_cast<event>(command_cache.get(stop));
+  throw_invalid_value_if(!hip_ev_stop, "dynamic_pointer_cast failed");
   return hip_ev_start->elapsed_time(hip_ev_stop);
 }
 
@@ -53,6 +56,7 @@ static bool hip_event_query(hipEvent_t eve)
 {
   throw_invalid_value_if(!eve, "event passed is nullptr");
   auto hip_ev = std::dynamic_pointer_cast<event>(command_cache.get(eve));
+  throw_invalid_value_if(!hip_ev, "dynamic_pointer_cast failed");
   return hip_ev->query();
 }
 } // // xrt::core::hip

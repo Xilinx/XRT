@@ -7,7 +7,6 @@
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
-//#include "xrt.h"
 #include "xrt/xrt_bo.h"
 #include "core/common/api/kernel_int.h"
 

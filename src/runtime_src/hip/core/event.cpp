@@ -34,8 +34,8 @@ bool event::is_recorded() const
 
 bool event::query()
 {
-  for (auto it : recorded_commands){
-    state command_state = it->get_state();
+  for (auto rec_com : recorded_commands){
+    state command_state = rec_com->get_state();
     if (command_state != state::completed){
       return false;
     }
@@ -45,12 +45,12 @@ bool event::query()
 
 bool event::synchronize()
 {
-  for (auto it : recorded_commands) {
-    it->wait();
+  for (auto rec_com : recorded_commands) {
+    rec_com->wait();
   }
   set_state(state::completed);
-  for (auto it :chain_of_commands){
-    it->submit();
+  for (auto coms_ch :chain_of_commands){
+    coms_ch->submit();
   }
   return true;
 }
@@ -148,7 +148,7 @@ copy_buffer::copy_buffer(std::shared_ptr<stream> s)
 
 bool copy_buffer::submit()
 {
-  //handle = std::future<cbo.sync(cdirection)>;
+  //handle = std::async(&xrt::bo::sync, &cbo, cdirection);
   return true;
 }
 
