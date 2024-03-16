@@ -216,10 +216,8 @@ std::shared_ptr<xrt_core::device>
 device::
 get_core_device() const
 {
-  if (m_handle) {
-    if (auto cdev = m_handle.get_handle())
-      return cdev;
-  }
+  if (auto cdev = m_handle.get_handle())
+    return cdev;
 
   // xrt::device has not been created yet
   throw std::runtime_error("Internal Error : device has not been opened\n");
@@ -240,8 +238,8 @@ acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
   try {
     get_core_device()->open_context(uuid, cuidx, shared);
   }
-  catch (const xrt_core::system_error&) {
-    throw; // handle exception from ishim
+  catch (const std::exception&) {
+    throw;
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to acquire CU(")
@@ -259,8 +257,8 @@ release_cu_context(const uuid& uuid,size_t cuidx)
   try {
     get_core_device()->close_context(uuid, cuidx);
   }
-  catch (const xrt_core::system_error&) {
-    throw; // handle exception from ishim
+  catch (const std::exception&) {
+    throw;
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to release CU(")
@@ -299,8 +297,8 @@ allocExecBuffer(size_t sz)
   try {
     ubo->handle = get_core_device()->alloc_bo(sz, XCL_BO_FLAGS_EXECBUF);
   }
-  catch (const xrt_core::system_error&) {
-    throw; // handle exception from ishim
+  catch (const std::exception&) {
+    throw;
   }
   catch (...) {
     throw std::bad_alloc();
@@ -468,8 +466,8 @@ exec_buf(const execbuffer_object_handle& boh)
     get_core_device()->exec_buf(bo->handle.get());
     return 0;
   }
-  catch (const xrt_core::system_error&) {
-    throw; // handle exception from ishim
+  catch (const std::exception&) {
+    throw;
   }
   catch (...) {
     throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
