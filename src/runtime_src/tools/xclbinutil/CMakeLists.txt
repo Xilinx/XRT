@@ -38,6 +38,11 @@ include_directories(${XRT_BINARY_DIR}/gen)
 
 # ==-- x c l b i n u t i l --==================================================
 
+# aie-pdi-transform only supports linux build currently
+if(NOT WIN32)
+  add_subdirectory(aie-pdi-transform)
+endif()
+
 set(XCLBINUTIL_NAME "xclbinutil")
 
 set(XRT_LOADER_SCRIPTS ${XCLBINUTIL_NAME})
@@ -87,6 +92,11 @@ if(NOT WIN32)
 endif()
 
 target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} Threads::Threads)
+
+# link the aie-pdi-transform static library
+if(NOT WIN32)
+   target_link_libraries(${XCLBINUTIL_NAME} PRIVATE transformcdo)
+endif()
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
@@ -188,6 +198,11 @@ if (GTEST_FOUND)
     endif()
   endif()
 
+  # link the aie-pdi-transform static library
+  if(NOT WIN32)
+     target_link_libraries(${UNIT_TEST_NAME} PRIVATE transformcdo)
+  endif()
+
   # Add the test
   set(TEST_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${UNIT_TEST_NAME}")
   set(TEST_OPTIONS "--quiet --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/test_data")
@@ -196,10 +211,3 @@ if (GTEST_FOUND)
 else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
-
-# ==-- a i e - p d i - t r a n s f o r m --==================================================
-# aie-pdi-transform only supports linux build currently
-if(NOT WIN32)
-  add_subdirectory(aie-pdi-transform)
-endif()
-# -----------------------------------------------------------------------------

@@ -11,14 +11,3 @@ add_definitions(-DXCDO_DEBUG_STUB)
 
 # Add subdirectories for src/
 add_subdirectory(src)
-
-set(TRANSFORM_NAME "transform_static")
-
-add_executable( ${TRANSFORM_NAME}
-    cdo-main-static.c
-)
-
-# Link the executable with the static library
-target_link_libraries(${TRANSFORM_NAME} PRIVATE transformcdo)
-
-install (TARGETS ${TRANSFORM_NAME} RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR})
