@@ -212,4 +212,21 @@ import_bo(pid_t pid, shared_handle::export_handle ehdl)
   throw xrt_core::error(std::errc::not_supported, __func__);
 }
 
+void
+device::
+get_device_info(xclDeviceInfo2 *info)
+{
+  if (auto ret = xclGetDeviceInfo2(get_device_handle(), info))
+    throw system_error(ret, "failed to get device info");
+}
+
+size_t
+device::
+get_device_timestamp()
+{
+  auto ret = xclGetDeviceTimestamp(get_device_handle());
+  if (ret <= 0)
+    throw system_error(ret, "failed to get device info");
+  return ret;
+}
 }} // hwemu,xrt_core
