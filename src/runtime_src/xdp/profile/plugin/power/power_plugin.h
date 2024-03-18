@@ -33,7 +33,7 @@ namespace xdp {
     static const char* powerFiles[] ;
 
   private:
-    std::vector<std::vector<std::string>> filePaths ;
+    std::vector<std::unique_ptr<xrt::device>> xrtDevices;
 
     // Power profiling requires its own thread
     bool keepPolling ;

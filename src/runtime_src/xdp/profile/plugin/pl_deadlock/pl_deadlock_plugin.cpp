@@ -23,7 +23,6 @@
 #include <vector>
 #include <memory>
 
-#include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/api/ip_int.h"
@@ -195,9 +194,9 @@ namespace xdp {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceId, handle);
       {
-        struct xclDeviceInfo2 info;
-        if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+        std::string deviceName = util::getDeviceName(handle);
+        if(deviceName != "") {
+          (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
         }
       }
     }

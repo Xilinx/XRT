@@ -1133,6 +1133,27 @@ import_bo(pid_t pid, shared_handle::export_handle ehdl)
   throw xrt_core::error(std::errc::not_supported, __func__);
 }
 
+void
+device_linux::
+get_device_info(xclDeviceInfo2 *info)
+{
+  if (auto ret = xclGetDeviceInfo2(get_device_handle(), info))
+    throw system_error(ret, "failed to get device info");
+}
+
+std::string
+device_linux::
+get_sysfs_path(const std::string& subdev, const std::string& entry)
+{
+  constexpr size_t max_path = 256;
+  std::string path_buf(max_path, '\0');
+
+  if (auto ret = xclGetSysfsPath(get_device_handle(), subdev.c_str(), entry.c_str(), path_buf.data(), max_path))
+    throw system_error(ret, "failed to get device info");
+
+  return path_buf;
+}
+
 ////////////////////////////////////////////////////////////////
 // Custom IP interrupt handling
 ////////////////////////////////////////////////////////////////

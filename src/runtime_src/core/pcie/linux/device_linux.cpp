@@ -1341,6 +1341,10 @@ initialize_query_table()
   emplace_sysfs_get<query::cage_temp_1>                        ("xmc", "xmc_cage_temp1");
   emplace_sysfs_get<query::cage_temp_2>                        ("xmc", "xmc_cage_temp2");
   emplace_sysfs_get<query::cage_temp_3>                        ("xmc", "xmc_cage_temp3");
+  emplace_sysfs_get<query::dimm_temp_0>                        ("xmc", "xmc_dimm_temp0");
+  emplace_sysfs_get<query::dimm_temp_1>                        ("xmc", "xmc_dimm_temp1");
+  emplace_sysfs_get<query::dimm_temp_2>                        ("xmc", "xmc_dimm_temp2");
+  emplace_sysfs_get<query::dimm_temp_3>                        ("xmc", "xmc_dimm_temp3");
   emplace_sysfs_get<query::v12v_pex_millivolts>                ("xmc", "xmc_12v_pex_vol");
   emplace_sysfs_get<query::v12v_pex_milliamps>                 ("xmc", "xmc_12v_pex_curr");
   emplace_sysfs_get<query::v12v_aux_millivolts>                ("xmc", "xmc_12v_aux_vol");
@@ -1746,6 +1750,27 @@ import_bo(pid_t pid, xrt_core::shared_handle::export_handle ehdl)
      "Importing buffer object from different process requires XRT "
      " built and installed on a system with 'pidfd' kernel support");
 #endif
+}
+
+void
+device_linux::
+get_device_info(xclDeviceInfo2 *info)
+{
+  if (auto ret = xclGetDeviceInfo2(get_device_handle(), info))
+    throw system_error(ret, "failed to get device info");
+}
+
+std::string
+device_linux::
+get_sysfs_path(const std::string& subdev, const std::string& entry)
+{
+  constexpr size_t max_path = 256;
+  std::string path_buf(max_path, '\0');
+
+  if (auto ret = xclGetSysfsPath(get_device_handle(), subdev.c_str(), entry.c_str(), path_buf.data(), max_path))
+    throw system_error(ret, "failed to get device info");
+
+  return path_buf;
 }
 
 } // xrt_core

@@ -35,7 +35,6 @@
 #include "xclhal2_mpsoc.h"
 #include "xrt_skd.h"
 
-xclDeviceHandle initXRTHandle(unsigned deviceIndex);
-void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size);
+void configSoftKernel(const xrtDeviceHandle handle, xclSKCmd* cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size);
 
 #endif

@@ -13,10 +13,6 @@ class TestDF_bandwidth : public TestRunner {
 
   public:
     TestDF_bandwidth();
-
-  //variables
-  private:
-    std::string m_dpu_name;
 };
 
 #endif

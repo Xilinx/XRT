@@ -66,29 +66,29 @@ int main(int argc, char *argv[])
   xrt_core::message::send(severity_level::info, "SKD", sid_msg.str());
 
   // Opening first device since this is the only device available on APU
-  xclDeviceHandle handle = initXRTHandle(0);
-  if (!handle) {
+  xrtDeviceHandle xrtHandle = xrtDeviceOpen(0);
+  if (!xrtHandle) {
     const auto errMsg = "Fail to init XRT first time";
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
   }
   // Retry XRT init after delay
   sleep(1);
-  handle = initXRTHandle(0);
-  if (!handle) {
+  xrtHandle = xrtDeviceOpen(0);
+  if (!xrtHandle) {
     const auto errMsg = "Fail to init XRT";
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
+  auto xclHandle = xrtDeviceToXclDevice(xrtHandle);
 
   uint64_t mem_start_paddr = 0;
   uint64_t mem_size = 0;
-  int parent_mem_bo = 0;
+  unsigned int parent_mem_bo = 0;
 #ifdef SKD_MAP_BIG_BO
   // Map entire PS reserve memory space
-  xrtDeviceHandle xrtdHdl = xrtDeviceOpenFromXcl(handle);
   try {
-    mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(xrt_core::device_int::get_core_device(xrtdHdl));
-    mem_start_paddr = xrt_core::device_query<xrt_core::query::host_mem_addr>(xrt_core::device_int::get_core_device(xrtdHdl));
+    mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(xrt_core::device_int::get_core_device(xrtHandle));
+    mem_start_paddr = xrt_core::device_query<xrt_core::query::host_mem_addr>(xrt_core::device_int::get_core_device(xrtHandle));
     parent_mem_bo = xclGetHostBO(handle,mem_start_paddr,mem_size);
     const auto infoMsg = boost::format("host_mem_size=%ld, host_mem_address=%lx\n") % mem_size % mem_start_paddr;
     xrt_core::message::send(severity_level::info, "SKD", infoMsg);
@@ -102,11 +102,11 @@ int main(int argc, char *argv[])
   xclSKCmd cmd = {};
   while (true) {
     // Calling XRT interface to wait for commands - xclSKGetCmd will block and wait
-    if (xclSKGetCmd(handle, &cmd) != 0)
+    if (xclSKGetCmd(xclHandle, &cmd) != 0)
       continue;
 
     if (cmd.opcode == ERT_SK_CONFIG) {
-      configSoftKernel(handle, &cmd, parent_mem_bo, mem_start_paddr, mem_size);
+      configSoftKernel(xrtHandle, &cmd, parent_mem_bo, mem_start_paddr, mem_size);
       continue;
     }
 

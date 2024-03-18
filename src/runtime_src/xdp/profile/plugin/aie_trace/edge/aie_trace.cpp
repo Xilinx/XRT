@@ -30,7 +30,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/common/xrt_profiling.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
@@ -329,8 +328,14 @@ namespace xdp {
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
       
-      if ((type == module_type::core) && tile.is_dma_only && !aie::trace::isDmaSet(metricSet))
-        continue;
+      if ((type == module_type::core) && !aie::trace::isDmaSet(metricSet)) {
+        // If we're not looking at DMA events, then don't display the DMA
+        // If core is not active (i.e., DMA-only tile), then ignore this tile
+        if (tile.active_core)
+          tile.active_memory = false;
+        else
+          continue;
+      }
 
       std::string tileName = (type == module_type::mem_tile) ? "memory" 
                            : ((type == module_type::shim) ? "interface" : "AIE");
@@ -361,7 +366,8 @@ namespace xdp {
       auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
-      cfgTile->active_core = (tile.is_dma_only == false);
+      cfgTile->active_core = tile.active_core;
+      cfgTile->active_memory = tile.active_memory;
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events

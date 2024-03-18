@@ -44,6 +44,9 @@ public:
   std::unique_ptr<buffer_handle>
   import_bo(pid_t pid, shared_handle::export_handle ehdl) override;
 
+  void
+  get_device_info(xclDeviceInfo2 *info) override;
+
 private:
   // Private look up function for concrete query::request
   virtual const query::request&

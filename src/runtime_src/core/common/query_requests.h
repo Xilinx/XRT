@@ -55,6 +55,8 @@ enum class key_type
   instance,
   edge_vendor,
   device_class,
+  xclbin_name,
+  sequence_name,
 
   dma_threads_raw,
 
@@ -166,6 +168,11 @@ enum class key_type
   cage_temp_1,
   cage_temp_2,
   cage_temp_3,
+
+  dimm_temp_0,
+  dimm_temp_1,
+  dimm_temp_2,
+  dimm_temp_3,
 
   v12v_pex_millivolts,
   v12v_pex_milliamps,
@@ -496,13 +503,6 @@ struct pcie_id : request
     // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
     return boost::str(boost::format("%02x") % static_cast<uint16_t>(value.revision_id));
   }
-
-  static std::string
-  to_path(const result_type& value)
-  {
-    // The cast is required. This is a boost bug. https://github.com/boostorg/format/issues/60
-    return boost::str(boost::format("%04x_%02x") % value.device_id % static_cast<uint16_t>(value.revision_id));
-  }
 };
 
 struct edge_vendor : request
@@ -519,6 +519,72 @@ struct edge_vendor : request
   {
     return boost::str(boost::format("0x%x") % val);
   }
+};
+
+/**
+ * Used to retrieve the path to an xclbin file required for the
+ * current device assuming a valid xclbin "type" is passed. The shim
+ * decides the appropriate path and name to return, absolving XRT of
+ * needing to know where to look.
+ */
+struct xclbin_name : request
+{
+  enum class type {
+    validate
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::validate:
+        return "validate";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::xclbin_name;
+  static const char* name() { return "xclbin_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const = 0;
+};
+
+/**
+ * Used to retrieve the path to the dpu sequence file required for the
+ * current device assuming a valid sequence "type" is passed. The shim
+ * decides the appropriate path and name to return, absolving XRT of
+ * needing to know where to look.
+ */
+struct sequence_name : request
+{
+  enum class type {
+    df_bandwidth,
+    tct_one_column,
+    tct_all_column,
+  };
+
+  static std::string
+  enum_to_str(const type& type)
+  {
+    switch (type) {
+      case type::df_bandwidth:
+        return "df_bandwidth";
+      case type::tct_one_column:
+        return "tct_one_column";
+      case type::tct_all_column:
+        return "tct_all_column";
+    }
+    return "unknown";
+  }
+
+  using result_type = std::string;
+  static const key_type key = key_type::sequence_name;
+  static const char* name() { return "sequence_name"; }
+
+  virtual std::any
+  get(const device*, const std::any& req_type) const = 0;
 };
 
 struct device_class : request
@@ -2030,6 +2096,66 @@ struct cage_temp_3 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_3;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_0 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_0;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_1 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_1;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_2 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_2;
+
+  virtual std::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct dimm_temp_3 : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::dimm_temp_3;
 
   virtual std::any
   get(const device*) const = 0;

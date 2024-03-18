@@ -30,7 +30,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/common/xrt_profiling.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
@@ -409,10 +408,14 @@ namespace xdp {
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
-        
-        if (mod == XAIE_MEM_MOD && type == module_type::core)
+        if ((mod == XAIE_MEM_MOD) && (type == module_type::core))
           type = module_type::dma;
+
+        // Ignore invalid types and inactive modules
         if (!aie::profile::isValidType(type, mod))
+          continue;
+        if (((type == module_type::core) && !tile.active_core)
+            || ((type == module_type::dma) && !tile.active_memory))
           continue;
 
         auto& metricSet  = tileMetric.second;

@@ -20,7 +20,6 @@
 #include <string>
 
 #include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
@@ -130,9 +129,9 @@ namespace xdp {
     //  will be needed later
     (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
     {
-      struct xclDeviceInfo2 info ;
-      if (xclGetDeviceInfo2(userHandle, &info) == 0) {
-        (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+      std::string deviceName = util::getDeviceName(userHandle);
+      if (deviceName != "") {
+        (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
       }
     }
 

@@ -24,7 +24,6 @@
 // For HAL applications
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 #include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/database/database.h"
@@ -64,6 +63,7 @@ namespace xdp {
       } catch (const std::runtime_error& e) {
         std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
         xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
+        ++index;
         continue;
       }
     }
@@ -148,9 +148,9 @@ namespace xdp {
     //  will be needed later
     (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
     {
-      struct xclDeviceInfo2 info ;
-      if (xclGetDeviceInfo2(userHandle, &info) == 0)
-        (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+      std::string deviceName = util::getDeviceName(userHandle);
+      if (deviceName != "")
+        (db->getStaticInfo()).setDeviceName(deviceId, deviceName);
     }
 
     // For the HAL level, we must create a device interface using 

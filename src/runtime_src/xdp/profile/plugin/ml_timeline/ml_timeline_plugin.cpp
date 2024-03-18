@@ -21,7 +21,6 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/device/utility.h"
@@ -106,9 +105,9 @@ namespace xdp {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);
       {
-        struct xclDeviceInfo2 info;
-        if (xclGetDeviceInfo2(handle, &info) == 0)
-          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+        std::string deviceName = util::getDeviceName(handle);
+        if (deviceName != "")
+          (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
       }
     }
 #endif

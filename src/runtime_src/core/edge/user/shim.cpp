@@ -1902,7 +1902,14 @@ import_bo(xclDeviceHandle handle, xrt_core::shared_handle::export_handle ehdl)
   return shim->xclImportBO(ehdl, 0);
 }
 
-
+// Function for converting raw buffer handle returned by some of the
+// shim functions into xrt_core::buffer_handle
+std::unique_ptr<xrt_core::buffer_handle>
+get_buffer_handle(xclDeviceHandle handle, unsigned int bhdl)
+{
+  auto shim = get_shim_object(handle);
+  return std::make_unique<ZYNQ::shim::buffer_object>(shim, bhdl);
+}
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
 

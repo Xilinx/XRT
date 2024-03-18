@@ -40,16 +40,16 @@ namespace xrt {
    * @param soft kernel CU index
    *
    */
-  skd::skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string &kname, const uint32_t cu_index,
-	   unsigned char *uuid_in, const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in)
+  skd::skd(const xrtDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string& kname, const uint32_t cu_index,
+	   unsigned char* uuid_in, const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in)
     : m_parent_devhdl(handle),
       m_xclbin_uuid(uuid_in),
       m_sk_path(std::string(SOFT_KERNEL_FILE_PATH)+kname),
       m_sk_name(kname),
       m_cu_idx(cu_index),
-      m_sk_bo(sk_bohdl),
-      m_sk_meta_bo(sk_meta_bohdl),
-      m_parent_bo_handle(parent_mem_bo_in),
+      m_sk_bo(xrt::shim_int::get_buffer_handle(xrtDeviceToXclDevice(handle), sk_bohdl)),
+      m_sk_meta_bo(xrt::shim_int::get_buffer_handle(xrtDeviceToXclDevice(handle), sk_meta_bohdl)),
+      m_parent_bo_handle(xrt::shim_int::get_buffer_handle(xrtDeviceToXclDevice(handle), parent_mem_bo_in)),
       m_mem_start_paddr(mem_start_paddr_in),
       m_mem_size(mem_size_in)
   {
@@ -60,7 +60,7 @@ namespace xrt {
   skd::init() {
     // Create soft kernel file from sk_bo
     int ret = 0;
-    if((ret = create_softkernelfile(m_parent_devhdl, m_sk_bo)))
+    if ((ret = create_softkernelfile(m_parent_devhdl, m_sk_bo)))
       return ret;
 
     // Open and load the soft kernel.
@@ -73,46 +73,42 @@ namespace xrt {
     }
 
     // Extract arguments from sk_meta_bohdl
-    xclBOProperties prop = {};
-    ret = xclGetBOProperties(m_parent_devhdl, m_sk_meta_bo, &prop);
-    if (ret) {
+    auto size = m_sk_meta_bo->get_properties().size;
+    if (size == std::numeric_limits<uint64_t>::max()) {
       const auto msg = "Cannot get metadata BO info";
       xrt_core::message::send(severity_level::error, "SKD", msg);
-      xclFreeBO(m_parent_devhdl, m_sk_meta_bo);
-      return ret;
-    }
-
-    auto buf = reinterpret_cast<char *>(xclMapBO(m_parent_devhdl, m_sk_meta_bo, false));
-    if (buf == MAP_FAILED) {
-      const auto msg = "Cannot map metadata BO!";
-      xrt_core::message::send(severity_level::error, "SKD", msg);
-      xclFreeBO(m_parent_devhdl, m_sk_meta_bo);
+      m_sk_meta_bo = nullptr;
       return -errno;
     }
-    m_kernel_args = xrt_core::xclbin::get_kernel_arguments(buf, prop.size, m_sk_name);
+
+    auto buf = reinterpret_cast<char *>(m_sk_meta_bo->map(xrt_core::buffer_handle::map_type::read));
+    if (!buf) {
+      const auto msg = "Cannot map metadata BO!";
+      xrt_core::message::send(severity_level::error, "SKD", msg);
+      m_sk_meta_bo->unmap(buf);
+      m_sk_meta_bo = nullptr;
+      return -errno;
+    }
+    m_kernel_args = xrt_core::xclbin::get_kernel_arguments(buf, size, m_sk_name);
     m_return_offset = get_return_offset(m_kernel_args);
     const auto msg = boost::format("Return offset = %s") % std::to_string(m_return_offset);
     xrt_core::message::send(severity_level::debug, "SKD", msg.str());
     const auto msg2 = boost::format("Num args = %s")  % std::to_string(m_kernel_args.size());
     xrt_core::message::send(severity_level::debug, "SKD", msg2.str());
-    munmap(buf, prop.size);
+    m_sk_meta_bo->unmap(buf);
 
     // new device handle for the current instance
-    m_devhdl = xclOpen(0, nullptr, XCL_QUIET);
-    if (m_devhdl == nullptr) {
-	const auto errMsg = "Cannot open XCL device handle";
-	xrt_core::message::send(severity_level::error, "SKD", errMsg);
+    m_xrtdhdl = xrtDeviceOpen(0);
+    if (!m_xrtdhdl) {
+      const auto errMsg = "Cannot open XRT device handle";
+      xrt_core::message::send(severity_level::error, "SKD", errMsg);
     }
-    m_xrtdhdl = xrtDeviceOpenFromXcl(m_devhdl);
-    if (m_devhdl == nullptr) {
-	const auto errMsg = "Cannot open XRT device handle";
-	xrt_core::message::send(severity_level::error, "SKD", errMsg);
-    }
+    m_devhdl = xrtDeviceToXclDevice(m_xrtdhdl);
 
     // Map entire PS reserve memory space
 #ifdef SKD_MAP_BIG_BO
-    m_mem_start_vaddr = xclMapBO(m_parent_devhdl,m_parent_bo_handle,true);
-    if (m_mem_start_vaddr == MAP_FAILED) {
+    m_mem_start_vaddr = m_parent_bo_handle->map(xrt_core::buffer_handle::map_type::write);
+    if (!m_mem_start_vaddr) {
       const auto msg = "Cannot map PS kernel Mem BO!";
       xrt_core::message::send(severity_level::error, "SKD", msg);
       return -EINVAL;
@@ -130,22 +126,23 @@ namespace xrt {
 
     kernel_init = reinterpret_cast<kernel_init_t>(dlsym(m_sk_handle, sk_init.c_str()));
     if (kernel_init) {
-	ret = xrtDeviceLoadXclbinUUID(m_xrtdhdl, m_xclbin_uuid.get());
-	if (ret) {
-	    const auto errMsg = boost::format("Cannot load xclbin from UUID!  UUID = %s") % m_xclbin_uuid.to_string();
-	    xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	    return ret;
-	}
-	m_xrtHandle = kernel_init(m_devhdl, m_xclbin_uuid.get());
-	if(m_xrtHandle) {
-	    m_pass_xrtHandles = true;
-	    const auto dbgmsg = std::string("kernel init function found! Will pass xrtHandles to soft kernel");
-	    xrt_core::message::send(severity_level::debug, "SKD", dbgmsg);
-	} else {
-	    const auto errMsg = "kernel init function did not return valid xrtHandles!";
-	    xrt_core::message::send(severity_level::error, "SKD", errMsg);
-	    return -EINVAL;
-	}
+      ret = xrtDeviceLoadXclbinUUID(m_xrtdhdl, m_xclbin_uuid.get());
+      if (ret) {
+        const auto errMsg = boost::format("Cannot load xclbin from UUID!  UUID = %s") % m_xclbin_uuid.to_string();
+        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+        return ret;
+      }
+      m_xrtHandle = kernel_init(m_devhdl, m_xclbin_uuid.get());
+      if (m_xrtHandle) {
+        m_pass_xrtHandles = true;
+        const auto dbgmsg = std::string("kernel init function found! Will pass xrtHandles to soft kernel");
+        xrt_core::message::send(severity_level::debug, "SKD", dbgmsg);
+      }
+      else {
+        const auto errMsg = "kernel init function did not return valid xrtHandles!";
+        xrt_core::message::send(severity_level::error, "SKD", errMsg);
+        return -EINVAL;
+      }
     }
 
     // Open main soft kernel
@@ -168,8 +165,9 @@ namespace xrt {
     const auto msg4 = boost::format("%s%s start running, cmd_boh = %s") % m_sk_name % std::to_string(m_cu_idx) % std::to_string(m_cmd_boh);
     xrt_core::message::send(severity_level::info, "SKD", msg4.str());
 
-    m_args_from_host = reinterpret_cast<unsigned *>(xclMapBO(m_devhdl, m_cmd_boh, true));
-    if (m_args_from_host == MAP_FAILED) {
+    m_xrt_cmd_bo = xrt::shim_int::get_buffer_handle(m_devhdl, m_cmd_boh);
+    m_args_from_host = reinterpret_cast<unsigned *>(m_xrt_cmd_bo->map(xrt_core::buffer_handle::map_type::write));
+    if (!m_args_from_host) {
       const auto errMsg = boost::format("Failed to map soft kernel args for %s%s") % m_sk_name % std::to_string(m_cu_idx);
       xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
       dlclose(m_sk_handle);
@@ -249,9 +247,10 @@ namespace xrt {
 	  p.vaddr = mem_start_vaddr + p.bo_offset;
 #else
 	  p.bo_offset = 0;
-	  p.bo_handle = xclGetHostBO(m_devhdl, buf_addr, buf_size);
-	  p.vaddr = xclMapBO(m_devhdl, p.bo_handle, true);
-	  bo_args.emplace_back(p);
+    unsigned int handle = xclGetHostBO(m_devhdl, buf_addr, buf_size);
+	  p.bo_handle = xrt::shim_int::get_buffer_handle(m_devhdl, handle);
+	  p.vaddr = p.bo_handle->map(xrt_core::buffer_handle::map_type::write);
+	  bo_args.emplace_back(std::move(p));
 #endif
 	  ffi_arg_values[i] = &bo_args.back().vaddr;
 	} else {
@@ -270,9 +269,9 @@ namespace xrt {
 #ifdef SKD_MAP_BIG_BO
 #else
       // Unmap Buffers
-      for(auto it:bo_args) {
-	xclUnmapBO(m_devhdl, it.bo_handle, it.vaddr);
-	xclFreeBO(m_devhdl,it.bo_handle);
+      for (auto& it : bo_args) {
+        it.bo_handle->unmap(it.vaddr);
+        it.bo_handle = nullptr;
       }
       bo_args.clear();
 #endif
@@ -296,27 +295,12 @@ namespace xrt {
     }
 #ifdef SKD_MAP_BIG_BO
     // Unmap mem BO
-    ret = xclUnmapBO(m_parent_devhdl, m_parent_bo_handle, m_mem_start_vaddr);
-    if (ret) {
-        const auto errMsg = boost::format("Cannot munmap mem BO %s, at %s")
-	  % std::to_string(m_parent_bo_handle)
-	  % std::to_string(m_mem_start_vaddr);
-	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-    }
+    m_parent_bo_handle->unmap(m_mem_start_vaddr);
 #endif
     // Unmap command BO
-    if(m_cmd_boh >= 0) {
-	xclBOProperties prop = {};
-	ret = xclGetBOProperties(m_devhdl, m_cmd_boh, &prop);
-	if (ret) {
-	    const auto errMsg = boost::format("Cannot get BO property of %s") % std::to_string(m_cmd_boh);
-	    xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	}
-	ret = xclUnmapBO(m_devhdl, m_cmd_boh, m_args_from_host);
-	if (ret) {
-	    const auto errMsg = boost::format("Cannot munmap BO %s") % std::to_string(m_cmd_boh);
-	    xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	}
+    if (m_xrt_cmd_bo) {
+      auto prop = m_xrt_cmd_bo->get_properties();
+      m_xrt_cmd_bo->unmap(m_args_from_host);
     }
 
     // Call soft kernel fini if available
@@ -332,7 +316,7 @@ namespace xrt {
         const auto errMsg = boost::format("Cannot remove soft kernel file %s") % m_sk_path.string();
 	xrt_core::message::send(severity_level::info, "SKD", errMsg.str());
     }
-    xclClose(m_devhdl);
+    xrtDeviceClose(m_xrtdhdl);
   }
 
   int skd::create_softkernel(int *boh) {
@@ -349,14 +333,13 @@ namespace xrt {
   /*
    * This function create a soft kernel file.
    */
-  int skd::create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const
+  int skd::create_softkernelfile(xrtDeviceHandle handle, buf_hdl& bohdl) const
   {
-      xclBOProperties prop = {};
-      int ret = xclGetBOProperties(handle, bohdl, &prop);
-      if (ret) {
-	  const auto errMsg = "Unable to get BO properties!";
-	  xrt_core::message::send(severity_level::error, "SKD", errMsg);
-	  return -EINVAL;
+      auto size = bohdl->get_properties().size;
+      if (size == std::numeric_limits<uint64_t>::max()) {
+        const auto errMsg = "Unable to get BO size!";
+        xrt_core::message::send(severity_level::error, "SKD", errMsg);
+        return -EINVAL;
       }
 
       const std::filesystem::path path(SOFT_KERNEL_FILE_PATH);
@@ -365,40 +348,40 @@ namespace xrt {
       std::filesystem::create_directories(path);
 
       // Check if file already exists and is the same size
-      if(std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == prop.size)) {
-	return 0;
+      if (std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == size)) {
+        return 0;
       }
 
       // Create / overwrite file if either file do not exist or is not the same size
-      auto buf = reinterpret_cast<char *>(xclMapBO(handle, bohdl, false));
-      if(buf == MAP_FAILED) {
-	  const auto errMsg = "Cannot map soft kernel BO!";
-	  xrt_core::message::send(severity_level::error, "SKD", errMsg);
-	  return -errno;
+      auto buf = reinterpret_cast<char *>(bohdl->map(xrt_core::buffer_handle::map_type::read));
+      if (!buf) {
+        const auto errMsg = "Cannot map soft kernel BO!";
+        xrt_core::message::send(severity_level::error, "SKD", errMsg);
+        return -errno;
       }
 
       std::ofstream fptr(m_sk_path.string(), std::ios::out | std::ios::binary);
       if (!fptr.is_open()) {
-	const auto errMsg = boost::format("Cannot create file: %s") % m_sk_path.string();
-	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	xclUnmapBO(handle, bohdl, buf);
-	return -EPERM;
+        const auto errMsg = boost::format("Cannot create file: %s") % m_sk_path.string();
+        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+        bohdl->unmap(buf);
+        return -EPERM;
       }
 	  
       // copy the soft kernel to file
-      fptr.write(buf, prop.size);
+      fptr.write(buf, size);
       if (fptr.fail()) {
-	const auto errMsg = boost::format("Fail to write to file ") % m_sk_path.string();
-	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	fptr.close();
-	xclUnmapBO(handle, bohdl, buf);
-	return -EIO;
+        const auto errMsg = boost::format("Fail to write to file ") % m_sk_path.string();
+        xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+        fptr.close();
+        bohdl->unmap(buf);
+        return -EIO;
       }
       const auto msg = boost::format("File created at %s") % m_sk_path.string();
       xrt_core::message::send(severity_level::info, "SKD", msg.str());
       
       fptr.close();
-      xclUnmapBO(handle, bohdl, buf);
+      bohdl->unmap(buf);
 
       return 0;
   }
