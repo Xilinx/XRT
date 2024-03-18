@@ -2,10 +2,10 @@
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #define XRT_CORE_COMMON_SOURCE
-#include "asd_parser.h"
+#include "info_aie2.h"
 #include "query_requests.h"
 
-namespace asd_parser {
+namespace aie2 {
 namespace bpt = boost::property_tree;
 using u32 = uint32_t;
 
@@ -708,7 +708,7 @@ get_shim_tile_info(const aie_shim_tile_status& shim)
 static void
 aie_status_version_check(uint16_t major_ver, uint16_t minor_ver)
 {
-  if (!((major_ver == asd_parser::aie_status_version_major) && (minor_ver == asd_parser::aie_status_version_minor)))
+  if (!((major_ver == aie2::aie_status_version_major) && (minor_ver == aie2::aie_status_version_minor)))
     throw std::runtime_error("AIE status version mismatch");
 }
 
@@ -744,7 +744,7 @@ get_aie_data(const xrt_core::device* device, const aie_tiles_info& info, aie_til
   if (tiles_status.cols_filled == 0)
     throw std::runtime_error("No open HW-Context\n");
 
-  std::vector<asd_parser::aie_tiles_status> aie_status;
+  std::vector<aie2::aie_tiles_status> aie_status;
 
   // Allocate an entry for each active column
   // See core/xrt/src/runtime_src/core/common/design_notes.md entry 1
@@ -834,7 +834,7 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type)
     aie_status_version_check(version.major, version.minor);
 
     const auto info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
-    if (!((info.major == asd_parser::aie_tiles_info_version_major) && (info.minor == asd_parser::aie_tiles_info_version_minor)))
+    if (!((info.major == aie2::aie_tiles_info_version_major) && (info.minor == aie2::aie_tiles_info_version_minor)))
       throw std::runtime_error("version mismatch for aie_tiles_info structure");
 
     aie_info_sanity_check(info);

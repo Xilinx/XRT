@@ -28,7 +28,7 @@ ReportAie2Shim::
 getPropertyTree20202(const xrt_core::device* dev,
                      boost::property_tree::ptree& pt) const
 {
-  pt.add_child("aie_shim", asd_parser::get_formated_tiles_info(dev, asd_parser::aie_tile_type::shim));
+  pt.add_child("aie_shim", aie2::get_formated_tiles_info(dev, aie2::aie_tile_type::shim));
 }
 
 void

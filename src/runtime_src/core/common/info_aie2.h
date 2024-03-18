@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef COMMON_AIE2_PARSER_H_
-#define COMMON_AIE2_PARSER_H_
+#ifndef COMMON_INFO_AIE2_H_
+#define COMMON_INFO_AIE2_H_
 
 #include "core/common/device.h"
 
@@ -13,7 +13,7 @@
 
 // asd stands for aie status dump
 // This file has structures defined to parse aie status dump of all the tiles
-namespace asd_parser {
+namespace aie2 {
 
 enum class aie_tile_type { core, shim, mem };
 
@@ -81,6 +81,6 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type);
 
-} // asd_parser
+} // aie2
 
 #endif

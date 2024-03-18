@@ -4,7 +4,7 @@
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
-#include "asd_parser.h"
+#include "info_aie2.h"
 #include "error.h"
 #include "query.h"
 #include "uuid.h"
@@ -1535,7 +1535,7 @@ struct aie_status_version : request
 // num of dma channels, locks, events
 struct aie_tiles_stats : request
 {
-  using result_type = asd_parser::aie_tiles_info;
+  using result_type = aie2::aie_tiles_info;
   static const key_type key = key_type::aie_tiles_stats;
 
   virtual std::any

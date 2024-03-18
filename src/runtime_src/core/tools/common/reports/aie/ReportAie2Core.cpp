@@ -4,7 +4,7 @@
 #include "ReportAie2Core.h"
 
 #include "Aie2Utilities.h"
-#include "core/common/info_aie.h"
+#include "core/common/info_aie2.h"
 #include "tools/common/Table2D.h"
 #include "tools/common/XBUtilities.h"
 
@@ -28,7 +28,7 @@ ReportAie2Core::
 getPropertyTree20202(const xrt_core::device* dev,
                      boost::property_tree::ptree& pt) const
 {
-  pt.add_child("aie_core", asd_parser::get_formated_tiles_info(dev, asd_parser::aie_tile_type::core));
+  pt.add_child("aie_core", aie2::get_formated_tiles_info(dev, aie2::aie_tile_type::core));
 }
 
 void
