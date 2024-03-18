@@ -112,7 +112,7 @@ namespace xdp {
 
     // Get partition columns
     // NOTE: for now, assume a single partition
-    auto partitionCols = xdp::aie::getPartitionStartColumns(handle);
+    auto partitionCols = xdp::aie::getPartitionStartColumns(metadata->getHandle());
     auto startCol = partitionCols.at(0);
 
     //Start recording the transaction
@@ -201,7 +201,8 @@ namespace xdp {
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20)});
 
           std::vector<uint64_t> values;
-          values.insert(values.end(), {col+startCol, row, phyStartEvent, phyEndEvent, 
+          uint8_t absCol = col + startCol;
+          values.insert(values.end(), {absCol, row, phyStartEvent, phyEndEvent, 
                         resetEvent, 0, 0, payload});
           outputValues.push_back(values);
 
@@ -337,8 +338,7 @@ namespace xdp {
   }
 
   void
-  AieProfile_WinImpl::
-  freeResources()
+  AieProfile_WinImpl::freeResources()
   {
     
   }
