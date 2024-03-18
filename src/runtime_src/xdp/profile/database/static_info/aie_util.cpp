@@ -366,20 +366,30 @@ namespace xdp::aie {
   getPartitionStartColumns(void* handle)
   {
     std::vector<uint8_t> startCols;
-    std::shared_ptr<xrt_core::device> dev = xrt_core::get_userpf_device(handle);
-    auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(dev);
-    
-    if (infoVector.empty()) {
-      std::cout << "!!!!!!!!!! getPartitionStartColumns: infoVector is empty!" << std::endl;
-      startCols.push_back(0);
-    }
-    else {
-      for (auto& info : infoVector) {
-        startCols.push_back( static_cast<uint8_t>(info.start_col) );
-        std::cout << "!!!!!!!!!! getPartitionStartColumns: start_col = " << info.start_col
-                  << ", num_col = " << info.num_cols << std::endl;
+
+    try {
+      std::shared_ptr<xrt_core::device> dev = xrt_core::get_userpf_device(handle);
+      auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(dev);
+
+      if (infoVector.empty()) {
+        xrt_core::message::send(severity_level::info, "XRT", "No AIE partition information found.");
+        startCols.push_back(0);
+      }
+      else {
+        for (auto& info : infoVector) {
+          auto startCol = static_cast<uint8_t>(info.start_col);
+          xrt_core::message::send(severity_level::info, "XRT",
+              "Partition shift of " + std::to_string(startCol) + " was found.");
+          startCols.push_back(startCol);
+        }
       }
     }
+    catch(...) {
+      // Query not available
+      xrt_core::message::send(severity_level::info, "XRT", "Unable to query AIE partition information.");
+      startCols.push_back(0);
+    }
+
     return startCols;
   }
 
