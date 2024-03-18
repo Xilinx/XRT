@@ -208,12 +208,16 @@ message("-- XRT version: ${XRT_VERSION_STRING}")
 # -- CPack
 include (CMake/cpackLin.cmake)
 
-set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
-
-include (CMake/dkms.cmake)
-include (CMake/dkms-aws.cmake)
-include (CMake/dkms-azure.cmake)
-include (CMake/dkms-container.cmake)
+if (XRT_DKMS_ALVEO STREQUAL "ON")
+  message("-- XRT Alveo drivers will be bundled with the XRT package")
+  set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
+  include (CMake/dkms.cmake)
+  include (CMake/dkms-aws.cmake)
+  include (CMake/dkms-azure.cmake)
+  include (CMake/dkms-container.cmake)
+else()
+  message("-- Skipping bundling of XRT Alveo drivers with XRT package")
+endif()
 
 # --- ICD ---
 include (CMake/icd.cmake)
