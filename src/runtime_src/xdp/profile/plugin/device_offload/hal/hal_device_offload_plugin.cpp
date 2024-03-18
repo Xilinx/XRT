@@ -24,7 +24,6 @@
 // For HAL applications
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 #include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/database/database.h"

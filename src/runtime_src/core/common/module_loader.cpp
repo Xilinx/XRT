@@ -1,18 +1,7 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2020 Xilinx, Inc
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/module_loader.h"
 
@@ -113,15 +102,15 @@ xilinx_xrt()
   return xrt;
 }
 
-// Get list of xclbin repository paths from ini file and append
+// Get list of platform repository paths from ini file and append
 // default repository paths
 std::vector<sfs::path>
-get_xclbin_repo_paths()
+get_platform_repo_paths()
 {
   std::vector<sfs::path> paths;
   
-  // Get repo path from ini file if anya
-  auto repo = xrt_core::config::get_xclbin_repo();
+  // Get repo path from ini file if any
+  auto repo = xrt_core::config::get_platform_repo();
   auto token = std::strtok(repo.data(), ":;");
   while (token) {
     paths.push_back(token);
@@ -129,49 +118,47 @@ get_xclbin_repo_paths()
   }
 
   // Append default path(s)
-  paths.emplace_back(xrt_core::detail::xclbin_repo_path());
+  const auto default_paths = xrt_core::detail::platform_repo_path();
+  paths.insert(paths.end(), default_paths.begin(), default_paths.end());
   return paths;
 }
 
 static const std::vector<sfs::path>&
-xclbin_repo_paths()
+platform_repo_paths()
 {
   // Cache repo paths
-  static std::vector<sfs::path> paths{get_xclbin_repo_paths()};
+  static std::vector<sfs::path> paths{get_platform_repo_paths()};
   return paths;
 }
 
-// Return the full path to the xclbin file if it exists in an xclbin
+// Return the full path to the file if it exists in a platform
 // repository, else throw.
 static sfs::path
-xclbin_repo_path(const std::string& xclbin)
+platform_repo_path(const std::string& file)
 {
-  for (const auto& path : xclbin_repo_paths()) {
-    auto xpath = path / xclbin;
+  for (const auto& path : platform_repo_paths()) {
+    auto xpath = path / file;
     if (sfs::exists(xpath) && sfs::is_regular_file(xpath))
       return xpath;
   }
 
-  throw std::runtime_error("No such xclbin '" + xclbin + "'");
+  throw std::runtime_error("No such file '" + file + "'");
 }
 
-// Return the full path to an xclbin file if it exists, else throw.
-// If the specified path is an absolute path then the function
-// returns this path or throws if file does not exist.  If the path
-// is relative, or just a plain file name, then the function checks
-// first in current directory, then in the platform specific xclbin
-// repository.
+/**
+ * Refer to \ref platform_path(path) in module_loader.h
+ */
 static sfs::path
-xclbin_path(const std::string& xclbin)
+platform_path(const std::string& file_name)
 {
-  sfs::path xpath{xclbin};
+  sfs::path xpath{file_name};
   if (sfs::exists(xpath) && sfs::is_regular_file(xpath))
     return xpath;
 
   if (!xpath.is_absolute())
-    return xclbin_repo_path(xclbin);
+    return platform_repo_path(file_name);
 
-  throw std::runtime_error("No such xclbin '" + xpath.string() + "'");
+  throw std::runtime_error("No such file '" + xpath.string() + "'");
 }
 
 static sfs::path
@@ -294,15 +281,15 @@ xilinx_xrt()
 }
 
 sfs::path
-xclbin_path(const std::string& xclbin_name)
+platform_path(const std::string& file_name)
 {
-  return ::xclbin_path(xclbin_name);
+  return ::platform_path(file_name);
 }
 
 const std::vector<sfs::path>&
-xclbin_repo_paths()
+platform_repo_paths()
 {
-  return ::xclbin_repo_paths();
+  return ::platform_repo_paths();
 }
 
 } // environment

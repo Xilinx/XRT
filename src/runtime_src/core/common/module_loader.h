@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef xrtcore_util_module_loader_h_
 #define xrtcore_util_module_loader_h_
@@ -95,31 +95,31 @@ const std::filesystem::path&
 xilinx_xrt();
 
 /**
- * xclbin_path() - Get path to xclbin directory
+ * platform_path(path) - Get path to a platform file
  *
- * @xclbin_name : A path relative or absolute to an xclbin file
- * Return: Full path the xclbin file
+ * @file_name : A path relative or absolute to a platform file
+ * Return: Full path to the platform file
  *
  * If the specified path is an absolute path then the function
- * returns this path or throws if file does not exist.  If the path
+ * returns this path or throws if file does not exist. If the path
  * is relative, or just a plain file name, then the function checks
- * first in current directory, then in the platform specific xclbin
+ * first in current directory, then in the platform specific
  * repository.
  *
  * The function throws if the file does not exist.
  */
 XRT_CORE_COMMON_EXPORT
 std::filesystem::path
-xclbin_path(const std::string& xclbin_name);
+platform_path(const std::string& file_name);
 
 /**
- * xclbin_repo_path() - Get path to xclbin repository
+ * platform_repo_paths() - Get paths to the platform repositories
  *
- * Return: Full path to xclbin repository
+ * Return: All full paths to available platform repositories
  */
 XRT_CORE_COMMON_EXPORT
 const std::vector<std::filesystem::path>&
-xclbin_repo_paths();
+platform_repo_paths();
 } // environment
 
 } // end namespace xrt_core

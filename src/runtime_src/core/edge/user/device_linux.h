@@ -35,6 +35,12 @@ public:
   void
   set_cu_read_range(cuidx_type ip_index, uint32_t start, uint32_t size) override;
 
+  void
+  get_device_info(xclDeviceInfo2 *info) override;
+
+  std::string
+  get_sysfs_path(const std::string& subdev, const std::string& entry) override;
+
   ////////////////////////////////////////////////////////////////
   // Custom ip interrupt handling
   // Redefined from xrt_core::ishim

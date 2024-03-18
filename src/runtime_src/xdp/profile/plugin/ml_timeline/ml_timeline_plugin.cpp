@@ -21,7 +21,6 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 #include "core/common/api/hw_context_int.h"
 
 #include "xdp/profile/device/utility.h"

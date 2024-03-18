@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "core/common/debug.h"
 #include "core/common/dlfcn.h"
@@ -16,6 +16,7 @@
 #include <string>
 #include <cstring>
 #include <cstdlib>
+#include <vector>
 
 #if defined(XRT_WINDOWS_HAS_WDK)
 namespace xrt_core::detail::windows {
@@ -249,12 +250,11 @@ xilinx_xrt()
 #endif
 }
 
-sfs::path
-xclbin_repo_path()
+std::vector<sfs::path>
+platform_repo_path()
 {
-  // For time being, xclbin repo is same as xilinx_xrt
-  static auto repo = xilinx_xrt();
-  return repo;
+  // For time being, platform repo is same as xilinx_xrt
+  return {xilinx_xrt()};
 }
 
 } // xrt_core::detail
