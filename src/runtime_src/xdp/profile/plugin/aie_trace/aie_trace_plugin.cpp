@@ -152,7 +152,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
 #ifdef XDP_CLIENT_BUILD
   if (deviceIntf == nullptr)
-    deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new ClientDevice(handle));
+    deviceIntf = db->getStaticInfo().createDeviceIntfClient(deviceID, new ClientDevice(handle));
 #else
   if (deviceIntf == nullptr)
     deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
