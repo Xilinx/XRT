@@ -203,6 +203,18 @@ namespace xrt::core::hip
 
 } // xrt::core::hip
 
+template<typename F> hipError_t
+handle_hip_memory_error(F && f)
+{
+  try {
+    f();
+    return hipSuccess;
+  } catch (const std::exception &ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return hipErrorUnknown;
+}
+
 // Allocate memory on the device.
 hipError_t
 hipMalloc(void **ptr, size_t size)
@@ -212,13 +224,7 @@ hipMalloc(void **ptr, size_t size)
     *ptr = nullptr;
     return hipSuccess;
   }
-  try {
-    xrt::core::hip::hip_malloc(ptr, size);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc(ptr, size); });  
 }
 
 // Allocates device accessible host memory.
@@ -230,104 +236,54 @@ hipHostMalloc(void **ptr, size_t size, unsigned int flags)
     *ptr = nullptr;
     return hipSuccess;
   }
-  try {
-    xrt::core::hip::hip_host_malloc(ptr, size, flags);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_malloc(ptr, size, flags); });  
 }
 
 // Free memory allocated by the hipHostMalloc().
 hipError_t
 hipHostFree(void *ptr)
 {
-  try
-  {
-    xrt::core::hip::hip_host_free(ptr);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_free(ptr); });  
 }
 
 // Free memory allocated by the hipMalloc().
 hipError_t
 hipFree(void *ptr)
 {
-  try
-  {
-    xrt::core::hip::hip_free(ptr);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_free(ptr); });
 }
 
 // Register host memory so it can be accessed from the current device.
 hipError_t
 hipHostRegister(void *hostPtr, size_t sizeBytes, unsigned int flags)
 {
-  try {
-    xrt::core::hip::hip_host_register(hostPtr, sizeBytes, flags);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_register(hostPtr, sizeBytes, flags); });
 }
 
 // Un-register host pointer.
 hipError_t
 hipHostUnregister(void *hostPtr)
 {
-  try {
-    xrt::core::hip::hip_host_unregister(hostPtr);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_unregister(hostPtr); });
 }
 
 // Get Device pointer from Host Pointer allocated through hipHostMalloc.
 hipError_t
 hipHostGetDevicePointer(void **devPtr, void *hstPtr, unsigned int flags)
 {
-  try {
-    xrt::core::hip::hip_host_get_device_pointer(devPtr, hstPtr, flags);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_get_device_pointer(devPtr, hstPtr, flags); });
 }
 
 // Copy data from src to dst.
 hipError_t
 hipMemcpy(void *dst, const void *src, size_t sizeBytes, hipMemcpyKind kind)
 {
-  try {
-    xrt::core::hip::hip_memcpy(dst, src, sizeBytes, kind);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+   return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy(dst, src, sizeBytes, kind); });
 }
 
 // Fills the first sizeBytes bytes of the memory area pointed to by dest with the constant byte value value.
 hipError_t
 hipMemset(void *dst, int value, size_t sizeBytes)
 {
-  try {
-    xrt::core::hip::hip_memset(dst, value, sizeBytes);
-    return hipSuccess;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return hipErrorUnknown;
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset(dst, value, sizeBytes); });
 }

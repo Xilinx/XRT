@@ -56,20 +56,6 @@ hipDrvGetErrorString(hipError_t hipError,
   return hipErrorInvalidValue;
 }
 
-// return last error returned by any HIP API call and resets the stored error code
-hipError_t
-hipExtGetLastError()
-{
-  hipError_t last_error = hipSuccess;
-  try {
-    last_error = xrt::core::hip::hip_get_last_error();
-    return last_error;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return last_error;
-}
-
 // Return handy text string message to explain the error which occurred.
 const char *
 hipGetErrorString(hipError_t hipError)
@@ -97,29 +83,36 @@ hipGetErrorName(hipError_t hipError)
   return error_name;
 }
 
-// return last error returned by any HIP API call and resets the stored error code
-hipError_t
-hipGetLastError(void)
+template<typename F> hipError_t
+handle_hip_error_error(F && f)
 {
   hipError_t last_error = hipSuccess;
   try {
-    last_error = xrt::core::hip::hip_get_last_error();
-    return last_error;
+    return f();
   } catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return last_error;
 }
 
+// return last error returned by any HIP API call and resets the stored error code
+hipError_t
+hipExtGetLastError()
+{
+  return handle_hip_error_error([&] { return xrt::core::hip::hip_get_last_error(); });
+}
+
+// return last error returned by any HIP API call and resets the stored error code
+hipError_t
+hipGetLastError(void)
+{
+  return handle_hip_error_error([&] { return xrt::core::hip::hip_get_last_error(); });
+}
+
 // Return last error returned by any HIP runtime API call.
 hipError_t hipPeekAtLastError()
 {
-  hipError_t last_error = hipSuccess;
-  try {
-    last_error = xrt::core::hip::hip_peek_last_error();
-    return last_error;
-  } catch (const std::exception &ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return last_error;
+  return handle_hip_error_error([&] { return xrt::core::hip::hip_peek_last_error(); });
 }
+
+//hipError_t handle_hip_error([&] { xrt::core::hip::hipMemCpy(dst, src, sizeBytes, kind); });
