@@ -573,7 +573,7 @@ jobs:
           runnerName: ${{ runner.name }}
 
   notify-slack:  
-    needs: [build, windows-build, apu-package-build, package-download, extract-platforms, pcie-hw-tests, pcie-sw-emulation-tests, pcie-hw-emulation-tests, test-summary, setenv-download, Release_to_xco, Release_to_all_sites, Upload_packages_to_Artifactory, gradle-artifactory-upload]  
+    needs: [gradle-artifactory-upload]  
     runs-on: Ubuntu-22.04
     if: always() && contains(needs.*.result, 'failure')  
     steps:  
