@@ -53,6 +53,7 @@ usage()
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-hip]                      Enable hip bindings"
+    echo "[-noalveo]                  Disable bundling of Alveo Linux drivers"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noert]                    Do not treat missing ERT FW as a build error"
@@ -107,6 +108,7 @@ static_boost=""
 ertbsp=""
 ertfw=""
 werror=1
+alveo=1
 xrt_install_prefix="/opt/xilinx"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
@@ -151,6 +153,10 @@ while [ $# -gt 0 ]; do
         -hip)
             shift
             cmake_flags+=" -DXRT_ENABLE_HIP=ON"
+            ;;
+	-noalveo)
+            shift
+	    alveo=0
             ;;
         -opt)
             dbg=0
@@ -247,6 +253,10 @@ cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 # set CMAKE_INSTALL_PREFIX
 cmake_flags+=" -DCMAKE_INSTALL_PREFIX=$xrt_install_prefix -DXRT_INSTALL_PREFIX=$xrt_install_prefix"
+
+if [[ $alveo == 1 ]]; then
+    cmake_flags+=" -DXRT_DKMS_ALVEO=ON"
+fi
 
 here=$PWD
 cd $BUILDDIR
