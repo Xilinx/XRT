@@ -68,13 +68,13 @@ namespace xdp {
     }
     mHwCtxImpl = hwCtxImpl;
 
-    xrt::hw_context hwContext   = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
-    xrt_core::device coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
     // Only one device for Client Device flow
     uint64_t deviceId = db->addDevice("win_device");
-    (db->getStaticInfo())->updateDeviceClient(deviceId, coreDevice);
-    (db->getStaticInfo())->setDeviceName(deviceId, "win_device");
+    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice);
+    (db->getStaticInfo()).setDeviceName(deviceId, "win_device");
 
     DeviceDataEntry.valid = true;
     DeviceDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
@@ -95,7 +95,7 @@ namespace xdp {
       return;
     } 
     DeviceDataEntry.valid = false;
-    DeviceDataEntry.implementation->finishFlushDevice(mHwCtxImpl);
+    DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);
 #endif
   }
 
@@ -106,7 +106,7 @@ namespace xdp {
       return;
     }
     DeviceDataEntry.valid = false;
-    DeviceDataEntry.implementation->finishFlushDevice(mHwCtxImpl);
+    DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);
 #endif
   }
 

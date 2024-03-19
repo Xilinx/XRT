@@ -42,7 +42,7 @@ namespace xdp {
     struct DeviceData {
       bool valid;
       std::unique_ptr<MLTimelineImpl> implementation;
-    };
+    } DeviceDataEntry;
 
     void* mHwCtxImpl = nullptr;
 

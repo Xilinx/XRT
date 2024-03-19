@@ -37,7 +37,7 @@ namespace xdp {
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
     : MLTimelineImpl(dB)
   {
-    xrt_core::message::send(xrt_core::message::debug, "XRT", "Created ML Timeline for Client Device.");
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Created ML Timeline for Client Device.");
   }
 
   void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
