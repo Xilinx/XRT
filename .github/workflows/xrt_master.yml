@@ -593,7 +593,7 @@ jobs:
           runnerName: ${{ runner.name }}
 
   notify-slack:  
-    needs: [gradle-artifactory-upload]  
+    needs: [Release_to_all_sites, gradle-artifactory-upload]  
     runs-on: Ubuntu-22.04
     if: always() && contains(needs.*.result, 'failure')  
     steps:  
