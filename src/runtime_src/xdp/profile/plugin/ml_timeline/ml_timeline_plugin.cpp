@@ -63,8 +63,7 @@ namespace xdp {
   {
 #ifdef XDP_CLIENT_BUILD
     if (mHwCtxImpl) {
-      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT",
-        "ML Timeline feature does not yet support multiple applications running simultaneously.");
+      // For client device flow, only 1 device and xclbin is supported now.
       return;
     }
     mHwCtxImpl = hwCtxImpl;
