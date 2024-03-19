@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,16 +18,17 @@
 #define XDP_PLUGIN_ML_TIMELINE_IMPL_H
 
 #include "core/include/xrt/xrt_hw_context.h"
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
+
+  class VPDatabase;
 
   class MLTimelineImpl
   {
 
     protected :
       VPDatabase* db = nullptr;
-      xrt::hw_context hwContext;
+      xrt::hw_context mHwContext;
 
     public:
       MLTimelineImpl(VPDatabase* dB)
@@ -42,7 +43,7 @@ namespace xdp {
 
       void setHwContext(xrt::hw_context ctx)
       {
-        hwContext = std::move(ctx);
+        mHwContext = std::move(ctx);
       }
   };
 
