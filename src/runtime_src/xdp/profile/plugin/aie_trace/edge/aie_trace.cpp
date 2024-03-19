@@ -153,7 +153,7 @@ namespace xdp {
 
     // Check trace events for interface tiles
     if (type == module_type::shim) {
-      available = stats.getNumRsc(loc, XAIE_PL_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+      available = stats.getNumRsc(loc, XAIE_PL_MOD, xaiefal::XAIE_TRACEEVENT);
       required = interfaceTileEventSets[metricSet].size();
       if (available < required) {
         msg << "Available interface tile trace slots for AIE trace : " << available << std::endl
@@ -165,7 +165,7 @@ namespace xdp {
     }
 
     // Memory module/tile perf counters
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
     required = memoryCounterStartEvents.size();
     if (available < required) {
       msg << "Available memory performance counters for AIE trace : " << available << std::endl
@@ -175,7 +175,7 @@ namespace xdp {
     }
 
     // Memory module/tile trace slots
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
     required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
     if (available < required) {
       msg << "Available memory trace slots for AIE trace : " << available << std::endl
@@ -189,7 +189,7 @@ namespace xdp {
       return true;
 
     // Core module perf counters
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
     required = coreCounterStartEvents.size();
     if (metadata->getUseDelay()) {
       ++required;
@@ -206,7 +206,7 @@ namespace xdp {
     }
 
     // Core module trace slots
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
     required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
     if (available < required) {
       msg << "Available core module trace slots for AIE trace : " << available << std::endl
@@ -216,7 +216,7 @@ namespace xdp {
     }
 
     // Core module broadcasts. 2 events for starting/ending trace
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
       msg << "Available core module broadcast channels for AIE trace : " << available << std::endl

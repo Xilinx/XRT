@@ -23,9 +23,9 @@ endif()
 
 message("-- Looking for HIP include files...")
 # We should find HIP cmake either in standard cmake locations or in the /opt/rocm location
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/opt/rocm/lib/cmake/hip;/opt/rocm/lib/cmake/amd_comgr")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/lib/x86_64-linux-gnu/cmake/hip;/usr/lib/x86_64-linux-gnu/cmake/amd_comgr;/opt/rocm/lib/cmake/hip;/opt/rocm/lib/cmake/amd_comgr")
 # hip-config itself requires these other directories to find its dependencies
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/rocm/lib/cmake/hip;/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/usr/lib/x86_64-linux-gnu/cmake/hip;/usr/lib/x86_64-linux-gnu/cmake/amd_comgr;/usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64;/opt/rocm/lib/cmake/hip;/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
 include(hip-config)
 message("-- Found at ${HIP_INCLUDE_DIR}")
 

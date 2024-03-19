@@ -14,6 +14,8 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
+#include "experimental/xrt_message.h"
+#include "experimental/xrt_system.h"
 #include "experimental/xrt_xclbin.h"
 
 // Pybind11 includes
@@ -78,6 +80,23 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("host", xrt::info::device::host)
         .value("dynamic_regions", xrt::info::device::dynamic_regions)
         .value("vmr", xrt::info::device::vmr);
+
+    py::enum_<xrt::message::level>(m, "xrt_msg_level", "XRT log msgs level")
+        .value("emergency", xrt::message::level::emergency)
+        .value("alert", xrt::message::level::alert)
+        .value("critical", xrt::message::level::critical)
+        .value("error", xrt::message::level::error)
+        .value("warning", xrt::message::level::warning)
+        .value("notice", xrt::message::level::notice)
+        .value("info", xrt::message::level::info)
+        .value("debug", xrt::message::level::debug)
+        .export_values();
+
+/*
+ * Global Functions
+ */
+    m.def("enumerate_devices", &xrt::system::enumerate_devices, "Enumerate devices in system");
+    m.def("log_message", &xrt::message::log, "Dispatch formatted log message");
 
  /*
  *

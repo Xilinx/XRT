@@ -131,8 +131,8 @@ find_package(Curses REQUIRED)
 if (XRT_ENABLE_HIP)
   message("-- Looking for HIP include files...")
   # We should find HIP cmake either in standard cmake locations or in the /opt/rocm location
-  set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/opt/rocm/lib/cmake/hip")
-  set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
+  set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/lib/x86_64-linux-gnu/cmake/hip;/opt/rocm/lib/cmake/hip")
+  set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/usr/lib/x86_64-linux-gnu/cmake/amd_comgr;/usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64;/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
   include(hip-config)
   message("-- Found at ${HIP_INCLUDE_DIR}")
 endif()
@@ -208,12 +208,16 @@ message("-- XRT version: ${XRT_VERSION_STRING}")
 # -- CPack
 include (CMake/cpackLin.cmake)
 
-set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
-
-include (CMake/dkms.cmake)
-include (CMake/dkms-aws.cmake)
-include (CMake/dkms-azure.cmake)
-include (CMake/dkms-container.cmake)
+if (XRT_DKMS_ALVEO STREQUAL "ON")
+  message("-- XRT Alveo drivers will be bundled with the XRT package")
+  set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
+  include (CMake/dkms.cmake)
+  include (CMake/dkms-aws.cmake)
+  include (CMake/dkms-azure.cmake)
+  include (CMake/dkms-container.cmake)
+else()
+  message("-- Skipping bundling of XRT Alveo drivers with XRT package")
+endif()
 
 # --- ICD ---
 include (CMake/icd.cmake)

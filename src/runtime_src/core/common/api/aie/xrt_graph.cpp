@@ -139,7 +139,7 @@ public:
     }
   }
 
-  handle 
+  handle
   start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
   {
     profiling_hdl = device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
@@ -153,7 +153,7 @@ public:
       throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
 
     return device->read_profiling(profiling_hdl);
-    
+
   }
 
   void
@@ -889,7 +889,7 @@ xrtAIEReadProfiling(xrtDeviceHandle /*handle*/, int pHandle)
     if (it != profiling_cache.end())
       return it->second->read_profiling();
     else
-      throw xrt_core::error(-EINVAL, "No such profiling handle"); 
+      throw xrt_core::error(-EINVAL, "No such profiling handle");
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -921,7 +921,7 @@ xrtAIEStopProfiling(xrtDeviceHandle /*handle*/, int pHandle)
       profiling_cache.erase(pHandle);
     }
     else
-      throw xrt_core::error(-EINVAL, "No such profiling handle");   
+      throw xrt_core::error(-EINVAL, "No such profiling handle");
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

@@ -22,12 +22,8 @@ static constexpr int itr_count = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestTCTOneColumn::TestTCTOneColumn()
-  : TestRunner("tct-one-col", 
-                "Measure average TCT processing time for one column",
-                "validate.xclbin")
-                {
-                  m_dpu_name = "tct_1col.txt";
-                }
+  : TestRunner("tct-one-col", "Measure average TCT processing time for one column")
+{}
 
 namespace {
 
@@ -94,11 +90,11 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   #endif
 
 
-  auto xclbin_path = findXclbinPath(dev, ptree);
-  if (!std::filesystem::exists(xclbin_path)) {
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  if (!std::filesystem::exists(xclbin_path))
     return ptree;
-  }
-  // log xclbin test dir for debugging purposes
+
   logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
@@ -135,8 +131,8 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel kernel{hwctx, kernelName};
 
-  // Find DPU instruction file
-  std::string dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::tct_one_column);
+  auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 

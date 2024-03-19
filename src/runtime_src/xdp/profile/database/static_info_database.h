@@ -257,6 +257,7 @@ namespace xdp {
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
+    XDP_CORE_EXPORT DeviceIntf* createDeviceIntfClient(uint64_t deviceId, xdp::Device* dev);
     XDP_CORE_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_CORE_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_CORE_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;
