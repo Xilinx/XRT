@@ -369,9 +369,9 @@ namespace xdp {
         << ") Module : " << moduleName << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, mod, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, mod, XAIE_BCAST_CHANNEL_RSC);
+      auto pc = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, mod, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, mod, xaiefal::XAIE_BROADCAST);
       msg << "Resource Group : " << std::left <<  std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
@@ -435,7 +435,7 @@ namespace xdp {
                          : memTileEndEvents[metricSet]));
 
         int numCounters  = 0;
-        auto numFreeCtr  = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
+        auto numFreeCtr  = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
         numFreeCtr = (startEvents.size() < numFreeCtr) ? startEvents.size() : numFreeCtr;
 
         // Specify Sel0/Sel1 for memory tile events 21-44

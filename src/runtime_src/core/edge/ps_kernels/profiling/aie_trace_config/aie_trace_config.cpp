@@ -75,7 +75,7 @@ namespace {
     uint32_t required = 0;
 
     // Core Module perf counters
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
     required = config.coreCounterStartEvents.size();
     if (params->useDelay) {
       ++required;
@@ -91,7 +91,7 @@ namespace {
     }
 
     // Core Module trace slots
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
     required = config.coreCounterStartEvents.size() + config.coreEventsBase[metricSet].size();
     if (available < required) {
       std::vector<uint32_t> src = {available, required, 0, 0};
@@ -100,7 +100,7 @@ namespace {
     }
 
     // Core Module broadcasts. 2 events for starting/ending trace
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
     required = config.memoryCrossEventsBase[metricSet].size() + 2;
     if (available < required) {
       std::vector<uint32_t> src = {available, required, 0, 0};
@@ -109,7 +109,7 @@ namespace {
     }
 
     // Memory Module perf counters
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
     required = config.memoryCounterStartEvents.size();
     if (available < required) {
       std::vector<uint32_t> src = {available, required, 0, 0};
@@ -118,7 +118,7 @@ namespace {
     }
 
     // Memory Module trace slots
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
     required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase[metricSet].size();
     if (available < required) {
       std::vector<uint32_t> src = {available, required, 0, 0};
