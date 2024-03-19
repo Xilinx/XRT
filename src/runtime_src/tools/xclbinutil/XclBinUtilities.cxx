@@ -54,6 +54,18 @@
   #include <arpa/inet.h>
 #endif
 
+#ifdef _WIN32
+  #include <io.h>
+  #define DUP _dup
+  #define DUP2 _dup2
+  #define CLOSE _close
+  #define FREOPEN freopen_s
+#else
+  #define DUP dup
+  #define DUP2 dup2
+  #define CLOSE close
+  #define FREOPEN freopen
+#endif
 
 namespace XUtil = XclBinUtilities;
 namespace fs = std::filesystem;
@@ -1017,8 +1029,8 @@ int transform_PDI_file(std::string fileName)
 {
   // pdi_transform prints lots of messages
   // redirect the output to a stream, so that console looks cleaner
-  int sout = dup(fileno(stdout));
-  FILE* file = freopen("/dev/null","w",stdout);
+  int sout = DUP(fileno(stdout));
+  FILE* file = FREOPEN("/dev/null","w",stdout);
   if (file == nullptr)
     std::cout << "stdout redirect failed" << std::endl;
 
@@ -1034,8 +1046,8 @@ int transform_PDI_file(std::string fileName)
   fflush(file);
 
   // restore stdout
-  dup2(sout,fileno(stdout));
-  close(sout);
+  DUP2(sout,fileno(stdout));
+  CLOSE(sout);
 
   return ret;
 }
