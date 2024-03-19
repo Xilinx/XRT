@@ -54,21 +54,6 @@
   #include <arpa/inet.h>
 #endif
 
-#ifdef _WIN32
-  #include <io.h>
-  #define DUP _dup
-  #define DUP2 _dup2
-  #define CLOSE _close
-  // #define FREOPEN freopen_s
-  #define FILENO _fileno
-#else
-  #define DUP dup
-  #define DUP2 dup2
-  #define CLOSE close
-  // #define FREOPEN freopen
-  #define FILENO fileno
-#endif
-
 namespace XUtil = XclBinUtilities;
 namespace fs = std::filesystem;
 
@@ -1024,20 +1009,17 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
+#ifndef _WIN32
 // pdi_transform is defined in libtransformcdo.a
 extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out);
 
 int transform_PDI_file(std::string fileName)
 {
+  // pdi_transform is only available on Linux
   // pdi_transform prints lots of messages
   // redirect the output to a stream, so that console looks cleaner
-  int sout = DUP(FILENO(stdout));
-#ifdef _WIN32
-  FILE* file;
-  freopen_s(file, "/dev/null","w",stdout);
-#else
+  int sout = dup(fileno(stdout));
   FILE* file = freopen("/dev/null","w",stdout);
-#endif
   if (file == nullptr)
     std::cout << "stdout redirect failed" << std::endl;
 
@@ -1053,8 +1035,8 @@ int transform_PDI_file(std::string fileName)
   fflush(file);
 
   // restore stdout
-  DUP2(sout,FILENO(stdout));
-  CLOSE(sout);
+  dup2(sout,fileno(stdout));
+  close(sout);
 
   return ret;
 }
@@ -1213,6 +1195,8 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   // delete the temp dir
   fs::remove_all(tempDir);
 }
+#endif
+
 
 #if (BOOST_VERSION >= 106400)
 int 
