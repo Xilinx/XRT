@@ -272,6 +272,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
 	 */
+
 	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
 	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
@@ -403,7 +404,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, slot);
 
 	/* Createing AIE Partition */
-	zocl_create_aie(zdev, axlf, aie_res, hw_gen);
+	zocl_create_aie(zdev, axlf, xclbin, aie_res, hw_gen);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.

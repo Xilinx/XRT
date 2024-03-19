@@ -101,6 +101,12 @@ aie_partition_request(struct aie_partition_req *req)
 }
 
 static inline int
+aie_part_rscmgr_set_static_range(struct device *dev, u8 start_col, u8 num_col, void *meta)
+{
+	return -EINVAL;
+}
+
+static inline int
 aie_partition_get_fd(struct device *aie_dev)
 {
 	return -EINVAL;

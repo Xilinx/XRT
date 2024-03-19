@@ -80,6 +80,20 @@ get_hw_gen(const pt::ptree& aie_meta)
   return aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
 }
 
+static uint32_t
+get_partition_id(const pt::ptree& aie_meta)
+{
+  auto num_col = aie_meta.get<uint8_t>("aie_metadata.driver_config.partition_num_cols");
+  auto start_col = 0; 
+  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+  if (overlay_start_cols && !overlay_start_cols->empty()) 
+        start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+
+  // AIE Driver expects the partition id format as below
+  uint32_t part = (num_col << 8U) | (start_col & 0xffU);   
+  return part;
+}
+
 adf::aiecompiler_options
 get_aiecompiler_options(const pt::ptree& aie_meta)
 {
@@ -589,6 +603,18 @@ get_hw_gen(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_hw_gen(aie_meta);
+}
+
+uint32_t
+get_partition_id(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return 1; 
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_partition_id(aie_meta);
 }
 
 }}} // aie, edge, xrt_core
