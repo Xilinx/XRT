@@ -420,6 +420,25 @@ namespace xdp {
     return xclbin->deviceIntf;
   }
 
+  DeviceIntf* VPStaticDatabase::createDeviceIntfClient(uint64_t deviceId,
+                                                 xdp::Device* dev)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock);
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
+    if (xclbin == nullptr)
+      return nullptr;
+    if (xclbin->deviceIntf != nullptr)
+      return xclbin->deviceIntf;
+
+    xclbin->deviceIntf = new DeviceIntf();
+    xclbin->deviceIntf->setDevice(dev);
+    return xclbin->deviceIntf;
+  }
+
+
   uint64_t VPStaticDatabase::getKDMACount(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;

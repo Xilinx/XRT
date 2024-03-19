@@ -291,7 +291,7 @@ namespace {
                          : ((mod == XAIE_MEM_MOD) ? config.mMemoryEndEvents[static_cast<MemoryMetrics>(metricSet)] 
                          : config.mShimEndEvents[static_cast<InterfaceMetrics>(metricSet)]);
 
-        auto numFreeCtr = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
+        auto numFreeCtr = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
 
         for (int i=0; i < numFreeCtr; ++i) {
           auto startEvent = startEvents.at(i);
