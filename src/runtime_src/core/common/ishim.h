@@ -552,6 +552,254 @@ struct shim : public DeviceType
 #endif
 };
 
+// Stub out all xrt_core::ishim functions to throw not supported. A
+// small subset of ishim device level functions are overriden
+// and supported by a higher level devices as needed.
+template <typename DeviceType>
+struct noshim : public DeviceType
+{
+  template <typename ...Args>
+  noshim(Args&&... args)
+    : DeviceType(std::forward<Args>(args)...)
+  {}
+
+  void
+  close_device() override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  open_context(const xrt::uuid&, unsigned int, bool) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  close_context(const xrt::uuid&, unsigned int) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  reg_read(uint32_t, uint32_t, uint32_t*) const override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  reg_write(uint32_t, uint32_t, uint32_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  xread(enum xclAddressSpace, uint64_t, void*, size_t) const override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  xwrite(enum xclAddressSpace, uint64_t, const void*, size_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  unmgd_pread(void*, size_t, uint64_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  unmgd_pwrite(const void*, size_t, uint64_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  exec_buf(buffer_handle*) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  int
+  exec_wait(int) const override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  load_axlf(const axlf*) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  reclock(const uint16_t*) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  p2p_enable(bool) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  p2p_disable(bool) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  set_cma(bool, uint64_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  update_scheduler_status() override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  user_reset(xclResetKind) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+#ifdef XRT_ENABLE_AIE
+  xclGraphHandle
+  open_graph(const xrt::uuid&, const char*, xrt::graph::access_mode) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  close_graph(xclGraphHandle) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  reset_graph(xclGraphHandle) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  uint64_t
+  get_timestamp(xclGraphHandle) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  run_graph(xclGraphHandle, int) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  int
+  wait_graph_done(xclGraphHandle, int) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  wait_graph(xclGraphHandle, uint64_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  suspend_graph(xclGraphHandle) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  resume_graph(xclGraphHandle) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  end_graph(xclGraphHandle, uint64_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  update_graph_rtp(xclGraphHandle, const char*, const char*, size_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  read_graph_rtp(xclGraphHandle, const char*, char*, size_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  open_aie_context(xrt::aie::access_mode) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  sync_aie_bo(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  reset_aie() override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  sync_aie_bo_nb(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  wait_gmio(const char*) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  int
+  start_profiling(int, const char*, const char*, uint32_t) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  uint64_t
+  read_profiling(int) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  stop_profiling(int) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+
+  void
+  load_axlf_meta(const axlf*) override
+  {
+    throw ishim::not_supported_error(__func__);
+  }
+#endif
+};
+
 } // xrt_core
 
 #endif
