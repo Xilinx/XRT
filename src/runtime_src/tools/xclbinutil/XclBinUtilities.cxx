@@ -59,12 +59,14 @@
   #define DUP _dup
   #define DUP2 _dup2
   #define CLOSE _close
-  #define FREOPEN freopen_s
+  // #define FREOPEN freopen_s
+  #define FILENO _fileno
 #else
   #define DUP dup
   #define DUP2 dup2
   #define CLOSE close
-  #define FREOPEN freopen
+  // #define FREOPEN freopen
+  #define FILENO fileno
 #endif
 
 namespace XUtil = XclBinUtilities;
@@ -1029,8 +1031,13 @@ int transform_PDI_file(std::string fileName)
 {
   // pdi_transform prints lots of messages
   // redirect the output to a stream, so that console looks cleaner
-  int sout = DUP(fileno(stdout));
-  FILE* file = FREOPEN("/dev/null","w",stdout);
+  int sout = DUP(FILENO(stdout));
+#ifdef _WIN32
+  FILE* file;
+  freopen_s(file, "/dev/null","w",stdout);
+#else
+  FILE* file = freopen("/dev/null","w",stdout);
+#endif
   if (file == nullptr)
     std::cout << "stdout redirect failed" << std::endl;
 
@@ -1046,7 +1053,7 @@ int transform_PDI_file(std::string fileName)
   fflush(file);
 
   // restore stdout
-  DUP2(sout,fileno(stdout));
+  DUP2(sout,FILENO(stdout));
   CLOSE(sout);
 
   return ret;
