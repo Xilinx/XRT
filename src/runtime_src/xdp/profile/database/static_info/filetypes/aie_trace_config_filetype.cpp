@@ -96,7 +96,7 @@ AIETraceConfigFiletype::getMemoryTiles(const std::string& graph_name,
             boost::split(buffers, bufferStr, boost::is_any_of(" "));
 
             // Verify this entry has desired graph/buffer combo
-            for (int i=0; i < std::min(graphs.size(), buffers.size()); ++i) {
+            for (uint32_t i=0; i < std::min(graphs.size(), buffers.size()); ++i) {
                 foundGraph  |= (graphs.at(i).find(graph_name) != std::string::npos);
                 foundBuffer |= (buffers.at(i).find(buffer_name) != std::string::npos);
                 if (foundGraph && foundBuffer)
