@@ -157,7 +157,7 @@ AIETraceConfigFiletype::getTiles(const std::string& graph_name,
             boost::split(functions, functionStr, boost::is_any_of(" "));
 
             // Verify this entry has desired graph/kernel combo
-            for (int i=0; i < std::min(graphs.size(), functions.size()); ++i) {
+            for (uint32_t i=0; i < std::min(graphs.size(), functions.size()); ++i) {
                 foundGraph  |= (graphs.at(i).find(graph_name) != std::string::npos);
 
                 std::vector<std::string> names;
