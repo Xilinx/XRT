@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,31 +23,31 @@ namespace xdp {
 
   static MLTimelinePlugin mlTimelinePluginInstance;
 
-  static void updateDeviceMLTmln(void* handle)
+  static void updateDeviceMLTmln(void* hwCtxImpl)
   {
     if (MLTimelinePlugin::alive()) {
-      mlTimelinePluginInstance.updateDevice(handle);
+      mlTimelinePluginInstance.updateDevice(hwCtxImpl);
     } 
   } 
 
-  static void finishflushDeviceMLTmln(void* handle)
+  static void finishflushDeviceMLTmln(void* hwCtxImpl)
   {
     if (MLTimelinePlugin::alive()) {
-      mlTimelinePluginInstance.finishflushDevice(handle);
+      mlTimelinePluginInstance.finishflushDevice(hwCtxImpl);
     } 
   } 
 
 } // end namespace xdp
 
 extern "C"
-void updateDeviceMLTmln(void* handle)
+void updateDeviceMLTmln(void* hwCtxImpl)
 {
-  xdp::updateDeviceMLTmln(handle);
+  xdp::updateDeviceMLTmln(hwCtxImpl);
 }
 
 extern "C"
-void finishflushDeviceMLTmln(void* handle)
+void finishflushDeviceMLTmln(void* hwCtxImpl)
 {
-  xdp::finishflushDeviceMLTmln(handle);
+  xdp::finishflushDeviceMLTmln(hwCtxImpl);
 }
 

@@ -746,7 +746,6 @@ namespace xdp {
     // NOTE: for now, assume a single partition
     auto partitionCols = xdp::aie::getPartitionStartColumns(handle);
     auto startCol = partitionCols.at(0);
-    std::cout << "Using partition starting column of " << +startCol << std::endl;
 
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
