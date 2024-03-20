@@ -211,3 +211,4 @@ if (GTEST_FOUND)
 else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
+# -----------------------------------------------------------------------------

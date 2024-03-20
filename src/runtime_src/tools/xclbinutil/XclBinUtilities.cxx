@@ -1010,12 +1010,12 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 }
 
 #ifndef _WIN32
+// pdi_transform is only available on Linux
 // pdi_transform is defined in libtransformcdo.a
 extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out);
 
 int transform_PDI_file(std::string fileName)
 {
-  // pdi_transform is only available on Linux
   // pdi_transform prints lots of messages
   // redirect the output to a stream, so that console looks cleaner
   int sout = dup(fileno(stdout));
@@ -1040,52 +1040,6 @@ int transform_PDI_file(std::string fileName)
 
   return ret;
 }
-
-#if 0 
-int transform_PDI_file(const std::string& fileName)
-{
-  // prototype: run the transform_static executable
-  // in the future, we may decide to link in the transform so instead
- 
-  // TODO: figure out whether we need to integrate transform_static into 
-  // XRT repo and how if so
-  // for now assume user has built or downloaded transform_static
-  // separately, it is either in the current working directory or in PATH 
-  std::string transformExePath = "./transform_static";
-  if (!fs::exists("./transform_static")) {
-#if (BOOST_VERSION >= 106400)
-    auto path = boost::process::search_path("transform_static");
-    if (!path.empty()) {
-      // std::cout << "Found executable at: " << path << std::endl;
-      transformExePath = path.string();
-    } else {
-      auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s' or PATH. Please make sure the exetuable is in PATH or CWD") % fs::current_path();
-      throw std::runtime_error(errMsg.str());
-    }
-#else
-    auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s'. Please copy the executable to CWD") % fs::current_path();
-    throw std::runtime_error(errMsg.str());
-#endif
-  }
-
-  // const std::string transformExe = "./transform_static";
-  const std::vector<std::string> cmdOptions = { fileName, fileName };
-
-  // Build the command line
-  std::string cmdLine = transformExePath;
-  for (const auto& option : cmdOptions)
-    cmdLine += " " + option;
-    
-  XUtil::TRACE("Cmd: " + cmdLine);
-
-  std::ostringstream os_stdout;
-  std::ostringstream os_stderr;
-  // since we throw on error, we don't care about the return value from exec
-  XUtil::exec(transformExePath, cmdOptions, true /*throw exception*/, os_stdout, os_stderr);
-
-  return 0;
-}
-#endif
 
 void 
 XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
