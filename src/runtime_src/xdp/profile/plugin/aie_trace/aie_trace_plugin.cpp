@@ -139,7 +139,11 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   // Metadata depends on static information from the database
   AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
-
+  if(AIEData.metadata->aieMetadataEmpty())
+  {
+    xrt_core::message::send(severity_level::warning, "XRT", "AIE Metadata is empty for AIE Trace");
+    return;
+  }
 #ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);
   AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);

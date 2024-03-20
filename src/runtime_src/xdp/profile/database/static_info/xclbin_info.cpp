@@ -60,30 +60,6 @@ namespace xdp {
     return *this ;
   }
 
-  // std::string PLInfo::print() const
-  // {
-  //   if(valid) {
-  //     std::stringstream ss;
-  //     ss << "PLINFO Dump: \n";
-  //     ss << "valid: "<< valid <<" \n";
-  //     ss << "hostMaxReadBW: "<< hostMaxReadBW <<" \n";
-  //     ss << "hostMaxWriteBW: "<< hostMaxWriteBW <<"\n";
-  //     ss << "kernelMaxReadBW: "<< kernelMaxReadBW <<"\n";
-  //     ss << "kernelMaxWriteBW: "<< kernelMaxWriteBW <<"\n";
-  //     ss << "clockRatePLMHz: "<< clockRatePLMHz <<"\n";
-      
-  //     ss << "usesTs2mm: "<< usesTs2mm <<" \n";
-  //     ss << "usesFifo: "<< usesFifo <<"\n";
-  //     ss << "hasFloatingAIMWithTrace: "<< hasFloatingAIMWithTrace <<"\n";
-  //     ss << "hasFloatingASMWithTrace: "<< hasFloatingASMWithTrace <<"\n";
-  //     ss << "hasMemoryAIM: "<< hasMemoryAIM <<"\n";
-  //     ss << "----------- "<< "\n";
-  //     return ss.str();
-  //   } else {
-  //     return "NotValid";
-  //   }
-  // }
-
   PLInfo::~PLInfo()
   {
     for (auto& i : cus) {
@@ -187,25 +163,6 @@ namespace xdp {
 
     return *this ;
   }
-  // std::string AIEInfo::print() const
-  // {
-  //   std::stringstream ss;
-  //   if(valid) {
-  //     ss << "AIEINFO Dump: \n";
-  //     ss << "valid: "<< valid <<" \n";
-  //     ss << "clockRateAIEMHz: "<< clockRateAIEMHz <<" \n";
-  //     ss << "numTracePLIO: "<< numTracePLIO <<"\n";
-  //     ss << "isGMIORead: "<< isGMIORead <<"\n";
-  //     ss << "isAIEcounterRead: "<< isAIEcounterRead <<"\n";
-
-  //     ss << "aieList.size(): "<<aieList.size()<<"\n";
-  //     ss << "gmioList.size(): "<<gmioList.size()<<"\n";
-  //   } else {
-  //     ss << "numTracePLIO: "<< numTracePLIO <<"\n";
-  //     ss<< ":NotValid\n";
-  //   }
-  //   return ss.str();
-  // }
 
   AIEInfo::~AIEInfo()
   {
@@ -231,16 +188,6 @@ namespace xdp {
       delete deviceIntf ;
   }
 
-  // std::string XclbinInfo::print() const
-  // {
-  //   std::string op;
-  //   op += pl.print();
-  //   op += std::string("--------------\n");
-  //   op += aie.print();
-
-  //   return op;
-  // }
-
   ConfigInfo::ConfigInfo() : type(CONFIG_AIE_PL)
   {
 
@@ -256,20 +203,6 @@ namespace xdp {
     for(auto xclbin : currentXclbins)
       delete xclbin;
   }
-
-  // void ConfigInfo::print(std::string callerLoc) const
-  // {
-  //   std::ofstream outfile("configInfo_dump.txt", std::ios::app);
-  //   if(!outfile.is_open()) {
-  //     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "couldn't open the configInfo_dmp.txt");
-  //     return;
-  //   }
-  //   outfile<<"================================\n";
-  //   outfile<<callerLoc<<" : \n";
-  //   for(auto bin : currentXclbins) {
-  //       outfile<< bin->print();
-  //   }
-  // }
 
   xrt_core::uuid ConfigInfo::getConfigUuid()
   {
@@ -338,7 +271,7 @@ namespace xdp {
     std::string name = "";
     if(!currentXclbins.empty()) {
       name += currentXclbins.front()->name;
-      for(int i=1; i<currentXclbins.size(); i++) {
+      for(size_t i=1; i<currentXclbins.size(); i++) {
         name += ", " + currentXclbins[i]->name;
       }
     }

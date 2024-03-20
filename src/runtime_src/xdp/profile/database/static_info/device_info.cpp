@@ -110,7 +110,7 @@ namespace xdp {
     return requiredXclbinInfo;
   }
 
-  ConfigInfo* DeviceInfo::createConfig(XclbinInfo* xclbin)
+  void DeviceInfo::createConfig(XclbinInfo* xclbin)
   {
     ConfigInfo* config = nullptr;
 
@@ -162,7 +162,6 @@ namespace xdp {
     }
 
     loadedConfigInfos.push_back(config);
-    return config;
   }
 
   bool DeviceInfo::hasFloatingAIMWithTrace(XclbinInfo* xclbin) const
