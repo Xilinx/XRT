@@ -33,17 +33,19 @@ namespace xrt::core::hip
 
   public:
     memory(std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(0), m_type(memory_type::hip_memory_type_invalid), m_hip_flags(0), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(false)
+      : m_device(dev), m_size(0), m_type(memory_type::hip_memory_type_invalid), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
     {
       assert(m_device);
       init_xrt_bo();
     }
 
-    memory(size_t sz, unsigned int flags, std::shared_ptr<xrt::core::hip::device> dev);
+    memory(std::shared_ptr<xrt::core::hip::device>  dev, size_t sz);
+
+    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, unsigned int flags);
 
     // construct from user host buffer
-    memory(size_t sz, void *host_mem, unsigned int flags, std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(sz), m_type(memory_type::hip_memory_type_registered), m_hip_flags(flags), m_host_mem(reinterpret_cast<unsigned char *>(host_mem)), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(true)
+    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, void *host_mem, unsigned int flags)
+      : m_device(dev), m_size(sz), m_type(memory_type::hip_memory_type_registered), m_hip_flags(flags), m_host_mem(reinterpret_cast<unsigned char *>(host_mem)), m_bo(nullptr), m_sync_host_mem_required(true)
     {
       assert(m_device);
 
@@ -56,8 +58,6 @@ namespace xrt::core::hip
     { 
       free_mem(); 
     }
-
-    memory(size_t sz, std::shared_ptr<xrt::core::hip::device>  dev);
 
     static void lock_pages(void* addr, size_t size);
 
@@ -141,11 +141,11 @@ namespace xrt::core::hip
     get_device_addr();
 
   private:
+    std::shared_ptr<xrt::core::hip::device>  m_device;
     size_t m_size;
     memory_type m_type;
     unsigned int m_hip_flags; // hipHostMallocMapped etc.
     unsigned char *m_host_mem; // host copy to store user data
-    std::shared_ptr<xrt::core::hip::device>  m_device;
     std::shared_ptr<xrt::bo> m_bo;
     xrt::memory_group m_group;
     bool m_sync_host_mem_required; //true if sync between host copy and bo is required.

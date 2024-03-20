@@ -37,7 +37,7 @@ namespace xrt::core::hip
     auto dev = get_current_device();
     assert(dev);
 
-    auto hip_mem = std::make_shared<xrt::core::hip::memory>(size, dev);
+    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size);
     auto dev_addr = hip_mem->get_addr(address_type::hip_address_type_device);
     if (dev_addr != 0)
     {
@@ -54,10 +54,13 @@ namespace xrt::core::hip
   static void
   hip_host_malloc(void* *ptr, size_t size, unsigned int flags)
   {
+    assert(ptr);
+    assert(size > 0);
+
     auto dev = get_current_device();
     assert(dev);
 
-    auto hip_mem = std::make_shared<xrt::core::hip::memory>(size, flags, dev);
+    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, flags);
     auto host_addr = hip_mem->get_addr(address_type::hip_address_type_host);
     memory_database::instance().insert_addr(address_type::hip_address_type_host, reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
     *ptr = host_addr;
@@ -86,7 +89,7 @@ namespace xrt::core::hip
     auto dev = get_current_device();
     assert(dev);
 
-    auto hip_mem = std::make_shared<xrt::core::hip::memory>(size, hostPtr, flags, dev);
+    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, hostPtr, flags);
     auto host_addr = hip_mem->get_addr(address_type::hip_address_type_host);
     memory_database::instance().insert_addr(address_type::hip_address_type_host, reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
   }

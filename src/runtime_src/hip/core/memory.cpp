@@ -17,8 +17,8 @@
 namespace xrt::core::hip
 {
 
-  memory::memory(size_t sz, std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(false)
+  memory::memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz)
+      : m_device(dev), m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
   {
     assert(m_device);
 
@@ -26,8 +26,8 @@ namespace xrt::core::hip
     init_xrt_bo();
   }
 
-  memory::memory(size_t sz, unsigned int flags, std::shared_ptr<xrt::core::hip::device> dev)
-      : m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_device(dev), m_bo(nullptr), m_sync_host_mem_required(false)
+  memory::memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, unsigned int flags)
+      : m_device(dev), m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
   {
     assert(m_device);
 
