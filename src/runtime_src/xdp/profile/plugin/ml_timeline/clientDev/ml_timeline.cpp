@@ -25,7 +25,6 @@
 
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "core/common/utils.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -132,12 +131,10 @@ namespace xdp {
     std::string result = std::regex_replace(oss.str(), reg, "$1");
 
     std::ofstream fOut;
-    std::string outFName = "record_timer_ts_" + std::to_string(xrt_core::utils::get_pid()) + ".json";
-    fOut.open(outFName);
+    fOut.open("record_timer_ts.json");
     fOut << result;
     fOut.close();
-    msg = "Completed writing recorded timestamps to " + outFName;
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Completed writing recorded timestamps to record_timer_ts.json.");
   }
 }
 
