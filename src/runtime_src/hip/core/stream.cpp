@@ -13,7 +13,7 @@ stream::
 stream(std::shared_ptr<context> ctx, unsigned int flags, bool is_null)
   : m_ctx{std::move(ctx)}
   , m_flags{flags}
-  , null{is_null}
+  , m_null{is_null}
 {
   // insert stream handle in list maintained by context
   m_ctx->add_stream(this);
@@ -31,13 +31,13 @@ enqueue(std::shared_ptr<command>&& cmd)
 {
   // if there is top event add command chain list of this event
   // else submit the command
-  if (top_event)
-    top_event->add_to_chain(cmd);
+  if (m_top_event)
+    m_top_event->add_to_chain(cmd);
   else
     cmd->submit();
 
   std::lock_guard<std::mutex> lock(m_cmd_lock);
-  cmd_queue.emplace_back(std::move(cmd));
+  m_cmd_queue.emplace_back(std::move(cmd));
 }
 
 std::shared_ptr<command>
@@ -45,11 +45,11 @@ stream::
 dequeue()
 {
   std::lock_guard<std::mutex> lock(m_cmd_lock);
-  if (cmd_queue.empty()) {
+  if (m_cmd_queue.empty()) {
     return nullptr;
   }
-  auto cmd = std::move(cmd_queue.front());
-  cmd_queue.pop_front();
+  auto cmd = std::move(m_cmd_queue.front());
+  m_cmd_queue.pop_front();
   return cmd;
 }
 
@@ -58,9 +58,9 @@ stream::
 erase_cmd(std::shared_ptr<command> cmd)
 {
   std::lock_guard<std::mutex> lock(m_cmd_lock);
-  auto it = std::find(cmd_queue.begin(), cmd_queue.end(), cmd);
-  if (it != cmd_queue.end()) {
-    cmd_queue.erase(it);
+  auto it = std::find(m_cmd_queue.begin(), m_cmd_queue.end(), cmd);
+  if (it != m_cmd_queue.end()) {
+    m_cmd_queue.erase(it);
     return true;
   }
   return false;
@@ -73,7 +73,7 @@ enqueue_event(std::shared_ptr<event>&& ev)
   {
     // iterate over commands and add them to recorded list of event
     std::lock_guard<std::mutex> lock(m_cmd_lock);
-    for (const auto& cmd : cmd_queue) {
+    for (const auto& cmd : m_cmd_queue) {
       ev->add_dependency(cmd);
     }
   }
@@ -99,7 +99,7 @@ synchronize_streams()
     if (!(hip_stream->flags() & hipStreamNonBlocking) && hip_stream.get() != this) {
       // non null streams wait on null stream only and
       // null stream waits on all blocking streams
-      if (!null && !hip_stream->is_null())
+      if (!m_null && !hip_stream->is_null())
         continue;
       // complete commands
       hip_stream->await_completion();
@@ -112,14 +112,14 @@ stream::
 await_completion()
 {
   std::lock_guard<std::mutex> lk(m_cmd_lock);
-  while(!cmd_queue.empty()) {
-    auto cmd = cmd_queue.front();
+  while(!m_cmd_queue.empty()) {
+    auto cmd = m_cmd_queue.front();
     cmd->wait();
     // kernel_start and copy_buffer cmds needs to be explicitly removed from cache
     // there is no destroy call for them
     if (cmd->get_type() != command::type::event)
       command_cache.remove(cmd.get());
-    cmd_queue.pop_front();
+    m_cmd_queue.pop_front();
   }
 }
 
@@ -139,13 +139,13 @@ stream::
 record_top_event(event* ev)
 {
   std::lock_guard<std::mutex> lk(m_cmd_lock);
-  top_event = ev;
+  m_top_event = ev;
 }
 
 std::shared_ptr<stream>
 get_stream(hipStream_t stream)
 {
-  // app dint pass stream, use legacy default stream (null stream)
+  // app did not pass stream, use legacy default stream (null stream)
   if (!stream) {
     auto ctx = get_current_context();
     throw_context_destroyed_if(!ctx, "context is destroyed, no active context");

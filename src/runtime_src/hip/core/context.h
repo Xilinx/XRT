@@ -19,7 +19,7 @@ class stream;
 class context : public std::enable_shared_from_this<context>
 {
   std::shared_ptr<device> m_device;
-  std::weak_ptr<stream> null_stream;
+  std::weak_ptr<stream> m_null_stream;
   std::vector<stream_handle> m_stream_handles;
   mutable std::mutex m_ctx_stream_lock;
 
@@ -54,7 +54,7 @@ public:
   remove_stream(stream_handle stream)
   {
     std::lock_guard<std::mutex> lk(m_ctx_stream_lock);
-    auto it = std::find(m_stream_handles.begin(), m_stream_handles.end(), stream);
+    const auto it = std::find(m_stream_handles.begin(), m_stream_handles.end(), stream);
     if (it != m_stream_handles.end()) {
       m_stream_handles.erase(it);
     }

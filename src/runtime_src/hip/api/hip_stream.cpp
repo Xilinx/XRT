@@ -58,6 +58,7 @@ hip_stream_wait_event(hipStream_t stream, hipEvent_t ev, unsigned int flags)
   throw_if(!hip_event_cmd->is_recorded(), hipErrorStreamCaptureIsolation, "Event passed is not recorded");
   auto hip_event_stream = hip_event_cmd->get_stream();
 
+  // check stream on which wait is called is same as stream in which event is enqueued
   if (hip_wait_stream == hip_event_stream) {
     hip_wait_stream->record_top_event(hip_event_cmd.get());
   }

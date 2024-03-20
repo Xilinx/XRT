@@ -100,15 +100,14 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 {
   ctype = type::kernel_start;
   auto k = func->get_kernel();
-  auto m_arginfo = std::move(xrt_core::kernel_int::get_args(k));
+  auto arginfo = std::move(xrt_core::kernel_int::get_args(k));
 
   // create run object and set args
   r = xrt::run(k);
 
   using karg = xrt_core::xclbin::kernel_argument;
   size_t idx = 0;
-  for (auto itr = m_arginfo.begin(); itr != m_arginfo.end(); ++itr, ++idx) {
-    auto arg = (*itr);
+  for (const auto& arg : arginfo) {
     // non index args are not supported, this condition will not hit in case of HIP
     if (arg->index == karg::no_index)
       throw std::runtime_error("function has invalid argument");
@@ -131,6 +130,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       default :
        throw std::runtime_error("function has unsupported arg type");
     }
+    idx++;
   }
 }
 
