@@ -30,7 +30,9 @@ if (DEFINED XRT_AIE_BUILD)
 endif()
 
 target_include_directories(core_common_api_library_objects
-  PRIVATE
-  ${XRT_SOURCE_DIR}/runtime_src
-  ${XRT_SOURCE_DIR}/runtime_src/core/common/elf
+  PUBLIC
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src>
+  $<BUILD_INTERFACE:${XRT_SOURCE_DIR}/runtime_src/core/common/elf>
+  $<INSTALL_INTERFACE:${XRT_INSTALL_INCLUDE_DIR}>
   )
+  
