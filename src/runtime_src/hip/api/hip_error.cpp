@@ -99,7 +99,7 @@ handle_hip_error_error(F && f)
 hipError_t
 hipExtGetLastError()
 {
-  return handle_hip_error_error([&] { return xrt::core::hip::hip_get_last_error(); });
+  return hipGetLastError();
 }
 
 // return last error returned by any HIP API call and resets the stored error code

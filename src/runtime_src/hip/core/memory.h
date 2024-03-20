@@ -22,6 +22,12 @@ namespace xrt::core::hip
     hip_memory_type_invalid
   };
 
+  enum class address_type : int
+  {
+    hip_address_type_host = 0,
+    hip_address_type_device
+  };
+
   class memory
   {
 
@@ -80,13 +86,8 @@ namespace xrt::core::hip
     }
 
     void*
-    get_host_addr()
-    {
-      return m_host_mem;
-    }
-
-    void* get_device_addr();
-
+    get_addr(address_type type);
+    
     std::shared_ptr<xrt::bo>
     get_xrt_bo() const
     { 
@@ -128,6 +129,16 @@ namespace xrt::core::hip
     {
       return m_device;
     }
+
+  protected:
+    void*
+    get_host_addr()
+    {
+      return m_host_mem;
+    }
+
+    void*
+    get_device_addr();
 
   private:
     size_t m_size;
@@ -177,6 +188,18 @@ protected:
 
     static memory_database* m_memory_database;
 
+    void
+    insert_host_addr(void* host_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
+    
+    void
+    delete_host_addr(void* host_addr);
+
+    void
+    insert_device_addr(uint64_t dev_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
+    
+    void
+    delete_device_addr(uint64_t dev_addr);
+
 public:
     ~memory_database();
 
@@ -190,16 +213,7 @@ public:
     }
 
     void
-    insert_host_addr(void* host_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
-    
-    void
-    delete_host_addr(void* host_addr);
-
-    void
-    insert_device_addr(uint64_t dev_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
-    
-    void
-    delete_device_addr(uint64_t dev_addr);
+    insert_addr(address_type type, uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem);
 
     void
     delete_addr(uint64_t addr);

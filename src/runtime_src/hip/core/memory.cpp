@@ -127,7 +127,27 @@ namespace xrt::core::hip
     }
   }
 
-  void *
+  void*
+  memory::get_addr(address_type type)
+  {
+    switch (type)
+    {
+    case address_type::hip_address_type_device:
+      return get_device_addr();
+      break;
+
+    case address_type::hip_address_type_host:
+      return get_host_addr();
+      break;
+
+    default:
+      assert(0);
+      break;
+    };
+    return nullptr;
+  }
+
+  void*
   memory::get_device_addr()
   {
     if (m_bo != nullptr)
@@ -249,6 +269,23 @@ namespace xrt::core::hip
   memory_database::delete_device_addr(uint64_t dev_addr)
   {
     m_devAddrMap.erase(address_range_key(dev_addr, 0));
+  }
+
+  void
+  memory_database::insert_addr(address_type type, uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
+  {
+    switch (type)
+    {
+    case address_type::hip_address_type_device:
+      m_devAddrMap.insert({address_range_key(addr, size), hip_mem});
+      break;
+    case address_type::hip_address_type_host:
+      m_hostAddrMap.insert({address_range_key(addr, size), hip_mem});
+      break;
+
+    default:
+      break;
+    };
   }
 
   void
