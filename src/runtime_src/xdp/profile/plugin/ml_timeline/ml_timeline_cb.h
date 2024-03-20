@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,8 +21,8 @@
 
 extern "C" {
 
-  XDP_PLUGIN_EXPORT void updateDeviceMLTmln(void* handle);
-  XDP_PLUGIN_EXPORT void finishflushDeviceMLTmln(void* handle);
+  XDP_PLUGIN_EXPORT void updateDeviceMLTmln(void* hwCtxImpl);
+  XDP_PLUGIN_EXPORT void finishflushDeviceMLTmln(void* hwCtxImpl);
 
 }
 #endif
