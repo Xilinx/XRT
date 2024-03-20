@@ -2159,10 +2159,14 @@ namespace xdp {
 
   void VPStaticDatabase::readAIEMetadataClient()
   {
-    metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
-    if(!metadataReader) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
-      return;
+    // Check for new then old file formats
+    metadataReader = aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
+    if (!metadataReader) {
+      metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+      if (!metadataReader) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
+        return;
+      }
     }
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
   } 

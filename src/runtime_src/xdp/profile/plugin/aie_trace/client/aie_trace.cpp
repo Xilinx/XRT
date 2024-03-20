@@ -742,6 +742,11 @@ namespace xdp {
     (void)deviceId;
     (void)handle;
 
+    // Get partition columns
+    // NOTE: for now, assume a single partition
+    auto partitionCols = xdp::aie::getPartitionStartColumns(handle);
+    auto startCol = partitionCols.at(0);
+
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
@@ -817,7 +822,7 @@ namespace xdp {
       }
 
       // AIE config object for this tile
-      auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
+      auto cfgTile = std::make_unique<aie_cfg_tile>(col+startCol, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
 
