@@ -75,17 +75,18 @@ def main():
   aiePartition1111PDIOutput = "00000000-0000-0000-0000-000000001111.pdi"
   textFileCompare(aiePartition1111PDIExpected, aiePartition1111PDIOutput)
 
-  '''
   # XRT doesn't allow checking in binary files, so temporarily comment out 
   # the following tests. Maybe we can figure out something in the future to 
   # re-enable them
   # ---------------------------------------------------------------------------
 
+  print ("i am here 0")
   step = "3) Add the AIE parition to the xclbin image with pdi transform enabled"
   # copy aie_partition_trans.json currently the code expect the find it in CWD
   print ("cwd : "+ os.getcwd())
   aiePartitionTran = os.path.join(args.resource_dir, "aie_partition_trans.json")
   shutil.copy(aiePartitionTran, os.getcwd())
+  print ("i am here 1")
 
   PdiHex2220 = os.path.join(args.resource_dir, "2220.hex")
   Pdi2220 = "00000000-0000-0000-0000-000000002220.pdi"
@@ -98,6 +99,7 @@ def main():
 
   with open(Pdi2220, 'wb') as file:
       file.write(binImage)
+  print ("i am here 2")
 
   PdiHex2221 = os.path.join(args.resource_dir, "2221.hex")
   Pdi2221 = "00000000-0000-0000-0000-000000002221.pdi"
@@ -110,7 +112,14 @@ def main():
 
   with open(Pdi2221, 'wb') as file:
       file.write(binImage)
+  print ("i am here 3")
 
+  # List all files and directories in the specified directory
+  files_and_directories = os.listdir(os.getcwd())
+
+  # Print each file and directory
+  for entry in files_and_directories:
+    print(entry)
 
   sectionname = "Trans"
   workingXclbin = "aiePartitionTrans.xclbin"
@@ -120,10 +129,12 @@ def main():
   cmd = [xclbinutil, "--add-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartition,
                      "--transform-pdi",
                      "--output", workingXclbin,
+                     "--trace",
                      "--force"
                      ]
   execCmd(step, cmd)
 
+  '''
   # ---------------------------------------------------------------------------
 
   step = "4) Read and dump the AIE parition"
