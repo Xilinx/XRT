@@ -5,12 +5,13 @@
 #ifndef _XRT_HIP_TEST_COMMON_H
 #define _XRT_HIP_TEST_COMMON_H
 
+#include <map>
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <map>
-#include <stdexcept>
 #include <string>
+#include <stdexcept>
 #include <system_error>
 
 #ifdef __linux__
@@ -92,13 +93,21 @@ public:
 template<typename T> class
 hip_test_device_bo {
   T *_buffer;
+
 public:
-  hip_test_device_bo(size_t size) : _buffer(nullptr) {
+  explicit hip_test_device_bo(size_t size) : _buffer(nullptr) {
     test_hip_check(hipMalloc((void**)&_buffer, size * sizeof(T)));
   }
+
   ~hip_test_device_bo() noexcept {
     test_hip_check(hipFree(_buffer));
   }
+
+  hip_test_device_bo(const hip_test_device_bo &) = delete;
+  hip_test_device_bo(hip_test_device_bo &&) = delete;
+  hip_test_device_bo& operator =(hip_test_device_bo const&) = delete;
+  hip_test_device_bo& operator =(hip_test_device_bo &&) = delete;
+
   T *get() const {
     return _buffer;
   }
@@ -126,17 +135,22 @@ public:
       (void)hipModuleUnload(it.second);
   }
 
+  hip_test_device(const hip_test_device &) = delete;
+  hip_test_device(hip_test_device &&) = delete;
+  hip_test_device& operator =(hip_test_device const&) = delete;
+  hip_test_device& operator =(hip_test_device &&) = delete;
+
   void
   show_info(std::ostream &stream) const {
-    char name[64];
-    test_hip_check(hipDeviceGetName(name, sizeof(name), m_device));
-    stream << name << std::endl;
+    std::array<char, 64> name;
+    test_hip_check(hipDeviceGetName(name.data(), sizeof(name), m_device));
+    stream << name.data() << std::endl;
 
-    hipUUID_t hid;
+    hipUUID_t hid{};
     test_hip_check(hipDeviceGetUuid(&hid, m_device));
-    char uuid_str[40];
-    uuid_unparse_lower((unsigned char *)hid.bytes, uuid_str);
-    stream << uuid_str << std::endl;
+    std::array<char, 40> uuid_str;
+    uuid_unparse_lower(reinterpret_cast<unsigned char *>(hid.bytes), uuid_str.data());
+    stream << uuid_str.data() << std::endl;
 
     hipDeviceProp_t devProp;
     test_hip_check(hipGetDeviceProperties(&devProp, m_index));
@@ -147,14 +161,13 @@ public:
 
   hipFunction_t
   get_function(const char *fileName, const char *funcName) {
-    std::map<std::string, hipModule_t>::iterator it = mModuleTable.find(fileName);
-    hipModule_t hmodule;
-    hmodule = it->second;
+    auto it = mModuleTable.find(fileName);
+    hipModule_t hmodule = it->second;
     if (it == mModuleTable.end()) {
       test_hip_check(hipModuleLoad(&hmodule, fileName), fileName);
       mModuleTable.insert(it, std::pair<std::string, hipModule_t>(fileName, hmodule));
     }
-    hipFunction_t hfunction;
+    hipFunction_t hfunction = nullptr;
     test_hip_check(hipModuleGetFunction(&hfunction, hmodule, funcName), funcName);
     return hfunction;
   }
