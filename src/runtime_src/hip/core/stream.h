@@ -5,7 +5,6 @@
 
 #include "context.h"
 
-#include <condition_variable>
 #include <list>
 
 namespace xrt::core::hip {
@@ -18,12 +17,11 @@ class stream
 {
   std::shared_ptr<context> m_ctx;
   unsigned int m_flags;
-  bool null;
+  bool m_null;
 
-  std::list<std::shared_ptr<command>> cmd_queue;
+  std::list<std::shared_ptr<command>> m_cmd_queue;
   std::mutex m_cmd_lock;
-  std::condition_variable cv;
-  event* top_event{nullptr};
+  event* m_top_event{nullptr};
 
 public:
   stream() = default;
@@ -34,7 +32,7 @@ public:
   inline bool
   is_null() const
   {
-    return null;
+    return m_null;
   }
 
   unsigned int

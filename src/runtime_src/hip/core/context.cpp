@@ -51,16 +51,16 @@ std::shared_ptr<stream>
 context::
 get_null_stream()
 {
-  std::shared_ptr<stream> s = null_stream.lock();
+  std::shared_ptr<stream> s = m_null_stream.lock();
   if (s)
     return s;
 
   // create null stream
   auto null_s = std::make_shared<stream>(shared_from_this(), hipStreamDefault, true);
-  // assign weak ptr for future use
-  null_stream = null_s;
+  // track the newly created shared ptr
+  m_null_stream = null_s;
   insert_in_map(stream_cache, std::move(null_s));
-  return null_stream.lock(); // inserted in map, so we can get shared_ptr from weak_ptr
+  return m_null_stream.lock();
 }
 } // xrt::core::hip
 
