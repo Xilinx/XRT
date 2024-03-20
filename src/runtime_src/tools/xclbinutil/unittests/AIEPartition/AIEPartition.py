@@ -75,6 +75,7 @@ def main():
   aiePartition1111PDIOutput = "00000000-0000-0000-0000-000000001111.pdi"
   textFileCompare(aiePartition1111PDIExpected, aiePartition1111PDIOutput)
 
+  '''
   # XRT doesn't allow checking in binary files, so temporarily comment out 
   # the following tests. Maybe we can figure out something in the future to 
   # re-enable them
@@ -172,6 +173,7 @@ def main():
   binaryFileCompare(aiePartition2221PDIExpected, aiePartition2221PDIOutput)
 
   # ---------------------------------------------------------------------------
+  '''
 
   # If the code gets this far, all is good.
   return False
