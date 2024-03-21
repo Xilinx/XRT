@@ -20,7 +20,7 @@
 
 #include "hip/hip_runtime_api.h"
 
-namespace {
+namespace xrt_hip_test_common {
 #ifdef _WIN32
 // Copied from src/runtime_src/core/include/windows/uuid.h
 inline void
@@ -34,7 +34,6 @@ uuid_unparse_lower(const unsigned char uuid[16], char* str)
                uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
 }
 #endif
-}
 
 class
 test_hip_error : public std::system_error
@@ -162,10 +161,13 @@ public:
   hipFunction_t
   get_function(const char *fileName, const char *funcName) {
     auto it = mModuleTable.find(fileName);
-    hipModule_t hmodule = it->second;
+    hipModule_t hmodule = nullptr;
     if (it == mModuleTable.end()) {
       test_hip_check(hipModuleLoad(&hmodule, fileName), fileName);
       mModuleTable.insert(it, std::pair<std::string, hipModule_t>(fileName, hmodule));
+    }
+    else {
+      hmodule = it->second;
     }
     hipFunction_t hfunction = nullptr;
     test_hip_check(hipModuleGetFunction(&hfunction, hmodule, funcName), funcName);
@@ -173,4 +175,5 @@ public:
   }
 };
 
+}
 #endif
