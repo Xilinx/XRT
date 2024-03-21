@@ -3,20 +3,22 @@
 #ifndef xrthip_error_h
 #define xrthip_error_h
 
+#include "core/common/device.h"
+#include "core/common/api/bo.h"
 #include "xrt/config.h"
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
-#include "core/common/device.h"
-#include "core/common/api/bo.h"
 
 namespace xrt::core::hip
 {
   class error
   {
   public:
-    static error& instance();
+    static error&
+    instance();
 
-    static const char* get_error_name(hipError_t err);
+    static const char*
+    get_error_name(hipError_t err);
 
     hipError_t
     peek_last_error()

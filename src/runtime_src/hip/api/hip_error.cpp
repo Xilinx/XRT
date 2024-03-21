@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 
-#include <string>
+#include "core/common/error.h"
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
-#include "core/common/error.h"
 #include "hip/core/device.h"
 #include "hip/core/error.h"
-
+#include <string>
 
 namespace xrt::core::hip
 {

@@ -70,16 +70,14 @@ namespace xrt::core::hip
   static void
   hip_host_free(void* ptr)
   {
-    if (memory_database::instance().get_hip_mem_from_host_addr(ptr))
-      memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
+    memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
   }
 
   // Free memory allocated by the hipMalloc().
   static void
   hip_free(void* ptr)
   {
-    if (memory_database::instance().get_hip_mem_from_addr(ptr))
-      memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
+    memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
   }
 
   // Register host memory so it can be accessed from the current device.
@@ -98,11 +96,7 @@ namespace xrt::core::hip
   static void
   hip_host_unregister(void* hostPtr)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_host_addr(hostPtr);
-    if (hip_mem != nullptr)
-    {
-      memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(hostPtr));
-    }
+    memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(hostPtr));
   }
 
   // Get Device pointer from Host Pointer allocated through hipHostMalloc().
@@ -154,24 +148,24 @@ namespace xrt::core::hip
   {
     switch (kind)
     {
-    case hipMemcpyHostToDevice:
-      hip_memcpy_host2device(dst, src, sizeBytes);
-      break;
+      case hipMemcpyHostToDevice:
+        hip_memcpy_host2device(dst, src, sizeBytes);
+        break;
 
-    case hipMemcpyDeviceToHost:
-      hip_memcpy_device2host(dst, src, sizeBytes);
-      break;
+      case hipMemcpyDeviceToHost:
+        hip_memcpy_device2host(dst, src, sizeBytes);
+        break;
 
-    case hipMemcpyDeviceToDevice:
-      hip_memcpy_device2device(dst, src, sizeBytes);
-      break;
+      case hipMemcpyDeviceToDevice:
+        hip_memcpy_device2device(dst, src, sizeBytes);
+        break;
 
-    case hipMemcpyHostToHost:
-      hip_memcpy_host2host(dst, src, sizeBytes);
-      break;
+      case hipMemcpyHostToHost:
+        hip_memcpy_host2host(dst, src, sizeBytes);
+        break;
 
-    default:
-      break;
+      default:
+        break;
     };
   }
 
