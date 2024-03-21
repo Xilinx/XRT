@@ -56,6 +56,7 @@ namespace xdp {
       bool isDmaSet(const std::string metricSet);
 
       uint8_t getPortNumberFromEvent(XAie_Events event);
+      int8_t getChannelNumberFromEvent(XAie_Events event);
       void configStreamSwitchPorts(const tile_type& tile, const XAie_LocType loc,
                                    const module_type type, const std::string metricSet, 
                                    const uint8_t channel0, const uint8_t channel1,
@@ -67,7 +68,7 @@ namespace xdp {
                              const module_type type, const std::string metricSet);
       void configEventSelections(const XAie_LocType loc, const module_type type, 
                                  const std::string metricSet, const uint8_t channel0,
-                                 const uint8_t channel);
+                                 const uint8_t channel1, aie_cfg_base& config);
       void configEdgeEvents(const tile_type& tile, const module_type type,
                             const std::string metricSet, const XAie_Events event,
                             const uint8_t channel = 0);
