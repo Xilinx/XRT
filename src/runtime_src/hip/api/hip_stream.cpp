@@ -6,14 +6,49 @@
 #include "hip/core/stream.h"
 
 namespace xrt::core::hip {
-// In Hip, based on flags we can create default or non blocking streams.
-// If application doesn't explicitly specify stream we use default stream
-// for such operations. The default stream also has two modes legacy or per thread.
-// Legacy default stream is also called as NULL stream. Null stream waits on all explictly
-// created default streams in the same context when an operation is enqueued and explicitly
-// created default streams wait on null stream in that context.
-// Per thread stream is also default stream but is created per thread per context and waits
-// on null stream of that context.
+
+/*
+ * Diagram Explaining different kinds of streams :
+ *
+ ┌─────────────────────────┐             ┌─────────────────────────────┐
+ │                         │   waits     │                             │
+ │     Null Stream         ├────────────►│  Per Thread default stream  │
+ ├─────────────────────────┤             ├─────────────────────────────┤
+ │ created when application│   waits     │  created when application   │
+ │ doesn't pass stream     │◄────────────┤  uses hipStreamPerThread    │
+ │      explicitly         │             │       for stream            │
+ ├─────────────────────────┤             ├─────────────────────────────┤
+ │    stream = nullptr     │◄─────┐      │  stream = hipStreamPerThread│
+ │  flag = hipStreamDefault│      │      │    flag = hipStreamDefault  │
+ │                         │      │      │                             │
+ └──────────────────────┬──┘      │      └─────────────────────────────┘
+                   waits│      waits
+                        │         │
+                     ┌──▼─────────┴────────────────┐
+                     │                             │
+                     │      Blocking stream        │
+                     ├─────────────────────────────┤
+                     │    flag = hipStreamDefault  │
+                     │                             │
+                     └─────────────────────────────┘
+
+
+                   ┌─────────────────────────────────┐
+                   │                                 │
+                   │    Non Blocking Stream          │
+                   ├─────────────────────────────────┤
+                   │    flag = hipStreamNonBlocking  │
+                   │                                 │
+                   │ Doesn't wait for other streams  │
+                   └─────────────────────────────────┘
+ * Summary :
+ * Null stream waits on all Blocking, Per Thread default streams in that context
+ * Streams created with Default flag wait on Null stream of that context
+ * Per thread stream is created per thread per context
+ * At present stream synchronization is done only when hipStreamSynchronize api
+ * is explicitly called.
+ * TODO : Add it at the time of command enqueue also
+ */
 
 static stream_handle
 hip_stream_create_with_flags(unsigned int flags)
