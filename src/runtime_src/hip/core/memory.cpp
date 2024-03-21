@@ -18,7 +18,7 @@ namespace xrt::core::hip
 {
 
   memory::memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz)
-      : m_device(dev), m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
+      : m_device(std::move(dev)), m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
   {
     assert(m_device);
 
@@ -27,7 +27,7 @@ namespace xrt::core::hip
   }
 
   memory::memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, unsigned int flags)
-      : m_device(dev), m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
+      : m_device(std::move(dev)), m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
   {
     assert(m_device);
 
@@ -95,25 +95,27 @@ namespace xrt::core::hip
   }
 
   void
-  memory::pre_kernel_run_sync_host_mem()
+  memory::sync(sync_direction drtn)
   {
     assert(m_bo);
 
-    if (m_sync_host_mem_required)
+    if (m_sync_host_mem_required)    
     {
-      m_bo->write(m_host_mem, m_size, 0);
-      m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    }
-  }
-  void
-  memory::post_kernel_run_sync_host_mem()
-  {
-    assert(m_bo);
+      switch (drtn)
+      {
+        case sync_direction::sync_from_host_to_device:
+          m_bo->write(m_host_mem, m_size, 0);
+          m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
+          break;
 
-    if (m_sync_host_mem_required)
-    {
-      m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-      m_bo->read(m_host_mem, m_size, 0);
+        case sync_direction::sync_from_device_to_host:
+          m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+          m_bo->read(m_host_mem, m_size, 0);
+          break;
+
+        default:
+          break;
+      };
     }
   }
 

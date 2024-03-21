@@ -29,7 +29,7 @@ namespace xrt::core::hip
 
   // Allocate memory on the device.
   static void
-  hip_malloc(void* *ptr, size_t size)
+  hip_malloc(void** ptr, size_t size)
   {
     assert(ptr);
     assert(size > 0);
@@ -52,7 +52,7 @@ namespace xrt::core::hip
 
   // Allocates device accessible host memory.
   static void
-  hip_host_malloc(void* *ptr, size_t size, unsigned int flags)
+  hip_host_malloc(void** ptr, size_t size, unsigned int flags)
   {
     assert(ptr);
     assert(size > 0);
@@ -206,7 +206,7 @@ handle_hip_memory_error(F && f)
 
 // Allocate memory on the device.
 hipError_t
-hipMalloc(void* *ptr, size_t size)
+hipMalloc(void** ptr, size_t size)
 {
   if (size == 0)
   {
@@ -218,7 +218,7 @@ hipMalloc(void* *ptr, size_t size)
 
 // Allocates device accessible host memory.
 hipError_t
-hipHostMalloc(void* *ptr, size_t size, unsigned int flags)
+hipHostMalloc(void** ptr, size_t size, unsigned int flags)
 {
   if (size == 0)
   {
@@ -258,7 +258,7 @@ hipHostUnregister(void* hostPtr)
 
 // Get Device pointer from Host Pointer allocated through hipHostMalloc.
 hipError_t
-hipHostGetDevicePointer(void* *devPtr, void* hstPtr, unsigned int flags)
+hipHostGetDevicePointer(void** devPtr, void* hstPtr, unsigned int flags)
 {
   return handle_hip_memory_error([&] { xrt::core::hip::hip_host_get_device_pointer(devPtr, hstPtr, flags); });
 }

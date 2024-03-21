@@ -28,12 +28,18 @@ namespace xrt::core::hip
     hip_address_type_device
   };
 
+  enum class sync_direction : int
+  {
+    sync_from_host_to_device = 0,
+    sync_from_device_to_host
+  };
+
   class memory
   {
 
   public:
     memory(std::shared_ptr<xrt::core::hip::device> dev)
-      : m_device(dev), m_size(0), m_type(memory_type::hip_memory_type_invalid), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
+      : m_device(std::move(dev)), m_size(0), m_type(memory_type::hip_memory_type_invalid), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
     {
       assert(m_device);
       init_xrt_bo();
@@ -45,7 +51,7 @@ namespace xrt::core::hip
 
     // construct from user host buffer
     memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, void *host_mem, unsigned int flags)
-      : m_device(dev), m_size(sz), m_type(memory_type::hip_memory_type_registered), m_hip_flags(flags), m_host_mem(reinterpret_cast<unsigned char *>(host_mem)), m_bo(nullptr), m_sync_host_mem_required(true)
+      : m_device(std::move(dev)), m_size(sz), m_type(memory_type::hip_memory_type_registered), m_hip_flags(flags), m_host_mem(reinterpret_cast<unsigned char *>(host_mem)), m_bo(nullptr), m_sync_host_mem_required(true)
     {
       assert(m_device);
 
@@ -59,17 +65,15 @@ namespace xrt::core::hip
       free_mem(); 
     }
 
-    static void lock_pages(void* addr, size_t size);
+    static void
+    lock_pages(void* addr, size_t size);
 
     void
     validate();
     
     void
-    pre_kernel_run_sync_host_mem();
+    sync(sync_direction);
     
-    void
-    post_kernel_run_sync_host_mem();
-
     void
     copy_from(const xrt::core::hip::memory *src, size_t size, size_t src_offset = 0, size_t offset = 0);
     
