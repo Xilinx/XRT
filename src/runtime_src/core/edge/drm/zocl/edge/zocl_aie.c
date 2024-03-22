@@ -264,7 +264,7 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 		}
 
 		if (kstrtol((char*)aie_p +aie_p->m_start_column, 10, &start_col) ||
-		    kstrtol((char*)aie_p +aie_p->num_columns, 10, &num_col)) {
+		    kstrtol((char*)aie_p +aie_p->m_num_columns, 10, &num_col)) {
 			vfree(data_portion);
 			return -EINVAL; 
 		}

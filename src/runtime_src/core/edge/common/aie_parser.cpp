@@ -34,7 +34,7 @@ using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
 using module_type = xrt_core::edge::aie::module_type;
 
-constexpr uint32_t default_id = 1;
+static constexpr uint32_t default_id = 1;
 
 inline void
 throw_if_error(bool err, const char* msg)
@@ -64,12 +64,12 @@ get_driver_config(const pt::ptree& aie_meta)
   driver_config.shim_row = aie_meta.get<uint8_t>("aie_metadata.driver_config.shim_row");
   if (!aie_meta.get_optional<uint8_t>("aie_metadata.driver_config.mem_tile_row_start") ||
       !aie_meta.get_optional<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows")) {
-  	driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
-	driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
+    driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_row_start");
+    driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.reserved_num_rows");
   }
   else {
-	driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_tile_row_start");
-	driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows");
+    driver_config.mem_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_tile_row_start");
+    driver_config.mem_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.mem_tile_num_rows");
   }
   driver_config.aie_tile_row_start = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_row_start");
   driver_config.aie_tile_num_rows = aie_meta.get<uint8_t>("aie_metadata.driver_config.aie_tile_num_rows");
@@ -87,12 +87,12 @@ get_partition_id(const pt::ptree& aie_meta)
 {
   auto num_col = aie_meta.get_child_optional("aie_metadata.driver_config.partition_num_cols");
   if (!num_col) 
-	return default_id;
+    return default_id;
   auto num_col_value = num_col->get_value<uint32_t>();
   auto start_col = 0; 
   auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
   if (overlay_start_cols && !overlay_start_cols->empty()) 
-        start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
 
   // AIE Driver expects the partition id format as below
   uint32_t part = (num_col_value << 8U) | (start_col & 0xffU);   
@@ -102,10 +102,10 @@ get_partition_id(const pt::ptree& aie_meta)
 adf::aiecompiler_options
 get_aiecompiler_options(const pt::ptree& aie_meta)
 {
-    adf::aiecompiler_options aiecompiler_options;
-    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
-    aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
-    return aiecompiler_options;
+  adf::aiecompiler_options aiecompiler_options;
+  aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
+  aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
+  return aiecompiler_options;
 }
 
 adf::graph_config
