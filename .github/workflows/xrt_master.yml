@@ -86,12 +86,16 @@ jobs:
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout PR   
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v2.4.2 
         with: 
           fetch-depth: 0
-          path: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}  
+          path: ${{ github.workspace }}/${{ github.run_number }}
           submodules: recursive
-          persist-credentials: false 
+          persist-credentials: false
+          sparse-checkout: 
+            build
+            src
+            tests 
             
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -425,7 +429,9 @@ jobs:
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
           workspace: ${{ github.workspace }}  
-          buildNumber: ${{ env.XRT_VERSION_PATCH }} 
+          buildNumber: ${{ env.XRT_VERSION_PATCH }}
+          github_sha: ${{ github.sha }}
+          github_workflow: ${{ github.workflow }}   
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
