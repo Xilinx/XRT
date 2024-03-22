@@ -5,13 +5,13 @@ add_subdirectory(api)
 add_subdirectory(xdp)
 
 add_library(core_common_library_objects OBJECT
-  asd_parser.cpp
   config_reader.cpp
   debug.cpp
   debug_ip.cpp
   device.cpp
   error.cpp
   info_aie.cpp
+  info_aie2.cpp
   info_memory.cpp
   info_platform.cpp
   info_telemetry.cpp

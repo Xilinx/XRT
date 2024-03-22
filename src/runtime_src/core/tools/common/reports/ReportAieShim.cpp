@@ -5,7 +5,11 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportAieShim.h"
+
+#include "aie/ReportAie2Shim.h"
 #include "core/common/info_aie.h"
+#include "core/common/query_requests.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 
@@ -35,15 +39,30 @@ void
 ReportAieShim::getPropertyTree20202(const xrt_core::device* _pDevice,
                                     boost::property_tree::ptree &_pt) const
 {
-  _pt.add_child("aie_shim_status", populate_aie_shim(_pDevice, "Aie_Shim_Status"));
+  switch (xrt_core::device_query<xrt_core::query::device_class>(_pDevice)) {
+  case xrt_core::query::device_class::type::alveo:
+    _pt.add_child("aie_shim_status", populate_aie_shim(_pDevice, "Aie_Shim_Status"));
+    break;
+  case xrt_core::query::device_class::type::ryzen:
+    ReportAie2Shim{}.getPropertyTree20202(_pDevice, _pt);
+    break;
+  }
 }
 
 void 
-ReportAieShim::writeReport(const xrt_core::device* /*_pDevice*/,
+ReportAieShim::writeReport(const xrt_core::device* _pDevice,
                            const boost::property_tree::ptree& _pt,
                            const std::vector<std::string>& _elementsFilter,
                            std::ostream & _output) const
 {
+  switch (xrt_core::device_query<xrt_core::query::device_class>(_pDevice)) {
+  case xrt_core::query::device_class::type::alveo:
+    break;
+  case xrt_core::query::device_class::type::ryzen:
+    ReportAie2Shim{}.writeReport(_pDevice, _pt, _elementsFilter, _output);
+    return;
+  }
+
   boost::property_tree::ptree empty_ptree;
   std::vector<std::string> aieTileList;
 
