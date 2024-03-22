@@ -17,6 +17,7 @@
 #define XDP_CORE_SOURCE
 
 #include "aie_util.h"
+#include "core/common/api/hw_context_int.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -363,14 +364,17 @@ namespace xdp::aie {
    * Get AIE partition information
    ***************************************************************************/
   std::vector<uint8_t>
-  getPartitionStartColumns(void* handle)
+  getPartitionStartColumnsClient(void* handle)
   {
     std::vector<uint8_t> startCols;
 
     try {
-      std::shared_ptr<xrt_core::device> dev = xrt_core::get_userpf_device(handle);
-      auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(dev);
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+      auto device = xrt_core::hw_context_int::get_core_device(context);
+      if(device==nullptr)
+        return std::vector<uint8_t>{0};
 
+      auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(device.get());
       if (infoVector.empty()) {
         xrt_core::message::send(severity_level::info, "XRT", "No AIE partition information found.");
         startCols.push_back(0);

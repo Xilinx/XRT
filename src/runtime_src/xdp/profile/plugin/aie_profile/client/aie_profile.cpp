@@ -112,8 +112,11 @@ namespace xdp {
 
     // Get partition columns
     // NOTE: for now, assume a single partition
-    auto partitionCols = xdp::aie::getPartitionStartColumns(metadata->getHandle());
-    auto startCol = partitionCols.at(0);
+    uint8_t startCol = 0;
+#ifdef XDP_CLIENT_BUILD
+    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(metadata->getHandle());
+    startCol = partitionCols.at(0);
+#endif
 
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
