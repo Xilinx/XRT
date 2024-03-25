@@ -165,20 +165,13 @@ namespace xdp {
   /****************************************************************************
    * Check if metric set has an equivalent
    ***************************************************************************/
-  int AieProfileMetadata::getPairModuleIndex(const std::string& metricSet, module_type mod,
-                                             tile_type tile)
+  int AieProfileMetadata::getPairModuleIndex(const std::string& metricSet, module_type mod)
   {
     if ((mod != module_type::core) && (mod != module_type::dma))
       return -1;
     
     int  pairIdx = (mod == module_type::core) ? 1 : 0;
     auto pairMod = (mod == module_type::core) ? module_type::dma : module_type::core;
-
-    if (((pairMod == module_type::dma) && !tile.active_memory)
-        || ((pairMod == module_type::core) && !tile.active_core)) {
-      std::cout << "!!!!!!!!!! Found inactive module so ignoring paired sets" << std::endl;
-      //return -1;
-    }
 
     // Search for name equivalent in other module (e.g., core, memory)
     if (std::find(metricStrings.at(pairMod).begin(), metricStrings.at(pairMod).end(), metricSet) !=
@@ -580,12 +573,13 @@ namespace xdp {
         }
 
         tileMetric.second = defaultSet;
+        metricSet = defaultSet;
       }
 
       // Specify complementary metric sets (as needed)
       // NOTE 1: Issue warning when we replace their setting
       // NOTE 2: This is agnostic to order and which setting is specified
-      auto pairModuleIdx = getPairModuleIndex(metricSet, mod, tile);
+      auto pairModuleIdx = getPairModuleIndex(metricSet, mod);
       if (pairModuleIdx >= 0) {
         auto pairItr = configMetrics[pairModuleIdx].find(tile);
         if ((pairItr != configMetrics[pairModuleIdx].end())
@@ -611,9 +605,8 @@ namespace xdp {
               << std::to_string(tile.row) << ").";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         
-          auto pairModuleIdx2 = getPairModuleIndex(pairItr2->second, mod, tile);
-          if (pairModuleIdx2 >= 0)
-            configMetrics[pairModuleIdx2][tile] = pairItr2->second;
+          auto pairModuleIdx2 = getPairModuleIndex(pairItr2->second, mod);
+          configMetrics[pairModuleIdx2][tile] = pairItr2->second;
         }
       }
     }

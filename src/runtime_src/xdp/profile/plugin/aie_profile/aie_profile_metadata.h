@@ -110,7 +110,7 @@ class AieProfileMetadata {
     void getConfigMetricsForInterfaceTiles(const int moduleIdx,
                                            const std::vector<std::string>& metricsSettings,
                                            const std::vector<std::string> graphMetricsSettings);
-    int getPairModuleIndex(const std::string& metricSet, module_type mod, tile_type tile);
+    int getPairModuleIndex(const std::string& metricSet, module_type mod);
     uint8_t getMetricSetIndex(const std::string& metricSet, module_type mod);
     
     std::map<tile_type, std::string> getConfigMetrics(const int module){ return configMetrics[module];}
