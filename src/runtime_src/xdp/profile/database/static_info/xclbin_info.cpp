@@ -152,7 +152,6 @@ namespace xdp {
     this->aieShimEventsMap      = other.aieShimEventsMap ;
     this->aieMemTileEventsMap   = other.aieMemTileEventsMap ;
 
-    std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList ;
     for(auto &tile : other.aieCfgList)
       this->aieCfgList.push_back(std::make_unique<aie_cfg_tile>(*tile)) ;
 
