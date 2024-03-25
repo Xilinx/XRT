@@ -75,6 +75,12 @@ throw_invalid_resource_if(bool check, const std::string& err_msg)
 {
   throw_if(check, hipErrorInvalidResourceHandle, err_msg);
 }
+
+inline void
+throw_context_destroyed_if(bool check, const std::string& err_msg)
+{
+  throw_if(check, hipErrorContextIsDestroyed, err_msg);
+}
 }
 #endif
 
