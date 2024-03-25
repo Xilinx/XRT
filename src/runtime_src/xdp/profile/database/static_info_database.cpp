@@ -1471,7 +1471,7 @@ namespace xdp {
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
      * in the static data base. So, no need to read the xclbin information again.
      */
-    if (!resetDeviceInfo(deviceId, device, new_xclbin_uuid)) {
+    if (!resetDeviceInfo(deviceId, new_xclbin_uuid)) {
       return;
     }
 
@@ -1494,7 +1494,7 @@ namespace xdp {
 
   // Return true if we should reset the device information.
   // Return false if we should not reset device information
-  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device, xrt_core::uuid new_xclbin_uuid)
+  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, xrt_core::uuid new_xclbin_uuid)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 

@@ -114,7 +114,7 @@ namespace xdp {
     boost::property_tree::ptree aieMetadata;
     std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
 
-    bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device, xrt_core::uuid new_xclbin_uuid);
+    bool resetDeviceInfo(uint64_t deviceId, xrt_core::uuid new_xclbin_uuid);
 
     // Functions that create the overall structure of the Xclbin's PL region
     void createComputeUnits(XclbinInfo*, const ip_layout*,const char*,size_t);

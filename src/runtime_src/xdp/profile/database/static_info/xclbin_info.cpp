@@ -42,11 +42,9 @@ namespace xdp {
     this->hasFloatingASMWithTrace = other.hasFloatingASMWithTrace ;
     this->hasMemoryAIM = other.hasMemoryAIM ;
 
-    std::map<int32_t, ComputeUnitInstance*> cus ;
     for(auto &cu : other.cus)
       this->cus[cu.first] = new ComputeUnitInstance(*cu.second) ;
 
-    std::map<int32_t, Memory*> memoryInfo ;
     for (auto &mi : other.memoryInfo)
       this->memoryInfo[mi.first] = new Memory(*mi.second) ;
     
