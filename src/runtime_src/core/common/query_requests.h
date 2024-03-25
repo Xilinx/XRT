@@ -4,7 +4,7 @@
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
-#include "asd_parser.h"
+#include "info_aie2.h"
 #include "error.h"
 #include "query.h"
 #include "uuid.h"
@@ -1601,7 +1601,7 @@ struct aie_status_version : request
 // num of dma channels, locks, events
 struct aie_tiles_stats : request
 {
-  using result_type = asd_parser::aie_tiles_info;
+  using result_type = aie2::aie_tiles_info;
   static const key_type key = key_type::aie_tiles_stats;
 
   virtual std::any
@@ -1620,6 +1620,11 @@ struct aie_tiles_status_info : request
   struct result
   {
     std::vector<char> buf;
+    /**
+     * A bitmap where the bit position indicates a column index.
+     * A one indicates to an active column.
+     * Ex. 00001100 Indicates columns 3 and 4 are active.
+     */
     uint32_t cols_filled;
   };
 
