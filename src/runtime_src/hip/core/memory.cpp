@@ -10,15 +10,19 @@
 
 #include "core/common/unistd.h"
 #include "device.h"
-#include "memory.h"
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
+#include "memory.h"
 
 namespace xrt::core::hip
 {
 
-  memory::memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz)
-      : m_device(std::move(dev)), m_size(sz), m_type(memory_type::hip_memory_type_device), m_hip_flags(0), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
+  memory::memory(std::shared_ptr<device> dev, size_t sz)
+      : m_device(std::move(dev)),
+	m_size(sz),
+	m_type(memory_type::device),
+	m_flags(0),
+	m_bo(nullptr)
   {
     assert(m_device);
 
@@ -26,45 +30,43 @@ namespace xrt::core::hip
     init_xrt_bo();
   }
 
-  memory::memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, unsigned int flags)
-      : m_device(std::move(dev)), m_size(sz), m_type(memory_type::hip_memory_type_host), m_hip_flags(flags), m_host_mem(nullptr), m_bo(nullptr), m_sync_host_mem_required(false)
+  memory::memory(std::shared_ptr<device> dev, size_t sz, void *host_mem, unsigned int flags)
+      : m_device(std::move(dev)),
+	m_size(sz),
+	m_type(memory_type::registered),
+	m_flags(flags),
+	m_bo(nullptr)
+    {
+      assert(m_device);
+
+      // user ptr BO is not supported on NPU Linux driver, hence sync between host_mem and internal xrt::bo object is required before and after kernel run
+      // TODO: set m_sync_host_mem_required to true for device that support user ptr BO
+      init_xrt_bo();
+    }
+
+  memory::memory(std::shared_ptr<device> dev, size_t sz, unsigned int flags)
+      : m_device(std::move(dev)),
+	m_size(sz),
+	m_type(memory_type::host),
+	m_flags(flags),
+	m_bo(nullptr)
   {
     assert(m_device);
 
-    switch (m_hip_flags)
-    {
-    case hipHostMallocDefault:
-    case hipHostMallocPortable:
-      // allocate pinned memory on host only, xrt::bo object will not be allocated.
-      m_host_mem = reinterpret_cast<unsigned char *>(aligned_alloc(xrt_core::getpagesize(), m_size));
-      assert(m_host_mem);
-      lock_pages(m_host_mem, m_size);
-      break;
+    switch (m_flags) {
+      case hipHostMallocDefault:
+      case hipHostMallocPortable:
+	// TODO need to add funtionality to create locked memory
+        break;
 
-    case hipHostMallocMapped:
-      init_xrt_bo();
-      m_host_mem = reinterpret_cast<unsigned char*>(m_bo->map());
-      break;
+      case hipHostMallocMapped:
+      case hipHostMallocWriteCombined:
+        init_xrt_bo();
+        break;
 
-    case hipHostMallocWriteCombined:
-      init_xrt_bo();
-      m_host_mem = reinterpret_cast<unsigned char *>(m_bo->map());
-      lock_pages(m_host_mem, m_size);
-      break;
-
-    default:
-      break;
+      default:
+        break;
     }
-  }
-
-  void
-  memory::lock_pages(void *addr, size_t size)
-  {
-#ifdef _WIN32
-    VirtualLock(addr, size);
-#else
-    mlock(addr, size);
-#endif
   }
 
   void
@@ -75,147 +77,65 @@ namespace xrt::core::hip
   }
 
   void
-  memory::validate()
-  {
-    // validate() is requied only on non-npu device that require delayed xrt::bo allocation until xrt kernel is created
-    assert(m_type == memory_type::hip_memory_type_device);
-
-    if (m_bo == nullptr)
-    {
-      auto xrt_device = m_device->get_xrt_device();
-      m_bo = std::make_shared<xrt::bo>(xrt_device, m_size, XRT_BO_FLAGS_HOST_ONLY, m_group);
-
-      if (m_sync_host_mem_required == true)
-      {
-        m_bo->write(m_host_mem, m_size, 0);
-        m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        m_sync_host_mem_required = false;
-      }
-    }
-  }
-
-  void
-  memory::sync(sync_direction drtn)
+  memory::sync(xclBOSyncDirection direction)
   {
     assert(m_bo);
-
-    if (m_sync_host_mem_required)    
-    {
-      switch (drtn)
-      {
-        case sync_direction::sync_from_host_to_device:
-          m_bo->write(m_host_mem, m_size, 0);
-          m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
-          break;
-
-        case sync_direction::sync_from_device_to_host:
-          m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-          m_bo->read(m_host_mem, m_size, 0);
-          break;
-
-        default:
-          break;
-      };
-    }
-  }
-
-  void
-  memory::free_mem()
-  {
-    if (m_type != memory_type::hip_memory_type_registered &&
-        m_host_mem != nullptr)
-    {
-      free(m_host_mem);
-    }
+    m_bo->sync(direction);
   }
 
   void*
-  memory::get_addr(address_type type)
-  {
-    switch (type)
-    {
-    case address_type::hip_address_type_device:
-      return get_device_addr();
-      break;
-
-    case address_type::hip_address_type_host:
-      return get_host_addr();
-      break;
-
-    default:
-      assert(0);
-      break;
-    };
-    return nullptr;
-  }
-
-  void*
-  memory::get_device_addr()
+  memory::get_address()
   {
     if (m_bo != nullptr)
-    {
       return reinterpret_cast<void *>(m_bo->address());
-    }
+
+    return nullptr;
+  }
+
+  void*
+  memory::get_mapped_address()
+  {
+    if (m_bo != nullptr)
+      return m_bo->map();
+
     return nullptr;
   }
 
   void
-  memory::copy_from(const xrt::core::hip::memory *src, size_t size, size_t src_offset, size_t offset)
+  memory::write(const void *src , size_t size, size_t src_offset, size_t offset)
   {
-    auto src_bo = src->get_xrt_bo();
-    assert(src_bo);
-    if (m_bo != nullptr)
-    {
-      m_bo->copy(*src_bo, size, src_offset, offset);
-      m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    }
-    else
-    {
-      src->copy_to(m_host_mem, size, offset, src_offset);
-      m_sync_host_mem_required = true;
-    }
-  }
-
-  void
-  memory::copy_from(const void *host_src, size_t size, size_t src_offset, size_t offset)
-  {
-    auto src_hip_mem = memory_database::instance().get_hip_mem_from_host_addr(host_src);
-    if (src_hip_mem != nullptr &&
-        src_hip_mem->get_type() == memory_type::hip_memory_type_host)
-    {
+    auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
+    if (src_hip_mem != nullptr && src_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
-        assert(src_hip_mem->get_hip_flags() == hipHostMallocDefault || src_hip_mem->get_hip_flags() == hipHostMallocPortable);
+        assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
 
         // TODO: get better performance by avoiding two step copy in case of copying from pinned host mem
     }
 
-    const unsigned char *src_ptr = reinterpret_cast<const unsigned char *>(host_src);
+    const unsigned char *src_ptr = reinterpret_cast<const unsigned char *>(src);
     src_ptr += src_offset;
-    if (m_bo != nullptr)
-    {
+    if (m_bo != nullptr) {
       m_bo->write(src_ptr, size, offset);
       m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    }
-    else
-    {
-      memcpy(m_host_mem, src_ptr, size);
-      m_sync_host_mem_required = true;
     }
   }
 
   void
-  memory::copy_to(void *host_dst, size_t size, size_t dst_offset, size_t offset) const
+  memory::read(void *dst, size_t size, size_t dst_offset, size_t offset) const
   {
-    unsigned char *dst_ptr = reinterpret_cast<unsigned char *>(host_dst);
+    auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
+    if (dst_hip_mem != nullptr &&
+        dst_hip_mem->get_type() == memory_type::host) {
+        // pinned hip mem
+        assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
+
+        // TODO: get better performance by avoiding two step copy in case of copying from pinned host mem
+    }
+    unsigned char *dst_ptr = reinterpret_cast<unsigned char *>(dst);
     dst_ptr += dst_offset;
-    if (m_bo != nullptr)
-    {
+    if (m_bo != nullptr) {
       m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       m_bo->read(dst_ptr, size, offset);
-    }
-    else
-    {
-      memcpy(dst_ptr, m_host_mem, size);
     }
   }
 
@@ -232,7 +152,7 @@ namespace xrt::core::hip
   }
 
   memory_database::memory_database()
-      : m_hostAddrMap(), m_devAddrMap()
+      : m_AddrMap()
   {
     if (m_memory_database)
     {
@@ -245,136 +165,43 @@ namespace xrt::core::hip
 
   memory_database::~memory_database()
   {
-    m_hostAddrMap.clear();
-    m_devAddrMap.clear();
+    m_AddrMap.clear();
   }
 
   void
-  memory_database::insert_host_addr(void *host_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
+  memory_database::insert_addr(uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
   {
-    m_hostAddrMap.insert({address_range_key(reinterpret_cast<uint64_t>(host_addr), size), hip_mem});
-  }
-
-  void
-  memory_database::delete_host_addr(void *host_addr)
-  {
-    m_hostAddrMap.erase(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
-  }
-
-  void
-  memory_database::insert_device_addr(uint64_t dev_addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
-  {
-    m_devAddrMap.insert({address_range_key(dev_addr, size), hip_mem});
-  }
-
-  void
-  memory_database::delete_device_addr(uint64_t dev_addr)
-  {
-    m_devAddrMap.erase(address_range_key(dev_addr, 0));
-  }
-
-  void
-  memory_database::insert_addr(address_type type, uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
-  {
-    switch (type)
-    {
-    case address_type::hip_address_type_device:
-      m_devAddrMap.insert({address_range_key(addr, size), hip_mem});
-      break;
-    case address_type::hip_address_type_host:
-      m_hostAddrMap.insert({address_range_key(addr, size), hip_mem});
-      break;
-
-    default:
-      break;
-    };
+    m_AddrMap.insert({address_range_key(addr, size), hip_mem});
   }
 
   void
   memory_database::delete_addr(uint64_t addr)
   {
-    m_devAddrMap.erase(address_range_key(addr, 0));
-    m_hostAddrMap.erase(address_range_key(addr, 0));
-  }
-
-  std::shared_ptr<xrt::core::hip::memory>
-  memory_database::get_hip_mem_from_host_addr(void *host_addr)
-  {
-    auto itr = m_hostAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
-    if (itr == m_hostAddrMap.end())
-    {
-      return nullptr;
-    }
-    else
-    {
-      return itr->second;
-    }
-  }
-
-  std::shared_ptr<const xrt::core::hip::memory>
-  memory_database::get_hip_mem_from_host_addr(const void *host_addr)
-  {
-    auto itr = m_hostAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(host_addr), 0));
-    if (itr == m_hostAddrMap.end())
-    {
-      return nullptr;
-    }
-    else
-    {
-      return itr->second;
-    }
-  }
-
-  std::shared_ptr<xrt::core::hip::memory>
-  memory_database::get_hip_mem_from_device_addr(void *dev_addr)
-  {
-    auto itr = m_devAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(dev_addr), 0));
-    if (itr == m_devAddrMap.end())
-    {
-      return nullptr;
-    }
-    else
-    {
-      return itr->second;
-    }
-  }
-
-  std::shared_ptr<const xrt::core::hip::memory>
-  memory_database::get_hip_mem_from_device_addr(const void *dev_addr)
-  {
-    auto itr = m_devAddrMap.find(address_range_key(reinterpret_cast<uint64_t>(dev_addr), 0));
-    if (itr == m_devAddrMap.end())
-    {
-      return nullptr;
-    }
-    else
-    {
-      return itr->second;
-    }
+    m_AddrMap.erase(address_range_key(addr, 0));
   }
 
   std::shared_ptr<xrt::core::hip::memory>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
-    auto hip_mem = get_hip_mem_from_device_addr(addr);
-    if (hip_mem != nullptr)
-    {
-      return hip_mem;
+    auto itr = m_AddrMap.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
+    if (itr == m_AddrMap.end()) {
+      return nullptr;
     }
-    hip_mem = get_hip_mem_from_host_addr(addr);
-    return hip_mem;
+    else {
+      return itr->second;
+    }
   }
 
   std::shared_ptr<const xrt::core::hip::memory>
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
-    auto hip_mem = get_hip_mem_from_device_addr(addr);
-    if (hip_mem != nullptr)
-    {
-      return hip_mem;
+    auto itr = m_AddrMap.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
+    if (itr == m_AddrMap.end()) {
+      return nullptr;
     }
-    hip_mem = get_hip_mem_from_host_addr(addr);
-    return hip_mem;
+    else {
+      return itr->second;
+    }
   }
 
 } // namespace xrt::core::hip
