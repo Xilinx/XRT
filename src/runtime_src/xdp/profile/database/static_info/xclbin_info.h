@@ -106,8 +106,6 @@ namespace xdp {
                             int32_t memId);
     // Collect all compute units of a kernel
     std::vector<ComputeUnitInstance*> collectCUs(const std::string& kernelName);
-
-    // std::string print() const;
   } ;
 
   // The AIEInfo struct keeps track of all of the information associated

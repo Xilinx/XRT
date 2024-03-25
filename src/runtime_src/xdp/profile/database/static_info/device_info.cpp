@@ -116,7 +116,7 @@ namespace xdp {
 
     // Check if loaded history has same UUID.
     if (!loadedConfigInfos.empty() && loadedConfigInfos.back()->containsXclbin(xclbin->uuid)) {
-      return config;
+      return;
     }
 
     // Create a new config
@@ -129,7 +129,7 @@ namespace xdp {
     if (currentXclbinType == XCLBIN_AIE_PL)
     {
       loadedConfigInfos.push_back(config);
-      return config;
+      return;
     }
 
     // If it is not a complete xclbin.
