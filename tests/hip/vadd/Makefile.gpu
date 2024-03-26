@@ -9,7 +9,7 @@ HIPCC = $(ROCM_ROOT)/bin/hipcc
 HIPCCFLAGS= --rocm-device-lib-path=/usr/lib/x86_64-linux-gnu/amdgcn/bitcode
 CXX = g++
 CC = g++
-CXXFLAGS = -Wall -Werror -D__HIP_PLATFORM_HCC__= -D__HIP_PLATFORM_AMD__ -I$(ROCM_ROOT)/include -I$(ROCM_ROOT)/llvm/bin/../lib/clang/14.0.0 -I$(ROCM_ROOT)/hsa/include
+CXXFLAGS = -Wall -Werror -D__HIP_PLATFORM_HCC__= -D__HIP_PLATFORM_AMD__ -I$(ROCM_ROOT)/include -I$(ROCM_ROOT)/llvm/bin/../lib/clang/14.0.0 -I$(ROCM_ROOT)/hsa/include -I../common
 RPROF = $(ROCM_ROOT)/rocprof
 LDFLAGS = -L$(ROCM_ROOT)/hip/lib
 LDLIBS = -lamdhip64 -luuid -lm -lrt
