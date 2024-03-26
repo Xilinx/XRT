@@ -38,6 +38,11 @@ include_directories(${XRT_BINARY_DIR}/gen)
 
 # ==-- x c l b i n u t i l --==================================================
 
+# aie-pdi-transform only supports linux build currently
+if(NOT WIN32)
+  add_subdirectory(aie-pdi-transform)
+endif()
+
 set(XCLBINUTIL_NAME "xclbinutil")
 
 set(XRT_LOADER_SCRIPTS ${XCLBINUTIL_NAME})
@@ -87,6 +92,11 @@ if(NOT WIN32)
 endif()
 
 target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} Threads::Threads)
+
+# link the aie-pdi-transform static library
+if(NOT WIN32)
+   target_link_libraries(${XCLBINUTIL_NAME} PRIVATE transformcdo)
+endif()
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
@@ -154,7 +164,7 @@ if(NOT WIN32)
   # -- AIE RESOURCES BIN Section
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin")
   xrt_add_test("AieResourcesBin" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin/SectionAieResourcesBin.py ${TEST_OPTIONS}")
-  
+
 endif()
 
 
@@ -186,6 +196,11 @@ if (GTEST_FOUND)
     if(NOT (${RapidJSON_VERSION_MAJOR} EQUAL 0))
       target_compile_definitions(${UNIT_TEST_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
     endif()
+  endif()
+
+  # link the aie-pdi-transform static library
+  if(NOT WIN32)
+     target_link_libraries(${UNIT_TEST_NAME} PRIVATE transformcdo)
   endif()
 
   # Add the test

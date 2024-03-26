@@ -1747,7 +1747,7 @@ parsePSKernelString(const std::string& encodedString,
   // add check for leading and trailing ;
   if (!mem_banks.empty()) {
     if (mem_banks.front() == ',' || mem_banks.back() == ',' )
-      throw std::runtime_error("Specifїed mem_banks is not valid");
+      throw std::runtime_error("Specified mem_banks is not valid");
     
     std::cout << "Attention: Specifying memory banks in --add-pskernel is an advanced feature." << std::endl;
     std::cout << "           Be sure to validate connections after performing this operation." << std::endl;

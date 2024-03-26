@@ -289,7 +289,6 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
     const auto& ptArg = arg.second;
 
     // Determine if there should be a memory connection, if so add it
-    //
     static const std::string NOT_DEFINED = "<not defined>";
     auto memoryConnection = ptArg.get<std::string>("memory-connection", NOT_DEFINED);
 

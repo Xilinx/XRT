@@ -216,7 +216,7 @@ int main_(int argc, const char** argv) {
     ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
-    ("transform-pdi", boost::program_options::bool_switch(&bTransformPdi), "Transform the PDIs in AIE_PARTITION")
+    ("transform-pdi", boost::program_options::bool_switch(&bTransformPdi), "Transform the PDIs in AIE_PARTITION, this option only valid on Linux")
   ;
 
   boost::program_options::options_description all("Allowed options");
@@ -530,8 +530,14 @@ int main_(int argc, const char** argv) {
 
   // add support for transform-pdi 
   // transform the PDIs in AIE_PARTITION sections before writing out the output xclbin
-  if (bTransformPdi)
+  if (bTransformPdi) {
+#ifndef _WIN32
     XUtil::transformAiePartitionPDIs(xclBin);
+#else
+    std::string errMsg = "ERROR: --transform-pdi is only valid on Linux.";
+    throw std::runtime_error(errMsg);
+#endif
+  }
 
   // -- Remove Keys --
   for (const auto &key : keysToRemove) 
