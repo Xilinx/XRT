@@ -524,8 +524,8 @@ namespace xdp {
       return constructed ;
     }
 
-    void ConfigInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
-                                uint16_t stream, uint16_t len)
+    void ConfigInfo::addTraceGMIO(uint32_t id, uint8_t col, uint8_t num,
+                                uint8_t stream, uint8_t len)
     {
       for(auto xclbin : currentXclbins)
       {
@@ -538,7 +538,7 @@ namespace xdp {
       }
     }
 
-    void ConfigInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
+    void ConfigInfo::addAIECounter(uint32_t i, uint8_t col, uint8_t r,
                                    uint8_t num, uint16_t start, uint16_t end,
                                    uint8_t reset, uint32_t load, double freq,
                                    const std::string& mod,
