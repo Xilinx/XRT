@@ -157,7 +157,8 @@ class AieTraceMetadata {
                                 "input_ports_details", "output_ports_details",
                                 "mm2s_ports", "s2mm_ports",
                                 "mm2s_ports_stalls", "s2mm_ports_stalls", 
-                                "mms2_ports_details", "s2mm_ports_details"} }
+                                "mms2_ports_details", "s2mm_ports_details",
+                                "input_output_ports_stalls", "mm2s_s2mm_ports_stalls"} }
     };
 
     void* handle;

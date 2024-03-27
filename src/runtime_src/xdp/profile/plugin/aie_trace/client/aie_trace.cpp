@@ -160,23 +160,29 @@ namespace xdp {
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_STALLED_0_PL,
           XAIE_EVENT_PORT_RUNNING_1_PL,                    XAIE_EVENT_PORT_STALLED_1_PL}},
         {"output_ports_stalls",
-        {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
-         XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}},
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
+          XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}},
+        {"input_output_ports_stalls",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
+          XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                     XAIE_EVENT_PORT_STALLED_2_PL,
+          XAIE_EVENT_PORT_RUNNING_3_PL,                     XAIE_EVENT_PORT_STALLED_3_PL}},
         {"input_ports_details",
-        {XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-         XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
+         {XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
         {"output_ports_details",
-        {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-         XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
+         {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
+          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
     };
-    interfaceTileEventSets["mm2s_ports"]           = interfaceTileEventSets["input_ports"];
-    interfaceTileEventSets["s2mm_ports"]           = interfaceTileEventSets["output_ports"];
-    interfaceTileEventSets["mm2s_ports_stalls"]    = interfaceTileEventSets["input_ports_stalls"];
-    interfaceTileEventSets["s2mm_ports_stalls"]    = interfaceTileEventSets["output_ports_stalls"];
-    interfaceTileEventSets["mm2s_ports_details"]   = interfaceTileEventSets["input_ports_details"];
-    interfaceTileEventSets["s2mm_ports_details"]   = interfaceTileEventSets["output_ports_details"];
+    interfaceTileEventSets["mm2s_ports"]             = interfaceTileEventSets["input_ports"];
+    interfaceTileEventSets["s2mm_ports"]             = interfaceTileEventSets["output_ports"];
+    interfaceTileEventSets["mm2s_ports_stalls"]      = interfaceTileEventSets["input_ports_stalls"];
+    interfaceTileEventSets["s2mm_ports_stalls"]      = interfaceTileEventSets["output_ports_stalls"];
+    interfaceTileEventSets["mm2s_s2mm_ports_stalls"] = interfaceTileEventSets["input_output_ports_stalls"];
+    interfaceTileEventSets["mm2s_ports_details"]     = interfaceTileEventSets["input_ports_details"];
+    interfaceTileEventSets["s2mm_ports_details"]     = interfaceTileEventSets["output_ports_details"];
 
     // Interface tile trace is flushed at end of run
     interfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
