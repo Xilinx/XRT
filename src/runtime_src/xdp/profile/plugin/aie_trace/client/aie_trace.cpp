@@ -156,6 +156,9 @@ namespace xdp {
         {"output_ports",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
           XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
+        {"input_output_ports",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
         {"input_ports_stalls",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_STALLED_0_PL,
           XAIE_EVENT_PORT_RUNNING_1_PL,                    XAIE_EVENT_PORT_STALLED_1_PL}},
@@ -178,6 +181,7 @@ namespace xdp {
     };
     interfaceTileEventSets["mm2s_ports"]             = interfaceTileEventSets["input_ports"];
     interfaceTileEventSets["s2mm_ports"]             = interfaceTileEventSets["output_ports"];
+    interfaceTileEventSets["mm2s_s2mm_ports"]        = interfaceTileEventSets["input_output_ports"];
     interfaceTileEventSets["mm2s_ports_stalls"]      = interfaceTileEventSets["input_ports_stalls"];
     interfaceTileEventSets["s2mm_ports_stalls"]      = interfaceTileEventSets["output_ports_stalls"];
     interfaceTileEventSets["mm2s_s2mm_ports_stalls"] = interfaceTileEventSets["input_output_ports_stalls"];
@@ -804,105 +808,6 @@ namespace xdp {
   }
 
   /****************************************************************************
-   * Configure delay for trace start event
-   ***************************************************************************/
-  bool configStartDelay(const tile_type& tile, const module_type type, 
-                        uint64_t delay, XAie_Events& startEvent)
-  {
-    if (delay == 0)
-      return false;
-
-    // This algorithm daisy chains counters to get an effective 64 bit delay
-    // counterLow -> counterHigh -> trace start
-    uint32_t delayCyclesHigh = 0;
-    uint32_t delayCyclesLow = 0;
-    XAie_ModuleType mod = XAIE_CORE_MOD;
-    bool useTwoCounters = (delay > std::numeric_limits<uint32_t>::max());
-
-    if (useTwoCounters) {
-      // ceil(x/y) where x and y are  positive integers
-      delayCyclesHigh = static_cast<uint32_t>(1 + ((delay - 1) / std::numeric_limits<uint32_t>::max()));
-      delayCyclesLow = static_cast<uint32_t>(delay / delayCyclesHigh);
-    } else {
-      delayCyclesLow = static_cast<uint32_t>(delay);
-    }
-
-    if (isDebugVerbosity()) {
-      std::stringstream msg;
-      msg << "Configuring AIE trace to start after delay of " << delay << " (low: " 
-          << delayCyclesLow << ", high: " << delayCyclesHigh << ")" << std::endl;
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-    }
-
-    // Configure lower 32 bits
-    auto pc = core.perfCounter();
-    if (pc->initialize(mod, XAIE_EVENT_ACTIVE_CORE, mod, XAIE_EVENT_DISABLED_CORE) != XAIE_OK)
-      return false;
-    if (pc->reserve() != XAIE_OK)
-      return false;
-
-    pc->changeThreshold(delayCyclesLow);
-    
-    XAie_Events counterEvent;
-    pc->getCounterEvent(mod, counterEvent);
-    // Reset when done counting
-    pc->changeRstEvent(mod, counterEvent);
-    if (pc->start() != XAIE_OK)
-      return false;
-
-    // Configure upper 32 bits if necessary
-    // Use previous counter to start a new counter
-    if (useTwoCounters && delayCyclesHigh) {
-      auto pc = core.perfCounter();
-      // Count by 1 when previous counter generates event
-      if (pc->initialize(mod, counterEvent, mod, counterEvent) != XAIE_OK)
-        return false;
-      if (pc->reserve() != XAIE_OK)
-        return false;
-      pc->changeThreshold(delayCyclesHigh);
-      pc->getCounterEvent(mod, counterEvent);
-      // Reset when done counting
-      pc->changeRstEvent(mod, counterEvent);
-      if (pc->start() != XAIE_OK)
-        return false;
-    }
-
-    startEvent = counterEvent;
-    return true;
-  }
-
-  /****************************************************************************
-   * Configure trace start on graph iteration
-   ***************************************************************************/
-  bool configStartIteration(xaiefal::XAieMod& core, uint32_t iteration,
-                            XAie_Events& startEvent)
-  {
-    XAie_ModuleType mod = XAIE_CORE_MOD;
-    // Count up by 1 for every iteration
-    auto pc = core.perfCounter();
-    if (pc->initialize(mod, XAIE_EVENT_INSTR_EVENT_0_CORE, 
-                       mod, XAIE_EVENT_INSTR_EVENT_0_CORE) != XAIE_OK)
-      return false;
-    if (pc->reserve() != XAIE_OK)
-      return false;
-
-    xrt_core::message::send(severity_level::debug, "XRT", 
-        "Configuring AIE trace to start on iteration " + std::to_string(iteration));
-
-    pc->changeThreshold(iteration);
-    
-    XAie_Events counterEvent;
-    pc->getCounterEvent(mod, counterEvent);
-    // Reset when done counting
-    pc->changeRstEvent(mod, counterEvent);
-    if (pc->start() != XAIE_OK)
-      return false;
-
-    startEvent = counterEvent;
-    return true;
-  }
-
-  /****************************************************************************
    * Configure requested tiles with trace metrics and settings
    ***************************************************************************/
   bool AieTrace_WinImpl::setMetricsSettings(uint64_t deviceId, void* handle)
@@ -1043,13 +948,13 @@ namespace xdp {
         //auto coreTrace = core.traceControl();
 
         // Delay cycles and user control are not compatible with each other
-        if (metadata->getUseGraphIterator()) {
-          if (!configStartIteration(core))
-            break;
-        } else if (metadata->getUseDelay()) {
-          if (!configStartDelay(core))
-            break;
-        }
+        // if (metadata->getUseGraphIterator()) {
+        //   if (!configStartIteration(core))
+        //     break;
+        // } else if (metadata->getUseDelay()) {
+        //   if (!configStartDelay(core))
+        //     break;
+        // }
 
         // Configure combo & group events (e.g., to monitor DMA channels)
         auto comboEvents = configComboEvents(loc, mod, type, metricSet, cfgTile->core_trace_config);
