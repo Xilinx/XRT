@@ -11,7 +11,6 @@
  * Sonal Santan <sonal.santan@xilinx.com>
  */
 #include "mgmt-core.h"
-
 #include <linux/crc32c.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
@@ -20,7 +19,6 @@
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
-
 #include "version.h"
 #include "xclbin.h"
 #include "../xocl_drv.h"
@@ -50,15 +48,6 @@ module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
-#if defined(__PPC64__)
-int xrt_reset_syncup = 1;
-#else
-int xrt_reset_syncup;
-#endif
-module_param(xrt_reset_syncup, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(xrt_reset_syncup,
-        "Enable config space syncup for pci hot reset");
-
 #define	HI_TEMP			88
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
@@ -66,7 +55,6 @@ MODULE_PARM_DESC(xrt_reset_syncup,
 #define	MAX_DYN_SUBDEV		1024
 
 static dev_t xclmgmt_devnode;
-struct class *xrt_class;
 
 /*
  * Called when the device goes from unused to used.
@@ -188,7 +176,7 @@ failed:
 	return ret;
 }
 
-void store_pcie_link_info(struct xclmgmt_dev *lro)
+void mgmtpf_save_pcie_link_info(struct xclmgmt_dev *lro)
 {
 	u16 stat = 0;
 	long result;
@@ -219,7 +207,7 @@ void store_pcie_link_info(struct xclmgmt_dev *lro)
 	return;
 }
 
-void get_pcie_link_info(struct xclmgmt_dev *lro,
+void mgmtpf_get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
 {
 	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
@@ -268,7 +256,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	memcpy(obj->fpga, rom.FPGAPartName, 64);
 
 	fill_frequency_info(lro, obj);
-	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed,
+	mgmtpf_get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed,
 		false);
 }
 
@@ -369,7 +357,7 @@ static int create_char(struct xclmgmt_dev *lro)
 		goto fail_add;
 	}
 
-	lro_char->sys_device = device_create(xrt_class,
+	lro_char->sys_device = device_create(xrt_class_mgmtpf,
 				&lro->core.pdev->dev,
 				lro_char->cdev->dev, NULL,
 				DRV_NAME "%u", lro->instance);
@@ -390,10 +378,10 @@ fail_add:
 static int destroy_sg_char(struct xclmgmt_char *lro_char)
 {
 	BUG_ON(!lro_char);
-	BUG_ON(!xrt_class);
+	BUG_ON(!xrt_class_mgmtpf);
 
 	if (lro_char->sys_device)
-		device_destroy(xrt_class, lro_char->cdev->dev);
+		device_destroy(xrt_class_mgmtpf, lro_char->cdev->dev);
 	cdev_del(lro_char->cdev);
 
 	return 0;
@@ -839,12 +827,12 @@ static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
 		return false;
 	}
 
-	crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
+	/* crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
 	if (crc_chk != mb_conn->crc32) {
 		mgmt_info(lro, "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
 		mgmt_info(lro, "failed to get the same CRC\n");
 		return false;
-	}
+	}*/
 
 	return true;
 }
@@ -1247,6 +1235,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;
 	lro->core.thread_arg.name = "xclmgmt health thread";
+        //lro->core.userpf=false;   
 
 	for (i = 0; i < dev_info->subdev_num; i++) {
 		if (dev_info->subdev_info[i].id == XOCL_SUBDEV_DMA)
@@ -1328,7 +1317,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	check_pcie_link_toggle(lro, 1);
 
 	/* Store/cache PCI link width & speed info */
-	store_pcie_link_info(lro);
+	mgmtpf_save_pcie_link_info(lro);
 
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
@@ -1416,7 +1405,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	int rc = 0;
 	int i = 0;
 	struct xclmgmt_dev *lro = NULL;
-	struct xocl_board_private *dev_info = NULL;
+	//struct xocl_board_private *dev_info = &lro->core.priv; 
+        struct xocl_board_private *dev_info = NULL;
 	char wq_name[15] = {0};
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
@@ -1436,6 +1426,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_alloc;
 	}
 
+
+        lro->core.userpf=false;
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
 		INIT_DELAYED_WORK(&lro->core.works[i].work, xclmgmt_work_cb);
 		lro->core.works[i].op = i;
@@ -1446,6 +1438,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		xocl_err(&pdev->dev, "init subdev failed");
 		goto err_init_subdev;
 	}
+
+
 
 	/* create a device to driver reference */
 	dev_set_drvdata(&pdev->dev, lro);
@@ -1665,7 +1659,8 @@ static struct pci_driver xclmgmt_driver = {
 	.err_handler = &xclmgmt_err_handler,
 };
 
-static int (*drv_reg_funcs[])(void) __initdata = {
+
+static int (*drv_reg_funcs[])(bool) __initdata = {
 	xocl_init_feature_rom,
 	xocl_init_version_control,
 	xocl_init_iores,
@@ -1701,7 +1696,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_hwmon_sdm,
 };
 
-static void (*drv_unreg_funcs[])(void) = {
+static void (*drv_unreg_funcs[])(bool) = {
 	xocl_fini_feature_rom,
 	xocl_fini_version_control,
 	xocl_fini_iores,
@@ -1740,13 +1735,14 @@ static void (*drv_unreg_funcs[])(void) = {
 static int __init xclmgmt_init(void)
 {
 	int res, i;
+        char *module="mgmtpf"; 
+        pr_info(DRV_NAME " init()\n");
+	xrt_class_mgmtpf = class_create(THIS_MODULE, "xrt_mgmt");
+	if (IS_ERR(xrt_class_mgmtpf))
+		return PTR_ERR(xrt_class_mgmtpf);
 
-	pr_info(DRV_NAME " init()\n");
-	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
-	if (IS_ERR(xrt_class))
-		return PTR_ERR(xrt_class);
-
-	res = xocl_debug_init();
+//	res = xocl_debug_init();
+	res = xocl_debug_init(module);
 	if (res) {
 		pr_err("failed to init debug");
 		goto alloc_err;
@@ -1759,7 +1755,7 @@ static int __init xclmgmt_init(void)
 
 	/* Need to init sub device driver before pci driver register */
 	for (i = 0; i < ARRAY_SIZE(drv_reg_funcs); ++i) {
-		res = drv_reg_funcs[i]();
+		res = drv_reg_funcs[i](true);
 		if (res)
 			goto drv_init_err;
 	}
@@ -1773,12 +1769,12 @@ static int __init xclmgmt_init(void)
 drv_init_err:
 reg_err:
 	for (i--; i >= 0; i--)
-		drv_unreg_funcs[i]();
+		drv_unreg_funcs[i](true);
 
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 alloc_err:
 	pr_info(DRV_NAME " init() err\n");
-	class_destroy(xrt_class);
+	class_destroy(xrt_class_mgmtpf);
 	return res;
 }
 
@@ -1790,12 +1786,12 @@ static void xclmgmt_exit(void)
 	pci_unregister_driver(&xclmgmt_driver);
 
 	for (i = ARRAY_SIZE(drv_unreg_funcs) - 1; i >= 0; i--)
-		drv_unreg_funcs[i]();
+		drv_unreg_funcs[i](true);
 
 	/* unregister this driver from the PCI bus driver */
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 	xocl_debug_fini();
-	class_destroy(xrt_class);
+	class_destroy(xrt_class_mgmtpf);
 }
 
 module_init(xclmgmt_init);

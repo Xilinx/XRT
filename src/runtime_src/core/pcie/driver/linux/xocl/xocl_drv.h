@@ -380,6 +380,7 @@ struct xocl_pci_info {
 };
 
 extern struct class *xrt_class;
+extern struct class *xrt_class_mgmtpf;  
 
 struct drm_xocl_bo;
 struct client_ctx;
@@ -622,6 +623,7 @@ struct xocl_dev_core {
 	 * Having SN info available also implies there is a working SC
 	 */
 	char			serial_num[SERIAL_NUM_LEN];
+	bool	userpf;         
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -1256,6 +1258,17 @@ struct xocl_clock_counter_funcs {
 	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx) ?		\
 	(struct xocl_clock_counter_funcs *)				\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx)->ops : NULL)
+static inline int xocl_clock_c_ops_levet(xdev_handle_t xdev)
+{
+        int i;
+        for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i >= 0; i--) {
+                if (CLOCK_C_OPS(xdev, i))
+                        return i;
+        }
+
+        return -ENODEV;
+}
+
 static inline int xocl_clock_c_ops_level(xdev_handle_t xdev)
 {
 	int i;
@@ -2474,7 +2487,8 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 	return kds_fini_ert(&XDEV(xdev)->kds);
 }
 
-#if PF == MGMTPF
+//#if PF == MGMTPF 
+#if 0
 static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel)
@@ -2485,13 +2499,13 @@ static inline int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
 {
 	return 0;
 }
-#else
+#endif
+//#else
 int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel);
 int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
-#endif
-
+//#endif
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;
 extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 64];
@@ -2515,8 +2529,9 @@ int xocl_thread_start(xdev_handle_t xdev);
 int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
+// manoj added check
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		int part_level, char *vbnv);
+		int part_level, char *vbnv, bool is_mgmt);
 int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
 int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf,
@@ -2534,8 +2549,9 @@ int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
     int offset, char *name, const void **prop, int *prop_len);
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 		        const void *subset_blob);
+// manoj added check
 int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		struct xocl_subdev **subdevs);
+		struct xocl_subdev **subdevs, bool is_mgmt);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);
@@ -2562,7 +2578,8 @@ enum {
 	XRT_TRACE_LEVEL_VERBOSE,
 };
 
-int xocl_debug_init(void);
+//int xocl_debug_init(void);
+int xocl_debug_init(char *module);
 void xocl_debug_fini(void);
 int xocl_debug_register(struct xocl_dbg_reg *reg);
 int xocl_debug_unreg(unsigned long hdl);
@@ -2576,174 +2593,174 @@ void xocl_fini_fini_userpf(void);
 int __init xocl_init_drv_user_qdma(void);
 void xocl_fini_drv_user_qdma(void);
 
-int __init xocl_init_feature_rom(void);
-void xocl_fini_feature_rom(void);
+int __init xocl_init_feature_rom(bool);
+void xocl_fini_feature_rom(bool);
+int __init xocl_init_xdma(bool);
+void xocl_fini_xdma(bool);
 
-int __init xocl_init_xdma(void);
-void xocl_fini_xdma(void);
+int __init xocl_init_qdma(bool);
+void xocl_fini_qdma(bool);
 
-int __init xocl_init_qdma(void);
-void xocl_fini_qdma(void);
+int __init xocl_init_xvc(bool);
+void xocl_fini_xvc(bool);
 
-int __init xocl_init_xvc(void);
-void xocl_fini_xvc(void);
+int __init xocl_init_firewall(bool);
+void xocl_fini_firewall(bool);
 
-int __init xocl_init_firewall(void);
-void xocl_fini_firewall(void);
+int __init xocl_init_sysmon(bool);
+void xocl_fini_sysmon(bool);
 
-int __init xocl_init_sysmon(void);
-void xocl_fini_sysmon(void);
+int __init xocl_init_mb(bool);
+void xocl_fini_mb(bool);
 
-int __init xocl_init_mb(void);
-void xocl_fini_mb(void);
+int __init xocl_init_ps(bool);
+void xocl_fini_ps(bool);
 
-int __init xocl_init_ps(void);
-void xocl_fini_ps(void);
+int __init xocl_init_xiic(bool);
+void xocl_fini_xiic(bool);
 
-int __init xocl_init_xiic(void);
-void xocl_fini_xiic(void);
+//int __init xocl_init_mailbox(void);
+int __init xocl_init_mailbox(bool);
+void xocl_fini_mailbox(bool);
 
-int __init xocl_init_mailbox(void);
-void xocl_fini_mailbox(void);
+int __init xocl_init_icap(bool);
+void xocl_fini_icap(bool);
 
-int __init xocl_init_icap(void);
-void xocl_fini_icap(void);
+int __init xocl_init_clock_wiz(bool);
+void xocl_fini_clock_wiz(bool);
 
-int __init xocl_init_clock_wiz(void);
-void xocl_fini_clock_wiz(void);
+int __init xocl_init_clock_counter(bool);
+void xocl_fini_clock_counter(bool);
 
-int __init xocl_init_clock_counter(void);
-void xocl_fini_clock_counter(void);
+int __init xocl_init_mig(bool);
+void xocl_fini_mig(bool);
 
-int __init xocl_init_mig(void);
-void xocl_fini_mig(void);
+int __init xocl_init_ert(bool);
+void xocl_fini_ert(bool);
 
-int __init xocl_init_ert(void);
-void xocl_fini_ert(void);
+int __init xocl_init_xmc(bool);
+void xocl_fini_xmc(bool);
 
-int __init xocl_init_xmc(void);
-void xocl_fini_xmc(void);
+int __init xocl_init_xmc_u2(bool);
+void xocl_fini_xmc_u2(bool);
 
-int __init xocl_init_xmc_u2(void);
-void xocl_fini_xmc_u2(void);
+int __init xocl_init_dna(bool);
+void xocl_fini_dna(bool);
 
-int __init xocl_init_dna(void);
-void xocl_fini_dna(void);
+int __init xocl_init_fmgr(bool);
+void xocl_fini_fmgr(bool);
 
-int __init xocl_init_fmgr(void);
-void xocl_fini_fmgr(void);
+int __init xocl_init_mgmt_msix(bool);
+void xocl_fini_mgmt_msix(bool);
 
-int __init xocl_init_mgmt_msix(void);
-void xocl_fini_mgmt_msix(void);
+int __init xocl_init_flash(bool);
+void xocl_fini_flash(bool);
 
-int __init xocl_init_flash(void);
-void xocl_fini_flash(void);
+int __init xocl_init_axigate(bool);
+void xocl_fini_axigate(bool);
 
-int __init xocl_init_axigate(void);
-void xocl_fini_axigate(void);
+int __init xocl_init_iores(bool);
+void xocl_fini_iores(bool);
 
-int __init xocl_init_iores(void);
-void xocl_fini_iores(void);
+int __init xocl_init_mailbox_versal(bool);
+void xocl_fini_mailbox_versal(bool);
 
-int __init xocl_init_mailbox_versal(void);
-void xocl_fini_mailbox_versal(void);
+int __init xocl_init_xfer_versal(bool);
+void xocl_fini_xfer_versal(bool);
 
-int __init xocl_init_xfer_versal(void);
-void xocl_fini_xfer_versal(void);
+int __init xocl_init_aim(bool);
+void xocl_fini_aim(bool);
 
-int __init xocl_init_aim(void);
-void xocl_fini_aim(void);
+int __init xocl_init_am(bool);
+void xocl_fini_am(bool);
 
-int __init xocl_init_am(void);
-void xocl_fini_am(void);
+int __init xocl_init_asm(bool);
+void xocl_fini_asm(bool);
 
-int __init xocl_init_asm(void);
-void xocl_fini_asm(void);
+int __init xocl_init_trace_fifo_lite(bool);
+void xocl_fini_trace_fifo_lite(bool);
 
-int __init xocl_init_trace_fifo_lite(void);
-void xocl_fini_trace_fifo_lite(void);
+int __init xocl_init_trace_fifo_full(bool);
+void xocl_fini_trace_fifo_full(bool);
 
-int __init xocl_init_trace_fifo_full(void);
-void xocl_fini_trace_fifo_full(void);
+int __init xocl_init_trace_funnel(bool);
+void xocl_fini_trace_funnel(bool);
 
-int __init xocl_init_trace_funnel(void);
-void xocl_fini_trace_funnel(void);
+int __init xocl_init_trace_s2mm(bool);
+void xocl_fini_trace_s2mm(bool);
 
-int __init xocl_init_trace_s2mm(void);
-void xocl_fini_trace_s2mm(void);
+int __init xocl_init_accel_deadlock_detector(bool);
+void xocl_fini_accel_deadlock_detector(bool);
 
-int __init xocl_init_accel_deadlock_detector(void);
-void xocl_fini_accel_deadlock_detector(void);
+int __init xocl_init_mem_hbm(bool);
+void xocl_fini_mem_hbm(bool);
 
-int __init xocl_init_mem_hbm(void);
-void xocl_fini_mem_hbm(void);
+int __init xocl_init_srsr(bool);
+void xocl_fini_srsr(bool);
 
-int __init xocl_init_srsr(void);
-void xocl_fini_srsr(void);
+int __init xocl_init_ulite(bool);
+void xocl_fini_ulite(bool);
 
-int __init xocl_init_ulite(void);
-void xocl_fini_ulite(void);
+int __init xocl_init_calib_storage(bool);
+void xocl_fini_calib_storage(bool);
 
-int __init xocl_init_calib_storage(void);
-void xocl_fini_calib_storage(void);
+int __init xocl_init_kds(bool);
+void xocl_fini_kds(bool);
 
-int __init xocl_init_kds(void);
-void xocl_fini_kds(void);
+int __init xocl_init_cu(bool);
+void xocl_fini_cu(bool);
 
-int __init xocl_init_cu(void);
-void xocl_fini_cu(void);
+int __init xocl_init_scu(bool);
+void xocl_fini_scu(bool);
 
-int __init xocl_init_scu(void);
-void xocl_fini_scu(void);
+int __init xocl_init_addr_translator(bool);
+void xocl_fini_addr_translator(bool);
 
-int __init xocl_init_addr_translator(void);
-void xocl_fini_addr_translator(void);
+int __init xocl_init_p2p(bool);
+void xocl_fini_p2p(bool);
 
-int __init xocl_init_p2p(void);
-void xocl_fini_p2p(void);
+int __init xocl_init_spc(bool);
+void xocl_fini_spc(bool);
 
-int __init xocl_init_spc(void);
-void xocl_fini_spc(void);
+int __init xocl_init_lapc(bool);
+void xocl_fini_lapc(bool);
 
-int __init xocl_init_lapc(void);
-void xocl_fini_lapc(void);
+int __init xocl_init_pmc(bool);
+void xocl_fini_pmc(bool);
 
-int __init xocl_init_pmc(void);
-void xocl_fini_pmc(void);
+int __init xocl_init_intc(bool);
+void xocl_fini_intc(bool);
 
-int __init xocl_init_intc(void);
-void xocl_fini_intc(void);
+int __init xocl_init_icap_controller(bool);
+void xocl_fini_icap_controller(bool);
 
-int __init xocl_init_icap_controller(void);
-void xocl_fini_icap_controller(void);
+int __init xocl_init_m2m(bool);
+void xocl_fini_m2m(bool);
 
-int __init xocl_init_m2m(void);
-void xocl_fini_m2m(void);
+int __init xocl_init_version_control(bool);
+void xocl_fini_version_control(bool);
 
-int __init xocl_init_version_control(void);
-void xocl_fini_version_control(void);
+int __init xocl_init_msix_xdma(bool);
+void xocl_fini_msix_xdma(bool);
 
-int __init xocl_init_msix_xdma(void);
-void xocl_fini_msix_xdma(void);
+int __init xocl_init_ert_user(bool);
+void xocl_fini_ert_user(bool);
 
-int __init xocl_init_ert_user(void);
-void xocl_fini_ert_user(void);
+int __init xocl_init_pcie_firewall(bool);
+void xocl_fini_pcie_firewall(bool);
 
-int __init xocl_init_pcie_firewall(void);
-void xocl_fini_pcie_firewall(void);
+int __init xocl_init_command_queue(bool);
+void xocl_fini_command_queue(bool);
 
-int __init xocl_init_command_queue(void);
-void xocl_fini_command_queue(void);
+int __init xocl_init_config_gpio(bool);
+void xocl_fini_config_gpio(bool);
 
-int __init xocl_init_config_gpio(void);
-void xocl_fini_config_gpio(void);
+int __init xocl_init_xgq(bool);
+void xocl_fini_xgq(bool);
 
-int __init xocl_init_xgq(void);
-void xocl_fini_xgq(void);
+int __init xocl_init_hwmon_sdm(bool);
+void xocl_fini_hwmon_sdm(bool);
 
-int __init xocl_init_hwmon_sdm(void);
-void xocl_fini_hwmon_sdm(void);
-
-int __init xocl_init_ert_ctrl(void);
-void xocl_fini_ert_ctrl(void);
+int __init xocl_init_ert_ctrl(bool);
+void xocl_fini_ert_ctrl(bool);
 #endif

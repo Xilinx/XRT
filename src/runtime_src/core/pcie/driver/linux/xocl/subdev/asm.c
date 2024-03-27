@@ -366,7 +366,7 @@ struct xocl_drv_private asm_priv = {
 };
 
 struct platform_device_id asm_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ASM), (kernel_ulong_t)&asm_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_ASM), (kernel_ulong_t)&asm_priv },
 	{ },
 };
 
@@ -374,12 +374,12 @@ static struct platform_driver	asm_driver = {
 	.probe		= asm_probe,
 	.remove		= asm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ASM),
+		.name = XOCL_USERPF_DEVICE(XOCL_ASM),
 	},
 	.id_table = asm_id_table,
 };
 
-int __init xocl_init_asm(void)
+int __init xocl_init_asm(bool flag)
 {
 	int err = 0;
 
@@ -399,7 +399,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_asm(void)
+void xocl_fini_asm(bool flag)
 {
 	unregister_chrdev_region(asm_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&asm_driver);

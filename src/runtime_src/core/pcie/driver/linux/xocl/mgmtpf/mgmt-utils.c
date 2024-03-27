@@ -378,7 +378,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_start(lro);
 
 	xocl_clear_pci_errors(lro);
-	store_pcie_link_info(lro);
+	mgmtpf_save_pcie_link_info(lro);
 
 	/*
 	 * Update the userspace fdt with the current values in the mgmt driver
@@ -835,7 +835,7 @@ static int xclmgmt_refresh_fdt_blob(struct xclmgmt_dev *lro, const char *fw_buf)
 	ret = xocl_fdt_blob_input(lro,
 			(char *)fw_buf + dtc_header->m_sectionOffset,
 			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
-			bin_axlf->m_header.m_platformVBNV);
+			bin_axlf->m_header.m_platformVBNV, true);
 	if (ret)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 

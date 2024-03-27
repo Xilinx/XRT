@@ -148,7 +148,7 @@ static const struct fpga_manager_ops xocl_pr_ops = {
 #endif
 
 struct platform_device_id fmgr_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_FMGR), 0 },
+	{ XOCL_MGMTPF_DEVICE(XOCL_FMGR), 0 },
 	{ },
 };
 
@@ -229,12 +229,12 @@ static struct platform_driver	fmgr_driver = {
 	.id_table = fmgr_id_table,
 };
 
-int __init xocl_init_fmgr(void)
+int __init xocl_init_fmgr(bool flag)
 {
 	return platform_driver_register(&fmgr_driver);
 }
 
-void xocl_fini_fmgr(void)
+void xocl_fini_fmgr(bool flag)
 {
 	platform_driver_unregister(&fmgr_driver);
 }

@@ -1139,12 +1139,18 @@ static int icap_post_download_rp(struct platform_device *pdev)
 	return 0;
 }
 
+// manoj added check
 static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xcl_mailbox_req mbreq = { 0 };
 	int ret = 0;
+
+	bool is_mgmt = false;
+	if (strcmp(XOCL_MGMTPF_DEVICE(XOCL_ICAP), pdev->name) == 0) {
+		is_mgmt = true;
+	}
 
 	mbreq.req = XCL_MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
@@ -1183,7 +1189,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	}
 
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len,
-			XOCL_SUBDEV_LEVEL_PRP, icap->rp_vbnv);
+			XOCL_SUBDEV_LEVEL_PRP, icap->rp_vbnv, is_mgmt);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;
@@ -2281,17 +2287,23 @@ out:
 	return err;
 }
 
+// manoj added check
 static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
 	int *num_urpdev, struct xocl_subdev **urpdevs)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
+	bool is_mgmt = false;
+	if (strcmp(XOCL_MGMTPF_DEVICE(XOCL_ICAP), pdev->name) == 0) {
+		is_mgmt = true;
+	}
+
 	icap_cache_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
 	if (icap->partition_metadata) {
 		*num_urpdev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
 			icap_get_section_size(icap, PARTITION_METADATA),
-			urpdevs);
+			urpdevs, is_mgmt);
 		ICAP_INFO(icap, "found %d sub devices", *num_urpdev);
 	}
 }
@@ -4046,7 +4058,6 @@ failed:
 	return ret;
 }
 
-#if PF == MGMTPF
 static int icap_open(struct inode *inode, struct file *file)
 {
 	struct icap *icap = NULL;
@@ -4312,20 +4323,23 @@ static const struct file_operations icap_fops = {
 	.write = icap_write_rp,
 };
 
-struct xocl_drv_private icap_drv_priv = {
+struct xocl_drv_private icap_drv_priv_mgmtpf = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,
 	.dev = -1,
 	.cdev_name = NULL,
 };
-#else
-struct xocl_drv_private icap_drv_priv = {
+
+struct xocl_drv_private icap_drv_priv_userpf = {
 	.ops = &icap_ops,
 };
-#endif
 
-struct platform_device_id icap_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv },
+struct platform_device_id icap_id_table_userpf[] = {
+	{ XOCL_USERPF_DEVICE(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_userpf },
+	{ },
+};
+struct platform_device_id icap_id_table_mgmtpf[] = {
+	{ XOCL_MGMTPF_DEVICE(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_mgmtpf },
 	{ },
 };
 
@@ -4333,28 +4347,41 @@ static struct platform_driver icap_driver = {
 	.probe		= icap_probe,
 	.remove		= icap_remove,
 	.driver		= {
-		.name	= XOCL_DEVNAME(XOCL_ICAP),
+		.name	= XOCL_USERPF_DEVICE(XOCL_ICAP),
 	},
-	.id_table = icap_id_table,
+	.id_table = icap_id_table_userpf,
 };
 
-int __init xocl_init_icap(void)
+
+static struct platform_driver icap_driver_m = {
+	.probe		= icap_probe,
+	.remove		= icap_remove,
+	.driver		= {
+		.name	= XOCL_MGMTPF_DEVICE(XOCL_ICAP),
+	},
+	.id_table = icap_id_table_mgmtpf,
+};
+int __init xocl_init_icap(bool flag)
 {
 	int err = 0;
 
-	if (icap_drv_priv.fops) {
-		err = alloc_chrdev_region(&icap_drv_priv.dev, 0,
-				XOCL_MAX_DEVICES, icap_driver.driver.name);
+	if (flag) {
+		err = alloc_chrdev_region(&icap_drv_priv_mgmtpf.dev, 0,
+				XOCL_MAX_DEVICES, icap_driver_m.driver.name);
 		if (err < 0)
 			goto err_reg_cdev;
+
+	        err = platform_driver_register(&icap_driver_m);
+	}
+	else  {
+		err = platform_driver_register(&icap_driver);
 	}
 
-	err = platform_driver_register(&icap_driver);
 	if (err)
 		goto err_reg_driver;
 
 	icap_keys = NULL;
-#if PF == MGMTPF
+if (flag) {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 	icap_keys = keyring_alloc(".xilinx_fpga_xclbin_keys", KUIDT_INIT(0),
@@ -4364,7 +4391,7 @@ int __init xocl_init_icap(void)
 		KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
 #endif
 
-#endif
+}
 	if (IS_ERR(icap_keys)) {
 		err = PTR_ERR(icap_keys);
 		icap_keys = NULL;
@@ -4375,19 +4402,28 @@ int __init xocl_init_icap(void)
 	return 0;
 
 err_key:
+if (!flag)
 	platform_driver_unregister(&icap_driver);
+else
+	platform_driver_unregister(&icap_driver_m);
 err_reg_driver:
-	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
-		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
+	if (flag &&  icap_drv_priv_mgmtpf.dev != -1)
+		unregister_chrdev_region(icap_drv_priv_mgmtpf.dev, XOCL_MAX_DEVICES);
 err_reg_cdev:
 	return err;
 }
 
-void xocl_fini_icap(void)
+void xocl_fini_icap(bool flag)
 {
+    if (flag) {
 	if (icap_keys)
 		key_put(icap_keys);
-	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
-		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
+	if (icap_drv_priv_mgmtpf.dev != -1)
+		unregister_chrdev_region(icap_drv_priv_mgmtpf.dev, XOCL_MAX_DEVICES);
+	platform_driver_unregister(&icap_driver_m);
+    } else {
+	if (icap_drv_priv_userpf.dev != -1)
+		unregister_chrdev_region(icap_drv_priv_userpf.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&icap_driver);
+    }
 }

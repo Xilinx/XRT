@@ -259,7 +259,8 @@ void xocl_debug_fini(void)
 	mutex_destroy(&xrt_debug.mod_lock);
 }
 
-int xocl_debug_init(void)
+//int xocl_debug_init(void)
+int xocl_debug_init(char *module)
 {
 	struct xocl_dbg_reg reg = { .name = "global" };
 	int ret;
@@ -276,7 +277,8 @@ int xocl_debug_init(void)
 	xrt_debug.last_char = xrt_debug.buffer;
 	xrt_debug.read_all = true;
 
-	xrt_debug.debugfs_root = debugfs_create_dir(KBUILD_MODNAME, NULL);
+//	xrt_debug.debugfs_root = debugfs_create_dir(KBUILD_MODNAME, NULL);
+	xrt_debug.debugfs_root = debugfs_create_dir(module, NULL);
 	if (IS_ERR(xrt_debug.debugfs_root)) {
 		pr_info("creating debugfs root failed");
 		return PTR_ERR(xrt_debug.debugfs_root);
