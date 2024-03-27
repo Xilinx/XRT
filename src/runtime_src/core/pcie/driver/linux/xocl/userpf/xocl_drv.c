@@ -6,6 +6,7 @@
  * Authors: Lizhi.Hou@xilinx.com
  */
 
+/* added a comment */
 #include <linux/aer.h>
 #include <linux/crc32c.h>
 #include <linux/iommu.h>
@@ -50,8 +51,6 @@ static const struct pci_device_id pciidlist[] = {
 	{ 0, }
 };
 
-struct class *xrt_class;
-
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
 #if defined(__PPC64__)
@@ -59,6 +58,7 @@ int xrt_reset_syncup = 1;
 #else
 int xrt_reset_syncup;
 #endif
+extern int xrt_reset_syncup;
 module_param(xrt_reset_syncup, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(xrt_reset_syncup,
 	"Enable config space syncup for pci hot reset");
@@ -159,16 +159,24 @@ int xocl_register_cus(xdev_handle_t xdev_hdl, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel)
 {
-	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
-
-	return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
+        struct xocl_dev_core *core_ptr = (struct xocl_dev_core *)xdev_hdl;
+        if (!core_ptr->userpf)  {
+            return 0;
+        } else {
+	    struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
+	    return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
+        }
 }
 
 int xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
 {
-	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
-
-	return xocl_kds_unregister_cus(xdev, slot_hdl);
+        struct xocl_dev_core *core_ptr = (struct xocl_dev_core *)xdev_hdl;
+        if (!core_ptr->userpf)  {
+            return 0;
+        } else {
+	    struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
+	    return xocl_kds_unregister_cus(xdev, slot_hdl);
+        }
 }
 
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
@@ -618,7 +626,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	mb_conn->kaddr = (uint64_t)kaddr;
 	mb_conn->paddr = (uint64_t)virt_to_phys(kaddr);
 	get_random_bytes(kaddr, PAGE_SIZE);
-	mb_conn->crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
+	//mb_conn->crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
 	mb_conn->version = XCL_MB_PROTOCOL_VER;
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
@@ -923,7 +931,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (blob) {
-		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL);
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL, false);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
@@ -1668,7 +1676,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	struct xocl_dev			*xdev;
 	char				wq_name[15];
 	int				ret, i;
-
 	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
@@ -1682,9 +1689,10 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
-
-	/* initialize xocl_errors */
+          
+ 	/* initialize xocl_errors */
 	xocl_init_errors(&xdev->core);
+       	xdev->core.userpf = true;     
 
 	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
 	if (ret) {
@@ -1866,8 +1874,15 @@ static struct pci_driver userpf_driver = {
 	.err_handler = &xocl_err_handler,
 };
 
+
+/*static int (*xocl_drv_reg_funcs_a[])(bool) __initdata = {
+	xocl_init_feature_rom(true),
+	xocl_init_feature_rom(false),
+};*/
+
+
 /* INIT */
-static int (*xocl_drv_reg_funcs[])(void) __initdata = {
+static int (*xocl_drv_reg_funcs[])(bool) __initdata = {
 	xocl_init_feature_rom,
 	xocl_init_version_control,
 	xocl_init_iores,
@@ -1893,7 +1908,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_s2mm,
 	xocl_init_accel_deadlock_detector,
 	xocl_init_mem_hbm,
-	/* Initial intc sub-device before CU/ERT sub-devices */
+// Initial intc sub-device before CU/ERT sub-devices 
 	xocl_init_intc,
 	xocl_init_cu,
 	xocl_init_scu,
@@ -1910,7 +1925,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_ert_ctrl,
 };
 
-static void (*xocl_drv_unreg_funcs[])(void) = {
+static void (*xocl_drv_unreg_funcs[])(bool) = {
 	xocl_fini_feature_rom,
 	xocl_fini_version_control,
 	xocl_fini_iores,
@@ -1955,25 +1970,32 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 
 static int __init xocl_init(void)
 {
-	int		ret, i = 0;
 
+	int		ret, i = 0;
+        char *module="xocl"; 
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
 	if (IS_ERR(xrt_class)) {
 		ret = PTR_ERR(xrt_class);
 		goto err_class_create;
 	}
 
-	ret = xocl_debug_init();
+//	ret = xocl_debug_init();
+	ret = xocl_debug_init(module);
 	if (ret) {
 		pr_err("failed to init debug");
 		goto failed;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(xocl_drv_reg_funcs); ++i) {
-		ret = xocl_drv_reg_funcs[i]();
+		ret = xocl_drv_reg_funcs[i](false);
 		if (ret)
 			goto failed;
 	}
+#if 0
+	for (i = 0; i < ARRAY_SIZE(xocl_drv_reg_funcs_a); ++i) {   
+		ret = xocl_drv_reg_funcs_a[i]();
+	}
+#endif
 
 	ret = pci_register_driver(&userpf_driver);
 	if (ret)
@@ -1983,7 +2005,7 @@ static int __init xocl_init(void)
 
 failed:
 	for (i--; i >= 0; i--)
-		xocl_drv_unreg_funcs[i]();
+		xocl_drv_unreg_funcs[i](false);
 	class_destroy(xrt_class);
 
 err_class_create:
@@ -1997,7 +2019,7 @@ static void __exit xocl_exit(void)
 	pci_unregister_driver(&userpf_driver);
 
 	for (i = ARRAY_SIZE(xocl_drv_unreg_funcs) - 1; i >= 0; i--)
-		xocl_drv_unreg_funcs[i]();
+		xocl_drv_unreg_funcs[i](false);
 
 	xocl_debug_fini();
 

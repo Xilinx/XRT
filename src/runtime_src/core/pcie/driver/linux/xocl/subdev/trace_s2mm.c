@@ -301,7 +301,7 @@ struct xocl_drv_private trace_s2mm_priv = {
 };
 
 struct platform_device_id trace_s2mm_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_TRACE_S2MM), (kernel_ulong_t)&trace_s2mm_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_TRACE_S2MM), (kernel_ulong_t)&trace_s2mm_priv },
 	{ },
 };
 
@@ -309,12 +309,12 @@ static struct platform_driver	trace_s2mm_driver = {
 	.probe		= trace_s2mm_probe,
 	.remove		= trace_s2mm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_TRACE_S2MM),
+		.name = XOCL_USERPF_DEVICE(XOCL_TRACE_S2MM),
 	},
 	.id_table = trace_s2mm_id_table,
 };
 
-int __init xocl_init_trace_s2mm(void)
+int __init xocl_init_trace_s2mm(bool flag)
 {
 	int err = 0;
 
@@ -334,7 +334,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_trace_s2mm(void)
+void xocl_fini_trace_s2mm(bool flag)
 {
 	unregister_chrdev_region(trace_s2mm_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_s2mm_driver);

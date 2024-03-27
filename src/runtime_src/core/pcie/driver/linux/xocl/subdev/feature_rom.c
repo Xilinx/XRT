@@ -20,6 +20,7 @@
 #include "xclfeatures.h"
 #include "flash_xrt_data.h"
 #include "../xocl_drv.h"
+#include <linux/string.h> 
 
 #define	MAGIC_NUM	0x786e6c78
 struct feature_rom {
@@ -784,37 +785,55 @@ failed:
 
 static int feature_rom_probe(struct platform_device *pdev)
 {
+
 	struct feature_rom *rom;
 	struct resource *res;
 	char	*tmp;
 	int	ret;
-
+pr_err("***** creating memory for rom ");
 	rom = devm_kzalloc(&pdev->dev, sizeof(*rom), GFP_KERNEL);
 	if (!rom)
-		return -ENOMEM;
+{
 
+pr_err("***** memory for rom is not created ");
+		return -ENOMEM;
+}
+
+pr_err("***** created memory for rom ");
 	rom->pdev =  pdev;
 	platform_set_drvdata(pdev, rom);
-
+pr_err("***** setting driver data ");
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
+pr_err("*****platform get resource is failed");
 		xocl_dbg(&pdev->dev, "Get header from VSEC");
 		ret = get_header_from_vsec(rom);
-		if (ret)
+		if (ret) {
+			pr_err("***** created memory for rom ");
 			(void)get_header_from_peer(rom);
+}
 	} else {
+
+	pr_err("***** before calling ioremap nocache");
 		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!rom->base) {
+
+pr_err("*****called if ioremap no cache is successful ");
 			ret = -EIO;
 			xocl_err(&pdev->dev, "Map iomem failed");
 			goto failed;
 		}
 
 		if (!strcmp(res->name, "uuid")) {
+
+pr_err("*****strig comparision between uuid and res->name ");
 			rom->uuid_len = 64;
 			(void)get_header_from_dtb(rom);
-		} else
+		} else {
+
+pr_err("***** created memory for rom ");
 			(void)get_header_from_iomem(rom);
+}
 	}
 
 	if (strstr(rom->header.VBNVName, "-xare")) {
@@ -822,6 +841,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 		 * ARE device, ARE is mapped like another DDR inside FPGA;
 		 * map_connects as M04_AXI
 		 */
+
+pr_err("***** Inside VBNV name header  ");
 		rom->header.DDRChannelCount = rom->header.DDRChannelCount - 1;
 		rom->are_dev = true;
 	}
@@ -841,12 +862,15 @@ static int feature_rom_probe(struct platform_device *pdev)
 	if(rom->header.FeatureBitMap & PASSTHROUGH_VIRTUALIZATION)
 		rom->passthrough_virt_en = true;
 
+pr_err("***** before calling the sysfs create group ");
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {
+pr_err("***** sysfs is not not successful ");
 		xocl_err(&pdev->dev, "create sysfs failed");
 		goto failed;
 	}
 
+pr_err("***** sysfs is successful ");
 	tmp = rom->header.EntryPointString;
 	xocl_dbg(&pdev->dev, "ROM magic : %c%c%c%c",
 		tmp[0], tmp[1], tmp[2], tmp[3]);
@@ -865,6 +889,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 	return 0;
 
 failed:
+
+pr_err("*****I came to failed dont know why");
 	if (rom->base)
 		iounmap(rom->base);
 	platform_set_drvdata(pdev, NULL);
@@ -888,33 +914,56 @@ static int feature_rom_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &rom_attr_group);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, rom);
+	//devm_kfree(&pdev->dev, rom);
 	return 0;
 }
 
-struct xocl_drv_private rom_priv = {
+struct xocl_drv_private rom_priv_mgmtpf = {
+	.ops = &rom_ops,
+};
+struct xocl_drv_private rom_priv_userpf = {
 	.ops = &rom_ops,
 };
 
-struct platform_device_id rom_id_table[] =  {
-	{ XOCL_DEVNAME(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv },
+struct platform_device_id rom_id_table_mgmtpf[] =  {
+	{ XOCL_MGMTPF_DEVICE(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv_mgmtpf },
 	{ },
 };
-
-static struct platform_driver	feature_rom_driver = {
+struct platform_device_id rom_id_table_userpf[] =  {
+	{ XOCL_USERPF_DEVICE(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv_userpf },
+	{ },
+};
+ 
+static struct platform_driver feature_rom_driver_mgmtpf = {
 	.probe		= feature_rom_probe,
 	.remove		= feature_rom_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_FEATURE_ROM),
+	.name = XOCL_MGMTPF_DEVICE(XOCL_FEATURE_ROM),
 	},
-	.id_table = rom_id_table,
+	.id_table = rom_id_table_mgmtpf,
 };
 
-int __init xocl_init_feature_rom(void) {
-	return platform_driver_register(&feature_rom_driver);
-}
+static struct platform_driver feature_rom_driver_userpf = {
+	.probe		= feature_rom_probe,
+	.remove		= feature_rom_remove,
+	.driver		= {
+	.name =  XOCL_USERPF_DEVICE(XOCL_FEATURE_ROM),
+	},
+	.id_table = rom_id_table_userpf,
+};
 
-void xocl_fini_feature_rom(void)
+int __init xocl_init_feature_rom(bool flag) {
+    if (flag) {
+        return platform_driver_register(&feature_rom_driver_mgmtpf);
+    }    
+    else {
+        return platform_driver_register(&feature_rom_driver_userpf);
+    }
+}
+void xocl_fini_feature_rom(bool flag)
 {
-	return platform_driver_unregister(&feature_rom_driver);
+    if (flag)
+	return platform_driver_unregister(&feature_rom_driver_mgmtpf);
+    else
+	return platform_driver_unregister(&feature_rom_driver_userpf);
 }

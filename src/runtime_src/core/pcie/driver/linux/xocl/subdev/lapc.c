@@ -271,7 +271,7 @@ struct xocl_drv_private lapc_priv = {
 };
 
 struct platform_device_id lapc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_LAPC), (kernel_ulong_t)&lapc_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_LAPC), (kernel_ulong_t)&lapc_priv },
 	{ },
 };
 
@@ -279,12 +279,12 @@ static struct platform_driver	lapc_driver = {
 	.probe		= lapc_probe,
 	.remove		= lapc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_LAPC),
+		.name = XOCL_USERPF_DEVICE(XOCL_LAPC),
 	},
 	.id_table = lapc_id_table,
 };
 
-int __init xocl_init_lapc(void)
+int __init xocl_init_lapc(bool flag)
 {
 	int err = 0;
 
@@ -304,7 +304,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_lapc(void)
+void xocl_fini_lapc(bool flag)
 {
 	unregister_chrdev_region(lapc_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&lapc_driver);

@@ -517,30 +517,55 @@ static int mig_remove(struct platform_device *pdev)
 	return 0;
 }
 
-struct xocl_drv_private mig_priv = {
+struct xocl_drv_private mig_priv_mgmtpf = {
+	.ops = &mig_ops,
+};
+struct xocl_drv_private mig_priv_userpf = {
 	.ops = &mig_ops,
 };
 
-struct platform_device_id mig_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MIG), (kernel_ulong_t)&mig_priv },
+struct platform_device_id mig_id_table_mgmtpf[] = {
+	{ XOCL_MGMTPF_DEVICE(XOCL_MIG), (kernel_ulong_t)&mig_priv_mgmtpf },
+	{ },
+};
+struct platform_device_id mig_id_table_userpf[] = {
+	{ XOCL_USERPF_DEVICE(XOCL_MIG), (kernel_ulong_t)&mig_priv_userpf },
 	{ },
 };
 
-static struct platform_driver	mig_driver = {
+static struct platform_driver	mig_driver_mgmtpf = {
 	.probe		= mig_probe,
 	.remove		= mig_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MIG),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_MIG),
 	},
-	.id_table = mig_id_table,
+	.id_table = mig_id_table_mgmtpf,
+};
+static struct platform_driver	mig_driver_userpf = {
+	.probe		= mig_probe,
+	.remove		= mig_remove,
+	.driver		= {
+		.name = XOCL_USERPF_DEVICE(XOCL_MIG),
+	},
+	.id_table = mig_id_table_userpf,
 };
 
-int __init xocl_init_mig(void)
+int __init xocl_init_mig(bool flag)
 {
-	return platform_driver_register(&mig_driver);
+	if(flag)
+	{
+		return platform_driver_register(&mig_driver_mgmtpf);
+	}
+	else
+	{
+		return platform_driver_register(&mig_driver_userpf);
+	}
 }
 
-void xocl_fini_mig(void)
+void xocl_fini_mig(bool flag)
 {
-	platform_driver_unregister(&mig_driver);
+	if(flag)
+		platform_driver_unregister(&mig_driver_mgmtpf);
+	else
+		platform_driver_unregister(&mig_driver_userpf);
 }

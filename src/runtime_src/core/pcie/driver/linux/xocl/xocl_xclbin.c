@@ -44,7 +44,7 @@ static int versal_xclbin_pre_download(xdev_handle_t xdev, void *args)
 
 	if (metadata) {
 		arg->num_dev = xocl_fdt_parse_blob(xdev, metadata,
-		    size, &(arg->urpdevs));
+		    size, &(arg->urpdevs), true);
 		vfree(metadata);
 	}
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);

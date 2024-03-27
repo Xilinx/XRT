@@ -236,7 +236,7 @@ struct xocl_drv_private trace_fifo_lite_priv = {
 };
 
 struct platform_device_id trace_fifo_lite_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_TRACE_FIFO_LITE), (kernel_ulong_t)&trace_fifo_lite_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_TRACE_FIFO_LITE), (kernel_ulong_t)&trace_fifo_lite_priv },
 	{ },
 };
 
@@ -244,12 +244,12 @@ static struct platform_driver	trace_fifo_lite_driver = {
 	.probe		= trace_fifo_lite_probe,
 	.remove		= trace_fifo_lite_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_TRACE_FIFO_LITE),
+		.name = XOCL_USERPF_DEVICE(XOCL_TRACE_FIFO_LITE),
 	},
 	.id_table = trace_fifo_lite_id_table,
 };
 
-int __init xocl_init_trace_fifo_lite(void)
+int __init xocl_init_trace_fifo_lite(bool flag)
 {
 	int err = 0;
 
@@ -269,7 +269,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_trace_fifo_lite(void)
+void xocl_fini_trace_fifo_lite(bool flag)
 {
 	unregister_chrdev_region(trace_fifo_lite_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_fifo_lite_driver);

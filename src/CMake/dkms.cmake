@@ -48,6 +48,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/mgmtpf/mgmt-ioctl.c
   xocl/mgmtpf/mgmt-sysfs.c
   xocl/mgmtpf/mgmt-core.h
+  xocl/mgmtpf/mgmt-common.c
   xocl/mgmtpf/xclmgmt.dracut.conf
   xocl/mgmtpf/99-xclmgmt.rules
   xocl/mgmtpf/Makefile

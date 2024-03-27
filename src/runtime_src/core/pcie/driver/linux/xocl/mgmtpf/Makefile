@@ -85,6 +85,7 @@ xclmgmt-y := \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
+	mgmt-common.o \
 	mgmt-bifurcation-reset.o \
 	mgmt-ioctl.o \
 	mgmt-sysfs.o
@@ -97,8 +98,7 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/include
-
-ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
+ccflags-y += $(XILINXINCLUDE)
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif

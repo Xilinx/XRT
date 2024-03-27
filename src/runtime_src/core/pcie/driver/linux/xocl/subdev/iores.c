@@ -149,33 +149,59 @@ static int iores_probe(struct platform_device *pdev)
 	return 0;
 }
 
-struct xocl_drv_private iores_priv = {
+struct xocl_drv_private iores_priv_mgmtpf = {
+	.ops = &iores_ops,
+};
+struct xocl_drv_private iores_priv_userpf = {
 	.ops = &iores_ops,
 };
 
 struct platform_device_id iores_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_IORES0), (kernel_ulong_t)&iores_priv },
-	{ XOCL_DEVNAME(XOCL_IORES1), (kernel_ulong_t)&iores_priv },
-	{ XOCL_DEVNAME(XOCL_IORES2), (kernel_ulong_t)&iores_priv },
-	{ XOCL_DEVNAME(XOCL_IORES3), (kernel_ulong_t)&iores_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES0), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES1), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES2), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES3), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ },
+};
+struct platform_device_id iores_id_table_userpf[] = {
+	{ XOCL_USERPF_DEVICE(XOCL_IORES0), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES1), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES2), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES3), (kernel_ulong_t)&iores_priv_userpf },
 	{ },
 };
 
-static struct platform_driver	iores_driver = {
+static struct platform_driver	iores_driver_mgmtpf = {
 	.probe		= iores_probe,
 	.remove		= iores_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME("iores"),
+		.name = XOCL_MGMTPF_DEVICE("iores"),
+	},
+	.id_table = iores_id_table,
+};
+static struct platform_driver	iores_driver_userpf = {
+	.probe		= iores_probe,
+	.remove		= iores_remove,
+	.driver		= {
+		.name = XOCL_USERPF_DEVICE("iores"),
 	},
 	.id_table = iores_id_table,
 };
 
-int __init xocl_init_iores(void)
+int __init xocl_init_iores(bool flag)
 {
-	return platform_driver_register(&iores_driver);
+	if(flag){	
+		return platform_driver_register(&iores_driver_mgmtpf);
+	}
+	else{	
+		return platform_driver_register(&iores_driver_userpf);
+	}
 }
 
-void xocl_fini_iores(void)
+void xocl_fini_iores(bool flag)
 {
-	platform_driver_unregister(&iores_driver);
+	if(flag)
+		platform_driver_unregister(&iores_driver_mgmtpf);
+	else
+		platform_driver_unregister(&iores_driver_userpf);
 }

@@ -239,7 +239,7 @@ struct xocl_drv_private trace_funnel_priv = {
 };
 
 struct platform_device_id trace_funnel_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_TRACE_FUNNEL), (kernel_ulong_t)&trace_funnel_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_TRACE_FUNNEL), (kernel_ulong_t)&trace_funnel_priv },
 	{ },
 };
 
@@ -247,12 +247,12 @@ static struct platform_driver	trace_funnel_driver = {
 	.probe		= trace_funnel_probe,
 	.remove		= trace_funnel_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_TRACE_FUNNEL),
+		.name = XOCL_USERPF_DEVICE(XOCL_TRACE_FUNNEL),
 	},
 	.id_table = trace_funnel_id_table,
 };
 
-int __init xocl_init_trace_funnel(void)
+int __init xocl_init_trace_funnel(bool flag)
 {
 	int err = 0;
 
@@ -272,7 +272,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_trace_funnel(void)
+void xocl_fini_trace_funnel(bool flag)
 {
 	unregister_chrdev_region(trace_funnel_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_funnel_driver);

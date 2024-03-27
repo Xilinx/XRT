@@ -941,7 +941,7 @@ struct xocl_drv_private qdma_priv = {
 };
 
 static struct platform_device_id qdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_QDMA), (kernel_ulong_t)&qdma_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_QDMA), (kernel_ulong_t)&qdma_priv },
 	{ },
 };
 
@@ -949,12 +949,12 @@ static struct platform_driver	qdma_driver = {
 	.probe		= qdma_probe,
 	.remove		= qdma_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_QDMA),
+		.name = XOCL_USERPF_DEVICE(XOCL_QDMA),
 	},
 	.id_table	= qdma_id_table,
 };
 
-int __init xocl_init_qdma(void)
+int __init xocl_init_qdma(bool flag)
 {
 	int		err = 0;
 
@@ -991,7 +991,7 @@ err_reg_chrdev:
 	return err;
 }
 
-void xocl_fini_qdma(void)
+void xocl_fini_qdma(bool flag)
 {
 	unregister_chrdev_region(str_dev, XOCL_CHARDEV_REG_COUNT);
 	platform_driver_unregister(&qdma_driver);

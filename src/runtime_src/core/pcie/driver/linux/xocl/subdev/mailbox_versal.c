@@ -288,7 +288,7 @@ struct xocl_drv_private mailbox_versal_priv = {
 };
 
 struct platform_device_id mailbox_versal_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX_VERSAL),
+	{ XOCL_USERPF_DEVICE(XOCL_MAILBOX_VERSAL),
 	    (kernel_ulong_t)&mailbox_versal_priv },
 	{ },
 };
@@ -297,17 +297,17 @@ static struct platform_driver	mailbox_versal_driver = {
 	.probe		= mailbox_versal_probe,
 	.remove		= mailbox_versal_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MAILBOX_VERSAL),
+		.name = XOCL_USERPF_DEVICE(XOCL_MAILBOX_VERSAL),
 	},
 	.id_table = mailbox_versal_id_table,
 };
 
-int __init xocl_init_mailbox_versal(void)
+int __init xocl_init_mailbox_versal(bool flag)
 {
 	return platform_driver_register(&mailbox_versal_driver);
 }
 
-void xocl_fini_mailbox_versal(void)
+void xocl_fini_mailbox_versal(bool flag)
 {
 	platform_driver_unregister(&mailbox_versal_driver);
 }

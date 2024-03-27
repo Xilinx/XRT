@@ -133,7 +133,7 @@ static ssize_t link_speed_show(struct device *dev,
 	unsigned short speed, width;
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	get_pcie_link_info(lro, &width, &speed, false);
+	mgmtpf_get_pcie_link_info(lro, &width, &speed, false);
 	return sprintf(buf, "%d\n", speed);
 }
 static DEVICE_ATTR_RO(link_speed);
@@ -144,7 +144,7 @@ static ssize_t link_width_show(struct device *dev,
 	unsigned short speed, width;
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	get_pcie_link_info(lro, &width, &speed, false);
+	mgmtpf_get_pcie_link_info(lro, &width, &speed, false);
 	return sprintf(buf, "%d\n", width);
 }
 static DEVICE_ATTR_RO(link_width);
@@ -155,7 +155,7 @@ static ssize_t link_speed_max_show(struct device *dev,
 	unsigned short speed, width;
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	get_pcie_link_info(lro, &width, &speed, true);
+	mgmtpf_get_pcie_link_info(lro, &width, &speed, true);
 	return sprintf(buf, "%d\n", speed);
 }
 static DEVICE_ATTR_RO(link_speed_max);
@@ -166,7 +166,7 @@ static ssize_t link_width_max_show(struct device *dev,
 	unsigned short speed, width;
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	get_pcie_link_info(lro, &width, &speed, true);
+	mgmtpf_get_pcie_link_info(lro, &width, &speed, true);
 	return sprintf(buf, "%d\n", width);
 }
 static DEVICE_ATTR_RO(link_width_max);
