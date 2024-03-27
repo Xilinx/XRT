@@ -540,7 +540,7 @@ namespace xdp {
                           + typeName + " channel " + std::to_string(channelNum);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
           //switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channelNum);
-          XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, DMA, channelNum);
+          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, DMA, channelNum);
 
           // Record for runtime config file
           // NOTE: channel info informs back-end there will be events on that channel
@@ -562,7 +562,7 @@ namespace xdp {
           xrt_core::message::send(severity_level::debug, "XRT", msg);
           
           //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
-          XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, SOUTH, streamPortId);
+          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = streamPortId;
@@ -588,7 +588,7 @@ namespace xdp {
                           + typeName + " stream port " + std::to_string(channel);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
           //switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
-          XAie_EventSelectStrmPort(&aieDevInst, loc, 0, slaveOrMaster, DMA, channel);
+          XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, DMA, channel);
 
           // Record for runtime config file
           config.port_trace_ids[portnum] = channel;
@@ -907,9 +907,9 @@ namespace xdp {
 
     // Get partition columns
     // NOTE: for now, assume a single partition
-    auto partitionCols = xdp::aie::getPartitionStartColumns(handle);
-    auto startCol = partitionCols.at(0);
-
+    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(handle);
+    uint8_t startCol = partitionCols.at(0);
+    
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
@@ -1241,7 +1241,6 @@ namespace xdp {
               break;
           
             coreToMemBcMask |= (0x1 << bcId);
-            bcId++;
           } 
           else {
             if (XAie_TraceEvent(&aieDevInst, loc, XAIE_MEM_MOD, memoryEvents[i], i) != XAIE_OK)
@@ -1260,6 +1259,7 @@ namespace xdp {
           if (isCoreEvent) {
             cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
             cfgTile->memory_trace_config.traced_events[i] = bcIdToEvent(bcId);
+            bcId++;
           }
           else if (type == module_type::mem_tile)
             cfgTile->memory_tile_trace_config.traced_events[i] = phyEvent;

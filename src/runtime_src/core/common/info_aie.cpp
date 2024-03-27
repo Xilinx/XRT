@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #define XRT_CORE_COMMON_SOURCE
-#include "asd_parser.h"
 #include "info_aie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -332,10 +331,6 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_shim);
   }
-  catch (const qr::no_such_key&) {
-    // Not Edge device
-    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
-  }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
@@ -412,10 +407,6 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     std::string aie_data = xrt_core::device_query<qr::aie_mem_info_sysfs>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_mem);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    // Not Edge device
-    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
   }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
@@ -899,65 +890,6 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
   populate_aie_core_gmio(pt_aie, pt);
 }
 
-// TODO: Remove this function
-static void
-add_dummy_graphs(boost::property_tree::ptree& pt, boost::property_tree::ptree& tile_array)
-{
-  boost::property_tree::ptree graph;
-  boost::property_tree::ptree graph_array;
-
-  graph.put("id", "");
-  graph.put("name", "");
-  graph.put("status", "");
-  graph.add_child("tile", tile_array);
-  
-  graph_array.push_back({"", graph});
-    
-  pt.add_child("graphs", graph_array);
-}
-
-// Populate AIE core information
-static void
-populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree& pt)
-{
-  boost::property_tree::ptree core_info;
-
-  try {
-    boost::property_tree::ptree tile_array;
-    asd_parser::aie_tiles_info tiles_info{0};
-    uint32_t cols_filled = 0;
-
-    core_info = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::core, tiles_info,
-                                                    cols_filled);
-
-    pt.put("schema_version.major", core_info.get<uint32_t>("schema_version.major"));
-    pt.put("schema_version.minor", core_info.get<uint32_t>("schema_version.minor"));
-
-    for (uint16_t col = 0; col < tiles_info.cols; col++) {
-      // skip this col if not filled
-      if (!(cols_filled & (1 << col)))
-        continue;
-
-      for (uint16_t row = tiles_info.core_row_start; row < tiles_info.core_row_start + tiles_info.core_rows; row++) {
-        boost::property_tree::ptree tile;
-        tile.put("column", col);
-        tile.put("row", row);
-        populate_aie_core(core_info, tile);
-
-        tile_array.push_back({"", tile});
-      }
-    }
-
-    // Top level reporter expects graphs, so adding dummy entries
-    // TODO: remove this function
-    add_dummy_graphs(pt, tile_array);
-  }
-  catch (const std::exception& ex) {
-    pt.put("error_msg", ex.what());
-    return;
-  }
-}
-
 boost::property_tree::ptree
 populate_aie(const xrt_core::device* device, const std::string& desc)
 {
@@ -970,10 +902,6 @@ populate_aie(const xrt_core::device* device, const std::string& desc)
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_aie);
     populate_aie_from_metadata(device, pt_aie, pt);
-  }
-  catch (const qr::no_such_key&) {
-    // Populate aie info for PCIe platforms
-    populate_aie_helper(device, pt);
   }
   catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));

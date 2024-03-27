@@ -251,6 +251,7 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
 	while (header) {
 		int err = 0;
+		long start_col = 0, num_col = 0;
 
 		struct aie_resources_bin *aie_p = (struct aie_resources_bin *)(xclbin + header->m_sectionOffset);
 		void *data_portion = vmalloc(aie_p->m_image_size);
@@ -262,12 +263,18 @@ zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *x
 			return err;
 		}
 
+		if (kstrtol((char*)aie_p +aie_p->m_start_column, 10, &start_col) ||
+		    kstrtol((char*)aie_p +aie_p->m_num_columns, 10, &num_col)) {
+			vfree(data_portion);
+			return -EINVAL; 
+		}
+
 		//Call the AIE Driver API 
-		//int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, aie_p->m_start_column, aie_p->m_num_columns, data_portion);
-		//if (ret != 0) {
-		//	vfree(data_portion);
-		//	return ret;
-		//}
+		int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, start_col, num_col, data_portion);
+		if (ret != 0) {
+			vfree(data_portion);
+			return ret;
+		}
 		vfree(data_portion);
         	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
 	}

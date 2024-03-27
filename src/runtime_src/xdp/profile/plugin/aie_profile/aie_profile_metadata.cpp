@@ -573,6 +573,7 @@ namespace xdp {
         }
 
         tileMetric.second = defaultSet;
+        metricSet = defaultSet;
       }
 
       // Specify complementary metric sets (as needed)

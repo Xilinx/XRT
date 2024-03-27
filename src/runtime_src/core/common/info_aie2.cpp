@@ -1,12 +1,214 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
-#include "asd_parser.h"
+#define XRT_CORE_COMMON_SOURCE
+#include "info_aie2.h"
 #include "query_requests.h"
 
-namespace asd_parser {
+namespace aie2 {
 namespace bpt = boost::property_tree;
 using u32 = uint32_t;
+
+// aie_tiles_info struct is maintained in both firmware and userspace code
+// as there is no common code base b/w both, below versions are used for
+// handshaking mechanism. Update these whenever aie_tiles_info changes.
+
+inline constexpr uint16_t aie_tiles_info_version_major = 1;
+inline constexpr uint16_t aie_tiles_info_version_minor = 1;
+ 
+// AIE status structures are maintained by AIE team and they use preprocessor
+// macros for different aie architectures, but we get all tiles information on
+// runtime and we are using binary parser for parsing the data.
+// Below versions are used for handshaking with aie driver
+// Update this whenever we change any of the below structures
+
+inline constexpr uint16_t aie_status_version_major = 1;
+inline constexpr uint16_t aie_status_version_minor = 1;
+
+// Data structure to capture the dma status
+struct aie_dma_status
+{
+  uint32_t s2mm_status;
+  uint32_t mm2s_status;
+};
+
+// Data structure for dma status internals
+struct aie_dma_int
+{
+  std::string channel_status;
+  std::string queue_status;
+  uint32_t queue_size;
+  uint32_t current_bd;
+};
+
+// Data structure to capture aie tiles status
+class aie_tiles_status;
+
+// Data structure to capture the core tile status
+struct aie_core_tile_status
+{
+  std::vector<aie_dma_status> dma;
+  std::vector<uint32_t> core_mode_events;
+  std::vector<uint32_t> mem_mode_events;
+  uint32_t core_status;
+  uint32_t program_counter;
+  uint32_t stack_ptr;
+  uint32_t link_reg;
+  std::vector<uint8_t> lock_value;
+
+  // Get the size of this structure using aie tiles metadata
+  static uint64_t
+  size(const aie_tiles_info& info);
+
+  // Retrieve corresponding tile type enum value
+  static inline aie_tile_type
+  type()
+  {
+    return aie_tile_type::core;
+  }
+};
+  
+// Data structure to capture the mem tile status
+struct aie_mem_tile_status
+{
+  std::vector<aie_dma_status> dma;
+  std::vector<uint32_t> events;
+  std::vector<uint8_t> lock_value;
+
+  // Get the size of this structure using aie tiles metadata
+  static uint64_t
+  size(const aie_tiles_info& info);
+
+  // Retrieve corresponding tile type enum value
+  static inline aie_tile_type
+  type() 
+  {
+    return aie_tile_type::mem;
+  }
+};
+  
+// Data structure to capture the shim tile status
+struct aie_shim_tile_status
+{
+  std::vector<aie_dma_status> dma;
+  std::vector<uint32_t> events;
+  std::vector<uint8_t> lock_value;
+
+  // Get the size of this structure using aie tiles metadata
+  static uint64_t
+  size(const aie_tiles_info& info);
+
+   // Retrieve corresponding tile type enum value
+  static inline aie_tile_type
+  type()
+  {
+    return aie_tile_type::shim;
+  }
+};
+
+class aie_tiles_status
+{
+  public:
+  std::vector<aie_core_tile_status> core_tiles;
+  std::vector<aie_mem_tile_status> mem_tiles;
+  std::vector<aie_shim_tile_status> shim_tiles;
+  
+  aie_tiles_status(const aie_tiles_info& stats)
+  {
+    core_tiles.resize(stats.core_rows);
+    mem_tiles.resize(stats.mem_rows);
+    shim_tiles.resize(stats.shim_rows);
+     
+    for (auto& core : core_tiles) {
+      core.dma.resize(stats.core_dma_channels);
+      core.core_mode_events.resize(stats.core_events);
+      core.mem_mode_events.resize(stats.core_events);
+      core.lock_value.resize(stats.core_locks);
+    }
+      
+    for (auto& shim : shim_tiles) {
+      shim.dma.resize(stats.shim_dma_channels);
+      shim.events.resize(stats.shim_events);
+      shim.lock_value.resize(stats.shim_locks);
+    }
+      
+    for (auto& mem : mem_tiles) {
+      mem.dma.resize(stats.mem_dma_channels);
+      mem.events.resize(stats.mem_events);
+      mem.lock_value.resize(stats.mem_locks);
+    }
+  }
+};
+
+// The following enum represents bits in aie core tile status  
+enum class core_status : uint32_t
+{
+  xaie_core_status_enable_bit = 0U,
+  xaie_core_status_reset_bit,
+  xaie_core_status_mem_stall_s_bit,
+  xaie_core_status_mem_stall_w_bit,
+  xaie_core_status_mem_stall_n_bit,
+  xaie_core_status_mem_stall_e_bit,
+  xaie_core_status_lock_stall_s_bit,
+  xaie_core_status_lock_stall_w_bit,
+  xaie_core_status_lock_stall_n_bit,
+  xaie_core_status_lock_stall_e_bit,
+  xaie_core_status_stream_stall_ss0_bit,
+  xaie_core_status_stream_stall_ms0_bit = 12U,
+  xaie_core_status_cascade_stall_scd_bit = 14U,
+  xaie_core_status_cascade_stall_mcd_bit,
+  xaie_core_status_debug_halt_bit,
+  xaie_core_status_ecc_error_stall_bit,
+  xaie_core_status_ecc_scrubbing_stall_bit,
+  xaie_core_status_error_halt_bit,
+  xaie_core_status_done_bit,
+  xaie_core_status_processor_bus_stall_bit,
+  xaie_core_status_max_bit
+};
+
+// The following enum represents bits in aie tiles dma s2mm status  
+enum class dma_s2mm_status : uint32_t
+{
+  xaie_dma_status_s2mm_status = 0U,
+  xaie_dma_status_s2mm_stalled_lock_ack = 2U,
+  xaie_dma_status_s2mm_stalled_lock_rel,
+  xaie_dma_status_s2mm_stalled_stream_starvation,
+  xaie_dma_status_s2mm_stalled_tct_or_count_fifo_full,
+  xaie_dma_status_s2mm_error_lock_access_to_unavail = 8U, // Specific only to MEM Tile
+  xaie_dma_status_s2mm_error_dm_access_to_unavail,       // specific only to MEM tile
+  xaie_dma_status_s2mm_error_bd_unavail = 10U,
+  xaie_dma_status_s2mm_error_bd_invalid,
+  xaie_dma_status_s2mm_error_fot_length,
+  xaie_dma_status_s2mm_error_fot_bds_per_task,
+  xaie_dma_status_s2mm_axi_mm_decode_error = 16U,
+  xaie_dma_status_s2mm_axi_mm_slave_error  = 17U,
+  xaie_dma_status_s2mm_task_queue_overflow = 18U,
+  xaie_dma_status_s2mm_channel_running,
+  xaie_dma_status_s2mm_task_queue_size,
+  xaie_dma_status_s2mm_current_bd = 24U,
+  xaie_dma_status_s2mm_max
+};
+
+// The following enum represents bits in aie tiles dma mm2s status  
+enum class dma_mm2s_status : uint32_t
+{
+  xaie_dma_status_mm2s_status = 0U,
+  xaie_dma_status_mm2s_stalled_lock_ack = 2U,
+  xaie_dma_status_mm2s_stalled_lock_rel,
+  xaie_dma_status_mm2s_stalled_stream_backpressure,
+  xaie_dma_status_mm2s_stalled_tct,
+  xaie_dma_status_mm2s_error_lock_access_to_unavail = 8U, // Specific only to MEM Tile
+  xaie_dma_status_mm2s_error_dm_access_to_unavail,        // specific only to MEM tile
+  xaie_dma_status_mm2s_error_bd_unavail,
+  xaie_dma_status_mm2s_error_bd_invalid = 11U,
+  xaie_dma_status_mm2s_axi_mm_decode_error = 16U,
+  xaie_dma_status_mm2s_axi_mm_slave_error  = 17U,
+  xaie_dma_status_mm2s_task_queue_overflow = 18U,
+  xaie_dma_status_mm2s_channel_running,
+  xaie_dma_status_mm2s_task_queue_size,
+  xaie_dma_status_mm2s_current_bd = 24U,
+  xaie_dma_status_mm2s_max
+};
 
 static std::vector<std::string> status_map;
 static std::vector<std::string> dma_s2mm_map;
@@ -124,14 +326,13 @@ get_dma_mm2s_status(uint32_t status, aie_tile_type tile_type)
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_status) :
           val &= dma_channel_status;
           if (val == 0)
-            dma_status_int.channel_status.emplace_back("Idle");
+            dma_status_int.channel_status = "Idle";
           else if (val == 1)
-            dma_status_int.channel_status.emplace_back("Starting");
+            dma_status_int.channel_status = "Starting";
           else if (val == 2)
-            dma_status_int.channel_status.emplace_back("Running");
+            dma_status_int.channel_status = "Running";
           else
-            dma_status_int.channel_status.emplace_back("Invalid State");
-            
+            dma_status_int.channel_status = "Invalid State";
           break;
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_task_queue_overflow) :
           val &= dma_queue_overflow;
@@ -139,7 +340,6 @@ get_dma_mm2s_status(uint32_t status, aie_tile_type tile_type)
             dma_status_int.queue_status = "okay";
           else
             dma_status_int.queue_status = "channel_overflow";
-
           break;
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_task_queue_size) :
           dma_status_int.queue_size = (val & dma_queue_size);
@@ -147,10 +347,11 @@ get_dma_mm2s_status(uint32_t status, aie_tile_type tile_type)
         case static_cast<u32>(dma_mm2s_status::xaie_dma_status_mm2s_current_bd) :
           dma_status_int.current_bd = (val & dma_current_bd);
           break;
-        default :
+        default:
           val &= dma_default;
           if (val)
-            dma_status_int.channel_status.emplace_back(dma_mm2s_map[flag]); 
+            dma_status_int.channel_status = dma_mm2s_map[flag]; 
+          break;
       }
     }
   }
@@ -184,14 +385,13 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
         case static_cast<u32>(dma_s2mm_status::xaie_dma_status_s2mm_status) :
           val &= dma_channel_status;
           if (val == 0)
-            dma_status_int.channel_status.emplace_back("Idle");
+            dma_status_int.channel_status = "Idle";
           else if (val == 1)
-            dma_status_int.channel_status.emplace_back("Starting");
+            dma_status_int.channel_status = "Starting";
           else if (val == 2)
-            dma_status_int.channel_status.emplace_back("Running");
+            dma_status_int.channel_status = "Running";
           else
-            dma_status_int.channel_status.emplace_back("Invalid State");
-            
+            dma_status_int.channel_status = "Invalid State";
           break;
         case static_cast<u32>(dma_s2mm_status::xaie_dma_status_s2mm_task_queue_overflow) :
           val &= dma_queue_overflow;
@@ -199,7 +399,6 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
             dma_status_int.queue_status = "okay";
           else
             dma_status_int.queue_status = "channel_overflow";
-
           break;
         case static_cast<u32>(dma_s2mm_status::xaie_dma_status_s2mm_channel_running) :
           dma_status_int.queue_size = (val & dma_queue_size);
@@ -210,7 +409,8 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
         default :
           val &= dma_default;
           if (val)
-            dma_status_int.channel_status.emplace_back(dma_s2mm_map[flag]); 
+            dma_status_int.channel_status = dma_s2mm_map[flag];
+          break;
       }
     }
   }
@@ -219,83 +419,36 @@ get_dma_s2mm_status(uint32_t status, aie_tile_type tile_type)
 }
 
 static bpt::ptree
+populate_channel(const aie_dma_int& channel)
+{
+  bpt::ptree pt_channel;
+
+  pt_channel.put("status", channel.channel_status);
+  pt_channel.put("queue_size", std::to_string(channel.queue_size));
+  pt_channel.put("queue_status", channel.queue_status);
+  pt_channel.put("current_bd", std::to_string(channel.current_bd));
+
+  return pt_channel;
+}
+
+static bpt::ptree
 populate_dma(const std::vector<aie_dma_status>& dma, aie_tile_type tile_type)
 {
   bpt::ptree dma_pt;
-  bpt::ptree channel_status_mm2s_array;
-  bpt::ptree channel_status_s2mm_array;
-  bpt::ptree queue_size_mm2s_array;
-  bpt::ptree queue_size_s2mm_array;
-  bpt::ptree queue_status_mm2s_array;
-  bpt::ptree queue_status_s2mm_array;
-  bpt::ptree current_bd_mm2s_array;
-  bpt::ptree current_bd_s2mm_array;
+  bpt::ptree mm2s_channels;
+  bpt::ptree s2mm_channels;
 
   for (uint32_t i = 0; i < dma.size(); i++)
   {
-    // channel status
-    bpt::ptree channel_status_mm2s;
-    bpt::ptree channel_status_s2mm;
+    bpt::ptree mm2s_channel = populate_channel(get_dma_mm2s_status(dma[i].mm2s_status, tile_type));
+    bpt::ptree s2mm_channel = populate_channel(get_dma_s2mm_status(dma[i].s2mm_status, tile_type));
 
-    auto dma_mm2s_status = get_dma_mm2s_status(dma[i].mm2s_status, tile_type);
-    auto dma_s2mm_status = get_dma_s2mm_status(dma[i].s2mm_status, tile_type);
-
-    std::string mm2s_channel_status = "";
-    for (auto &status : dma_mm2s_status.channel_status)
-      mm2s_channel_status.append(status.append(", "));
-
-    mm2s_channel_status.erase(mm2s_channel_status.length() - 2); //remove last comma
-    channel_status_mm2s.put("", mm2s_channel_status);
-
-    std::string s2mm_channel_status = "";
-    for (auto &status : dma_s2mm_status.channel_status)
-      s2mm_channel_status.append(status.append(", "));
-
-    s2mm_channel_status.erase(s2mm_channel_status.length() - 2); //remove last comma
-    channel_status_s2mm.put("", s2mm_channel_status);
-
-    channel_status_mm2s_array.push_back(std::make_pair("", channel_status_mm2s));
-    channel_status_s2mm_array.push_back(std::make_pair("", channel_status_s2mm)); 
-
-    // queue size
-    bpt::ptree queue_size_mm2s;
-    bpt::ptree queue_size_s2mm;
-
-    queue_size_mm2s.put("", std::to_string(dma_mm2s_status.queue_size));
-    queue_size_mm2s_array.push_back(std::make_pair("", queue_size_mm2s));
-    queue_size_s2mm.put("", std::to_string(dma_s2mm_status.queue_size)); 
-    queue_size_s2mm_array.push_back(std::make_pair("", queue_size_s2mm));
-      
-    // queue status
-    bpt::ptree queue_status_mm2s;
-    bpt::ptree queue_status_s2mm;
-
-    queue_status_mm2s.put("", dma_mm2s_status.queue_status);
-    queue_status_mm2s_array.push_back(std::make_pair("", queue_status_mm2s));
-    queue_status_s2mm.put("", dma_s2mm_status.queue_status);
-    queue_status_s2mm_array.push_back(std::make_pair("", queue_status_s2mm));
-
-    // current bd
-    bpt::ptree bd_mm2s;
-    bpt::ptree bd_s2mm;
-
-    bd_mm2s.put("", std::to_string(dma_mm2s_status.current_bd));
-    current_bd_mm2s_array.push_back(std::make_pair("", bd_mm2s));
-    bd_s2mm.put("", std::to_string(dma_s2mm_status.current_bd));
-    current_bd_s2mm_array.push_back(std::make_pair("", bd_mm2s));
+    mm2s_channels.push_back(std::make_pair("", mm2s_channel));
+    s2mm_channels.push_back(std::make_pair("", s2mm_channel));
   }
 
-  dma_pt.add_child("channel_status.mm2s", channel_status_mm2s_array);
-  dma_pt.add_child("channel_status.s2mm", channel_status_s2mm_array);
-
-  dma_pt.add_child("queue_size.mm2s", queue_size_mm2s_array);
-  dma_pt.add_child("queue_size.s2mm", queue_size_s2mm_array);
-
-  dma_pt.add_child("queue_status.mm2s", queue_status_mm2s_array);
-  dma_pt.add_child("queue_status.s2mm", queue_status_s2mm_array);
-
-  dma_pt.add_child("current_bd.mm2s", current_bd_mm2s_array);
-  dma_pt.add_child("current_bd.s2mm", current_bd_s2mm_array);
+  dma_pt.add_child("mm2s_channels", mm2s_channels);
+  dma_pt.add_child("s2mm_channels", s2mm_channels);
 
   return dma_pt;
 }
@@ -303,20 +456,17 @@ populate_dma(const std::vector<aie_dma_status>& dma, aie_tile_type tile_type)
 static bpt::ptree
 populate_locks(const std::vector<uint8_t>& locks)
 {
-  bpt::ptree lock_pt;
+  bpt::ptree pt_locks;
 
-  for (uint32_t i = 0; i < locks.size(); i++)
-  {
-    bpt::ptree lock;
-    bpt::ptree lock_array;
-      
-    lock.put("", locks[i] & lock_mask);
-    lock_array.push_back(std::make_pair("", lock));
+  for (uint32_t i = 0; i < locks.size(); i++) {
+    bpt::ptree pt_lock;
 
-    lock_pt.add_child(std::to_string(i), lock_array);
+    pt_lock.put("id", std::to_string(i));
+    pt_lock.put("events", locks[i] & lock_mask);
+    pt_locks.push_back(std::make_pair("", pt_lock));
   }
 
-  return lock_pt;
+  return pt_locks;
 }
 
 static std::vector<std::string>
@@ -343,15 +493,6 @@ core_status_to_string_array(uint32_t status)
 /* Functions related to Core Tile */
 uint64_t
 aie_core_tile_status::
-size()
-{
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * core_mode_events.size() +
-      sizeof(uint32_t) * core_mode_events.size() + sizeof(uint8_t) * lock_value.size() + 
-      sizeof(uint32_t) * 4 /*(cs,pc,sp,lr)*/;
-}
-
-uint64_t
-aie_core_tile_status::
 size(const aie_tiles_info& info)
 {
   return sizeof(aie_dma_status) * info.core_dma_channels + sizeof(uint32_t) * info.core_events * 2 /*core, mem mode*/ +
@@ -369,9 +510,8 @@ size(const aie_tiles_info& info)
 // |-----------------------------------|
 // |          .........                |  col N
 // +-----------------------------------+
-void
-aie_core_tile_status::
-parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+static void
+parse_core_tile_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
   auto buf = raw_buf.data();
 
@@ -430,87 +570,28 @@ get_core_tile_info(const aie_core_tile_status& core)
   bpt::ptree pt;
   bpt::ptree core_pt;
   bpt::ptree status_array;
-  bpt::ptree tmp;
-  bpt::ptree tmp_array;
 
-  auto status_vec = core_status_to_string_array(core.core_status);
-  for (auto &x : status_vec) {
-    if (x.empty())
+  for (const auto& status_str : core_status_to_string_array(core.core_status)) {
+    if (status_str.empty())
       continue;
     bpt::ptree status_pt;
-    status_pt.put("", x);
+    status_pt.put("", status_str);
     status_array.push_back(std::make_pair("", status_pt));
   }
   core_pt.add_child("status", status_array);
 
-  // fill program counter as array
-  tmp.put("", (boost::format("0x%08x") % core.program_counter).str());
-  tmp_array.push_back(std::make_pair("", tmp));
-  core_pt.add_child("pc", tmp_array);
-
-  // fill stack pointer as array
-  tmp_array = {};
-  tmp.put("", (boost::format("0x%08x") % core.stack_ptr).str());
-  tmp_array.push_back(std::make_pair("", tmp));
-  core_pt.add_child("sp", tmp_array);
-
-  // fill link register as array
-  tmp_array = {};
-  tmp.put("", (boost::format("0x%08x") % core.link_reg).str());
-  tmp_array.push_back(std::make_pair("", tmp));
-  core_pt.add_child("lr", tmp_array);
+  core_pt.put("pc", (boost::format("0x%08x") % core.program_counter).str());
+  core_pt.put("sp", (boost::format("0x%08x") % core.stack_ptr).str());
+  core_pt.put("lr", (boost::format("0x%08x") % core.link_reg).str());
 
   pt.add_child("core", core_pt);
-
-  // fill DMA status
-  auto dma_pt = populate_dma(core.dma, aie_tile_type::core);
-  pt.add_child("dma", dma_pt);
-
-  // fill Lock's info
-  auto lock_pt = populate_locks(core.lock_value);
-  pt.add_child("lock", lock_pt);
+  pt.add_child("dma", populate_dma(core.dma, aie_tile_type::core));
+  pt.add_child("locks", populate_locks(core.lock_value));
 
   return pt;
 }
 
-bpt::ptree
-aie_core_tile_status::
-format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
-              uint32_t cols_filled)
-{
-  bpt::ptree pt_array;
-  uint32_t col_count = 0;
-
-  for (uint32_t col = 0; col < cols; col++) {
-    // check if this col is filled else skip
-    if (!(cols_filled & (1 << col)))
-      continue;
-
-    for (uint32_t row = 0; row < tiles_info.core_rows; row++) {
-      bpt::ptree pt = get_core_tile_info(aie_status[col_count].core_tiles[row]);
-      pt.put("col", col);
-      pt.put("row", row + tiles_info.core_row_start);
-
-      pt_array.push_back(std::make_pair(std::to_string(col) + "_" +
-          std::to_string(row + tiles_info.core_row_start), pt));
-    }
-    col_count++;
-  }
-
-  bpt::ptree pt_aie_core;
-  pt_aie_core.add_child("aie_core", pt_array);  
-  return pt_aie_core;
-}
-
 /* Functions related to Mem Tile */
-uint64_t
-aie_mem_tile_status::
-size()
-{
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * events.size() +
-      sizeof(uint8_t) * lock_value.size();
-}
-
 uint64_t
 aie_mem_tile_status::
 size(const aie_tiles_info& info)
@@ -521,9 +602,8 @@ size(const aie_tiles_info& info)
 
 // Convert Raw buffer data received from driver to mem tile status
 // Sanity checks on buffer size is done in previous calls, so there will be no overflow
-void
-aie_mem_tile_status::
-parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+static void
+parse_mem_tile_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
   auto buf = raw_buf.data();
 
@@ -564,49 +644,12 @@ get_mem_tile_info(const aie_mem_tile_status& mem)
 
   //fill Lock's info
   auto lock_pt = populate_locks(mem.lock_value);
-  pt.add_child("lock", lock_pt);
+  pt.add_child("locks", lock_pt);
 
   return pt;
 }
 
-bpt::ptree
-aie_mem_tile_status::
-format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
-              uint32_t cols_filled)
-{
-  bpt::ptree pt_array;
-  uint32_t col_count = 0;
-   
-  for (uint32_t col = 0; col < cols; col++) {
-    // check if this col is filled else skip
-    if (!(cols_filled & (1 << col)))
-      continue;
-
-    for (uint32_t row = 0; row < tiles_info.mem_rows; row++) {
-      bpt::ptree pt = get_mem_tile_info(aie_status[col_count].mem_tiles[row]);
-      pt.put("col", col);
-      pt.put("row", row + tiles_info.mem_row_start);
-
-      pt_array.push_back(std::make_pair(std::to_string(col) + "_" + 
-          std::to_string(row + tiles_info.mem_row_start), pt));
-    }
-    col_count++;
-  }
-    
-  bpt::ptree pt_aie_mem;
-  pt_aie_mem.add_child("aie_mem", pt_array);
-  return pt_aie_mem;
-}
-
 /* Functions related to Shim Tile */
-uint64_t
-aie_shim_tile_status::
-size()
-{
-  return sizeof(aie_dma_status) * dma.size() + sizeof(uint32_t) * events.size() +
-     sizeof(uint8_t) * lock_value.size();
-}
-
 uint64_t
 aie_shim_tile_status::
 size(const aie_tiles_info& info)
@@ -617,9 +660,8 @@ size(const aie_tiles_info& info)
 
 // Convert Raw buffer data received from driver to shim tile status
 // Sanity checks on buffer size is done in previous calls, so there will be no overflow
-void
-aie_shim_tile_status::
-parse_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
+static void
+parse_shim_tile_buf(const std::vector<char>& raw_buf, const aie_tiles_info& info, std::vector<aie_tiles_status>& aie_status)
 {
   auto buf = raw_buf.data();
 
@@ -657,53 +699,24 @@ get_shim_tile_info(const aie_shim_tile_status& shim)
 
   //fill Lock's info
   auto lock_pt = populate_locks(shim.lock_value);
-  pt.add_child("lock", lock_pt);
+  pt.add_child("locks", lock_pt);
 
   return pt;
-}
-
-bpt::ptree
-aie_shim_tile_status::
-format_status(const std::vector<aie_tiles_status>& aie_status, uint32_t cols, const aie_tiles_info& tiles_info,
-              uint32_t cols_filled)
-{
-  bpt::ptree pt_array;
-  uint32_t col_count = 0;
-  
-  for (uint32_t col = 0; col < cols; col++) {
-    // check if this col is filled else skip
-    if (!(cols_filled & (1 << col)))
-      continue;
-
-    for (uint32_t row = 0; row < tiles_info.shim_rows; row++) {
-      bpt::ptree pt = get_shim_tile_info(aie_status[col_count].shim_tiles[row]);
-      pt.put("col", col);
-      pt.put("row", row + tiles_info.shim_row_start);
-
-      pt_array.push_back(std::make_pair(std::to_string(col) + "_" + 
-                         std::to_string(row + tiles_info.shim_row_start), pt));
-    }
-    col_count++;
-  }
-    
-  bpt::ptree pt_aie_shim;
-  pt_aie_shim.add_child("aie_shim", pt_array);
-  return pt_aie_shim;
 }
 
 /* Common functions*/
 static void
 aie_status_version_check(uint16_t major_ver, uint16_t minor_ver)
 {
-  if (!((major_ver == asd_parser::aie_status_version_major) && (minor_ver == asd_parser::aie_status_version_minor)))
-    throw std::runtime_error("Aie status version mismatch");
+  if (!((major_ver == aie2::aie_status_version_major) && (minor_ver == aie2::aie_status_version_minor)))
+    throw std::runtime_error("AIE status version mismatch");
 }
 
 static void
 aie_info_sanity_check(const aie_tiles_info& info)
 {
   if (info.col_size == 0)
-    throw std::runtime_error("Getting Aie column size info from driver failed\n");
+    throw std::runtime_error("Getting AIE column size info from driver failed\n");
 
   // calculate single column size using aie_tiles_info
   uint64_t calculated_size = aie_core_tile_status::size(info) * info.core_rows +
@@ -714,67 +727,119 @@ aie_info_sanity_check(const aie_tiles_info& info)
     throw std::runtime_error("calculated size doesnot match size information from driver, version mismatch\n");
 }
 
-boost::property_tree::ptree
-get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type)
-{
-  aie_tiles_info info{0};
-  uint32_t cols_filled = 0;
 
-  return get_formated_tiles_info(device, tile_type, info, cols_filled);
+struct aie_status {
+  std::vector<aie_tiles_status> status;
+  uint32_t columns_filled;
+};
+
+static aie_status
+get_aie_data(const xrt_core::device* device, const aie_tiles_info& info, aie_tile_type tile_type)
+{
+  xrt_core::query::aie_tiles_status_info::parameters arg{0};
+  arg.max_num_cols = info.cols;
+  arg.col_size = info.col_size;
+
+  auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
+  if (tiles_status.cols_filled == 0)
+    throw std::runtime_error("No open HW-Context\n");
+
+  std::vector<aie2::aie_tiles_status> aie_status;
+
+  // Allocate an entry for each active column
+  // See core/xrt/src/runtime_src/core/common/design_notes.md entry 1
+  uint32_t cols_filled = tiles_status.cols_filled;
+  while (cols_filled) {
+    if (cols_filled & 0x1)
+      aie_status.emplace_back(info);
+
+    cols_filled >>= 1;
+  }
+
+  switch (tile_type) {
+    case aie_tile_type::core:
+      parse_core_tile_buf(tiles_status.buf, info, aie_status);
+      break;
+    case aie_tile_type::shim:
+      parse_shim_tile_buf(tiles_status.buf, info, aie_status);
+      break;
+    case aie_tile_type::mem:
+      parse_mem_tile_buf(tiles_status.buf, info, aie_status);
+      break;
+    default :
+      throw std::runtime_error("Unknown tile type in formatting AIE tiles status info");
+  }
+
+  struct aie_status result;
+  result.status = aie_status;
+  result.columns_filled = tiles_status.cols_filled;
+  return result;
+}
+
+static bpt::ptree
+format_status(const xrt_core::device* device, const aie_tiles_info& info, const aie_tile_type tile_type)
+{
+  bpt::ptree pt_aie_core;
+  bpt::ptree pt_cols;
+
+  const auto aie_data = get_aie_data(device, info, tile_type);
+
+  uint32_t active_columns = 0;
+  for (uint16_t col = 0; col < info.cols; col++) {
+    bpt::ptree pt_col;
+
+    // See core/xrt/src/runtime_src/core/common/design_notes.md entry 1
+    pt_col.put("col", col);
+    if (!(aie_data.columns_filled & (1 << col))) {
+      pt_col.put("status", "inactive");
+      pt_cols.push_back(std::make_pair("", pt_col));
+      continue;
+    }
+    pt_col.put("status", "active");
+
+    bpt::ptree pt_tiles;
+    for (uint16_t row = 0; row < info.get_tile_count(tile_type); row++) {
+      bpt::ptree pt_tile;
+      switch (tile_type) {
+        case aie_tile_type::core:
+          pt_tile = get_core_tile_info(aie_data.status[active_columns].core_tiles[row]);
+          break;
+        case aie_tile_type::shim:
+          pt_tile = get_shim_tile_info(aie_data.status[active_columns].shim_tiles[row]);
+          break;
+        case aie_tile_type::mem:
+          pt_tile = get_mem_tile_info(aie_data.status[active_columns].mem_tiles[row]);
+          break;
+      }
+      pt_tile.put("row", row + info.get_tile_start(tile_type));
+
+      pt_tiles.push_back(std::make_pair("", pt_tile));
+    }
+    pt_col.add_child("tiles", pt_tiles);
+    pt_cols.push_back(std::make_pair("", pt_col));
+
+    active_columns++;
+  }
+
+  pt_aie_core.add_child("columns", pt_cols);
+  return pt_aie_core;
 }
 
 boost::property_tree::ptree
-get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type, aie_tiles_info& info,
-                        uint32_t& cols_filled)
+get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type)
 {
   boost::property_tree::ptree pt;
   try {
-    // Get Aie status version and check compatibility
     auto version = xrt_core::device_query<xrt_core::query::aie_status_version>(device);
     aie_status_version_check(version.major, version.minor);
 
-    // Get Aie tiles metadata info from driver
-    info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
-    // verify version to check consistency of aie_tiles_info struct with firmware
-    if (!((info.major == asd_parser::aie_tiles_info_version_major) && (info.minor == asd_parser::aie_tiles_info_version_minor)))
+    const auto info = xrt_core::device_query<xrt_core::query::aie_tiles_stats>(device);
+    if (!((info.major == aie2::aie_tiles_info_version_major) && (info.minor == aie2::aie_tiles_info_version_minor)))
       throw std::runtime_error("version mismatch for aie_tiles_info structure");
 
-    // sanity checks
     aie_info_sanity_check(info);
-  
-    // Get Aie column status from driver
-    xrt_core::query::aie_tiles_status_info::parameters arg{0};
-    arg.max_num_cols = info.cols;
-    arg.col_size = info.col_size;
 
-    auto tiles_status = xrt_core::device_query<xrt_core::query::aie_tiles_status_info>(device, arg);
-    cols_filled = tiles_status.cols_filled;
-
-    if (cols_filled == 0)
-      throw std::runtime_error("No open HW-Context\n");
-
-    std::vector<asd_parser::aie_tiles_status> aie_status;
-    // convert buffer into respective structure and format
-    switch (tile_type) {
-      case aie_tile_type::core :
-        aie_status = parse_data_from_buf<aie_core_tile_status>(tiles_status.buf, info, cols_filled);
-        pt = format_aie_info<aie_core_tile_status>(aie_status, info.cols, info, cols_filled);
-
-        // fill version info for core tile which is used in top layer
-        pt.put("schema_version.major", version.major);
-        pt.put("schema_version.minor", version.minor);
-        break;
-      case aie_tile_type::shim :
-        aie_status = parse_data_from_buf<aie_shim_tile_status>(tiles_status.buf, info, cols_filled);
-        pt = format_aie_info<aie_shim_tile_status>(aie_status, info.cols, info, cols_filled);
-        break;
-      case aie_tile_type::mem :
-        aie_status = parse_data_from_buf<aie_mem_tile_status>(tiles_status.buf, info, cols_filled);
-        pt = format_aie_info<aie_mem_tile_status>(aie_status, info.cols, info, cols_filled);
-        break;
-      default :
-        throw std::runtime_error("Unknown tile type in formatting Aie tiles status info");
-    }
+    pt = format_status(device, info, tile_type);
   }
   catch (const std::exception&) {
     return pt;
@@ -782,4 +847,3 @@ get_formated_tiles_info(const xrt_core::device* device, aie_tile_type tile_type,
   return pt;
 }
 }
-

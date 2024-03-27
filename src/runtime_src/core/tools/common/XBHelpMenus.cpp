@@ -314,8 +314,17 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     ptDevice.put("interface_type", "pcie");
     ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
 
-    const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(device, 2);
-    ptDevice.put("device_status", xrt_core::query::device_status::parse_status(device_status));
+    switch (xrt_core::device_query_default<xrt_core::query::device_class>(device, xrt_core::query::device_class::type::alveo)) {
+    case xrt_core::query::device_class::type::alveo:
+    {
+      const auto device_status = xrt_core::device_query_default<xrt_core::query::device_status>(device, 2);
+      ptDevice.put("device_status", xrt_core::query::device_status::parse_status(device_status));
+      break;
+    }
+    case xrt_core::query::device_class::type::ryzen:
+      // Ryzen devices do not have a concept of device status. They work or they dont.
+      break;
+    }
 
     bool is_mfg = false;
     try {
