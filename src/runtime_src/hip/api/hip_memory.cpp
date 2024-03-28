@@ -11,12 +11,12 @@
 
 namespace xrt::core::hip
 {
+  // TODO: Replace below API with device level API to get the device
   static std::shared_ptr<device>
   get_current_device()
   {
-    // TODO: get REAL current hip device
     auto dev = device_cache.get(0);
-    if (dev == nullptr) {
+    if (!dev) {
       if (hipInit(0) != hipSuccess)
         throw std::runtime_error("hipInit() failed!");
       dev = device_cache.get(0);
