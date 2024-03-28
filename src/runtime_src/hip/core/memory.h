@@ -41,24 +41,22 @@ namespace xrt::core::hip
 
     // allocate from user host buffer
     memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, void *host_mem, unsigned int flags);
-
-    void
-    sync(xclBOSyncDirection);
-
-    void
-    write(const memory *src, size_t size, size_t src_offset = 0, size_t offset = 0);
+    
+    void*
+    get_address() const;
+    
+    void*
+    get_device_address() const;
 
     void
     write(const void *src, size_t size, size_t src_offset = 0, size_t offset = 0);
 
     void
     read(void *dst, size_t size, size_t dst_offset = 0, size_t offset = 0) const;
+    
+    void
+    sync(xclBOSyncDirection);
 
-    void*
-    get_address();
-
-    void*
-    get_mapped_address();
 
     std::shared_ptr<xrt::bo>
     get_xrt_bo() const
@@ -77,12 +75,18 @@ namespace xrt::core::hip
     {
       return m_type;
     }
+    
+    int
+    get_size() const
+    {
+      return m_size;
+    }
 
   private:
     std::shared_ptr<device>  m_device;
     size_t m_size;
     memory_type m_type;
-    unsigned int m_flags; // hipHostMallocMapped etc.
+    unsigned int m_flags;
     std::shared_ptr<xrt::bo> m_bo;
 
     void
@@ -112,7 +116,7 @@ using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz
 class memory_database
 {
 private:
-    addr_map m_AddrMap;
+    addr_map m_addr_map;
 
 protected:
     memory_database();
@@ -126,10 +130,10 @@ public:
     instance();
 
     void
-    insert_addr(uint64_t addr, size_t size, std::shared_ptr<memory> hip_mem);
+    insert(uint64_t addr, size_t size, std::shared_ptr<memory> hip_mem);
 
     void
-    delete_addr(uint64_t addr);
+    remove(uint64_t addr);
 
     std::shared_ptr<xrt::core::hip::memory>
     get_hip_mem_from_addr(void* addr);

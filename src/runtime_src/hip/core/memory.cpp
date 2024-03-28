@@ -39,9 +39,9 @@ namespace xrt::core::hip
     {
       assert(m_device);
 
-      // user ptr BO is not supported on NPU Linux driver, hence sync between host_mem and internal xrt::bo object is required before and after kernel run
-      // TODO: set m_sync_host_mem_required to true for device that support user ptr BO
-      init_xrt_bo();
+      // TODO: useptr is not supported in NPU. 
+      auto xrt_device = m_device->get_xrt_device();
+      m_bo = std::make_shared<xrt::ext::bo>(xrt_device, host_mem, m_size);
     }
 
   memory::memory(std::shared_ptr<device> dev, size_t sz, unsigned int flags)
@@ -54,11 +54,9 @@ namespace xrt::core::hip
     assert(m_device);
 
     switch (m_flags) {
+      // TODO Need to create locked memory for Default and Portable flags. Creating a regular BO for now
       case hipHostMallocDefault:
       case hipHostMallocPortable:
-	// TODO need to add funtionality to create locked memory
-        break;
-
       case hipHostMallocMapped:
       case hipHostMallocWriteCombined:
         init_xrt_bo();
@@ -69,52 +67,41 @@ namespace xrt::core::hip
     }
   }
 
-  void
-  memory::init_xrt_bo()
-  {
-    auto xrt_device = m_device->get_xrt_device();
-    m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
-  }
-
-  void
-  memory::sync(xclBOSyncDirection direction)
-  {
-    assert(m_bo);
-    m_bo->sync(direction);
-  }
-
   void*
-  memory::get_address()
+  memory::get_address() const
   {
-    if (m_bo != nullptr)
+    if (!m_bo)
+      return nullptr;
+
+    if (get_type() == memory_type::device)
       return reinterpret_cast<void *>(m_bo->address());
-
-    return nullptr;
-  }
-
-  void*
-  memory::get_mapped_address()
-  {
-    if (m_bo != nullptr)
+    else if (get_type() == memory_type::host || get_type() == memory_type::registered)
       return m_bo->map();
 
     return nullptr;
+  }
+  
+  void*
+  memory::get_device_address() const
+  {
+    if (!m_bo)
+      return nullptr;
+
+    return reinterpret_cast<void *>(m_bo->address());
   }
 
   void
   memory::write(const void *src , size_t size, size_t src_offset, size_t offset)
   {
     auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
-    if (src_hip_mem != nullptr && src_hip_mem->get_type() == memory_type::host) {
+    if (src_hip_mem && src_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
-
-        // TODO: get better performance by avoiding two step copy in case of copying from pinned host mem
     }
 
     const unsigned char *src_ptr = reinterpret_cast<const unsigned char *>(src);
     src_ptr += src_offset;
-    if (m_bo != nullptr) {
+    if (m_bo) {
       m_bo->write(src_ptr, size, offset);
       m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
@@ -124,19 +111,30 @@ namespace xrt::core::hip
   memory::read(void *dst, size_t size, size_t dst_offset, size_t offset) const
   {
     auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
-    if (dst_hip_mem != nullptr &&
-        dst_hip_mem->get_type() == memory_type::host) {
+    if (dst_hip_mem != nullptr && dst_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
         assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
-
-        // TODO: get better performance by avoiding two step copy in case of copying from pinned host mem
     }
     unsigned char *dst_ptr = reinterpret_cast<unsigned char *>(dst);
     dst_ptr += dst_offset;
-    if (m_bo != nullptr) {
+    if (m_bo) {
       m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       m_bo->read(dst_ptr, size, offset);
     }
+  }
+  
+  void
+  memory::sync(xclBOSyncDirection direction)
+  {
+    assert(m_bo);
+    m_bo->sync(direction);
+  }
+  
+  void
+  memory::init_xrt_bo()
+  {
+    auto xrt_device = m_device->get_xrt_device();
+    m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -145,17 +143,15 @@ namespace xrt::core::hip
   memory_database& memory_database::instance()
   {
     if (!m_memory_database)
-    {
       static memory_database mem_db;
-    }
+
     return *m_memory_database;
   }
 
   memory_database::memory_database()
-      : m_AddrMap()
+      : m_addr_map()
   {
-    if (m_memory_database)
-    {
+    if (m_memory_database) {
       throw std::runtime_error
         ("Multiple instances of hip memory_database detected, only one\n"
         "can be loaded at any given time.");
@@ -165,26 +161,26 @@ namespace xrt::core::hip
 
   memory_database::~memory_database()
   {
-    m_AddrMap.clear();
+    m_addr_map.clear();
   }
 
   void
-  memory_database::insert_addr(uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
+  memory_database::insert(uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
   {
-    m_AddrMap.insert({address_range_key(addr, size), hip_mem});
+    m_addr_map.insert({address_range_key(addr, size), hip_mem});
   }
 
   void
-  memory_database::delete_addr(uint64_t addr)
+  memory_database::remove(uint64_t addr)
   {
-    m_AddrMap.erase(address_range_key(addr, 0));
+    m_addr_map.erase(address_range_key(addr, 0));
   }
 
   std::shared_ptr<xrt::core::hip::memory>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
-    auto itr = m_AddrMap.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
-    if (itr == m_AddrMap.end()) {
+    auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
+    if (itr == m_addr_map.end()) {
       return nullptr;
     }
     else {
@@ -195,8 +191,8 @@ namespace xrt::core::hip
   std::shared_ptr<const xrt::core::hip::memory>
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
-    auto itr = m_AddrMap.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
-    if (itr == m_AddrMap.end()) {
+    auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
+    if (itr == m_addr_map.end()) {
       return nullptr;
     }
     else {
