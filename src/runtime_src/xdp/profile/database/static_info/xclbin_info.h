@@ -210,9 +210,9 @@ namespace xdp {
 
     bool containsXclbin(xrt_core::uuid& uuid) ; 
 
-    XclbinInfo* getPlXclbin() ;
+    XDP_CORE_EXPORT XclbinInfo* getPlXclbin() ;
     XclbinInfo* getAieXclbin() ;
-    std::string getXclbinNames() ;
+    XDP_CORE_EXPORT std::string getXclbinNames() ;
 
     bool isAiePlusPl() ;
     bool isAieOnly();
