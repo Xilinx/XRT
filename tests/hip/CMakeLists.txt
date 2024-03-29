@@ -39,7 +39,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 endif()
 
-include_directories(${HIP_INCLUDE_DIRS})
+include_directories(${HIP_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/common" )
 
 add_subdirectory(device)
 add_subdirectory(vadd)
