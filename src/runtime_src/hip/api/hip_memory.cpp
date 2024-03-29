@@ -11,17 +11,14 @@
 
 namespace xrt::core::hip
 {
+  // TODO: Replace below API with device level API to get the device
   static std::shared_ptr<device>
   get_current_device()
   {
-    // TODO: get REAL current hip device
     auto dev = device_cache.get(0);
-    if (dev == nullptr)
-    {
+    if (!dev) {
       if (hipInit(0) != hipSuccess)
-      {
         throw std::runtime_error("hipInit() failed!");
-      }
       dev = device_cache.get(0);
     }
     return dev;
@@ -37,17 +34,14 @@ namespace xrt::core::hip
     auto dev = get_current_device();
     assert(dev);
 
+    *ptr = nullptr;
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size);
-    auto dev_addr = hip_mem->get_addr(address_type::hip_address_type_device);
-    if (dev_addr != 0)
-    {
-      memory_database::instance().insert_addr(address_type::hip_address_type_device, reinterpret_cast<uint64_t>(dev_addr), size, hip_mem);
-      *ptr = reinterpret_cast<void* >(dev_addr);
-      return;
-    }
-    auto host_addr = hip_mem->get_addr(address_type::hip_address_type_host);
-    memory_database::instance().insert_addr(address_type::hip_address_type_host, reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
-    *ptr = host_addr;
+    auto address = hip_mem->get_address();
+    if (!address)
+      throw xrt_core::system_error(hipErrorOutOfMemory, "Error allocating memory using hipMalloc");
+      
+    memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, hip_mem);
+    *ptr = reinterpret_cast<void* >(address);
   }
 
   // Allocates device accessible host memory.
@@ -60,108 +54,155 @@ namespace xrt::core::hip
     auto dev = get_current_device();
     assert(dev);
 
+    *ptr = nullptr;
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, flags);
-    auto host_addr = hip_mem->get_addr(address_type::hip_address_type_host);
-    memory_database::instance().insert_addr(address_type::hip_address_type_host, reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
-    *ptr = host_addr;
+    auto address = hip_mem->get_address();
+    if (!address)
+      throw xrt_core::system_error(hipErrorOutOfMemory, "Error allocating memory using hipHostMalloc");
+      
+    memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, hip_mem);
+    *ptr = address;
   }
-
-  // Free memory allocated by the hipHostMalloc().
+  
+  // Register host memory so it can be accessed from the current device.
   static void
-  hip_host_free(void* ptr)
+  hip_host_register(void* host_ptr, size_t size, unsigned int flags)
   {
-    memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
+    auto dev = get_current_device();
+    assert(dev);
+    assert(host_ptr);
+
+    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
+    auto host_addr = hip_mem->get_address();
+    if (!host_addr)
+      throw xrt_core::system_error(hipErrorOutOfMemory, "Error registering the host memory using hipHostRegister");
+
+    memory_database::instance().insert(reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
+  }
+  
+  // Get Device pointer from Host Pointer allocated through hipHostMalloc().
+  static void
+  hip_host_get_device_pointer(void** device_ptr, void* host_ptr, unsigned int flags)
+  {
+    assert(device_ptr);
+
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr);
+    if (!hip_mem)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Error getting device pointer from host_malloced memory");
+
+    if (hip_mem->get_flags != hipHostMallocMapped )
+      throw xrt_core::system_error(hipErrorInvalidValue, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag");
+
+    *device_ptr = nullptr;
+    if (hip_mem) {
+      *device_ptr = hip_mem->get_device_address();
+      // If device adddress is differrent than host address, insert it into database
+      if (*device_ptr && *device_ptr != host_ptr)
+        memory_database::instance().insert(reinterpret_cast<uint64_t>(*device_ptr), hip_mem->get_size(), hip_mem);
+    }
   }
 
   // Free memory allocated by the hipMalloc().
   static void
   hip_free(void* ptr)
   {
-    memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(ptr));
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
+    if (!hip_mem || hip_mem->get_type() != memory_type::device)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid handle passed to hipFree");
+
+    memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
-
-  // Register host memory so it can be accessed from the current device.
+  
+  // Free memory allocated by the hipHostMalloc().
   static void
-  hip_host_register(void* hostPtr, size_t size, unsigned int flags)
+  hip_host_free(void* ptr)
   {
-    auto dev = get_current_device();
-    assert(dev);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
+    if (!hip_mem || hip_mem->get_type() != memory_type::host)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid handle passed to hipHostFree");
 
-    auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, hostPtr, flags);
-    auto host_addr = hip_mem->get_addr(address_type::hip_address_type_host);
-    memory_database::instance().insert_addr(address_type::hip_address_type_host, reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
+    auto device_addr = hip_mem->get_device_address();
+    // if device address is differrent than host address, remove it from the map
+    if ( device_addr && device_addr != ptr)
+      memory_database::instance().remove(reinterpret_cast<uint64_t>(device_addr));
+
+    memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
 
   // Un-register host pointer.
   static void
-  hip_host_unregister(void* hostPtr)
+  hip_host_unregister(void* host_ptr)
   {
-    memory_database::instance().delete_addr(reinterpret_cast<uint64_t>(hostPtr));
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr);
+    if (!hip_mem || hip_mem->get_type() != memory_type::registered)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid handle passed to hipHostUnregister");
+
+    memory_database::instance().remove(reinterpret_cast<uint64_t>(host_ptr));
   }
 
-  // Get Device pointer from Host Pointer allocated through hipHostMalloc().
-  static void
-  hip_host_get_device_pointer(void** devPtr, void* hstPtr, unsigned int flags)
-  {
-    assert(devPtr);
 
-    *devPtr = nullptr;
-    auto hip_mem = memory_database::instance().get_hip_mem_from_host_addr(hstPtr);
-    if (hip_mem != nullptr)
-    {
-      *devPtr = hip_mem->get_addr(address_type::hip_address_type_device);
+  static void
+  hip_memcpy_host2device(void* dst, const void* src, size_t size)
+  {
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
+    if (!hip_mem)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpy");
+
+    if (hip_mem) {
+      auto address = hip_mem->get_address();
+      auto offset = reinterpret_cast<uint64_t>(dst) - reinterpret_cast<uint64_t>(address);
+      hip_mem->write(src, size, 0, offset);
     }
   }
 
   static void
-  hip_memcpy_host2device(void* dst, const void* src, size_t sizeBytes)
+  hip_memcpy_host2host(void* dst, const void* src, size_t size)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
-    hip_mem->copy_from(src, sizeBytes);
+    // TODO src and dst can be hip memories. Handle that case too
+    memcpy(dst, src, size);
   }
 
   static void
-  hip_memcpy_host2host(void* dst, const void* src, size_t sizeBytes)
-  {
-    memcpy(dst, src, sizeBytes);
-  }
-
-  static void
-  hip_memcpy_device2host(void* dst, const void* src, size_t sizeBytes)
+  hip_memcpy_device2host(void* dst, const void* src, size_t size)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
-    hip_mem->copy_to(dst, sizeBytes);
+    if (!hip_mem)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid src handle in hipMemCpy");
+
+    auto address = hip_mem->get_address();
+    auto offset = reinterpret_cast<uint64_t>(src) - reinterpret_cast<uint64_t>(address);
+    hip_mem->read(dst, size, 0, offset);
   }
 
   static void
-  hip_memcpy_device2device(void* dst, const void* src, size_t sizeBytes)
+  hip_memcpy_device2device(void* dst, const void* src, size_t size)
   {
-    auto hip_mem_src = memory_database::instance().get_hip_mem_from_addr(src);
     auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
+    if (!hip_mem_dst)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpy");
 
-    hip_mem_dst->copy_from(hip_mem_src.get(), sizeBytes);
+    hip_mem_dst->write(src, size);
   }
 
-  // Copy data from src to dst.
   static void
-  hip_memcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind)
+  hip_memcpy(void* dst, const void* src, size_t size, hipMemcpyKind kind)
   {
     switch (kind)
     {
       case hipMemcpyHostToDevice:
-        hip_memcpy_host2device(dst, src, sizeBytes);
+        hip_memcpy_host2device(dst, src, size);
         break;
 
       case hipMemcpyDeviceToHost:
-        hip_memcpy_device2host(dst, src, sizeBytes);
+        hip_memcpy_device2host(dst, src, size);
         break;
 
       case hipMemcpyDeviceToDevice:
-        hip_memcpy_device2device(dst, src, sizeBytes);
+        hip_memcpy_device2device(dst, src, size);
         break;
 
       case hipMemcpyHostToHost:
-        hip_memcpy_host2host(dst, src, sizeBytes);
+        hip_memcpy_host2host(dst, src, size);
         break;
 
       default:
@@ -171,15 +212,15 @@ namespace xrt::core::hip
 
   // fill data to dst.
   static void
-  hip_memset(void* dst, int value, size_t sizeBytes)
+  hip_memset(void* dst, int value, size_t size)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
-    assert(hip_mem->get_type() != xrt::core::hip::memory_type::hip_memory_type_invalid);
+    assert(hip_mem->get_type() != xrt::core::hip::memory_type::invalid);
 
-    auto host_src = aligned_alloc(xrt_core::getpagesize(), sizeBytes);
-    memset(host_src, value, sizeBytes);
+    auto host_src = aligned_alloc(xrt_core::getpagesize(), size);
+    memset(host_src, value, size);
 
-    hip_mem->copy_from(host_src, sizeBytes);
+    hip_mem->write(host_src, size);
 
     free(host_src);
   }
@@ -192,7 +233,12 @@ handle_hip_memory_error(F && f)
   try {
     f();
     return hipSuccess;
-  } catch (const std::exception &ex) {
+  } 
+  catch (const xrt_core::system_error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return static_cast<hipError_t> (ex.value());
+  }
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
@@ -207,7 +253,7 @@ hipMalloc(void** ptr, size_t size)
     *ptr = nullptr;
     return hipSuccess;
   }
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc(ptr, size); });  
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc(ptr, size); });
 }
 
 // Allocates device accessible host memory.
@@ -219,14 +265,14 @@ hipHostMalloc(void** ptr, size_t size, unsigned int flags)
     *ptr = nullptr;
     return hipSuccess;
   }
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_malloc(ptr, size, flags); });  
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_malloc(ptr, size, flags); });
 }
 
 // Free memory allocated by the hipHostMalloc().
 hipError_t
 hipHostFree(void* ptr)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_free(ptr); });  
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_free(ptr); });
 }
 
 // Free memory allocated by the hipMalloc().
@@ -238,35 +284,36 @@ hipFree(void* ptr)
 
 // Register host memory so it can be accessed from the current device.
 hipError_t
-hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
+hipHostRegister(void* host_ptr, size_t size, unsigned int flags)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_register(hostPtr, sizeBytes, flags); });
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_register(host_ptr, size, flags); });
 }
 
 // Un-register host pointer.
 hipError_t
-hipHostUnregister(void* hostPtr)
+hipHostUnregister(void* host_ptr)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_unregister(hostPtr); });
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_unregister(host_ptr); });
 }
 
 // Get Device pointer from Host Pointer allocated through hipHostMalloc.
 hipError_t
-hipHostGetDevicePointer(void** devPtr, void* hstPtr, unsigned int flags)
+hipHostGetDevicePointer(void** device_ptr, void* host_ptr, unsigned int flags)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_get_device_pointer(devPtr, hstPtr, flags); });
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_host_get_device_pointer(device_ptr, host_ptr, flags); });
 }
 
 // Copy data from src to dst.
 hipError_t
-hipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind)
+hipMemcpy(void* dst, const void* src, size_t size, hipMemcpyKind kind)
 {
-   return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy(dst, src, sizeBytes, kind); });
+   return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy(dst, src, size, kind); });
 }
 
-// Fills the first sizeBytes bytes of the memory area pointed to by dest with the constant byte value value.
+// Fills the first size bytes of the memory area pointed to by dest with the constant byte value value.
 hipError_t
-hipMemset(void* dst, int value, size_t sizeBytes)
+hipMemset(void* dst, int value, size_t size)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset(dst, value, sizeBytes); });
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset(dst, value, size); });
 }
+
