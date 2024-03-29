@@ -949,10 +949,10 @@ namespace xdp {
 
         // Delay cycles and user control are not compatible with each other
         // if (metadata->getUseGraphIterator()) {
-        //   if (!configStartIteration(core))
+        //   if (!configureStartIteration(core))
         //     break;
         // } else if (metadata->getUseDelay()) {
-        //   if (!configStartDelay(core))
+        //   if (!configureStartDelay(core))
         //     break;
         // }
 
@@ -1086,11 +1086,17 @@ namespace xdp {
           break;
 
         {
-          uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent);
-          cfgTile->memory_trace_config.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent);
-          cfgTile->memory_trace_config.stop_event = phyEvent;
+          uint8_t phyEvent1 = 0;
+          uint8_t phyEvent2 = 0;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent1);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent2);
+          if (type == module_type::core) {
+            cfgTile->memory_trace_config.start_event = phyEvent1;
+            cfgTile->memory_trace_config.stop_event = phyEvent2;
+          } else {
+            cfgTile->memory_tile_trace_config.start_event = phyEvent1;
+            cfgTile->memory_tile_trace_config.stop_event = phyEvent2;
+          }
         }
 
         // auto ret = memoryTrace->reserve();
