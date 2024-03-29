@@ -575,7 +575,7 @@ namespace xdp {
           XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = streamPortId;
+          config.port_trace_ids[portnum] = ((portnum % 2) == 0) ? channel0 : channel1;
           config.port_trace_is_master[portnum] = (tile.is_master != 0);
 
           if (aie::isInputSet(type, metricSet)) {
