@@ -62,5 +62,13 @@ get_null_stream()
   insert_in_map(stream_cache, std::move(null_s));
   return m_null_stream.lock();
 }
+
+std::shared_ptr<device>
+get_current_device()
+{
+  auto ctx = get_current_context();
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
+  return ctx->get_device();
+}
 } // xrt::core::hip
 

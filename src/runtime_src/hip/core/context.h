@@ -34,6 +34,12 @@ public:
     return m_device->get_device_id();
   }
 
+  const std::shared_ptr<device>
+  get_device() const
+  {
+    return m_device;
+  }
+
   const xrt::device&
   get_xrt_device() const
   {
@@ -70,6 +76,9 @@ public:
 
 std::shared_ptr<context>
 get_current_context();
+
+std::shared_ptr<device>
+get_current_device();
 
 context_handle
 hip_device_primary_ctx_retain(device_handle dev);
