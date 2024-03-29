@@ -6,24 +6,12 @@
 #include "core/common/unistd.h"
 #include "hip/config.h"
 #include "hip/core/device.h"
+#include "hip/core/context.h"
 #include "hip/core/memory.h"
 #include "hip/hip_runtime_api.h"
 
 namespace xrt::core::hip
 {
-  // TODO: Replace below API with device level API to get the device
-  static std::shared_ptr<device>
-  get_current_device()
-  {
-    auto dev = device_cache.get(0);
-    if (!dev) {
-      if (hipInit(0) != hipSuccess)
-        throw std::runtime_error("hipInit() failed!");
-      dev = device_cache.get(0);
-    }
-    return dev;
-  }
-
   // Allocate memory on the device.
   static void
   hip_malloc(void** ptr, size_t size)
@@ -90,7 +78,7 @@ namespace xrt::core::hip
     if (!hip_mem)
       throw xrt_core::system_error(hipErrorInvalidValue, "Error getting device pointer from host_malloced memory");
 
-    if (hip_mem->get_flags != hipHostMallocMapped )
+    if (hip_mem->get_flags() != hipHostMallocMapped)
       throw xrt_core::system_error(hipErrorInvalidValue, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag");
 
     *device_ptr = nullptr;
