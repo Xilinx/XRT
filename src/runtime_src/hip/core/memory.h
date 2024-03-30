@@ -1,4 +1,4 @@
-// S PDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 #ifndef xrthip_memory_h
 #define xrthip_memory_h
