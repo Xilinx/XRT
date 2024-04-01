@@ -3,6 +3,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_module.h
 #define XRT_API_SOURCE         // exporting xrt_module.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#include "core/common/config_reader.h"
 #include "experimental/xrt_module.h"
 #include "experimental/xrt_elf.h"
 #include "experimental/xrt_ext.h"
@@ -40,6 +41,9 @@ namespace
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
+
+// When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
+static std::string Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 
 struct buf
 {
@@ -808,11 +812,42 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_instr_buf(m_instr_buf, data);
 
+#ifdef _DEBUG
+    if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
+        std::string filename = "instrBo.bin";
+        std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+        if (!ofs.is_open()) {
+            std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
+            abort();
+        }
+        char* buf = static_cast<char*>(m_instr_buf.map());
+        ofs.write((char*)buf, m_instr_buf.size());
+        ofs.close();
+    }
+#endif
+
     if (m_ctrlpkt_buf) {
       // The current assembler uses "mc_code" to represent control-packet
       // buffer. We should change the name to "control-packet" which is not
       // DPU specific. Will change this once assembler fix it.
       patch_instr("mc_code", m_ctrlpkt_buf);
+
+#ifdef _DEBUG
+      if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
+          std::string filename = "instrBoPatchedByCtrlPacket.bin";
+          std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+          if (!ofs.is_open()) {
+              std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
+              abort();
+          }
+          char* buf = static_cast<char*>(m_instr_buf.map());
+          ofs.write((char*)buf, m_instr_buf.size());
+          ofs.close();
+      }
+#endif
+
       XRT_PRINTF("<- module_sram::create_instr_buf()\n");
     }
   }
@@ -834,6 +869,22 @@ class module_sram : public module_impl
 
       // copy instruction into bo
       fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
+
+#ifdef _DEBUG
+      if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
+          std::string filename = "ctrlpktBo.bin";
+          std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+          if (!ofs.is_open()) {
+              std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
+              abort();
+          }
+          char* buf = static_cast<char*>(m_ctrlpkt_buf.map());
+          ofs.write((char*)buf, m_ctrlpkt_buf.size());
+          ofs.close();
+      }
+#endif
+
       XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
     }
   }
