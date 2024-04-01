@@ -407,6 +407,11 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	return xocl_poll_client(filp, wait, priv->driver_priv);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+/* This was removed in 6.8 */
+#define DRM_UNLOCKED 0
+#endif
+
 static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_CREATE_BO, xocl_create_bo_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),

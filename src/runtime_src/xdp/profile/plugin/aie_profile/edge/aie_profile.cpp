@@ -403,6 +403,7 @@ namespace xdp {
       
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : configMetrics) {
+        auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
         auto col         = tile.col;
         auto row         = tile.row;
@@ -415,10 +416,12 @@ namespace xdp {
         if (!aie::profile::isValidType(type, mod))
           continue;
         if (((type == module_type::core) && !tile.active_core)
-            || ((type == module_type::dma) && !tile.active_memory))
-          continue;
+            || ((type == module_type::dma) && !tile.active_memory)) {
+          auto pairModuleIdx = metadata->getPairModuleIndex(metricSet, type);
+          if (pairModuleIdx < 0)
+            continue;
+        }
 
-        auto& metricSet  = tileMetric.second;
         auto loc         = XAie_TileLoc(col, row);
         auto& xaieTile   = aieDevice->tile(col, row);
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()

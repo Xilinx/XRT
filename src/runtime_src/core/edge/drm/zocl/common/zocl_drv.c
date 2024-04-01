@@ -952,6 +952,11 @@ const struct vm_operations_struct zocl_bo_vm_ops = {
 	.close = drm_gem_vm_close,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+/* This was removed in 6.8 */
+#define DRM_UNLOCKED 0
+#endif
+
 static const struct drm_ioctl_desc zocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(ZOCL_CREATE_BO, zocl_create_bo_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
