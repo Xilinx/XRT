@@ -242,12 +242,12 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Make sure it's desired polarity
         // NOTE: input = slave (data flowing from PLIO)
         //       output = master (data flowing to PLIO)
-        if ((metricStr != "ports")
-            && ((isMaster && (metricStr.find("input") != std::string::npos
-                || metricStr.find("mm2s") != std::string::npos))
-            || (!isMaster && (metricStr.find("output") != std::string::npos
-                || metricStr.find("s2mm") != std::string::npos))))
+        if ((isMaster && (metricStr.find("output") == std::string::npos)
+                && (metricStr.find("s2mm") == std::string::npos))
+            || (!isMaster && (metricStr.find("input") == std::string::npos)
+                && (metricStr.find("mm2s") == std::string::npos)))
             continue;
+
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
