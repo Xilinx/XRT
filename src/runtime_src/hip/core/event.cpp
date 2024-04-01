@@ -2,10 +2,10 @@
 // Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 
 #include "event.h"
+#include "memory.h"
 
 namespace xrt::core::hip {
-event::event(std::shared_ptr<stream> s)
-  : command(std::move(s))
+event::event()
 {
   ctype = type::event;
 }
@@ -95,19 +95,43 @@ float event::elapsed_time (const std::shared_ptr<command>& end)
   return millis;
 }
 
-kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> &f, void** args)
+kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
   : command(std::move(s))
+  , func{std::move(f)}
 {
   ctype = type::kernel_start;
-  //xrt::kernel k = f->get_kernel(); TODO
-  xrt::kernel k; // just for compilation purpose we have to get it from function.
-  const auto& m_arginfo = xrt_core::kernel_int::get_args(k);
-  size_t idx = 0;
-  for (auto m_arg : m_arginfo) {
-    xrt_core::kernel_int::set_arg_at_index(r, m_arg->index, args[idx++], m_arg->size);
-  }
+  auto k = func->get_kernel();
+  auto arginfo = std::move(xrt_core::kernel_int::get_args(k));
+
+  // create run object and set args
   r = xrt::run(k);
-  r.start();
+
+  using karg = xrt_core::xclbin::kernel_argument;
+  size_t idx = 0;
+  for (const auto& arg : arginfo) {
+    // non index args are not supported, this condition will not hit in case of HIP
+    if (arg->index == karg::no_index)
+      throw std::runtime_error("function has invalid argument");
+
+    switch (arg->type) {
+      case karg::argtype::scalar :
+        xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
+        break;
+      case karg::argtype::global : {
+        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]);
+        if (!hip_mem)
+          throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
+        r.set_arg(idx, *(hip_mem->get_xrt_bo()));
+        break;
+      }
+      case karg::argtype::constant :
+      case karg::argtype::local :
+      case karg::argtype::stream :
+      default :
+       throw std::runtime_error("function has unsupported arg type");
+    }
+    idx++;
+  }
 }
 
 bool kernel_start::submit()

@@ -13,8 +13,9 @@ namespace xrt::core::hip {
 
 static command_handle hip_event_create()
 {
-  //creat an event shared pointer and attach it to a null stream until hipEventRecord gets called
-  return insert_in_map(command_cache, std::make_shared<event>(nullptr));
+  // Event when created doesn't have any stream associated with it
+  // It is pushed into stream when recorded
+  return insert_in_map(command_cache, std::make_shared<event>());
 }
 
 static void hip_event_destroy(hipEvent_t eve)
