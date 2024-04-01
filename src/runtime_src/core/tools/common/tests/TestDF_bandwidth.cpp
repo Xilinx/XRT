@@ -152,6 +152,11 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
+  //Log
+  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f's") % instr_size));
+  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f's") % buffer_size));
+  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f's") % itr_count));
+
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
@@ -169,7 +174,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
-    busy_bar.finish();
+  busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);

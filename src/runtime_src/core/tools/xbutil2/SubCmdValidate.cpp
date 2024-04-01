@@ -241,6 +241,9 @@ get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
                         boost::property_tree::ptree& ptTree)
 {
   ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+  const auto mode = xrt_core::device_query<xrt_core::query::performance_mode>(device);
+  ptTree.put("performance_mode", xrt_core::query::performance_mode::parse_status(mode));
+  ptTree.put("power", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xrt_core::query::power_microwatts>(device)));
 }
 
 static void
@@ -271,6 +274,12 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   const std::string& plat_id = ptTree.get("platform_id", "");
   if (!plat_id.empty())
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
+  const std::string& perf_mode = ptTree.get("performance_mode", "");
+  if (!perf_mode.empty())
+    oStream << boost::format("    %-22s: %s\n") % "SC Version" % perf_mode;
+  const std::string& power = ptTree.get("power", "");
+  if (!power.empty())
+    oStream << boost::format("    %-22s: %s\n") % "Power" % power;
 }
 
 static test_status
