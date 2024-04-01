@@ -93,56 +93,64 @@ namespace xrt::core::hip
     init_xrt_bo();
   };
 
-class address_range_key
-{
-public:
+  class address_range_key
+  {
+  public:
     address_range_key() : address(0), size(0) {}
     address_range_key(uint64_t addr, size_t sz) : address(addr), size(sz) {}
 
     uint64_t    address;
     size_t      size;
-};
+  };
 
-struct address_sz_key_compare
-{
+  struct address_sz_key_compare
+  {
     bool operator() (const address_range_key& lhs, const address_range_key& rhs) const
     {
-        return ((lhs.address + lhs.size)  < rhs.address);
+      // The keys a and b are equivalent by definition when neither a < b nor b < a is true
+      if (lhs.address == rhs.address)
+        return false;
+      
+      // Example to explain why "-1" is mandatory in below calculation
+      // if address is 0x4000 and size is 0x100 . If another address is 0x4100
+      // a < b retruns false because 0x4000+0x100 < 0x4100
+      // b < a returns false because 0x4100+0x100 < 0x4000
+      // if we add "-1" then a<b returns true.
+      return (lhs.address + lhs.size - 1  < rhs.address);
     }
-};
-
-using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz_key_compare>;
-
-class memory_database
-{
-private:
+  };
+  
+  using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz_key_compare>;
+  
+  class memory_database
+  {
+  private:
     addr_map m_addr_map;
-
-protected:
+  
+  protected:
     memory_database();
-
+  
     static memory_database* m_memory_database;
-
-public:
+  
+  public:
     ~memory_database();
-
+  
     static memory_database&
     instance();
-
+  
     void
     insert(uint64_t addr, size_t size, std::shared_ptr<memory> hip_mem);
-
+  
     void
     remove(uint64_t addr);
-
+  
     std::shared_ptr<xrt::core::hip::memory>
     get_hip_mem_from_addr(void* addr);
-
+  
     std::shared_ptr<const xrt::core::hip::memory>
     get_hip_mem_from_addr(const void* addr);
-};
-
-
+  };
+  
 } // xrt::core::hip
 
 #endif

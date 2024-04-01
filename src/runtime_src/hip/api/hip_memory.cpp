@@ -137,7 +137,8 @@ namespace xrt::core::hip
       throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpy");
 
     if (hip_mem) {
-      auto address = hip_mem->get_address();
+      // dst is device address. Get device address
+      auto address = hip_mem->get_device_address();
       auto offset = reinterpret_cast<uint64_t>(dst) - reinterpret_cast<uint64_t>(address);
       hip_mem->write(src, size, 0, offset);
     }
@@ -157,7 +158,8 @@ namespace xrt::core::hip
     if (!hip_mem)
       throw xrt_core::system_error(hipErrorInvalidValue, "Invalid src handle in hipMemCpy");
 
-    auto address = hip_mem->get_address();
+    // src is device address. Get device address
+    auto address = hip_mem->get_device_address();
     auto offset = reinterpret_cast<uint64_t>(src) - reinterpret_cast<uint64_t>(address);
     hip_mem->read(dst, size, 0, offset);
   }
