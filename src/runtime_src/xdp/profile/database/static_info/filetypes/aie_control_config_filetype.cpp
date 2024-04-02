@@ -23,6 +23,7 @@
 #include "aie_control_config_filetype.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
+#include <iostream>
 
 namespace xdp::aie {
 namespace pt = boost::property_tree;
@@ -252,8 +253,10 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
 
-        if ((channelId >= 0) && (channelId != io.second.channelNum)) 
-            continue;
+        if ((channelId >= 0) && (channelId != io.second.channelNum)) {
+            // continue;
+            std::cout<<"!!!! channelIds doesn't match , but continue...";
+        }
 
         tile_type tile = {0};
         tile.col = shimCol;

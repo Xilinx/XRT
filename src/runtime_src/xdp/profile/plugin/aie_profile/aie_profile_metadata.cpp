@@ -758,6 +758,7 @@ namespace xdp {
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting
+    // all:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
@@ -765,16 +766,20 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
-      uint8_t channelId = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId);
+      uint8_t channelId0 = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
+      uint8_t channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
+      std::cout<<"!!! P1 prof channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
-        configChannel0[t] = channelId;
+        configChannel0[t] = channelId0;
+        configChannel1[t] = channelId1;
       }
     } // Pass 1
 
     // Pass 2 : process only range of tiles metric setting
+    // <minclumn>:<maxcolumn>:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() < 3))
         continue;
@@ -803,11 +808,13 @@ namespace xdp {
         continue;
       }
 
-      uint8_t channelId = 0;
+      uint8_t channelId0 = 0;
+      uint8_t channelId1 = 0;
 
-      if (metrics[i].size() == 4) {
+      if (metrics[i].size() >= 4) {
         try {
-          channelId = aie::convertStringToUint8(metrics[i][3]);
+          channelId0 = aie::convertStringToUint8(metrics[i][3]);
+          channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
         }
         catch (std::invalid_argument const&) {
           // Expected channel Id is not an integer, give warning and ignore
@@ -817,16 +824,19 @@ namespace xdp {
                                   "not an integer and hence ignored.");
         }
       }
+      std::cout<<"!!! P2 prof channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId, true, minCol, maxCol);
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][2];
-        configChannel0[t] = channelId;
+        configChannel0[t] = channelId0;
+        configChannel1[t] = channelId1;
       }
     } // Pass 2
 
     // Pass 3 : process only single tile metric setting
+    // <singleColumn>:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Skip range specification, invalid format, or already processed
       if ((metrics[i].size() == 4) || (metrics[i].size() < 2) || (metrics[i][0].compare("all") == 0))
@@ -850,11 +860,13 @@ namespace xdp {
           continue;
         }
 
-        uint8_t channelId = 0;
+        uint8_t channelId0 = 0;
+        uint8_t channelId1 = 0;
 
-        if (metrics[i].size() == 3) {
+        if (metrics[i].size() >= 3) {
           try {
-            channelId = aie::convertStringToUint8(metrics[i][2]);
+            channelId0 = aie::convertStringToUint8(metrics[i][2]);
+            channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
           }
           catch (std::invalid_argument const&) {
             // Expected channel Id is not an integer, give warning and ignore
@@ -864,12 +876,14 @@ namespace xdp {
                                     "and hence ignored.");
           }
         }
+        std::cout<<"!!! P3 prof channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
-        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId, true, col, col);
+        auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0, true, col, col);
 
         for (auto& t : tiles) {
           configMetrics[moduleIdx][t] = metrics[i][1];
-          configChannel0[t] = channelId;
+          configChannel0[t] = channelId0;
+          configChannel1[t] = channelId1;
         }
       }
     } // Pass 3

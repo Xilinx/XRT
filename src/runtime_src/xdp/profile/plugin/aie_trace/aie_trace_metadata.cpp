@@ -676,6 +676,7 @@ namespace xdp {
 
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
+      std::cout<<"!!! G1 Graph MetricsSettings: "<<graphMetricsSettings[i]<<std::endl;
       // Split done only in Pass 1
       boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
 
@@ -718,6 +719,7 @@ namespace xdp {
 
     // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
+      std::cout<<"!!! G2 Graph MetricsSettings: "<<graphMetricsSettings[i]<<std::endl;
       // Check if already processed, invalid format, or invalid port
       if ((processed.find(i) != processed.end()) || (graphMetrics[i].size() < 3))
         continue;
@@ -841,6 +843,7 @@ namespace xdp {
                                   "not an integer and hence ignored.");
         }
       }
+      std::cout<<"!!! P2 channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
       processed.insert(i);
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
@@ -893,6 +896,7 @@ namespace xdp {
                                     "and hence ignored.");
           }
         }
+        std::cout<<"!!! P3 channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
         auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
                                             channelId0, true, col, col);
