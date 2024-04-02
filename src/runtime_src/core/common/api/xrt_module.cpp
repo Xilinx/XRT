@@ -794,6 +794,22 @@ class module_sram : public module_impl
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
+#ifdef _DEBUG
+  void
+  dump_bo(xrt::bo& bo, const std::string& filename)
+  {
+    if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
+      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+      if (!ofs.is_open())
+        throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+      auto buf = bo.map<char*>();
+      ofs.write(buf, bo.size());
+    }
+  }
+#endif
+
   void
   create_instr_buf(const module_impl* parent)
   {
@@ -813,16 +829,7 @@ class module_sram : public module_impl
     fill_instr_buf(m_instr_buf, data);
 
 #ifdef _DEBUG
-    if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
-        std::string filename = "instrBo.bin";
-        std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-
-        if (!ofs.is_open())
-          throw std::runtime_error("Failure opening file " + filename + " for writing!");
-
-        auto buf = m_instr_buf.map<char*>();
-        ofs.write(buf, m_instr_buf.size());
-    }
+    dump_bo(m_instr_buf, "instrBo.bin");
 #endif
 
     if (m_ctrlpkt_buf) {
@@ -832,16 +839,7 @@ class module_sram : public module_impl
       patch_instr("mc_code", m_ctrlpkt_buf);
 
 #ifdef _DEBUG
-      if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
-          std::string filename = "instrBoPatchedByCtrlPacket.bin";
-          std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-
-          if (!ofs.is_open())
-            throw std::runtime_error("Failure opening file " + filename + " for writing!");
-
-          auto buf = m_instr_buf.map<char*>();
-          ofs.write(buf, m_instr_buf.size());
-      }
+      dump_bo(m_instr_buf, "instrBoPatchedByCtrlPacket.bin");
 #endif
 
       XRT_PRINTF("<- module_sram::create_instr_buf()\n");
@@ -867,16 +865,7 @@ class module_sram : public module_impl
       fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
 
 #ifdef _DEBUG
-      if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
-          std::string filename = "ctrlpktBo.bin";
-          std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-
-          if (!ofs.is_open())
-            throw std::runtime_error("Failure opening file " + filename + " for writing!");
-
-          auto buf = m_ctrlpkt_buf.map<char*>();
-          ofs.write(buf, m_ctrlpkt_buf.size());
-      }
+      dump_bo(m_ctrlpkt_buf, "ctrlpktBo.bin");
 #endif
 
       XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
