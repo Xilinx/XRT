@@ -75,6 +75,8 @@ elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
 
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_coreutil)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_coreutil xaiengine)
+  target_compile_definitions(xdp_aie_trace_plugin PRIVATE FAL_LINUX="on")
+
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin

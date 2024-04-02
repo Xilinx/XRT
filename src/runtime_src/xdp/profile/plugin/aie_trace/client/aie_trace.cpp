@@ -91,7 +91,8 @@ namespace xdp {
           XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE}},
         {"s2mm_channels",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
-          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE}},
+          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_STALLED_0_CORE,
+          XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_STALLED_1_CORE}},
         {"s2mm_channels_stalls",
          {XAIE_EVENT_DMA_S2MM_0_START_TASK_MEM,            XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
           XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_MEM,         XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_MEM,
@@ -156,27 +157,37 @@ namespace xdp {
         {"output_ports",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
           XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
+        {"input_output_ports",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
         {"input_ports_stalls",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_STALLED_0_PL,
           XAIE_EVENT_PORT_RUNNING_1_PL,                    XAIE_EVENT_PORT_STALLED_1_PL}},
         {"output_ports_stalls",
-        {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
-         XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}},
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
+          XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}},
+        {"input_output_ports_stalls",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
+          XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                     XAIE_EVENT_PORT_STALLED_2_PL,
+          XAIE_EVENT_PORT_RUNNING_3_PL,                     XAIE_EVENT_PORT_STALLED_3_PL}},
         {"input_ports_details",
-        {XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
-         XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
+         {XAIE_EVENT_DMA_MM2S_0_START_TASK_PL,              XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL,
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL}},
         {"output_ports_details",
-        {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
-         XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
-         XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
+         {XAIE_EVENT_DMA_S2MM_0_START_TASK_PL,              XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL,
+          XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL,           XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,
+          XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,       XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL}}
     };
-    interfaceTileEventSets["mm2s_ports"]           = interfaceTileEventSets["input_ports"];
-    interfaceTileEventSets["s2mm_ports"]           = interfaceTileEventSets["output_ports"];
-    interfaceTileEventSets["mm2s_ports_stalls"]    = interfaceTileEventSets["input_ports_stalls"];
-    interfaceTileEventSets["s2mm_ports_stalls"]    = interfaceTileEventSets["output_ports_stalls"];
-    interfaceTileEventSets["mm2s_ports_details"]   = interfaceTileEventSets["input_ports_details"];
-    interfaceTileEventSets["s2mm_ports_details"]   = interfaceTileEventSets["output_ports_details"];
+    interfaceTileEventSets["mm2s_ports"]             = interfaceTileEventSets["input_ports"];
+    interfaceTileEventSets["s2mm_ports"]             = interfaceTileEventSets["output_ports"];
+    interfaceTileEventSets["mm2s_s2mm_ports"]        = interfaceTileEventSets["input_output_ports"];
+    interfaceTileEventSets["mm2s_ports_stalls"]      = interfaceTileEventSets["input_ports_stalls"];
+    interfaceTileEventSets["s2mm_ports_stalls"]      = interfaceTileEventSets["output_ports_stalls"];
+    interfaceTileEventSets["mm2s_s2mm_ports_stalls"] = interfaceTileEventSets["input_output_ports_stalls"];
+    interfaceTileEventSets["mm2s_ports_details"]     = interfaceTileEventSets["input_ports_details"];
+    interfaceTileEventSets["s2mm_ports_details"]     = interfaceTileEventSets["output_ports_details"];
 
     // Interface tile trace is flushed at end of run
     interfaceTileTraceStartEvent = XAIE_EVENT_TRUE_PL;
@@ -565,7 +576,7 @@ namespace xdp {
           XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = streamPortId;
+          config.port_trace_ids[portnum] = ((portnum % 2) == 0) ? channel0 : channel1;
           config.port_trace_is_master[portnum] = (tile.is_master != 0);
 
           if (aie::isInputSet(type, metricSet)) {
@@ -1076,11 +1087,17 @@ namespace xdp {
           break;
 
         {
-          uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent);
-          cfgTile->memory_trace_config.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent);
-          cfgTile->memory_trace_config.stop_event = phyEvent;
+          uint8_t phyEvent1 = 0;
+          uint8_t phyEvent2 = 0;
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceStartEvent, &phyEvent1);
+          XAie_EventLogicalToPhysicalConv(&aieDevInst, loc, mod, traceEndEvent, &phyEvent2);
+          if (type == module_type::core) {
+            cfgTile->memory_trace_config.start_event = phyEvent1;
+            cfgTile->memory_trace_config.stop_event = phyEvent2;
+          } else {
+            cfgTile->memory_tile_trace_config.start_event = phyEvent1;
+            cfgTile->memory_tile_trace_config.stop_event = phyEvent2;
+          }
         }
 
         // auto ret = memoryTrace->reserve();
