@@ -281,6 +281,11 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
 
+    if (db->infoAvailable(xdp::info::ml_timeline)) {
+      db->broadcast(VPDatabase::MessageType::READ_RECORD_TIMESTAMPS, nullptr);
+      xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
+    }
+
     if (!transactionHandler->submitTransaction(txn_ptr))
       return;
     auto result_bo = transactionHandler->syncResults();
