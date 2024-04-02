@@ -817,13 +817,11 @@ class module_sram : public module_impl
         std::string filename = "instrBo.bin";
         std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 
-        if (!ofs.is_open()) {
-            std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
-            abort();
-        }
-        char* buf = static_cast<char*>(m_instr_buf.map());
-        ofs.write((char*)buf, m_instr_buf.size());
-        ofs.close();
+        if (!ofs.is_open())
+          throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+        auto buf = m_instr_buf.map<char*>();
+        ofs.write(buf, m_instr_buf.size());
     }
 #endif
 
@@ -838,13 +836,11 @@ class module_sram : public module_impl
           std::string filename = "instrBoPatchedByCtrlPacket.bin";
           std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 
-          if (!ofs.is_open()) {
-              std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
-              abort();
-          }
-          char* buf = static_cast<char*>(m_instr_buf.map());
-          ofs.write((char*)buf, m_instr_buf.size());
-          ofs.close();
+          if (!ofs.is_open())
+            throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+          auto buf = m_instr_buf.map<char*>();
+          ofs.write(buf, m_instr_buf.size());
       }
 #endif
 
@@ -875,13 +871,11 @@ class module_sram : public module_impl
           std::string filename = "ctrlpktBo.bin";
           std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 
-          if (!ofs.is_open()) {
-              std::cout << "Failure opening file " + filename + " for writing!!" << std::endl;
-              abort();
-          }
-          char* buf = static_cast<char*>(m_ctrlpkt_buf.map());
-          ofs.write((char*)buf, m_ctrlpkt_buf.size());
-          ofs.close();
+          if (!ofs.is_open())
+            throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+          auto buf = m_ctrlpkt_buf.map<char*>();
+          ofs.write(buf, m_ctrlpkt_buf.size());
       }
 #endif
 
