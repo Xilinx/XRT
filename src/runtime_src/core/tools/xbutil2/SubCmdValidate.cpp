@@ -36,6 +36,7 @@
 #include "tools/common/tests/TestDF_bandwidth.h"
 #include "tools/common/tests/TestTCTOneColumn.h"
 #include "tools/common/tests/TestTCTAllColumn.h"
+#include "tools/common/tests/TestGemm.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -102,7 +103,8 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestPsIops>(),
   std::make_shared<TestDF_bandwidth>(),
   std::make_shared<TestTCTOneColumn>(),
-  std::make_shared<TestTCTAllColumn>()
+  std::make_shared<TestTCTAllColumn>(),
+  std::make_shared<TestGemm>()
 };
 
 /*
