@@ -201,6 +201,19 @@ struct patcher
   }
 };
 
+  void
+  dump_bo(xrt::bo& bo, const std::string& filename)
+  {
+    if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
+      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+
+      if (!ofs.is_open())
+        throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+      auto buf = bo.map<char*>();
+      ofs.write(buf, bo.size());
+    }
+  }
 } // namespace
 
 namespace xrt
@@ -793,22 +806,6 @@ class module_sram : public module_impl
     std::memcpy(ptr, ctrlpktbuf.data(), ctrlpktbuf.size());
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
-
-#ifdef _DEBUG
-  void
-  dump_bo(xrt::bo& bo, const std::string& filename)
-  {
-    if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
-      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-
-      if (!ofs.is_open())
-        throw std::runtime_error("Failure opening file " + filename + " for writing!");
-
-      auto buf = bo.map<char*>();
-      ofs.write(buf, bo.size());
-    }
-  }
-#endif
 
   void
   create_instr_buf(const module_impl* parent)
