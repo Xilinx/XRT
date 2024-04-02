@@ -780,11 +780,10 @@ namespace xdp {
       // Check if not all tiles or invalid format
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
-      
+
       processed.insert(i);
       uint8_t channelId0 = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
       uint8_t channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
-
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId0);
 
       for (auto& t : tiles) {
