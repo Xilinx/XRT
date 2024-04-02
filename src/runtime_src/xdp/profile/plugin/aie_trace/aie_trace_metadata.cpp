@@ -676,7 +676,6 @@ namespace xdp {
 
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
-      std::cout<<"!!! G1 Graph MetricsSettings: "<<graphMetricsSettings[i]<<std::endl;
       // Split done only in Pass 1
       boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
 
@@ -719,7 +718,6 @@ namespace xdp {
 
     // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
-      std::cout<<"!!! G2 Graph MetricsSettings: "<<graphMetricsSettings[i]<<std::endl;
       // Check if already processed, invalid format, or invalid port
       if ((processed.find(i) != processed.end()) || (graphMetrics[i].size() < 3))
         continue;
@@ -783,12 +781,9 @@ namespace xdp {
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
       
-      std::cout<<"!!! P1 MetricsSettings: "<<metricsSettings[i]<<std::endl;
-
       processed.insert(i);
       uint8_t channelId0 = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
       uint8_t channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
-      std::cout<<"!!! channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId0);
 
@@ -814,7 +809,6 @@ namespace xdp {
         continue;
       }
 
-      std::cout<<"!!! P2 MetricsSettings: "<<metricsSettings[i]<<std::endl;
       uint8_t minCol = 0;
       try {
         minCol = aie::convertStringToUint8(metrics[i][0]);
@@ -843,7 +837,6 @@ namespace xdp {
                                   "not an integer and hence ignored.");
         }
       }
-      std::cout<<"!!! P2 channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
       processed.insert(i);
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
@@ -863,7 +856,6 @@ namespace xdp {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 2))
         continue;
 
-      std::cout<<"!!! P3 MetricsSettings: "<<metricsSettings[i]<<std::endl;
       uint8_t col = 0;
       try {
         col = aie::convertStringToUint8(metrics[i][1]);
@@ -896,7 +888,6 @@ namespace xdp {
                                     "and hence ignored.");
           }
         }
-        std::cout<<"!!! P3 channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
         auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
                                             channelId0, true, col, col);

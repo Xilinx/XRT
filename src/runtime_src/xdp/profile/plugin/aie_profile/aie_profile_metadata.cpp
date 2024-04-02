@@ -769,7 +769,6 @@ namespace xdp {
       uint8_t channelId0 = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
       uint8_t channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
       auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
-      std::cout<<"!!! P1 prof channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
@@ -824,7 +823,6 @@ namespace xdp {
                                   "not an integer and hence ignored.");
         }
       }
-      std::cout<<"!!! P2 prof channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
       auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][2], channelId0, true, minCol, maxCol);
 
@@ -876,7 +874,6 @@ namespace xdp {
                                     "and hence ignored.");
           }
         }
-        std::cout<<"!!! P3 prof channelId0: "<<+channelId0<<" & channelId1: "<<+channelId1<<std::endl;
 
         auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0, true, col, col);
 

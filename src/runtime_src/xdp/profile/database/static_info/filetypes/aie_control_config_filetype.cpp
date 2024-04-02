@@ -23,7 +23,6 @@
 #include "aie_control_config_filetype.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "core/common/message.h"
-#include <iostream>
 
 namespace xdp::aie {
 namespace pt = boost::property_tree;
@@ -253,9 +252,10 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
 
+        // TODO: Discuss on intended behavior, this is test code for now
         if ((channelId >= 0) && (channelId != io.second.channelNum)) {
-            // continue;
-            std::cout<<"!!!! channelIds doesn't match , but continue...";
+            xrt_core::message::send(severity_level::warning, "XRT", "specified channelIds in configuration doesn't match," "
+                                    still considering tile as streamID is used");
         }
 
         tile_type tile = {0};
