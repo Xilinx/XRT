@@ -204,15 +204,15 @@ struct patcher
   void
   dump_bo(xrt::bo& bo, const std::string& filename)
   {
-    if (xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature)) {
-      std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+    if (!xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature))
+      return;
 
-      if (!ofs.is_open())
-        throw std::runtime_error("Failure opening file " + filename + " for writing!");
+    std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+    if (!ofs.is_open())
+      throw std::runtime_error("Failure opening file " + filename + " for writing!");
 
-      auto buf = bo.map<char*>();
-      ofs.write(buf, bo.size());
-    }
+    auto buf = bo.map<char*>();
+    ofs.write(buf, bo.size());
   }
 } // namespace
 
