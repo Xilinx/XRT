@@ -57,13 +57,11 @@ namespace xrt::core::hip
       // TODO Need to create locked memory for Default and Portable flags. Creating a regular BO for now
       case hipHostMallocDefault:
       case hipHostMallocPortable:
-      case hipHostMallocMapped:
-      {
+      case hipHostMallocMapped: {
         init_xrt_bo();
         break;
       }
-      case hipHostMallocWriteCombined: 
-      {
+      case hipHostMallocWriteCombined: {
         // This is a workaround to create a buffer with cacheable flag if WriteComined flag is provided. 
         // This gets used to create instruction buffer on NPU
         // TODO This would go away once xrt::elf flow is enabled
