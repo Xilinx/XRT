@@ -123,6 +123,7 @@ struct VmrStatus {
 	uint16_t boot_on_default; // 1 If the VMR device is currently running on its "A" or default image
 	uint16_t boot_on_backup; // 1 If the VMR device is currently running on its "B" or backup image
 	uint16_t boot_on_recovery; // 1 If the VMR device is currently running on its recovery image
+	uint16_t sc_is_ready; // 1 If the SC is Ready
 };
 
 #endif // xclfeatures_h_

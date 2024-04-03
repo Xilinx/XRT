@@ -617,7 +617,7 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
   for (const auto& img : image_list) {
     // Check if the passed in image is absolute path
     if (std::filesystem::is_regular_file(img)){
-      if (std::filesystem::path(img).extension() == ".xsabin") {
+      if (std::filesystem::path(img).extension() != ".xsabin") {
         std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
         if (!XBU::can_proceed(XBU::getForce()))
           throw xrt_core::error(std::errc::operation_canceled);

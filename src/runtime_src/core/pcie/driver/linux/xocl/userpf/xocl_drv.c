@@ -143,6 +143,31 @@ done:
 	vfree(mb_req);
 }
 
+static bool xocl_vmr_sc_is_ready(struct xocl_dev *xdev)
+{
+	void *blob = NULL;
+	const struct VmrStatus *vmr_status = NULL;
+	int proplen = 0;
+	struct device *dev = &xdev->core.pdev->dev;
+
+	blob = xdev->core.fdt_blob;
+	if (!blob) {
+		xocl_dbg(dev, "Failed to get FDT blob");
+		return false;
+	}
+
+	vmr_status = (struct VmrStatus*) fdt_getprop(blob, 0,"vmr_status", &proplen);
+	if (!vmr_status) {
+		xocl_dbg(dev, "Did not find vmr_status prop");
+		return false;
+	}
+	if (proplen != sizeof(struct VmrStatus)) {
+		xocl_dbg(dev, "Invalid vmr_status length");
+		return false;
+	}
+	return (vmr_status->sc_is_ready);
+}
+
 void xocl_update_mig_cache(struct xocl_dev *xdev)
 {
 	ktime_t now = ktime_get_boottime();
@@ -252,7 +277,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
-		if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+		if (XOCL_DSA_IS_VERSAL_ES3(xdev) && xocl_vmr_sc_is_ready(xdev)) {
 			ret = xocl_hwmon_sdm_init(xdev);
 			if (ret) {
 				userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
@@ -962,7 +987,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 
-	if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+	if (XOCL_DSA_IS_VERSAL_ES3(xdev) && xocl_vmr_sc_is_ready(xdev)) {
 		//probe & initialize hwmon_sdm driver only on versal
 		ret = xocl_hwmon_sdm_init(xdev);
 		if (ret) {
