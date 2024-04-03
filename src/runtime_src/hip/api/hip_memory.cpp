@@ -7,7 +7,9 @@
 #include "hip/config.h"
 #include "hip/core/device.h"
 #include "hip/core/context.h"
+#include "hip/core/event.h"
 #include "hip/core/memory.h"
+#include "hip/core/stream.h"
 #include "hip/hip_runtime_api.h"
 
 namespace xrt::core::hip
@@ -215,6 +217,25 @@ namespace xrt::core::hip
     free(host_src);
   }
 
+
+  static void
+  hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)  
+  {
+    if (!src)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid src pointer in hipMemCpyH2DAsync");
+
+    auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
+    if (!hip_mem_dst)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpyH2DAsync");
+
+    auto hip_stream = get_stream(stream);
+    if (!hip_stream)
+      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid stream handle in hipMemCpyH2DAsync");
+   
+    copy_buffer cp_buf(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src);
+    cp_buf.submit();
+  }
+
 } // xrt::core::hip
 
 template<typename F> hipError_t
@@ -307,3 +328,8 @@ hipMemset(void* dst, int value, size_t size)
   return handle_hip_memory_error([&] { xrt::core::hip::hip_memset(dst, value, size); });
 }
 
+hipError_t
+hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream); });
+}

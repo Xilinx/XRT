@@ -164,15 +164,28 @@ bool kernel_start::wait()
   return false;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s)
-  : command(std::move(s))
+copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr)
+  : command(std::move(s)), cdirection(direction), buffer(buf), host_ptr(ptr)
 {
   ctype = type::buffer_copy;
 }
 
 bool copy_buffer::submit()
 {
-  //handle = std::async(&xrt::bo::sync, &cbo, cdirection);
+  switch(cdirection)
+  {
+    case XCL_BO_SYNC_BO_TO_DEVICE:
+      handle = std::async(&memory::write, buffer, host_ptr, buffer->get_size(), 0, 0);
+      break;
+
+    case XCL_BO_SYNC_BO_FROM_DEVICE:
+      handle = std::async(&memory::read, buffer, host_ptr, buffer->get_size(), 0, 0);
+      break;
+
+    default:
+      break;
+  };
+
   return true;
 }
 
