@@ -120,7 +120,7 @@ PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT) -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/include
 
-ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__
+ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__ -DMBOX_INTERRUPT_DISABLE
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif
