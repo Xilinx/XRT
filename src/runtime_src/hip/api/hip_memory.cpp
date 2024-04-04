@@ -232,8 +232,10 @@ namespace xrt::core::hip
     if (!hip_stream)
       throw xrt_core::system_error(hipErrorInvalidValue, "Invalid stream handle in hipMemCpyH2DAsync");
    
-    copy_buffer cp_buf(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src);
-    cp_buf.submit();
+    auto s_hdl = hip_stream.get();
+    auto cmd_hdl = insert_in_map(command_cache,
+                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src));
+    s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
 } // xrt::core::hip
