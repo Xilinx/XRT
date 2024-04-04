@@ -95,6 +95,8 @@ CheckOptions:
     value:           '0'
   - key:             bugprone-too-small-loop-variable.MagnitudeBitsUpperLimit
     value:           '16'
+  - key:             bugprone-easily-swappable-parameters
+    value:           '0'
   - key:             bugprone-unhandled-self-assignment.WarnOnlyIfThisHasSuspiciousField
     value:           '1'
   - key:             bugprone-unused-return-value.CheckedFunctions

@@ -102,7 +102,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 {
   ctype = type::kernel_start;
   auto k = func->get_kernel();
-  auto arginfo = std::move(xrt_core::kernel_int::get_args(k));
+  auto arginfo = xrt_core::kernel_int::get_args(k);
 
   // create run object and set args
   r = xrt::run(k);
