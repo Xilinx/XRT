@@ -462,9 +462,10 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
                                    module_type type,
                                    const std::string& kernel_name) const
 {
+    // Catch memory tiles and 'all' AIE tiles
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if ((type == module_type::dma) && (kernel_name.compare("all") == 0))
+    if (kernel_name.compare("all") == 0)
         return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs
