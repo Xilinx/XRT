@@ -201,7 +201,7 @@ struct patcher
   }
 };
 
-  void
+  XRT_CORE_UNUSED void
   dump_bo(xrt::bo& bo, const std::string& filename)
   {
     if (!xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature))
