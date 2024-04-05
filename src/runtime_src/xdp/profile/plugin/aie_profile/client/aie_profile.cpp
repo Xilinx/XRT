@@ -126,6 +126,7 @@ namespace xdp {
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         int numCounters  = 0;
 
+        auto& metricSet  = tileMetric.second;
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto col  = tile.col;
@@ -144,8 +145,6 @@ namespace xdp {
             continue;
         }
 
-
-        auto& metricSet  = tileMetric.second;
         auto loc         = XAie_TileLoc(col, row);
         auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
                          : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
