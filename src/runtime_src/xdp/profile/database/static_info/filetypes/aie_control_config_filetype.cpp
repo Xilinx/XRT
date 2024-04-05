@@ -251,9 +251,14 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
-
-        if ((channelId >= 0) && (channelId != io.second.channelNum)) 
+        // Make sure channel number is same as specified (GMIO only)
+        if ((type == 1) && (channelId >= 0) && (channelId != io.second.channelNum)) {
+            std::stringstream msg;
+            msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
+                << +shimCol <<" and stream ID " << +streamId;
+            xrt_core::message::send(severity_level::info, "XRT", msg.str());
             continue;
+        }
 
         tile_type tile = {0};
         tile.col = shimCol;

@@ -19,6 +19,7 @@ target_compile_definitions(aie_profile_config PRIVATE
   __PS_ENABLE_AIE__
   XCLHAL_MAJOR_VER=1
   XCLHAL_MINOR_VER=0
+  FAL_LINUX="on"
 )
 
 target_link_libraries(aie_profile_config

@@ -830,15 +830,11 @@ class module_sram : public module_impl
 #endif
 
     if (m_ctrlpkt_buf) {
-      // The current assembler uses "mc_code" to represent control-packet
-      // buffer. We should change the name to "control-packet" which is not
-      // DPU specific. Will change this once assembler fix it.
-      patch_instr("mc_code", m_ctrlpkt_buf);
+      patch_instr("control-packet", m_ctrlpkt_buf);
 
 #ifdef _DEBUG
       dump_bo(m_instr_buf, "instrBoPatchedByCtrlPacket.bin");
 #endif
-
       XRT_PRINTF("<- module_sram::create_instr_buf()\n");
     }
   }
