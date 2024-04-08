@@ -275,6 +275,7 @@ versal_dir="versal"
 YOCTO_MACHINE=""
 
 if [[ $clean == 1 ]]; then
+    echo "clean value: $clean"
     echo $PWD
     echo "/bin/rm -rf $aarch64_dir $versal_dir"
     /bin/rm -rf $aarch64_dir $versal_dir
