@@ -32,7 +32,7 @@ R"(
 [{
   "alveo": [{
     "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
+      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "error", "firewall", "mailbox", "debug-ip-status", "qspi-status", "aie", "aiemem", "aieshim"]
     }]
   },{
     "configure": [{

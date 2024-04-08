@@ -36,6 +36,7 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 // XRT headers
 #include "xrt/xrt_bo.h"
@@ -300,6 +301,11 @@ namespace xdp {
   {
     if (finishedPoll)
       return;
+
+    if (db->infoAvailable(xdp::info::ml_timeline)) {
+      db->broadcast(VPDatabase::MessageType::READ_RECORD_TIMESTAMPS, nullptr);
+      xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
+    }
 
     (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;

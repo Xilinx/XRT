@@ -424,7 +424,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
 
     // Populate the mem tile information such as dma, lock, error, events
     // for each tiles.
-    for (const auto& am: pt_mem.get_child("aie_mem")) {
+    for (const auto& am : pt_mem.get_child("aie_mem")) {
       const boost::property_tree::ptree& imem = am.second;
       boost::property_tree::ptree omem;
       int col = imem.get<uint32_t>("col");
@@ -456,10 +456,10 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     }
 
     pt.add_child("tiles", tile_array);
-
+    
   }
   catch (const std::exception& ex) {
-    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
+    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE mem"));
   }
 
   return pt;
