@@ -530,6 +530,8 @@ namespace xdp {
 
       //bool newPort = false;
       auto portnum = getPortNumberFromEvent(event);
+      uint8_t channelNum = portnum % 2;
+      uint8_t channel = (channelNum == 0) ? channel0 : channel1;
 
       // New port needed: reserver, configure, and store
       //if (switchPortMap.find(portnum) == switchPortMap.end()) {
@@ -543,7 +545,6 @@ namespace xdp {
 
         if (type == module_type::core) {
           // AIE Tiles - Monitor DMA channels
-          uint8_t channelNum = portnum % 2;
           bool isMaster = ((portnum >= 2) || (metricSet.find("s2mm") != std::string::npos));
           auto slaveOrMaster = isMaster ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
           std::string typeName = isMaster ? "S2MM" : "MM2S";
@@ -576,23 +577,16 @@ namespace xdp {
           XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = ((portnum % 2) == 0) ? channel0 : channel1;
+          config.port_trace_ids[portnum] = channel;
           config.port_trace_is_master[portnum] = (tile.is_master != 0);
 
-          if (aie::isInputSet(type, metricSet)) {
-            config.mm2s_channels[0] = channel0;
-            if (channel0 != channel1)
-              config.mm2s_channels[1] = channel1;
-          } 
-          else {
-            config.s2mm_channels[0] = channel0;
-            if (channel0 != channel1)
-              config.s2mm_channels[1] = channel1;
-          }
+          if (tile.is_master == 0)
+            config.mm2s_channels[channelNum] = channel;
+          else
+            config.s2mm_channels[channelNum] = channel;
         }
         else {
           // Memory tiles
-          uint8_t channel = (portnum == 0) ? channel0 : channel1;
           auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
           std::string typeName = (slaveOrMaster == XAIE_STRMSW_MASTER) ? "master" : "slave";
           std::string msg = "Configuring memory tile stream switch to monitor "
@@ -900,6 +894,8 @@ namespace xdp {
       auto cfgTile = std::make_unique<aie_cfg_tile>(col+startCol, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
+      cfgTile->active_core = tile.active_core;
+      cfgTile->active_memory = tile.active_memory;
 
       // Get vector of pre-defined metrics for this set
       // NOTE: These are local copies to add tile-specific events
