@@ -579,7 +579,7 @@ namespace xdp {
           // Record for runtime config file
           config.port_trace_ids[portnum] = channel;
           config.port_trace_is_master[portnum] = (tile.is_master != 0);
-
+          
           if (tile.is_master == 0)
             config.mm2s_channels[channelNum] = channel;
           else

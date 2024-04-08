@@ -133,7 +133,7 @@ namespace xdp {
         auto col  = tile.col;
         auto subtype = tile.subtype;
         auto type = aie::getModuleType(row, metadata->getAIETileRowOffset());
-
+        
         // Ignore invalid types and inactive modules
         // NOTE: Inactive core modules are configured when utilizing
         //       stream switch monitor ports to profile DMA channels
