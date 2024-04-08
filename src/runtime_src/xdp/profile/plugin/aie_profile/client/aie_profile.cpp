@@ -127,25 +127,16 @@ namespace xdp {
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         int numCounters  = 0;
 
-        auto& metricSet  = tileMetric.second;
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto col  = tile.col;
         auto subtype = tile.subtype;
         auto type = aie::getModuleType(row, metadata->getAIETileRowOffset());
 
-        // Ignore invalid types and inactive modules
-        // NOTE: Inactive core modules are configured when utilizing
-        //       stream switch monitor ports to profile DMA channels
         if (!aie::profile::isValidType(type, mod))
           continue;
-        if ((type == module_type::dma) && !tile.active_memory)
-          continue;
-        if ((type == module_type::core) && !tile.active_core) {
-          if (metadata->getPairModuleIndex(metricSet, type) < 0)
-            continue;
-        }
 
+        auto& metricSet  = tileMetric.second;
         auto loc         = XAie_TileLoc(col, row);
         auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
                          : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
