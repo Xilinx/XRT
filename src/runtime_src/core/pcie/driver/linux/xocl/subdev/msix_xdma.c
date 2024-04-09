@@ -90,7 +90,11 @@ static irqreturn_t msix_xdma_isr(int irq, void *arg)
 		ret = irq_entry->handler(irq, irq_entry->arg);
 
 	if (!IS_ERR_OR_NULL(irq_entry->event_ctx)) {
+#if KERNEL_VERSION(6, 8, 0) <= LINUX_VERSION_CODE
+		eventfd_signal(irq_entry->event_ctx);
+#else
 		eventfd_signal(irq_entry->event_ctx, 1);
+#endif
 	}
 
 	return ret;

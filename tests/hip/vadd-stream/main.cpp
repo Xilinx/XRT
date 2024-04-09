@@ -32,19 +32,19 @@ runkernel(hipFunction_t function, hipStream_t stream, std::array<void *, 3> &arg
 {
   const char *name = hipKernelNameRef(function);
   std::cout << "Running " << name << ' ' << repeat_loop << " times...\n";
-  hip_test_timer timer;
-  const auto msmulti = static_cast<double>(hip_test_timer::unit());
+  xrt_hip_test_common::hip_test_timer timer;
+  const auto msmulti = static_cast<double>(xrt_hip_test_common::hip_test_timer::unit());
 
   const int globalr = std::strcmp(name, nop_kernel_name) ? vector_length/threads_per_block_x : 1;
   const int localr = std::strcmp(name, nop_kernel_name) ? threads_per_block_x : 1;
 
   for (int i = 0; i < repeat_loop; i++) {
-    test_hip_check(hipModuleLaunchKernel(function,
+    xrt_hip_test_common::test_hip_check(hipModuleLaunchKernel(function,
                                          globalr, 1, 1,
                                          localr, 1, 1,
                                          0, stream, args.data(), nullptr), name);
   }
-  test_hip_check(hipStreamSynchronize(stream));
+  xrt_hip_test_common::test_hip_check(hipStreamSynchronize(stream));
   auto delayd = timer.stop();
 
   std::cout << "Throughput metrics" << std::endl;
@@ -55,11 +55,11 @@ runkernel(hipFunction_t function, hipStream_t stream, std::array<void *, 3> &arg
 
   timer.reset();
   for (int i = 0; i < repeat_loop; i++) {
-    test_hip_check(hipModuleLaunchKernel(function,
+    xrt_hip_test_common::test_hip_check(hipModuleLaunchKernel(function,
                                          globalr, 1, 1,
                                          localr, 1, 1,
                                          0, stream, args.data(), nullptr), name);
-    test_hip_check(hipStreamSynchronize(stream));
+    xrt_hip_test_common::test_hip_check(hipStreamSynchronize(stream));
   }
 
   delayd = timer.stop();
@@ -87,13 +87,13 @@ mainworkerthread(hipFunction_t function, hipStream_t stream, bool validate = tru
     host_a[i] = 0;
   }
 
-  hip_test_device_bo<float> device_a(vector_length);
-  hip_test_device_bo<float> device_b(vector_length);
-  hip_test_device_bo<float> device_c(vector_length);
+  xrt_hip_test_common::hip_test_device_bo<float> device_a(vector_length);
+  xrt_hip_test_common::hip_test_device_bo<float> device_b(vector_length);
+  xrt_hip_test_common::hip_test_device_bo<float> device_c(vector_length);
 
   // Sync host buffers to device
-  test_hip_check(hipMemcpyWithStream(device_b.get(), host_b.data(), vector_size, hipMemcpyHostToDevice, stream));
-  test_hip_check(hipMemcpyWithStream(device_c.get(), host_c.data(), vector_size, hipMemcpyHostToDevice, stream));
+  xrt_hip_test_common::test_hip_check(hipMemcpyWithStream(device_b.get(), host_b.data(), vector_size, hipMemcpyHostToDevice, stream));
+  xrt_hip_test_common::test_hip_check(hipMemcpyWithStream(device_c.get(), host_c.data(), vector_size, hipMemcpyHostToDevice, stream));
 
   std::array<void *, 3> args_d = {&device_a.get(), &device_b.get(), &device_c.get()};
 
@@ -106,7 +106,7 @@ mainworkerthread(hipFunction_t function, hipStream_t stream, bool validate = tru
 
   runkernel(function, stream, args_d);
   // Sync device output buffer to host
-  test_hip_check(hipMemcpyWithStream(host_a.data(), device_a.get(), vector_size, hipMemcpyDeviceToHost, stream));
+  xrt_hip_test_common::test_hip_check(hipMemcpyWithStream(host_a.data(), device_a.get(), vector_size, hipMemcpyDeviceToHost, stream));
 
   // Verify output and then reset it for the subsequent test
   int errors = 0;
@@ -126,18 +126,18 @@ mainworkerthread(hipFunction_t function, hipStream_t stream, bool validate = tru
     std::cout << "PASSED TEST" << std::endl;
 
   // Register our buffer with ROCm so it is pinned and prepare for access by device
-  test_hip_check(hipHostRegister(host_a.data(), vector_size, hipHostRegisterDefault));
-  test_hip_check(hipHostRegister(host_b.data(), vector_size, hipHostRegisterDefault));
-  test_hip_check(hipHostRegister(host_c.data(), vector_size, hipHostRegisterDefault));
+  xrt_hip_test_common::test_hip_check(hipHostRegister(host_a.data(), vector_size, hipHostRegisterDefault));
+  xrt_hip_test_common::test_hip_check(hipHostRegister(host_b.data(), vector_size, hipHostRegisterDefault));
+  xrt_hip_test_common::test_hip_check(hipHostRegister(host_c.data(), vector_size, hipHostRegisterDefault));
 
   void *tmp_a1 = nullptr;
   void *tmp_b1 = nullptr;
   void *tmp_c1 = nullptr;
 
   // Map the host buffer to device address space so device can access the buffers
-  test_hip_check(hipHostGetDevicePointer(&tmp_a1, host_a.data(), 0));
-  test_hip_check(hipHostGetDevicePointer(&tmp_b1, host_b.data(), 0));
-  test_hip_check(hipHostGetDevicePointer(&tmp_c1, host_c.data(), 0));
+  xrt_hip_test_common::test_hip_check(hipHostGetDevicePointer(&tmp_a1, host_a.data(), 0));
+  xrt_hip_test_common::test_hip_check(hipHostGetDevicePointer(&tmp_b1, host_b.data(), 0));
+  xrt_hip_test_common::test_hip_check(hipHostGetDevicePointer(&tmp_c1, host_c.data(), 0));
 
   std::cout << "---------------------------------------------------------------------------------\n";
   std::cout << "Run " << hipKernelNameRef(function) << ' ' << repeat_loop << " times using host resident memory" << std::endl;
@@ -159,9 +159,9 @@ mainworkerthread(hipFunction_t function, hipStream_t stream, bool validate = tru
   }
 
   // Unmap the host buffers from device address space
-  test_hip_check(hipHostUnregister(host_c.data()));
-  test_hip_check(hipHostUnregister(host_b.data()));
-  test_hip_check(hipHostUnregister(host_a.data()));
+  xrt_hip_test_common::test_hip_check(hipHostUnregister(host_c.data()));
+  xrt_hip_test_common::test_hip_check(hipHostUnregister(host_b.data()));
+  xrt_hip_test_common::test_hip_check(hipHostUnregister(host_a.data()));
 
   if (errors)
     std::cout << "FAILED TEST" << std::endl;
@@ -172,17 +172,17 @@ mainworkerthread(hipFunction_t function, hipStream_t stream, bool validate = tru
 }
 
 int mainworker() {
-    hip_test_device hdevice;
+  xrt_hip_test_common::hip_test_device hdevice;
     hdevice.show_info(std::cout);
 
     hipFunction_t vaddfunction = hdevice.get_function(kernel_filename, kernel_name);
     hipFunction_t nopfunction = hdevice.get_function(nop_kernel_filename, nop_kernel_name);
 
     hipStream_t vaddstream = nullptr;
-    test_hip_check(hipStreamCreateWithFlags(&vaddstream, hipStreamNonBlocking));
+    xrt_hip_test_common::test_hip_check(hipStreamCreateWithFlags(&vaddstream, hipStreamNonBlocking));
 
     hipStream_t nopstream = nullptr;
-    test_hip_check(hipStreamCreateWithFlags(&nopstream, hipStreamNonBlocking));
+    xrt_hip_test_common::test_hip_check(hipStreamCreateWithFlags(&nopstream, hipStreamNonBlocking));
 
     std::thread vaddthread = std::thread(mainworkerthread, vaddfunction, vaddstream, true);
     std::thread nopthread = std::thread(mainworkerthread, nopfunction, nopstream, false);
@@ -190,15 +190,14 @@ int mainworker() {
     vaddthread.join();
     nopthread.join();
 
-    test_hip_check(hipStreamDestroy(nopstream));
-    test_hip_check(hipStreamDestroy(vaddstream));
+    xrt_hip_test_common::test_hip_check(hipStreamDestroy(nopstream));
+    xrt_hip_test_common::test_hip_check(hipStreamDestroy(vaddstream));
 
 //    mainworkerthread(vaddfunction, vaddstream, true);
 //    mainworkerthread(nopfunction, nopstream, false);
     return 0;
 }
 }
-
 
 
 int

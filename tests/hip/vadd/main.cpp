@@ -31,19 +31,19 @@ runkernel(hipFunction_t function, std::array<void *, 3> &args)
 {
   const char *name = hipKernelNameRef(function);
   std::cout << "Running " << name << ' ' << repeat_loop << " times...\n";
-  hip_test_timer timer;
-  const auto msmulti = static_cast<double>(hip_test_timer::unit());
+  xrt_hip_test_common::hip_test_timer timer;
+  const auto msmulti = static_cast<double>(xrt_hip_test_common::hip_test_timer::unit());
 
   const int globalr = std::strcmp(name, nop_kernel_name) ? vector_length/threads_per_block_x : 1;
   const int localr = std::strcmp(name, nop_kernel_name) ? threads_per_block_x : 1;
 
   for (int i = 0; i < repeat_loop; i++) {
-    test_hip_check(hipModuleLaunchKernel(function,
+    xrt_hip_test_common::test_hip_check(hipModuleLaunchKernel(function,
                                          globalr, 1, 1,
                                          localr, 1, 1,
                                          0, nullptr, args.data(), nullptr), name);
   }
-  test_hip_check(hipDeviceSynchronize());
+  xrt_hip_test_common::test_hip_check(hipDeviceSynchronize());
   auto delayd = timer.stop();
 
   std::cout << "Throughput metrics" << std::endl;
@@ -54,11 +54,11 @@ runkernel(hipFunction_t function, std::array<void *, 3> &args)
 
   timer.reset();
   for (int i = 0; i < repeat_loop; i++) {
-    test_hip_check(hipModuleLaunchKernel(function,
+    xrt_hip_test_common::test_hip_check(hipModuleLaunchKernel(function,
                                          globalr, 1, 1,
                                          localr, 1, 1,
                                          0, nullptr, args.data(), nullptr), name);
-    test_hip_check(hipDeviceSynchronize());
+    xrt_hip_test_common::test_hip_check(hipDeviceSynchronize());
   }
 
   delayd = timer.stop();
@@ -74,7 +74,7 @@ int
 mainworker() {
 
   std::cout << "---------------------------------------------------------------------------------\n";
-  hip_test_device hdevice;
+  xrt_hip_test_common::hip_test_device hdevice;
   hdevice.show_info(std::cout);
 
   hipFunction_t function = hdevice.get_function(kernel_filename, kernel_name);
@@ -91,13 +91,13 @@ mainworker() {
     host_a[i] = 0;
   }
 
-  hip_test_device_bo<float> device_a(vector_length);
-  hip_test_device_bo<float> device_b(vector_length);
-  hip_test_device_bo<float> device_c(vector_length);
+  xrt_hip_test_common::hip_test_device_bo<float> device_a(vector_length);
+  xrt_hip_test_common::hip_test_device_bo<float> device_b(vector_length);
+  xrt_hip_test_common::hip_test_device_bo<float> device_c(vector_length);
 
   // Sync host buffers to device
-  test_hip_check(hipMemcpy(device_b.get(), host_b.data(), vector_size, hipMemcpyHostToDevice));
-  test_hip_check(hipMemcpy(device_c.get(), host_c.data(), vector_size, hipMemcpyHostToDevice));
+  xrt_hip_test_common::test_hip_check(hipMemcpy(device_b.get(), host_b.data(), vector_size, hipMemcpyHostToDevice));
+  xrt_hip_test_common::test_hip_check(hipMemcpy(device_c.get(), host_c.data(), vector_size, hipMemcpyHostToDevice));
 
   std::array<void *, 3> args_d = {&device_a.get(), &device_b.get(), &device_c.get()};
 
@@ -110,7 +110,7 @@ mainworker() {
 
   runkernel(function, args_d);
   // Sync device output buffer to host
-  test_hip_check(hipMemcpy(host_a.data(), device_a.get(), vector_size, hipMemcpyDeviceToHost));
+  xrt_hip_test_common::test_hip_check(hipMemcpy(host_a.data(), device_a.get(), vector_size, hipMemcpyDeviceToHost));
 
   // Verify output and then reset it for the subsequent test
   int errors = 0;
@@ -138,18 +138,18 @@ mainworker() {
   runkernel(nopfunction, args_d);
 
   // Register our buffer with ROCm so it is pinned and prepare for access by device
-  test_hip_check(hipHostRegister(host_a.data(), vector_size, hipHostRegisterDefault));
-  test_hip_check(hipHostRegister(host_b.data(), vector_size, hipHostRegisterDefault));
-  test_hip_check(hipHostRegister(host_c.data(), vector_size, hipHostRegisterDefault));
+  xrt_hip_test_common::test_hip_check(hipHostRegister(host_a.data(), vector_size, hipHostRegisterDefault));
+  xrt_hip_test_common::test_hip_check(hipHostRegister(host_b.data(), vector_size, hipHostRegisterDefault));
+  xrt_hip_test_common::test_hip_check(hipHostRegister(host_c.data(), vector_size, hipHostRegisterDefault));
 
   void *tmp_a1 = nullptr;
   void *tmp_b1 = nullptr;
   void *tmp_c1 = nullptr;
 
   // Map the host buffer to device address space so device can access the buffers
-  test_hip_check(hipHostGetDevicePointer(&tmp_a1, host_a.data(), 0));
-  test_hip_check(hipHostGetDevicePointer(&tmp_b1, host_b.data(), 0));
-  test_hip_check(hipHostGetDevicePointer(&tmp_c1, host_c.data(), 0));
+  xrt_hip_test_common::test_hip_check(hipHostGetDevicePointer(&tmp_a1, host_a.data(), 0));
+  xrt_hip_test_common::test_hip_check(hipHostGetDevicePointer(&tmp_b1, host_b.data(), 0));
+  xrt_hip_test_common::test_hip_check(hipHostGetDevicePointer(&tmp_c1, host_c.data(), 0));
 
   std::cout << "---------------------------------------------------------------------------------\n";
   std::cout << "Run " << hipKernelNameRef(function) << ' ' << repeat_loop << " times using host resident memory" << std::endl;
@@ -175,9 +175,9 @@ mainworker() {
   runkernel(nopfunction, args_h);
 
   // Unmap the host buffers from device address space
-  test_hip_check(hipHostUnregister(host_c.data()));
-  test_hip_check(hipHostUnregister(host_b.data()));
-  test_hip_check(hipHostUnregister(host_a.data()));
+  xrt_hip_test_common::test_hip_check(hipHostUnregister(host_c.data()));
+  xrt_hip_test_common::test_hip_check(hipHostUnregister(host_b.data()));
+  xrt_hip_test_common::test_hip_check(hipHostUnregister(host_a.data()));
 
   if (errors)
     std::cout << "FAILED TEST" << std::endl;

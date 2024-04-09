@@ -51,7 +51,7 @@ static device_handle
 hip_ctx_get_device()
 {
   auto ctx = get_current_context();
-  throw_invalid_value_if(!ctx, "Error retrieving context");
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
 
   return ctx->get_dev_id();
 }

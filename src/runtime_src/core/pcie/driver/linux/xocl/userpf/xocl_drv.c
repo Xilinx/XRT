@@ -1583,7 +1583,7 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 		return -EINVAL;
 	}
 
-	if (page_sz > (PAGE_SIZE << (MAX_ORDER-1))) {
+	if (page_sz > (PAGE_SIZE*MAX_ORDER_NR_PAGES)) {
 		DRM_WARN("Unable to allocate with page size 0x%llx", page_sz);
 		return -EINVAL;
 	}
