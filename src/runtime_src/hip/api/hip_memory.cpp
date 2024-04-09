@@ -27,8 +27,7 @@ namespace xrt::core::hip
     *ptr = nullptr;
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size);
     auto address = hip_mem->get_address();
-    if (!address)
-      throw xrt_core::system_error(hipErrorOutOfMemory, "Error allocating memory using hipMalloc");
+    throw_if(!address, hipErrorOutOfMemory, "Error allocating memory using hipMalloc!");
       
     memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, hip_mem);
     *ptr = reinterpret_cast<void* >(address);
@@ -47,8 +46,7 @@ namespace xrt::core::hip
     *ptr = nullptr;
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, flags);
     auto address = hip_mem->get_address();
-    if (!address)
-      throw xrt_core::system_error(hipErrorOutOfMemory, "Error allocating memory using hipHostMalloc");
+    throw_if(!address, hipErrorOutOfMemory, "Error allocating memory using hipHostMalloc!");
       
     memory_database::instance().insert(reinterpret_cast<uint64_t>(address), size, hip_mem);
     *ptr = address;
@@ -64,8 +62,7 @@ namespace xrt::core::hip
 
     auto hip_mem = std::make_shared<xrt::core::hip::memory>(dev, size, host_ptr, flags);
     auto host_addr = hip_mem->get_address();
-    if (!host_addr)
-      throw xrt_core::system_error(hipErrorOutOfMemory, "Error registering the host memory using hipHostRegister");
+    throw_if(!host_addr, hipErrorOutOfMemory, "Error registering the host memory using hipHostRegister!");
 
     memory_database::instance().insert(reinterpret_cast<uint64_t>(host_addr), size, hip_mem);
   }
@@ -77,11 +74,8 @@ namespace xrt::core::hip
     assert(device_ptr);
 
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr);
-    if (!hip_mem)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Error getting device pointer from host_malloced memory");
-
-    if (hip_mem->get_flags() != hipHostMallocMapped)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag");
+    throw_invalid_value_if(!hip_mem, "Error getting device pointer from host_malloced memory!");
+    throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag!");
 
     *device_ptr = nullptr;
     if (hip_mem) {
@@ -97,8 +91,7 @@ namespace xrt::core::hip
   hip_free(void* ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
-    if (!hip_mem || hip_mem->get_type() != memory_type::device)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid handle passed to hipFree");
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "Invalid handle passed to hipFree!");
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
@@ -108,8 +101,7 @@ namespace xrt::core::hip
   hip_host_free(void* ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
-    if (!hip_mem || hip_mem->get_type() != memory_type::host)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid handle passed to hipHostFree");
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "Invalid handle passed to hipHostFree!");
 
     auto device_addr = hip_mem->get_device_address();
     // if device address is differrent than host address, remove it from the map
@@ -124,8 +116,7 @@ namespace xrt::core::hip
   hip_host_unregister(void* host_ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr);
-    if (!hip_mem || hip_mem->get_type() != memory_type::registered)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid handle passed to hipHostUnregister");
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::registered, "Invalid handle passed to hipHostUnregister!");
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(host_ptr));
   }
@@ -135,8 +126,7 @@ namespace xrt::core::hip
   hip_memcpy_host2device(void* dst, const void* src, size_t size)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
-    if (!hip_mem)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpy");
+    throw_invalid_handle_if(!hip_mem, "Invalid destination handle in hipMemCpy!");
 
     if (hip_mem) {
       // dst is device address. Get device address
@@ -157,8 +147,7 @@ namespace xrt::core::hip
   hip_memcpy_device2host(void* dst, const void* src, size_t size)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
-    if (!hip_mem)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid src handle in hipMemCpy");
+    throw_invalid_handle_if(!hip_mem, "Invalid src handle in hipMemCpy!");    
 
     // src is device address. Get device address
     auto address = hip_mem->get_device_address();
@@ -170,8 +159,7 @@ namespace xrt::core::hip
   hip_memcpy_device2device(void* dst, const void* src, size_t size)
   {
     auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
-    if (!hip_mem_dst)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpy");
+    throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle in hipMemCpy!");        
 
     hip_mem_dst->write(src, size);
   }
@@ -221,16 +209,16 @@ namespace xrt::core::hip
   static void
   hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)  
   {
-    if (!src)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid src pointer in hipMemCpyH2DAsync");
+    throw_invalid_value_if(!src, "Invalid src pointer in hipMemCpyH2DAsync!");
 
     auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
-    if (!hip_mem_dst)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid destination handle in hipMemCpyH2DAsync");
+    throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle in hipMemCpyH2DAsync!");
+    auto dst_addr = hip_mem_dst->get_address();
+    auto dst_size = hip_mem_dst->get_size();
+    throw_invalid_value_if(reinterpret_cast<uint64_t>(dst)+size > reinterpret_cast<uint64_t>(dst_addr)+dst_size, "dst out of bound in hipMemCpyH2DAsync!");
 
     auto hip_stream = get_stream(stream);
-    if (!hip_stream)
-      throw xrt_core::system_error(hipErrorInvalidValue, "Invalid stream handle in hipMemCpyH2DAsync");
+    throw_invalid_value_if(!hip_stream, "Invalid stream handle in hipMemCpyH2DAsync!");
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
