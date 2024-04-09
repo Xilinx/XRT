@@ -24,7 +24,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
 
-namespace xrt { namespace ini {
+namespace xrt::ini {
 
 void
 set(const std::string& key, const std::string& value)
@@ -32,7 +32,7 @@ set(const std::string& key, const std::string& value)
   xrt_core::config::detail::set(key, value);
 }
 
-}} // namespace ini,xrt
+} // namespace xrt::ini
 
 ////////////////////////////////////////////////////////////////
 // xrt_ini C API implmentations (xrt_ini.h)

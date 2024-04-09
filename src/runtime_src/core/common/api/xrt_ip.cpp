@@ -115,7 +115,7 @@ public:
     enable(); // re-enable interrupts
   }
 
-  std::cv_status
+  [[nodiscard]] std::cv_status
   wait(const std::chrono::milliseconds& timeout) const
   {
     // Waits for interrupt, or return on timeout
@@ -144,6 +144,7 @@ class ip_impl
     ip_context(xrt::hw_context xhwctx, const std::string& nm)
       : m_device(xrt_core::hw_context_int::get_core_device(xhwctx))
       , m_hwctx(std::move(xhwctx))
+      , m_idx{0} // intialized in ctor
     {
       auto xclbin = m_hwctx.get_xclbin();
 
@@ -188,19 +189,19 @@ class ip_impl
     ip_context& operator=(ip_context&) = delete;
     ip_context& operator=(ip_context&&) = delete;
 
-    unsigned int
+    [[nodiscard]] unsigned int
     get_idx() const
     {
       return m_idx.index;
     }
 
-    uint64_t
+    [[nodiscard]] uint64_t
     get_address() const
     {
       return m_ip.get_base_address();
     }
 
-    uint64_t
+    [[nodiscard]] uint64_t
     get_size() const
     {
       return m_size;
@@ -214,7 +215,7 @@ class ip_impl
     }
   };
 
-  unsigned int
+  [[nodiscard]] unsigned int
   get_cuidx_or_error(size_t offset) const
   {
     if ((offset + sizeof(uint32_t)) > m_ipctx.get_size())
@@ -268,7 +269,7 @@ public:
   ip_impl& operator=(ip_impl&) = delete;
   ip_impl& operator=(ip_impl&&) = delete;
 
-  uint32_t
+  [[nodiscard]] uint32_t
   read_register(uint32_t offset) const
   {
     auto idx = get_cuidx_or_error(offset);

@@ -37,10 +37,10 @@ class hw_context_impl : public std::enable_shared_from_this<hw_context_impl>
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
 public:
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const cfg_param_type& cfg_param)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, cfg_param_type cfg_param)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
-    , m_cfg_param(cfg_param)
+    , m_cfg_param(std::move(cfg_param))
     , m_mode(xrt::hw_context::access_mode::shared)
     , m_hdl{m_core_device->create_hw_context(xclbin_id, m_cfg_param, m_mode)}
   {
@@ -74,6 +74,12 @@ public:
     // Reset within scope of dtor for trace point to measure time to reset
     m_hdl.reset(); 
   }
+
+  hw_context_impl() = delete;
+  hw_context_impl(const hw_context_impl&) = delete;
+  hw_context_impl(hw_context_impl&&) = delete;
+  hw_context_impl& operator=(const hw_context_impl&) = delete;
+  hw_context_impl& operator=(hw_context_impl&&) = delete;
 
   void
   update_qos(const qos_type& qos)
@@ -130,7 +136,7 @@ public:
 ////////////////////////////////////////////////////////////////
 // xrt_hw_context implementation of extension APIs not exposed to end-user
 ////////////////////////////////////////////////////////////////
-namespace xrt_core { namespace hw_context_int {
+namespace xrt_core::hw_context_int {
 
 std::shared_ptr<xrt_core::device>
 get_core_device(const xrt::hw_context& hwctx)
@@ -156,11 +162,11 @@ create_hw_context_from_implementation(void* hwctx_impl)
   if (!hwctx_impl)
     throw std::runtime_error("Invalid hardware context implementation."); 
 
-  xrt::hw_context_impl* impl_ptr = static_cast<xrt::hw_context_impl*>(hwctx_impl);
+  auto impl_ptr = static_cast<xrt::hw_context_impl*>(hwctx_impl);
   return xrt::hw_context(impl_ptr->get_shared_ptr());
 }
 
-}} // hw_context_int, xrt_core
+} // xrt_core::hw_context_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_hwcontext C++ API implmentations (xrt_hw_context.h)

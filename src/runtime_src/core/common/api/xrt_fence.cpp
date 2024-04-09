@@ -33,7 +33,7 @@ public:
     , m_access(access)
   {}
 
-  fence_impl(std::unique_ptr<xrt_core::fence_handle> fhdl)
+  explicit fence_impl(std::unique_ptr<xrt_core::fence_handle> fhdl)
     : m_handle(std::move(fhdl))
   {}
 
@@ -46,6 +46,13 @@ public:
     : m_handle(other.m_handle->clone())
     , m_access(other.m_access)
   {}
+
+  ~fence_impl() = default;
+  
+  fence_impl() = delete;
+  fence_impl(fence_impl&&) = delete;
+  fence_impl& operator=(const fence_impl&) = delete;
+  fence_impl& operator=(fence_impl&&) = delete;
 
   fence::export_handle
   export_fence()
@@ -63,19 +70,19 @@ public:
     return std::cv_status::no_timeout; // TBD
   }
 
-  xrt_core::fence_handle*
+  [[nodiscard]] xrt_core::fence_handle*
   get_fence_handle() const
   {
     return m_handle.get();
   }
 
-  xrt::fence::access_mode
+  [[nodiscard]] xrt::fence::access_mode
   get_access_mode() const 
   {
     return m_access;
   }
 
-  uint64_t
+  [[nodiscard]] uint64_t
   get_next_state() const
   {
     return m_handle->get_next_state();

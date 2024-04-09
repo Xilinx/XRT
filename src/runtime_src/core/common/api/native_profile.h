@@ -54,9 +54,9 @@ profiling_wrapper(const char* function, Callable&& f, Args&&...args)
   if (xrt_core::config::get_native_xrt_trace()
       || xrt_core::config::get_host_trace()) {
     generic_api_call_logger log_object(function) ;
-    return f(std::forward<Args>(args)...) ;
+    return f(std::forward<Args>(args)...) ;  // NOLINT, clang-tidy false positive [potential leak]
   }
-  return f(std::forward<Args>(args)...) ;
+  return f(std::forward<Args>(args)...) ;    // NOLINT, clang-tidy false positive [potential leak]
 }
 
 // Specializations of the logger for capturing different information
