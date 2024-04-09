@@ -108,6 +108,7 @@ namespace xdp {
       getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::dma);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
       getConfigMetricsForInterfaceTiles(shimTileMetricsSettings, shimGraphMetricsSettings);
+      std::cout<<"!!! getConfigMetrics().size(): "<<getConfigMetrics().size()<<std::endl;
       setTraceStartControl(compilerOptions.graph_iterator_event);
     }
   }
@@ -497,7 +498,7 @@ namespace xdp {
       }
 
       uint8_t channel0 = 0;
-      uint8_t channel1 = 1;
+      uint8_t channel1 = 1;  // TODO : Check if default value should be 0 same as channel0
       if (metrics[i].size() > 3) {
         try {
           channel0 = aie::convertStringToUint8(metrics[i][3]);
@@ -903,6 +904,7 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
+    bool showWarningGMIOMetric = true;
     std::vector<tile_type> offTiles;
     auto defaultSet = defaultSets[module_type::shim];
     auto metricVec = metricSets[module_type::shim];
@@ -913,6 +915,26 @@ namespace xdp {
         continue;
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // TODO : Add code here to check if metric is GMIO (DMA only) & tiles are of PLIO type.
+      // If so, push it to offtiles.
+      // TODO : Also test simple sets for PLIO testcases if that works.
+      if (tileMetric.first.subtype == 0 && isGMIOMetric(tileMetric.second)) {
+        if (showWarningGMIOMetric) {
+          std::string msg = "Configured interface_tile metric set " + tileMetric.second 
+                          + " is only applicable for GMIO type tiles.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          showWarningGMIOMetric = false;
+        }
+        std::stringstream msg;
+        msg <<"Configured interface_tile metric set "<< tileMetric.second
+            <<"is not applicable for GMIO type tile: ("<<+tileMetric.first.col<<", "
+            <<+tileMetric.first.row<<").";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+
         offTiles.push_back(tileMetric.first);
         continue;
       }
@@ -933,6 +955,7 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics.erase(t);
     }
+
   }
 
   aie::driver_config 

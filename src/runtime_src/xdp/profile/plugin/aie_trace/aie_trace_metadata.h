@@ -108,6 +108,11 @@ class AieTraceMetadata {
       hwContext = std::move(c);
     }
 
+    bool isGMIOMetric(const std::string metric) {
+      return gmioMetricSets.find(metric) != gmioMetricSets.end();
+    }
+    bool configMetricsEmpty() const { return configMetrics.empty(); }
+
   private:
     bool useDelay = false;
     bool useUserControl = false;
@@ -157,10 +162,14 @@ class AieTraceMetadata {
                                 "input_ports_details", "output_ports_details",
                                 "mm2s_ports", "s2mm_ports",
                                 "mm2s_ports_stalls", "s2mm_ports_stalls", 
-                                "mms2_ports_details", "s2mm_ports_details",
+                                "mm2s_ports_details", "s2mm_ports_details",
                                 "input_output_ports", "mm2s_s2mm_ports",
                                 "input_output_ports_stalls", "mm2s_s2mm_ports_stalls"} }
     };
+
+    std::set<std::string> gmioMetricSets {
+                                "input_ports_details", "output_ports_details",
+                                "mm2s_ports_details", "s2mm_ports_details" };
 
     void* handle;
     xrt::hw_context hwContext;
