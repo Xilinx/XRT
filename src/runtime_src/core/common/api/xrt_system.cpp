@@ -9,7 +9,7 @@
 
 #include "core/common/system.h"
 
-namespace xrt { namespace system {
+namespace xrt::system {
 
 unsigned int
 enumerate_devices()
@@ -17,7 +17,7 @@ enumerate_devices()
   return static_cast<unsigned int>(xrt_core::get_total_devices(true/*is_user*/).second);
 }
 
-}} // namespace ini,xrt
+} // xrt::system
 
 ////////////////////////////////////////////////////////////////
 // xrt_message C API implmentations (xrt_message.h)

@@ -40,7 +40,7 @@ constexpr std::enable_if_t<std::is_enum_v<T>, T>
 operator~(T rhs)
 {
   using U = std::underlying_type_t<T>;
-  return static_cast<T>(~static_cast<U>(rhs));
+  return static_cast<T>(~static_cast<U>(rhs)); // NOLINT
 }
 
 template <typename T>

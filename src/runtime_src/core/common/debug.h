@@ -86,17 +86,17 @@ xassert(const std::string& file, const std::string& line, const std::string& fun
 } // xrt_core
 
 #ifdef XRT_VERBOSE
-# define XRT_DEBUG(...) xrt_core::debug(__VA_ARGS__)
-# define XRT_PRINT(...) xrt_core::debug(__VA_ARGS__)
-# define XRT_DEBUGF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
-# define XRT_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
+# define XRT_DEBUG(...) xrt_core::debug(__VA_ARGS__) // NOLINT
+# define XRT_PRINT(...) xrt_core::debug(__VA_ARGS__) // NOLINT
+# define XRT_DEBUGF(format,...) xrt_core::debugf(format, ##__VA_ARGS__) // NOLINT
+# define XRT_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__) // NOLINT
 # define XRT_DEBUG_CALL(...) xrt_core::sink(__VA_ARGS__);
 # define XRT_CALL(...) xrt_core::sink(__VA_ARGS__);
 #else
 # define XRT_DEBUG(...)
-# define XRT_PRINT(...) xrt_core::debug(__VA_ARGS__)
+# define XRT_PRINT(...) xrt_core::debug(__VA_ARGS__) // NOLINT
 # define XRT_DEBUGF(...)
-# define XRT_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
+# define XRT_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__) // NOLINT
 # define XRT_DEBUG_CALL(...)
 # define XRT_CALL(...) xrt_core::sink(__VA_ARGS__);
 #endif

@@ -16,7 +16,7 @@
 
 using namespace std::chrono_literals;
 
-namespace xrt_core { namespace context_mgr {
+namespace xrt_core::context_mgr {
 
 // class device_context_mgr - synchroize open and close context for IPs
 //
@@ -41,8 +41,8 @@ class device_context_mgr
       std::string ipname;
       cuidx_type ipidx;
 
-      ip(const std::string& nm, cuidx_type idx)
-        : ipname(nm), ipidx(idx)
+      ip(std::string nm, cuidx_type idx)
+        : ipname(std::move(nm)), ipidx(idx)
       {}
     };
 
@@ -79,13 +79,8 @@ class device_context_mgr
   std::mutex m_mutex;
   std::map<const hwctx_handle*, ctx> m_ctx;
   std::condition_variable m_cv;
-  xrt_core::device* m_device;
 
 public:
-  device_context_mgr(xrt_core::device* device)
-    : m_device(device)
-  {}
-
   // Open context on IP in specified hardware context.
   // Open the IP context when it is safe to do so.  Note, that usage
   // of the context manager does not support multiple threads calling
@@ -127,14 +122,15 @@ public:
 // Get (and create) context manager for device.
 // Cache the created manager so other threads can share.
 static std::shared_ptr<device_context_mgr>
-get_device_context_mgr(xrt_core::device* device, bool create = false)
+get_device_context_mgr(const xrt_core::device* device, bool create = false)
 {
   static std::map<const xrt_core::device*, std::weak_ptr<device_context_mgr>> d2cmgr;
   static std::mutex ctx_mutex;
   std::lock_guard<std::mutex> lk(ctx_mutex);
   auto cmgr = d2cmgr[device].lock();
   if (!cmgr && create)
-    d2cmgr[device] = cmgr = std::shared_ptr<device_context_mgr>(new device_context_mgr(device));
+    // NOLINTNEXTLINE using new for weak_ptr
+    d2cmgr[device] = cmgr = std::shared_ptr<device_context_mgr>(new device_context_mgr); 
   return cmgr;
 }
 
@@ -147,7 +143,7 @@ create(const xrt_core::device* device)
 {
   // creating a context manager doesn't change device, but aqcuiring a
   // context is a device operation and cannot use const device
-  return get_device_context_mgr(const_cast<xrt_core::device*>(device), true);
+  return get_device_context_mgr(device, true);
 }
 
 // Regular CU
@@ -173,4 +169,4 @@ close_context(const xrt::hw_context& hwctx, cuidx_type cuidx)
   throw std::runtime_error("No context manager for device");
 }
 
-}} // context_mgr, xrt_core
+} // xrt_core::context_mgr
