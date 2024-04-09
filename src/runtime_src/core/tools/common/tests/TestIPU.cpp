@@ -84,7 +84,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
-  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f's") % instr_size));
+  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f's") % buffer_size));
   logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f's") % itr_count));
 
   auto start = std::chrono::high_resolution_clock::now();
