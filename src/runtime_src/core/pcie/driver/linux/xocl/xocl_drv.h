@@ -380,6 +380,7 @@ struct xocl_pci_info {
 };
 
 extern struct class *xrt_class;
+extern struct class *xrt_class_mgmtpf;
 
 struct drm_xocl_bo;
 struct client_ctx;
@@ -622,6 +623,7 @@ struct xocl_dev_core {
 	 * Having SN info available also implies there is a working SC
 	 */
 	char			serial_num[SERIAL_NUM_LEN];
+	bool			userpf;
 };
 
 #define XOCL_DRM(xdev_hdl)					\

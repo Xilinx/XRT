@@ -369,7 +369,7 @@ static int create_char(struct xclmgmt_dev *lro)
 		goto fail_add;
 	}
 
-	lro_char->sys_device = device_create(xrt_class,
+	lro_char->sys_device = device_create(xrt_class_mgmtpf,
 				&lro->core.pdev->dev,
 				lro_char->cdev->dev, NULL,
 				DRV_NAME "%u", lro->instance);
@@ -390,10 +390,10 @@ fail_add:
 static int destroy_sg_char(struct xclmgmt_char *lro_char)
 {
 	BUG_ON(!lro_char);
-	BUG_ON(!xrt_class);
+	BUG_ON(!xrt_class_mgmtpf);
 
 	if (lro_char->sys_device)
-		device_destroy(xrt_class, lro_char->cdev->dev);
+		device_destroy(xrt_class_mgmtpf, lro_char->cdev->dev);
 	cdev_del(lro_char->cdev);
 
 	return 0;
@@ -1436,6 +1436,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_alloc;
 	}
 
+	lro->core.userpf = false;
+
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
 		INIT_DELAYED_WORK(&lro->core.works[i].work, xclmgmt_work_cb);
 		lro->core.works[i].op = i;
@@ -1742,9 +1744,9 @@ static int __init xclmgmt_init(void)
 	int res, i;
 
 	pr_info(DRV_NAME " init()\n");
-	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
-	if (IS_ERR(xrt_class))
-		return PTR_ERR(xrt_class);
+	xrt_class_mgmtpf = class_create(THIS_MODULE, "xrt_mgmt");
+	if (IS_ERR(xrt_class_mgmtpf))
+		return PTR_ERR(xrt_class_mgmtpf);
 
 	res = xocl_debug_init();
 	if (res) {
@@ -1778,7 +1780,7 @@ reg_err:
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 alloc_err:
 	pr_info(DRV_NAME " init() err\n");
-	class_destroy(xrt_class);
+	class_destroy(xrt_class_mgmtpf);
 	return res;
 }
 
@@ -1795,7 +1797,7 @@ static void xclmgmt_exit(void)
 	/* unregister this driver from the PCI bus driver */
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 	xocl_debug_fini();
-	class_destroy(xrt_class);
+	class_destroy(xrt_class_mgmtpf);
 }
 
 module_init(xclmgmt_init);
