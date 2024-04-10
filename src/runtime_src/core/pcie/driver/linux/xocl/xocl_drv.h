@@ -396,6 +396,7 @@ struct xocl_pci_info {
 };
 
 extern struct class *xrt_class;
+extern struct class *xrt_class_mgmtpf;
 
 struct drm_xocl_bo;
 struct client_ctx;
@@ -653,6 +654,7 @@ struct xocl_dev_core {
 
 	/* XOCL Should cache some of the information shared in IOCTL */
 	struct xocl_axlf_obj_cache *axlf_obj[MAX_SLOT_SUPPORT];
+	bool			userpf;
 };
 
 #define XOCL_DRM(xdev_hdl)					\

@@ -20,6 +20,8 @@
 #include "xocl_drv.h"
 #include "version.h"
 
+struct class *xrt_class_mgmtpf;
+
 struct xocl_subdev_array {
 	xdev_handle_t xdev_hdl;
 	int id;
@@ -304,6 +306,7 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 	struct device *sysdev;
 	struct cdev *cdevp;
 	int ret;
+	struct class* local_class=NULL;
 
 	if (!XOCL_GET_DRV_PRI(pdev) || !XOCL_GET_DRV_PRI(pdev)->fops)
 		return 0;
@@ -314,6 +317,11 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 	}
 
 	core = xocl_get_xdev(pdev);
+	if(core->userpf)
+		local_class = xrt_class;
+	else
+		local_class = xrt_class_mgmtpf;
+
 	cdevp = cdev_alloc();
 	if (!cdevp) {
 		xocl_err(&pdev->dev, "alloc cdev failed");
@@ -332,11 +340,11 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 	}
 
 	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
-		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
+		sysdev = device_create(local_class, &pdev->dev, cdevp->dev,
 			NULL, "%s%u.%u", XOCL_GET_DRV_PRI(pdev)->cdev_name,
 			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 	else
-		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
+		sysdev = device_create(local_class, &pdev->dev, cdevp->dev,
 			NULL, "%s/%s%u.%u", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
 			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
@@ -354,7 +362,7 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 
 failed:
 	if (cdevp) {
-		device_destroy(xrt_class, cdevp->dev);
+		device_destroy(local_class, cdevp->dev);
 		cdev_del(cdevp);
 	}
 
@@ -389,6 +397,12 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 {
 	struct platform_device *pldev;
 	int state;
+	struct class* local_class=NULL;
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	if(core->userpf)
+		local_class = xrt_class;
+	else
+		local_class = xrt_class_mgmtpf;
 
 	if (!subdev || subdev->state == XOCL_SUBDEV_STATE_UNINIT)
 		return;
@@ -401,7 +415,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	xocl_xdev_info(xdev_hdl, "Destroy subdev %s, cdev %p\n",
 			subdev->info.name, subdev->cdev);
 	if (subdev->cdev) {
-		device_destroy(xrt_class, subdev->cdev->dev);
+		device_destroy(local_class, subdev->cdev->dev);
 		cdev_del(subdev->cdev);
 		subdev->cdev = NULL;
 	}
@@ -441,13 +455,20 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	struct resource *res = NULL;
 	resource_size_t iostart;
 	u64 bar_start, bar_end;
+	char *suffix;
+
+	if (core->userpf){
+		suffix = ".u";
+        } else {
+		suffix = ".m";    
+        }
 
 	if (subdev->info.override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
 			subdev->info.override_name);
 	else
 		snprintf(devname, sizeof(devname) - 1, "%s%s",
-			subdev->info.name, SUBDEV_SUFFIX);
+			subdev->info.name, suffix);
 	xocl_xdev_dbg(xdev_hdl, "creating subdev %s multi %d level %d",
 		devname, subdev->info.multi_inst, subdev->info.level);
 
@@ -1077,6 +1098,12 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_funcs *subdev_funcs;
 	struct platform_device *pldev;
 	int ret = 0;
+	struct class* local_class=NULL;  
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl; 
+	if(core->userpf)
+		local_class = xrt_class;   
+	else
+		local_class =xrt_class_mgmtpf;
 
 	BUG_ON(!subdev);
 	if (subdev->state < XOCL_SUBDEV_STATE_ACTIVE) {
@@ -1097,7 +1124,7 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	xocl_xdev_info(xdev_hdl, "offline subdev %s, cdev %p\n",
 			subdev->info.name, subdev->cdev);
 	if (subdev->cdev) {
-		device_destroy(xrt_class, subdev->cdev->dev);
+		device_destroy(local_class, subdev->cdev->dev);
 		cdev_del(subdev->cdev);
 		subdev->cdev = NULL;
 	}
