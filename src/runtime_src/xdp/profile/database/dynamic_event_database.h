@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -175,6 +175,7 @@ namespace xdp {
     XDP_CORE_EXPORT void addAIESample(uint64_t deviceId, double timestamp,
 				   const std::vector<uint64_t>& values) ;
     XDP_CORE_EXPORT std::vector<counters::Sample> getAIESamples(uint64_t deviceId) ;
+    XDP_CORE_EXPORT std::vector<counters::Sample> moveAIESamples(uint64_t deviceId);
     XDP_CORE_EXPORT void addAIETimerSample(uint64_t deviceId, unsigned long timestamp1,
 				   unsigned long timestamp2, const std::vector<uint64_t>& values) ;
     XDP_CORE_EXPORT std::vector<counters::DoubleSample> getAIETimerSamples(uint64_t deviceId) ;
