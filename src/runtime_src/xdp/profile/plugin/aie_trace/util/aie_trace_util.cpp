@@ -247,9 +247,7 @@ namespace xdp::aie::trace {
   {
     if ((metricSet.find("dma") != std::string::npos)
         || (metricSet.find("s2mm") != std::string::npos)
-        || (metricSet.find("mm2s") != std::string::npos)
-        || (metricSet.find("input") != std::string::npos)
-        || (metricSet.find("output") != std::string::npos))
+        || (metricSet.find("mm2s") != std::string::npos))
       return true;
     return false;
   }

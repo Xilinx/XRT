@@ -108,7 +108,6 @@ namespace xdp {
       getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::dma);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
       getConfigMetricsForInterfaceTiles(shimTileMetricsSettings, shimGraphMetricsSettings);
-      std::cout<<"!!! getConfigMetrics().size(): "<<getConfigMetrics().size()<<std::endl;
       setTraceStartControl(compilerOptions.graph_iterator_event);
     }
   }
