@@ -327,7 +327,7 @@ namespace xdp {
       auto typeInt    = static_cast<int>(type);
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
-      
+
       if ((type == module_type::core) && !aie::trace::isDmaSet(metricSet)) {
         // If we're not looking at DMA events, then don't display the DMA
         // If core is not active (i.e., DMA-only tile), then ignore this tile
@@ -340,6 +340,12 @@ namespace xdp {
       std::string tileName = (type == module_type::mem_tile) ? "memory" 
                            : ((type == module_type::shim) ? "interface" : "AIE");
       tileName.append(" tile (" + std::to_string(col) + "," + std::to_string(row) + ")");
+
+      if (aie::isInfoVerbosity()) {
+        std::stringstream infoMsg;
+        infoMsg << "Configuring " << tileName << " for trace using metric set " << metricSet;
+        xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
+      }
 
       xaiefal::XAieMod core;
       xaiefal::XAieMod memory;
@@ -369,6 +375,28 @@ namespace xdp {
       cfgTile->active_core = tile.active_core;
       cfgTile->active_memory = tile.active_memory;
 
+      // Catch core execution trace
+      if ((type == module_type::core) && (metricSet == "execution")) {
+        // Set start/end events, use execution packets, and start trace module 
+        auto coreTrace = core.traceControl();
+        if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK)
+          continue;
+        coreTrace->reserve();
+
+        // Driver requires at least one, non-zero trace event
+        uint8_t slot;
+        coreTrace->reserveTraceSlot(slot);
+        coreTrace->setTraceEvent(slot, XAIE_EVENT_TRUE_CORE);
+
+        coreTrace->setMode(XAIE_TRACE_INST_EXEC);
+        XAie_Packet pkt = {0, 0};
+        coreTrace->setPkt(pkt);
+        coreTrace->start();
+
+        (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
+        continue;
+      }
+
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
       EventVector coreEvents;
@@ -383,12 +411,6 @@ namespace xdp {
       }
       else if (type == module_type::shim) {
         interfaceEvents = interfaceTileEventSets[metricSet];
-      }
-
-      if (aie::isInfoVerbosity()) {
-        std::stringstream infoMsg;
-        infoMsg << "Configuring " << tileName << " for trace using metric set " << metricSet;
-        xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
       }
 
       // Check Resource Availability
