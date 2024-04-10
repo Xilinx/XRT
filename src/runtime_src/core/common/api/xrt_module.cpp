@@ -180,11 +180,11 @@ struct patcher
 
   void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    uint64_t val = *(uint64_t*)(bd_data_ptr);
-    val &= 0x0000FFFFFFFFFFFF; // 48 bit
-    val += patch;              // Patch with bo address
-    uint32_t lower32BitVal = (uint32_t)val;
-    uint16_t higher16BitVal = (uint16_t)((val & 0x0000FFFF00000000) >> 32);
+    uint64_t val = *reinterpret_cast<uint64_t*>(bd_data_ptr);
+    val &= 0x0000FFFFFFFFFFFF;                                                        // NOLINT
+    val += patch;
+    auto lower32BitVal = static_cast<uint32_t>(val);
+    auto higher16BitVal = static_cast<uint16_t>((val & 0x0000FFFF00000000) >> 32);    // NOLINT
     *bd_data_ptr = lower32BitVal;
 
     auto pHigher16Bit = reinterpret_cast<uint16_t*>(bd_data_ptr + 1);
