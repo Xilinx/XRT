@@ -919,9 +919,7 @@ namespace xdp {
         continue;
       }
 
-      // TODO : Add code here to check if metric is GMIO (DMA only) & tiles are of PLIO type.
-      // If so, push it to offtiles.
-      // TODO : Also test simple sets for PLIO testcases if that works.
+      // Check for PLIO tiles and it's compatible metric settings
       if (tileMetric.first.subtype == 0 && isGMIOMetric(tileMetric.second)) {
         if (showWarningGMIOMetric) {
           std::string msg = "Configured interface_tile metric set " + tileMetric.second 
@@ -958,7 +956,6 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics.erase(t);
     }
-
   }
 
   aie::driver_config 
