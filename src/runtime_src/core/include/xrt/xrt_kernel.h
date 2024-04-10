@@ -115,9 +115,10 @@ public:
 
     XCL_DRIVER_DLLESPEC
     const char*
-    what() const noexcept;
+    what() const noexcept override;
 
   private:
+    // This member is a mistake, but cannot remove it without breaking ABI
     std::shared_ptr<command_error_impl> m_impl;
   };
 

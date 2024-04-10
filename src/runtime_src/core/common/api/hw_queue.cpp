@@ -8,6 +8,7 @@
 #include "command.h"
 #include "hw_context_int.h"
 #include "fence_int.h"
+#include "kernel_int.h"
 
 #include "core/common/debug.h"
 #include "core/common/device.h"
@@ -359,6 +360,10 @@ public:
   hw_queue_impl& operator=(const hw_queue_impl&) = delete;
   hw_queue_impl& operator=(hw_queue_impl&&) = delete;
 
+  // Submit list of commands for execution as atomic unit
+  virtual void
+  submit(const xrt::runlist& runlist) = 0;
+
   // Submit command for execution
   virtual void
   submit(xrt_core::command* cmd) = 0;  // NOLINT override from base
@@ -447,6 +452,12 @@ public:
   submit(xrt_core::command* cmd) override
   {
     m_qhdl->submit_command(cmd->get_exec_bo());
+  }
+
+  void
+  submit(const xrt::runlist& runlist) override
+  {
+    m_qhdl->submit_command(xrt_core::kernel_int::get_runlist_buffer_handles(runlist));
   }
 
   void
@@ -628,6 +639,12 @@ public:
   }
 
   void
+  submit(const xrt::runlist&) override
+  {
+    throw std::runtime_error("kds_device::submit(runlist) not implemented");
+  }
+
+  void
   submit_wait(const xrt::fence&) override
   {
     throw std::runtime_error("kds_device::submit_wait_on_fence not implemented");
@@ -787,6 +804,13 @@ hw_queue::
 unmanaged_start(xrt_core::command* cmd)
 {
   get_handle()->unmanaged_start(cmd);
+}
+
+void
+hw_queue::
+submit(const xrt::runlist& runlist)
+{
+  get_handle()->submit(runlist);
 }
 
 // Wait for command completion for unmanaged command execution
