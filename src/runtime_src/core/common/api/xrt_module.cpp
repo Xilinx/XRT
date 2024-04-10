@@ -180,22 +180,15 @@ struct patcher
 
   void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    // This function is a copy&paste from IPU firmware
-    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+    uint64_t val = *(uint64_t*)(bd_data_ptr);
+    val &= 0x0000FFFFFFFFFFFF; // 48 bit
+    val += patch;              // Patch with bo address
+    uint32_t lower32BitVal = (uint32_t)val;
+    uint16_t higher16BitVal = (uint16_t)((val & 0x0000FFFF00000000) >> 32);
+    *bd_data_ptr = lower32BitVal;
 
-    uint64_t base_address =
-      ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |                       // NOLINT
-      ((static_cast<uint64_t>(bd_data_ptr[2])));
-
-    base_address = base_address + patch + ddr_aie_addr_offset;
-    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
-    bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
-  }
-
-  void patch_tansaction_48(uint32_t* bd_data_ptr, uint64_t patch)
-  {
-    bd_data_ptr = bd_data_ptr;
-    patch = patch;
+    auto pHigher16Bit = reinterpret_cast<uint16_t*>(bd_data_ptr + 1);
+    *pHigher16Bit = higher16BitVal;
   }
 
   void
@@ -220,7 +213,7 @@ struct patcher
         patch_tansaction_ctrlpkt_48(bd_data_ptr, patch);
         break;
       case symbol_type::tansaction_48:
-        patch_tansaction_48(bd_data_ptr, patch);
+        // No patching since transaction buffer firmware does not support
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
