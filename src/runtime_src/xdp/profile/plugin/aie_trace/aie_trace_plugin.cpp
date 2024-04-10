@@ -141,7 +141,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     AIEData.valid = false;
     xrt_core::message::send(severity_level::warning, "XRT",
                             AIE_TRACE_TILES_UNAVAILABLE);
-    // return;
+    return;
   }
 
 #ifdef XDP_CLIENT_BUILD

@@ -498,7 +498,7 @@ namespace xdp {
       }
 
       uint8_t channel0 = 0;
-      uint8_t channel1 = 1;  // TODO : Check if default value should be 0 same as channel0
+      uint8_t channel1 = 1;
       if (metrics[i].size() > 3) {
         try {
           channel0 = aie::convertStringToUint8(metrics[i][3]);
@@ -929,15 +929,18 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg);
           showWarningGMIOMetric = false;
         }
-        std::stringstream msg;
-        msg <<"Configured interface_tile metric set "<< tileMetric.second
-            <<"is not applicable for GMIO type tile: ("<<+tileMetric.first.col<<", "
-            <<+tileMetric.first.row<<").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
-        offTiles.push_back(tileMetric.first);
-        continue;
-      }
+        if(boost::algorithm::ends_with(tileMetric.second, "_details")) {
+            std::stringstream msg;
+            msg << "Replacing metric set "<< tileMetric.second << " with complementary set ";
+            boost::algorithm::replace_last(tileMetric.second, "_details", "_stalls");
+            msg << tileMetric.second <<" for tile ("<<+tileMetric.first.col<<", "<<+tileMetric.first.row<<").";
+            xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        }else {
+          offTiles.push_back(tileMetric.first);
+          continue;
+        }
+     }
 
       // Ensure requested metric set is supported (if not, use default)
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
