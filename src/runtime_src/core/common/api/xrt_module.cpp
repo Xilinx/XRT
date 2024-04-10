@@ -109,9 +109,11 @@ struct patcher
     uc_dma_remote_ptr_symbol_kind = 1,
     shim_dma_base_addr_symbol_kind = 2, // patching scheme needed by AIE2PS firmware
     scalar_32bit_kind = 3,
-    control_packet_48 = 4,              // patching scheme needed by IPU firmware to patch control packet
-    shim_dma_48 = 5,                    // patching scheme needed by IPU firmware to patch instruction buffer
-    unknown_symbol_kind = 6
+    control_packet_48 = 4,              // patching scheme needed by firmware to patch dpu-sequence control packet
+    shim_dma_48 = 5,                    // patching scheme needed by firmware to patch dpu-seuqnece instruction buffer
+    tansaction_ctrlpkt_48 = 6,          // patching scheme needed by firmware to patch transaction buffer control packet
+    tansaction_48 = 7,                  // patching scheme needed by firmware to patch transaction buffer
+    unknown_symbol_kind = 8
   };
 
   symbol_type m_symbol_type;
@@ -176,6 +178,26 @@ struct patcher
     bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
+  void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    // This function is a copy&paste from IPU firmware
+    constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
+
+    uint64_t base_address =
+      ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |                       // NOLINT
+      ((static_cast<uint64_t>(bd_data_ptr[2])));
+
+    base_address = base_address + patch + ddr_aie_addr_offset;
+    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
+    bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
+  }
+
+  void patch_tansaction_48(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    bd_data_ptr = bd_data_ptr;
+    patch = patch;
+  }
+
   void
   patch(uint8_t* base, uint64_t patch)
   {
@@ -193,6 +215,12 @@ struct patcher
         break;
       case symbol_type::shim_dma_48:
         patch_shim48(bd_data_ptr, patch);
+        break;
+      case symbol_type::tansaction_ctrlpkt_48:
+        patch_tansaction_ctrlpkt_48(bd_data_ptr, patch);
+        break;
+      case symbol_type::tansaction_48:
+        patch_tansaction_48(bd_data_ptr, patch);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
