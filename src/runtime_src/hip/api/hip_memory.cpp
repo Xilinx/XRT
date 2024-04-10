@@ -3,6 +3,7 @@
 
 #include <string>
 #include "core/common/error.h"
+#include "core/common/memalign.h"
 #include "core/common/unistd.h"
 #include "hip/config.h"
 #include "hip/core/device.h"
@@ -197,14 +198,11 @@ namespace xrt::core::hip
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
     assert(hip_mem->get_type() != xrt::core::hip::memory_type::invalid);
 
-    auto host_src = aligned_alloc(xrt_core::getpagesize(), size);
-    memset(host_src, value, size);
+    auto host_src = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
+    memset(host_src.get(), value, size);
 
-    hip_mem->write(host_src, size);
-
-    free(host_src);
+    hip_mem->write(host_src.get(), size);
   }
-
 
   static void
   hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)  
