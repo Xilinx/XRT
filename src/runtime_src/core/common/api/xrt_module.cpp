@@ -178,15 +178,16 @@ struct patcher
     bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
+  // TODO reuse patch_ctrl48 for both DPU sequence and transaction buffer
+  // Need change assembler first
   void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
   {
     uint64_t val = *reinterpret_cast<uint64_t*>(bd_data_ptr);
     val &= 0x0000FFFFFFFFFFFF;                                                        // NOLINT
     val += patch;
-    auto lower32BitVal = static_cast<uint32_t>(val);
-    auto higher16BitVal = static_cast<uint16_t>((val & 0x0000FFFF00000000) >> 32);    // NOLINT
-    *bd_data_ptr = lower32BitVal;
+    *bd_data_ptr = static_cast<uint32_t>(val);
 
+    auto higher16BitVal = static_cast<uint16_t>((val & 0x0000FFFF00000000) >> 32);    // NOLINT
     auto pHigher16Bit = reinterpret_cast<uint16_t*>(bd_data_ptr + 1);
     *pHigher16Bit = higher16BitVal;
   }
