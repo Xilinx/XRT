@@ -109,7 +109,7 @@ jobs:
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
         with:     
-          workspace: ${{ github.workspace }}/${{ env.XRT_VERSION_PATCH }}/build   
+          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
           buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 

@@ -124,37 +124,36 @@ class device_type
   xrt::hw_context m_hwctx;
   std::shared_ptr<xrt_core::device> m_device;
 public:
-  device_type()
-  {}
+  device_type() = default;
 
-  device_type(std::shared_ptr<xrt_core::device> device)
+  device_type(std::shared_ptr<xrt_core::device> device) // NOLINT converting ctor
     : m_device(std::move(device))
   {}
 
-  device_type(xrt::hw_context hwctx)
+  device_type(xrt::hw_context hwctx)  // NOLINT converting ctor
     : m_hwctx(std::move(hwctx))
     , m_device(xrt_core::hw_context_int::get_core_device(m_hwctx))
   {}
 
-  bool
+  [[nodiscard]] bool
   is_valid_hwctx() const
   {
     return static_cast<xrt_core::hwctx_handle*>(m_hwctx) != nullptr;
   }
 
-  const xrt_core::device*
+  [[nodiscard]] const xrt_core::device*
   get_core_device() const
   {
     return m_device.get();
   }
 
-  const std::shared_ptr<xrt_core::device>&
+  [[nodiscard]] const std::shared_ptr<xrt_core::device>&
   get_device() const
   {
     return m_device;
   }
 
-  xrt_core::hwctx_handle*
+  [[nodiscard]] xrt_core::hwctx_handle*
   get_hwctx_handle() const
   {
     return (m_hwctx)
@@ -226,7 +225,7 @@ protected:
   mutable uint64_t addr = no_addr;                 // NOLINT bo device address
   mutable uint32_t grpid = no_group;               // NOLINT memory group index
   mutable bo::flags flags = no_flags;              // NOLINT flags per bo properties
-  mutable std::unique_ptr<xrt_core::shared_handle> shared_handle;
+  mutable std::unique_ptr<xrt_core::shared_handle> shared_handle; // NOLINT
 
 public:
   // No handle
@@ -277,9 +276,7 @@ public:
     , size(sz)
   {}
 
-  virtual
-  ~bo_impl()
-  {}
+  virtual ~bo_impl() = default;
 
   bo_impl(const bo_impl&) = delete;
   bo_impl(bo_impl&&) = delete;
@@ -512,9 +509,17 @@ public:
 
 public:
   // async_bo_impl() - Construct async_bo_obj
-  async_handle_impl(xrt::bo bo)
+  explicit async_handle_impl(xrt::bo bo)
     : m_bo(std::move(bo))
   {}
+
+  virtual ~async_handle_impl() = default;
+
+  async_handle_impl() = delete;
+  async_handle_impl(const async_handle_impl&) = delete;
+  async_handle_impl(async_handle_impl&&) = delete;
+  async_handle_impl& operator=(const async_handle_impl&) = delete;
+  async_handle_impl& operator=(async_handle_impl&&) = delete;
 
   // wait() - Wait for async to complete
   virtual void
@@ -1132,11 +1137,11 @@ alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup
 #ifndef XRT_EDGE
     if (is_nodma(device.get_core_device()))
       return alloc_nodma(device, sz, flags, grp);
-    else if (is_sw_emulation())
+    else if (is_sw_emulation()) // NOLINT hicpp-braces-around-statements
       // In DC scenario, for sw_emu, use the xclAllocBO and xclMapBO instead of xclAllocUserPtrBO,
       // which helps to remove the extra copy in sw_emu.
       return alloc_kbuf(device, sz, flags, grp);
-    else
+    else  // NOLINT hicpp-braces-around-statements
       return alloc_hbuf(device, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
 #endif
   case XCL_BO_FLAGS_CACHEABLE:
@@ -1263,7 +1268,7 @@ adjust_buffer_flags(const device_type& dev, xrt::bo::flags flags, xrt::memory_gr
 ////////////////////////////////////////////////////////////////
 // xrt_bo implementation of extension APIs not exposed to end-user
 ////////////////////////////////////////////////////////////////
-namespace xrt_core { namespace bo {
+namespace xrt_core::bo {
 
 uint64_t
 address(const xrt::bo& bo)
@@ -1320,7 +1325,7 @@ alignment()
   return ::get_alignment();
 }
 
-}} // namespace bo, xrt_core
+} // xrt_core::bo
 
 
 ////////////////////////////////////////////////////////////////
@@ -1691,7 +1696,7 @@ create_debug_bo(const xrt::hw_context& hwctx, size_t sz)
 ////////////////////////////////////////////////////////////////
 // xrt_aie_bo C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
-namespace xrt { namespace aie {
+namespace xrt::aie {
 
 xrt::bo::async_handle
 bo::
@@ -1707,7 +1712,7 @@ sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
   get_handle()->sync(*this, port, dir, sz, offset);
 }
 
-}} // namespace aie, xrt
+} // namespace xrt::aie
 #endif
 
 ////////////////////////////////////////////////////////////////

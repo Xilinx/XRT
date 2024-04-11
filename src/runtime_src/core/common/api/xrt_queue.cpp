@@ -76,6 +76,11 @@ public:
     m_worker.join();
   }
 
+  queue_impl(const queue_impl&) = delete;
+  queue_impl(queue_impl&&) = delete;
+  queue_impl& operator=(const queue_impl&) = delete;
+  queue_impl& operator=(queue_impl&&) = delete;
+
   // Enqueue a task and notify worker
   void
   enqueue(queue::task&& t)

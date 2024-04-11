@@ -201,7 +201,7 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
 
 } // unnamed namespace
 
-namespace xrt_core { namespace device_int {
+namespace xrt_core::device_int {
 
 std::shared_ptr<xrt_core::device>
 get_core_device(xrtDeviceHandle dhdl)
@@ -222,7 +222,7 @@ exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms
   return xrt_core::hw_queue::exec_wait(device.get_handle().get(), timeout_ms);
 }
 
-}} // device_int, xrt_core
+} // xrt_core::device_int
 
 namespace xrt {
 
@@ -378,7 +378,7 @@ operator== (const device& d1, const device& d2)
 ////////////////////////////////////////////////////////////////
 // xrt_aie_device C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
-namespace xrt { namespace aie {
+namespace xrt::aie {
 
 void
 device::
@@ -396,7 +396,7 @@ open_context(xrt::aie::device::access_mode am)
   core_device->open_aie_context(am);
 }
 
-}} // namespace aie, xrt
+} // xrt::aie
 #endif
 
 ////////////////////////////////////////////////////////////////

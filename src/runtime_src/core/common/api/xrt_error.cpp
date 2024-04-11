@@ -185,7 +185,7 @@ alloc_error_from_code(xrtErrorCode ecode, xrtErrorTime timestamp)
 
 } // namespace
 
-namespace xrt_core { namespace error_int {
+namespace xrt_core::error_int {
 
 void
 get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
@@ -193,7 +193,7 @@ get_error_code_to_json(xrtErrorCode ecode, boost::property_tree::ptree &pt)
   return error_code_to_json(ecode, pt);
 }
 
-}} // namespace error_int, xrt_core
+} // xrt_core::error_int
 
 namespace xrt {
 
@@ -236,13 +236,13 @@ public:
     : m_errcode(ecode), m_timestamp(timestamp)
   {}
 
-  xrtErrorCode
+  [[nodiscard]] xrtErrorCode
   get_error_code() const
   {
     return m_errcode;
   }
 
-  xrtErrorTime
+  [[nodiscard]] xrtErrorTime
   get_timestamp() const
   {
     return m_timestamp;
