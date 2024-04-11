@@ -278,8 +278,8 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   if (!perf_mode.empty())
     oStream << boost::format("    %-22s: %s\n") % "SC Version" % perf_mode;
   const std::string& power = ptTree.get("power", "");
-  if (power.compare("0") != 0)
-    oStream << boost::format("    %-22s: %s\n") % "Power" % power;
+  if (!boost::starts_with(power, ""))
+    oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
 }
 
 static test_status

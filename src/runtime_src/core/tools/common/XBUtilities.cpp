@@ -141,7 +141,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
         }
         pt_dev.put("firmware_version", version);
       }
-      catch(const xq::exception& ex) {
+      catch(const xq::exception&) {
         // The firmware wasn't added
       }
 

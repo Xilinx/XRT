@@ -149,15 +149,13 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
-  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f's") % instr_size));
-  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f's") % buffer_size));
-  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f's") % itr_count));
+  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f' bytes") % buffer_size));
+  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
 
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
   auto start = std::chrono::high_resolution_clock::now();
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
   try {
     auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
     // Wait for kernel to be done
