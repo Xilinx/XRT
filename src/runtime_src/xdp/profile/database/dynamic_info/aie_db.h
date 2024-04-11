@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -61,6 +61,10 @@ namespace xdp {
     inline
     std::vector<counters::Sample> getAIESamples()
     { return samples.getSamples();  }
+
+    inline
+    std::vector<counters::Sample> moveAIESamples()
+    { return samples.moveSamples(); }
 
     inline
     std::vector<counters::DoubleSample> getAIETimerSamples()
