@@ -919,7 +919,7 @@ namespace xdp {
       }
 
       // Check for PLIO tiles and it's compatible metric settings
-      if (tileMetric.first.subtype == 0 && isGMIOMetric(tileMetric.second)) {
+      if ((tileMetric.first.subtype == 0) && isGMIOMetric(tileMetric.second)) {
         if (showWarningGMIOMetric) {
           std::string msg = "Configured interface_tile metric set " + tileMetric.second 
                           + " is only applicable for GMIO type tiles.";
@@ -928,8 +928,8 @@ namespace xdp {
         }
 
         std::stringstream msg;
-        msg << "Configured interface_tile metric set metric set "<< tileMetric.second;
-        msg <<" skipped for tile ("<<+tileMetric.first.col<<", "<<+tileMetric.first.row<<").";
+        msg << "Configured interface_tile metric set metric set " << tileMetric.second;
+        msg << " skipped for tile (" << +tileMetric.first.col << ", " << +tileMetric.first.row << ").";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         offTiles.push_back(tileMetric.first);
         continue;
