@@ -1012,31 +1012,18 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 #ifndef _WIN32
 // pdi_transform is only available on Linux
 // pdi_transform is defined in libtransformcdo.a
-extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out);
+extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out, const char* out_file);
 
 int transform_PDI_file(std::string fileName)
 {
-  // pdi_transform prints lots of messages
-  // redirect the output to a stream, so that console looks cleaner
-  int sout = dup(fileno(stdout));
-  FILE* file = freopen("/dev/null","w",stdout);
-  if (file == nullptr)
-    std::cout << "stdout redirect failed" << std::endl;
-
+  // pdi_transform prints lots of messages, these messages go to
+  // the third argument of pdi_transform
   // pdi_transform can either return 0 or ‐1
-  int ret = pdi_transform(fileName.data(), fileName.data());
+  int ret = pdi_transform(fileName.data(), fileName.data(), "transform_out");
   if (ret != 0) {
     std::string errMsg = "ERROR: --transform-pdi is specified, but pdi transformation failed, please make sure the pdi files are valid";
     throw std::runtime_error(errMsg);
   }
-
-  // Flush the stream to ensure all the messages from pdi_transform()
-  // function call are written to the stream
-  fflush(file);
-
-  // restore stdout
-  dup2(sout,fileno(stdout));
-  close(sout);
 
   return ret;
 }

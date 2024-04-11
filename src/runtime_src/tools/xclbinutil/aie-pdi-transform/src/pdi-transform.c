@@ -54,7 +54,8 @@ char* XPdi_Parse_Cmd(XCdoCmd* Cmd, uint32_t* prevId, uint32_t CmdId, char* cur_p
 		if (*prevId !=CmdId) {
 			// if (prevId != -1 && *cmd_num != NULL) {
 			if ((uint64_t)prevId != UINT64_MAX && *cmd_num != NULL) {
-				printf("get cmd id %x cmd_num is %d \n", *prevId, *(*cmd_num));
+				// printf("get cmd id %x cmd_num is %d \n", *prevId, *(*cmd_num));
+				XCdo_Print("get cmd id %x cmd_num is %d \n", *prevId, *(*cmd_num));
 			}
 			*prevId = CmdId;
 			//printf("get cmd id %x\n", CmdId);
@@ -131,7 +132,8 @@ uint32_t XPdi_Cmd_Parse(char* pdi_buf, uint32_t BufLen, const uint32_t *Buf)
 		Buf += Cmd.Size;
 		BufLen -= Cmd.Size;
 	}
-	printf("buf len is %ld\n", cur_pdi_buf - pdi_buf);
+	// printf("buf len is %ld\n", cur_pdi_buf - pdi_buf);
+	XCdo_Print("buf len is %ld\n", cur_pdi_buf - pdi_buf);
 	return cur_pdi_buf - pdi_buf;
 }
 
@@ -140,7 +142,8 @@ uint8_t is_bss(uint32_t dst_addr)
 #define XAIE_ROW_SHIFT 20
 #define XAIE_COL_SHIFT 25
 	uint32_t addr = dst_addr &(((1<<XAIE_ROW_SHIFT))-1);
-	printf("addr = %x\n",addr);
+	// printf("addr = %x\n",addr);
+	XCdo_Print("addr = %x\n",addr);
 	const uint32_t dm_start_addr = 0;
 	const uint32_t dm_size = 1024*64;
 	return addr > dm_start_addr && addr < dm_start_addr + dm_size;
@@ -192,7 +195,8 @@ uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const 
 					// uint8_t bss_zero = 0;
 					if (is_bss( ((uint32_t*)pdi_buf)[1]) && allZero(data_buf, mem_len)) {
 						dma_zero_data_size += mem_len;
-						printf("mem_len = %d dst high %x dst low %x\n", mem_len, ((uint32_t*)pdi_buf)[0], 
+						// printf("mem_len = %d dst high %x dst low %x\n", mem_len, ((uint32_t*)pdi_buf)[0], 
+						XCdo_Print("mem_len = %d dst high %x dst low %x\n", mem_len, ((uint32_t*)pdi_buf)[0], 
 								                                           ((uint32_t*)pdi_buf)[1]);
 						((uint32_t*)pdi_buf)[3] = ((uint32_t*)pdi_buf)[3] | (1 << 16);
 					}
@@ -201,15 +205,18 @@ uint32_t XPdi_Buf_Parse(char* pdi_buf, uint32_t CBufLen, uint32_t BufLen, const 
 					data_buf += mem_len;
 					//move cmd pointer
 					pdi_buf += cmd_len;
-					printf("dma len %d \n", mem_len);
+					// printf("dma len %d \n", mem_len);
+					XCdo_Print("dma len %d \n", mem_len);
 				}
 				break;
 			default:
 				break;
 		} 
-		printf("cmd_id %d num %d , new buf %ldB, origin buf %uB\n", CmdId, num, data_buf - obuf, BufLen * 4);
+		// printf("cmd_id %d num %d , new buf %ldB, origin buf %uB\n", CmdId, num, data_buf - obuf, BufLen * 4);
+		XCdo_Print("cmd_id %d num %d , new buf %ldB, origin buf %uB\n", CmdId, num, data_buf - obuf, BufLen * 4);
 	}
-	printf("the all zeror dma data length is  %d\n", dma_zero_data_size);
+	// printf("the all zeror dma data length is  %d\n", dma_zero_data_size);
+	XCdo_Print("the all zeror dma data length is  %d\n", dma_zero_data_size);
 
 	return data_buf - obuf;
 
@@ -237,7 +244,8 @@ void XPdi_Export(const XPdiLoad* PdiLoad, const char* pdi_file_out)
 		printf("Failed to close file %s\n", pdi_file);
 		return;
    }
-	printf("the new transform file %s created!\n ", pdi_file);
+	// printf("the new transform file %s created!\n ", pdi_file);
+	XCdo_Print("the new transform file %s created!\n ", pdi_file);
 }
 
 enum cdoFormat {
@@ -259,7 +267,8 @@ static char* cdoHeader[] = {
 void XPdi_CdoHeader_String(uint32_t* header) {
 	
 	for(uint32_t itr = 0; itr < XCDO_CDO_HDR_LEN; itr++) {
-		printf("%s = %u\n", cdoHeader[itr], header[itr]);
+		// printf("%s = %u\n", cdoHeader[itr], header[itr]);
+		XCdo_Print("%s = %u\n", cdoHeader[itr], header[itr]);
 	}
 }
 
@@ -275,7 +284,8 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 		XPdi_Load(PdiLoad);
 		return;
 	}
-	printf("start to transform !");
+	// printf("start to transform !");
+	XCdo_Print("start to transform !");
 	XCdoLoad CdoLoad;
 	XPdi_GetFirstPrtn(PdiLoad, &CdoLoad);
 	ParseBufFromCDO(&Buf, &BufLen, &CdoLoad);
@@ -305,7 +315,8 @@ void XPdi_Compress_Transform(XPdiLoad* PdiLoad, const char* pdi_file_out)
 		       	(XCDO_CDO_HDR_LEN * sizeof(uint32_t)), Cmd_len, BufLen, (const char*)Buf);
 	//Update the pdi length.
 	newPdiLoad.PdiLen = TotalCdoLen + HdrLen;
-	printf("new cdo len is %d\n", TotalCdoLen);
+	// printf("new cdo len is %d\n", TotalCdoLen);
+	XCdo_Print("new cdo len is %d\n", TotalCdoLen);
 	//test load new pdi
 	XPdi_Load(&newPdiLoad);
 	//export the tranform pdi into a file.

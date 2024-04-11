@@ -113,10 +113,19 @@ void test_read_pdi(char* pdi, char** data, int* len)
   	close(fd);
 }
 
-__attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out)
+
+// cdo_common.h
+FILE* file_pointer;
+
+__attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out, const char* out_file)
 {
+   if (!out_file || (out_file[0] == '\0')) 
+     file_pointer = stdout;
+   else 
+     file_pointer = fopen(out_file, "w");
+
 	int Ret = 0;
-	printf("get pdi file %s, do tranform pdi check and parsing.\n", pdi_file);
+	printf("Get pdi file %s, do tranform pdi check and parsing.\n", pdi_file);
 	int len = 0;
 	char *data = NULL;
 	test_read_pdi(pdi_file, &data, &len);
@@ -137,7 +146,7 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
 	memset((char*)DebugPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
 	memset((char*)DebugTransformPdi, 0, (size_t)MAX_DEBUG_PDI_LEN);
 	SetDebugPdi((uint32_t *)DebugPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
-	printf("Original ");
+	// printf("Original ");
 	XPdi_Load(&PdiLoad);
 	SetDebugPdi((uint32_t *)DebugTransformPdi, MAX_DEBUG_PDI_LEN, cmpDmaData);
 	XPdi_Compress_Transform(&PdiLoad, pdi_file_out);
@@ -157,6 +166,13 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
 	if (data) free(data);
 	return Ret;
 }
+
+/*
+__attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out)
+{
+   return pdi_transform_2(pdi_file, pdi_file_out, "");
+}
+*/
 
 /**
  * @}

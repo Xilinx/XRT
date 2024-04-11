@@ -26,7 +26,11 @@ extern "C" {
 /************************** Constant Definitions *****************************/
 /**************************** Type Definitions *******************************/
 /***************** Macros (Inline Functions) Definitions *********************/
-#define XCdo_Print(format, ...) printf("CDO: " format, ##__VA_ARGS__)
+extern FILE* file_pointer;
+// #define XCdo_Print(format, ...) printf("CDO: " format, ##__VA_ARGS__)
+#define XCdo_Print(format, ...) \
+    fprintf(file_pointer, "CDO: " format, ##__VA_ARGS__)
+
 #ifdef DEBUG
 //Enable firware PDI header check when DEBUG enabled.
 #define _ENABLE_FW_PDI_HEADER_CHECK_
@@ -36,6 +40,7 @@ extern "C" {
 #endif
 #define XCdo_PInfo(format, ...) XCdo_Print("INFO: " format, ##__VA_ARGS__)
 #define XCdo_PError(format, ...) XCdo_Print("ERROR: " format, ##__VA_ARGS__)
+
 
 /************************** Function Prototypes ******************************/
 /************************** Variable Definitions *****************************/
