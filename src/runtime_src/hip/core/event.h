@@ -104,7 +104,7 @@ public:
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size);
   bool submit() override;
   bool wait() override;
 
@@ -112,6 +112,7 @@ private:
   xclBOSyncDirection cdirection;
   std::shared_ptr<memory> buffer;
   void* host_ptr;
+  size_t copy_size;
   std::future<void> handle;
 };
 

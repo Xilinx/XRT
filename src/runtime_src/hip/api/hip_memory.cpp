@@ -220,7 +220,7 @@ namespace xrt::core::hip
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src));
+                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 

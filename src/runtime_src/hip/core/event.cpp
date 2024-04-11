@@ -164,8 +164,8 @@ bool kernel_start::wait()
   return false;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr)
-  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr)
+copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size)
+  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), copy_size(size)
 {
   ctype = type::buffer_copy;
 }
@@ -175,11 +175,11 @@ bool copy_buffer::submit()
   switch(cdirection)
   {
     case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr, buffer->get_size(), 0, 0);
+      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr, copy_size, 0, 0);
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
-      handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, buffer->get_size(), 0, 0);
+      handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, copy_size, 0, 0);
       break;
 
     default:
