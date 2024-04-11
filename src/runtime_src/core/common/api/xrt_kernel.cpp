@@ -8,6 +8,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_kernel.h"
+#include "core/include/experimental/xrt_kernel.h"
 
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
@@ -237,31 +238,31 @@ public:
     , words(validate_bytes(bytes) / sizeof(ValueType))
   {}
 
-  const ValueType*
+  [[nodiscard]] const ValueType*
   begin() const
   {
     return uval;
   }
 
-  const ValueType*
+  [[nodiscard]] const ValueType*
   end() const
   {
     return uval + words;
   }
 
-  size_t
+  [[nodiscard]] size_t
   size() const
   {
     return words;
   }
 
-  size_t
+  [[nodiscard]] size_t
   bytes() const
   {
     return words * sizeof(ValueType);
   }
 
-  const ValueType*
+  [[nodiscard]] const ValueType*
   data() const
   {
     return uval;
@@ -276,7 +277,7 @@ to_uint64_t(ValueType value)
 {
   uint64_t ret = 0;
   auto data = reinterpret_cast<uint8_t*>(&ret);
-  arg_range<uint8_t> range{&value, sizeof(ValueType)};
+  arg_range<uint8_t> range{&value, sizeof(ValueType)}; // NOLINT
   std::copy_n(range.begin(), std::min<size_t>(sizeof(ret), range.size()), data);
   return ret;
 }
@@ -398,13 +399,13 @@ struct device_type
     return exec_buffer_cache.alloc<CommandType>();
   }
 
-  xrt_core::device*
+  [[nodiscard]] xrt_core::device*
   get_core_device() const
   {
     return core_device.get();
   }
 
-  xrt::device
+  [[nodiscard]] xrt::device
   get_xrt_device() const
   {
     return xrt::device{core_device};
@@ -440,7 +441,7 @@ public:
     m_bitset.set(m_encoding ? m_encoding->at(idx) : idx);
   }
 
-  bool
+  [[nodiscard]] bool
   test(size_t idx) const
   {
     return m_bitset.test(m_encoding ? m_encoding->at(idx) : idx);
@@ -521,7 +522,7 @@ class ip_context
 
     // Get default memory index of an argument.  The default index is
     // the the largest memory index of a connection for specified argument.
-    int32_t
+    [[nodiscard]] int32_t
     get_arg_memidx(size_t argidx) const
     {
       return default_connection.at(argidx);
@@ -529,7 +530,7 @@ class ip_context
 
     // Validate that specified memory index is a valid connection for
     // argument identified by 'argidx'
-    bool
+    [[nodiscard]] bool
     valid_arg_connection(size_t argidx, size_t memidx) const
     {
       return connections[argidx].test(memidx);
@@ -586,7 +587,7 @@ public:
     return ipctx;
   }
 
-  access_mode
+  [[nodiscard]] access_mode
   get_access_mode() const
   {
     return cu_access_mode(m_hwctx.get_mode());
@@ -597,31 +598,31 @@ public:
   close()
   {}
 
-  size_t
+  [[nodiscard]] size_t
   get_size() const
   {
     return m_size;
   }
 
-  uint64_t
+  [[nodiscard]] uint64_t
   get_address() const
   {
     return m_address;
   }
 
-  xrt_core::cuidx_type
+  [[nodiscard]] xrt_core::cuidx_type
   get_index() const
   {
     return m_idx;
   }
 
-  unsigned int
+  [[nodiscard]] unsigned int
   get_cuidx() const
   {
     return m_idx.domain_index; // index used for execution cumask
   }
 
-  slot_id
+  [[nodiscard]] slot_id
   get_slot() const
   {
     auto hwctx_hdl = static_cast<xrt_core::hwctx_handle*>(m_hwctx);
@@ -638,7 +639,7 @@ public:
   // Get default memory bank for argument at specified index The
   // default memory bank is the connection with the highest group
   // connectivity index
-  int32_t
+  [[nodiscard]] int32_t
   arg_memidx(size_t argidx) const
   {
     return m_args.get_arg_memidx(argidx);
@@ -658,7 +659,7 @@ public:
   ip_context& operator=(ip_context&) = delete;
   ip_context& operator=(ip_context&&) = delete;
 
-  std::pair<uint32_t, uint32_t> m_readrange = {0,0};  // start address, size
+  std::pair<uint32_t, uint32_t> m_readrange = {0,0};  // NOLINT start address, size
 
 private:
   // regular CU
@@ -766,8 +767,8 @@ public:
   get_return_code() const
   {
     auto pkt = get_ert_packet();
-    uint32_t ret;
-    ert_read_return_code(pkt, ret);
+    uint32_t ret = 0;
+    ert_read_return_code(pkt, ret); // NOLINT
     return ret;
   }
 
@@ -1144,8 +1145,8 @@ public:
   {}
 
   explicit
-  argument(const xarg& karg)
-    : arg(karg)
+  argument(xarg karg)
+    : arg(std::move(karg))
   {
     // Determine type
     switch (arg.type) {
@@ -1192,7 +1193,7 @@ public:
   argument& operator=(argument&) = delete;
   argument& operator=(argument&&) = delete;
 
-  const xarg&
+  [[nodiscard]] const xarg&
   get_xarg() const
   {
     return arg;
@@ -1229,39 +1230,39 @@ public:
   set_fa_desc_offset(size_t offset)
   { arg.fa_desc_offset = offset; }
 
-  size_t
+  [[nodiscard]] size_t
   fa_desc_offset() const
   { return arg.fa_desc_offset; }
 
-  size_t
+  [[nodiscard]] size_t
   index() const
   { return arg.index; }
 
-  size_t
+  [[nodiscard]] size_t
   offset() const
   { return arg.offset; }
 
-  size_t
+  [[nodiscard]] size_t
   size() const
   { return arg.size; }
 
-  const std::string&
+  [[nodiscard]] const std::string&
   name() const
   { return arg.name; }
 
-  direction
+  [[nodiscard]] direction
   dir() const
   { return arg.dir; }
 
-  bool
+  [[nodiscard]] bool
   is_input() const
   { return arg.dir == direction::input; }
 
-  bool
+  [[nodiscard]] bool
   is_output() const
   { return arg.dir == direction::output; }
 
-  xarg::argtype
+  [[nodiscard]] xarg::argtype
   type() const
   { return arg.type; }
 };
@@ -1525,7 +1526,7 @@ public:
   //
   // The ctxmgr is not directly used by kernel_impl, but its
   // construction and shared ownership must be tied to the kernel_impl
-  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const xrt::module& mod, const std::string& nm)
+  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, xrt::module mod, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
@@ -1923,7 +1924,7 @@ class run_impl
     void
     set_arg_value(const argument& arg, const xrt::bo& bo) override
     {
-      uint64_t value[2] = {bo.address(), bo.size()};
+      uint64_t value[2] = {bo.address(), bo.size()}; // NOLINT
       hs_arg_setter::set_arg_value(arg, arg_range<uint8_t>{value, sizeof(value)});
     }
   };
@@ -2097,8 +2098,11 @@ class run_impl
   std::shared_ptr<xrt_core::usage_metrics::base_logger> m_usage_logger =
       xrt_core::usage_metrics::get_usage_metrics_logger();
 
+  const runlist_impl* m_runlist = nullptr;// runlist that owns this run (optional)
+  std::mutex m_mutex;                     // mutex synchronization
+
 public:
-  uint32_t
+  [[nodiscard]] uint32_t
   get_uid() const
   {
     return uid;
@@ -2174,10 +2178,16 @@ public:
   run_impl& operator=(run_impl&) = delete;
   run_impl& operator=(run_impl&&) = delete;
 
-  kernel_impl*
+  [[nodiscard]] kernel_impl*
   get_kernel() const
   {
     return kernel.get();
+  }
+
+  [[nodiscard]] kernel_command*
+  get_cmd() const
+  {
+    return cmd.get();
   }
 
   template <typename ERT_COMMAND_TYPE>
@@ -2185,6 +2195,23 @@ public:
   get_ert_cmd()
   {
     return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
+  }
+
+  void
+  set_runlist(const runlist_impl* rl)
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_runlist)
+      throw std::runtime_error("Run object already associated with a runlist");
+
+    m_runlist = rl;
+  }
+
+  void
+  clear_runlist()
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_runlist = nullptr;
   }
 
   // Use to explicitly restrict what CUs can be used
@@ -2212,7 +2239,7 @@ public:
     encode_cumasks = true;
   }
 
-  const std::bitset<max_cus>&
+  [[nodiscard]] const std::bitset<max_cus>&
   get_cumask() const
   {
     return cumask;
@@ -2308,7 +2335,7 @@ public:
     }
   }
 
-  int
+  [[nodiscard]] int
   get_arg_index(const std::string& argnm) const
   {
     for (const auto& arg : kernel->get_args())
@@ -2333,6 +2360,11 @@ public:
   void
   prep_start()
   {
+    if (m_module)
+      // Sync the module to device to ensure any patches are applied,
+      // noop if module patching hasn't changed since last sync.
+      xrt_core::module_int::sync(m_module);
+
     encode_compute_units();
 
     auto pkt = cmd->get_ert_packet();
@@ -2352,12 +2384,11 @@ public:
   virtual void
   start()
   {
-    if (m_module)
-      // Sync the module to device to ensure any patches are applied,
-      // noop if module patching hasn't changed since last sync.
-      xrt_core::module_int::sync(m_module);
-
+    if (m_runlist)
+      throw xrt_core::error("Run object belongs to a runlist and cannot be explicitly started");
+    
     prep_start();
+    
     // log kernel start info
     // This is in critical path, we need to reduce log overhead 
     // as much as possible, passing kernel impl pointer instead of 
@@ -2411,7 +2442,7 @@ public:
     cmd->wait();
   }
 
-  ert_cmd_state
+  [[nodiscard]] ert_cmd_state
   abort() const
   {
     // don't bother if command is done by the time abort is called
@@ -2441,7 +2472,7 @@ public:
   // Deprecated wait() semantics.
   // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
   // Return ert cmd state otherwise
-  ert_cmd_state
+  [[nodiscard]] ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -2466,7 +2497,7 @@ public:
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
-  std::cv_status
+  [[nodiscard]] std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
@@ -2491,14 +2522,14 @@ public:
   }
 
   // state() - get current execution state
-  ert_cmd_state
+  [[nodiscard]] ert_cmd_state
   state() const
   {
     return cmd->get_state();
   }
 
   // return_code() - get kernel execution return code
-  uint32_t
+  [[nodiscard]] uint32_t
   return_code() const
   {
     auto ktype = kernel->get_kernel_type();
@@ -2507,7 +2538,7 @@ public:
     return 0;
   }
 
-  ert_packet*
+  [[nodiscard]] ert_packet*
   get_ert_packet() const
   {
     return cmd->get_ert_packet();
@@ -2673,7 +2704,7 @@ public:
   }
 
   //Aquring mailbox read and write if not acquired already.
-  ~mailbox_impl()
+  ~mailbox_impl() override
   {
     try {
       if (!m_aquire_write) {
@@ -2690,6 +2721,12 @@ public:
       // resulting in terminate.
     }
   }
+
+  mailbox_impl() = delete;
+  mailbox_impl(const mailbox_impl&) = delete;
+  mailbox_impl(mailbox_impl&&) = delete;
+  mailbox_impl& operator=(const mailbox_impl&) = delete;
+  mailbox_impl& operator=(mailbox_impl&&) = delete;
 
   // write mailbox to hw
   void
@@ -2868,8 +2905,170 @@ public:
   ert_cmd_state m_state;
   std::string m_message;
 
-  command_error_impl(ert_cmd_state state, const std::string& msg)
-    : m_state(state), m_message(msg)
+  command_error_impl(ert_cmd_state state, std::string msg)
+    : m_state(state), m_message(std::move(msg))
+  {}
+};
+
+// class runlist_impl - The internals of a runlist
+class runlist_impl
+{
+  enum class state { idle, closed, running, error };
+  state m_state = state::idle;
+  xrt::hw_context m_hwctx;
+  xrt_core::hw_queue m_hwqueue;
+  std::vector<xrt::run> m_runlist;
+  std::vector<xrt_core::buffer_handle*> m_bos;
+
+public:
+  // Internal accessor during command list submission
+  const std::vector<xrt_core::buffer_handle*>&
+  get_exec_bos() const
+  {
+    // Allow exec bo access only as part of submission
+    // The command list must have been submitted for
+    // execut
+    if (m_state != state::running)
+      throw std::runtime_error("internal error: wrong state");
+
+    return m_bos;
+  }
+
+  void
+  clear_runs() const
+  {
+    for (auto& run : m_runlist)
+      run.get_handle()->clear_runlist();
+  }
+
+public:
+  explicit
+  runlist_impl(xrt::hw_context hwctx)
+    : m_hwctx(std::move(hwctx))
+    , m_hwqueue{m_hwctx}
+  {}
+
+  ~runlist_impl()
+  {
+    // Make sure all run objects are severed from this list
+    try {
+      clear_runs();
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message("runlist clear_runs error: " + std::string(ex.what()));
+    }
+  }
+
+  void
+  add(xrt::run run)
+  {
+    if (m_state != state::idle)
+      throw xrt_core::error("runlist must be idle before adding run objects");
+
+
+    // Get the potentially throwing action out of the way first
+    m_runlist.reserve(m_runlist.size() + 1);
+    m_bos.reserve(m_bos.size() + 1);
+
+    auto run_impl = run.get_handle();
+    auto cmd = run_impl->get_cmd();
+    auto bo = cmd->get_exec_bo();
+
+    // Once a run object is added to a list it will be in a state that
+    // makes it impossible to add to another list or to same list
+    // twice.  This state is managed by the run object itself by
+    // recording this runlist with the run object, but it doesn't 
+    // proctect against caller manually controlling the run object,
+    // which is undefined behavior.  No exceptions after this point.
+    run_impl->set_runlist(this);  // throws or changes state of run
+
+    // No throw zone
+    m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
+    m_bos.push_back(bo);                  // ptr noexcept
+  }
+
+  void
+  execute(const xrt::runlist& rl)
+  {
+    if (m_state != state::idle)
+      throw xrt_core::error("runlist must be idle before submitting for execution");
+
+    if (m_runlist.empty())
+      return;
+
+    // Prep each run object
+    for (auto& run : m_runlist)
+      run.get_handle()->prep_start();
+
+    // Close the command list.
+    m_state = state::closed;
+
+    // Submit
+    m_hwqueue.submit(rl);
+
+    // The command list is now submitted (running).  It cannot be reset
+    // until wait() has been called and state changed to idle or error.
+    m_state = state::running;
+  }
+
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout)
+  {
+    if (m_state != state::running)
+      return std::cv_status::no_timeout;
+
+    if (m_state == state::error)
+      throw xrt_core::error("runlist is in error state and must be reset");
+
+    // Wait on last submitted command
+    auto last = m_runlist.back();
+
+    try {
+      auto status = last.wait2(timeout);
+      if (status == std::cv_status::no_timeout)
+        m_state = state::idle;
+
+      return status;
+    }
+    catch (const xrt::run::command_error& ex) {
+      // The runlist is in error state and must be reset before reuse.
+      m_state = state::error;
+
+      // Find first run with error
+      for (auto& run : m_runlist)
+        if (auto state = run.get_handle()->state(); state != ERT_CMD_STATE_COMPLETED)
+          throw xrt::runlist::command_error(run, state, ex.what());
+
+      throw xrt_core::error("internal error: no run with error found");
+    }
+  }
+
+  void
+  reset()
+  {
+    if (m_state == state::running)
+      throw xrt_core::error("runlist is submitted for execution and cannot be reset");
+
+    clear_runs();
+
+    m_runlist.clear();
+    m_bos.clear();
+    m_state = state::idle;
+  }
+};
+
+
+class runlist::command_error_impl
+{
+public:
+  const xrt::run m_run;
+  const ert_cmd_state m_state;
+  const std::string m_message;
+
+  command_error_impl(xrt::run run, ert_cmd_state state, std::string msg)
+    : m_run{std::move(run)}
+    , m_state{state}
+    , m_message{std::move(msg)}
   {}
 };
 
@@ -3043,7 +3242,7 @@ xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
   const auto& kernel = kernels.get_or_error(khdl);
-  auto run = alloc_run(kernel);
+  auto run = alloc_run(kernel);  // NOLINT, clang-tidy false leak
   auto handle = run.get();
   runs.add(handle, std::move(run));
   return handle;
@@ -3102,7 +3301,7 @@ send_exception_message(const char* msg)
 ////////////////////////////////////////////////////////////////
 // XRT implmentation access to internal kernel APIs
 ////////////////////////////////////////////////////////////////
-namespace xrt_core { namespace kernel_int {
+namespace xrt_core::kernel_int {
 
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
@@ -3226,10 +3425,16 @@ create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl)
   if (!kernel_impl)
     throw std::runtime_error("Invalid kernel context implementation."); 
 
-  return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr());
+  return xrt::kernel(const_cast<xrt::kernel_impl*>(kernel_impl)->get_shared_ptr()); // NOLINT
 }
 
-}} // kernel_int, xrt_core
+const std::vector<xrt_core::buffer_handle*>&
+get_runlist_buffer_handles(const xrt::runlist& runlist)
+{
+  return runlist.get_handle()->get_exec_bos();
+}
+
+} // xrt_core::kernel_int
 
 
 ////////////////////////////////////////////////////////////////
@@ -3497,6 +3702,45 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
   ip->m_readrange = {start, size};
 }
 
+runlist::
+runlist(const xrt::hw_context& hwctx)
+  : detail::pimpl<runlist_impl>(std::make_shared<runlist_impl>(hwctx))
+{}
+
+runlist::
+~runlist()
+{
+  // For interception
+}
+
+void
+runlist::
+add(const xrt::run& run)
+{
+  handle->add(run);
+}
+
+
+void
+runlist::
+execute()
+{
+  handle->execute(*this);
+}
+
+std::cv_status
+runlist::
+wait(const std::chrono::milliseconds& timeout) const
+{
+  return handle->wait_throw_on_error(timeout);
+}
+
+void
+runlist::
+reset()
+{
+  handle->reset();
+}
 
 } // namespace xrt
 
@@ -3563,21 +3807,54 @@ namespace xrt {
 
 run::command_error::
 command_error(ert_cmd_state state, const std::string& msg)
-  : m_impl(std::make_shared<run::command_error_impl>(state, msg))
+  : detail::pimpl<run::command_error_impl>(std::make_shared<run::command_error_impl>(state, msg))
 {}
 
 ert_cmd_state
 run::command_error::
 get_command_state() const
 {
-  return m_impl->m_state;
+  return handle->m_state;
 }
 
 const char*
 run::command_error::
 what() const noexcept
 {
-  return m_impl->m_message.c_str();
+  return handle->m_message.c_str();
+}
+
+} // xrt
+
+////////////////////////////////////////////////////////////////
+// xrt::runlist::command_error
+////////////////////////////////////////////////////////////////
+namespace xrt {
+
+runlist::command_error::
+command_error(const xrt::run& run, ert_cmd_state state, const std::string& msg)
+  : detail::pimpl<runlist::command_error_impl>(std::make_shared<runlist::command_error_impl>(run, state, msg))
+{}
+
+xrt::run
+runlist::command_error::
+get_run() const
+{
+  return handle->m_run;
+}
+
+ert_cmd_state
+runlist::command_error::
+get_command_state() const
+{
+  return handle->m_state;
+}
+
+const char*
+runlist::command_error::
+what() const noexcept
+{
+  return handle->m_message.c_str();
 }
 
 } // xrt

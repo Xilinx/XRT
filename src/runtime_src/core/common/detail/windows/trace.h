@@ -72,9 +72,9 @@ add_event(Args&&... args)
 
 #define XRT_DETAIL_TOSTRING_(a) #a
 #define XRT_DETAIL_PROBE(a, b) XRT_DETAIL_TOSTRING_(a ## b)
-  
+
 #define XRT_DETAIL_TRACE_POINT_LOG(probe, ...) \
-  xrt_core::trace::detail::add_event(#probe, __VA_ARGS)  // VS++ suppresses trailing comma
+  xrt_core::trace::detail::add_event(#probe, ##__VA_ARGS__)  // VS++ suppresses trailing comma
 
 #define XRT_DETAIL_TRACE_POINT_SCOPE(probe)                                          \
   struct xrt_trace_scope {                                                           \

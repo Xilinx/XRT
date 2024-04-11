@@ -43,7 +43,13 @@ public:
     device->close_graph(handle);
   }
 
-  xclGraphHandle
+  graph_impl() = delete;
+  graph_impl(const graph_impl&) = delete;
+  graph_impl(graph_impl&&) = delete;
+  graph_impl& operator=(const graph_impl&) = delete;
+  graph_impl& operator=(graph_impl&&) = delete;
+
+  [[nodiscard]] xclGraphHandle
   get_handle() const
   {
     return handle;
@@ -112,7 +118,7 @@ public:
 
 }
 
-namespace xrt { namespace aie {
+namespace xrt::aie {
 
 class profiling_impl
 {
@@ -124,7 +130,7 @@ public:
   using handle = int;
   static constexpr handle invalid_handle = -1;
 
-  profiling_impl(std::shared_ptr<xrt_core::device> dev)
+  explicit profiling_impl(std::shared_ptr<xrt_core::device> dev)
     : device(std::move(dev)),
       profiling_hdl(invalid_handle)
   {}
@@ -138,6 +144,13 @@ public:
       // do nothing
     }
   }
+
+  profiling_impl() = delete;
+  profiling_impl(const profiling_impl&) = delete;
+  profiling_impl(profiling_impl&&) = delete;
+  profiling_impl& operator=(const profiling_impl&) = delete;
+  profiling_impl& operator=(profiling_impl&&) = delete;
+  
 
   handle
   start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
@@ -168,7 +181,7 @@ public:
 
 };
 
-}}
+} // xrt::aie
 
 namespace {
 
@@ -380,7 +393,7 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 ////////////////////////////////////////////////////////////////
 // xrt_aie_profiling C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
-namespace xrt { namespace aie {
+namespace xrt::aie {
 
 profiling::
 profiling(const xrt::device& device)
@@ -415,7 +428,7 @@ stop() const
   });
 }
 
-}} //namespace aie, xrt
+} // xrt:aie
 
 ////////////////////////////////////////////////////////////////
 // xrt_aie API implementations (xrt_aie.h, xrt_graph.h)

@@ -10,7 +10,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
-namespace xrt { namespace message {
+namespace xrt::message {
 
 namespace detail {
   
@@ -28,7 +28,7 @@ log(level lvl, const std::string& tag, const std::string& msg)
   xrt_core::message::send(lvl, tag, msg);
 }
 
-}} // namespace ini,xrt
+} // namespace xrt::message
 
 ////////////////////////////////////////////////////////////////
 // xrt_message C API implmentations (xrt_message.h)

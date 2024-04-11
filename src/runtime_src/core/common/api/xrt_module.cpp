@@ -29,7 +29,7 @@
 #include <string>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
-# define AIE_COLUMN_PAGE_SIZE 8192
+# define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
 #endif
 
 namespace
@@ -43,7 +43,7 @@ static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
-static std::string Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
+static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 
 struct buf
 {
@@ -57,13 +57,13 @@ struct buf
     m_data.insert(m_data.end(), sdata, sdata + sz);
   }
 
-  size_t
+  [[nodiscard]] size_t
   size() const
   {
     return m_data.size();
   }
 
-  const uint8_t*
+  [[nodiscard]] const uint8_t*
   data() const
   {
     return m_data.data();
@@ -76,7 +76,7 @@ struct buf
   }
 
   void
-  pad_to_page(int page)
+  pad_to_page(uint32_t page)
   {
     if (!column_page_size)
       return;
@@ -109,9 +109,11 @@ struct patcher
     uc_dma_remote_ptr_symbol_kind = 1,
     shim_dma_base_addr_symbol_kind = 2, // patching scheme needed by AIE2PS firmware
     scalar_32bit_kind = 3,
-    control_packet_48 = 4,              // patching scheme needed by IPU firmware to patch control packet
-    shim_dma_48 = 5,                    // patching scheme needed by IPU firmware to patch instruction buffer
-    unknown_symbol_kind = 6
+    control_packet_48 = 4,              // patching scheme needed by firmware to patch dpu-sequence control packet
+    shim_dma_48 = 5,                    // patching scheme needed by firmware to patch dpu-seuqnece instruction buffer
+    tansaction_ctrlpkt_48 = 6,          // patching scheme needed by firmware to patch transaction buffer control packet
+    tansaction_48 = 7,                  // patching scheme needed by firmware to patch transaction buffer
+    unknown_symbol_kind = 8
   };
 
   symbol_type m_symbol_type;
@@ -130,21 +132,21 @@ struct patcher
   {
     uint64_t base_address = bd_data_ptr[0];
     base_address += patch;
-    bd_data_ptr[0] = (uint32_t)(base_address & 0xFFFFFFFF);
+    bd_data_ptr[0] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
   }
 
   void
   patch57(uint32_t* bd_data_ptr, uint64_t patch)
   {
     uint64_t base_address =
-      ((static_cast<uint64_t>(bd_data_ptr[8]) & 0x1FF) << 48) |
-      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFFF) << 32) |
+      ((static_cast<uint64_t>(bd_data_ptr[8]) & 0x1FF) << 48) |                       // NOLINT
+      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFFF) << 32) |                      // NOLINT
       bd_data_ptr[1];
 
     base_address += patch;
-    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);
-    bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | ((base_address >> 32) & 0xFFFF);
-    bd_data_ptr[8] = (bd_data_ptr[8] & 0xFFFFFE00) | ((base_address >> 48) & 0x1FF);
+    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
+    bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | ((base_address >> 32) & 0xFFFF); // NOLINT
+    bd_data_ptr[8] = (bd_data_ptr[8] & 0xFFFFFE00) | ((base_address >> 48) & 0x1FF);  // NOLINT
   }
 
   void
@@ -154,12 +156,12 @@ struct patcher
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
-      ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |
+      ((static_cast<uint64_t>(bd_data_ptr[3]) & 0xFFF) << 32) |                       // NOLINT
       ((static_cast<uint64_t>(bd_data_ptr[2])));
 
     base_address = base_address + patch + ddr_aie_addr_offset;
-    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);
-    bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);
+    bd_data_ptr[2] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
+    bd_data_ptr[3] = (bd_data_ptr[3] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
   void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
@@ -168,12 +170,26 @@ struct patcher
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
-      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFF) << 32) |
+      ((static_cast<uint64_t>(bd_data_ptr[2]) & 0xFFF) << 32) |                       // NOLINT
       ((static_cast<uint64_t>(bd_data_ptr[1])));
 
     base_address = base_address + patch + ddr_aie_addr_offset;
-    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFC);
-    bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);
+    bd_data_ptr[1] = (uint32_t)(base_address & 0xFFFFFFFC);                           // NOLINT
+    bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
+  }
+
+  // TODO reuse patch_ctrl48 for both DPU sequence and transaction buffer
+  // Need change assembler first
+  void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
+  {
+    uint64_t val = *reinterpret_cast<uint64_t*>(bd_data_ptr);
+    val &= 0x0000FFFFFFFFFFFF;                                                        // NOLINT
+    val += patch;
+    *bd_data_ptr = static_cast<uint32_t>(val);
+
+    auto higher16BitVal = static_cast<uint16_t>((val & 0x0000FFFF00000000) >> 32);    // NOLINT
+    auto pHigher16Bit = reinterpret_cast<uint16_t*>(bd_data_ptr + 1);
+    *pHigher16Bit = higher16BitVal;
   }
 
   void
@@ -193,6 +209,12 @@ struct patcher
         break;
       case symbol_type::shim_dma_48:
         patch_shim48(bd_data_ptr, patch);
+        break;
+      case symbol_type::tansaction_ctrlpkt_48:
+        patch_tansaction_ctrlpkt_48(bd_data_ptr, patch);
+        break;
+      case symbol_type::tansaction_48:
+        // No patching since transaction buffer firmware does not support
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -222,23 +244,26 @@ namespace xrt
 // class module_impl - Base class for different implementations
 class module_impl
 {
-protected:
   xrt::uuid m_cfg_uuid;   // matching hw configuration id
 
 public:
-  module_impl(xrt::uuid cfg_uuid)
+  explicit module_impl(xrt::uuid cfg_uuid)
     : m_cfg_uuid(std::move(cfg_uuid))
   {}
 
-  module_impl(const module_impl* parent)
+  explicit module_impl(const module_impl* parent)
     : m_cfg_uuid(parent->m_cfg_uuid)
   {}
 
-  virtual
-  ~module_impl()
-  {}
+  virtual ~module_impl() = default;
 
-  xrt::uuid
+  module_impl() = delete;
+  module_impl(const module_impl&) = delete;
+  module_impl(module_impl&&) = delete;
+  module_impl& operator=(const module_impl&) = delete;
+  module_impl& operator=(module_impl&&) = delete;
+
+  [[nodiscard]] xrt::uuid
   get_cfg_uuid() const
   {
     return m_cfg_uuid;
@@ -247,25 +272,25 @@ public:
   // Get raw instruction buffer data for all columns or for
   // single partition.  The returned vector has the control
   // code as extracted from ELF or userptr.
-  virtual const std::vector<ctrlcode>&
+  [[nodiscard]] virtual const std::vector<ctrlcode>&
   get_data() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual const instr_buf&
+  [[nodiscard]] virtual const instr_buf&
   get_instr() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual const control_packet&
+  [[nodiscard]] virtual const control_packet&
   get_ctrlpkt() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual xrt::hw_context
+  [[nodiscard]] virtual xrt::hw_context
   get_hw_context() const
   {
     return {};
@@ -275,13 +300,13 @@ public:
   // or for a single partition.  The returned vector has elements
   // that are used when populating ert_dpu_data elements embedded
   // in an ert_packet.
-  virtual const std::vector<std::pair<uint64_t, uint64_t>>&
+  [[nodiscard]] virtual const std::vector<std::pair<uint64_t, uint64_t>>&
   get_ctrlcode_addr_and_size() const
   {
     throw std::runtime_error("Not supported");
   }
 
-  virtual const uint8_t&
+  [[nodiscard]] virtual const uint8_t&
   get_os_abi() const
   {
     throw std::runtime_error("Not supported");
@@ -329,7 +354,7 @@ public:
   // Get the number of patchers for arguments.  The returned
   // value is the number of arguments that must be patched before
   // the control code can be executed.
-  virtual size_t
+  [[nodiscard]] virtual size_t
   number_of_arg_patchers() const
   {
     return 0;
@@ -526,7 +551,7 @@ class module_elf : public module_impl
 
         auto secname = section->get_name();
         auto offset = rela->r_offset;
-        size_t sec_size;
+        size_t sec_size = 0;
         if (secname.compare(".ctrltext") == 0)
           sec_size = instrbuf.size();
         else if (secname.compare(".ctrldata") == 0)
@@ -590,7 +615,7 @@ class module_elf : public module_impl
         auto [col, page] = get_column_and_page(ctrl_sec->get_name());
 
         auto column_ctrlcode_size = ctrlcodes.at(col).size();
-        auto column_ctrlcode_offset = page * column_page_size + rela->r_offset + 16; // magic number 16??
+        auto column_ctrlcode_offset = page * column_page_size + rela->r_offset + 16; // NOLINT magic number 16??
         if (column_ctrlcode_offset >= column_ctrlcode_size)
           throw std::runtime_error("Invalid ctrlcode offset " + std::to_string(column_ctrlcode_offset));
 
@@ -629,14 +654,14 @@ class module_elf : public module_impl
     return true;
   }
 
-  const uint8_t&
+  [[nodiscard]] const uint8_t&
   get_os_abi() const override
   {
     return m_os_abi;
   }
 
 public:
-  module_elf(xrt::elf elf)
+  explicit module_elf(xrt::elf elf)
     : module_impl{ elf.get_cfg_uuid() }
     , m_elf(std::move(elf))
     , m_os_abi{ xrt_core::elf_int::get_elfio(m_elf).get_os_abi() }
@@ -652,25 +677,25 @@ public:
     }
   }
 
-  const std::vector<ctrlcode>&
+  [[nodiscard]] const std::vector<ctrlcode>&
   get_data() const override
   {
     return m_ctrlcodes;
   }
 
-  const instr_buf&
+  [[nodiscard]] const instr_buf&
   get_instr() const override
   {
     return m_instr_buf;
   }
 
-  const control_packet&
+  [[nodiscard]] const control_packet&
   get_ctrlpkt() const override
   {
     return m_ctrl_packet;
   }
 
-  size_t
+  [[nodiscard]] size_t
   number_of_arg_patchers() const override
   {
     return m_arg2patcher.size();
@@ -704,19 +729,19 @@ public:
     : module_userptr(static_cast<const char*>(userptr), sz, uuid)
   {}
 
-  const std::vector<ctrlcode>&
+  [[nodiscard]] const std::vector<ctrlcode>&
   get_data() const override
   {
     return m_ctrlcode;
   }
 
-  const instr_buf&
+  [[nodiscard]] const instr_buf&
   get_instr() const override
   {
     return m_instr_buf;
   }
 
-  const control_packet&
+  [[nodiscard]] const control_packet&
   get_ctrlpkt() const override
   {
     return m_ctrl_pkt;
@@ -763,7 +788,7 @@ class module_sram : public module_impl
     m_column_bo_address.clear();
     auto base_addr = m_buffer.address();
     for (const auto& ctrlcode : ctrlcodes) {
-      m_column_bo_address.push_back({ base_addr, ctrlcode.size() });
+      m_column_bo_address.push_back({ base_addr, ctrlcode.size() }); // NOLINT
       base_addr += ctrlcode.size();
     }
   }
@@ -772,9 +797,9 @@ class module_sram : public module_impl
   fill_bo_addresses()
   {
     m_column_bo_address.clear();
-    m_column_bo_address.push_back({ m_instr_buf.address(), m_instr_buf.size() });
+    m_column_bo_address.push_back({ m_instr_buf.address(), m_instr_buf.size() }); // NOLINT
     if (m_ctrlpkt_buf) {
-      m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() });
+      m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() }); // NOLINT
     }
   }
 
@@ -829,6 +854,8 @@ class module_sram : public module_impl
     dump_bo(m_instr_buf, "instrBo.bin");
 #endif
 
+    ///// THIS IS A BUG, create_instr_buf is called in constructor
+    // patch_instr is a virtual method, what is actually called here ???
     if (m_ctrlpkt_buf) {
       patch_instr("control-packet", m_ctrlpkt_buf);
 
@@ -938,7 +965,7 @@ class module_sram : public module_impl
   void
   patch(const std::string& argnm, const void* value, size_t size) override
   {
-    if (size > 8)
+    if (size > 8) // NOLINT
       throw std::runtime_error{ "patch_value() only supports 64-bit values or less" };
 
     patch_value(argnm, *static_cast<const uint64_t*>(value));
@@ -991,7 +1018,7 @@ public:
     }
   }
 
-  const std::vector<std::pair<uint64_t, uint64_t>>&
+  [[nodiscard]] const std::vector<std::pair<uint64_t, uint64_t>>&
   get_ctrlcode_addr_and_size() const override
   {
     return m_column_bo_address;

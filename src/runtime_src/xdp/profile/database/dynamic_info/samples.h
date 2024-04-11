@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -50,6 +50,11 @@ namespace xdp {
     {
       std::lock_guard<std::mutex> lock(containerLock);
       return samples;
+    }
+    inline std::vector<counters::Sample> moveSamples()
+    {
+      std::lock_guard<std::mutex> lock(containerLock);
+      return std::move(samples);
     }
     inline uint64_t getSamplesSize()
     {

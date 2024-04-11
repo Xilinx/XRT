@@ -22,25 +22,25 @@ class elf_impl
 {
   ELFIO::elfio m_elf;
 public:
-  elf_impl(const std::string& fnm)
+  explicit elf_impl(const std::string& fnm)
   {
     if (!m_elf.load(fnm))
       throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
   }
 
-  elf_impl(std::istream& stream)
+  explicit elf_impl(std::istream& stream)
   {
     if (!m_elf.load(stream))
       throw std::runtime_error("not a valid ELF stream");
   }
 
-  const ELFIO::elfio&
+  [[nodiscard]] const ELFIO::elfio&
   get_elfio() const
   {
     return m_elf;
   }
 
-  xrt::uuid
+  [[nodiscard]] xrt::uuid
   get_cfg_uuid() const
   {
     return {}; // tbd
