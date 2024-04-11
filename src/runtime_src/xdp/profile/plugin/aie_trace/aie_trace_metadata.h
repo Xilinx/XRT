@@ -108,7 +108,7 @@ class AieTraceMetadata {
       hwContext = std::move(c);
     }
 
-    bool isGMIOMetric(const std::string metric) {
+    bool isGMIOMetric(const std::string& metric) const {
       return gmioMetricSets.find(metric) != gmioMetricSets.end();
     }
     bool configMetricsEmpty() const { return configMetrics.empty(); }

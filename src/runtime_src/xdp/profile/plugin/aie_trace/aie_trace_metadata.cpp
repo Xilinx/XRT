@@ -927,17 +927,13 @@ namespace xdp {
           showWarningGMIOMetric = false;
         }
 
-        if(boost::algorithm::ends_with(tileMetric.second, "_details")) {
-            std::stringstream msg;
-            msg << "Replacing metric set "<< tileMetric.second << " with complementary set ";
-            boost::algorithm::replace_last(tileMetric.second, "_details", "_stalls");
-            msg << tileMetric.second <<" for tile ("<<+tileMetric.first.col<<", "<<+tileMetric.first.row<<").";
-            xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        }else {
-          offTiles.push_back(tileMetric.first);
-          continue;
-        }
-     }
+        std::stringstream msg;
+        msg << "Configured interface_tile metric set metric set "<< tileMetric.second;
+        msg <<" skipped for tile ("<<+tileMetric.first.col<<", "<<+tileMetric.first.row<<").";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
 
       // Ensure requested metric set is supported (if not, use default)
       if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
