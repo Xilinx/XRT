@@ -167,13 +167,6 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
 	return Ret;
 }
 
-/*
-__attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* pdi_file_out)
-{
-   return pdi_transform_2(pdi_file, pdi_file_out, "");
-}
-*/
-
 /**
  * @}
  * @endcond
