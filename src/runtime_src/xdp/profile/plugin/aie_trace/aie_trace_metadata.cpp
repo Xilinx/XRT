@@ -903,6 +903,7 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
+    bool showWarningGMIOMetric = true;
     std::vector<tile_type> offTiles;
     auto defaultSet = defaultSets[module_type::shim];
     auto metricVec = metricSets[module_type::shim];
@@ -913,6 +914,23 @@ namespace xdp {
         continue;
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Check for PLIO tiles and it's compatible metric settings
+      if ((tileMetric.first.subtype == 0) && isGMIOMetric(tileMetric.second)) {
+        if (showWarningGMIOMetric) {
+          std::string msg = "Configured interface_tile metric set " + tileMetric.second 
+                          + " is only applicable for GMIO type tiles.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          showWarningGMIOMetric = false;
+        }
+
+        std::stringstream msg;
+        msg << "Configured interface_tile metric set metric set " << tileMetric.second;
+        msg << " skipped for tile (" << +tileMetric.first.col << ", " << +tileMetric.first.row << ").";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         offTiles.push_back(tileMetric.first);
         continue;
       }
