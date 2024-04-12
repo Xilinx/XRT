@@ -396,6 +396,87 @@ open_context(xrt::aie::device::access_mode am)
   core_device->open_aie_context(am);
 }
 
+static void
+get_abs_col(const xrt_core::device* device, uint16_t context_id, uint16_t& col)
+{
+  auto data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
+  for (const auto& entry : data) {
+    if (std::stoi(entry.metadata.id) == context_id) {
+      col += entry.start_col;
+      if (col >= entry.num_cols)
+        throw std::out_of_range("col index out of range");
+      return;
+    }
+  }
+  throw std::runtime_error("requested context_id not found");
+}
+
+std::vector<char>
+device::
+read_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const
+{
+  return xdp::native::profiling_wrapper("xrt::aie::device::read_aie_mem",
+    [this, &col, row, offset, size, context_id] {
+      try {
+        // calculate absolute col index
+        get_abs_col(get_handle().get(), context_id, col);
+        return get_handle()->read_aie_mem(col, row, offset, size);
+      }
+      catch (const xrt_core::query::no_such_key&) {
+        throw std::runtime_error("read_aie_mem is not supported on this platform");
+      }
+    });
+}
+
+size_t
+device::
+write_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, std::vector<char>& data)
+{
+  return xdp::native::profiling_wrapper("xrt::aie::device::write_aie_mem",
+    [this, &col, row, offset, &data, context_id] {
+      try {
+        // calculate absolute col index
+        get_abs_col(get_handle().get(), context_id, col);
+        return get_handle()->write_aie_mem(col, row, offset, data);
+      }
+      catch (const xrt_core::query::no_such_key&) {
+        throw std::runtime_error("write_aie_mem is not supported on this platform");
+      }
+    });
+}
+uint32_t
+device::
+read_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const
+{
+  return xdp::native::profiling_wrapper("xrt::device::read_aie_reg",
+    [this, &col, row, reg_addr, context_id] {
+      try {
+        // calculate absolute col index
+        get_abs_col(get_handle().get(), context_id, col);;
+        return get_handle()->read_aie_reg(col, row, reg_addr);
+      }
+      catch (const xrt_core::query::no_such_key&) {
+        throw std::runtime_error("read_aie_reg is not supported on this platform");
+      }
+    });
+}
+
+bool
+device::
+write_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val)
+{
+  return xdp::native::profiling_wrapper("xrt::device::write_aie_reg",
+    [this, &col, row, reg_addr, &reg_val, context_id] {
+      try {
+        // calculate absolute col index
+        get_abs_col(get_handle().get(), context_id, col);
+        return get_handle()->write_aie_reg(col, row, reg_addr, reg_val);
+      }
+      catch (const xrt_core::query::no_such_key&) {
+        throw std::runtime_error("write_aie_reg is not supported on this platform");
+      }
+    });
+}
 } // xrt::aie
 #endif
 
