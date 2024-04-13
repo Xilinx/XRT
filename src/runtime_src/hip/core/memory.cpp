@@ -181,25 +181,29 @@ namespace xrt::core::hip
   }
 
   std::shared_ptr<xrt::core::hip::memory>
-  memory_database::get_hip_mem_from_addr(void *addr)
+  memory_database::get_hip_mem_from_addr(void *addr, size_t* offset)
   {
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return nullptr;
     }
     else {
+      if (offset)
+        *offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
       return itr->second;
     }
   }
 
   std::shared_ptr<xrt::core::hip::memory>
-  memory_database::get_hip_mem_from_addr(const void *addr)
+  memory_database::get_hip_mem_from_addr(const void *addr, size_t* offset)
   {
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return nullptr;
     }
     else {
+      if (offset)
+        *offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
       return itr->second;
     }
   }

@@ -209,18 +209,17 @@ namespace xrt::core::hip
   {
     throw_invalid_value_if(!src, "Invalid src pointer in hipMemCpyH2DAsync!");
 
-    auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
+    size_t offset;
+    auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst, &offset);
     throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle in hipMemCpyH2DAsync!");
-    auto dst_addr = hip_mem_dst->get_address();
-    auto dst_size = hip_mem_dst->get_size();
-    throw_invalid_value_if(reinterpret_cast<uint64_t>(dst)+size > reinterpret_cast<uint64_t>(dst_addr)+dst_size, "dst out of bound in hipMemCpyH2DAsync!");
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hipMemCpyH2DAsync!");
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle in hipMemCpyH2DAsync!");
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size));
+                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
