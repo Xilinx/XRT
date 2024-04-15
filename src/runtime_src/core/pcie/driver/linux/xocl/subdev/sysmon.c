@@ -402,12 +402,12 @@ static struct platform_driver	sysmon_driver = {
 	.id_table = sysmon_id_table,
 };
 
-int __init xocl_init_sysmon(void)
+int __init xocl_init_sysmon(bool flag)
 {
 	return platform_driver_register(&sysmon_driver);
 }
 
-void xocl_fini_sysmon(void)
+void xocl_fini_sysmon(bool flag)
 {
 	platform_driver_unregister(&sysmon_driver);
 }

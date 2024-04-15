@@ -208,12 +208,12 @@ static struct platform_driver	calib_storage_driver = {
 	.id_table = calib_storage_id_table,
 };
 
-int __init xocl_init_calib_storage(void)
+int __init xocl_init_calib_storage(bool flag)
 {
 	return platform_driver_register(&calib_storage_driver);
 }
 
-void xocl_fini_calib_storage(void)
+void xocl_fini_calib_storage(bool flag)
 {
 	platform_driver_unregister(&calib_storage_driver);
 }

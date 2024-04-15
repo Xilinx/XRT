@@ -502,12 +502,41 @@ static struct platform_driver	xlnx_dna_driver = {
 	.id_table = xlnx_dna_id_table,
 };
 
-int __init xocl_init_dna(void)
+struct xocl_drv_private dna_priv_userpf = {
+        .ops = &dna_ops,
+};
+
+struct platform_device_id xlnx_dna_id_table_userpf[] = {
+        { XOCL_DEVNAME(XOCL_DNA), (kernel_ulong_t)&dna_priv_userpf },
+        { },
+};
+
+static struct platform_driver   xlnx_dna_driver_userpf = {
+        .probe          = xlnx_dna_probe,
+        .remove         = xlnx_dna_remove,
+        .driver         = {
+                .name = XOCL_DEVNAME(XOCL_DNA),
+        },
+        .id_table = xlnx_dna_id_table_userpf,
+};
+
+
+int __init xocl_init_dna(bool flag)
 {
-	return platform_driver_register(&xlnx_dna_driver);
+	if(flag)
+	{
+	    return platform_driver_register(&xlnx_dna_driver);
+	}
+	else
+	{
+	    return platform_driver_register(&xlnx_dna_driver_userpf);
+	}
 }
 
-void xocl_fini_dna(void)
+void xocl_fini_dna(bool flag)
 {
+    if (flag)
 	platform_driver_unregister(&xlnx_dna_driver);
+    else
+	platform_driver_unregister(&xlnx_dna_driver_userpf);
 }

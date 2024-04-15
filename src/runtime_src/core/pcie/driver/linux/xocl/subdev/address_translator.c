@@ -429,12 +429,12 @@ static struct platform_driver	addr_translator_driver = {
 	.id_table = addr_translator_id_table,
 };
 
-int __init xocl_init_addr_translator(void)
+int __init xocl_init_addr_translator(bool flag)
 {
 	return platform_driver_register(&addr_translator_driver);
 }
 
-void xocl_fini_addr_translator(void)
+void xocl_fini_addr_translator(bool flag)
 {
 	platform_driver_unregister(&addr_translator_driver);
 }

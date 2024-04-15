@@ -273,7 +273,7 @@ static struct platform_driver	spc_driver = {
 	.id_table = spc_id_table,
 };
 
-int __init xocl_init_spc(void)
+int __init xocl_init_spc(bool flag)
 {
 	int err = 0;
 
@@ -293,7 +293,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_spc(void)
+void xocl_fini_spc(bool flag)
 {
 	unregister_chrdev_region(spc_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&spc_driver);

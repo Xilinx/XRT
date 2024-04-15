@@ -123,7 +123,7 @@ static struct platform_driver	trace_fifo_full_driver = {
 	.id_table = trace_fifo_full_id_table,
 };
 
-int __init xocl_init_trace_fifo_full(void)
+int __init xocl_init_trace_fifo_full(bool flag)
 {
 	int err = 0;
 
@@ -143,7 +143,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_trace_fifo_full(void)
+void xocl_fini_trace_fifo_full(bool flag)
 {
 	unregister_chrdev_region(trace_fifo_full_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_fifo_full_driver);

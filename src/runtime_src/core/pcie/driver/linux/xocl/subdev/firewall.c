@@ -684,30 +684,59 @@ failed:
 	return ret;
 }
 
-struct xocl_drv_private firewall_priv = {
+struct xocl_drv_private firewall_priv_mgmtpf = {
 	.ops = &fw_ops,
 };
 
-struct platform_device_id firewall_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv },
+struct platform_device_id firewall_id_table_mgmtpf[] = {
+	{ XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv_mgmtpf },
 	{ },
 };
 
-static struct platform_driver	firewall_driver = {
+static struct platform_driver	firewall_driver_mgmtpf = {
 	.probe		= firewall_probe,
 	.remove		= firewall_remove,
 	.driver		= {
 		.name = XOCL_DEVNAME(XOCL_FIREWALL),
 	},
-	.id_table = firewall_id_table,
+	.id_table = firewall_id_table_mgmtpf,
 };
 
-int __init xocl_init_firewall(void)
+struct xocl_drv_private firewall_priv_userpf = {
+        .ops = &fw_ops,
+};
+
+struct platform_device_id firewall_id_table_userpf[] = {
+        { XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv_userpf },
+        { },
+};
+
+static struct platform_driver   firewall_driver_userpf = {
+        .probe          = firewall_probe,
+        .remove         = firewall_remove,
+        .driver         = {
+                .name = XOCL_DEVNAME(XOCL_FIREWALL),
+        },
+        .id_table = firewall_id_table_userpf
+};
+
+
+int __init xocl_init_firewall(bool flag)
 {
-	return platform_driver_register(&firewall_driver);
+	if(flag)
+	{
+	    return platform_driver_register(&firewall_driver_mgmtpf);
+	}
+	else
+	{
+	    return platform_driver_register(&firewall_driver_userpf);
+	}
 }
 
-void xocl_fini_firewall(void)
+void xocl_fini_firewall(bool flag)
 {
-	return platform_driver_unregister(&firewall_driver);
+    if (flag)
+	return platform_driver_unregister(&firewall_driver_mgmtpf);
+    else
+	return platform_driver_unregister(&firewall_driver_userpf);
 }

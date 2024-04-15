@@ -213,7 +213,7 @@ struct xocl_drv_private m2m_priv = {
 };
 
 struct platform_device_id m2m_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_M2M), (kernel_ulong_t)&m2m_priv },
+	{XOCL_DEVNAME(XOCL_M2M), (kernel_ulong_t)&m2m_priv },
 	{ },
 };
 
@@ -328,12 +328,11 @@ static struct platform_driver	m2m_driver = {
 	.id_table = m2m_id_table,
 };
 
-int __init xocl_init_m2m(void)
+int __init xocl_init_m2m(bool flag)
 {
 	return platform_driver_register(&m2m_driver);
 }
-
-void xocl_fini_m2m(void)
+void xocl_fini_m2m(bool flag)
 {
 	platform_driver_unregister(&m2m_driver);
 }

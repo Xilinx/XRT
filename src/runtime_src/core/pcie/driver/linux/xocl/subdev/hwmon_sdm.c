@@ -1668,31 +1668,59 @@ static struct xocl_sdm_funcs sdm_ops = {
 	.hwmon_sdm_create_sensors_sysfs = hwmon_sdm_create_sensors_sysfs,
 };
 
-struct xocl_drv_private sdm_priv = {
+struct xocl_drv_private sdm_priv_mgmtpf = {
 	.ops = &sdm_ops,
 	.dev = -1,
 };
 
-struct platform_device_id hwmon_sdm_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv },
+struct platform_device_id hwmon_sdm_id_table_mgmtpf[] = {
+	{ XOCL_DEVNAME(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv_mgmtpf },
 	{ },
 };
 
-static struct platform_driver	hwmon_sdm_driver = {
+static struct platform_driver	hwmon_sdm_driver_mgmtpf = {
 	.probe		= hwmon_sdm_probe,
 	.remove		= hwmon_sdm_remove,
 	.driver		= {
 		.name = XOCL_DEVNAME(XOCL_HWMON_SDM),
 	},
-	.id_table = hwmon_sdm_id_table,
+	.id_table = hwmon_sdm_id_table_mgmtpf,
 };
 
-int __init xocl_init_hwmon_sdm(void)
+struct xocl_drv_private sdm_priv_userpf = {
+        .ops = &sdm_ops,
+        .dev = -1,
+};
+
+struct platform_device_id hwmon_sdm_id_table_userpf[] = {
+        { XOCL_DEVNAME(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv_userpf },
+        { },
+};
+
+static struct platform_driver   hwmon_sdm_driver_userpf = {
+        .probe          = hwmon_sdm_probe,
+        .remove         = hwmon_sdm_remove,
+        .driver         = {
+                .name = XOCL_DEVNAME(XOCL_HWMON_SDM),
+        },
+        .id_table = hwmon_sdm_id_table_userpf,
+};
+
+int __init xocl_init_hwmon_sdm(bool flag)
 {
-	return platform_driver_register(&hwmon_sdm_driver);
+        
+if (flag) {
+        	return platform_driver_register(&hwmon_sdm_driver_mgmtpf);
+           }    
+else {  
+        	return platform_driver_register(&hwmon_sdm_driver_userpf);
 }
 
-void xocl_fini_hwmon_sdm(void)
+}
+void xocl_fini_hwmon_sdm(bool flag)
 {
-	platform_driver_unregister(&hwmon_sdm_driver);
+    if (flag)
+	platform_driver_unregister(&hwmon_sdm_driver_mgmtpf);
+    else
+	platform_driver_unregister(&hwmon_sdm_driver_userpf);
 }
