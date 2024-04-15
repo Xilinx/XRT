@@ -76,7 +76,7 @@ namespace xrt::core::hip
       return m_type;
     }
     
-    int
+    size_t
     get_size() const
     {
       return m_size;
@@ -144,10 +144,10 @@ namespace xrt::core::hip
     void
     remove(uint64_t addr);
   
-    std::shared_ptr<xrt::core::hip::memory>
+    std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);
   
-    std::shared_ptr<xrt::core::hip::memory>
+    std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(const void* addr);
   };
   

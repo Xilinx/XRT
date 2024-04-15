@@ -97,7 +97,7 @@ namespace xrt::core::hip
   void
   memory::write(const void *src , size_t size, size_t src_offset, size_t offset)
   {
-    auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
+    auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src).first;
     if (src_hip_mem && src_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
@@ -114,7 +114,7 @@ namespace xrt::core::hip
   void
   memory::read(void *dst, size_t size, size_t dst_offset, size_t offset)
   {
-    auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst).first;
     if (dst_hip_mem != nullptr && dst_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
         assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
@@ -180,27 +180,29 @@ namespace xrt::core::hip
     m_addr_map.erase(address_range_key(addr, 0));
   }
 
-  std::shared_ptr<xrt::core::hip::memory>
+  std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
-      return nullptr;
+      return std::pair(nullptr, 0);
     }
     else {
-      return itr->second;
+      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      return std::pair(itr->second, offset);
     }
   }
 
-  std::shared_ptr<xrt::core::hip::memory>
+  std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
-      return nullptr;
+      return std::pair(nullptr, 0);
     }
     else {
-      return itr->second;
+      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      return std::pair(itr->second, offset);
     }
   }
 

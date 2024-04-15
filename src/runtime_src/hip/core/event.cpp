@@ -118,7 +118,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
         xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
         break;
       case karg::argtype::global : {
-        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]);
+        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
         if (!hip_mem)
           throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
 
@@ -168,15 +168,28 @@ bool kernel_start::wait()
   return false;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s)
-  : command(std::move(s))
+copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
+  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), copy_size(size), dev_offset(offset)
 {
   ctype = type::buffer_copy;
 }
 
 bool copy_buffer::submit()
 {
-  //handle = std::async(&xrt::bo::sync, &cbo, cdirection);
+  switch(cdirection)
+  {
+    case XCL_BO_SYNC_BO_TO_DEVICE:
+      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr, copy_size, 0, dev_offset);
+      break;
+
+    case XCL_BO_SYNC_BO_FROM_DEVICE:
+      handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, copy_size, dev_offset, 0);
+      break;
+
+    default:
+      break;
+  };
+
   return true;
 }
 
