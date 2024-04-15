@@ -226,12 +226,12 @@ static struct platform_driver pmc_driver = {
 	.id_table = pmc_id_table,
 };
 
-int __init xocl_init_pmc(void)
+int __init xocl_init_pmc(bool flag)
 {
 	return platform_driver_register(&pmc_driver);
 }
 
-void xocl_fini_pmc(void)
+void xocl_fini_pmc(bool flag)
 {
 	platform_driver_unregister(&pmc_driver);
 }

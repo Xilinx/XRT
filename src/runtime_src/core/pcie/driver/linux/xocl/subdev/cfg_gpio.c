@@ -182,12 +182,12 @@ static struct platform_driver	config_gpio_driver = {
 	.id_table = config_gpio_id_table,
 };
 
-int __init xocl_init_config_gpio(void)
+int __init xocl_init_config_gpio(bool flag)
 {
 	return platform_driver_register(&config_gpio_driver);
 }
 
-void xocl_fini_config_gpio(void)
+void xocl_fini_config_gpio(bool flag)
 {
 	platform_driver_unregister(&config_gpio_driver);
 }

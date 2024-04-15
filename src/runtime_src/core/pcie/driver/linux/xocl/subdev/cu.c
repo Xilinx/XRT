@@ -564,12 +564,12 @@ static struct platform_driver cu_driver = {
 	.id_table	= cu_id_table,
 };
 
-int __init xocl_init_cu(void)
+int __init xocl_init_cu(bool flag)
 {
 	return platform_driver_register(&cu_driver);
 }
 
-void xocl_fini_cu(void)
+void xocl_fini_cu(bool flag)
 {
 	platform_driver_unregister(&cu_driver);
 }

@@ -981,12 +981,11 @@ static struct platform_driver ert_ctrl_driver = {
 	.id_table	= ert_ctrl_id_table,
 };
 
-int __init xocl_init_ert_ctrl(void)
+int __init xocl_init_ert_ctrl(bool flag)
 {
-	return platform_driver_register(&ert_ctrl_driver);
+        return platform_driver_register(&ert_ctrl_driver);
 }
-
-void xocl_fini_ert_ctrl(void)
+void xocl_fini_ert_ctrl(bool flag)
 {
 	platform_driver_unregister(&ert_ctrl_driver);
 }

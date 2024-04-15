@@ -954,7 +954,7 @@ static struct platform_driver	qdma_driver = {
 	.id_table	= qdma_id_table,
 };
 
-int __init xocl_init_qdma(void)
+int __init xocl_init_qdma(bool flag)
 {
 	int		err = 0;
 
@@ -991,7 +991,7 @@ err_reg_chrdev:
 	return err;
 }
 
-void xocl_fini_qdma(void)
+void xocl_fini_qdma(bool flag)
 {
 	unregister_chrdev_region(str_dev, XOCL_CHARDEV_REG_COUNT);
 	platform_driver_unregister(&qdma_driver);

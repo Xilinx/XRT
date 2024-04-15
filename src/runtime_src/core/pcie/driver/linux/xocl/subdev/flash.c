@@ -1525,7 +1525,7 @@ static struct platform_driver	flash_driver = {
 	.id_table = flash_id_table,
 };
 
-int __init xocl_init_flash(void)
+int __init xocl_init_flash(bool flag)
 {
 	int err = alloc_chrdev_region(&flash_priv.dev, 0, XOCL_MAX_DEVICES,
 			XOCL_FLASH);
@@ -1540,7 +1540,7 @@ int __init xocl_init_flash(void)
 	return err;
 }
 
-void xocl_fini_flash(void)
+void xocl_fini_flash(bool flag)
 {
 	unregister_chrdev_region(flash_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&flash_driver);

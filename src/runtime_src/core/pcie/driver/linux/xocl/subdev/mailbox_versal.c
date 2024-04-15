@@ -302,12 +302,12 @@ static struct platform_driver	mailbox_versal_driver = {
 	.id_table = mailbox_versal_id_table,
 };
 
-int __init xocl_init_mailbox_versal(void)
+int __init xocl_init_mailbox_versal(bool flag)
 {
 	return platform_driver_register(&mailbox_versal_driver);
 }
 
-void xocl_fini_mailbox_versal(void)
+void xocl_fini_mailbox_versal(bool flag)
 {
 	platform_driver_unregister(&mailbox_versal_driver);
 }

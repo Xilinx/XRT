@@ -597,7 +597,7 @@ static struct platform_driver ulite_platform_driver = {
  * Module setup/teardown
  */
 
-int __init xocl_init_ulite(void)
+int __init xocl_init_ulite(bool flag)
 {
 	int ret;
 
@@ -612,7 +612,7 @@ int __init xocl_init_ulite(void)
 	return ret;
 }
 
-void xocl_fini_ulite(void)
+void xocl_fini_ulite(bool flag)
 {
 	platform_driver_unregister(&ulite_platform_driver);
 	uart_unregister_driver(&xcl_ulite_driver);

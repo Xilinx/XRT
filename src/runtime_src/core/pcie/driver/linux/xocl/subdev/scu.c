@@ -352,12 +352,12 @@ static struct platform_driver scu_driver = {
 	.id_table	= scu_id_table,
 };
 
-int __init xocl_init_scu(void)
+int __init xocl_init_scu(bool flag)
 {
 	return platform_driver_register(&scu_driver);
 }
 
-void xocl_fini_scu(void)
+void xocl_fini_scu(bool flag)
 {
 	platform_driver_unregister(&scu_driver);
 }

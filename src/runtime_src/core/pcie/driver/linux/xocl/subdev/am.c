@@ -445,7 +445,7 @@ static struct platform_driver	am_driver = {
 	.id_table = am_id_table,
 };
 
-int __init xocl_init_am(void)
+int __init xocl_init_am(bool flag)
 {
 	int err = 0;
 
@@ -465,7 +465,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_am(void)
+void xocl_fini_am(bool flag)
 {
 	unregister_chrdev_region(am_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&am_driver);

@@ -66,7 +66,7 @@ struct xil_xvc_properties {
 #define XVC_BAR_TDO_REG		0xC
 #define XVC_BAR_CTRL_REG	0x10
 
-#define XVC_DEV_NAME "xvc" SUBDEV_SUFFIX
+#define XVC_DEV_NAME "xvc"
 
 struct xocl_xvc {
 	void *__iomem base;
@@ -395,56 +395,107 @@ static int xvc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-struct xocl_drv_private xvc_pub = {
+struct xocl_drv_private xvc_pub_mgmtpf = {
 	.ops = NULL,
 	.fops = &xvc_fops,
 	.dev = -1,
 };
 
-struct xocl_drv_private xvc_pri = {
+struct xocl_drv_private xvc_pri_mgmtpf = {
 	.ops = NULL,
 	.fops = &xvc_fops,
 	.dev = -1,
 };
 
-struct platform_device_id xvc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub },
-	{ XOCL_DEVNAME(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri },
+struct xocl_drv_private xvc_pub_userpf = {
+        .ops = NULL,
+        .fops = &xvc_fops,
+        .dev = -1,
+};
+
+struct xocl_drv_private xvc_pri_userpf = {
+        .ops = NULL,
+        .fops = &xvc_fops,
+        .dev = -1,
+};
+
+
+struct platform_device_id xvc_id_table_mgmtpf[] = {
+	{ XOCL_DEVNAME(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub_mgmtpf },
+	{ XOCL_DEVNAME(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri_mgmtpf },
 	{ },
 };
-
-static struct platform_driver	xvc_driver = {
+struct platform_device_id xvc_id_table_userpf[] = {
+	{ XOCL_DEVNAME(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub_userpf },
+	{ XOCL_DEVNAME(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri_userpf },
+	{ },
+};
+static struct platform_driver	xvc_driver_mgmtpf = {
 	.probe		= xvc_probe,
 	.remove		= xvc_remove,
 	.driver		= {
 		.name = XOCL_DEVNAME(XVC_DEV_NAME),
 	},
-	.id_table = xvc_id_table,
+	.id_table = xvc_id_table_mgmtpf,
+};
+static struct platform_driver	xvc_driver_userpf = {
+	.probe		= xvc_probe,
+	.remove		= xvc_remove,
+	.driver		= {
+		.name = XOCL_DEVNAME(XVC_DEV_NAME),
+	},
+	.id_table = xvc_id_table_userpf,
 };
 
-int __init xocl_init_xvc(void)
+int __init xocl_init_xvc(bool flag)
 {
 	int err = 0;
+	if(flag)
+	{
+		
+		err = alloc_chrdev_region(&xvc_pub_mgmtpf.dev, 0, XOCL_MAX_DEVICES,
+				XVC_DEV_NAME);
+		if (err < 0)
+			goto err_register_chrdev;
+		xvc_pri_mgmtpf.dev = xvc_pub_mgmtpf.dev;
 
-	err = alloc_chrdev_region(&xvc_pub.dev, 0, XOCL_MAX_DEVICES,
-			XVC_DEV_NAME);
-	if (err < 0)
-		goto err_register_chrdev;
-	xvc_pri.dev = xvc_pub.dev;
+		err = platform_driver_register(&xvc_driver_mgmtpf);
+		if (err)
+			goto err_driver_reg;
+	}
+	else
+	{
+		
+		err = alloc_chrdev_region(&xvc_pub_userpf.dev, 0, XOCL_MAX_DEVICES,
+				XVC_DEV_NAME);
+		if (err < 0)
+			goto err_register_chrdev;
+		xvc_pri_userpf.dev = xvc_pub_userpf.dev;
 
-	err = platform_driver_register(&xvc_driver);
-	if (err)
-		goto err_driver_reg;
+		err = platform_driver_register(&xvc_driver_userpf);
+		if (err)
+			goto err_driver_reg;
+	}
+
 	return 0;
 
 err_driver_reg:
-	unregister_chrdev_region(xvc_pub.dev, XOCL_MAX_DEVICES);
+        if (flag) {
+	    unregister_chrdev_region(xvc_pub_mgmtpf.dev, XOCL_MAX_DEVICES);
+        } else {
+	    unregister_chrdev_region(xvc_pub_userpf.dev, XOCL_MAX_DEVICES);
+        }
 err_register_chrdev:
 	return err;
 }
 
-void xocl_fini_xvc(void)
+void xocl_fini_xvc(bool flag)
 {
-	unregister_chrdev_region(xvc_pub.dev, XOCL_MAX_DEVICES);
-	platform_driver_unregister(&xvc_driver);
+	if(flag) {
+	     unregister_chrdev_region(xvc_pub_mgmtpf.dev, XOCL_MAX_DEVICES);
+	     platform_driver_unregister(&xvc_driver_mgmtpf);
+        } else {
+	     unregister_chrdev_region(xvc_pub_userpf.dev, XOCL_MAX_DEVICES);
+	     platform_driver_unregister(&xvc_driver_userpf);
+        }
 }

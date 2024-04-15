@@ -379,7 +379,7 @@ static struct platform_driver	asm_driver = {
 	.id_table = asm_id_table,
 };
 
-int __init xocl_init_asm(void)
+int __init xocl_init_asm(bool flag)
 {
 	int err = 0;
 
@@ -399,7 +399,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_asm(void)
+void xocl_fini_asm(bool flag)
 {
 	unregister_chrdev_region(asm_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&asm_driver);

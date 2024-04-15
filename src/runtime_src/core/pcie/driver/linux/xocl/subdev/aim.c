@@ -453,7 +453,7 @@ static struct platform_driver	aim_driver = {
 	.id_table = aim_id_table,
 };
 
-int __init xocl_init_aim(void)
+int __init xocl_init_aim(bool flag)
 {
 	int err = 0;
 
@@ -473,7 +473,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_aim(void)
+void xocl_fini_aim(bool flag)
 {
 	unregister_chrdev_region(aim_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&aim_driver);

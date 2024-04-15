@@ -258,12 +258,12 @@ static struct platform_driver	axi_gate_driver = {
 	.id_table = axigate_id_table,
 };
 
-int __init xocl_init_axigate(void)
+int __init xocl_init_axigate(bool flag)
 {
 	return platform_driver_register(&axi_gate_driver);
 }
 
-void xocl_fini_axigate(void)
+void xocl_fini_axigate(bool flag)
 {
 	platform_driver_unregister(&axi_gate_driver);
 }

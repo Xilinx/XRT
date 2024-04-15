@@ -314,7 +314,7 @@ static struct platform_driver	trace_s2mm_driver = {
 	.id_table = trace_s2mm_id_table,
 };
 
-int __init xocl_init_trace_s2mm(void)
+int __init xocl_init_trace_s2mm(bool flag)
 {
 	int err = 0;
 
@@ -334,7 +334,7 @@ err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_trace_s2mm(void)
+void xocl_fini_trace_s2mm(bool flag)
 {
 	unregister_chrdev_region(trace_s2mm_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_s2mm_driver);

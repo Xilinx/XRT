@@ -479,7 +479,7 @@ struct xocl_drv_private	ert_priv = {
 };
 
 struct platform_device_id ert_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ERT), (kernel_ulong_t)&ert_priv },
+	{XOCL_DEVNAME(XOCL_ERT), (kernel_ulong_t)&ert_priv },
 	{ },
 };
 
@@ -492,7 +492,7 @@ static struct platform_driver	ert_driver = {
 	.id_table = ert_id_table,
 };
 
-int __init xocl_init_ert(void)
+int __init xocl_init_ert(bool flag)
 {
 	int err;
 
@@ -504,7 +504,7 @@ int __init xocl_init_ert(void)
 	return 0;
 }
 
-void xocl_fini_ert(void)
+void xocl_fini_ert(bool flag)
 {
 	platform_driver_unregister(&ert_driver);
 }

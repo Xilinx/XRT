@@ -721,12 +721,12 @@ static struct platform_driver	mb_driver = {
 	.id_table = mb_id_table,
 };
 
-int __init xocl_init_mb(void)
+int __init xocl_init_mb(bool flag)
 {
 	return platform_driver_register(&mb_driver);
 }
 
-void xocl_fini_mb(void)
+void xocl_fini_mb(bool flag)
 {
 	platform_driver_unregister(&mb_driver);
 }

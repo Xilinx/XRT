@@ -599,12 +599,12 @@ static struct platform_driver	xdma_driver = {
 	.id_table	= xdma_id_table,
 };
 
-int __init xocl_init_xdma(void)
+int __init xocl_init_xdma(bool flag)
 {
 	return platform_driver_register(&xdma_driver);
 }
 
-void xocl_fini_xdma(void)
+void xocl_fini_xdma(bool flag)
 {
 	return platform_driver_unregister(&xdma_driver);
 }

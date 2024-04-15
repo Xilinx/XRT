@@ -942,10 +942,13 @@ static void chan_worker(struct work_struct *work)
 			 * and achieve fastest transfer speed, then we can do busy
 			 * poll for Rx also when there is data. 
 			 */
-#if PF == USERPF
-			if (is_rx_chan(ch))
-#endif
+			if(strcmp(XOCL_DEVNAME(XOCL_MAILBOX),ch->mbc_parent->mbx_pdev->name)==0) {
+				if (is_rx_chan(ch))
+					chan_sleep(ch, false);
+			}
+			else {
 				chan_sleep(ch, false);
+			}
 		} else {
 			/*
 			 * Nothing to do, sleep until we're woken up, but see the devil in
@@ -2585,14 +2588,14 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 
 	if (mbx->mbx_irq != -1)
 		return 0;
-
-#if PF == MGMTPF
+if(strcmp(pdev->name,XOCL_DEVNAME(XOCL_MAILBOX))==0) {
 	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_MGMT,
 			IORESOURCE_IRQ, &dyn_res);
-#else
+}
+else {
 	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_USER,
 			IORESOURCE_IRQ, &dyn_res);
-#endif
+}
 	if (ret) {
 		/* fall back to try static defined irq */
 		res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -3169,50 +3172,93 @@ failed:
 	return ret;
 }
 
-struct xocl_drv_private mailbox_priv = {
+struct xocl_drv_private mailbox_priv_mgmtpf = {
+	.ops = &mailbox_ops,
+	.fops = &mailbox_fops,
+	.dev = -1,
+};
+struct xocl_drv_private mailbox_priv_userpf = {
 	.ops = &mailbox_ops,
 	.fops = &mailbox_fops,
 	.dev = -1,
 };
 
-struct platform_device_id mailbox_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv },
+struct platform_device_id mailbox_id_table_mgmtpf[] = {
+	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv_mgmtpf },
 	{ },
 };
 
-static struct platform_driver mailbox_driver = {
+struct platform_device_id mailbox_id_table_userpf[] = {
+	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv_userpf },
+	{ },
+};
+
+
+static struct platform_driver mailbox_driver_mgmtpf = {
 	.probe		= mailbox_probe,
 	.remove		= mailbox_remove,
 	.driver		= {
 		.name	= XOCL_DEVNAME(XOCL_MAILBOX),
 	},
-	.id_table = mailbox_id_table,
+	.id_table = mailbox_id_table_mgmtpf,
 };
 
-int __init xocl_init_mailbox(void)
+static struct platform_driver mailbox_driver_userpf = {
+	.probe		= mailbox_probe,
+	.remove		= mailbox_remove,
+	.driver		= {
+		.name	= XOCL_DEVNAME(XOCL_MAILBOX),
+	},
+	.id_table = mailbox_id_table_userpf,
+};
+
+int __init xocl_init_mailbox(bool flag)
 {
 	int err = 0;
-
 	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE);
+	if(flag)
+	{
+	    err = alloc_chrdev_region(&mailbox_priv_mgmtpf.dev, 0, XOCL_MAX_DEVICES,
+			    XOCL_MAILBOX);
+	    if (err < 0)
+		    goto err_chrdev_reg;
 
-	err = alloc_chrdev_region(&mailbox_priv.dev, 0, XOCL_MAX_DEVICES,
-			XOCL_MAILBOX);
-	if (err < 0)
-		goto err_chrdev_reg;
+	    err = platform_driver_register(&mailbox_driver_mgmtpf);
+	    if (err < 0)
+		    goto err_driver_reg;
 
-	err = platform_driver_register(&mailbox_driver);
-	if (err < 0)
-		goto err_driver_reg;
+	}
+	else
+	{
+	    err = alloc_chrdev_region(&mailbox_priv_userpf.dev, 0, XOCL_MAX_DEVICES,
+			    XOCL_MAILBOX);
+	    if (err < 0)
+		    goto err_chrdev_reg;
+
+	    err = platform_driver_register(&mailbox_driver_userpf);
+	    if (err < 0)
+		    goto err_driver_reg;
+
+	}
 
 	return 0;
 err_driver_reg:
-	unregister_chrdev_region(mailbox_priv.dev, XOCL_MAX_DEVICES);
+        if (flag) {
+	    unregister_chrdev_region(mailbox_priv_mgmtpf.dev, XOCL_MAX_DEVICES);
+        } else {
+	    unregister_chrdev_region(mailbox_priv_userpf.dev, XOCL_MAX_DEVICES);
+        }
 err_chrdev_reg:
 	return err;
 }
 
-void xocl_fini_mailbox(void)
+void xocl_fini_mailbox(bool flag)
 {
-	unregister_chrdev_region(mailbox_priv.dev, XOCL_MAX_DEVICES);
-	platform_driver_unregister(&mailbox_driver);
+    if (flag) {
+	unregister_chrdev_region(mailbox_priv_mgmtpf.dev, XOCL_MAX_DEVICES);
+	platform_driver_unregister(&mailbox_driver_mgmtpf);
+    } else {
+	unregister_chrdev_region(mailbox_priv_userpf.dev, XOCL_MAX_DEVICES);
+	platform_driver_unregister(&mailbox_driver_userpf);
+    }
 }

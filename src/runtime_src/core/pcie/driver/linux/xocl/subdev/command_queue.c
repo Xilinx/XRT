@@ -725,12 +725,13 @@ static struct platform_driver	command_queue_driver = {
 	.id_table = command_queue_id_table,
 };
 
-int __init xocl_init_command_queue(void)
+int __init xocl_init_command_queue(bool flag)
 {
 	return platform_driver_register(&command_queue_driver);
 }
 
-void xocl_fini_command_queue(void)
-{
+void xocl_fini_command_queue(bool flag)
+
+{     
 	platform_driver_unregister(&command_queue_driver);
 }

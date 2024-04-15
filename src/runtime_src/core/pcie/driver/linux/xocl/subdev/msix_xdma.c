@@ -308,12 +308,12 @@ static struct platform_driver	msix_xdma_driver = {
 	.id_table	= msix_xdma_id_table,
 };
 
-int __init xocl_init_msix_xdma(void)
+int __init xocl_init_msix_xdma(bool flag)
 {
 	return platform_driver_register(&msix_xdma_driver);
 }
 
-void xocl_fini_msix_xdma(void)
+void xocl_fini_msix_xdma(bool flag)
 {
 	return platform_driver_unregister(&msix_xdma_driver);
 }
