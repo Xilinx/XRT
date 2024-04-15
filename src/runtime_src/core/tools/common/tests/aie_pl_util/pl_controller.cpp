@@ -20,9 +20,9 @@
 
 namespace xf {
 namespace plctrl {
-plController::plController(const std::string& aie_info_path,
+plController::plController(boost::property_tree::ptree& aie_meta_info,
                            const std::string& dma_info_path)
-  : m_aie_info_path(aie_info_path),
+  : m_aie_meta_info(aie_meta_info),
     m_dma_info_path(dma_info_path),
     m_outputSize(0),
     m_ping_pong(false)
@@ -170,11 +170,7 @@ void
 plController::get_rtp()
 {
     boost::property_tree::ptree aie_meta;
-    std::ifstream jsonFile(m_aie_info_path);
-    if (!jsonFile.good())
-        throw std::runtime_error("get_rtp():ERROR:No aie info file specified");
-
-    boost::property_tree::json_parser::read_json(m_aie_info_path, aie_meta);
+    aie_meta = m_aie_meta_info;
 
     for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
       rtp_type rtp = {};
@@ -210,13 +206,8 @@ std::vector<tile_type>
 plController::get_tiles(const std::string& graph_name)
 {
     boost::property_tree::ptree aie_meta;
+    aie_meta = m_aie_meta_info;
 
-    std::ifstream jsonFile(m_aie_info_path);
-    if (!jsonFile.good())
-        throw std::runtime_error(
-            "ERROR (get_tiles):No aie info file specified");
-
-    boost::property_tree::json_parser::read_json(m_aie_info_path, aie_meta);
     std::vector<tile_type> tiles;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {

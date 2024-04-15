@@ -51,7 +51,7 @@ class plController_aie2 {
     /* Constructor
     */
     plController_aie2() = delete;
-    plController_aie2(const std::string& aie_info_path, const std::string& dma_info_path);
+    plController_aie2(const boost::property_tree::ptree& aie_meta_info);
 
     void enqueue_set_aie_iteration(const std::string& graphName, int num_iter);
 
@@ -90,13 +90,10 @@ class plController_aie2 {
 
     std::vector<tile_type> get_tiles(const std::string& graph_name);
 
-    std::vector<buffer_type> get_buffers(const std::string& port_name);
-
     std::unordered_map<std::string, rtp_type> m_rtps;
     dynBuffer m_opcodeBuffer;
 
-    std::string m_aie_info_path = "aie_control_config.json";
-    std::string m_dma_info_path = "dma_lock_report.json";
+    boost::property_tree::ptree m_aie_meta_info;
 
     uint32_t m_outputSize = 0;
     bool m_set_num_iter = false;
