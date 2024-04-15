@@ -15,26 +15,25 @@ void event::record(std::shared_ptr<stream> s)
   cstream = std::move(s);
   auto ev = std::dynamic_pointer_cast<event>(command_cache.get(static_cast<command_handle>(this)));
   throw_invalid_handle_if(!ev, "event passed is invalid");
-  /*
-  TODO
   if (is_recorded()) {
     // already recorded
-    cstream->erase_cmd(ev); It is commented will be uncomment after stream PR is pushed
+    cstream->erase_cmd(ev);
   }
   // update recorded commands list
-  cstream->enqueue_event(std::move(ev));It is commented will be uncomment after stream PR is pushed
-  */
+  cstream->enqueue_event(ev);
   set_state(state::recorded);
 }
 
 bool event::is_recorded() const
 {
+  //the event is recorded only if the state is not init
   return get_state() >= command::state::recorded;
 }
 
 bool event::query()
 {
-  for (auto rec_com : recorded_commands){
+  //This function will return true if all commands in the appropriate stream which specified to hipEventRecord() have completed.
+  for (auto& rec_com : m_recorded_commands){
     state command_state = rec_com->get_state();
     if (command_state != state::completed){
       return false;
@@ -45,11 +44,17 @@ bool event::query()
 
 bool event::synchronize()
 {
-  for (auto rec_com : recorded_commands) {
+  //wait for commands in recorded list of the event to be completed
+  std::lock_guard rec_lock(m_mutex_rec_coms);
+  for (auto& rec_com : m_recorded_commands) {
     rec_com->wait();
   }
+  //then the event is considered as completed
   set_state(state::completed);
-  for (auto coms_ch :chain_of_commands){
+
+  //all commands depend on the event start running
+  std::lock_guard ch_lock(m_mutex_chain_coms);
+  for (auto& coms_ch :m_chain_of_commands){
     coms_ch->submit();
   }
   return true;
@@ -80,19 +85,14 @@ std::shared_ptr<stream> event::get_stream()
 
 void event::add_to_chain(std::shared_ptr<command> cmd)
 {
-  // lock and add
+  std::lock_guard lock(m_mutex_chain_coms);
+  m_chain_of_commands.push_back(std::move(cmd));
 }
 
 void event::add_dependency(std::shared_ptr<command> cmd)
 {
-  // lock and add
-}
-
-float event::elapsed_time (const std::shared_ptr<command>& end)
-{
-  auto duration = end->get_time() - get_time();
-  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-  return millis;
+  std::lock_guard lock(m_mutex_rec_coms);
+  m_recorded_commands.push_back(std::move(cmd));
 }
 
 kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
@@ -196,6 +196,7 @@ bool copy_buffer::submit()
 bool copy_buffer::wait()
 {
   handle.wait();
+  set_state(state::completed);
   return true;
 }
 

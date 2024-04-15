@@ -27,7 +27,7 @@ stream::
 
 void
 stream::
-enqueue(std::shared_ptr<command>&& cmd)
+enqueue(const std::shared_ptr<command>& cmd)
 {
   // if there is top event add command chain list of this event
   // else submit the command
@@ -48,7 +48,7 @@ dequeue()
   if (m_cmd_queue.empty()) {
     return nullptr;
   }
-  auto cmd = std::move(m_cmd_queue.front());
+  auto cmd = m_cmd_queue.front();
   m_cmd_queue.pop_front();
   return cmd;
 }
@@ -68,7 +68,7 @@ erase_cmd(std::shared_ptr<command> cmd)
 
 void
 stream::
-enqueue_event(std::shared_ptr<event>&& ev)
+enqueue_event(std::shared_ptr<event> ev)
 {
   {
     // iterate over commands and add them to recorded list of event
@@ -77,7 +77,7 @@ enqueue_event(std::shared_ptr<event>&& ev)
       ev->add_dependency(cmd);
     }
   }
-  enqueue(std::move(ev));
+  enqueue(ev);
 }
 
 void
