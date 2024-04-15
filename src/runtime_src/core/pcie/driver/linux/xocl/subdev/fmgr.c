@@ -229,12 +229,12 @@ static struct platform_driver	fmgr_driver = {
 	.id_table = fmgr_id_table,
 };
 
-int __init xocl_init_fmgr(void)
+int __init xocl_init_fmgr(bool flag)
 {
 	return platform_driver_register(&fmgr_driver);
 }
 
-void xocl_fini_fmgr(void)
+void xocl_fini_fmgr(bool flag)
 {
 	platform_driver_unregister(&fmgr_driver);
 }

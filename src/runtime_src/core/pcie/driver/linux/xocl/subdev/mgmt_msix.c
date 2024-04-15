@@ -373,12 +373,12 @@ static struct platform_driver	mgmt_msix_driver = {
 	.id_table	= mgmt_msix_id_table,
 };
 
-int __init xocl_init_mgmt_msix(void)
+int __init xocl_init_mgmt_msix(bool flag)
 {
 	return platform_driver_register(&mgmt_msix_driver);
 }
 
-void xocl_fini_mgmt_msix(void)
+void xocl_fini_mgmt_msix(bool flag)
 {
 	return platform_driver_unregister(&mgmt_msix_driver);
 }

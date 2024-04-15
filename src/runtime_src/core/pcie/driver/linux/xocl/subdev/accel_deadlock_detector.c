@@ -275,7 +275,7 @@ static struct platform_driver  accel_deadlock_detector_driver = {
     .id_table = accel_deadlock_detector_id_table,
 };
 
-int __init xocl_init_accel_deadlock_detector(void)
+int __init xocl_init_accel_deadlock_detector(bool flag)
 {
     int err = 0;
 
@@ -298,7 +298,7 @@ err_chrdev_reg:
     return err;
 }
 
-void xocl_fini_accel_deadlock_detector(void)
+void xocl_fini_accel_deadlock_detector(bool flag)
 {
     unregister_chrdev_region(accel_deadlock_detector_priv.dev, XOCL_MAX_DEVICES);
     platform_driver_unregister(&accel_deadlock_detector_driver);

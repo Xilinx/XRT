@@ -253,12 +253,12 @@ static struct platform_driver	icap_cntrl_driver = {
 	.id_table = icap_cntrl_id_table,
 };
 
-int __init xocl_init_icap_controller(void)
+int __init xocl_init_icap_controller(bool flag)
 {
 	return platform_driver_register(&icap_cntrl_driver);
 }
 
-void xocl_fini_icap_controller(void)
+void xocl_fini_icap_controller(bool flag)
 {
 	platform_driver_unregister(&icap_cntrl_driver);
 }

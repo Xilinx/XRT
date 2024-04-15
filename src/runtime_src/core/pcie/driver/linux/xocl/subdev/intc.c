@@ -700,12 +700,12 @@ static struct platform_driver intc_driver = {
 	.id_table = intc_id_table,
 };
 
-int __init xocl_init_intc(void)
+int __init xocl_init_intc(bool flag)
 {
 	return platform_driver_register(&intc_driver);
 }
 
-void xocl_fini_intc(void)
+void xocl_fini_intc(bool flag)
 {
 	platform_driver_unregister(&intc_driver);
 }

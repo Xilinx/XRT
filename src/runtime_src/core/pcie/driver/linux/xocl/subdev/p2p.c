@@ -1613,12 +1613,12 @@ static struct platform_driver	p2p_driver = {
 	.id_table = p2p_id_table,
 };
 
-int __init xocl_init_p2p(void)
+int __init xocl_init_p2p(bool flag)
 {
 	return platform_driver_register(&p2p_driver);
 }
 
-void xocl_fini_p2p(void)
+void xocl_fini_p2p(bool flag)
 {
 	platform_driver_unregister(&p2p_driver);
 }

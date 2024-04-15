@@ -192,30 +192,53 @@ failed:
 	return ret;
 }
 
-struct xocl_drv_private version_ctrl_priv = {
+struct xocl_drv_private version_ctrl_priv_mgmtpf = {
+	.ops = &vc_ops,
+};
+struct xocl_drv_private version_ctrl_priv_userpf = {
 	.ops = &vc_ops,
 };
 
-struct platform_device_id version_ctrl_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv },
+struct platform_device_id version_ctrl_id_table_mgmtpf[] = {
+	{ XOCL_DEVNAME(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv_mgmtpf },
+	{ },
+};
+struct platform_device_id version_ctrl_id_table_userpf[] = {
+	{ XOCL_DEVNAME(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv_userpf },
 	{ },
 };
 
-static struct platform_driver	version_ctrl_driver = {
+static struct platform_driver	version_ctrl_driver_mgmtpf = {
 	.probe		= version_ctrl_probe,
 	.remove		= version_ctrl_remove,
 	.driver		= {
 		.name = XOCL_DEVNAME(XOCL_VERSION_CTRL),
 	},
-	.id_table = version_ctrl_id_table,
+	.id_table = version_ctrl_id_table_mgmtpf,
+};
+static struct platform_driver	version_ctrl_driver_userpf = {
+	.probe		= version_ctrl_probe,
+	.remove		= version_ctrl_remove,
+	.driver		= {
+		.name = XOCL_DEVNAME(XOCL_VERSION_CTRL),
+	},
+	.id_table = version_ctrl_id_table_userpf,
 };
 
-int __init xocl_init_version_control(void)
+int __init xocl_init_version_control(bool flag)
 {
-	return platform_driver_register(&version_ctrl_driver);
+	if(flag){
+		return platform_driver_register(&version_ctrl_driver_mgmtpf);
+	}
+	else{
+		return platform_driver_register(&version_ctrl_driver_userpf);
+	}
 }
 
-void xocl_fini_version_control(void)
+void xocl_fini_version_control(bool flag)
 {
-	platform_driver_unregister(&version_ctrl_driver);
+	if(flag)
+		platform_driver_unregister(&version_ctrl_driver_mgmtpf);
+	else
+		platform_driver_unregister(&version_ctrl_driver_userpf);
 }

@@ -155,12 +155,12 @@ static struct platform_driver   firewall_driver = {
 	.id_table = firewall_id_table,
 };
 
-int __init xocl_init_pcie_firewall(void)
+int __init xocl_init_pcie_firewall(bool flag)
 {
 	return platform_driver_register(&firewall_driver);
 }
 
-void xocl_fini_pcie_firewall(void)
+void xocl_fini_pcie_firewall(bool flag)
 {
 	platform_driver_unregister(&firewall_driver);
 }

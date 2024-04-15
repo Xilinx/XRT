@@ -1068,12 +1068,12 @@ static struct platform_driver xiic_driver = {
 	.id_table = xiic_id_table,
 };
 
-int __init xocl_init_xiic(void)
+int __init xocl_init_xiic(bool flag)
 {
 	return platform_driver_register(&xiic_driver);
 }
 
-void xocl_fini_xiic(void)
+void xocl_fini_xiic(bool flag)
 {
 	platform_driver_unregister(&xiic_driver);
 }

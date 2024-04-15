@@ -3911,48 +3911,83 @@ failed:
 	return err;
 }
 
-static struct xocl_drv_private	xmc_priv = {
+static struct xocl_drv_private	xmc_priv_mgmtpf = {
 	.ops = &xmc_ops,
-#if PF == MGMTPF
-	.fops = &xmc_fops,
-#endif
 	.dev = -1,
 };
 
-static struct platform_device_id xmc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XMC_U2), (kernel_ulong_t)&xmc_priv },
+static struct platform_device_id xmc_id_table_mgmtpf[] = {
+	{ XOCL_DEVNAME(XOCL_XMC_U2), (kernel_ulong_t)&xmc_priv_mgmtpf },
 	{ },
 };
 
-static struct platform_driver	xmc_driver = {
+static struct platform_driver	xmc_driver_mgmtpf = {
 	.probe		= xmc_probe,
 	.remove		= xmc_remove,
 	.driver		= {
 		.name = XOCL_DEVNAME(XOCL_XMC_U2),
 	},
-	.id_table = xmc_id_table,
+	.id_table = xmc_id_table_mgmtpf,
 };
 
-int __init xocl_init_xmc_u2(void)
+static struct xocl_drv_private  xmc_priv_userpf = {
+        .ops = &xmc_ops,
+        .dev = -1,
+};
+
+static struct platform_device_id xmc_id_table_userpf[] = {
+        { XOCL_DEVNAME(XOCL_XMC_U2), (kernel_ulong_t)&xmc_priv_userpf },
+        { },
+};
+
+static struct platform_driver   xmc_driver_userpf = {
+        .probe          = xmc_probe,
+        .remove         = xmc_remove,
+        .driver         = {
+                .name = XOCL_DEVNAME(XOCL_XMC_U2),
+        },
+        .id_table = xmc_id_table_userpf,
+};
+
+int __init xocl_init_xmc_u2(bool flag)
 {
-	int err = alloc_chrdev_region(&xmc_priv.dev, 0, XOCL_MAX_DEVICES,
+   if (flag) {
+	int err = alloc_chrdev_region(&xmc_priv_mgmtpf.dev, 0, XOCL_MAX_DEVICES,
 			XOCL_XMC_U2);
 	if (err)
 		return err;
 
-	err = platform_driver_register(&xmc_driver);
+	err = platform_driver_register(&xmc_driver_mgmtpf);
 	if (err) {
-		unregister_chrdev_region(xmc_priv.dev, XOCL_MAX_DEVICES);
+		unregister_chrdev_region(xmc_priv_mgmtpf.dev, XOCL_MAX_DEVICES);
 		return err;
 	}
+   } else {
+	int err = alloc_chrdev_region(&xmc_priv_userpf.dev, 0, XOCL_MAX_DEVICES,
+			XOCL_XMC_U2);
+	if (err)
+		return err;
+
+	err = platform_driver_register(&xmc_driver_userpf);
+	if (err) {
+		unregister_chrdev_region(xmc_priv_userpf.dev, XOCL_MAX_DEVICES);
+		return err;
+	}
+   }
 
 	return 0;
 }
 
-void xocl_fini_xmc_u2(void)
+void xocl_fini_xmc_u2(bool flag)
 {
-	unregister_chrdev_region(xmc_priv.dev, XOCL_MAX_DEVICES);
-	platform_driver_unregister(&xmc_driver);
+     if (flag)
+     {
+	unregister_chrdev_region(xmc_priv_mgmtpf.dev, XOCL_MAX_DEVICES);
+	platform_driver_unregister(&xmc_driver_mgmtpf);
+     } else {
+	unregister_chrdev_region(xmc_priv_userpf.dev, XOCL_MAX_DEVICES);
+	platform_driver_unregister(&xmc_driver_userpf);
+     }
 }
 
 static int xmc_mailbox_wait(struct xocl_xmc *xmc)

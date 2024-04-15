@@ -1592,12 +1592,11 @@ static struct platform_driver	ert_user_driver = {
 	.id_table = ert_user_id_table,
 };
 
-int __init xocl_init_ert_user(void)
+int __init xocl_init_ert_user(bool flag)
 {
 	return platform_driver_register(&ert_user_driver);
 }
-
-void xocl_fini_ert_user(void)
+void xocl_fini_ert_user(bool flag)
 {
 	platform_driver_unregister(&ert_user_driver);
 }

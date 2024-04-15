@@ -82,7 +82,7 @@
 #include "../xocl_drv.h"
 #include "xrt_drv.h"
 
-#define	XFER_VERSAL_DEV_NAME "xfer_versal" SUBDEV_SUFFIX
+#define	XFER_VERSAL_DEV_NAME "xfer_versal"
 
 /* Timer interval of checking OSPI done */
 #define XFER_VERSAL_TIMER_INTERVAL	(1000)
@@ -501,12 +501,12 @@ static struct platform_driver	xfer_versal_driver = {
 	.id_table = xfer_versal_id_table,
 };
 
-int __init xocl_init_xfer_versal(void)
+int __init xocl_init_xfer_versal(bool flag)
 {
 	int err = 0;
 
 	err = alloc_chrdev_region(&xfer_versal_priv.dev, 0, XOCL_MAX_DEVICES,
-	    XFER_VERSAL_DEV_NAME);
+	    XOCL_DEVNAME(XFER_VERSAL_DEV_NAME));
 	if (err < 0)
 		return err;
 
@@ -520,7 +520,7 @@ int __init xocl_init_xfer_versal(void)
 	return 0;
 }
 
-void xocl_fini_xfer_versal(void)
+void xocl_fini_xfer_versal(bool flag)
 {
 	unregister_chrdev_region(xfer_versal_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&xfer_versal_driver);
