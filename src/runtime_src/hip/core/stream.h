@@ -42,7 +42,7 @@ public:
   }
 
   void
-  enqueue(const std::shared_ptr<command>& cmd);
+  enqueue(std::shared_ptr<command> cmd);
 
   std::shared_ptr<command>
   dequeue();
@@ -51,7 +51,7 @@ public:
   erase_cmd(std::shared_ptr<command> cmd);
 
   void
-  enqueue_event(std::shared_ptr<event> ev);
+  enqueue_event(const std::shared_ptr<event>& ev);
 
   void
   synchronize_streams();

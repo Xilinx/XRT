@@ -27,7 +27,7 @@ stream::
 
 void
 stream::
-enqueue(const std::shared_ptr<command>& cmd)
+enqueue(std::shared_ptr<command> cmd)
 {
   // if there is top event add command chain list of this event
   // else submit the command
@@ -68,7 +68,7 @@ erase_cmd(std::shared_ptr<command> cmd)
 
 void
 stream::
-enqueue_event(std::shared_ptr<event> ev)
+enqueue_event(const std::shared_ptr<event>& ev)
 {
   {
     // iterate over commands and add them to recorded list of event
