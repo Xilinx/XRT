@@ -4,6 +4,7 @@
 #define xrthip_event_h
 
 #include "common.h"
+#include "memory.h"
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
@@ -103,13 +104,16 @@ public:
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
   bool submit() override;
   bool wait() override;
 
 private:
   xclBOSyncDirection cdirection;
-  xrt::bo cbo;
+  std::shared_ptr<memory> buffer;
+  void* host_ptr;
+  size_t copy_size;
+  size_t dev_offset; // offset for device memory
   std::future<void> handle;
 };
 
