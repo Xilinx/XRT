@@ -33,6 +33,7 @@ bool event::is_recorded() const
 bool event::query()
 {
   //This function will return true if all commands in the appropriate stream which specified to hipEventRecord() have completed.
+  std::lock_guard lock(m_mutex_rec_coms);
   for (auto& rec_com : m_recorded_commands){
     state command_state = rec_com->get_state();
     if (command_state != state::completed){
