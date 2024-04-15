@@ -40,7 +40,7 @@ TestAiePl::run(std::shared_ptr<xrt_core::device> dev)
   return ptree;
 }
 
-bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_tree::ptree aie_meta, std::string dma_lock) {
+bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_tree::ptree& aie_meta, std::string dma_lock) {
   xf::plctrl::plController m_pl_ctrl(aie_meta, dma_lock.c_str());
 
   unsigned int num_iter = 2;
@@ -143,7 +143,7 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, boost::property_
   return match;
 }
 
-bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_tree::ptree aie_meta) {
+bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, boost::property_tree::ptree& aie_meta) {
   // instance of plController
   xf::plctrl::plController_aie2 m_pl_ctrl(aie_meta);
 
@@ -252,19 +252,18 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
   const auto uuid = device.load_xclbin(binaryFile.string());
 
   boost::property_tree::ptree aie_meta;
-  //auto metadata = device.wrapper_get_xclbin_section(device, AIE_METADATA, uuid);
   auto metadata_pair = dev->get_axlf_section(AIE_METADATA);
   if (!metadata_pair.first || metadata_pair.second == 0){
-    logger(ptree, "Details", boost::str(boost::format("The AIE_METADATA could not be found")));
     ptree.put("status", test_token_skipped);
     return;
   }
   std::string aie_metadata(metadata_pair.first, metadata_pair.second);
   std::stringstream aie_metadata_stream(aie_metadata);
-  try{
+  try {
     boost::property_tree::read_json(aie_metadata_stream, aie_meta);
-  } catch(const boost::property_tree::json_parser_error& e){
-    std::cerr<<"JSON parsing error:"<<e.what()<<std::endl;
+  }
+  catch(const boost::property_tree::json_parser_error& e){
+    std::cerr << "JSON parsing error : " << e.what() << std::endl;
     return;
   }
 
@@ -272,16 +271,15 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
   auto hw_gen_node = driver_info_node.get_child("hw_gen");
   auto hw_gen = std::stoul(hw_gen_node.data());
 
-  // instance of plController for AIE1 only
-  std::string dma_lock_file = "dma_lock_report.json";
-  auto dma_lock = std::filesystem::path(test_path) / dma_lock_file;
-
   bool match = false;
   // Check for AIE Hardware Generation
   switch (hw_gen) {
-    case 1:
+    case 1: {
+      std::string dma_lock_file = "dma_lock_report.json";
+      auto dma_lock = std::filesystem::path(test_path) / dma_lock_file;
       match = run_pl_controller_aie1(device, uuid, aie_meta, dma_lock.string());
       break;
+    }
     case 2:
       match = run_pl_controller_aie2(device, uuid, aie_meta);
       break;
