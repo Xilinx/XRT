@@ -144,11 +144,11 @@ namespace xrt::core::hip
     void
     remove(uint64_t addr);
   
-    std::shared_ptr<xrt::core::hip::memory>
-    get_hip_mem_from_addr(void* addr, size_t* offset=nullptr);
+    std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
+    get_hip_mem_from_addr(void* addr);
   
-    std::shared_ptr<xrt::core::hip::memory>
-    get_hip_mem_from_addr(const void* addr, size_t* offset=nullptr);
+    std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
+    get_hip_mem_from_addr(const void* addr);
   };
   
 } // xrt::core::hip

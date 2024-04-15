@@ -74,7 +74,7 @@ namespace xrt::core::hip
   {
     assert(device_ptr);
 
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
     throw_invalid_value_if(!hip_mem, "Error getting device pointer from host_malloced memory!");
     throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag!");
 
@@ -91,7 +91,7 @@ namespace xrt::core::hip
   static void
   hip_free(void* ptr)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "Invalid handle passed to hipFree!");
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
@@ -101,7 +101,7 @@ namespace xrt::core::hip
   static void
   hip_host_free(void* ptr)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "Invalid handle passed to hipHostFree!");
 
     auto device_addr = hip_mem->get_device_address();
@@ -116,7 +116,7 @@ namespace xrt::core::hip
   static void
   hip_host_unregister(void* host_ptr)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr);
+    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
     throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::registered, "Invalid handle passed to hipHostUnregister!");
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(host_ptr));
@@ -126,15 +126,13 @@ namespace xrt::core::hip
   static void
   hip_memcpy_host2device(void* dst, const void* src, size_t size)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
-    throw_invalid_handle_if(!hip_mem, "Invalid destination handle in hipMemCpy!");
+    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto hip_mem_dev = hip_mem_info.first;
+    auto offset = hip_mem_info.second;
+    throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle in hipMemCpy!");
+    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst out of bound in hip_memcpy_host2device!");
 
-    if (hip_mem) {
-      // dst is device address. Get device address
-      auto address = hip_mem->get_device_address();
-      auto offset = reinterpret_cast<uint64_t>(dst) - reinterpret_cast<uint64_t>(address);
-      hip_mem->write(src, size, 0, offset);
-    }
+    hip_mem_dev->write(src, size, 0, offset);
   }
 
   static void
@@ -147,22 +145,26 @@ namespace xrt::core::hip
   static void
   hip_memcpy_device2host(void* dst, const void* src, size_t size)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
-    throw_invalid_handle_if(!hip_mem, "Invalid src handle in hipMemCpy!");    
+    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
+    auto hip_mem_dev = hip_mem_info.first;
+    auto offset = hip_mem_info.second;
+    throw_invalid_handle_if(!hip_mem_dev, "Invalid src handle in hipMemCpy!");
+    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "src out of bound in hip_memcpy_device2host!");
 
     // src is device address. Get device address
-    auto address = hip_mem->get_device_address();
-    auto offset = reinterpret_cast<uint64_t>(src) - reinterpret_cast<uint64_t>(address);
-    hip_mem->read(dst, size, 0, offset);
+    hip_mem_dev->read(dst, size, 0, offset);
   }
 
   static void
   hip_memcpy_device2device(void* dst, const void* src, size_t size)
   {
-    auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst);
-    throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle in hipMemCpy!");        
+    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto hip_mem_dst = hip_mem_info.first;
+    auto offset = hip_mem_info.second;
+    throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle in hipMemCpy!");
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memcpy_device2host!");
 
-    hip_mem_dst->write(src, size);
+    hip_mem_dst->write(src, size, 0, offset);
   }
 
   static void
@@ -195,22 +197,26 @@ namespace xrt::core::hip
   static void
   hip_memset(void* dst, int value, size_t size)
   {
-    auto hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
-    assert(hip_mem->get_type() != xrt::core::hip::memory_type::invalid);
+    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto hip_mem_dst = hip_mem_info.first;
+    auto offset = hip_mem_info.second;
+    assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memset!");
 
     auto host_src = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
     memset(host_src.get(), value, size);
 
-    hip_mem->write(host_src.get(), size);
+    hip_mem_dst->write(host_src.get(), size, 0, offset);
   }
 
   static void
-  hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)  
+  hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
   {
     throw_invalid_value_if(!src, "Invalid src pointer in hipMemCpyH2DAsync!");
 
-    size_t offset;
-    auto hip_mem_dst = memory_database::instance().get_hip_mem_from_addr(dst, &offset);
+    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto hip_mem_dst = hip_mem_info.first;
+    auto offset = hip_mem_info.second;
     throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle in hipMemCpyH2DAsync!");
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hipMemCpyH2DAsync!");
 
