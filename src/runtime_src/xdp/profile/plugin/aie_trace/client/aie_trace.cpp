@@ -518,6 +518,9 @@ namespace xdp {
                                             const uint8_t channel0, const uint8_t channel1, 
                                             std::vector<XAie_Events>& events, aie_cfg_base& config)
   {
+    // For now, unused argument
+    (void)tile;
+
     std::set<uint8_t> portSet;
     //std::map<uint8_t, std::shared_ptr<xaiefal::XAieStreamPortSelect>> switchPortMap;
 
@@ -564,26 +567,28 @@ namespace xdp {
             config.mm2s_channels[channelNum] = channelNum;
         }
         else if (type == module_type::shim) {
-          // Interface tiles (e.g., PLIO, GMIO)
-          auto slaveOrMaster = (tile.is_master == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-          auto streamPortId  = tile.stream_id;
+          // Interface tiles (e.g., GMIO)
+          bool isMaster = ((portnum >= 2) || (metricSet.find("input") == std::string::npos));
+          auto slaveOrMaster = isMaster ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+          uint8_t streamPortId = isMaster ? ((channelNum == 0) ? 2 : 3)
+                               : ((channelNum == 0) ? 3 : 7);
 
-          std::string typeName = (tile.is_master) ? "master" : "slave";
+          std::string typeName = isMaster ? "master" : "slave";
           std::string msg = "Configuring interface tile stream switch to monitor " 
-                          + typeName + " stream port " + std::to_string(streamPortId);
+                          + typeName + " port with stream ID of " + std::to_string(streamPortId);
           xrt_core::message::send(severity_level::debug, "XRT", msg);
           
           //switchPortRsc->setPortToSelect(slaveOrMaster, SOUTH, streamPortId);
           XAie_EventSelectStrmPort(&aieDevInst, loc, portnum, slaveOrMaster, SOUTH, streamPortId);
 
           // Record for runtime config file
-          config.port_trace_ids[portnum] = channel;
-          config.port_trace_is_master[portnum] = (tile.is_master != 0);
+          config.port_trace_ids[portnum] = channelNum;
+          config.port_trace_is_master[portnum] = isMaster;
           
-          if (tile.is_master == 0)
-            config.mm2s_channels[channelNum] = channel;
+          if (isMaster)
+            config.s2mm_channels[channelNum] = channelNum;
           else
-            config.s2mm_channels[channelNum] = channel;
+            config.mm2s_channels[channelNum] = channelNum;
         }
         else {
           // Memory tiles
