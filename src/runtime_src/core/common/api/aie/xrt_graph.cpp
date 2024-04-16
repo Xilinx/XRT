@@ -138,7 +138,8 @@ public:
   ~profiling_impl()
   {
     try {
-      device->stop_profiling(profiling_hdl);
+      if (profiling_hdl != invalid_handle)
+        device->stop_profiling(profiling_hdl);
     }
     catch(...) {
       // do nothing
