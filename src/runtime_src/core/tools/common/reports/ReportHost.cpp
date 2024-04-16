@@ -158,13 +158,11 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
          % ex.what()));
   }
 
-  _output << "Retrieving Firmware Version..." << std::endl;
   try {
-    const std::string firmware_ver = available_devices.begin()->second.get<std::string>("firmware_version");
-    _output << boost::format("  %-20s : %s\n") % "Firmware Version" % firmware_ver;
+    if (!available_devices.empty())
+      _output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
   }
-  catch (...) {
-    _output << "Firmware Version Not Retrived" << std::endl;
+  catch (const xrt_core::query::exception&) {
     //no device available
   }
 
