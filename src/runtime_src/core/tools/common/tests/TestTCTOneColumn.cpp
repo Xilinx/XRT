@@ -74,22 +74,6 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  #ifdef _WIN32
-  // workaround: can't rename files when copying to driver store
-  // so need to name the files as _phx and _stx
-  // will revisit this after the current release
-  auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
-  switch (device_id) {
-  case 5378: // 0x1502
-    ptree.put("xclbin", "validate_phx.xclbin");
-    break;
-  case 6128: // 0x17f0
-    ptree.put("xclbin", "validate_stx.xclbin");
-    break;
-  }
-  #endif
-
-
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
@@ -164,6 +148,10 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
+  //Log
+  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'bytes") % buffer_size));
+  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
@@ -179,7 +167,7 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto end = std::chrono::high_resolution_clock::now();
-    busy_bar.finish();
+  busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
