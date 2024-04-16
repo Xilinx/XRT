@@ -178,20 +178,6 @@ struct patcher
     bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
-  // TODO reuse patch_ctrl48 for both DPU sequence and transaction buffer
-  // Need change assembler first
-  void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
-  {
-    uint64_t val = *reinterpret_cast<uint64_t*>(bd_data_ptr);
-    val &= 0x0000FFFFFFFFFFFF;                                                        // NOLINT
-    val += patch;
-    *bd_data_ptr = static_cast<uint32_t>(val);
-
-    auto higher16BitVal = static_cast<uint16_t>((val & 0x0000FFFF00000000) >> 32);    // NOLINT
-    auto pHigher16Bit = reinterpret_cast<uint16_t*>(bd_data_ptr + 1);
-    *pHigher16Bit = higher16BitVal;
-  }
-
   void
   patch(uint8_t* base, uint64_t patch)
   {
@@ -211,7 +197,8 @@ struct patcher
         patch_shim48(bd_data_ptr, patch);
         break;
       case symbol_type::tansaction_ctrlpkt_48:
-        patch_tansaction_ctrlpkt_48(bd_data_ptr, patch);
+          // Will change "bd_data_ptr - 8" to "bd_data_ptr" once assembler is fixed
+          patch_ctrl48(bd_data_ptr - 8, patch);
         break;
       case symbol_type::tansaction_48:
         // No patching since transaction buffer firmware does not support
@@ -858,12 +845,8 @@ class module_sram : public module_impl
     // patch_instr is a virtual method, what is actually called here ???
     if (m_ctrlpkt_buf) {
       patch_instr("control-packet", m_ctrlpkt_buf);
-
-#ifdef _DEBUG
-      dump_bo(m_instr_buf, "instrBoPatchedByCtrlPacket.bin");
-#endif
-      XRT_PRINTF("<- module_sram::create_instr_buf()\n");
     }
+    XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
 
   void
@@ -990,8 +973,14 @@ class module_sram : public module_impl
     }
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+#ifdef _DEBUG
+      dump_bo(m_instr_buf, "instrBoPatched.bin");
+#endif
       if (m_ctrlpkt_buf)
         m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+#ifdef _DEBUG
+        dump_bo(m_ctrlpkt_buf, "ctrlpktBoPatched.bin");
+#endif
     }
 
     m_dirty = false;
