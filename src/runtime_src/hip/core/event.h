@@ -60,23 +60,42 @@ public:
 
   virtual bool submit() = 0;
   virtual bool wait() = 0;
-  state get_state() const { return cstate; }
-  std::chrono::time_point<std::chrono::system_clock> get_time() { return ctime; }
-  void set_state(state newstate) { cstate = newstate; };
-  type
-  get_type() const { return ctype; }
+  
+  state
+  get_state() const 
+  {
+    return cstate;
+  }
+
+  std::chrono::time_point<std::chrono::system_clock>
+  get_time() 
+  {
+    return ctime;
+  }
+
+  void 
+  set_state(state newstate) 
+  {
+    cstate = newstate;
+  }
+
+  type 
+  get_type() const 
+  {
+    return ctype;
+  }
 };
 
 class event : public command
 {
 private:
-  std::mutex m_mutex;
-  std::vector<std::shared_ptr<command>> recorded_commands;
-  std::vector<std::shared_ptr<command>> chain_of_commands;
+  std::mutex m_mutex_rec_coms;
+  std::mutex m_mutex_chain_coms;
+  std::vector<std::shared_ptr<command>> m_recorded_commands;
+  std::vector<std::shared_ptr<command>> m_chain_of_commands;
 
 public:
   event();
-
   void record(std::shared_ptr<stream> s);
   bool submit() override;
   bool wait() override;
@@ -86,7 +105,6 @@ public:
   std::shared_ptr<stream> get_stream();
   void add_to_chain(std::shared_ptr<command> cmd);
   void add_dependency(std::shared_ptr<command> cmd);
-  float elapsed_time(const std::shared_ptr<command>& end);
 };
 
 class kernel_start : public command
