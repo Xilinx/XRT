@@ -27,7 +27,7 @@ jobs:
           - os: ubuntu2004      
             packageType: deb
             os_ver: ubuntu_20.04      
-          - os: ubuntu2204      
+          - os: hip      
             packageType: deb
             os_ver: ubuntu_22.04      
         
