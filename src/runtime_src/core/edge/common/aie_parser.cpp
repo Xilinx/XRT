@@ -112,6 +112,10 @@ adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
   adf::graph_config graph_config;
+  auto start_col = 0; 
+  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+  if (overlay_start_cols && !overlay_start_cols->empty()) 
+    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -122,7 +126,7 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 
     int count = 0;
     for (auto& node : graph.second.get_child("core_columns")) {
-      graph_config.coreColumns.push_back(std::stoul(node.second.data()));
+      graph_config.coreColumns.push_back(std::stoul(node.second.data()) + start_col);
       count++;
     }
 
@@ -137,7 +141,7 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_columns")) {
-      graph_config.iterMemColumns.push_back(std::stoul(node.second.data()));
+      graph_config.iterMemColumns.push_back(std::stoul(node.second.data()) + start_col);
       count++;
     }
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
@@ -199,6 +203,10 @@ std::vector<tile_type>
 get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 {
   std::vector<tile_type> tiles;
+  auto start_col = 0; 
+  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+  if (overlay_start_cols && !overlay_start_cols->empty()) 
+    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -208,7 +216,7 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
     for (auto& node : graph.second.get_child("core_columns")) {
       tiles.push_back(tile_type());
       auto& t = tiles.at(count++);
-      t.col = std::stoul(node.second.data());
+      t.col = std::stoul(node.second.data()) + start_col;
     }
 
     int num_tiles = count;
@@ -219,7 +227,7 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_columns"))
-      tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
+      tiles.at(count++).itr_mem_col = std::stoul(node.second.data()) + start_col;
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
 
     count = 0;
