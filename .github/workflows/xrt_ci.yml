@@ -44,7 +44,7 @@ jobs:
             packageType: rpm      
           - os: ubuntu2004      
             packageType: deb      
-          - os: ubuntu2204      
+          - os: hip      
             packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
