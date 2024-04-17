@@ -203,7 +203,7 @@ uint32_t mgmt_bar_read32(struct xclmgmt_dev *lro, uint32_t bar_off)
 	return val;
 }
 
-void store_pcie_link_info(struct xclmgmt_dev *lro)
+void mgmtpf_store_pcie_link_info(struct xclmgmt_dev *lro)
 {
 	u16 stat = 0;
 	long result;
@@ -234,7 +234,7 @@ void store_pcie_link_info(struct xclmgmt_dev *lro)
 	return;
 }
 
-void get_pcie_link_info(struct xclmgmt_dev *lro,
+void mgmtpf_get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
 {
 	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
@@ -283,7 +283,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	memcpy(obj->fpga, rom.FPGAPartName, 64);
 
 	fill_frequency_info(lro, obj);
-	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed,
+	mgmtpf_get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed,
 		false);
 }
 
@@ -1360,7 +1360,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	check_pcie_link_toggle(lro, 1);
 
 	/* Store/cache PCI link width & speed info */
-	store_pcie_link_info(lro);
+	mgmtpf_store_pcie_link_info(lro);
 
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);

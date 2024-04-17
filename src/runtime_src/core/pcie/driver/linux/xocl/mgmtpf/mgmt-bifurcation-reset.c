@@ -206,7 +206,7 @@ static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_start(lro);
 
 	xocl_clear_pci_errors(lro);
-	store_pcie_link_info(lro);
+	mgmtpf_store_pcie_link_info(lro);
 
 	/* For legacy case always download to slot 0 */
 	if (lro->preload_xclbin)
