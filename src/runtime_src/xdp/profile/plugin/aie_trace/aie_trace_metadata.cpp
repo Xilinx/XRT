@@ -782,10 +782,16 @@ namespace xdp {
         continue;
 
       processed.insert(i);
-      uint8_t channelId0 = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
-      uint8_t channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
-      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId0);
+      
+      // By-default select both the channels (all:output_ports selects both channels)
+      uint8_t channelId0 = 0;
+      uint8_t channelId1 = 1;
+      if (metrics[i].size()>2) {
+        channelId0 = aie::convertStringToUint8(metrics[i][2]);
+        channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      }
 
+      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId0);
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
         configChannel0[t] = channelId0;
@@ -821,8 +827,9 @@ namespace xdp {
         continue;
       }
 
+      // By-default select both the channels
       uint8_t channelId0 = 0;
-      uint8_t channelId1 = 0;
+      uint8_t channelId1 = 1;
       if (metrics[i].size() >= 4) {
         try {
           channelId0 = aie::convertStringToUint8(metrics[i][3]);
@@ -871,9 +878,10 @@ namespace xdp {
                                   "is not an integer and hence skipped.");
           continue;
         }
-
+ 
+        // By-default select both the channels
         uint8_t channelId0 = 0;
-        uint8_t channelId1 = 0;
+        uint8_t channelId1 = 1;
         if (metrics[i].size() >= 3) {
           try {
             channelId0 = aie::convertStringToUint8(metrics[i][2]);
