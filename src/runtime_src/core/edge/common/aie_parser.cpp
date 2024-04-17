@@ -108,14 +108,21 @@ get_aiecompiler_options(const pt::ptree& aie_meta)
   return aiecompiler_options;
 }
 
+static uint8_t
+get_start_col(const pt::ptree& aie_meta)
+{
+  auto start_col = 0;  
+  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+  if (overlay_start_cols && !overlay_start_cols->empty()) 
+    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+  return start_col;
+}
+
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
   adf::graph_config graph_config;
-  auto start_col = 0; 
-  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
-  if (overlay_start_cols && !overlay_start_cols->empty()) 
-    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+  auto start_col = get_start_col(aie_meta); 
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -203,10 +210,7 @@ std::vector<tile_type>
 get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 {
   std::vector<tile_type> tiles;
-  auto start_col = 0; 
-  auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
-  if (overlay_start_cols && !overlay_start_cols->empty()) 
-    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+  auto start_col = get_start_col(aie_meta); 
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
