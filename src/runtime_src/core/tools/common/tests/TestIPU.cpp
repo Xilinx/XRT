@@ -19,7 +19,7 @@ static constexpr int itr_count = 10000;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
-  : TestRunner("verify", "Run 'Hello World' test on IPU")
+  : TestRunner("verify", "Run end-to-end latency and throughput test on NPU")
 {}
 
 boost::property_tree::ptree
@@ -82,6 +82,10 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+  //Log
+  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
+  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
 
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; i++) {
