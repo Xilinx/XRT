@@ -1,6 +1,6 @@
 name: XRT CI XTI
 env:  
-  RELEASE: '2024.1'  
+  RELEASE: '2024.2'  
   PIPELINE: 'xrt' 
   ENV: 'test' 
 
