@@ -525,11 +525,11 @@ struct xocl_drv_private mig_priv_userpf = {
 };
 
 struct platform_device_id mig_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_MIG), (kernel_ulong_t)&mig_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_MIG), (kernel_ulong_t)&mig_priv_mgmtpf },
 	{ },
 };
 struct platform_device_id mig_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_MIG), (kernel_ulong_t)&mig_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_MIG), (kernel_ulong_t)&mig_priv_userpf },
 	{ },
 };
 
@@ -537,7 +537,7 @@ static struct platform_driver	mig_driver_mgmtpf = {
 	.probe		= mig_probe,
 	.remove		= mig_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MIG),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_MIG),
 	},
 	.id_table = mig_id_table_mgmtpf,
 };
@@ -545,7 +545,7 @@ static struct platform_driver	mig_driver_userpf = {
 	.probe		= mig_probe,
 	.remove		= mig_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MIG),
+		.name = XOCL_USERPF_DEVICE(XOCL_MIG),
 	},
 	.id_table = mig_id_table_userpf,
 };

@@ -1579,7 +1579,7 @@ struct xocl_drv_private ert_user_priv = {
 };
 
 struct platform_device_id ert_user_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ERT_USER), (kernel_ulong_t)&ert_user_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_ERT_USER), (kernel_ulong_t)&ert_user_priv },
 	{ },
 };
 
@@ -1587,7 +1587,7 @@ static struct platform_driver	ert_user_driver = {
 	.probe		= ert_user_probe,
 	.remove		= ert_user_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ERT_USER),
+		.name = XOCL_USERPF_DEVICE(XOCL_ERT_USER),
 	},
 	.id_table = ert_user_id_table,
 };

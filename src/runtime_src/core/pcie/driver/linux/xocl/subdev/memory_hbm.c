@@ -608,11 +608,11 @@ struct xocl_drv_private mem_hbm_priv_userpf = {
 };
 
 struct platform_device_id mem_hbm_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_MIG_HBM), (kernel_ulong_t)&mem_hbm_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_MIG_HBM), (kernel_ulong_t)&mem_hbm_priv_mgmtpf },
 	{ },
 };
 struct platform_device_id mem_hbm_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_MIG_HBM), (kernel_ulong_t)&mem_hbm_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_MIG_HBM), (kernel_ulong_t)&mem_hbm_priv_userpf },
 	{ },
 };
 
@@ -620,7 +620,7 @@ static struct platform_driver	mem_hbm_driver_mgmtpf = {
 	.probe		= mem_hbm_probe,
 	.remove		= mem_hbm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MIG_HBM),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_MIG_HBM),
 	},
 	.id_table = mem_hbm_id_table_mgmtpf,
 };
@@ -628,7 +628,7 @@ static struct platform_driver	mem_hbm_driver_userpf = {
 	.probe		= mem_hbm_probe,
 	.remove		= mem_hbm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MIG_HBM),
+		.name = XOCL_USERPF_DEVICE(XOCL_MIG_HBM),
 	},
 	.id_table = mem_hbm_id_table_userpf,
 };

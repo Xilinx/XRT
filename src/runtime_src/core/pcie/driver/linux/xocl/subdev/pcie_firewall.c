@@ -142,7 +142,7 @@ static struct xocl_drv_private firewall_priv = {
 };
 
 static struct platform_device_id firewall_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_PCIE_FIREWALL), (kernel_ulong_t)&firewall_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_PCIE_FIREWALL), (kernel_ulong_t)&firewall_priv },
 	{ },
 };
 
@@ -150,7 +150,7 @@ static struct platform_driver   firewall_driver = {
 	.probe		= firewall_probe,
 	.remove		= firewall_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_PCIE_FIREWALL),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_PCIE_FIREWALL),
 	},
 	.id_table = firewall_id_table,
 };

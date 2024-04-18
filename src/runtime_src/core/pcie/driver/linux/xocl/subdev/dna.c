@@ -489,7 +489,7 @@ struct xocl_drv_private dna_priv = {
 };
 
 struct platform_device_id xlnx_dna_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_DNA), (kernel_ulong_t)&dna_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_DNA), (kernel_ulong_t)&dna_priv },
 	{ },
 };
 
@@ -497,7 +497,7 @@ static struct platform_driver	xlnx_dna_driver = {
 	.probe		= xlnx_dna_probe,
 	.remove		= xlnx_dna_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_DNA),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_DNA),
 	},
 	.id_table = xlnx_dna_id_table,
 };
@@ -507,7 +507,7 @@ struct xocl_drv_private dna_priv_userpf = {
 };
 
 struct platform_device_id xlnx_dna_id_table_userpf[] = {
-        { XOCL_DEVNAME(XOCL_DNA), (kernel_ulong_t)&dna_priv_userpf },
+        { XOCL_USERPF_DEVICE(XOCL_DNA), (kernel_ulong_t)&dna_priv_userpf },
         { },
 };
 
@@ -515,7 +515,7 @@ static struct platform_driver   xlnx_dna_driver_userpf = {
         .probe          = xlnx_dna_probe,
         .remove         = xlnx_dna_remove,
         .driver         = {
-                .name = XOCL_DEVNAME(XOCL_DNA),
+                .name = XOCL_USERPF_DEVICE(XOCL_DNA),
         },
         .id_table = xlnx_dna_id_table_userpf,
 };

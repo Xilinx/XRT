@@ -366,7 +366,7 @@ struct xocl_drv_private asm_priv = {
 };
 
 struct platform_device_id asm_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ASM), (kernel_ulong_t)&asm_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_ASM), (kernel_ulong_t)&asm_priv },
 	{ },
 };
 
@@ -374,7 +374,7 @@ static struct platform_driver	asm_driver = {
 	.probe		= asm_probe,
 	.remove		= asm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ASM),
+		.name = XOCL_USERPF_DEVICE(XOCL_ASM),
 	},
 	.id_table = asm_id_table,
 };

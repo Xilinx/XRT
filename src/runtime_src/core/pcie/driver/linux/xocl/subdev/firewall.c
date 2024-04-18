@@ -689,7 +689,7 @@ struct xocl_drv_private firewall_priv_mgmtpf = {
 };
 
 struct platform_device_id firewall_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv_mgmtpf },
 	{ },
 };
 
@@ -697,7 +697,7 @@ static struct platform_driver	firewall_driver_mgmtpf = {
 	.probe		= firewall_probe,
 	.remove		= firewall_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_FIREWALL),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_FIREWALL),
 	},
 	.id_table = firewall_id_table_mgmtpf,
 };
@@ -707,7 +707,7 @@ struct xocl_drv_private firewall_priv_userpf = {
 };
 
 struct platform_device_id firewall_id_table_userpf[] = {
-        { XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv_userpf },
+        { XOCL_USERPF_DEVICE(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv_userpf },
         { },
 };
 
@@ -715,7 +715,7 @@ static struct platform_driver   firewall_driver_userpf = {
         .probe          = firewall_probe,
         .remove         = firewall_remove,
         .driver         = {
-                .name = XOCL_DEVNAME(XOCL_FIREWALL),
+                .name = XOCL_USERPF_DEVICE(XOCL_FIREWALL),
         },
         .id_table = firewall_id_table_userpf
 };

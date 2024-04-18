@@ -169,7 +169,7 @@ struct xocl_drv_private config_gpio_priv = {
 };
 
 struct platform_device_id config_gpio_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CFG_GPIO), (kernel_ulong_t)&config_gpio_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_CFG_GPIO), (kernel_ulong_t)&config_gpio_priv },
 	{ },
 };
 
@@ -177,7 +177,7 @@ static struct platform_driver	config_gpio_driver = {
 	.probe		= config_gpio_probe,
 	.remove		= config_gpio_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_CFG_GPIO),
+		.name = XOCL_USERPF_DEVICE(XOCL_CFG_GPIO),
 	},
 	.id_table = config_gpio_id_table,
 };

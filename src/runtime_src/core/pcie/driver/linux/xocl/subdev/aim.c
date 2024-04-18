@@ -440,7 +440,7 @@ struct xocl_drv_private aim_priv = {
 };
 
 struct platform_device_id aim_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_AIM), (kernel_ulong_t)&aim_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_AIM), (kernel_ulong_t)&aim_priv },
 	{ },
 };
 
@@ -448,7 +448,7 @@ static struct platform_driver	aim_driver = {
 	.probe		= aim_probe,
 	.remove		= aim_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_AIM),
+		.name = XOCL_USERPF_DEVICE(XOCL_AIM),
 	},
 	.id_table = aim_id_table,
 };

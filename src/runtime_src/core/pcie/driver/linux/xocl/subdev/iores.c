@@ -157,17 +157,17 @@ struct xocl_drv_private iores_priv_userpf = {
 };
 
 struct platform_device_id iores_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_IORES0), (kernel_ulong_t)&iores_priv_mgmtpf },
-	{ XOCL_DEVNAME(XOCL_IORES1), (kernel_ulong_t)&iores_priv_mgmtpf },
-	{ XOCL_DEVNAME(XOCL_IORES2), (kernel_ulong_t)&iores_priv_mgmtpf },
-	{ XOCL_DEVNAME(XOCL_IORES3), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES0), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES1), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES2), (kernel_ulong_t)&iores_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_IORES3), (kernel_ulong_t)&iores_priv_mgmtpf },
 	{ },
 };
 struct platform_device_id iores_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_IORES0), (kernel_ulong_t)&iores_priv_userpf },
-	{ XOCL_DEVNAME(XOCL_IORES1), (kernel_ulong_t)&iores_priv_userpf },
-	{ XOCL_DEVNAME(XOCL_IORES2), (kernel_ulong_t)&iores_priv_userpf },
-	{ XOCL_DEVNAME(XOCL_IORES3), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES0), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES1), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES2), (kernel_ulong_t)&iores_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_IORES3), (kernel_ulong_t)&iores_priv_userpf },
 	{ },
 };
 
@@ -175,7 +175,7 @@ static struct platform_driver	iores_driver_mgmtpf = {
 	.probe		= iores_probe,
 	.remove		= iores_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME("iores"),
+		.name = XOCL_MGMTPF_DEVICE("iores"),
 	},
 	.id_table = iores_id_table,
 };
@@ -183,7 +183,7 @@ static struct platform_driver	iores_driver_userpf = {
 	.probe		= iores_probe,
 	.remove		= iores_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME("iores"),
+		.name = XOCL_USERPF_DEVICE("iores"),
 	},
 	.id_table = iores_id_table,
 };

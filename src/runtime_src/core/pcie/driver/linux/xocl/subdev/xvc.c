@@ -421,20 +421,20 @@ struct xocl_drv_private xvc_pri_userpf = {
 
 
 struct platform_device_id xvc_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub_mgmtpf },
-	{ XOCL_DEVNAME(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri_mgmtpf },
 	{ },
 };
 struct platform_device_id xvc_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub_userpf },
-	{ XOCL_DEVNAME(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri_userpf },
 	{ },
 };
 static struct platform_driver	xvc_driver_mgmtpf = {
 	.probe		= xvc_probe,
 	.remove		= xvc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XVC_DEV_NAME),
+		.name = XOCL_MGMTPF_DEVICE(XVC_DEV_NAME),
 	},
 	.id_table = xvc_id_table_mgmtpf,
 };
@@ -442,7 +442,7 @@ static struct platform_driver	xvc_driver_userpf = {
 	.probe		= xvc_probe,
 	.remove		= xvc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XVC_DEV_NAME),
+		.name = XOCL_USERPF_DEVICE(XVC_DEV_NAME),
 	},
 	.id_table = xvc_id_table_userpf,
 };

@@ -712,7 +712,7 @@ struct xocl_drv_private command_queue_priv = {
 };
 
 struct platform_device_id command_queue_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_COMMAND_QUEUE), (kernel_ulong_t)&command_queue_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_COMMAND_QUEUE), (kernel_ulong_t)&command_queue_priv },
 	{ },
 };
 
@@ -720,7 +720,7 @@ static struct platform_driver	command_queue_driver = {
 	.probe		= command_queue_probe,
 	.remove		= command_queue_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_COMMAND_QUEUE),
+		.name = XOCL_USERPF_DEVICE(XOCL_COMMAND_QUEUE),
 	},
 	.id_table = command_queue_id_table,
 };

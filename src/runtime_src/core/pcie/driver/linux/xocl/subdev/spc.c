@@ -252,7 +252,7 @@ struct xocl_drv_private spc_priv = {
 };
 
 struct platform_device_id spc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_SPC), (kernel_ulong_t)&spc_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_SPC), (kernel_ulong_t)&spc_priv },
 	{ },
 };
 
@@ -260,7 +260,7 @@ static struct platform_driver	spc_driver = {
 	.probe		= spc_probe,
 	.remove		= spc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_SPC),
+		.name = XOCL_USERPF_DEVICE(XOCL_SPC),
 	},
 	.id_table = spc_id_table,
 };
