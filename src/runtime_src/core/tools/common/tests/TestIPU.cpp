@@ -113,8 +113,8 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   try {
     for (int i = 0; i < itr_count; i++)
       runhandles[i] = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
-    for (auto hand: runhandles)
-      hand.wait();
+    for (const auto& hand: runhandles)
+      hand.wait2();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
