@@ -264,6 +264,8 @@ get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
 
   const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
   const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
+  
+  auto start_col = get_start_col(aie_meta); 
 
   std::vector<tile_type> tiles;
  
@@ -275,7 +277,7 @@ get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
       for (auto& node : graph.second.get_child(col_name)) {
         tiles.push_back(tile_type());
         auto& t = tiles.at(count++);
-        t.col = std::stoul(node.second.data());
+        t.col = std::stoul(node.second.data()) + start_col;
       }
 
       int num_tiles = count;
@@ -292,6 +294,7 @@ std::unordered_map<std::string, adf::rtp_config>
 get_rtp(const pt::ptree& aie_meta, int graph_id)
 {
   std::unordered_map<std::string, adf::rtp_config> rtps;
+  auto start_col = get_start_col(aie_meta); 
 
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
     if (rtp_node.second.get<int>("graph_id") != graph_id)
@@ -305,17 +308,17 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
     rtp.graphId = rtp_node.second.get<int>("graph_id");
     rtp.numBytes = rtp_node.second.get<size_t>("number_of_bytes");
     rtp.selectorRow = rtp_node.second.get<short>("selector_row");
-    rtp.selectorColumn = rtp_node.second.get<short>("selector_column");
+    rtp.selectorColumn = rtp_node.second.get<short>("selector_column") + start_col;
     rtp.selectorLockId = rtp_node.second.get<unsigned short>("selector_lock_id");
     rtp.selectorAddr = rtp_node.second.get<size_t>("selector_address");
 
     rtp.pingRow = rtp_node.second.get<short>("ping_buffer_row");
-    rtp.pingColumn = rtp_node.second.get<short>("ping_buffer_column");
+    rtp.pingColumn = rtp_node.second.get<short>("ping_buffer_column") + start_col;
     rtp.pingLockId = rtp_node.second.get<unsigned short>("ping_buffer_lock_id");
     rtp.pingAddr = rtp_node.second.get<size_t>("ping_buffer_address");
 
     rtp.pongRow = rtp_node.second.get<short>("pong_buffer_row");
-    rtp.pongColumn = rtp_node.second.get<short>("pong_buffer_column");
+    rtp.pongColumn = rtp_node.second.get<short>("pong_buffer_column") + start_col;
     rtp.pongLockId = rtp_node.second.get<unsigned short>("pong_buffer_lock_id");
     rtp.pongAddr = rtp_node.second.get<size_t>("pong_buffer_address");
 
@@ -335,6 +338,7 @@ std::unordered_map<std::string, adf::gmio_config>
 get_gmios(const pt::ptree& aie_meta)
 {
   std::unordered_map<std::string, adf::gmio_config> gmios;
+  auto start_col = get_start_col(aie_meta); 
 
   for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
     adf::gmio_config gmio;
@@ -348,7 +352,7 @@ get_gmios(const pt::ptree& aie_meta)
     gmio.name = gmio_node.second.get<std::string>("name");
     gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
     gmio.type = type;
-    gmio.shimColumn = gmio_node.second.get<short>("shim_column");
+    gmio.shimColumn = gmio_node.second.get<short>("shim_column") + start_col;
     gmio.channelNum = gmio_node.second.get<short>("channel_number");
     gmio.streamId = gmio_node.second.get<short>("stream_id");
     gmio.burstLength = gmio_node.second.get<short>("burst_length_in_16byte");
@@ -363,6 +367,7 @@ std::unordered_map<std::string, adf::plio_config>
 get_plios(const pt::ptree& aie_meta)
 {
   std::unordered_map<std::string, adf::plio_config> plios;
+  auto start_col = get_start_col(aie_meta); 
 
   for (auto& plio_node : aie_meta.get_child("aie_metadata.PLIOs")) {
     adf::plio_config plio;
@@ -370,7 +375,7 @@ get_plios(const pt::ptree& aie_meta)
     plio.id = plio_node.second.get<uint32_t>("id");
     plio.name = plio_node.second.get<std::string>("name");
     plio.logicalName = plio_node.second.get<std::string>("logical_name");
-    plio.shimColumn = plio_node.second.get<uint16_t>("shim_column");
+    plio.shimColumn = plio_node.second.get<uint16_t>("shim_column") + start_col;
     plio.streamId = plio_node.second.get<uint16_t>("stream_id");
     plio.slaveOrMaster = plio_node.second.get<bool>("slaveOrMaster");
 
@@ -398,6 +403,7 @@ get_profile_counter(const pt::ptree& aie_meta)
 
   // First grab clock frequency
   auto clockFreqMhz = get_clock_freq_mhz(aie_meta);
+  auto start_col = get_start_col(aie_meta); 
 
   std::vector<counter_type> counters;
 
@@ -406,7 +412,7 @@ get_profile_counter(const pt::ptree& aie_meta)
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");
-    counter.column = counter_node.second.get<uint16_t>("core_column");
+    counter.column = counter_node.second.get<uint16_t>("core_column") + start_col;
     counter.row = counter_node.second.get<uint16_t>("core_row");
     counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
     counter.startEvent = counter_node.second.get<uint8_t>("start");
@@ -430,6 +436,7 @@ get_trace_gmio(const pt::ptree& aie_meta)
   if (!trace_gmios)
     return {};
 
+  auto start_col = get_start_col(aie_meta); 
   std::vector<gmio_type> gmios;
 
   for (auto& gmio_node : trace_gmios.get()) {
@@ -438,7 +445,7 @@ get_trace_gmio(const pt::ptree& aie_meta)
     gmio.id = gmio_node.second.get<uint32_t>("id");
     //gmio.name = gmio_node.second.get<std::string>("name");
     //gmio.type = gmio_node.second.get<uint16_t>("type");
-    gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
+    gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column") + start_col;
     gmio.channelNum = gmio_node.second.get<uint16_t>("channel_number");
     gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
     gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
