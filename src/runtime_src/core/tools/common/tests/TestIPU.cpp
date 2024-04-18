@@ -94,7 +94,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
     for (int i = 0; i < itr_count; i++) {
       auto hand = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
       // Wait for kernel to be done
-      hand.wait();
+      hand.wait2();
     }
   }
   catch (const std::exception& ex) {
