@@ -479,7 +479,7 @@ struct xocl_drv_private	ert_priv = {
 };
 
 struct platform_device_id ert_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ERT), (kernel_ulong_t)&ert_priv },
+	{XOCL_MGMTPF_DEVICE(XOCL_ERT), (kernel_ulong_t)&ert_priv },
 	{ },
 };
 
@@ -487,7 +487,7 @@ static struct platform_driver	ert_driver = {
 	.probe		= ert_probe,
 	.remove		= ert_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ERT),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_ERT),
 	},
 	.id_table = ert_id_table,
 };

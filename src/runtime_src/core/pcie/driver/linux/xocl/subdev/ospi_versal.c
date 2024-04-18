@@ -487,7 +487,7 @@ struct xocl_drv_private xfer_versal_priv = {
 };
 
 struct platform_device_id xfer_versal_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XFER_VERSAL),
+	{ XOCL_MGMTPF_DEVICE(XOCL_XFER_VERSAL),
 	    (kernel_ulong_t)&xfer_versal_priv },
 	{ },
 };
@@ -496,7 +496,7 @@ static struct platform_driver	xfer_versal_driver = {
 	.probe		= xfer_versal_probe,
 	.remove		= xfer_versal_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_XFER_VERSAL),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_XFER_VERSAL),
 	},
 	.id_table = xfer_versal_id_table,
 };
@@ -506,7 +506,7 @@ int __init xocl_init_xfer_versal(bool flag)
 	int err = 0;
 
 	err = alloc_chrdev_region(&xfer_versal_priv.dev, 0, XOCL_MAX_DEVICES,
-	    XOCL_DEVNAME(XFER_VERSAL_DEV_NAME));
+	    XOCL_MGMTPF_DEVICE(XFER_VERSAL_DEV_NAME));
 	if (err < 0)
 		return err;
 

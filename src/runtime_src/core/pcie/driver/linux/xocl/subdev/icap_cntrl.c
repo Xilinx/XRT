@@ -240,7 +240,7 @@ failed:
 }
 
 struct platform_device_id icap_cntrl_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ICAP_CNTRL), 0 },
+	{ XOCL_MGMTPF_DEVICE(XOCL_ICAP_CNTRL), 0 },
 	{ },
 };
 
@@ -248,7 +248,7 @@ static struct platform_driver	icap_cntrl_driver = {
 	.probe		= icap_cntrl_probe,
 	.remove		= icap_cntrl_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ICAP_CNTRL),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_ICAP_CNTRL),
 	},
 	.id_table = icap_cntrl_id_table,
 };

@@ -942,10 +942,8 @@ static void chan_worker(struct work_struct *work)
 			 * and achieve fastest transfer speed, then we can do busy
 			 * poll for Rx also when there is data. 
 			 */
-			if(strcmp(XOCL_DEVNAME(XOCL_MAILBOX),ch->mbc_parent->mbx_pdev->name)==0) {
-#if PF == USERPF
+			if(strcmp(XOCL_USERPF_DEVICE(XOCL_MAILBOX),ch->mbc_parent->mbx_pdev->name)==0) {
 				if (is_rx_chan(ch))
-#endif
 					chan_sleep(ch, false);
 			}
 			else {
@@ -2591,17 +2589,12 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	if (mbx->mbx_irq != -1)
 		return 0;
 	
-	if(strcmp(pdev->name,XOCL_DEVNAME(XOCL_MAILBOX))==0) {
-#if PF == MGMTPF
+if(strcmp(pdev->name,XOCL_MGMTPF_DEVICE(XOCL_MAILBOX))==0)
 	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_MGMT,
 			IORESOURCE_IRQ, &dyn_res);
-#else
-}
-else {
+else
 	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_USER,
 			IORESOURCE_IRQ, &dyn_res);
-#endif
-}
 	if (ret) {
 		/* fall back to try static defined irq */
 		res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -3190,12 +3183,12 @@ struct xocl_drv_private mailbox_priv_userpf = {
 };
 
 struct platform_device_id mailbox_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv_mgmtpf },
 	{ },
 };
 
 struct platform_device_id mailbox_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv_userpf },
 	{ },
 };
 
@@ -3204,7 +3197,7 @@ static struct platform_driver mailbox_driver_mgmtpf = {
 	.probe		= mailbox_probe,
 	.remove		= mailbox_remove,
 	.driver		= {
-		.name	= XOCL_DEVNAME(XOCL_MAILBOX),
+		.name	= XOCL_MGMTPF_DEVICE(XOCL_MAILBOX),
 	},
 	.id_table = mailbox_id_table_mgmtpf,
 };
@@ -3213,7 +3206,7 @@ static struct platform_driver mailbox_driver_userpf = {
 	.probe		= mailbox_probe,
 	.remove		= mailbox_remove,
 	.driver		= {
-		.name	= XOCL_DEVNAME(XOCL_MAILBOX),
+		.name	= XOCL_USERPF_DEVICE(XOCL_MAILBOX),
 	},
 	.id_table = mailbox_id_table_userpf,
 };

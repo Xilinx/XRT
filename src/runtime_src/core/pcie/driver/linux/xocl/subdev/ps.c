@@ -416,7 +416,7 @@ failed:
 };
 
 struct platform_device_id ps_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_PS), (kernel_ulong_t)&ps_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_PS), (kernel_ulong_t)&ps_priv },
 	{ },
 };
 

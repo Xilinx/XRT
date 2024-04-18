@@ -389,7 +389,7 @@ struct xocl_drv_private sysmon_priv = {
 };
 
 struct platform_device_id sysmon_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_SYSMON), (kernel_ulong_t)&sysmon_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_SYSMON), (kernel_ulong_t)&sysmon_priv },
 	{ },
 };
 
@@ -397,7 +397,7 @@ static struct platform_driver	sysmon_driver = {
 	.probe		= sysmon_probe,
 	.remove		= sysmon_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_SYSMON),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_SYSMON),
 	},
 	.id_table = sysmon_id_table,
 };

@@ -213,7 +213,7 @@ struct xocl_drv_private pmc_priv = {
 };
 
 struct platform_device_id pmc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_PMC), (kernel_ulong_t)&pmc_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_PMC), (kernel_ulong_t)&pmc_priv },
 	{ },
 };
 
@@ -221,7 +221,7 @@ static struct platform_driver pmc_driver = {
 	.probe		= pmc_probe,
 	.remove		= pmc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_PMC),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_PMC),
 	},
 	.id_table = pmc_id_table,
 };

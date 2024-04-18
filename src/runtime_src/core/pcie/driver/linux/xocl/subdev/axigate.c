@@ -245,7 +245,7 @@ struct xocl_drv_private axigate_priv = {
 };
 
 struct platform_device_id axigate_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_AXIGATE), (kernel_ulong_t)&axigate_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_AXIGATE), (kernel_ulong_t)&axigate_priv },
 	{ },
 };
 
@@ -253,7 +253,7 @@ static struct platform_driver	axi_gate_driver = {
 	.probe		= axigate_probe,
 	.remove		= axigate_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_AXIGATE),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_AXIGATE),
 	},
 	.id_table = axigate_id_table,
 };

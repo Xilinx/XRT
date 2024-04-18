@@ -200,11 +200,11 @@ struct xocl_drv_private version_ctrl_priv_userpf = {
 };
 
 struct platform_device_id version_ctrl_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv_mgmtpf },
 	{ },
 };
 struct platform_device_id version_ctrl_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_VERSION_CTRL), (kernel_ulong_t)&version_ctrl_priv_userpf },
 	{ },
 };
 
@@ -212,7 +212,7 @@ static struct platform_driver	version_ctrl_driver_mgmtpf = {
 	.probe		= version_ctrl_probe,
 	.remove		= version_ctrl_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_VERSION_CTRL),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_VERSION_CTRL),
 	},
 	.id_table = version_ctrl_id_table_mgmtpf,
 };
@@ -220,7 +220,7 @@ static struct platform_driver	version_ctrl_driver_userpf = {
 	.probe		= version_ctrl_probe,
 	.remove		= version_ctrl_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_VERSION_CTRL),
+		.name = XOCL_USERPF_DEVICE(XOCL_VERSION_CTRL),
 	},
 	.id_table = version_ctrl_id_table_userpf,
 };

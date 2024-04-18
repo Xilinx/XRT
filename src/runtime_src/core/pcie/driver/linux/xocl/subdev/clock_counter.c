@@ -351,7 +351,7 @@ struct xocl_drv_private clock_counter_priv_mgmtpf = {
 };
 
 struct platform_device_id clock_counter_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_CLOCK_COUNTER), (kernel_ulong_t)&clock_counter_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_CLOCK_COUNTER), (kernel_ulong_t)&clock_counter_priv_mgmtpf },
 	{ },
 };
 
@@ -359,7 +359,7 @@ static struct platform_driver clock_counter_driver_mgmtpf = {
 	.probe		= clock_counter_probe,
 	.remove		= clock_counter_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_CLOCK_COUNTER),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_CLOCK_COUNTER),
 	},
 	.id_table = clock_counter_id_table_mgmtpf,
 };
@@ -369,7 +369,7 @@ struct xocl_drv_private clock_counter_priv_userpf = {
 };
 
 struct platform_device_id clock_counter_id_table_userpf[] = {
-        { XOCL_DEVNAME(XOCL_CLOCK_COUNTER), (kernel_ulong_t)&clock_counter_priv_userpf },
+        { XOCL_USERPF_DEVICE(XOCL_CLOCK_COUNTER), (kernel_ulong_t)&clock_counter_priv_userpf },
         { },
 };
 
@@ -377,7 +377,7 @@ static struct platform_driver clock_counter_driver_userpf = {
         .probe          = clock_counter_probe,
         .remove         = clock_counter_remove,
         .driver         = {
-                .name = XOCL_DEVNAME(XOCL_CLOCK_COUNTER),
+                .name = XOCL_USERPF_DEVICE(XOCL_CLOCK_COUNTER),
         },
         .id_table = clock_counter_id_table_userpf,
 };

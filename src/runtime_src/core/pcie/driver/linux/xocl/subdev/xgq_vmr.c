@@ -3633,7 +3633,7 @@ struct xocl_drv_private xgq_vmr_priv = {
 };
 
 struct platform_device_id xgq_vmr_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XGQ_VMR), (kernel_ulong_t)&xgq_vmr_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_XGQ_VMR), (kernel_ulong_t)&xgq_vmr_priv },
 	{ },
 };
 
@@ -3641,7 +3641,7 @@ static struct platform_driver	xgq_vmr_driver = {
 	.probe		= xgq_vmr_probe,
 	.remove		= xgq_vmr_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_XGQ_VMR),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_XGQ_VMR),
 	},
 	.id_table = xgq_vmr_id_table,
 };
@@ -3651,7 +3651,7 @@ int __init xocl_init_xgq(bool flag)
 	int err = 0;
 
 	err = alloc_chrdev_region(&xgq_vmr_priv.dev, 0, XOCL_MAX_DEVICES,
-	    XOCL_DEVNAME(XGQ_DEV_NAME));
+	    XOCL_MGMTPF_DEVICE(XGQ_DEV_NAME));
 	if (err < 0)
 		return err;
 

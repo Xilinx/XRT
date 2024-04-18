@@ -195,7 +195,7 @@ struct xocl_drv_private calib_storage_priv = {
 };
 
 struct platform_device_id calib_storage_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CALIB_STORAGE), (kernel_ulong_t)&calib_storage_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_CALIB_STORAGE), (kernel_ulong_t)&calib_storage_priv },
 	{ },
 };
 
@@ -203,7 +203,7 @@ static struct platform_driver	calib_storage_driver = {
 	.probe		= calib_storage_probe,
 	.remove		= calib_storage_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_CALIB_STORAGE),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_CALIB_STORAGE),
 	},
 	.id_table = calib_storage_id_table,
 };

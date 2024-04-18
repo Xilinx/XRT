@@ -983,8 +983,8 @@ struct xocl_drv_private ert_ctrl_xgq_drv_priv = {
 };
 
 struct platform_device_id ert_ctrl_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ERT_CTRL), (kernel_ulong_t)&ert_ctrl_drv_priv },
-	{ XOCL_DEVNAME(XOCL_ERT_CTRL_VERSAL), (kernel_ulong_t)&ert_ctrl_xgq_drv_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_ERT_CTRL), (kernel_ulong_t)&ert_ctrl_drv_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_ERT_CTRL_VERSAL), (kernel_ulong_t)&ert_ctrl_xgq_drv_priv },
 	{},
 };
 
@@ -992,7 +992,7 @@ static struct platform_driver ert_ctrl_driver = {
 	.probe		= ert_ctrl_probe,
 	.remove		= ert_ctrl_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ERT_CTRL),
+		.name = XOCL_USERPF_DEVICE(XOCL_ERT_CTRL),
 	},
 	.id_table	= ert_ctrl_id_table,
 };

@@ -960,7 +960,7 @@ struct xocl_drv_private qdma_priv = {
 };
 
 static struct platform_device_id qdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_QDMA), (kernel_ulong_t)&qdma_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_QDMA), (kernel_ulong_t)&qdma_priv },
 	{ },
 };
 
@@ -968,7 +968,7 @@ static struct platform_driver	qdma_driver = {
 	.probe		= qdma_probe,
 	.remove		= qdma_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_QDMA),
+		.name = XOCL_USERPF_DEVICE(XOCL_QDMA),
 	},
 	.id_table	= qdma_id_table,
 };

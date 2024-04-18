@@ -4726,11 +4726,11 @@ struct xocl_drv_private icap_drv_priv_mgmtpf = {
 };
 #endif
 struct platform_device_id icap_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_userpf },
 	{ },
 };
 struct platform_device_id icap_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_mgmtpf },
 	{ },
 };
 
@@ -4738,7 +4738,7 @@ static struct platform_driver icap_driver_userpf = {
 	.probe		= icap_probe,
 	.remove		= icap_remove,
 	.driver		= {
-		.name	= XOCL_DEVNAME(XOCL_ICAP),
+		.name	= XOCL_USERPF_DEVICE(XOCL_ICAP),
 	},
 	.id_table = icap_id_table_userpf,
 };
@@ -4748,7 +4748,7 @@ static struct platform_driver icap_driver_mgmtpf = {
 	.probe		= icap_probe,
 	.remove		= icap_remove,
 	.driver		= {
-		.name	= XOCL_DEVNAME(XOCL_ICAP),
+		.name	= XOCL_MGMTPF_DEVICE(XOCL_ICAP),
 	},
 	.id_table = icap_id_table_mgmtpf,
 };

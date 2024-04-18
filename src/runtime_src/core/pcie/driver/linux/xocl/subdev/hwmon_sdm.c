@@ -1674,7 +1674,7 @@ struct xocl_drv_private sdm_priv_mgmtpf = {
 };
 
 struct platform_device_id hwmon_sdm_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv_mgmtpf },
 	{ },
 };
 
@@ -1682,7 +1682,7 @@ static struct platform_driver	hwmon_sdm_driver_mgmtpf = {
 	.probe		= hwmon_sdm_probe,
 	.remove		= hwmon_sdm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_HWMON_SDM),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_HWMON_SDM),
 	},
 	.id_table = hwmon_sdm_id_table_mgmtpf,
 };
@@ -1693,7 +1693,7 @@ struct xocl_drv_private sdm_priv_userpf = {
 };
 
 struct platform_device_id hwmon_sdm_id_table_userpf[] = {
-        { XOCL_DEVNAME(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv_userpf },
+        { XOCL_USERPF_DEVICE(XOCL_HWMON_SDM), (kernel_ulong_t)&sdm_priv_userpf },
         { },
 };
 
@@ -1701,7 +1701,7 @@ static struct platform_driver   hwmon_sdm_driver_userpf = {
         .probe          = hwmon_sdm_probe,
         .remove         = hwmon_sdm_remove,
         .driver         = {
-                .name = XOCL_DEVNAME(XOCL_HWMON_SDM),
+                .name = XOCL_USERPF_DEVICE(XOCL_HWMON_SDM),
         },
         .id_table = hwmon_sdm_id_table_userpf,
 };
