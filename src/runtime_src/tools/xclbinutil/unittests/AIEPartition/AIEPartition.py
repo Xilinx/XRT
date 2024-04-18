@@ -66,14 +66,14 @@ def main():
   jsonFileCompare(aiePartitionOutputExpected, aiePartitionOutput2)
 
   # 1a) Check for the existance of the dummy PDI images
+  aiePartition1110PDIExpected = os.path.join(args.resource_dir, "1110.txt")
+  aiePartition1110PDIOutput = "00000000-0000-0000-0000-000000001110.pdi"
+  textFileCompare(aiePartition1110PDIExpected, aiePartition1110PDIOutput)
+
+  # 1b) Check for the existance of the dummy PDI images
   aiePartition1111PDIExpected = os.path.join(args.resource_dir, "1111.txt")
   aiePartition1111PDIOutput = "00000000-0000-0000-0000-000000001111.pdi"
   textFileCompare(aiePartition1111PDIExpected, aiePartition1111PDIOutput)
-
-  # 1b) Check for the existance of the dummy PDI images
-  aiePartition2222PDIExpected = os.path.join(args.resource_dir, "2222.txt")
-  aiePartition2222PDIOutput = "00000000-0000-0000-0000-000000002222.pdi"
-  textFileCompare(aiePartition2222PDIExpected, aiePartition2222PDIOutput)
 
   '''
   # XRT doesn't allow checking in binary files, so temporarily comment out 
@@ -82,18 +82,44 @@ def main():
   # ---------------------------------------------------------------------------
 
   step = "3) Add the AIE parition to the xclbin image with pdi transform enabled"
-  # copy transform_static, currently the code expect the find it in CWD
+  # copy aie_partition_trans.json currently the code expect the find it in CWD
   print ("cwd : "+ os.getcwd())
-  transformTool = os.path.join(args.resource_dir, "transform_static")
-  shutil.copy(transformTool, os.getcwd())
+  aiePartitionTran = os.path.join(args.resource_dir, "aie_partition_trans.json")
+  shutil.copy(aiePartitionTran, os.getcwd())
+
+  PdiHex2220 = os.path.join(args.resource_dir, "2220.hex")
+  Pdi2220 = "00000000-0000-0000-0000-000000002220.pdi"
+
+  # Read in the hex array
+  with open(PdiHex2220) as file:
+      hexImage = file.read();
+
+  binImage = bytes.fromhex(hexImage[ : ])
+
+  with open(Pdi2220, 'wb') as file:
+      file.write(binImage)
+
+  PdiHex2221 = os.path.join(args.resource_dir, "2221.hex")
+  Pdi2221 = "00000000-0000-0000-0000-000000002221.pdi"
+
+  # Read in the hex array
+  with open(PdiHex2221) as file:
+      hexImage = file.read();
+
+  binImage = bytes.fromhex(hexImage[ : ])
+
+  with open(Pdi2221, 'wb') as file:
+      file.write(binImage)
 
   sectionname = "Trans"
   workingXclbin = "aiePartitionTrans.xclbin"
-  aiePartition = os.path.join(args.resource_dir, "aie_partition_trans.json")
+  # aiePartition = os.path.join(args.resource_dir, "aie_partition_trans.json")
+  aiePartition = os.path.join(os.getcwd(), "aie_partition_trans.json")
 
   cmd = [xclbinutil, "--add-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartition,
                      "--transform-pdi",
                      "--output", workingXclbin,
+                     "--trace",
                      "--force"
                      ]
   execCmd(step, cmd)
@@ -105,6 +131,30 @@ def main():
   if not os.path.exists("./transform"):
     os.makedirs("./transform")
 
+  PdiHexExpected2220 = os.path.join(args.resource_dir, "2220_expected.hex")
+  aiePartition2220PDIExpected = "2220_expected.pdi"
+
+  # Read in the hex array
+  with open(PdiHexExpected2220) as file:
+      hexImage = file.read();
+
+  binImage = bytes.fromhex(hexImage[ : ])
+
+  with open(aiePartition2220PDIExpected, 'wb') as file:
+      file.write(binImage)
+
+  PdiHexExpected2221 = os.path.join(args.resource_dir, "2221_expected.hex")
+  aiePartition2221PDIExpected = "2221_expected.pdi"
+
+  # Read in the hex array
+  with open(PdiHexExpected2221) as file:
+      hexImage = file.read();
+
+  binImage = bytes.fromhex(hexImage[ : ])
+
+  with open(aiePartition2221PDIExpected, 'wb') as file:
+      file.write(binImage)
+
   cmd = [xclbinutil, "--input", workingXclbin,
                      "--dump-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartitionOutput,
                      "--force"
@@ -113,14 +163,14 @@ def main():
   # jsonFileCompare(aiePartitionOutputExpected, aiePartitionOutput2)
 
   # 1a) Check for the existance of the dumped PDI images
-  aiePartition1111PDIExpected = os.path.join(args.resource_dir, "1111_expected.pdi")
-  aiePartition1111PDIOutput = "transform/00000000-0000-0000-0000-000000001111.pdi"
-  binaryFileCompare(aiePartition1111PDIExpected, aiePartition1111PDIOutput)
+  # aiePartition2220PDIExpected = os.path.join(args.resource_dir, "2220_expected.pdi")
+  aiePartition2220PDIOutput = "transform/00000000-0000-0000-0000-000000002220.pdi"
+  binaryFileCompare(aiePartition2220PDIExpected, aiePartition2220PDIOutput)
 
   # 1b) Check for the existance of the dummy PDI images
-  aiePartition2222PDIExpected = os.path.join(args.resource_dir, "2222_expected.pdi")
-  aiePartition2222PDIOutput = "transform/00000000-0000-0000-0000-000000002222.pdi"
-  binaryFileCompare(aiePartition2222PDIExpected, aiePartition2222PDIOutput)
+  # aiePartition2221PDIExpected = os.path.join(args.resource_dir, "2221_expected.pdi")
+  aiePartition2221PDIOutput = "transform/00000000-0000-0000-0000-000000002221.pdi"
+  binaryFileCompare(aiePartition2221PDIExpected, aiePartition2221PDIOutput)
 
   # ---------------------------------------------------------------------------
   '''

@@ -1,0 +1,1 @@
+This file represents a PDI image with a 1110 (hex) signature.
