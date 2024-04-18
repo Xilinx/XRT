@@ -564,7 +564,7 @@ static int cu_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id cu_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CU), 0 },
+	{ XOCL_USERPF_DEVICE(XOCL_CU), 0 },
 	{ },
 };
 
@@ -572,7 +572,7 @@ static struct platform_driver cu_driver = {
 	.probe		= cu_probe,
 	.remove		= cu_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_CU),
+		.name = XOCL_USERPF_DEVICE(XOCL_CU),
 	},
 	.id_table	= cu_id_table,
 };

@@ -1600,7 +1600,7 @@ struct xocl_drv_private p2p_priv = {
 };
 
 struct platform_device_id p2p_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_P2P), (kernel_ulong_t)&p2p_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_P2P), (kernel_ulong_t)&p2p_priv },
 	{ },
 };
 
@@ -1608,7 +1608,7 @@ static struct platform_driver	p2p_driver = {
 	.probe		= p2p_probe,
 	.remove		= p2p_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_P2P),
+		.name = XOCL_USERPF_DEVICE(XOCL_P2P),
 	},
 	.id_table = p2p_id_table,
 };

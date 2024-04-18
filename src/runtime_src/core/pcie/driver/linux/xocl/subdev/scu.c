@@ -352,7 +352,7 @@ static int scu_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id scu_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_SCU), 0 },
+	{ XOCL_USERPF_DEVICE(XOCL_SCU), 0 },
 	{ },
 };
 
@@ -360,7 +360,7 @@ static struct platform_driver scu_driver = {
 	.probe		= scu_probe,
 	.remove		= scu_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_SCU),
+		.name = XOCL_USERPF_DEVICE(XOCL_SCU),
 	},
 	.id_table	= scu_id_table,
 };

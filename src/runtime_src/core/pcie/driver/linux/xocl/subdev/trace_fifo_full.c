@@ -110,7 +110,7 @@ struct xocl_drv_private trace_fifo_full_priv = {
 };
 
 struct platform_device_id trace_fifo_full_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_TRACE_FIFO_FULL), (kernel_ulong_t)&trace_fifo_full_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_TRACE_FIFO_FULL), (kernel_ulong_t)&trace_fifo_full_priv },
 	{ },
 };
 
@@ -118,7 +118,7 @@ static struct platform_driver	trace_fifo_full_driver = {
 	.probe		= trace_fifo_full_probe,
 	.remove		= trace_fifo_full_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_TRACE_FIFO_FULL),
+		.name = XOCL_USERPF_DEVICE(XOCL_TRACE_FIFO_FULL),
 	},
 	.id_table = trace_fifo_full_id_table,
 };

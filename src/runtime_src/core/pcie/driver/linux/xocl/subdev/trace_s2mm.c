@@ -309,7 +309,7 @@ struct xocl_drv_private trace_s2mm_priv = {
 };
 
 struct platform_device_id trace_s2mm_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_TRACE_S2MM), (kernel_ulong_t)&trace_s2mm_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_TRACE_S2MM), (kernel_ulong_t)&trace_s2mm_priv },
 	{ },
 };
 
@@ -317,7 +317,7 @@ static struct platform_driver	trace_s2mm_driver = {
 	.probe		= trace_s2mm_probe,
 	.remove		= trace_s2mm_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_TRACE_S2MM),
+		.name = XOCL_USERPF_DEVICE(XOCL_TRACE_S2MM),
 	},
 	.id_table = trace_s2mm_id_table,
 };

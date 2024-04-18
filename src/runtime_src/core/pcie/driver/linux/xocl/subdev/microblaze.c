@@ -708,7 +708,7 @@ struct xocl_drv_private mb_priv = {
 };
 
 struct platform_device_id mb_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MB), (kernel_ulong_t)&mb_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_MB), (kernel_ulong_t)&mb_priv },
 	{ },
 };
 

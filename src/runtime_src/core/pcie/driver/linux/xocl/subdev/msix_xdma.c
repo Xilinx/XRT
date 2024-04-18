@@ -299,7 +299,7 @@ struct xocl_drv_private msix_xdma_priv = {
 };
 
 static struct platform_device_id msix_xdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MSIX_XDMA), (kernel_ulong_t)&msix_xdma_priv },
+	{XOCL_USERPF_DEVICE(XOCL_MSIX_XDMA), (kernel_ulong_t)&msix_xdma_priv },
 	{ },
 };
 
@@ -307,7 +307,7 @@ static struct platform_driver	msix_xdma_driver = {
 	.probe		= msix_xdma_probe,
 	.remove		= msix_xdma_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_MSIX_XDMA),
+		.name = XOCL_USERPF_DEVICE(XOCL_MSIX_XDMA),
 	},
 	.id_table	= msix_xdma_id_table,
 };

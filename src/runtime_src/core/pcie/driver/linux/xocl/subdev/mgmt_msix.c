@@ -360,7 +360,7 @@ struct xocl_drv_private mgmt_msix_priv = {
 };
 
 static struct platform_device_id mgmt_msix_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_DMA_MSIX), (kernel_ulong_t)&mgmt_msix_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_DMA_MSIX), (kernel_ulong_t)&mgmt_msix_priv },
 	{ },
 };
 

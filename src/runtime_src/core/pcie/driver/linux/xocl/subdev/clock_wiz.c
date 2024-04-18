@@ -1323,7 +1323,7 @@ struct xocl_drv_private clock_wiz_priv_mgmtpf = {
 };
 
 struct platform_device_id clock_wiz_id_table_mgmtpf[] = {
-	{ XOCL_DEVNAME(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv_mgmtpf },
 	{ },
 };
 
@@ -1331,7 +1331,7 @@ static struct platform_driver clock_wiz_driver_mgmtpf = {
 	.probe		= clock_wiz_probe,
 	.remove		= clock_wiz_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_CLOCK_WIZ),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_CLOCK_WIZ),
 	},
 	.id_table = clock_wiz_id_table_mgmtpf,
 };
@@ -1341,7 +1341,7 @@ struct xocl_drv_private clock_wiz_priv_userpf = {
 };
 
 struct platform_device_id clock_wiz_id_table_userpf[] = {
-        { XOCL_DEVNAME(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv_userpf },
+        { XOCL_USERPF_DEVICE(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv_userpf },
         { },
 };
 
@@ -1349,7 +1349,7 @@ static struct platform_driver clock_wiz_driver_userpf = {
         .probe          = clock_wiz_probe,
         .remove         = clock_wiz_remove,
         .driver         = {
-                .name = XOCL_DEVNAME(XOCL_CLOCK_WIZ),
+                .name = XOCL_USERPF_DEVICE(XOCL_CLOCK_WIZ),
         },
         .id_table = clock_wiz_id_table_userpf,
 };

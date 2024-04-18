@@ -1055,7 +1055,7 @@ static int xiic_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id xiic_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XIIC), 0 },
+	{ XOCL_MGMTPF_DEVICE(XOCL_XIIC), 0 },
 	{ },
 };
 
@@ -1063,7 +1063,7 @@ static struct platform_driver xiic_driver = {
 	.probe		= xiic_probe,
 	.remove		= xiic_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_XIIC),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_XIIC),
 	},
 	.id_table = xiic_id_table,
 };

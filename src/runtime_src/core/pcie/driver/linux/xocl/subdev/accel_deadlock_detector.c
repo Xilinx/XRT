@@ -262,7 +262,7 @@ struct xocl_drv_private accel_deadlock_detector_priv = {
 };
 
 struct platform_device_id accel_deadlock_detector_id_table[] = {
-    { XOCL_DEVNAME(XOCL_ACCEL_DEADLOCK_DETECTOR), (kernel_ulong_t)&accel_deadlock_detector_priv },
+    { XOCL_USERPF_DEVICE(XOCL_ACCEL_DEADLOCK_DETECTOR), (kernel_ulong_t)&accel_deadlock_detector_priv },
     { },
 };
 
@@ -270,7 +270,7 @@ static struct platform_driver  accel_deadlock_detector_driver = {
     .probe    = accel_deadlock_detector_probe,
     .remove    = accel_deadlock_detector_remove,
     .driver    = {
-            .name = XOCL_DEVNAME(XOCL_ACCEL_DEADLOCK_DETECTOR),
+            .name = XOCL_USERPF_DEVICE(XOCL_ACCEL_DEADLOCK_DETECTOR),
         },
     .id_table = accel_deadlock_detector_id_table,
 };

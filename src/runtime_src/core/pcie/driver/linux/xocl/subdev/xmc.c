@@ -4186,7 +4186,7 @@ static struct xocl_drv_private  xmc_priv_mgmtpf = {
 };
 
 static struct platform_device_id xmc_id_table_mgmtpf[] = {
-        { XOCL_DEVNAME(XOCL_XMC), (kernel_ulong_t)&xmc_priv_mgmtpf },
+        { XOCL_MGMTPF_DEVICE(XOCL_XMC), (kernel_ulong_t)&xmc_priv_mgmtpf },
         { },
 };
 
@@ -4194,7 +4194,7 @@ static struct platform_driver   xmc_driver_mgmtpf = {
         .probe          = xmc_probe,
         .remove         = xmc_remove,
         .driver         = {
-                .name = XOCL_DEVNAME(XOCL_XMC),
+                .name = XOCL_MGMTPF_DEVICE(XOCL_XMC),
         },
         .id_table = xmc_id_table_mgmtpf,
 };
@@ -4206,7 +4206,7 @@ static struct xocl_drv_private	xmc_priv_userpf = {
 };
 
 static struct platform_device_id xmc_id_table_userpf[] = {
-	{ XOCL_DEVNAME(XOCL_XMC), (kernel_ulong_t)&xmc_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_XMC), (kernel_ulong_t)&xmc_priv_userpf },
 	{ },
 };
 
@@ -4214,7 +4214,7 @@ static struct platform_driver	xmc_driver_userpf = {
 	.probe		= xmc_probe,
 	.remove		= xmc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_XMC),
+		.name = XOCL_USERPF_DEVICE(XOCL_XMC),
 	},
 	.id_table = xmc_id_table_userpf,
 };

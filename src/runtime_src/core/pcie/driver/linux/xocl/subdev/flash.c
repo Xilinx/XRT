@@ -1512,7 +1512,7 @@ struct xocl_drv_private flash_priv = {
 };
 
 struct platform_device_id flash_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_FLASH), (kernel_ulong_t)&flash_priv },
+	{XOCL_MGMTPF_DEVICE(XOCL_FLASH), (kernel_ulong_t)&flash_priv },
 	{ },
 };
 
@@ -1520,7 +1520,7 @@ static struct platform_driver	flash_driver = {
 	.probe		= flash_probe,
 	.remove		= flash_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_FLASH),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_FLASH),
 	},
 	.id_table = flash_id_table,
 };

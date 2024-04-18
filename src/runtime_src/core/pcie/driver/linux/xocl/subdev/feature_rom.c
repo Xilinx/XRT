@@ -795,7 +795,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	rom->pdev =  pdev;
 	platform_set_drvdata(pdev, rom);
-	
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
 		xocl_dbg(&pdev->dev, "Get header from VSEC");
@@ -903,11 +903,11 @@ struct xocl_drv_private rom_priv_userpf = {
 };
 
 struct platform_device_id rom_id_table_mgmtpf[] =  {
-	{ XOCL_DEVNAME(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv_mgmtpf },
+	{ XOCL_MGMTPF_DEVICE(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv_mgmtpf },
 	{ },
 };
 struct platform_device_id rom_id_table_userpf[] =  {
-	{ XOCL_DEVNAME(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv_userpf },
+	{ XOCL_USERPF_DEVICE(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv_userpf },
 	{ },
 };
  
@@ -915,7 +915,7 @@ static struct platform_driver feature_rom_driver_mgmtpf = {
 	.probe		= feature_rom_probe,
 	.remove		= feature_rom_remove,
 	.driver		= {
-	.name = XOCL_DEVNAME(XOCL_FEATURE_ROM),
+	.name = XOCL_MGMTPF_DEVICE(XOCL_FEATURE_ROM),
 	},
 	.id_table = rom_id_table_mgmtpf,
 };
@@ -924,7 +924,7 @@ static struct platform_driver feature_rom_driver_userpf = {
 	.probe		= feature_rom_probe,
 	.remove		= feature_rom_remove,
 	.driver		= {
-	.name =  XOCL_DEVNAME(XOCL_FEATURE_ROM),
+	.name =  XOCL_USERPF_DEVICE(XOCL_FEATURE_ROM),
 	},
 	.id_table = rom_id_table_userpf,
 };

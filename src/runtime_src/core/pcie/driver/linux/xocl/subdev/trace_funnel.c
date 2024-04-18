@@ -247,7 +247,7 @@ struct xocl_drv_private trace_funnel_priv = {
 };
 
 struct platform_device_id trace_funnel_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_TRACE_FUNNEL), (kernel_ulong_t)&trace_funnel_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_TRACE_FUNNEL), (kernel_ulong_t)&trace_funnel_priv },
 	{ },
 };
 
@@ -255,7 +255,7 @@ static struct platform_driver	trace_funnel_driver = {
 	.probe		= trace_funnel_probe,
 	.remove		= trace_funnel_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_TRACE_FUNNEL),
+		.name = XOCL_USERPF_DEVICE(XOCL_TRACE_FUNNEL),
 	},
 	.id_table = trace_funnel_id_table,
 };
