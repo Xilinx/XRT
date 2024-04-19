@@ -4,7 +4,10 @@ env:
   PIPELINE: 'xrt' 
   ENV: 'test' 
 
-on:  
+on:
+  push:
+    branches:
+      - 'final-test'
   workflow_dispatch:
   workflow_call:
   
