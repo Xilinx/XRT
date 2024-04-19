@@ -7,7 +7,7 @@ env:
 on:
   push:
     branches:
-      - 'master'
+      - '2023.2'
   workflow_dispatch:
   workflow_call:
   
