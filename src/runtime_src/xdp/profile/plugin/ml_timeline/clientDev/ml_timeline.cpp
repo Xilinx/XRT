@@ -22,6 +22,7 @@
 #include <chrono>
 #include <fstream>
 #include <regex>
+#include <thread>
 
 #include "core/common/device.h"
 #include "core/common/message.h"
@@ -70,6 +71,8 @@ namespace xdp {
     auto resultBOMap = resultBO.map<uint8_t*>();
     resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    
     uint32_t* ptr = reinterpret_cast<uint32_t*>(resultBOMap);
 
     // Assuming correct Stub has been called and Write Buffer contains valid data

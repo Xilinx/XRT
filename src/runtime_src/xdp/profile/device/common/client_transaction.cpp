@@ -16,7 +16,9 @@
 
 #define XDP_PLUGIN_SOURCE
 
+#include <chrono>
 #include <sstream>
+#include <thread>
 
 #include "client_transaction.h"
 #include "core/common/message.h"
@@ -92,6 +94,8 @@ namespace xdp::aie {
       }
 
       result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
       return result_bo;
     }
