@@ -26,12 +26,11 @@ void errorLog(char* filename, uint32_t* pdi, uint32_t errorLen) {
 	FILE* file = fopen(filename, "w+");
 	if(file == NULL) {
 		XCdo_PError("File not opened!\n");
-		fclose(file);
 		return;
 	}
 
 	for(uint32_t i = 0; i <= errorLen; i++) {
-		
+
 		uint32_t CmdId = pdi[i];
 
 		switch(CmdId) {
@@ -68,7 +67,7 @@ void errorLog(char* filename, uint32_t* pdi, uint32_t errorLen) {
 				fprintf(file, " %.08x ", pdi[i]);
 			}
 			fprintf(file, "\n");
-			
+
 			break;
 		default:
 			fprintf(file, "Invalid Command ID\n");
@@ -78,8 +77,7 @@ void errorLog(char* filename, uint32_t* pdi, uint32_t errorLen) {
 
 	}
 
-	
+
 	fclose(file);
 
 }
-
