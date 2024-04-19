@@ -97,6 +97,8 @@ CheckOptions:
     value:           '16'
   - key:             bugprone-easily-swappable-parameters.NamePrefixSuffixSilenceDissimilarityTreshold
     value:           '1'
+  - key:             bugprone-easily-swappable-parameters.MinimumLength
+    value:	     '3'
   - key:             bugprone-unhandled-self-assignment.WarnOnlyIfThisHasSuspiciousField
     value:           '1'
   - key:             bugprone-unused-return-value.CheckedFunctions

@@ -44,43 +44,48 @@ public:
 
 protected:
   std::shared_ptr<stream> cstream;
-  type ctype;
+  type ctype = type::event;
   std::chrono::time_point<std::chrono::system_clock> ctime;
-  state cstate;
+  state cstate = state::init;
 
 public:
-  command()
-    : cstate{state::init}
+    command() = default;
+
+  explicit command(std::shared_ptr<stream> s)
+    : cstream{std::move(s)}
   {}
 
-  command(std::shared_ptr<stream> s)
-    : cstream{std::move(s)}
-    , cstate{state::init}
-  {}
+  virtual ~command() = default;
+  command(const command &) = delete;
+  command(command &&) = delete;
+  command& operator =(command const&) = delete;
+  command& operator =(command &&) = delete;
 
   virtual bool submit() = 0;
   virtual bool wait() = 0;
-  
+
+  [[nodiscard]]
   state
-  get_state() const 
+  get_state() const
   {
     return cstate;
   }
 
   std::chrono::time_point<std::chrono::system_clock>
-  get_time() 
+  get_time()
   {
     return ctime;
   }
 
-  void 
-  set_state(state newstate) 
+  void
+  set_state(state newstate)
   {
     cstate = newstate;
   }
 
-  type 
-  get_type() const 
+  [[nodiscard]]
+  type
+  get_type() const
   {
     return ctype;
   }
@@ -101,7 +106,7 @@ public:
   bool wait() override;
   bool synchronize();
   bool query();
-  bool is_recorded() const;
+  [[nodiscard]] bool is_recorded() const;
   std::shared_ptr<stream> get_stream();
   void add_to_chain(std::shared_ptr<command> cmd);
   void add_dependency(std::shared_ptr<command> cmd);
