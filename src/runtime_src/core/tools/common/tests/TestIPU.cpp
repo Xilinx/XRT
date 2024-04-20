@@ -16,7 +16,7 @@ namespace XBU = XBUtilities;
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 20;
 static constexpr int itr_count = 10000;
-
+static constexpr int itr_count_throughput = itr_count/10;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
   : TestRunner("verify", "Run end-to-end latency and throughput test on NPU")
@@ -108,11 +108,11 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 
   // Next we run the test to compute throughput where we saturate NPU with jobs and then wait for all
   // completions at the end
-  std::array<xrt::run, itr_count> runhandles;
+  std::array<xrt::run, itr_count_throughput> runhandles;
   start = std::chrono::high_resolution_clock::now();
   try {
-    for (int i = 0; i < itr_count; i++)
-      runhandles[i] = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
+    for (auto & hand : runhandles)
+      hand = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
     for (const auto& hand: runhandles)
       hand.wait2();
   }
@@ -123,7 +123,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   end = std::chrono::high_resolution_clock::now();
   elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   // Now compute the throughput
-  const float throughput = itr_count / elapsedSecs;
+  const float throughput = runhandles.size() / elapsedSecs;
 
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
