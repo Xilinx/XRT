@@ -103,7 +103,7 @@ namespace xrt::core::hip
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
     }
 
-    const auto *src_ptr = reinterpret_cast<const unsigned char *>(src);
+    auto src_ptr = reinterpret_cast<const unsigned char *>(src);
     src_ptr += src_offset;
     if (m_bo) {
       m_bo.write(src_ptr, size, offset);
@@ -119,7 +119,7 @@ namespace xrt::core::hip
         // pinned hip mem
         assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
     }
-    auto *dst_ptr = reinterpret_cast<unsigned char *>(dst);
+    auto dst_ptr = reinterpret_cast<unsigned char *>(dst);
     dst_ptr += dst_offset;
     if (m_bo) {
       m_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
