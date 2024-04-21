@@ -35,6 +35,7 @@ using counter_type = xrt_core::edge::aie::counter_type;
 using module_type = xrt_core::edge::aie::module_type;
 
 static constexpr uint32_t default_id = 1;
+static constexpr uint32_t default_start_column = 0;
 
 inline void
 throw_if_error(bool err, const char* msg)
@@ -111,18 +112,44 @@ get_aiecompiler_options(const pt::ptree& aie_meta)
 static uint8_t
 get_start_col(const pt::ptree& aie_meta)
 {
-  auto start_col = 0;  
+  auto start_col = 0;
   auto overlay_start_cols = aie_meta.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
-  if (overlay_start_cols && !overlay_start_cols->empty()) 
+  if (overlay_start_cols && !overlay_start_cols->empty())
     start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
   return start_col;
+}
+
+// get the start column of partition which gets used for broadcasting core start
+// event
+static uint32_t
+get_partition_start_column(const pt::ptree& aie_meta, int column)
+{
+  try {
+    auto partitions = aie_meta.get_child_optional("aie_metadata.driver_config.aie_partition_json.AIE.ai_engine_0.partitions");
+
+    if (!partitions)
+      return default_start_column; // if no patitions are available, 0 would be start column for partition
+
+    auto itr = std::find_if(partitions.get().begin(), partitions.get().end(),[column] (const auto& part) {
+			    uint32_t start_column = part.second.template get<uint32_t>("startColumn");
+			    uint32_t num_columns = part.second.template get<uint32_t>("numColumns");
+			    return (start_column <= column) && (column < (start_column + num_columns));
+		});
+
+    if(itr != partitions.get().end())
+      return itr->second.get<uint32_t>("startColumn");
+  }
+  catch(...) {
+    // old xclbins may not have these sections. Use default_start_column
+  }
+  return default_start_column;
 }
 
 adf::graph_config
 get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 {
   adf::graph_config graph_config;
-  auto start_col = get_start_col(aie_meta); 
+  auto start_col = get_start_col(aie_meta);
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
@@ -136,6 +163,9 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
       graph_config.coreColumns.push_back(std::stoul(node.second.data()) + start_col);
       count++;
     }
+
+    if (graph_config.coreColumns.size()) // broadcasting column is same for one partition
+      graph_config.broadcast_column = get_partition_start_column(aie_meta, graph_config.coreColumns[0]);
 
     int num_tiles = count;
 
