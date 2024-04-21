@@ -89,41 +89,47 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 
   // First run the test to compute latency where we submit one job at a time and wait for its completion before
   // we submit the next one
-  auto start = std::chrono::high_resolution_clock::now();
+  float elapsedSecs = 0.0;
+
   try {
+    auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < itr_count; i++) {
       auto hand = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
       // Wait for kernel to be done
       hand.wait2();
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
   }
-  auto end = std::chrono::high_resolution_clock::now();
+
   // Calculate end-to-end latency of one job execution
-  float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   const float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
 
   // Next we run the test to compute throughput where we saturate NPU with jobs and then wait for all
   // completions at the end
   std::array<xrt::run, itr_count_throughput> runhandles;
-  start = std::chrono::high_resolution_clock::now();
+  elapsedSecs = 0.0;
+
   try {
+    auto start = std::chrono::high_resolution_clock::now();
     for (auto & hand : runhandles)
       hand = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
     for (const auto& hand: runhandles)
       hand.wait2();
+    auto end = std::chrono::high_resolution_clock::now();
+    elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
   }
-  end = std::chrono::high_resolution_clock::now();
-  elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+
   // Now compute the throughput
-  const float throughput = runhandles.size() / elapsedSecs;
+  const float throughput = (elapsedSecs != 0.0) ? runhandles.size() / elapsedSecs : 0.0;
 
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
