@@ -16,7 +16,7 @@ namespace XBU = XBUtilities;
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 20;
 static constexpr int itr_count = 10000;
-static constexpr int itr_count_throughput = itr_count/10;
+static constexpr int itr_count_throughput = itr_count/4;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
   : TestRunner("verify", "Run end-to-end latency and throughput test on NPU")
@@ -68,7 +68,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel testker{hwctx, kernelName};
 
-  //Create BOs
+  //Create BOs, the values are not initialized as they are not really used by this special test running on the device
   int argno = 1;
   xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
   xrt::bo bo_param(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
@@ -77,6 +77,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   xrt::bo bo_instr(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, testker.group_id(argno++));
   argno++;
   xrt::bo bo_mc(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  //Create ctrlcode with NOPs
   std::memset(bo_instr.map<char*>(), 0, buffer_size);
 
   //Sync BOs
@@ -138,7 +139,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   const double throughput = (elapsedSecs != 0.0) ? runhandles.size() / elapsedSecs : 0.0;
 
   // Do we need to store 'Total duration'?"
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
+  // logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
   logger(ptree, "Details", boost::str(boost::format("Average latency: '%.1f' us") % latency));
 
