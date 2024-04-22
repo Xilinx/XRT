@@ -77,7 +77,7 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   xrt::bo bo_instr(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, testker.group_id(argno++));
   argno++;
   xrt::bo bo_mc(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
-  std::memset(bo_instr.map<char*>(), buffer_size, '0');
+  std::memset(bo_instr.map<char*>(), 0, buffer_size);
 
   //Sync BOs
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
