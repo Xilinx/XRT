@@ -69,12 +69,13 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   xrt::kernel testker{hwctx, kernelName};
 
   //Create BOs
-  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(1));
-  xrt::bo bo_param(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(2));
-  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(3));
-  xrt::bo bo_inter(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(4));
-  xrt::bo bo_instr(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, testker.group_id(5));
-  xrt::bo bo_mc(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(7));
+  int argno = 1;
+  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_param(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_inter(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_instr(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, testker.group_id(argno++));
+  xrt::bo bo_mc(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
   std::memset(bo_instr.map<char*>(), buffer_size, '0');
 
   //Sync BOs
@@ -107,11 +108,14 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   // Calculate end-to-end latency of one job execution
+  // if (elapsedSecs == 0.0) then it means we had an exception and we will report 0.0 for latency
   const float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
 
   // Next we run the test to compute throughput where we saturate NPU with jobs and then wait for all
   // completions at the end
   std::array<xrt::run, itr_count_throughput> runhandles;
+
+  // A value of 0.0 indicates there was an exception
   elapsedSecs = 0.0;
 
   try {
@@ -129,8 +133,10 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   // Now compute the throughput
-  const float throughput = (elapsedSecs != 0.0) ? runhandles.size() / elapsedSecs : 0.0;
+  // if (elapsedSecs == 0.0) then it means we had an exception and we will report 0.0  for throughput
+  const double throughput = (elapsedSecs != 0.0) ? runhandles.size() / elapsedSecs : 0.0;
 
+  // Do we need to store 'Total duration'?"
   logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
   logger(ptree, "Details", boost::str(boost::format("Average latency: '%.1f' us") % latency));
