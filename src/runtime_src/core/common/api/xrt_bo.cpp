@@ -34,6 +34,7 @@
 #include "core/common/shim/shared_handle.h"
 
 #include <cstdlib>
+#include <fstream>
 #include <map>
 #include <set>
 #include <string>
@@ -1517,6 +1518,18 @@ map()
   return xdp::native::profiling_wrapper("xrt::bo::map", [this]{
     return handle->get_hbuf();
   });
+}
+
+void
+bo::
+dump(const std::string& filename)
+{
+  std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+  if (!ofs.is_open())
+    throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+  auto buf = map<char*>();
+  ofs.write(buf, size());
 }
 
 void
