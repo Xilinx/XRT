@@ -298,6 +298,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_stop(lro);
 
 	if (XOCL_DSA_EEMI_API_SRST(lro)) {
+		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
 		err = xocl_vmr_eemi_pmc_srst(lro);
 		if (err) {
 			mgmt_err(lro, "EMMI PMC SRST Failed. err: %ld", err);
