@@ -43,7 +43,8 @@ jobs:
           # - os: ubuntu2204      
           #   packageType: deb      
         
-    runs-on: [self-hosted, Ubuntu-22.04]
+    # runs-on: [self-hosted, Ubuntu-22.04]
+    runs-on: [xrt, trx]
     steps:  
       - name: Set env variables    
         run: |    
