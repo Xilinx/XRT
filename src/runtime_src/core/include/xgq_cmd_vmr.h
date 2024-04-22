@@ -110,6 +110,7 @@ enum xgq_cmd_vmr_control_type {
 	XGQ_CMD_BOOT_BACKUP	= 0x2,
 	XGQ_CMD_PROGRAM_SC	= 0x3,
 	XGQ_CMD_VMR_DEBUG	= 0x4,
+	XGQ_CMD_VMR_EEMI_SRST	= 0x5, /* Request VMR to perform SRST using EEMI based PMC API request */
 };
 
 /**

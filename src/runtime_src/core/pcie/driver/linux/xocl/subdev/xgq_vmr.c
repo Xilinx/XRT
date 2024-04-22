@@ -2220,6 +2220,11 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 		xgq->xgq_boot_from_backup ? XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
+static int vmr_eemi_pmc_srst(struct platform_device *pdev)
+{
+	return vmr_control_op(pdev, XGQ_CMD_VMR_EEMI_SRST);
+}
+
 static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
                                char *data_buf, uint32_t len, uint8_t sensor_id)
 {
@@ -3610,6 +3615,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
 	.vmr_status = xgq_status,
+	.vmr_eemi_pmc_srst = vmr_eemi_pmc_srst,
 };
 
 static const struct file_operations xgq_vmr_fops = {
