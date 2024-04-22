@@ -32,7 +32,7 @@ jobs:
     strategy:      
       matrix:      
         include:      
-          - os: centos78      
+          - os: centos79      
             packageType: rpm      
           # - os: centos8      
           #   packageType: rpm      
@@ -43,8 +43,8 @@ jobs:
           # - os: ubuntu2204      
           #   packageType: deb      
         
-    # runs-on: [self-hosted, Ubuntu-22.04]
-    runs-on: [apu]
+    runs-on: [self-hosted, Ubuntu-22.04]
+    # runs-on: [apu]
     steps:  
       - name: Set env variables    
         run: |    
