@@ -395,7 +395,7 @@ static int cu_probe(struct platform_device *pdev)
 
 	sprintf(zcu->irq_name, "zocl_cu[%d]", info->intr_id);
 
-	if (info->intr_enable) {
+	if (info->intr_enable && info->protocol != CTRL_NONE) {
 		intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
 		if (intc)
 			err = zocl_ert_intc_add(intc, info->intr_id, cu_isr, zcu);
