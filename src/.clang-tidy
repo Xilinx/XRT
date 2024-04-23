@@ -17,6 +17,7 @@ hicpp-*,
 -hicpp-signed-bitwise,
 modernize-*,
 -modernize-use-trailing-return-type,
+-modernize-use-nodiscard,
 -cppcoreguidelines-pro-bounds-pointer-arithmetic,
 -cppcoreguidelines-pro-type-union-access,
 -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
@@ -95,6 +96,10 @@ CheckOptions:
     value:           '0'
   - key:             bugprone-too-small-loop-variable.MagnitudeBitsUpperLimit
     value:           '16'
+  - key:             bugprone-easily-swappable-parameters.NamePrefixSuffixSilenceDissimilarityTreshold
+    value:           '1'
+  - key:             bugprone-easily-swappable-parameters.MinimumLength
+    value:	     '3'
   - key:             bugprone-unhandled-self-assignment.WarnOnlyIfThisHasSuspiciousField
     value:           '1'
   - key:             bugprone-unused-return-value.CheckedFunctions

@@ -469,6 +469,8 @@ namespace xdp {
           tile_type tile;
           tile.col = col;
           tile.row = row;
+          tile.active_core   = true;
+          tile.active_memory = true;
 
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -520,6 +522,8 @@ namespace xdp {
       tile_type tile;
       tile.col = col;
       tile.row = row;
+      tile.active_core   = true;
+      tile.active_memory = true;
 
       // Make sure tile is used
       if (allValidTiles.find(tile) == allValidTiles.end()) {

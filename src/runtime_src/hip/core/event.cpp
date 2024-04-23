@@ -102,14 +102,13 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 {
   ctype = type::kernel_start;
   auto k = func->get_kernel();
-  auto arginfo = std::move(xrt_core::kernel_int::get_args(k));
 
   // create run object and set args
   r = xrt::run(k);
 
   using karg = xrt_core::xclbin::kernel_argument;
-  size_t idx = 0;
-  for (const auto& arg : arginfo) {
+  int idx = 0;
+  for (const auto& arg : xrt_core::kernel_int::get_args(k)) {
     // non index args are not supported, this condition will not hit in case of HIP
     if (arg->index == karg::no_index)
       throw std::runtime_error("function has invalid argument");

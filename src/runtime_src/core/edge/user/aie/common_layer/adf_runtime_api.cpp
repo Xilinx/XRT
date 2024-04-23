@@ -124,13 +124,13 @@ err_code graph_api::run()
         //Trigger event XAIE_EVENT_BROADCAST_A_8_PL in shim_tile at column 0 by writing to Event_Generate. The resources have been acquired by aiecompiler.
         // In case of multi-partition flow still XAie_TileLoc(0, 0) will be used to generate event trigger, but here (0,0) indicates the relative
         // tile location i.e. absolute bottom left tile post translation by partition start column is always 0,0.
-        XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_8_PL);
+        XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_8_PL);
 
         // Waiting for 150 cycles to reset the core enable event
         unsigned long long StartTime, CurrentTime = 0;
-        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&StartTime));
+        driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, (u64*)(&StartTime));
         do {
-            driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
+            driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(pGraphConfig->broadcast_column, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
         } while ((CurrentTime - StartTime) <= 150);
 
         XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);

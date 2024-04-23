@@ -37,7 +37,7 @@ namespace xrt::core::hip
   {
     assert(m_device);
 
-    // TODO: useptr is not supported in NPU. 
+    // TODO: useptr is not supported in NPU.
     auto xrt_device = m_device->get_xrt_device();
     m_bo = xrt::ext::bo(xrt_device, host_mem, m_size);
   }
@@ -59,7 +59,7 @@ namespace xrt::core::hip
         break;
       }
       case hipHostMallocWriteCombined: {
-        // This is a workaround to create a buffer with cacheable flag if WriteComined flag is provided. 
+        // This is a workaround to create a buffer with cacheable flag if WriteComined flag is provided.
         // This gets used to create instruction buffer on NPU
         // TODO This would go away once xrt::elf flow is enabled
         auto xrt_device = m_device->get_xrt_device();
@@ -84,7 +84,7 @@ namespace xrt::core::hip
 
     return nullptr;
   }
-  
+
   void*
   memory::get_device_address() const
   {
@@ -103,7 +103,7 @@ namespace xrt::core::hip
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
     }
 
-    const unsigned char *src_ptr = reinterpret_cast<const unsigned char *>(src);
+    auto src_ptr = reinterpret_cast<const unsigned char *>(src);
     src_ptr += src_offset;
     if (m_bo) {
       m_bo.write(src_ptr, size, offset);
@@ -119,21 +119,21 @@ namespace xrt::core::hip
         // pinned hip mem
         assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
     }
-    unsigned char *dst_ptr = reinterpret_cast<unsigned char *>(dst);
+    auto dst_ptr = reinterpret_cast<unsigned char *>(dst);
     dst_ptr += dst_offset;
     if (m_bo) {
       m_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       m_bo.read(dst_ptr, size, offset);
     }
   }
-  
+
   void
   memory::sync(xclBOSyncDirection direction)
   {
     assert(m_bo);
     m_bo.sync(direction);
   }
-  
+
   void
   memory::init_xrt_bo()
   {
@@ -189,7 +189,7 @@ namespace xrt::core::hip
     }
     else {
       auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
-      return std::pair(itr->second, offset);
+      return {itr->second, offset};
     }
   }
 
@@ -202,7 +202,7 @@ namespace xrt::core::hip
     }
     else {
       auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
-      return std::pair(itr->second, offset);
+      return {itr->second, offset};
     }
   }
 

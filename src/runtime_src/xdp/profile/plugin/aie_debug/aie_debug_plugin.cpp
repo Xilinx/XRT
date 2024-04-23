@@ -115,7 +115,7 @@ namespace xdp {
     
       std::vector<tile_type> tiles;
       if (type == module_type::shim) {
-        tiles = metadataReader->getInterfaceTiles("all", "all", "", -1);
+        tiles = metadataReader->getInterfaceTiles("all", "all", "input_output");
       } else {
         tiles = metadataReader->getTiles("all", type, "all");
       }

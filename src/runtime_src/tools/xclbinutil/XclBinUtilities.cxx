@@ -1009,48 +1009,23 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
-int transform_PDI_file(const std::string& fileName)
+#ifndef _WIN32
+// pdi_transform is only available on Linux
+// pdi_transform is defined in libtransformcdo.a
+extern "C" int pdi_transform(char* pdi_file, char* pdi_file_out, const char* out_file);
+
+int transform_PDI_file(std::string fileName)
 {
-  // prototype: run the transform_static executable
-  // in the future, we may decide to link in the transform so instead
- 
-  // TODO: figure out whether we need to integrate transform_static into 
-  // XRT repo and how if so
-  // for now assume user has built or downloaded transform_static
-  // separately, it is either in the current working directory or in PATH 
-  std::string transformExePath = "./transform_static";
-  if (!fs::exists("./transform_static")) {
-#if (BOOST_VERSION >= 106400)
-    auto path = boost::process::search_path("transform_static");
-    if (!path.empty()) {
-      // std::cout << "Found executable at: " << path << std::endl;
-      transformExePath = path.string();
-    } else {
-      auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s' or PATH. Please make sure the exetuable is in PATH or CWD") % fs::current_path();
-      throw std::runtime_error(errMsg.str());
-    }
-#else
-    auto errMsg = boost::format("ERROR: --transform-pdi is specified, but transform_static executable is not found in the current working directory '%s'. Please copy the executable to CWD") % fs::current_path();
-    throw std::runtime_error(errMsg.str());
-#endif
+  // pdi_transform prints lots of messages, these messages go to
+  // the third argument of pdi_transform
+  // pdi_transform can either return 0 or ‐1
+  int ret = pdi_transform(fileName.data(), fileName.data(), "transform_out");
+  if (ret != 0) {
+    std::string errMsg = "ERROR: --transform-pdi is specified, but pdi transformation failed, please make sure the pdi files are valid";
+    throw std::runtime_error(errMsg);
   }
 
-  // const std::string transformExe = "./transform_static";
-  const std::vector<std::string> cmdOptions = { fileName, fileName };
-
-  // Build the command line
-  std::string cmdLine = transformExePath;
-  for (const auto& option : cmdOptions)
-    cmdLine += " " + option;
-    
-  XUtil::TRACE("Cmd: " + cmdLine);
-
-  std::ostringstream os_stdout;
-  std::ostringstream os_stderr;
-  // since we throw on error, we don't care about the return value from exec
-  XUtil::exec(transformExePath, cmdOptions, true /*throw exception*/, os_stdout, os_stderr);
-
-  return 0;
+  return ret;
 }
 
 void 
@@ -1161,6 +1136,8 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   // delete the temp dir
   fs::remove_all(tempDir);
 }
+#endif
+
 
 #if (BOOST_VERSION >= 106400)
 int 

@@ -27,7 +27,7 @@ jobs:
           - os: ubuntu2004      
             packageType: deb
             os_ver: ubuntu_20.04      
-          - os: ubuntu2204      
+          - os: hip      
             packageType: deb
             os_ver: ubuntu_22.04      
         
@@ -41,7 +41,7 @@ jobs:
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v3 
         with: 
           # repository: "${{ github.event.pull_request.head.repo.full_name }}"
           # ref: "${{ github.event.pull_request.head.ref }}"
