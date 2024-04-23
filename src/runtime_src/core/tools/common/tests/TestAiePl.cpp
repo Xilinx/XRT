@@ -242,7 +242,7 @@ TestAiePl::runTest(std::shared_ptr<xrt_core::device> dev, boost::property_tree::
     b_file = "vck5000_pcie_pl_controller.xclbin.xclbin";
     binaryFile = std::filesystem::path(test_path) / b_file;
     if (!std::filesystem::exists(binaryFile)){
-      logger(ptree, "Error", boost::str(boost::format("The xclbin could not be found"))); 
+      logger(ptree, "Details", boost::str(boost::format("The xclbin could not be found")));
       ptree.put("status", test_token_skipped);
       return;
     }
