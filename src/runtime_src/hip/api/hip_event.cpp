@@ -28,11 +28,9 @@ static void hip_event_record(hipEvent_t eve, hipStream_t stream)
 {
   throw_invalid_value_if(!eve, "event passed is nullptr");
   throw_invalid_value_if(!stream, "stream passed is nullptr");
-  /* TODO
   auto hip_stream = get_stream(stream);
   auto hip_ev = std::dynamic_pointer_cast<event>(command_cache.get(eve));
   hip_ev->record(hip_stream);
-  */
 }
 
 static void hip_event_synchronize(hipEvent_t eve)
@@ -51,7 +49,9 @@ static float hip_event_elapsed_time(hipEvent_t start, hipEvent_t stop)
   throw_invalid_value_if(!hip_ev_start, "dynamic_pointer_cast failed");
   auto hip_ev_stop = std::dynamic_pointer_cast<event>(command_cache.get(stop));
   throw_invalid_value_if(!hip_ev_stop, "dynamic_pointer_cast failed");
-  return hip_ev_start->elapsed_time(hip_ev_stop);
+  auto duration = hip_ev_stop->get_time() - hip_ev_start->get_time();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+  return static_cast<float>(millis);
 }
 
 static bool hip_event_query(hipEvent_t eve)

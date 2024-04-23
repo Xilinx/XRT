@@ -169,7 +169,7 @@ hipCtxGetDevice(hipDevice_t* device)
   try {
     throw_invalid_value_if(!device, "device passed is nullptr");
 
-    *device = xrt::core::hip::hip_ctx_get_device();
+    *device = static_cast<int>(xrt::core::hip::hip_ctx_get_device());
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -235,4 +235,3 @@ hipDevicePrimaryCtxRelease(hipDevice_t dev)
   }
   return hipErrorUnknown;
 }
-

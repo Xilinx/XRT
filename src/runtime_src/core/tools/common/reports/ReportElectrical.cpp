@@ -5,6 +5,7 @@
 #include "ReportElectrical.h"
 #include "tools/common/Table2D.h"
 #include "core/common/sensor.h"
+#include "core/common/query_requests.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -26,7 +27,7 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void
-ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
+ReportElectrical::writeReport( const xrt_core::device* _pDevice,
                                const boost::property_tree::ptree& _pt,
                                const std::vector<std::string>& /*_elementsFilter*/,
                                std::ostream & _output) const
@@ -36,9 +37,19 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Electrical\n";
   const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
 
-  auto max_watts = _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
-  if (max_watts != "N/A")
-    _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % max_watts;
+  std::string max_watts = "N/A";
+  switch (xrt_core::device_query_default<xrt_core::query::device_class>(_pDevice, xrt_core::query::device_class::type::alveo)) {
+  case xrt_core::query::device_class::type::alveo:
+  {
+    max_watts = _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
+    if (max_watts != "N/A")
+      _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % max_watts;
+    break;
+  }
+  case xrt_core::query::device_class::type::ryzen:
+    // We currently do not have Max Power from Ryzen devices.
+    break;
+  }
 
   auto watts = _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
   if (watts != "N/A")

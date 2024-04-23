@@ -133,6 +133,19 @@ XBUtilities::get_available_devices(bool inUserDomain)
       }
 
       try {
+        const auto fw_ver = xrt_core::device_query_default<xq::firmware_version>(device, {0,0,0,0});
+        std::string version = "N/A";
+        if (fw_ver.major != 0 || fw_ver.minor != 0 || fw_ver.patch != 0 || fw_ver.build != 0) {
+          version = boost::str(boost::format("%u.%u.%u.%u")
+            % fw_ver.major % fw_ver.minor % fw_ver.patch % fw_ver.build);
+        }
+        pt_dev.put("firmware_version", version);
+      }
+      catch(...) {
+        // The firmware wasn't added
+      }
+
+      try {
         auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
         std::string pf = device->is_userpf() ? "user" : "mgmt";
         pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
@@ -384,7 +397,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       auto exp_ver = xrt_core::device_query_default<xrt_core::query::hwmon_sdm_target_msp_ver>(device, unavail);
       cur_ver = (boost::equals(cur_ver, zeroes)) ? unavail : cur_ver;
       exp_ver = (boost::equals(exp_ver, zeroes)) ? unavail : exp_ver;
-      if (boost::equals(cur_ver, unavail) || boost::equals(exp_ver, unavail))
+      if ((boost::equals(cur_ver, unavail) || boost::equals(exp_ver, unavail)) && !boost::equals(cur_ver, exp_ver))
         warnings.push_back("SC version data missing. Upgrade your shell");
       else if (!boost::equals(cur_ver, exp_ver))
         warnings.push_back(boost::str(boost::format("Invalid SC version. Expected: %s Current: %s") % exp_ver % cur_ver));

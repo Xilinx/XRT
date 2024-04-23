@@ -152,6 +152,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
+  //Log
+  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'GB") % buffer_size_gb));
+  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
@@ -169,7 +173,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
-    busy_bar.finish();
+  busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -186,7 +190,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   //Data is read and written in parallel hence x2
   float bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
+  logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%.1f' GB/s") % bandwidth));
 
   ptree.put("status", test_token_passed);

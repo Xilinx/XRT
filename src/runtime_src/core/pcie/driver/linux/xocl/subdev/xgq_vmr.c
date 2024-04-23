@@ -394,7 +394,7 @@ static int vmr_log_dump_to_dmesg(struct xocl_xgq_vmr *xgq, char *buf, char *log_
 	XGQ_WARN(xgq, "%s", log_buf);
 	return 0;
 }
-
+	
 static int vmr_log_dump_to_buf(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
 {
 	return buf == NULL ? 0 : snprintf(buf, PAGE_SIZE, "%s\n", log_buf);
@@ -2316,89 +2316,6 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_collect_sensors_request_size(struct platform_device *pdev, uint16_t *sensor_size, int repo_id)
-{
-	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	struct xocl_xgq_vmr_cmd *cmd = NULL;
-	struct xgq_cmd_sensor_payload *payload = NULL;
-	struct xgq_cmd_sq_hdr *hdr = NULL;
-	int id = 0;
-	uint32_t ret = 0;
-
-	if (vmr_get_sc_status(xgq) != XGQ_CMD_SC_READY) {
-		XGQ_ERR(xgq, "SC is not ready, skipping sensors size request command");
-		return -EAGAIN;
-	}
-
-	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
-	if (!cmd) {
-		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return -ENOMEM;
-	}
-
-	memset(cmd, 0, sizeof(*cmd));
-	cmd->xgq_cmd_cb = xgq_complete_cb;
-	cmd->xgq_cmd_arg = cmd;
-	cmd->xgq_vmr = xgq;
-
-	payload = &(cmd->xgq_cmd_entry.sensor_payload);
-	/* SDR Get size does not use shared memory, hence set the address and size parameters to 0. */
-	payload->address = 0;
-	payload->size = 0;
-	//Sensor API ID
-	payload->aid = XGQ_CMD_SENSOR_AID_GET_SIZE;
-	//Sensor request ID
-	payload->sid = repo_id;
-	//Sensor ID
-	payload->sensor_id = 0;
-
-
-	hdr = &(cmd->xgq_cmd_entry.hdr);
-	hdr->opcode = XGQ_CMD_OP_SENSOR;
-	hdr->state = XGQ_SQ_CMD_NEW;
-	hdr->count = sizeof(*payload);
-	id = get_xgq_cid(xgq);
-	if (id < 0) {
-		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto cid_alloc_failed;
-	}
-	hdr->cid = id;
-
-	/* init condition veriable */
-	init_completion(&cmd->xgq_cmd_complete);
-
-	/* set timout actual jiffies */
-	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
-
-	ret = submit_cmd(xgq, cmd);
-	if (ret) {
-		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
-		goto done;
-	}
-
-	/* wait for command completion */
-	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submitted cmd killed");
-		xgq_submitted_cmd_remove(xgq, cmd);
-	}
-
-	ret = cmd->xgq_cmd_rcode;
-	if (ret) {
-		XGQ_DBG(xgq, "ret %d sensor_size=%d repo_id=%d", cmd->xgq_cmd_rcode);
-	} else {
-		/* sensor size result is in rdata */
-		*sensor_size = ((struct xgq_cmd_cq_sensor_payload *)&cmd->xgq_cmd_cq_payload)->sensor_size;
-	}
-
-done:
-	remove_xgq_cid(xgq, id);
-
-cid_alloc_failed:
-	kfree(cmd);
-
-	return ret;
-}
-
 static int xgq_collect_sensors_by_repo_id(struct platform_device *pdev, char *buf,
 	 uint8_t repo_id, uint32_t len)
 {
@@ -3469,7 +3386,7 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 }
 /* Function to query VMR and return the appropriate
  * SC status.
- */
+ */ 
 static xgq_cmd_sc_status vmr_get_sc_status(struct xocl_xgq_vmr *xgq)
 {
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
@@ -3688,7 +3605,6 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_sensors_request_size = xgq_collect_sensors_request_size,
 	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,

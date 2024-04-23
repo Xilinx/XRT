@@ -424,7 +424,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
 
     // Populate the mem tile information such as dma, lock, error, events
     // for each tiles.
-    for (const auto& am: pt_mem.get_child("aie_mem")) {
+    for (const auto& am : pt_mem.get_child("aie_mem")) {
       const boost::property_tree::ptree& imem = am.second;
       boost::property_tree::ptree omem;
       int col = imem.get<uint32_t>("col");
@@ -456,10 +456,10 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     }
 
     pt.add_child("tiles", tile_array);
-
+    
   }
   catch (const std::exception& ex) {
-    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
+    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE mem"));
   }
 
   return pt;
@@ -839,6 +839,11 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
   pt.put("schema_version.minor", pt_aie.get<uint32_t>("schema_version.minor"));
   pt.put("schema_version.patch", pt_aie.get<uint32_t>("schema_version.patch"));
 
+  auto start_col = 0;
+  auto overlay_start_cols = pt_aie.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+  if (overlay_start_cols && !overlay_start_cols->empty()) 
+    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+
   // Extract Graphs from aie_metadata and populate the aie
   for (auto& gr: pt_aie.get_child("aie_metadata.graphs", empty_pt)) {
     boost::property_tree::ptree& igraph = gr.second;
@@ -854,9 +859,9 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
     auto memaddr_it = gr.second.get_child("iteration_memory_addresses").begin();
     for (const auto& node : gr.second.get_child("core_columns", empty_pt)) {
       boost::property_tree::ptree tile;
-      tile.put("column", node.second.data());
+      tile.put("column", (std::stoul(node.second.data()) + start_col));
       tile.put("row", row_it->second.data());
-      tile.put("memory_column", memcol_it->second.data());
+      tile.put("memory_column", (std::stoul(memcol_it->second.data()) + start_col));
       tile.put("memory_row", memrow_it->second.data());
       tile.put("memory_address", memaddr_it->second.data());
       populate_aie_core(core_info, tile);

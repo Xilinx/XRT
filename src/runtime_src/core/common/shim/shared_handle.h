@@ -3,6 +3,8 @@
 #ifndef XRT_CORE_SHARED_HANDLE_H
 #define XRT_CORE_SHARED_HANDLE_H
 
+#include <cstdint>
+
 namespace xrt_core {
 
 // shared_handle - Representation of a shared object.

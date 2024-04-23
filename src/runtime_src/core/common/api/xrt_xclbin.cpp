@@ -211,7 +211,7 @@ class xclbin::ip_impl
 public: // purposely not a struct to match decl in xrt_xclbin.h
   const ::ip_data* m_ip;            //
   int32_t m_ip_layout_idx;          // index in IP_LAYOUT seciton
-  size_t m_size = 64_kb;            // address range of this ip (a kernel property)
+  size_t m_size = 64_kb;            // NOLINT address range of this ip (a kernel property)
   std::vector<xclbin::arg> m_args;  // index by argument index
 
   void
@@ -257,13 +257,13 @@ public:
     return m_args[argidx];
   }
 
-  xrt::xclbin::ip::ip_type
+  [[nodiscard]] xrt::xclbin::ip::ip_type
   get_type() const
   {
     return static_cast<xrt::xclbin::ip::ip_type>(m_ip->m_type);
   }
 
-  xrt::xclbin::ip::control_type
+  [[nodiscard]] xrt::xclbin::ip::control_type
   get_control_type() const
   {
     return static_cast<xrt::xclbin::ip::control_type>((m_ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
@@ -364,7 +364,7 @@ class xclbin::aie_partition_impl
 public: // purposely not a struct to match decl in xrt_xclbin.h
   const ::aie_partition* m_aiep;
 
-  aie_partition_impl(const ::aie_partition* aiep)
+  explicit aie_partition_impl(const ::aie_partition* aiep)
     : m_aiep(aiep)
   {}
 };
@@ -913,12 +913,8 @@ class xclbin_repository::iterator_impl
 {
   std::vector<std::filesystem::path>::const_iterator m_itr;
 public:
-  iterator_impl(std::vector<std::filesystem::path>::const_iterator itr)
+  explicit iterator_impl(std::vector<std::filesystem::path>::const_iterator itr)
     : m_itr(itr)
-  {}
-
-  iterator_impl(const iterator_impl& rhs)
-    : m_itr(rhs.m_itr)
   {}
 
   iterator_impl&
@@ -934,13 +930,13 @@ public:
     return m_itr == rhs.m_itr;
   }
 
-  xrt::xclbin
+  [[nodiscard]] xrt::xclbin
   get_xclbin() const
   {
     return xrt::xclbin{get_xclbin_path()};
   }
 
-  std::string
+  [[nodiscard]] std::string
   get_xclbin_path() const
   {
     return (*m_itr).string();
@@ -974,7 +970,7 @@ class xclbin_repository_impl
       sfs::directory_iterator end;
       for (; p != end; ++p) {
         if (sfs::is_regular_file(*p) && p->path().extension() == ".xclbin")
-          xclbin_paths.push_back(p->path().string());
+          xclbin_paths.emplace_back(p->path().string());
       }
     }
     
@@ -987,24 +983,24 @@ public:
     , m_xclbin_paths(get_xclbin_paths(m_paths))
   {}
   
-  xclbin_repository_impl(const std::string& path)
+  explicit xclbin_repository_impl(const std::string& path)
     : m_paths{path}
     , m_xclbin_paths(get_xclbin_paths(m_paths))
   {}
 
-  xclbin_repository::iterator
+  [[nodiscard]] xclbin_repository::iterator
   begin() const
   {
     return std::make_shared<xclbin_repository::iterator_impl>(m_xclbin_paths.begin());
   }
 
-  xclbin_repository::iterator
+  [[nodiscard]] xclbin_repository::iterator
   end() const
   {
     return std::make_shared<xclbin_repository::iterator_impl>(m_xclbin_paths.end());
   }
 
-  xclbin
+  [[nodiscard]] xclbin
   load(const std::string& name) const
   {
     namespace sfs = std::filesystem;
@@ -1245,7 +1241,7 @@ get_type() const
 {
   return handle
     ? handle->get_type()
-    : static_cast<xclbin::ip::ip_type>(std::numeric_limits<uint8_t>::max());
+    : static_cast<xclbin::ip::ip_type>(std::numeric_limits<uint8_t>::max()); // NOLINT
 }
 
 xclbin::ip::control_type
@@ -1254,7 +1250,7 @@ get_control_type() const
 {
   return handle
     ? handle->get_control_type()
-    : static_cast<xclbin::ip::control_type>(std::numeric_limits<uint8_t>::max());
+    : static_cast<xclbin::ip::control_type>(std::numeric_limits<uint8_t>::max()); // NOLINT
 }
 
 size_t
@@ -1397,6 +1393,7 @@ xclbin::mem::memory_type
 xclbin::mem::
 get_type() const
 {
+  // NOLINTNEXTLINE
   return handle ? static_cast<memory_type>(handle->m_mem->m_type) : static_cast<memory_type>(-1);
 }
 
@@ -1491,7 +1488,7 @@ operator++()
   return *this;
 }
 
-xclbin_repository::iterator
+xclbin_repository::iterator    // NOLINT non const return value is valid iterator
 xclbin_repository::iterator::
 operator++(int)
 {
@@ -1552,7 +1549,7 @@ send_exception_message(const char* msg)
 // handle is valid Needed when the C API for device tries to load an
 // xclbin using C pointer to xclbin
 ////////////////////////////////////////////////////////////////
-namespace xrt_core { namespace xclbin_int {
+namespace xrt_core::xclbin_int {
 
 const axlf*
 get_axlf(xrtXclbinHandle handle)
@@ -1609,7 +1606,7 @@ get_project_name(const xrt::xclbin& xclbin)
   return xclbin.get_handle()->get_project_name();
 }
 
-}} // namespace xclbin_int, core_core
+} // xrt_core::xclbin_int
 
 ////////////////////////////////////////////////////////////////
 // xrt_xclbin C API implmentations (xrt_xclbin.h)

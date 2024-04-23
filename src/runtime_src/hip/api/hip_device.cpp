@@ -21,7 +21,7 @@ std::once_flag device_init_flag;
 
 // Creates devices at library load
 // User may not explicitly call init or device create
-struct X {
+const struct X {
   X()
   {
     try {
@@ -261,4 +261,3 @@ hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   }
   return hipErrorUnknown;
 }
-

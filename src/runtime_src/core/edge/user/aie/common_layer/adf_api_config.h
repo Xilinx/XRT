@@ -56,6 +56,7 @@ struct graph_config
     std::vector<short> iterMemRows;
     std::vector<size_t> iterMemAddrs;
     std::vector<bool> triggered;
+    uint32_t broadcast_column;
 };
 
 struct rtp_config

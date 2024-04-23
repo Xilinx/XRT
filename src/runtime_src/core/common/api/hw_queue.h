@@ -7,6 +7,7 @@
 #include "xrt/detail/pimpl.h"
 
 #include "experimental/xrt_fence.h"
+#include "experimental/xrt_kernel.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -52,6 +53,10 @@ public:
   XRT_CORE_COMMON_EXPORT
   void
   unmanaged_start(xrt_core::command* cmd);
+
+  // Submit a runlist for execution
+  void
+  submit(const xrt::runlist& runlist);
 
   // Wait for command completion.  Supports both managed and unmanaged
   // commands.

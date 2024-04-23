@@ -21,8 +21,7 @@ namespace xrt::core::hip
       : m_device(std::move(dev)),
 	m_size(sz),
 	m_type(memory_type::device),
-	m_flags(0),
-	m_bo(nullptr)
+	m_flags(0)
   {
     assert(m_device);
 
@@ -34,22 +33,20 @@ namespace xrt::core::hip
       : m_device(std::move(dev)),
 	m_size(sz),
 	m_type(memory_type::registered),
-	m_flags(flags),
-	m_bo(nullptr)
-    {
-      assert(m_device);
+	m_flags(flags)
+  {
+    assert(m_device);
 
-      // TODO: useptr is not supported in NPU. 
-      auto xrt_device = m_device->get_xrt_device();
-      m_bo = std::make_shared<xrt::ext::bo>(xrt_device, host_mem, m_size);
-    }
+    // TODO: useptr is not supported in NPU.
+    auto xrt_device = m_device->get_xrt_device();
+    m_bo = xrt::ext::bo(xrt_device, host_mem, m_size);
+  }
 
   memory::memory(std::shared_ptr<device> dev, size_t sz, unsigned int flags)
       : m_device(std::move(dev)),
 	m_size(sz),
 	m_type(memory_type::host),
-	m_flags(flags),
-	m_bo(nullptr)
+	m_flags(flags)
   {
     assert(m_device);
 
@@ -57,84 +54,91 @@ namespace xrt::core::hip
       // TODO Need to create locked memory for Default and Portable flags. Creating a regular BO for now
       case hipHostMallocDefault:
       case hipHostMallocPortable:
-      case hipHostMallocMapped:
-      case hipHostMallocWriteCombined:
+      case hipHostMallocMapped: {
         init_xrt_bo();
         break;
-
+      }
+      case hipHostMallocWriteCombined: {
+        // This is a workaround to create a buffer with cacheable flag if WriteComined flag is provided.
+        // This gets used to create instruction buffer on NPU
+        // TODO This would go away once xrt::elf flow is enabled
+        auto xrt_device = m_device->get_xrt_device();
+        m_bo = xrt::bo(xrt_device, m_size, xrt::bo::flags::cacheable, 1);
+        break;
+      }
       default:
         break;
     }
   }
 
   void*
-  memory::get_address() const
+  memory::get_address()
   {
     if (!m_bo)
       return nullptr;
 
     if (get_type() == memory_type::device)
-      return reinterpret_cast<void *>(m_bo->address());
+      return reinterpret_cast<void *>(m_bo.address());
     else if (get_type() == memory_type::host || get_type() == memory_type::registered)
-      return m_bo->map();
+      return m_bo.map();
 
     return nullptr;
   }
-  
+
   void*
   memory::get_device_address() const
   {
     if (!m_bo)
       return nullptr;
 
-    return reinterpret_cast<void *>(m_bo->address());
+    return reinterpret_cast<void *>(m_bo.address());
   }
 
   void
   memory::write(const void *src , size_t size, size_t src_offset, size_t offset)
   {
-    auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src);
+    auto src_hip_mem = memory_database::instance().get_hip_mem_from_addr(src).first;
     if (src_hip_mem && src_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
     }
 
-    const unsigned char *src_ptr = reinterpret_cast<const unsigned char *>(src);
+    auto src_ptr = reinterpret_cast<const unsigned char *>(src);
     src_ptr += src_offset;
     if (m_bo) {
-      m_bo->write(src_ptr, size, offset);
-      m_bo->sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      m_bo.write(src_ptr, size, offset);
+      m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
   }
 
   void
-  memory::read(void *dst, size_t size, size_t dst_offset, size_t offset) const
+  memory::read(void *dst, size_t size, size_t dst_offset, size_t offset)
   {
-    auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto dst_hip_mem = memory_database::instance().get_hip_mem_from_addr(dst).first;
     if (dst_hip_mem != nullptr && dst_hip_mem->get_type() == memory_type::host) {
         // pinned hip mem
         assert(dst_hip_mem->get_flags() == hipHostMallocDefault || dst_hip_mem->get_flags() == hipHostMallocPortable);
     }
-    unsigned char *dst_ptr = reinterpret_cast<unsigned char *>(dst);
+    auto dst_ptr = reinterpret_cast<unsigned char *>(dst);
     dst_ptr += dst_offset;
     if (m_bo) {
-      m_bo->sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-      m_bo->read(dst_ptr, size, offset);
+      m_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+      m_bo.read(dst_ptr, size, offset);
     }
   }
-  
+
   void
   memory::sync(xclBOSyncDirection direction)
   {
     assert(m_bo);
-    m_bo->sync(direction);
+    m_bo.sync(direction);
   }
-  
+
   void
   memory::init_xrt_bo()
   {
     auto xrt_device = m_device->get_xrt_device();
-    m_bo = std::make_shared<xrt::ext::bo>(xrt_device, m_size);
+    m_bo = xrt::ext::bo(xrt_device, m_size);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -176,27 +180,29 @@ namespace xrt::core::hip
     m_addr_map.erase(address_range_key(addr, 0));
   }
 
-  std::shared_ptr<xrt::core::hip::memory>
+  std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
-      return nullptr;
+      return std::pair(nullptr, 0);
     }
     else {
-      return itr->second;
+      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      return {itr->second, offset};
     }
   }
 
-  std::shared_ptr<const xrt::core::hip::memory>
+  std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
-      return nullptr;
+      return std::pair(nullptr, 0);
     }
     else {
-      return itr->second;
+      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      return {itr->second, offset};
     }
   }
 

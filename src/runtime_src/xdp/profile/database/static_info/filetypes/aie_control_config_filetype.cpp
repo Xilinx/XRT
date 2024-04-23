@@ -251,9 +251,14 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
-
-        if ((channelId >= 0) && (channelId != io.second.channelNum)) 
+        // Make sure channel number is same as specified (GMIO only)
+        if ((type == 1) && (channelId >= 0) && (channelId != io.second.channelNum)) {
+            std::stringstream msg;
+            msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
+                << +shimCol <<" and stream ID " << +streamId;
+            xrt_core::message::send(severity_level::info, "XRT", msg.str());
             continue;
+        }
 
         tile_type tile = {0};
         tile.col = shimCol;
@@ -457,9 +462,10 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
                                    module_type type,
                                    const std::string& kernel_name) const
 {
+    // Catch memory tiles and 'all' AIE tiles
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if ((type == module_type::dma) && (kernel_name.compare("all") == 0))
+    if (kernel_name.compare("all") == 0)
         return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs

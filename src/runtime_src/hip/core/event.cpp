@@ -15,26 +15,26 @@ void event::record(std::shared_ptr<stream> s)
   cstream = std::move(s);
   auto ev = std::dynamic_pointer_cast<event>(command_cache.get(static_cast<command_handle>(this)));
   throw_invalid_handle_if(!ev, "event passed is invalid");
-  /*
-  TODO
   if (is_recorded()) {
     // already recorded
-    cstream->erase_cmd(ev); It is commented will be uncomment after stream PR is pushed
+    cstream->erase_cmd(ev);
   }
   // update recorded commands list
-  cstream->enqueue_event(std::move(ev));It is commented will be uncomment after stream PR is pushed
-  */
+  cstream->enqueue_event(ev);
   set_state(state::recorded);
 }
 
 bool event::is_recorded() const
 {
+  //the event is recorded only if the state is not init
   return get_state() >= command::state::recorded;
 }
 
 bool event::query()
 {
-  for (auto rec_com : recorded_commands){
+  //This function will return true if all commands in the appropriate stream which specified to hipEventRecord() have completed.
+  std::lock_guard lock(m_mutex_rec_coms);
+  for (auto& rec_com : m_recorded_commands){
     state command_state = rec_com->get_state();
     if (command_state != state::completed){
       return false;
@@ -45,11 +45,17 @@ bool event::query()
 
 bool event::synchronize()
 {
-  for (auto rec_com : recorded_commands) {
+  //wait for commands in recorded list of the event to be completed
+  std::lock_guard rec_lock(m_mutex_rec_coms);
+  for (auto& rec_com : m_recorded_commands) {
     rec_com->wait();
   }
+  //then the event is considered as completed
   set_state(state::completed);
-  for (auto coms_ch :chain_of_commands){
+
+  //all commands depend on the event start running
+  std::lock_guard ch_lock(m_mutex_chain_coms);
+  for (auto& coms_ch :m_chain_of_commands){
     coms_ch->submit();
   }
   return true;
@@ -80,19 +86,14 @@ std::shared_ptr<stream> event::get_stream()
 
 void event::add_to_chain(std::shared_ptr<command> cmd)
 {
-  // lock and add
+  std::lock_guard lock(m_mutex_chain_coms);
+  m_chain_of_commands.push_back(std::move(cmd));
 }
 
 void event::add_dependency(std::shared_ptr<command> cmd)
 {
-  // lock and add
-}
-
-float event::elapsed_time (const std::shared_ptr<command>& end)
-{
-  auto duration = end->get_time() - get_time();
-  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-  return millis;
+  std::lock_guard lock(m_mutex_rec_coms);
+  m_recorded_commands.push_back(std::move(cmd));
 }
 
 kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
@@ -101,14 +102,13 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 {
   ctype = type::kernel_start;
   auto k = func->get_kernel();
-  auto arginfo = std::move(xrt_core::kernel_int::get_args(k));
 
   // create run object and set args
   r = xrt::run(k);
 
   using karg = xrt_core::xclbin::kernel_argument;
-  size_t idx = 0;
-  for (const auto& arg : arginfo) {
+  int idx = 0;
+  for (const auto& arg : xrt_core::kernel_int::get_args(k)) {
     // non index args are not supported, this condition will not hit in case of HIP
     if (arg->index == karg::no_index)
       throw std::runtime_error("function has invalid argument");
@@ -118,10 +118,14 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
         xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
         break;
       case karg::argtype::global : {
-        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]);
+        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
         if (!hip_mem)
           throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
-        r.set_arg(idx, *(hip_mem->get_xrt_bo()));
+
+        // NPU device is not coherent. We need to sync the buffer objects before launching kernel
+        if (hip_mem->get_type() != memory_type::device)
+          hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE);
+        r.set_arg(idx, hip_mem->get_xrt_bo());
         break;
       }
       case karg::argtype::constant :
@@ -164,21 +168,35 @@ bool kernel_start::wait()
   return false;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s)
-  : command(std::move(s))
+copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
+  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), copy_size(size), dev_offset(offset)
 {
   ctype = type::buffer_copy;
 }
 
 bool copy_buffer::submit()
 {
-  //handle = std::async(&xrt::bo::sync, &cbo, cdirection);
+  switch(cdirection)
+  {
+    case XCL_BO_SYNC_BO_TO_DEVICE:
+      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr, copy_size, 0, dev_offset);
+      break;
+
+    case XCL_BO_SYNC_BO_FROM_DEVICE:
+      handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, copy_size, dev_offset, 0);
+      break;
+
+    default:
+      break;
+  };
+
   return true;
 }
 
 bool copy_buffer::wait()
 {
   handle.wait();
+  set_state(state::completed);
   return true;
 }
 

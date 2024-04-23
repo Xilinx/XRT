@@ -110,4 +110,17 @@ namespace xdp {
 #endif
   }
 
+  void MLTimelinePlugin::broadcast(VPDatabase::MessageType msgType, void* /*blob*/)
+  {
+    switch(msgType)
+    {
+      case VPDatabase::READ_RECORD_TIMESTAMPS:
+      {
+        writeAll(false);
+        break;
+      }
+      default:
+        break;
+    }
+  }
 }

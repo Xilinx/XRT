@@ -413,12 +413,14 @@ namespace xdp {
           type = module_type::dma;
 
         // Ignore invalid types and inactive modules
+        // NOTE: Inactive core modules are configured when utilizing
+        //       stream switch monitor ports to profile DMA channels
         if (!aie::profile::isValidType(type, mod))
           continue;
-        if (((type == module_type::core) && !tile.active_core)
-            || ((type == module_type::dma) && !tile.active_memory)) {
-          auto pairModuleIdx = metadata->getPairModuleIndex(metricSet, type);
-          if (pairModuleIdx < 0)
+        if ((type == module_type::dma) && !tile.active_memory)
+          continue;
+        if ((type == module_type::core) && !tile.active_core) {
+          if (metadata->getPairModuleIndex(metricSet, type) < 0)
             continue;
         }
 

@@ -43,7 +43,7 @@ namespace xrt::core::hip
     memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, void *host_mem, unsigned int flags);
     
     void*
-    get_address() const;
+    get_address();
     
     void*
     get_device_address() const;
@@ -52,13 +52,13 @@ namespace xrt::core::hip
     write(const void *src, size_t size, size_t src_offset = 0, size_t offset = 0);
 
     void
-    read(void *dst, size_t size, size_t dst_offset = 0, size_t offset = 0) const;
+    read(void *dst, size_t size, size_t dst_offset = 0, size_t offset = 0); 
     
     void
     sync(xclBOSyncDirection);
 
 
-    std::shared_ptr<xrt::bo>
+    const xrt::bo&
     get_xrt_bo() const
     {
       return m_bo;
@@ -76,7 +76,7 @@ namespace xrt::core::hip
       return m_type;
     }
     
-    int
+    size_t
     get_size() const
     {
       return m_size;
@@ -87,7 +87,7 @@ namespace xrt::core::hip
     size_t m_size;
     memory_type m_type;
     unsigned int m_flags;
-    std::shared_ptr<xrt::bo> m_bo;
+    xrt::bo m_bo;
 
     void
     init_xrt_bo();
@@ -144,10 +144,10 @@ namespace xrt::core::hip
     void
     remove(uint64_t addr);
   
-    std::shared_ptr<xrt::core::hip::memory>
+    std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);
   
-    std::shared_ptr<const xrt::core::hip::memory>
+    std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(const void* addr);
   };
   

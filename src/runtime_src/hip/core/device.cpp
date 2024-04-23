@@ -11,6 +11,6 @@ device::
 device(uint32_t device_id)
   : m_device_id{device_id}
   , m_xrt_device{device_id}
+  , m_flags{0}
 {}
 }
-

@@ -16,6 +16,7 @@
 #include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -114,7 +115,7 @@ namespace xdp {
     
       std::vector<tile_type> tiles;
       if (type == module_type::shim) {
-        tiles = metadataReader->getInterfaceTiles("all", "all", "", -1);
+        tiles = metadataReader->getInterfaceTiles("all", "all", "input_output");
       } else {
         tiles = metadataReader->getTiles("all", type, "all");
       }
@@ -280,6 +281,11 @@ namespace xdp {
   poll()
   {
     xrt_core::message::send(severity_level::debug, "XRT", "Calling AIE Poll.");
+
+    if (db->infoAvailable(xdp::info::ml_timeline)) {
+      db->broadcast(VPDatabase::MessageType::READ_RECORD_TIMESTAMPS, nullptr);
+      xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
+    }
 
     if (!transactionHandler->submitTransaction(txn_ptr))
       return;

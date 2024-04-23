@@ -383,7 +383,8 @@ namespace xdp::aie {
       for (auto& info : infoVector) {
         auto startCol = static_cast<uint8_t>(info.start_col);
         xrt_core::message::send(severity_level::info, "XRT",
-            "Partition shift of " + std::to_string(startCol) + " was found.");
+            "Partition shift of " + std::to_string(startCol) +
+            " was found, number of columns: " + std::to_string(info.num_cols));
         startCols.push_back(startCol);
       }
     }

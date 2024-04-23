@@ -4,6 +4,7 @@
 #define xrthip_event_h
 
 #include "common.h"
+#include "memory.h"
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
@@ -43,49 +44,72 @@ public:
 
 protected:
   std::shared_ptr<stream> cstream;
-  type ctype;
+  type ctype = type::event;
   std::chrono::time_point<std::chrono::system_clock> ctime;
-  state cstate;
+  state cstate = state::init;
 
 public:
-  command()
-    : cstate{state::init}
+    command() = default;
+
+  explicit command(std::shared_ptr<stream> s)
+    : cstream{std::move(s)}
   {}
 
-  command(std::shared_ptr<stream> s)
-    : cstream{std::move(s)}
-    , cstate{state::init}
-  {}
+  virtual ~command() = default;
+  command(const command &) = delete;
+  command(command &&) = delete;
+  command& operator =(command const&) = delete;
+  command& operator =(command &&) = delete;
 
   virtual bool submit() = 0;
   virtual bool wait() = 0;
-  state get_state() const { return cstate; }
-  std::chrono::time_point<std::chrono::system_clock> get_time() { return ctime; }
-  void set_state(state newstate) { cstate = newstate; };
+
+  [[nodiscard]]
+  state
+  get_state() const
+  {
+    return cstate;
+  }
+
+  std::chrono::time_point<std::chrono::system_clock>
+  get_time()
+  {
+    return ctime;
+  }
+
+  void
+  set_state(state newstate)
+  {
+    cstate = newstate;
+  }
+
+  [[nodiscard]]
   type
-  get_type() const { return ctype; }
+  get_type() const
+  {
+    return ctype;
+  }
 };
 
 class event : public command
 {
 private:
-  std::mutex m_mutex;
-  std::vector<std::shared_ptr<command>> recorded_commands;
-  std::vector<std::shared_ptr<command>> chain_of_commands;
+  std::mutex m_mutex_rec_coms;
+  std::mutex m_mutex_chain_coms;
+  std::vector<std::shared_ptr<command>> m_recorded_commands;
+  std::vector<std::shared_ptr<command>> m_chain_of_commands;
 
 public:
   event();
-
   void record(std::shared_ptr<stream> s);
   bool submit() override;
   bool wait() override;
   bool synchronize();
   bool query();
-  bool is_recorded() const;
+  [[nodiscard]] bool is_recorded() const;
   std::shared_ptr<stream> get_stream();
   void add_to_chain(std::shared_ptr<command> cmd);
   void add_dependency(std::shared_ptr<command> cmd);
-  float elapsed_time(const std::shared_ptr<command>& end);
 };
 
 class kernel_start : public command
@@ -103,13 +127,16 @@ public:
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
   bool submit() override;
   bool wait() override;
 
 private:
   xclBOSyncDirection cdirection;
-  xrt::bo cbo;
+  std::shared_ptr<memory> buffer;
+  void* host_ptr;
+  size_t copy_size;
+  size_t dev_offset; // offset for device memory
   std::future<void> handle;
 };
 
