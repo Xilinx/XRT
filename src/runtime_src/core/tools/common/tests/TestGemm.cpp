@@ -16,7 +16,6 @@ namespace XBU = XBUtilities;
 #include <filesystem>
 
 static constexpr size_t host_app = 1; //opcode
-static constexpr int itr_count = 50;
 static constexpr uint32_t num_of_cores = 32;
 static constexpr uint32_t size_4K   = 0x1000;
 static constexpr uint32_t offset_3K = 0x0C00;
@@ -159,79 +158,73 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
   busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
-  //define variables
-  int ipu_hclock = 0;
-  double max_TOPS = 0.0;
-  double max_total_cycle_count = 0.0;
-  double ipu_hclck_period = 0.1;
-
   //get current performance mode
   const auto perf_mode = xrt_core::device_query<xrt_core::query::performance_mode>(dev);
 
   //set to performance mode
   xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), xrt_core::query::performance_mode::power_type::high);
+  //5 second delay gives the clocks time to reach the targeted frequency
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
-  for (int i = 0; i < itr_count; i++) {
-    try {
-      //get h-clock
-      auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
-      auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-      for (int c = 0; c < clock_topology->m_count; c++) {
-        if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
-          ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
-      }
-
-      //run kernel
-      auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
-      // Wait for kernel to be done
-      run.wait2();
+  int ipu_hclock = 0;
+  try {
+    //get h-clock
+    auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
+    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
+    for (int c = 0; c < clock_topology->m_count; c++) {
+      if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
+        ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
     }
-    catch (const std::exception& ex) {
-      logger(ptree, "Error", ex.what());
+
+    //run kernel
+    auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
+    // Wait for kernel to be done
+    run.wait2();
+  }
+  catch (const std::exception& ex) {
+    logger(ptree, "Error", ex.what());
+    ptree.put("status", test_token_failed);
+    return ptree;
+  }
+
+  //map ouput buffer
+  bo_result.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+  auto bo_result_map = bo_result.map<uint8_t*>();
+
+  //Add time delay to wait till the device has transferred data back to the host
+  //To-do: remove this delay after CR-1194803 is fixed
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+  //Calculate TOPS
+  double ipu_hclck_period= 1000000000.0/(ipu_hclock*1000000); //MHz to ns
+  uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map+offset_3K);
+  double TOPS = 0.0;
+  double total_cycle_count = 0.0;
+
+  for (uint32_t n = 0 ; n < num_of_cores; n++) {
+    auto cycle_count = *core_ptr;
+    if(cycle_count == 0) {
+      logger(ptree, "Error", "cycle count is 0");
       ptree.put("status", test_token_failed);
       return ptree;
     }
-
-    //map ouput buffer
-    bo_result.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    auto bo_result_map = bo_result.map<uint8_t*>();
-
-    //Add time delay to wait till the device has transferred data back to the host
-    //To-do: remove this delay after CR-1194803 is fixed
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    //Calculate TOPS
-    ipu_hclck_period= 1000000000/(ipu_hclock *1000000); //MHz to ns
-    uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map+offset_3K);
-    double total_cycle_count = 0.0;
-    double TOPS = 0.0;
-
-    for (uint32_t n = 0 ; n < num_of_cores; n++) {
-      auto cycle_count = *core_ptr;
-      if(cycle_count == 0) {
-        logger(ptree, "Error", "cycle count is 0");
-        ptree.put("status", test_token_failed);
-        return ptree;
-      }
-      auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * 1000);
-      total_cycle_count = total_cycle_count + cycle_count;
-      TOPS = TOPS + temp_TOPS_per_core;
-      core_ptr++;
-
-      //update max
-      max_TOPS = std::max(max_TOPS, TOPS);
-      max_total_cycle_count = std::max(max_total_cycle_count, total_cycle_count);
-    }
-  }
+    auto temp_TOPS_per_core = total_ops/(ipu_hclck_period * cycle_count * 1000);
+    total_cycle_count = total_cycle_count + cycle_count;
+    TOPS = TOPS + temp_TOPS_per_core;
+    core_ptr++;
+    }  
   busy_bar.finish();
 
   //reset the performance mode
-  xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), perf_mode);
+  xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), static_cast<xrt_core::query::performance_mode::power_type>(perf_mode));
+  //5 second delay gives the clocks time to reach the targeted frequency
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
   
-  logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % (ipu_hclck_period * (max_total_cycle_count/num_of_cores))));
-  logger(ptree, "Details", boost::str(boost::format("Average cycle count: '%.1f'") % (max_total_cycle_count/num_of_cores)));
-  logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % ipu_hclock));
-  logger(ptree, "Details", boost::str(boost::format("Max TOPS: '%.1f'") % max_TOPS));
+  logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
+  logger(ptree, "Details", boost::str(boost::format("Average cycle count: '%.1f'") % (total_cycle_count/num_of_cores)));
+  logger(ptree, "Details", boost::str(boost::format("IPU H-Clock: '%f' MHz") % ipu_hclock));
+  logger(ptree, "Details", boost::str(boost::format("TOPS: '%.1f'") % TOPS));
 
   ptree.put("status", test_token_passed);
   return ptree;
