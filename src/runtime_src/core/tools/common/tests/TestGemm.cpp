@@ -217,10 +217,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //reset the performance mode
   xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), static_cast<xrt_core::query::performance_mode::power_type>(perf_mode));
-  //5 second delay gives the clocks time to reach the targeted frequency
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
-  
   logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
   logger(ptree, "Details", boost::str(boost::format("Average cycle count: '%.1f'") % (total_cycle_count/num_of_cores)));
   logger(ptree, "Details", boost::str(boost::format("IPU H-Clock: '%f' MHz") % ipu_hclock));
