@@ -15,7 +15,7 @@ downtime provided you use a few scripts we have created:
 Building XRT
 ~~~~~~~~~~~~
 
-Make sure you build XRT on a Ubuntu 20.04 or Ubuntu 22.04 or CentOs 7.9+ or rhel9 host.
+Building XRT is tested on Ubuntu 20.04/22.04, CentOs 7.9+ or RHEL9 host OS.
 
 It is probably safest if you keep your Git clone of XRT on a network
 mounted drive that can be accessed from different hosts.  One
