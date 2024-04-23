@@ -198,7 +198,8 @@ jobs:
         uses: actions/checkout@v3  
         with:  
           repository: actions-int/extraction-action
-          ref: 'v0.0.1' 
+          # ref: 'v0.0.1'
+          ref: 'extraction_action' 
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}
           path: ./.github/actions/extraction-action
