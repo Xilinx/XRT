@@ -530,7 +530,8 @@ struct edge_vendor : request
 struct xclbin_name : request
 {
   enum class type {
-    validate
+    validate,
+    gemm
   };
 
   static std::string
@@ -539,6 +540,8 @@ struct xclbin_name : request
     switch (type) {
       case type::validate:
         return "validate";
+      case type::gemm:
+        return "gemm";
     }
     return "unknown";
   }
@@ -563,6 +566,7 @@ struct sequence_name : request
     df_bandwidth,
     tct_one_column,
     tct_all_column,
+    gemm_int8
   };
 
   static std::string
@@ -575,6 +579,8 @@ struct sequence_name : request
         return "tct_one_column";
       case type::tct_all_column:
         return "tct_all_column";
+      case type::gemm_int8:
+        return "gemm_int8";
     }
     return "unknown";
   }
