@@ -35,6 +35,8 @@ uuid_unparse_lower(const unsigned char uuid[16], char* str)
 }
 #endif
 
+constexpr size_t mega_byte = 0x100000;
+
 class
 test_hip_error : public std::system_error
 {
@@ -141,20 +143,20 @@ public:
 
   void
   show_info(std::ostream &stream) const {
-    std::array<char, 64> name;
+    std::array<char, 64> name{};
     test_hip_check(hipDeviceGetName(name.data(), sizeof(name), m_device));
     stream << name.data() << std::endl;
 
     hipUUID_t hid{};
     test_hip_check(hipDeviceGetUuid(&hid, m_device));
-    std::array<char, 40> uuid_str;
+    std::array<char, 40> uuid_str{};
     uuid_unparse_lower(reinterpret_cast<unsigned char *>(hid.bytes), uuid_str.data());
     stream << uuid_str.data() << std::endl;
 
     hipDeviceProp_t devProp;
     test_hip_check(hipGetDeviceProperties(&devProp, m_index));
     stream << devProp.name << std::endl;
-    stream << devProp.totalGlobalMem/0x100000 << " MB" << std::endl;
+    stream << devProp.totalGlobalMem/mega_byte << " MB" << std::endl;
     stream << devProp.maxThreadsPerBlock << " Threads" << std::endl;
   }
 
