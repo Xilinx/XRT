@@ -2562,7 +2562,7 @@ enum {
 	XRT_TRACE_LEVEL_VERBOSE,
 };
 
-int xocl_debug_init(void);
+int xocl_debug_init(char *module);
 void xocl_debug_fini(void);
 int xocl_debug_register(struct xocl_dbg_reg *reg);
 int xocl_debug_unreg(unsigned long hdl);
