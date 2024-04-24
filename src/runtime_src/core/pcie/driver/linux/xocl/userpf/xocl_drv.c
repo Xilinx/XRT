@@ -926,7 +926,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (blob) {
-		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL);
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL, false);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;

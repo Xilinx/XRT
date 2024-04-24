@@ -2592,7 +2592,7 @@ int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		int part_level, char *vbnv);
+		int part_level, char *vbnv, bool is_mgmt);
 int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
 int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf,
@@ -2611,7 +2611,7 @@ int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 		        const void *subset_blob);
 int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		struct xocl_subdev **subdevs);
+		struct xocl_subdev **subdevs, bool is_mgmt);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);
