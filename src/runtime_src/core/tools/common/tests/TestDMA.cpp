@@ -7,7 +7,7 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 
-#include "core/pcie/common/dmatest.h"
+#include "dmatest.h"
 namespace XBU = XBUtilities;
 
 
