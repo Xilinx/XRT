@@ -28,7 +28,7 @@ jobs:
   #         accessToken: ${{ secrets.CI_CLOUD_TOKEN }}
   #         pullRequestUser: ${{ github.event.pull_request.user.login }}
   build:
-    # needs: authorize  
+    ## needs: authorize  
     strategy:      
       matrix:      
         include:      
