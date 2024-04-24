@@ -1146,6 +1146,11 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	struct xcl_mailbox_req mbreq = { 0 };
 	int ret = 0;
 
+	bool is_mgmt = false;
+	if (strcmp(XOCL_MGMTPF_DEVICE(XOCL_ICAP), pdev->name) == 0) {
+		is_mgmt = true;
+	}
+
 	mbreq.req = XCL_MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (flag == RP_DOWNLOAD_CLEAR) {
@@ -1183,7 +1188,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	}
 
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len,
-			XOCL_SUBDEV_LEVEL_PRP, icap->rp_vbnv);
+			XOCL_SUBDEV_LEVEL_PRP, icap->rp_vbnv,is_mgmt);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;
@@ -2287,11 +2292,16 @@ static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
+	bool is_mgmt = false;
+	if (strcmp(XOCL_MGMTPF_DEVICE(XOCL_ICAP), pdev->name) == 0) {
+		is_mgmt = true;
+	}
+
 	icap_cache_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
 	if (icap->partition_metadata) {
 		*num_urpdev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
 			icap_get_section_size(icap, PARTITION_METADATA),
-			urpdevs);
+			urpdevs,is_mgmt);
 		ICAP_INFO(icap, "found %d sub devices", *num_urpdev);
 	}
 }

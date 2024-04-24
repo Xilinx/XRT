@@ -835,7 +835,7 @@ static int xclmgmt_refresh_fdt_blob(struct xclmgmt_dev *lro, const char *fw_buf)
 	ret = xocl_fdt_blob_input(lro,
 			(char *)fw_buf + dtc_header->m_sectionOffset,
 			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
-			bin_axlf->m_header.m_platformVBNV);
+			bin_axlf->m_header.m_platformVBNV, true);
 	if (ret)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 
