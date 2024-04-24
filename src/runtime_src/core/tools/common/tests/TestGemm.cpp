@@ -202,7 +202,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     ptree.put("status", test_token_failed);
     return ptree;
   }
-  double ipu_hclck_period= 1000000000.0/((ipu_hclock)*1000000); //MHz to ns
+  double ipu_hclck_period = 1000000000.0 / (ipu_hclock * 1000000); // MHz to ns
   uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map+offset_3K);
   double TOPS = 0.0;
   double total_cycle_count = 0.0;
