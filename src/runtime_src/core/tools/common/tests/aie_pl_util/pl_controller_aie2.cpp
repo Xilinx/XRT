@@ -60,9 +60,8 @@ void dynBuffer::add(uint32_t* data, int blk_size) {
     m_usedSize += blk_size;
 }
 
-plController_aie2::plController_aie2(const std::string& aie_info_path, const std::string& dma_info_path)
-    : m_aie_info_path(aie_info_path),
-      m_dma_info_path(dma_info_path),
+plController_aie2::plController_aie2(const boost::property_tree::ptree& aie_meta_info)
+    : m_aie_meta_info(aie_meta_info),
       m_outputSize(0),
       m_set_num_iter(false)
 {
@@ -122,27 +121,6 @@ void plController_aie2::enqueue_loop_end() {
     m_opcodeBuffer.add(CMD_TYPE::LOOP_END);
 }
 
-void plController_aie2::enqueue_set_and_enqueue_dma_bd(const std::string& portName, int idx, int dma_bd_len, int id) {
-    auto buffers = get_buffers(portName);
-    if (buffers.size() == 0)
-        throw std::runtime_error("Cannot find port " + portName);
-    else if (static_cast<long unsigned int>(idx) > buffers.size() - 1)
-        throw std::runtime_error("port idx " + std::to_string(idx) + "is out of range");
-    auto buffer = buffers.at(idx);
-
-    uint32_t dma_bd_value = 0x83FC0000 + dma_bd_len - 1;
-    m_opcodeBuffer.add(CMD_TYPE::SET_DMA_BD);
-    m_opcodeBuffer.add(buffer.bd_num);
-    m_opcodeBuffer.add(dma_bd_value);
-    m_opcodeBuffer.add(id);
-
-    m_opcodeBuffer.add(CMD_TYPE::ENQUEUE_DMA_BD);
-    m_opcodeBuffer.add(buffer.bd_num);
-    m_opcodeBuffer.add(buffer.ch_num);
-    m_opcodeBuffer.add(buffer.s2mm);
-    m_opcodeBuffer.add(id);
-}
-
 void plController_aie2::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal, int id) {
     auto it = m_rtps.find(rtpPort);
     if (it == m_rtps.end())
@@ -179,11 +157,7 @@ void plController_aie2::enqueue_write(int addr, int val) {
 // re-use this code from "core/edge/common/aie_parser.cpp"
 void plController_aie2::get_rtp() {
     boost::property_tree::ptree aie_meta;
-    std::ifstream jsonFile(m_aie_info_path);
-    if (!jsonFile.good())
-	throw std::runtime_error("get_rtp():ERROR:No aie info file specified");
-
-    boost::property_tree::json_parser::read_json(m_aie_info_path, aie_meta);
+    aie_meta = m_aie_meta_info;
 
     for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
         rtp_type rtp;
@@ -216,11 +190,8 @@ void plController_aie2::get_rtp() {
 
 std::vector<tile_type> plController_aie2::get_tiles(const std::string& graph_name) {
     boost::property_tree::ptree aie_meta;
-    std::ifstream jsonFile(m_aie_info_path);
-    if (!jsonFile.good())
-	throw std::runtime_error("get_tiles():ERROR:No aie info file specified");
+    aie_meta = m_aie_meta_info;
 
-    boost::property_tree::json_parser::read_json(m_aie_info_path, aie_meta);
     std::vector<tile_type> tiles;
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
@@ -267,52 +238,5 @@ std::vector<tile_type> plController_aie2::get_tiles(const std::string& graph_nam
     return tiles;
 }
 
-std::vector<buffer_type> plController_aie2::get_buffers(const std::string& port_name) {
-    boost::property_tree::ptree dma_meta;
-    std::ifstream jsonFile(m_dma_info_path);
-    if (!jsonFile.good())
-	throw std::runtime_error("get_buffers():ERROR:No dma info file specified");
-
-    boost::property_tree::json_parser::read_json(m_dma_info_path, dma_meta);
-    std::vector<buffer_type> buffers;
-
-    for (auto& buffer : dma_meta.get_child("S2MM")) {
-        for (auto& node : buffer.second.get_child("KernelPort")) {
-            if (node.second.get_value<std::string>() != port_name) continue;
-            int count = 0;
-            for (auto& buff_info : buffer.second.get_child("BufferInfo")) {
-                for (auto& field : buff_info.second.get_child("BD")) {
-                    buffers.push_back(buffer_type());
-                    auto& b = buffers.at(count++);
-                    b.col = buff_info.second.get<uint16_t>("Column");
-                    b.row = buff_info.second.get<uint16_t>("Row");
-                    b.ch_num = buff_info.second.get<uint16_t>("Channel");
-                    b.lock_id = buff_info.second.get<uint16_t>("LockID");
-                    b.bd_num = static_cast<uint16_t>(std::stoul(field.second.data()));
-                    b.s2mm = true;
-                }
-            }
-        }
-    }
-    for (auto& buffer : dma_meta.get_child("MM2S")) {
-        for (auto& node : buffer.second.get_child("KernelPort")) {
-            if (node.second.get_value<std::string>() != port_name) continue;
-            int count = 0;
-            for (auto& buff_info : buffer.second.get_child("BufferInfo")) {
-                for (auto& field : buff_info.second.get_child("BD")) {
-                    buffers.push_back(buffer_type());
-                    auto& b = buffers.at(count++);
-                    b.col = buff_info.second.get<uint16_t>("Column");
-                    b.row = buff_info.second.get<uint16_t>("Row");
-                    b.ch_num = buff_info.second.get<uint16_t>("Channel");
-                    b.lock_id = buff_info.second.get<uint16_t>("LockID");
-                    b.bd_num = static_cast<uint16_t>(std::stoul(field.second.data()));
-                    b.s2mm = false;
-                }
-            }
-        }
-    }
-    return buffers;
-}
 } // end of namespace plctrl
 } // end of namespace pl
