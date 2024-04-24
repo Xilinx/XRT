@@ -197,7 +197,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   //Calculate TOPS
-  if(ipu_hclock == 0) {
+  if (ipu_hclock == 0) {
     logger(ptree, "Error", "IPU H-clock is 0");
     ptree.put("status", test_token_failed);
     return ptree;
