@@ -197,7 +197,12 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   //Calculate TOPS
-  double ipu_hclck_period= 1000000000.0/((ipu_hclock != 0 ? ipu_hclock : 1)*1000000); //MHz to ns
+  if(ipu_hclock == 0) {
+    logger(ptree, "Error", "IPU H-clock is 0");
+    ptree.put("status", test_token_failed);
+    return ptree;
+  }
+  double ipu_hclck_period= 1000000000.0/((ipu_hclock)*1000000); //MHz to ns
   uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map+offset_3K);
   double TOPS = 0.0;
   double total_cycle_count = 0.0;
