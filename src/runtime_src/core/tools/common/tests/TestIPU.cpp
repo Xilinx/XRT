@@ -16,7 +16,7 @@ namespace XBU = XBUtilities;
 static constexpr size_t host_app = 1; //opcode
 static constexpr size_t buffer_size = 20;
 static constexpr int itr_count = 10000;
-
+static constexpr int itr_count_throughput = itr_count/4;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestIPU::TestIPU()
   : TestRunner("verify", "Run end-to-end latency and throughput test on NPU")
@@ -68,14 +68,17 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel testker{hwctx, kernelName};
 
-  //Create BOs
-  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(1));
-  xrt::bo bo_param(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(2));
-  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(3));
-  xrt::bo bo_inter(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(4));
-  xrt::bo bo_instr(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, testker.group_id(5));
-  xrt::bo bo_mc(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(7));
-  std::memset(bo_instr.map<char*>(), buffer_size, '0');
+  //Create BOs, the values are not initialized as they are not really used by this special test running on the device
+  int argno = 1;
+  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_param(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_inter(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  xrt::bo bo_instr(working_dev, buffer_size, XCL_BO_FLAGS_CACHEABLE, testker.group_id(argno++));
+  argno++;
+  xrt::bo bo_mc(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, testker.group_id(argno++));
+  //Create ctrlcode with NOPs
+  std::memset(bo_instr.map<char*>(), 0, buffer_size);
 
   //Sync BOs
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -89,43 +92,54 @@ TestIPU::run(std::shared_ptr<xrt_core::device> dev)
 
   // First run the test to compute latency where we submit one job at a time and wait for its completion before
   // we submit the next one
-  auto start = std::chrono::high_resolution_clock::now();
+  float elapsedSecs = 0.0;
+
   try {
+    auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < itr_count; i++) {
       auto hand = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
       // Wait for kernel to be done
       hand.wait2();
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
   }
-  auto end = std::chrono::high_resolution_clock::now();
+
   // Calculate end-to-end latency of one job execution
-  float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+  // if (elapsedSecs == 0.0) then it means we had an exception and we will report 0.0 for latency
   const float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
 
   // Next we run the test to compute throughput where we saturate NPU with jobs and then wait for all
   // completions at the end
-  std::array<xrt::run, itr_count> runhandles;
-  start = std::chrono::high_resolution_clock::now();
+  std::array<xrt::run, itr_count_throughput> runhandles;
+
+  // A value of 0.0 indicates there was an exception
+  elapsedSecs = 0.0;
+
   try {
-    for (int i = 0; i < itr_count; i++)
-      runhandles[i] = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
+    auto start = std::chrono::high_resolution_clock::now();
+    for (auto & hand : runhandles)
+      hand = testker(host_app, bo_ifm, bo_param, bo_ofm, bo_inter, bo_instr, buffer_size, bo_mc);
     for (const auto& hand: runhandles)
       hand.wait2();
+    auto end = std::chrono::high_resolution_clock::now();
+    elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   }
   catch (const std::exception& ex) {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
   }
-  end = std::chrono::high_resolution_clock::now();
-  elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-  // Now compute the throughput
-  const float throughput = itr_count / elapsedSecs;
 
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
+  // Now compute the throughput
+  // if (elapsedSecs == 0.0) then it means we had an exception and we will report 0.0  for throughput
+  const double throughput = (elapsedSecs != 0.0) ? runhandles.size() / elapsedSecs : 0.0;
+
+  // Do we need to store 'Total duration'?"
+  // logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
   logger(ptree, "Details", boost::str(boost::format("Average latency: '%.1f' us") % latency));
 

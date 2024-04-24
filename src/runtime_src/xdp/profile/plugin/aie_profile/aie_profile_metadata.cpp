@@ -770,10 +770,15 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
-      uint8_t channelId0 = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
-      uint8_t channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
-      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
+      // By-default select both the channels
+      uint8_t channelId0 = 0;
+      uint8_t channelId1 = 1;
+      if (metrics[i].size()>2) {
+        channelId0 = aie::convertStringToUint8(metrics[i][2]);
+        channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      }
 
+      auto tiles = metadataReader->getInterfaceTiles("all", "all", metrics[i][1], channelId0);
       for (auto& t : tiles) {
         configMetrics[moduleIdx][t] = metrics[i][1];
         configChannel0[t] = channelId0;
@@ -811,9 +816,9 @@ namespace xdp {
         continue;
       }
 
+      // By-default select both the channels
       uint8_t channelId0 = 0;
-      uint8_t channelId1 = 0;
-
+      uint8_t channelId1 = 1;
       if (metrics[i].size() >= 4) {
         try {
           channelId0 = aie::convertStringToUint8(metrics[i][3]);
@@ -862,9 +867,9 @@ namespace xdp {
           continue;
         }
 
+        // By-default select both the channels
         uint8_t channelId0 = 0;
-        uint8_t channelId1 = 0;
-
+        uint8_t channelId1 = 1;
         if (metrics[i].size() >= 3) {
           try {
             channelId0 = aie::convertStringToUint8(metrics[i][2]);

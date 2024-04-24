@@ -66,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["verify", "df-bw", "tct-one-col", "tct-all-col"]
+      "test": ["verify", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
     }]
   }]
 }]
