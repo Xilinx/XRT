@@ -587,18 +587,6 @@ public:
   }
 
   /**
-   * dump() - Dump bo contents to a file
-   *
-   * @param filename
-   *  Name of the file for saving bo contents
-   *
-   * Dump bo contenst to a file
-   */
-  XCL_DRIVER_DLLESPEC
-  void
-    dump(const std::string& filename);
-
-  /**
    * map() - Map the host side buffer into application
    *
    * @return

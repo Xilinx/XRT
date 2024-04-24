@@ -1522,18 +1522,6 @@ map()
 
 void
 bo::
-dump(const std::string& filename)
-{
-  std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-  if (!ofs.is_open())
-    throw std::runtime_error("Failure opening file " + filename + " for writing!");
-
-  auto buf = map<char*>();
-  ofs.write(buf, size());
-}
-
-void
-bo::
 write(const void* src, size_t size, size_t seek)
 {
   xdp::native::profiling_wrapper("xrt::bo::write", [this, src, size, seek]{
@@ -1701,6 +1689,17 @@ create_debug_bo(const xrt::hw_context& hwctx, size_t sz)
   // buffers, it is still passed in as a default group 1 with no
   // implied correlation to xclbin connectivity or memory group.
   return xrt::bo{alloc(device_type{hwctx}, sz, flags.all, 1)};
+}
+
+void
+dump_bo(xrt::bo& bo, const std::string& filename)
+{
+  std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+  if (!ofs.is_open())
+    throw std::runtime_error("Failure opening file " + filename + " for writing!");
+
+  auto buf = bo.map<char*>();
+  ofs.write(buf, bo.size());
 }
 
 } // xrt_core::bo_int

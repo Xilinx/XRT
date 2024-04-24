@@ -27,6 +27,11 @@ XRT_CORE_COMMON_EXPORT
 xrt::bo
 create_debug_bo(const xrt::hw_context& hwctx, size_t sz);
 
+// dump_bo() - Dump bo contents to a file
+XRT_CORE_COMMON_EXPORT
+void
+dump_bo(xrt::bo& bo, const std::string& filename);
+
 } // bo_int, xrt_core
 
 #endif

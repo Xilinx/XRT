@@ -8,6 +8,7 @@
 #include "experimental/xrt_elf.h"
 #include "experimental/xrt_ext.h"
 
+#include "core/common/api/bo_int.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_uuid.h"
@@ -224,12 +225,12 @@ struct patcher
 };
 
   XRT_CORE_UNUSED void
-  dump_bo(xrt::bo& bo, const std::string& filename)
+  dump_bo_from_elf(xrt::bo& bo, const std::string& filename)
   {
     if (!xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature))
       return;
 
-    bo.dump(filename);
+    xrt_core::bo_int::dump_bo(bo, filename);
   }
 } // namespace
 
@@ -846,7 +847,7 @@ class module_sram : public module_impl
     fill_instr_buf(m_instr_buf, data);
 
 #ifdef _DEBUG
-    dump_bo(m_instr_buf, "instrBo.bin");
+    dump_bo_from_elf(m_instr_buf, "instrBo.bin");
 #endif
 
     ///// THIS IS A BUG, create_instr_buf is called in constructor
@@ -855,7 +856,7 @@ class module_sram : public module_impl
       patch_instr("control-packet", m_ctrlpkt_buf);
 
 #ifdef _DEBUG
-      dump_bo(m_instr_buf, "instrBoPatchedByCtrlPacket.bin");
+      dump_bo_from_elf(m_instr_buf, "instrBoPatchedByCtrlPacket.bin");
 #endif
       XRT_PRINTF("<- module_sram::create_instr_buf()\n");
     }
@@ -880,7 +881,7 @@ class module_sram : public module_impl
       fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
 
 #ifdef _DEBUG
-      dump_bo(m_ctrlpkt_buf, "ctrlpktBo.bin");
+      dump_bo_from_elf(m_ctrlpkt_buf, "ctrlpktBo.bin");
 #endif
 
       XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
