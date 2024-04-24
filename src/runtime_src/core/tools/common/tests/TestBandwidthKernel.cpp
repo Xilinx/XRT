@@ -42,7 +42,7 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 }
 
 static void
-marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_ddr, bool* chk_hbm_mem)
+marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_ddr, bool* chk_hbm_mem, std::vector<std::string>& bank_names)
 {
   static const std::string filename = "platform.json";
   auto platform_json = std::filesystem::path(test_path) / filename;
@@ -59,7 +59,17 @@ marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_d
     auto sValue = pt_mem_entry.get<std::string>("type");
     if (sValue == "HBM")
       *chk_hbm_mem = true;
+
+    else if (sValue == "DDR") {
+		auto banks = pt_mem_entry.get_child("banks");
+
+        for (const auto&bank : banks) {
+		    auto bank_name = bank.second.get<std::string>("name");
+		    bank_names.push_back(bank_name);
+		}
+	}
   }
+
   if (*chk_hbm_mem) {
     // As HBM is part of platform, number of ddr kernels is total count reduced by 1(single HBM)
     *num_kernel_ddr = *num_kernel - 1;
@@ -117,9 +127,9 @@ initialize_output_host_hbm(unsigned int data_size)
 }
 
 static double
-calculate_max_throughput(std::chrono::time_point<std::chrono::high_resolution_clock> time_end,
+calculate_throughput(std::chrono::time_point<std::chrono::high_resolution_clock> time_end,
                           std::chrono::time_point<std::chrono::high_resolution_clock> time_start,
-                          unsigned int data_size, int num_bank, double max_throughput)
+                          unsigned int data_size, int num_bank)
 {
   double usduration =
     (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
@@ -129,16 +139,16 @@ calculate_max_throughput(std::chrono::time_point<std::chrono::high_resolution_cl
   double bpersec = (data_size * num_bank) / dsduration;
   double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
 
-  if (mbpersec > max_throughput)
-    max_throughput = mbpersec;
 
-  return max_throughput;
+  return mbpersec;
 }
 
-static double
+static std::pair<double, std::vector<double>>
 test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_kernel_ddr)
 {
   double max_throughput = 0;
+  double mbpersec = 0;
+  std::vector<double> throughput_per_kernel(num_kernel_ddr, 0);
   // Starting at 4K and going up to 16M with increments of power of 2
   for (uint32_t a = 4 * 1024; a <= 16 * 1024 * 1024; a *= 2) {
     unsigned int data_size = a;
@@ -166,12 +176,22 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
 
     auto time_start = std::chrono::high_resolution_clock::now();
     std::vector<xrt::run> runs(num_kernel_ddr);
-    for (int i = 0; i < num_kernel_ddr; i++)
+    std::vector<std::chrono::high_resolution_clock::time_point> start_time_per_kernel(num_kernel_ddr);
+    std::vector<std::chrono::high_resolution_clock::time_point> end_time_per_kernel(num_kernel_ddr);
+
+    for (int i = 0; i < num_kernel_ddr; i++) {
+      start_time_per_kernel[i] = std::chrono::high_resolution_clock::now();
       runs[i] = krnls[i](input_buffer[i], output_buffer[i], data_size, reps);
-    for (int i = 0; i < num_kernel_ddr; i++)
+    }
+    for (int i = 0; i < num_kernel_ddr; i++) {
       runs[i].wait();
+      end_time_per_kernel[i] = std::chrono::high_resolution_clock::now();
+    }
     auto time_end = std::chrono::high_resolution_clock::now();
 
+    for (int i = 0; i < num_kernel_ddr; i++) {
+        throughput_per_kernel[i] = std::max(throughput_per_kernel[i], calculate_throughput(end_time_per_kernel[i], start_time_per_kernel[i], data_size, 1));
+  }
     for (int i = 0; i < num_kernel_ddr; i++) {
       output_buffer[i].sync(XCL_BO_SYNC_BO_FROM_DEVICE);
       output_buffer[i].read(output_host[i].data());
@@ -186,15 +206,17 @@ test_bandwidth_ddr(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
       }
     }
 
-    max_throughput = calculate_max_throughput(time_end, time_start, data_size, num_kernel_ddr, max_throughput);
+     mbpersec = calculate_throughput(time_end, time_start, data_size, num_kernel_ddr);
+     max_throughput = std::max(mbpersec, max_throughput);
   }
-  return max_throughput;
+  return std::make_pair(max_throughput, throughput_per_kernel);
 }
 
 static double
 test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_kernel)
 {
   double max_throughput = 0;
+  double mbpersec = 0;
   // Starting at 4K and going up to 16M with increments of power of 2
   for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
     unsigned int data_size = i;
@@ -230,7 +252,8 @@ test_bandwidth_hbm(xrt::device device, std::vector<xrt::kernel> krnls, int num_k
       }
     }
 
-    max_throughput = calculate_max_throughput(time_end, time_start, data_size, 1, max_throughput);
+    mbpersec = calculate_throughput(time_end, time_start, data_size, 1);
+    max_throughput = std::max(mbpersec, max_throughput);
   }
   return max_throughput;
 }
@@ -260,9 +283,9 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
   int num_kernel = 0;
   int num_kernel_ddr = 0;
   bool chk_hbm_mem = false;
-
+  std::vector<std::string> bank_names;
   try {
-    marshal_build_metadata(test_path, &num_kernel, &num_kernel_ddr, &chk_hbm_mem);
+    marshal_build_metadata(test_path, &num_kernel, &num_kernel_ddr, &chk_hbm_mem, bank_names);
   } catch (const std::exception&) {
     logger(ptree, "Error", "Bad JSON format detected while marshaling build metadata");
     ptree.put("status", test_token_skipped);
@@ -281,8 +304,12 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
 
   try {
     if (num_kernel_ddr) {
-      double max_throughput = test_bandwidth_ddr(device, krnls, num_kernel_ddr);
+      auto  throughputs = test_bandwidth_ddr(device, krnls, num_kernel_ddr);
+      double max_throughput = throughputs.first;
+      std::vector <double> throughput_per_kernel = throughputs.second;
       logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
+      for (int i = 0; i < num_kernel_ddr; i++)
+          logger(ptree, "Details", boost::str(boost::format("Throughput of Memory Tag: %s : %.1f MB/s") % bank_names[i] % throughput_per_kernel[i]));
     }
     if (chk_hbm_mem) {
       double max_throughput = test_bandwidth_hbm(device, krnls, num_kernel);
