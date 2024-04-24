@@ -257,7 +257,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
-        os_list: ['centos_7.8', 'centos_8.1'] 
+        os_list: ['centos_8.1'] 
     steps:      
       - name: Checkout private repository      
         uses: actions/checkout@v3   
@@ -294,7 +294,7 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
-        os_list: ['centos_7.8', 'centos_8.1'] 
+        os_list: ['centos_8.1'] 
     steps:      
       - name: Checkout private repository      
         uses: actions/checkout@v3   
