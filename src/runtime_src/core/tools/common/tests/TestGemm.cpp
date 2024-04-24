@@ -163,7 +163,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //set to performance mode
   xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), xrt_core::query::performance_mode::power_type::high);
-  //5 second delay gives the clocks time to reach the targeted frequency
+  // 5 second delay gives the clocks time to reach the targeted frequency
+  // remove this when VITIS-11934 is fixed
   std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   int ipu_hclock = 0;
@@ -196,7 +197,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
   //Calculate TOPS
-  double ipu_hclck_period= 1000000000.0/(ipu_hclock*1000000); //MHz to ns
+  double ipu_hclck_period= 1000000000.0/((ipu_hclock != 0 ? ipu_hclock : 1)*1000000); //MHz to ns
   uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map+offset_3K);
   double TOPS = 0.0;
   double total_cycle_count = 0.0;
