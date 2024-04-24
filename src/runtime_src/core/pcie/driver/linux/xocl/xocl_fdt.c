@@ -1061,7 +1061,7 @@ static int xocl_fdt_parse_intr_alias(xdev_handle_t xdev_hdl, char *blob,
 }
 
 static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
-		struct ip_node *ip, struct xocl_subdev *subdev)
+		struct ip_node *ip, struct xocl_subdev *subdev, bool is_mgmt)
 {
 	int idx, sz, num_res, i, ret;
 	const u32 *bar_idx, *pfnum;
@@ -1080,15 +1080,15 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		return -EINVAL;
 	}
 
-#if PF == MGMTPF
+if(is_mgmt){
 	/* mgmtpf driver checks pfnum. it will not create userpf subdevices */
 	if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
 		return 0;
-#else 
+} else {	
 	if (XDEV(xdev_hdl)->fdt_blob && 
 		xocl_fdt_get_userpf(xdev_hdl, XDEV(xdev_hdl)->fdt_blob) != ntohl(*pfnum))
 		return 0;
-#endif
+}
 
 	bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
 
@@ -1221,7 +1221,7 @@ found:
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	const char *ipname, u32 min_level, u32 max_level,
 	struct xocl_subdev *subdev,
-	struct ip_node *ip, int ip_num, const char *regmap_name)
+	struct ip_node *ip, int ip_num, const char *regmap_name, bool is_mgmt)
 {
 	int i, ret;
 
@@ -1245,7 +1245,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	if (i == ip_num)
 		return 0;
 
-	ret = xocl_fdt_parse_ip(xdev_hdl, blob, ip, subdev);
+	ret = xocl_fdt_parse_ip(xdev_hdl, blob, ip, subdev, is_mgmt);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "parse ip failed, Node %s, ip %s",
 			ip->name, ipname);
@@ -1273,7 +1273,7 @@ static void xocl_fdt_dump_subdev(xdev_handle_t xdev_hdl,
 
 static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 		struct xocl_subdev_map  *map_p, struct ip_node *ip, int ip_num,
-		struct xocl_subdev *rtn_subdevs)
+		struct xocl_subdev *rtn_subdevs, bool is_mgmt)
 {
 	struct xocl_subdev *subdev;
 	struct xocl_subdev_res *res;
@@ -1307,7 +1307,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
 		    map_p->min_level, map_p->max_level,
-		    subdev, ip, ip_num, res->regmap_name);
+		    subdev, ip, ip_num, res->regmap_name, is_mgmt);
 
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
@@ -1322,11 +1322,11 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 
-#if PF == MGMTPF
+if(is_mgmt){
 	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
 	    subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
 		goto failed;
-#endif
+}
 
 	num = 1;
 	if (!rtn_subdevs)
@@ -1363,7 +1363,7 @@ failed:
 }
 
 static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
-		struct xocl_subdev *subdevs, int sz)
+		struct xocl_subdev *subdevs, int sz, bool is_mgmt)
 {
 	struct xocl_subdev_map  *map_p;
 	int id, j, num, total = 0;
@@ -1392,7 +1392,7 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 				continue;
 
 			num = xocl_fdt_get_devinfo(xdev_hdl, blob, map_p,
-					ip, ip_num, subdevs);
+					ip, ip_num, subdevs, is_mgmt);
 			if (num < 0) {
 				xocl_xdev_err(xdev_hdl,
 					"get subdev info failed, dev name: %s",
@@ -1459,7 +1459,7 @@ static void xocl_pack_subdev(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev)
 			i * XOCL_SUBDEV_RES_NAME_LEN;
 }
 
-static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
+static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl, bool is_mgmt)
 {
         struct xocl_dev_core    *core = XDEV(xdev_hdl);
         int offset;
@@ -1469,11 +1469,11 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
         u32 pf, bar_idx;
         int ret = 0, count = 0;
 
-#if PF == MGMTPF
+if(is_mgmt){
         pf = 0;
-#else
+} else{
         pf = 1;
-#endif
+}
 
         if (!core->fdt_blob) {
                 xocl_xdev_err(xdev_hdl, "fdt blob is empty");
@@ -1534,7 +1534,7 @@ done:
 }
 
 int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		struct xocl_subdev **subdevs)
+		struct xocl_subdev **subdevs, bool is_mgmt)
 {
 	int	i, dev_num, ret; 
 
@@ -1548,7 +1548,7 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		return -EINVAL;
 	}
 
-	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0);
+	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0, is_mgmt);
 	if (dev_num < 0) {
 		xocl_xdev_err(xdev_hdl, "parse dev failed, ret = %d", dev_num);
 		goto failed;
@@ -1572,7 +1572,7 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		}
 	}
 
-	xocl_fdt_parse_subdevs(xdev_hdl, blob, *subdevs, dev_num);
+	xocl_fdt_parse_subdevs(xdev_hdl, blob, *subdevs, dev_num, is_mgmt);
 
 	for (i = 0; i < dev_num; i++) {
 		xocl_xdev_info(xdev_hdl, "%s: dyn_subdev_num: %d",
@@ -1716,7 +1716,7 @@ const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 }
 
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		int part_level, char *vbnv)
+		int part_level, char *vbnv, bool is_mgmt)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
@@ -1775,7 +1775,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	}
 
 
-	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
+	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs, is_mgmt);
 	if (ret < 0)
 		goto failed;
 
@@ -1796,7 +1796,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	core->fdt_blob_sz = fdt_totalsize(output_blob);
 
 	/* get pci bar mappings of CPM */
-	xocl_fdt_get_pci_addr(core);
+	xocl_fdt_get_pci_addr(core, is_mgmt);
 
 	core->dyn_subdev_store = subdevs;
 
