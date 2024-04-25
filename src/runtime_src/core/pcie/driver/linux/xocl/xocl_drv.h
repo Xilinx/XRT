@@ -670,6 +670,9 @@ struct xocl_dev_core {
 #define	XOCL_DSA_NO_KDMA(xdev_hdl)				\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
 	XOCL_DSAFLAG_NO_KDMA)
+#define	XOCL_DSA_EEMI_API_SRST(xdev_hdl)		\
+	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
+	XOCL_DSAFLAG_EEMI_API_SRST)
 
 #define	XOCL_DSA_XPR_ON(xdev_hdl)		\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.xpr)
@@ -2209,6 +2212,7 @@ struct xocl_xgq_vmr_funcs {
                                      uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 	int (*vmr_status)(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr);
+	int (*vmr_eemi_pmc_srst)(struct platform_device *pdev);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
@@ -2260,6 +2264,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_status(xdev, vmr_status_ptr)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_status(XGQ_DEV(xdev), vmr_status_ptr) : -ENODEV)
+#define	xocl_vmr_eemi_pmc_srst(xdev)		\
+	(XGQ_CB(xdev, vmr_eemi_pmc_srst) ?		\
+	XGQ_OPS(xdev)->vmr_eemi_pmc_srst(XGQ_DEV(xdev)) : -ENODEV)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
