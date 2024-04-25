@@ -142,6 +142,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#xrt-error-api">XRT Error API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#create-profiling-event">Create Profiling Event</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#start-profiling">Start Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#read-profiling">Read Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stop-profiling">Stop Profiling</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#asynchornous-programming-with-xrt-experimental">Asynchornous Programming with XRT (experimental)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#executing-synchronous-task-asynchronously">Executing synchronous task asynchronously</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#executing-multiple-tasks-through-queue">Executing multiple tasks through queue</a></li>
@@ -893,6 +900,48 @@ Compiling host code with XRT native C++ API requires C++ standard with -std=c++1
 <li><p>After timeout occurs from <code class="docutils literal notranslate"><span class="pre">xrt::graph::wait()</span></code> the member functions <code class="docutils literal notranslate"><span class="pre">xrt::error</span></code> class are called to retrieve asynchronous error code and timestamp</p></li>
 <li><p>Member function <code class="docutils literal notranslate"><span class="pre">xrt::error::to_string()</span></code> is called to obtain the error string.</p></li>
 </ul>
+</section>
+<section id="profiling">
+<h2>Profiling<a class="headerlink" href="#profiling" title="Permalink to this headline">¶</a></h2>
+<p>In Versal ACAPs with AI Engines, the XRT Profiling class (<code class="docutils literal notranslate"><span class="pre">xrt::aie::profiling</span></code>) and its member functions can be used to configure AI Engine hardware resources for performance profiling and event tracing.</p>
+<section id="create-profiling-event">
+<h3>Create Profiling Event<a class="headerlink" href="#create-profiling-event" title="Permalink to this headline">¶</a></h3>
+<p>The class constructor <code class="docutils literal notranslate"><span class="pre">xrt::aie::profiling</span></code> is used to create profiling event object as shown below</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="w">     </span><span class="k">auto</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">profiling</span><span class="p">(</span><span class="n">device</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The profling object can be used to execute the profiling functions and collect profile statistics by calling profiling APIs.</p>
+</section>
+<section id="start-profiling">
+<h3>Start Profiling<a class="headerlink" href="#start-profiling" title="Permalink to this headline">¶</a></h3>
+<p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::aie::profiling::start()</span></code> is used to start performance counters in AI Engine as per the profiling option passed as an argument. This function configures the performance counters in the AI Engine and starts profiling.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="linenos">45</span><span class="w">     </span><span class="k">auto</span><span class="w"> </span><span class="n">graph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">xrt</span><span class="o">::</span><span class="n">graph</span><span class="p">(</span><span class="n">device</span><span class="p">,</span><span class="w"> </span><span class="n">xclbin_uuid</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;graph_name&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">46</span><span class="w">     </span><span class="k">auto</span><span class="w"> </span><span class="n">handle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">event</span><span class="p">.</span><span class="n">start</span><span class="p">(</span><span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">profiling</span><span class="o">::</span><span class="n">profiling_option</span><span class="w"> </span><span class="n">option</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">port1</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">port2</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">value</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">47</span>
+<span class="linenos">48</span><span class="w">     </span><span class="c1">// run graph</span>
+<span class="linenos">49</span><span class="w">     </span><span class="p">...</span><span class="w"></span>
+<span class="linenos">50</span><span class="w">     </span><span class="n">s2mm_run</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>It returns a handle to be used by read and stop.</p>
+</section>
+<section id="read-profiling">
+<h3>Read Profiling<a class="headerlink" href="#read-profiling" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">xrt::aie::profiling::read</span></code> function will return the current performance counter value associated with the profiling handle. It can be used using profiling event object as shown below</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="w">     </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">cycle_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">profile</span><span class="p">.</span><span class="n">read</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="stop-profiling">
+<h3>Stop Profiling<a class="headerlink" href="#stop-profiling" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">xrt::aie::profiling::stop</span></code> function stops the performance profiling associated with the profiling handle and releases the corresponding hardware resources.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="w">  </span><span class="n">event</span><span class="p">.</span><span class="n">stop</span><span class="p">();</span><span class="w"></span>
+<span class="linenos">36</span><span class="w">  </span><span class="kt">double</span><span class="w"> </span><span class="n">throughput</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">output_size_in_bytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="n">cycle_count</span><span class="w"> </span><span class="o">*</span><span class="mf">0.8</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e-3</span><span class="p">);</span><span class="w"></span>
+<span class="linenos">37</span><span class="w">  </span><span class="c1">// Every AIE cycle is 0.8ns in production board</span>
+<span class="linenos">38</span><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Throughput of the graph: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">throughput</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; MB/s&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="asynchornous-programming-with-xrt-experimental">
 <h2>Asynchornous Programming with XRT (experimental)<a class="headerlink" href="#asynchornous-programming-with-xrt-experimental" title="Permalink to this headline">¶</a></h2>
