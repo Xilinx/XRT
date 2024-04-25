@@ -197,11 +197,10 @@ struct patcher
         patch_shim48(bd_data_ptr, patch);
         break;
       case symbol_type::tansaction_ctrlpkt_48:
-          // Will change "bd_data_ptr - 8" to "bd_data_ptr" once assembler is fixed
-          patch_ctrl48(bd_data_ptr - 8, patch);
+        patch_ctrl48(bd_data_ptr, patch);
         break;
       case symbol_type::tansaction_48:
-        // No patching since transaction buffer firmware does not support
+        patch_shim48(bd_data_ptr, patch);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -841,8 +840,6 @@ class module_sram : public module_impl
     dump_bo(m_instr_buf, "instrBo.bin");
 #endif
 
-    ///// THIS IS A BUG, create_instr_buf is called in constructor
-    // patch_instr is a virtual method, what is actually called here ???
     if (m_ctrlpkt_buf) {
       patch_instr("control-packet", m_ctrlpkt_buf);
     }
