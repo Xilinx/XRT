@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['memory_5fgroup_305',['memory_group',['../namespacexrt.html#a0b5c34a203355370d2901d9e6100f287',1,'xrt']]]
+  ['difference_5ftype_331',['difference_type',['../classxrt_1_1xclbin__repository_1_1iterator.html#ab7753a7cca4ef0ba199579e6c261687c',1,'xrt::xclbin_repository::iterator']]]
 ];

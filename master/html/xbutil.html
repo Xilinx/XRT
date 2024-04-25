@@ -199,6 +199,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code></p></li>
 </ul>
 </div></blockquote>
+<p><strong>Note</strong>: For applicable commands, if only one device is present on the system <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is not required. If more than one device is present in the system, <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is required.</p>
 <section id="xbutil-program">
 <h2>xbutil program<a class="headerlink" href="#xbutil-program" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card <a class="reference external" href="https://youtu.be/nvU2ZBnAaz4?t=245">&lt;video reference&gt;</a>.</p>
@@ -335,6 +336,7 @@ xbutil validate --device <span class="m">0000</span>:b3:00.1 --run DMA --param d
 <li><p><code class="docutils literal notranslate"><span class="pre">pcie-info</span></code> : Pcie information of the device</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platforms flashed on the device (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">qspi-status</span></code>: QSPI write protection status</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">telemetry</span></code>: Telemetry data for the device</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">thermal</span></code>: Reports thermal sensors present on the device</p></li>
 </ul>
 </div></blockquote>

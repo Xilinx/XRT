@@ -325,6 +325,39 @@ The device memory group depends on connectivity. If the buffer as a kernel argum
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo2boERKN3xrt6deviceE13export_handle">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt6deviceE13export_handle"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt6deviceE13export_handle"></span><span id="xrt::bo::bo__xrt::deviceCR.export_handle"></span><span class="target" id="classxrt_1_1bo_1a73aff254c7543c67d1ea573ac537461a"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="n"><span class="pre">export_handle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ehdl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt6deviceE13export_handle" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor to import an exported buffer</p>
+<p>
+If the exported buffer handle acquired by using the export() method is from another process, then it must be transferred through proper IPC mechanism translating the underlying file-descriptor asscociated with the buffer, see also constructor taking process id as argument. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – Device that imports the exported buffer </p></li>
+<li><p><strong>ehdl</strong> – Exported buffer handle, implementation specific type</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo2boERKN3xrt6deviceE8pid_type13export_handle">
+<span id="_CPPv3N3xrt2bo2boERKN3xrt6deviceE8pid_type13export_handle"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt6deviceE8pid_type13export_handle"></span><span id="xrt::bo::bo__xrt::deviceCR.pid_type.export_handle"></span><span class="target" id="classxrt_1_1bo_1a0ef9917eba151b48f16bee4b46daf8d3"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="n"><span class="pre">pid_type</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">pid</span></span>, <span class="n"><span class="pre">export_handle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ehdl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt6deviceE8pid_type13export_handle" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor to import an exported buffer from another process</p>
+<p>
+The exported buffer handle is obtained from exporting process by calling <code class="docutils literal notranslate"><span class="pre">export()</span></code>. This contructor requires that XRT is built on and running on a system with pidfd support. Also the importing process must have permission to duplicate the exporting process’ file descriptor. This permission is controlled by ptrace access mode PTRACE_MODE_ATTACH_REALCREDS check (see ptrace(2)). </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – Device that imports the exported buffer </p></li>
+<li><p><strong>pid</strong> – Process id of exporting process </p></li>
+<li><p><strong>ehdl</strong> – Exported buffer handle, implementation specific type</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group">
 <span id="_CPPv3N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group"></span><span id="_CPPv2N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group"></span><span id="xrt::bo::bo__xrt::hw_contextCR.voidP.s.bo::flags.memory_group"></span><span class="target" id="classxrt_1_1bo_1a6aecea28fe7c9c47b1f9a69b5c477217"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">hw_context</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">hwctx</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">userptr</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">sz</span></span>, <a class="reference internal" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group" title="xrt::bo::bo"><span class="n"><span class="pre">bo</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group" title="xrt::bo::bo::flags"><span class="n"><span class="pre">flags</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">flags</span></span>, <span class="n"><span class="pre">memory_group</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">grp</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor with user host buffer and flags</p>
@@ -392,39 +425,6 @@ The device memory group depends on connectivity. If the buffer as a kernel argum
 <li><p><strong>sz</strong> – Size of buffer </p></li>
 <li><p><strong>flags</strong> – Specify type of buffer </p></li>
 <li><p><strong>grp</strong> – Device memory group to allocate buffer in</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle">
-<span id="_CPPv3N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle"></span><span id="_CPPv2N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle"></span><span id="xrt::bo::bo__xclDeviceHandle.xclBufferExportHandle"></span><span class="target" id="classxrt_1_1bo_1a942646da37bf3ab2e0cfece3c7b5d2fe"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">xclDeviceHandle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dhdl</span></span>, <span class="n"><span class="pre">xclBufferExportHandle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ehdl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor to import an exported buffer</p>
-<p>
-If the exported buffer handle acquired by using the export() method is from another process, then it must be transferred through proper IPC mechanism translating the underlying file-descriptor asscociated with the buffer, see also constructor taking process id as argument. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dhdl</strong> – Device that imports the exported buffer </p></li>
-<li><p><strong>ehdl</strong> – Exported buffer handle, implementation specific type</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo2boE15xclDeviceHandle8pid_type21xclBufferExportHandle">
-<span id="_CPPv3N3xrt2bo2boE15xclDeviceHandle8pid_type21xclBufferExportHandle"></span><span id="_CPPv2N3xrt2bo2boE15xclDeviceHandle8pid_type21xclBufferExportHandle"></span><span id="xrt::bo::bo__xclDeviceHandle.pid_type.xclBufferExportHandle"></span><span class="target" id="classxrt_1_1bo_1a0ac29a7e0e49fd9315e93cea94582689"></span><span class="sig-name descname"><span class="n"><span class="pre">bo</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">xclDeviceHandle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dhdl</span></span>, <span class="n"><span class="pre">pid_type</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">pid</span></span>, <span class="n"><span class="pre">xclBufferExportHandle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ehdl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo2boE15xclDeviceHandle8pid_type21xclBufferExportHandle" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1bo_1aa462c683d1d24a4b7bf53ad307f66e8d"><span class="std std-ref">bo()</span></a> - Constructor to import an exported buffer from another process</p>
-<p>
-The exported buffer handle is obtained from exporting process by calling <code class="docutils literal notranslate"><span class="pre">export()</span></code>. This contructor requires that XRT is built on and running on a system with pidfd support. Also the importing process must have permission to duplicate the exporting process’ file descriptor. This permission is controlled by ptrace access mode PTRACE_MODE_ATTACH_REALCREDS check (see ptrace(2)). </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dhdl</strong> – Device that imports the exported buffer </p></li>
-<li><p><strong>pid</strong> – Process id of exporting process </p></li>
-<li><p><strong>ehdl</strong> – Exported buffer handle, implementation specific type</p></li>
 </ul>
 </dd>
 </dl>
@@ -527,7 +527,7 @@ The exported buffer handle is obtained from exporting process by calling <code c
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt2bo13export_bufferEv">
-<span id="_CPPv3N3xrt2bo13export_bufferEv"></span><span id="_CPPv2N3xrt2bo13export_bufferEv"></span><span id="xrt::bo::export_buffer"></span><span class="target" id="classxrt_1_1bo_1af4d5b237567ebab0b0dfa1e3320cac82"></span><span class="n"><span class="pre">xclBufferExportHandle</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">export_buffer</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo13export_bufferEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3xrt2bo13export_bufferEv"></span><span id="_CPPv2N3xrt2bo13export_bufferEv"></span><span id="xrt::bo::export_buffer"></span><span class="target" id="classxrt_1_1bo_1a798fa816135d3dcf58bf4d909b43d518"></span><span class="n"><span class="pre">export_handle</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">export_buffer</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt2bo13export_bufferEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>buffer_export() - Export this buffer</p>
 <p>
 An exported buffer can be imported on another device by this process or another process. For multiprocess transfer, the exported buffer must be transferred through a proper IPC facility to translate the underlying file-descriptor properly into another process.</p>
@@ -765,7 +765,7 @@ Throws if key value cannot be changed. </p>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3ini3setERKNSt6stringEj">
-<span id="_CPPv3N3xrt3ini3setERKNSt6stringEj"></span><span id="_CPPv2N3xrt3ini3setERKNSt6stringEj"></span><span id="xrt::ini::set__ssCR.unsigned-i"></span><span class="target" id="namespacexrt_1_1ini_1a20bbda90ac70bbbe23ac628925503f4c"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">key</span></span>, <span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">value</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ini3setERKNSt6stringEj" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3xrt3ini3setERKNSt6stringEj"></span><span id="_CPPv2N3xrt3ini3setERKNSt6stringEj"></span><span id="xrt::ini::set__ssCR.unsigned-i"></span><span class="target" id="namespacexrt_1_1ini_1a20bbda90ac70bbbe23ac628925503f4c"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">key</span></span>, <span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">value</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3ini3setERKNSt6stringEj" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#namespacexrt_1_1ini_1a832009ac0d6b3adf70e906bf9d451da4"><span class="std std-ref">set()</span></a> - Change <a class="reference internal" href="#namespacexrt_1_1ini"><span class="std std-ref">xrt.ini</span></a> string value for specified key</p>
 <p>
 Throws if key value cannot be changed. </p>
@@ -2037,20 +2037,21 @@ A basic uuid is either a uuid_t on Linux, or a typedef of equivalent basic type 
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">
-<span id="_CPPv3N3xrt6xclbin6xclbinERKNSt6stringE"></span><span id="_CPPv2N3xrt6xclbin6xclbinERKNSt6stringE"></span><span id="xrt::xclbin::xclbin__ssCR"></span><span class="target" id="classxrt_1_1xclbin_1a4c24708c27ac85e382ef026b0dfa2270"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xclbin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">filename</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3xrt6xclbin6xclbinERKNSt6stringE"></span><span id="_CPPv2N3xrt6xclbin6xclbinERKNSt6stringE"></span><span id="xrt::xclbin::xclbin__ssCR"></span><span class="target" id="classxrt_1_1xclbin_1aabb2488941ebf2a101af04078794f190"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="n"><span class="pre">XRT_API_EXPORT</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xclbin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">filename</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a6ee5043fccb0572a789af39b370fe55a"><span class="std std-ref">xclbin()</span></a> - Constructor from an xclbin filename</p>
 <p>
-Throws if file not found. </p>
+If the specified path is an absolute path then the function returns this path or throws if file does not exist. If the path is relative, or just a plain file name, then the function check first in current directory, then in the platform specific xclbin repository.</p>
+<p>Throws if file could not be found. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>filename</strong> – Path to the xclbin file</p>
+<dd class="field-odd"><p><strong>filename</strong> – : A path relative or absolute to an xclbin file</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">
-<span id="_CPPv3N3xrt6xclbin6xclbinERKNSt6vectorIcEE"></span><span id="_CPPv2N3xrt6xclbin6xclbinERKNSt6vectorIcEE"></span><span id="xrt::xclbin::xclbin__std::vector:c:CR"></span><span class="target" id="classxrt_1_1xclbin_1afc9cd922c779cffa0f87f17fd498143d"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xclbin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">char</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3xrt6xclbin6xclbinERKNSt6vectorIcEE"></span><span id="_CPPv2N3xrt6xclbin6xclbinERKNSt6vectorIcEE"></span><span id="xrt::xclbin::xclbin__std::vector:c:CR"></span><span class="target" id="classxrt_1_1xclbin_1a93291d1bcb35c630e000fc0569271704"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="n"><span class="pre">XRT_API_EXPORT</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xclbin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">char</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a6ee5043fccb0572a789af39b370fe55a"><span class="std std-ref">xclbin()</span></a> - Constructor from raw data</p>
 <p>
 The raw data of the xclbin can be deleted after calling the constructor. </p>
@@ -2063,7 +2064,7 @@ The raw data of the xclbin can be deleted after calling the constructor. </p>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt6xclbin6xclbinEPK4axlf">
-<span id="_CPPv3N3xrt6xclbin6xclbinEPK4axlf"></span><span id="_CPPv2N3xrt6xclbin6xclbinEPK4axlf"></span><span id="xrt::xclbin::xclbin__axlfCP"></span><span class="target" id="classxrt_1_1xclbin_1ad8b24ec146087a16ea963d1a84aed18e"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xclbin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">axlf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">top</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinEPK4axlf" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3xrt6xclbin6xclbinEPK4axlf"></span><span id="_CPPv2N3xrt6xclbin6xclbinEPK4axlf"></span><span id="xrt::xclbin::xclbin__axlfCP"></span><span class="target" id="classxrt_1_1xclbin_1aefdf4b1d2a49d74f2d06f98af36832f3"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="n"><span class="pre">XRT_API_EXPORT</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xclbin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">axlf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">top</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6xclbin6xclbinEPK4axlf" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a6ee5043fccb0572a789af39b370fe55a"><span class="std std-ref">xclbin()</span></a> - Constructor from raw data</p>
 <p>
 The argument axlf is copied by the constructor. </p>
@@ -2075,9 +2076,9 @@ The argument axlf is copied by the constructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin11get_kernelsEv">
-<span id="_CPPv3NK3xrt6xclbin11get_kernelsEv"></span><span id="_CPPv2NK3xrt6xclbin11get_kernelsEv"></span><span id="xrt::xclbin::get_kernelsC"></span><span class="target" id="classxrt_1_1xclbin_1ac8cc2768327b7456e943d97f2d5b8a27"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin6kernelE" title="xrt::xclbin::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_kernels</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin11get_kernelsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ac8cc2768327b7456e943d97f2d5b8a27"><span class="std std-ref">get_kernels()</span></a> - Get list of kernels from xclbin.</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1a925a3456903a1dba766ba5d9cec2b443"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">kernel</span> <span class="pre">&gt;</span> <span class="pre">get_kernels</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a925a3456903a1dba766ba5d9cec2b443"><span class="std std-ref">get_kernels()</span></a> - Get list of kernels from xclbin.</p>
 <p>
 Kernels are extracted from embedded XML metadata in the xclbin. A kernel groups one or more compute units. A kernel has arguments from which offset, type, etc can be retrived. </p>
 <dl class="field-list simple">
@@ -2088,9 +2089,9 @@ Kernels are extracted from embedded XML metadata in the xclbin. A kernel groups 
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin10get_kernelERKNSt6stringE">
-<span id="_CPPv3NK3xrt6xclbin10get_kernelERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin10get_kernelERKNSt6stringE"></span><span id="xrt::xclbin::get_kernel__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1a1517929bd43700d26af073a94a0b1761"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin6kernelE" title="xrt::xclbin::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_kernel</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin10get_kernelERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a1517929bd43700d26af073a94a0b1761"><span class="std std-ref">get_kernel()</span></a> - Get a kernel by name from xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1ae9d8707a2bb7be48812d0ecda8439c0f"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">kernel</span> <span class="pre">get_kernel</span> <span class="pre">(const</span> <span class="pre">std::string</span> <span class="pre">&amp;name)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ae9d8707a2bb7be48812d0ecda8439c0f"><span class="std std-ref">get_kernel()</span></a> - Get a kernel by name from xclbin</p>
 <p>
 A matching kernel is extracted from embedded XML metadata in the xclbin. A kernel groups one or more compute units. A kernel has arguments from which offset, type, etc can be retrived. </p>
 <dl class="field-list simple">
@@ -2104,9 +2105,9 @@ A matching kernel is extracted from embedded XML metadata in the xclbin. A kerne
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin7get_ipsEv">
-<span id="_CPPv3NK3xrt6xclbin7get_ipsEv"></span><span id="_CPPv2NK3xrt6xclbin7get_ipsEv"></span><span id="xrt::xclbin::get_ipsC"></span><span class="target" id="classxrt_1_1xclbin_1ac539bf90de9be3b9e4ba202b70cbba40"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip"><span class="n"><span class="pre">ip</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_ips</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin7get_ipsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ac539bf90de9be3b9e4ba202b70cbba40"><span class="std std-ref">get_ips()</span></a> - Get a list of IPs from the xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1af6b08ecf796d058b79f34a2f754f39a9"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">ip</span> <span class="pre">&gt;</span> <span class="pre">get_ips</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1af6b08ecf796d058b79f34a2f754f39a9"><span class="std std-ref">get_ips()</span></a> - Get a list of IPs from the xclbin</p>
 <p>
 The returned <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects are extracted from the IP_LAYOUT section of the xclbin. </p>
 <dl class="field-list simple">
@@ -2117,9 +2118,9 @@ The returned <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><spa
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin7get_ipsERKNSt6stringE">
-<span id="_CPPv3NK3xrt6xclbin7get_ipsERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin7get_ipsERKNSt6stringE"></span><span id="xrt::xclbin::get_ips__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1a0fb71f2c018e5688a10132b7c0de00a8"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip"><span class="n"><span class="pre">ip</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_ips</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin7get_ipsERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ac539bf90de9be3b9e4ba202b70cbba40"><span class="std std-ref">get_ips()</span></a> - Get list of ips that matches name</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1a7aeff3f03089c9f047a1447dc4252114"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">ip</span> <span class="pre">&gt;</span> <span class="pre">get_ips</span> <span class="pre">(const</span> <span class="pre">std::string</span> <span class="pre">&amp;name)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1af6b08ecf796d058b79f34a2f754f39a9"><span class="std std-ref">get_ips()</span></a> - Get list of ips that matches name</p>
 <p>
 The kernel name can optionally specify which kernel instance(s) to match “kernel:{ip1,ip2,…} syntax. </p>
 <dl class="field-list simple">
@@ -2133,9 +2134,9 @@ The kernel name can optionally specify which kernel instance(s) to match “kern
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6get_ipERKNSt6stringE">
-<span id="_CPPv3NK3xrt6xclbin6get_ipERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin6get_ipERKNSt6stringE"></span><span id="xrt::xclbin::get_ip__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1a0fd663b528ded292023776bbdb4c2a9c"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip"><span class="n"><span class="pre">ip</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_ip</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6get_ipERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a0fd663b528ded292023776bbdb4c2a9c"><span class="std std-ref">get_ip()</span></a> - Get a specific IP from the xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1a2a633cf7ff96390e2239af76e5e92358"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">ip</span> <span class="pre">get_ip</span> <span class="pre">(const</span> <span class="pre">std::string</span> <span class="pre">&amp;name)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a2a633cf7ff96390e2239af76e5e92358"><span class="std std-ref">get_ip()</span></a> - Get a specific IP from the xclbin</p>
 <p>
 The returned <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> object is extracted from the IP_LAYOUT section of the xclbin. </p>
 <dl class="field-list simple">
@@ -2146,9 +2147,9 @@ The returned <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><spa
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin8get_memsEv">
-<span id="_CPPv3NK3xrt6xclbin8get_memsEv"></span><span id="_CPPv2NK3xrt6xclbin8get_memsEv"></span><span id="xrt::xclbin::get_memsC"></span><span class="target" id="classxrt_1_1xclbin_1a4af895598626ead2a3f478e149a05778"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3memE" title="xrt::xclbin::mem"><span class="n"><span class="pre">mem</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_mems</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin8get_memsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a4af895598626ead2a3f478e149a05778"><span class="std std-ref">get_mems()</span></a> - Get list of memory objects</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1aab6028e7cdd6d89315fef9a722b00f3c"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">mem</span> <span class="pre">&gt;</span> <span class="pre">get_mems</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1aab6028e7cdd6d89315fef9a722b00f3c"><span class="std std-ref">get_mems()</span></a> - Get list of memory objects</p>
 <p>
 The returned <a class="reference internal" href="#classxrt_1_1xclbin_1_1mem"><span class="std std-ref">xrt::xclbin::mem</span></a> objects are extracted from the xclbin. </p>
 <dl class="field-list simple">
@@ -2159,9 +2160,9 @@ The returned <a class="reference internal" href="#classxrt_1_1xclbin_1_1mem"><sp
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin12get_xsa_nameEv">
-<span id="_CPPv3NK3xrt6xclbin12get_xsa_nameEv"></span><span id="_CPPv2NK3xrt6xclbin12get_xsa_nameEv"></span><span id="xrt::xclbin::get_xsa_nameC"></span><span class="target" id="classxrt_1_1xclbin_1a523c96967160da1a6abf7f8029afac5f"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_xsa_name</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin12get_xsa_nameEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a523c96967160da1a6abf7f8029afac5f"><span class="std std-ref">get_xsa_name()</span></a> - Get Xilinx Support Archive (XSA) name of xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1a19d4159e746eba563c54b434d08dfa00"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_xsa_name</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a19d4159e746eba563c54b434d08dfa00"><span class="std std-ref">get_xsa_name()</span></a> - Get Xilinx Support Archive (XSA) name of xclbin</p>
 <p>
 An exception is thrown if the data is missing. </p>
 <dl class="field-list simple">
@@ -2172,9 +2173,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin20get_fpga_device_nameEv">
-<span id="_CPPv3NK3xrt6xclbin20get_fpga_device_nameEv"></span><span id="_CPPv2NK3xrt6xclbin20get_fpga_device_nameEv"></span><span id="xrt::xclbin::get_fpga_device_nameC"></span><span class="target" id="classxrt_1_1xclbin_1af08135286e0bd4a3bbbb047a42640725"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_fpga_device_name</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin20get_fpga_device_nameEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1af08135286e0bd4a3bbbb047a42640725"><span class="std std-ref">get_fpga_device_name()</span></a> - Get FPGA device name</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1a6e9e828d4c8e8d2aa1431d1f86163e01"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_fpga_device_name</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a6e9e828d4c8e8d2aa1431d1f86163e01"><span class="std std-ref">get_fpga_device_name()</span></a> - Get FPGA device name</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Name of fpga device per XML metadata. </p>
@@ -2183,9 +2184,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin8get_uuidEv">
-<span id="_CPPv3NK3xrt6xclbin8get_uuidEv"></span><span id="_CPPv2NK3xrt6xclbin8get_uuidEv"></span><span id="xrt::xclbin::get_uuidC"></span><span class="target" id="classxrt_1_1xclbin_1a650f8a98861909e1ddeb53d0d09b1e28"></span><a class="reference internal" href="#_CPPv4N3xrt4uuidE" title="xrt::uuid"><span class="n"><span class="pre">uuid</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_uuid</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin8get_uuidEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a650f8a98861909e1ddeb53d0d09b1e28"><span class="std std-ref">get_uuid()</span></a> - Get the uuid of the xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1ab4a800b90de7ffcf8aaecbd5e523ffba"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uuid</span> <span class="pre">get_uuid</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ab4a800b90de7ffcf8aaecbd5e523ffba"><span class="std std-ref">get_uuid()</span></a> - Get the uuid of the xclbin</p>
 <p>
 An exception is thrown if the data is missing. </p>
 <dl class="field-list simple">
@@ -2196,9 +2197,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin18get_interface_uuidEv">
-<span id="_CPPv3NK3xrt6xclbin18get_interface_uuidEv"></span><span id="_CPPv2NK3xrt6xclbin18get_interface_uuidEv"></span><span id="xrt::xclbin::get_interface_uuidC"></span><span class="target" id="classxrt_1_1xclbin_1a0eb7fe93108c6a6384f0ec353e046eab"></span><a class="reference internal" href="#_CPPv4N3xrt4uuidE" title="xrt::uuid"><span class="n"><span class="pre">uuid</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_interface_uuid</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin18get_interface_uuidEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a0eb7fe93108c6a6384f0ec353e046eab"><span class="std std-ref">get_interface_uuid()</span></a> - Get the interface uuid of the xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1a82589a979101e0ffe7c7936154d7e16e"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uuid</span> <span class="pre">get_interface_uuid</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a82589a979101e0ffe7c7936154d7e16e"><span class="std std-ref">get_interface_uuid()</span></a> - Get the interface uuid of the xclbin</p>
 <p>
 An exception is thrown if the data is missing. </p>
 <dl class="field-list simple">
@@ -2209,9 +2210,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin15get_target_typeEv">
-<span id="_CPPv3NK3xrt6xclbin15get_target_typeEv"></span><span id="_CPPv2NK3xrt6xclbin15get_target_typeEv"></span><span id="xrt::xclbin::get_target_typeC"></span><span class="target" id="classxrt_1_1xclbin_1a02b5a6a297f231dbec7dde96f963088a"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin11target_typeE" title="xrt::xclbin::target_type"><span class="n"><span class="pre">target_type</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_target_type</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin15get_target_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a02b5a6a297f231dbec7dde96f963088a"><span class="std std-ref">get_target_type()</span></a> - Get the type of this xclbin</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1ad0ad16d62bafb595abdddebe2d006266"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">target_type</span> <span class="pre">get_target_type</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ad0ad16d62bafb595abdddebe2d006266"><span class="std std-ref">get_target_type()</span></a> - Get the type of this xclbin</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Target type, which can be hw, sw_emu, or hw_emu </p>
@@ -2228,9 +2229,9 @@ An exception is thrown if the data is missing. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg8get_nameEv">
-<span id="_CPPv3NK3xrt6xclbin3arg8get_nameEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_nameEv"></span><span id="xrt::xclbin::arg::get_nameC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a65941a31d2bcd97939452c7e050f2cc9"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_name</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_nameEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a65941a31d2bcd97939452c7e050f2cc9"><span class="std std-ref">get_name()</span></a> - Get argument name</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1ab75fd24e69299994b78e0f2e8478612f"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_name</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1ab75fd24e69299994b78e0f2e8478612f"><span class="std std-ref">get_name()</span></a> - Get argument name</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Name of argument. </p>
@@ -2239,9 +2240,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg8get_memsEv">
-<span id="_CPPv3NK3xrt6xclbin3arg8get_memsEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_memsEv"></span><span id="xrt::xclbin::arg::get_memsC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1ae039158375adb0e3dddaf1de4d9c376b"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3memE" title="xrt::xclbin::mem"><span class="n"><span class="pre">mem</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_mems</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_memsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1ae039158375adb0e3dddaf1de4d9c376b"><span class="std std-ref">get_mems()</span></a> - Get list of device memories from xclbin.</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1ab25a7f72d71e9297ccc2e6efc8bede71"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">mem</span> <span class="pre">&gt;</span> <span class="pre">get_mems</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1ab25a7f72d71e9297ccc2e6efc8bede71"><span class="std std-ref">get_mems()</span></a> - Get list of device memories from xclbin.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1mem"><span class="std std-ref">xrt::xclbin::mem</span></a> objects to which this argument is connected. </p>
@@ -2250,9 +2251,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg8get_portEv">
-<span id="_CPPv3NK3xrt6xclbin3arg8get_portEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_portEv"></span><span id="xrt::xclbin::arg::get_portC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1acfb387ff009c11d18f5eede905e43204"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_port</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_portEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1acfb387ff009c11d18f5eede905e43204"><span class="std std-ref">get_port()</span></a> - Get port name of this argument</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1a6c628a07753650c59819b086d4aee406"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_port</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a6c628a07753650c59819b086d4aee406"><span class="std std-ref">get_port()</span></a> - Get port name of this argument</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Port name </p>
@@ -2261,9 +2262,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg8get_sizeEv">
-<span id="_CPPv3NK3xrt6xclbin3arg8get_sizeEv"></span><span id="_CPPv2NK3xrt6xclbin3arg8get_sizeEv"></span><span id="xrt::xclbin::arg::get_sizeC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a6d3a81ce7223bec8983482ad86dd6adf"></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg8get_sizeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a6d3a81ce7223bec8983482ad86dd6adf"><span class="std std-ref">get_size()</span></a> - Argument size in bytes</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1aae3b620268196796b3ffb8750a7214a7"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uint64_t</span> <span class="pre">get_size</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1aae3b620268196796b3ffb8750a7214a7"><span class="std std-ref">get_size()</span></a> - Argument size in bytes</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Argument size </p>
@@ -2272,9 +2273,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg10get_offsetEv">
-<span id="_CPPv3NK3xrt6xclbin3arg10get_offsetEv"></span><span id="_CPPv2NK3xrt6xclbin3arg10get_offsetEv"></span><span id="xrt::xclbin::arg::get_offsetC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a5a6ee715484db8638b6221b4b32f0883"></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_offset</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg10get_offsetEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a5a6ee715484db8638b6221b4b32f0883"><span class="std std-ref">get_offset()</span></a> - Argument offset</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1a33e25ca3c0afa0a5e5c5c146adc77a03"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uint64_t</span> <span class="pre">get_offset</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a33e25ca3c0afa0a5e5c5c146adc77a03"><span class="std std-ref">get_offset()</span></a> - Argument offset</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Argument offset </p>
@@ -2283,9 +2284,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg13get_host_typeEv">
-<span id="_CPPv3NK3xrt6xclbin3arg13get_host_typeEv"></span><span id="_CPPv2NK3xrt6xclbin3arg13get_host_typeEv"></span><span id="xrt::xclbin::arg::get_host_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1a9b4d4ae4c4aace3003c3acbde25509db"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_host_type</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg13get_host_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a9b4d4ae4c4aace3003c3acbde25509db"><span class="std std-ref">get_host_type()</span></a> - Get the argument host type</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1a95b5b046b0822db0f4f788baaf2b9f51"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_host_type</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a95b5b046b0822db0f4f788baaf2b9f51"><span class="std std-ref">get_host_type()</span></a> - Get the argument host type</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Argument host type </p>
@@ -2294,9 +2295,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3arg9get_indexEv">
-<span id="_CPPv3NK3xrt6xclbin3arg9get_indexEv"></span><span id="_CPPv2NK3xrt6xclbin3arg9get_indexEv"></span><span id="xrt::xclbin::arg::get_indexC"></span><span class="target" id="classxrt_1_1xclbin_1_1arg_1af475fdad8a7d7709c132a4969a91d32e"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_index</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3arg9get_indexEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1af475fdad8a7d7709c132a4969a91d32e"><span class="std std-ref">get_index()</span></a> - Get the index of this argument</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1arg_1a6ef56c3c41cf85fb2060544dd9193a6b"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">size_t</span> <span class="pre">get_index</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1arg_1a6ef56c3c41cf85fb2060544dd9193a6b"><span class="std std-ref">get_index()</span></a> - Get the index of this argument</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Argument index </p>
@@ -2366,9 +2367,9 @@ An exception is thrown if the data is missing. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip8get_nameEv">
-<span id="_CPPv3NK3xrt6xclbin2ip8get_nameEv"></span><span id="_CPPv2NK3xrt6xclbin2ip8get_nameEv"></span><span id="xrt::xclbin::ip::get_nameC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a54a875884cecc8d34deac6ba6abee23b"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_name</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip8get_nameEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a54a875884cecc8d34deac6ba6abee23b"><span class="std std-ref">get_name()</span></a> - Get name of IP</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a0809be47f88d58ee765fa54d0f07c6b1"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_name</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a0809be47f88d58ee765fa54d0f07c6b1"><span class="std std-ref">get_name()</span></a> - Get name of IP</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>IP name. </p>
@@ -2377,9 +2378,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip8get_typeEv">
-<span id="_CPPv3NK3xrt6xclbin2ip8get_typeEv"></span><span id="_CPPv2NK3xrt6xclbin2ip8get_typeEv"></span><span id="xrt::xclbin::ip::get_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1ab79dfb00b7b2a057c3da9343245b6327"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ip7ip_typeE" title="xrt::xclbin::ip::ip_type"><span class="n"><span class="pre">ip_type</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_type</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip8get_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1ab79dfb00b7b2a057c3da9343245b6327"><span class="std std-ref">get_type()</span></a> - Get the IP type</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1ac65ee975567f90378bd3cdd8295e08dc"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">ip_type</span> <span class="pre">get_type</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1ac65ee975567f90378bd3cdd8295e08dc"><span class="std std-ref">get_type()</span></a> - Get the IP type</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>IP type </p>
@@ -2388,9 +2389,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip16get_control_typeEv">
-<span id="_CPPv3NK3xrt6xclbin2ip16get_control_typeEv"></span><span id="_CPPv2NK3xrt6xclbin2ip16get_control_typeEv"></span><span id="xrt::xclbin::ip::get_control_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a7a8a7d78c14b94660c5f8bb2c9bda932"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ip12control_typeE" title="xrt::xclbin::ip::control_type"><span class="n"><span class="pre">control_type</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_control_type</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip16get_control_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a7a8a7d78c14b94660c5f8bb2c9bda932"><span class="std std-ref">get_control_type()</span></a> - Get the IP control protocol</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a323d2cdc8227af5386f49261f760eb35"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">control_type</span> <span class="pre">get_control_type</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a323d2cdc8227af5386f49261f760eb35"><span class="std std-ref">get_control_type()</span></a> - Get the IP control protocol</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Control type </p>
@@ -2399,9 +2400,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip12get_num_argsEv">
-<span id="_CPPv3NK3xrt6xclbin2ip12get_num_argsEv"></span><span id="_CPPv2NK3xrt6xclbin2ip12get_num_argsEv"></span><span id="xrt::xclbin::ip::get_num_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a13e867a001c6b0ff50ff586cd8635955"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_num_args</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip12get_num_argsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a13e867a001c6b0ff50ff586cd8635955"><span class="std std-ref">get_num_args()</span></a> - Number of arguments</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a4b3a8a18015caf1d56ba5e3a016e3cf3"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">size_t</span> <span class="pre">get_num_args</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a4b3a8a18015caf1d56ba5e3a016e3cf3"><span class="std std-ref">get_num_args()</span></a> - Number of arguments</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Number of arguments for this IP per CONNECTIVITY section </p>
@@ -2410,9 +2411,9 @@ An exception is thrown if the data is missing. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip8get_argsEv">
-<span id="_CPPv3NK3xrt6xclbin2ip8get_argsEv"></span><span id="_CPPv2NK3xrt6xclbin2ip8get_argsEv"></span><span id="xrt::xclbin::ip::get_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a14a9fec0ed940e1afbb81ff2dcdbd96e"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg"><span class="n"><span class="pre">arg</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_args</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip8get_argsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a14a9fec0ed940e1afbb81ff2dcdbd96e"><span class="std std-ref">get_args()</span></a> - Get list of IP arguments</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a9e44d5ab56ce330eda5bab7bbdbc6ea0"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">arg</span> <span class="pre">&gt;</span> <span class="pre">get_args</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a9e44d5ab56ce330eda5bab7bbdbc6ea0"><span class="std std-ref">get_args()</span></a> - Get list of IP arguments</p>
 <p>
 An argument may have multiple memory connections </p>
 <dl class="field-list simple">
@@ -2423,9 +2424,9 @@ An argument may have multiple memory connections </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip7get_argE7int32_t">
-<span id="_CPPv3NK3xrt6xclbin2ip7get_argE7int32_t"></span><span id="_CPPv2NK3xrt6xclbin2ip7get_argE7int32_t"></span><span id="xrt::xclbin::ip::get_arg__int32_tC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a62bf76c1246a4face6174aebd9d11e86"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg"><span class="n"><span class="pre">arg</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_arg</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">index</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip7get_argE7int32_t" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a62bf76c1246a4face6174aebd9d11e86"><span class="std std-ref">get_arg()</span></a> - Get argument at index.</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a93041b26be6afe28675d45d24ad47612"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">arg</span> <span class="pre">get_arg</span> <span class="pre">(int32_t</span> <span class="pre">index)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a93041b26be6afe28675d45d24ad47612"><span class="std std-ref">get_arg()</span></a> - Get argument at index.</p>
 <p>
 The argument may have multiple memory connections </p>
 <dl class="field-list simple">
@@ -2439,9 +2440,9 @@ The argument may have multiple memory connections </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip16get_base_addressEv">
-<span id="_CPPv3NK3xrt6xclbin2ip16get_base_addressEv"></span><span id="_CPPv2NK3xrt6xclbin2ip16get_base_addressEv"></span><span id="xrt::xclbin::ip::get_base_addressC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1abb83f977227c8dd3a212b721df5980ab"></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_base_address</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip16get_base_addressEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1abb83f977227c8dd3a212b721df5980ab"><span class="std std-ref">get_base_address()</span></a> - Get the base address of the cu</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a68dd70ee3dc764b7d291035b50d7dca4"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uint64_t</span> <span class="pre">get_base_address</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a68dd70ee3dc764b7d291035b50d7dca4"><span class="std std-ref">get_base_address()</span></a> - Get the base address of the cu</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>The base address of the IP </p>
@@ -2450,9 +2451,9 @@ The argument may have multiple memory connections </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin2ip8get_sizeEv">
-<span id="_CPPv3NK3xrt6xclbin2ip8get_sizeEv"></span><span id="_CPPv2NK3xrt6xclbin2ip8get_sizeEv"></span><span id="xrt::xclbin::ip::get_sizeC"></span><span class="target" id="classxrt_1_1xclbin_1_1ip_1a94ddcf3220830a8215d25198eec106c5"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin2ip8get_sizeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a94ddcf3220830a8215d25198eec106c5"><span class="std std-ref">get_size()</span></a> - Get the address range size of this IP.</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1ip_1a2e5c54bd572cd0832d2d6732e9a672c2"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">size_t</span> <span class="pre">get_size</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1ip_1a2e5c54bd572cd0832d2d6732e9a672c2"><span class="std std-ref">get_size()</span></a> - Get the address range size of this IP.</p>
 <p>
 The address range is a property of the kernel and as such only valid for for kernel compute units.</p>
 <p>For IPs that are not associated with a kernel, the size return is 0. </p>
@@ -2502,9 +2503,9 @@ The address range is a property of the kernel and as such only valid for for ker
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel8get_nameEv">
-<span id="_CPPv3NK3xrt6xclbin6kernel8get_nameEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel8get_nameEv"></span><span id="xrt::xclbin::kernel::get_nameC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1aa5af8049e3ffc3131575b2b2830d7f3d"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_name</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel8get_nameEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1aa5af8049e3ffc3131575b2b2830d7f3d"><span class="std std-ref">get_name()</span></a> - Get kernel name</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1ad1c79e7a4c2644cf7d5d07de7914329e"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_name</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1ad1c79e7a4c2644cf7d5d07de7914329e"><span class="std std-ref">get_name()</span></a> - Get kernel name</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>The name of the kernel </p>
@@ -2513,9 +2514,9 @@ The address range is a property of the kernel and as such only valid for for ker
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel8get_typeEv">
-<span id="_CPPv3NK3xrt6xclbin6kernel8get_typeEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel8get_typeEv"></span><span id="xrt::xclbin::kernel::get_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1a92ac219cc7903fc1becf3d4cdfef2bce"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin6kernel11kernel_typeE" title="xrt::xclbin::kernel::kernel_type"><span class="n"><span class="pre">kernel_type</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_type</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel8get_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a92ac219cc7903fc1becf3d4cdfef2bce"><span class="std std-ref">get_type()</span></a> - Get kernel type</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1acc188624236d7fcde489fc90b924ebbb"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">kernel_type</span> <span class="pre">get_type</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1acc188624236d7fcde489fc90b924ebbb"><span class="std std-ref">get_type()</span></a> - Get kernel type</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>The type of the kernel </p>
@@ -2524,9 +2525,9 @@ The address range is a property of the kernel and as such only valid for for ker
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel7get_cusEv">
-<span id="_CPPv3NK3xrt6xclbin6kernel7get_cusEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel7get_cusEv"></span><span id="xrt::xclbin::kernel::get_cusC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1a613a09678d939532288ad7876b9bb13d"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip"><span class="n"><span class="pre">ip</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_cus</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel7get_cusEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a613a09678d939532288ad7876b9bb13d"><span class="std std-ref">get_cus()</span></a> - Get list of cu from kernel.</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1affab86fcf3df7edef0120e08d6a5c756"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">ip</span> <span class="pre">&gt;</span> <span class="pre">get_cus</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1affab86fcf3df7edef0120e08d6a5c756"><span class="std std-ref">get_cus()</span></a> - Get list of cu from kernel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>A list of <a class="reference internal" href="#classxrt_1_1xclbin_1_1ip"><span class="std std-ref">xrt::xclbin::ip</span></a> objects corresponding the compute units for this kernel object. </p>
@@ -2535,9 +2536,9 @@ The address range is a property of the kernel and as such only valid for for ker
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel7get_cusERKNSt6stringE">
-<span id="_CPPv3NK3xrt6xclbin6kernel7get_cusERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin6kernel7get_cusERKNSt6stringE"></span><span id="xrt::xclbin::kernel::get_cus__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1ac80555d8044be7c12562488954481343"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip"><span class="n"><span class="pre">ip</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_cus</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel7get_cusERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a613a09678d939532288ad7876b9bb13d"><span class="std std-ref">get_cus()</span></a> - Get list of compute units that matches name</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1a48be0f0a2068a5f90d3cb7daa9fe3448"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">ip</span> <span class="pre">&gt;</span> <span class="pre">get_cus</span> <span class="pre">(const</span> <span class="pre">std::string</span> <span class="pre">&amp;name)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1affab86fcf3df7edef0120e08d6a5c756"><span class="std std-ref">get_cus()</span></a> - Get list of compute units that matches name</p>
 <p>
 The kernel name can optionally specify which kernel instance(s) to match “kernel:{cu1,cu2,…} syntax. </p>
 <dl class="field-list simple">
@@ -2551,9 +2552,9 @@ The kernel name can optionally specify which kernel instance(s) to match “kern
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel6get_cuERKNSt6stringE">
-<span id="_CPPv3NK3xrt6xclbin6kernel6get_cuERKNSt6stringE"></span><span id="_CPPv2NK3xrt6xclbin6kernel6get_cuERKNSt6stringE"></span><span id="xrt::xclbin::kernel::get_cu__ssCRC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1ac008331e7c7d85f0abeb13bbc6db725a"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin2ipE" title="xrt::xclbin::ip"><span class="n"><span class="pre">ip</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_cu</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel6get_cuERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1ac008331e7c7d85f0abeb13bbc6db725a"><span class="std std-ref">get_cu()</span></a> - Get compute unit by name</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1abf8ad3500c89beb57f27a69b4a8b9831"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">ip</span> <span class="pre">get_cu</span> <span class="pre">(const</span> <span class="pre">std::string</span> <span class="pre">&amp;name)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1abf8ad3500c89beb57f27a69b4a8b9831"><span class="std std-ref">get_cu()</span></a> - Get compute unit by name</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>The xct::xclbin::ip object matching the specified name, or error if not present. </p>
@@ -2562,9 +2563,9 @@ The kernel name can optionally specify which kernel instance(s) to match “kern
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel12get_num_argsEv">
-<span id="_CPPv3NK3xrt6xclbin6kernel12get_num_argsEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel12get_num_argsEv"></span><span id="xrt::xclbin::kernel::get_num_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1aaffa94e74e6e990284931305e9adb987"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_num_args</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel12get_num_argsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1aaffa94e74e6e990284931305e9adb987"><span class="std std-ref">get_num_args()</span></a> - Number of arguments</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1a53998db4e76d389fe987133ab441085c"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">size_t</span> <span class="pre">get_num_args</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a53998db4e76d389fe987133ab441085c"><span class="std std-ref">get_num_args()</span></a> - Number of arguments</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Number of arguments for this kernel. </p>
@@ -2573,9 +2574,9 @@ The kernel name can optionally specify which kernel instance(s) to match “kern
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel8get_argsEv">
-<span id="_CPPv3NK3xrt6xclbin6kernel8get_argsEv"></span><span id="_CPPv2NK3xrt6xclbin6kernel8get_argsEv"></span><span id="xrt::xclbin::kernel::get_argsC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1a7cf639b4e3432161cabdf21428254526"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg"><span class="n"><span class="pre">arg</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_args</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel8get_argsEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1a7cf639b4e3432161cabdf21428254526"><span class="std std-ref">get_args()</span></a> - Get list of kernel arguments</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1aadcda96d243c82678c9ea7462cb92e76"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::vector&lt;</span> <span class="pre">arg</span> <span class="pre">&gt;</span> <span class="pre">get_args</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1aadcda96d243c82678c9ea7462cb92e76"><span class="std std-ref">get_args()</span></a> - Get list of kernel arguments</p>
 <p>
 An argument may have multiple memory connections </p>
 <dl class="field-list simple">
@@ -2586,11 +2587,11 @@ An argument may have multiple memory connections </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin6kernel7get_argE7int32_t">
-<span id="_CPPv3NK3xrt6xclbin6kernel7get_argE7int32_t"></span><span id="_CPPv2NK3xrt6xclbin6kernel7get_argE7int32_t"></span><span id="xrt::xclbin::kernel::get_arg__int32_tC"></span><span class="target" id="classxrt_1_1xclbin_1_1kernel_1af9ab604bab7d080bd98a8376941f98b2"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3argE" title="xrt::xclbin::arg"><span class="n"><span class="pre">arg</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_arg</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">index</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin6kernel7get_argE7int32_t" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1af9ab604bab7d080bd98a8376941f98b2"><span class="std std-ref">get_arg()</span></a> - Get kernel argument at index.</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1kernel_1ab81c5f28e8fe3d2c98857c4efbc27915"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">arg</span> <span class="pre">get_arg</span> <span class="pre">(int32_t</span> <span class="pre">index)</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1ab81c5f28e8fe3d2c98857c4efbc27915"><span class="std std-ref">get_arg()</span></a> - Get kernel argument at index.</p>
 <p>
-The memory connections of an argument is the union of the connections for each compute unit for that particular argument. In other words, for each connection of the argument returned by <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1af9ab604bab7d080bd98a8376941f98b2"><span class="std std-ref"><span class="pre">get_arg()</span></span></a></code> there is at least one compute unit that has that connection. </p>
+The memory connections of an argument is the union of the connections for each compute unit for that particular argument. In other words, for each connection of the argument returned by <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1xclbin_1_1kernel_1ab81c5f28e8fe3d2c98857c4efbc27915"><span class="std std-ref"><span class="pre">get_arg()</span></span></a></code> there is at least one compute unit that has that connection. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>The <a class="reference internal" href="#classxrt_1_1xclbin_1_1arg"><span class="std std-ref">xrt::xclbin::arg</span></a> object at specified argument index.</p>
@@ -2678,8 +2679,8 @@ The memory connections of an argument is the union of the connections for each c
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3mem7get_tagEv">
-<span id="_CPPv3NK3xrt6xclbin3mem7get_tagEv"></span><span id="_CPPv2NK3xrt6xclbin3mem7get_tagEv"></span><span id="xrt::xclbin::mem::get_tagC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4980c74f81239e91e6a403cec2b27225"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_tag</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem7get_tagEv" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1mem_1aedef1d46f1deb6610efc97bbfcc3d19e"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">std::string</span> <span class="pre">get_tag</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
 <dd><p>get_name() - Get tag name</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
@@ -2689,9 +2690,9 @@ The memory connections of an argument is the union of the connections for each c
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3mem16get_base_addressEv">
-<span id="_CPPv3NK3xrt6xclbin3mem16get_base_addressEv"></span><span id="_CPPv2NK3xrt6xclbin3mem16get_base_addressEv"></span><span id="xrt::xclbin::mem::get_base_addressC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4fb8dcb441828b14ec068d7207ebc2e0"></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_base_address</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem16get_base_addressEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a4fb8dcb441828b14ec068d7207ebc2e0"><span class="std std-ref">get_base_address()</span></a> - Get the base address of the memory bank</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1mem_1a47f115027d60513d9d305994e86b80ba"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uint64_t</span> <span class="pre">get_base_address</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a47f115027d60513d9d305994e86b80ba"><span class="std std-ref">get_base_address()</span></a> - Get the base address of the memory bank</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Base address of the memory bank, or -1 for invalid base address </p>
@@ -2700,8 +2701,8 @@ The memory connections of an argument is the union of the connections for each c
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3mem11get_size_kbEv">
-<span id="_CPPv3NK3xrt6xclbin3mem11get_size_kbEv"></span><span id="_CPPv2NK3xrt6xclbin3mem11get_size_kbEv"></span><span id="xrt::xclbin::mem::get_size_kbC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a9a125d6e97fc4458547c27c08d43603e"></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_size_kb</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem11get_size_kbEv" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1mem_1ad21ef7a8dbe0be1ff9a69490cd4ca614"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">uint64_t</span> <span class="pre">get_size_kb</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
 <dd><p>get_size() - Get the size of the memory in KB</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
@@ -2711,9 +2712,9 @@ The memory connections of an argument is the union of the connections for each c
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3mem8get_usedEv">
-<span id="_CPPv3NK3xrt6xclbin3mem8get_usedEv"></span><span id="_CPPv2NK3xrt6xclbin3mem8get_usedEv"></span><span id="xrt::xclbin::mem::get_usedC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a959eb7e49018ae72ab6029a06617a73f"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_used</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem8get_usedEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a959eb7e49018ae72ab6029a06617a73f"><span class="std std-ref">get_used()</span></a> - Get used status of the memory</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1mem_1a75f06b31b11cd597669f9f59a2631699"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">bool</span> <span class="pre">get_used</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a75f06b31b11cd597669f9f59a2631699"><span class="std std-ref">get_used()</span></a> - Get used status of the memory</p>
 <p>
 A value of false indicates that no buffer can be allocated in this memory bank. </p>
 <dl class="field-list simple">
@@ -2724,9 +2725,9 @@ A value of false indicates that no buffer can be allocated in this memory bank. 
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3mem8get_typeEv">
-<span id="_CPPv3NK3xrt6xclbin3mem8get_typeEv"></span><span id="_CPPv2NK3xrt6xclbin3mem8get_typeEv"></span><span id="xrt::xclbin::mem::get_typeC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1af39986bcb9942e0f4e5c553e0ac74434"></span><a class="reference internal" href="#_CPPv4N3xrt6xclbin3mem11memory_typeE" title="xrt::xclbin::mem::memory_type"><span class="n"><span class="pre">memory_type</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_type</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem8get_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1af39986bcb9942e0f4e5c553e0ac74434"><span class="std std-ref">get_type()</span></a> - Get the type of the memory</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1mem_1a3f68effa4c8f48bd3da7a76f344d1b74"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">memory_type</span> <span class="pre">get_type</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a3f68effa4c8f48bd3da7a76f344d1b74"><span class="std std-ref">get_type()</span></a> - Get the type of the memory</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Memory type </p>
@@ -2735,9 +2736,9 @@ A value of false indicates that no buffer can be allocated in this memory bank. 
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK3xrt6xclbin3mem9get_indexEv">
-<span id="_CPPv3NK3xrt6xclbin3mem9get_indexEv"></span><span id="_CPPv2NK3xrt6xclbin3mem9get_indexEv"></span><span id="xrt::xclbin::mem::get_indexC"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a193679b9234d832daf567655637eaa0b"></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_index</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK3xrt6xclbin3mem9get_indexEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1a193679b9234d832daf567655637eaa0b"><span class="std std-ref">get_index()</span></a> - Get the index of the memory</p>
+<dt class="sig sig-object cpp">
+<span class="target" id="classxrt_1_1xclbin_1_1mem_1af8d7d4ae4dad983ccd4287ec88712f77"></span><span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">int32_t</span> <span class="pre">get_index</span> <span class="pre">()</span> <span class="pre">const</span></span></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1_1mem_1af8d7d4ae4dad983ccd4287ec88712f77"><span class="std std-ref">get_index()</span></a> - Get the index of the memory</p>
 <p>
 The returned index can be used when allocating buffers using <a class="reference internal" href="#classxrt_1_1bo"><span class="std std-ref">xrt::bo</span></a> provided the memory bank is connected / used. </p>
 <dl class="field-list simple">
@@ -3207,7 +3208,7 @@ the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
 
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xrtXclbinHandle</span> <span class="pre">xrtXclbinAllocFilename</span> <span class="pre">(const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">filename)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">xrtXclbinHandle</span> <span class="pre">xrtXclbinAllocFilename</span> <span class="pre">(const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">filename)</span></span></dt>
 <dd><p>Allocate a xclbin using xclbin filename</p>
 </dd></dl>
 
@@ -3220,7 +3221,7 @@ the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
 <p>xrtXclbinHandle on success or NULL with errno set</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xrtXclbinHandle</span> <span class="pre">xrtXclbinAllocAxlf</span> <span class="pre">(const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">top_axlf)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">xrtXclbinHandle</span> <span class="pre">xrtXclbinAllocAxlf</span> <span class="pre">(const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">top_axlf)</span></span></dt>
 <dd><p>Allocate a xclbin using an axlf</p>
 </dd></dl>
 
@@ -3233,7 +3234,7 @@ the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
 <p>xrtXclbinHandle on success or NULL with errno set</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xrtXclbinHandle</span> <span class="pre">xrtXclbinAllocRawData</span> <span class="pre">(const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">data,</span> <span class="pre">int</span> <span class="pre">size)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">xrtXclbinHandle</span> <span class="pre">xrtXclbinAllocRawData</span> <span class="pre">(const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">data,</span> <span class="pre">int</span> <span class="pre">size)</span></span></dt>
 <dd><p>Allocate a xclbin using raw data</p>
 </dd></dl>
 
@@ -3248,7 +3249,7 @@ the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
 <p>xrtXclbinHandle on success or NULL with errno set</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xrtXclbinFreeHandle</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">int</span> <span class="pre">xrtXclbinFreeHandle</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl)</span></span></dt>
 <dd><p>Deallocate the xclbin handle</p>
 </dd></dl>
 
@@ -3261,7 +3262,7 @@ the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
 <p>0 on success, -1 on error</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xrtXclbinGetXSAName</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl,</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name,</span> <span class="pre">int</span> <span class="pre">size,</span> <span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">int</span> <span class="pre">xrtXclbinGetXSAName</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl,</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name,</span> <span class="pre">int</span> <span class="pre">size,</span> <span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size)</span></span></dt>
 <dd><p>Get Xilinx Support Archive (XSA) Name of xclbin handle</p>
 </dd></dl>
 
@@ -3284,7 +3285,7 @@ Otherwise, the the content of this value will be populated.</p>
 <p>0 on success or appropriate error number</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xrtXclbinGetUUID</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl,</span> <span class="pre">xuid_t</span> <span class="pre">ret_uuid)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">int</span> <span class="pre">xrtXclbinGetUUID</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl,</span> <span class="pre">xuid_t</span> <span class="pre">ret_uuid)</span></span></dt>
 <dd><p>Get UUID of xclbin handle</p>
 </dd></dl>
 
@@ -3299,7 +3300,7 @@ Otherwise, the the content of this value will be populated.</p>
 <p>0 on success or appropriate error number</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">size_t</span> <span class="pre">xrtXclbinGetNumKernels</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">size_t</span> <span class="pre">xrtXclbinGetNumKernels</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl)</span></span></dt>
 <dd><p>Get number of PL kernels in xclbin</p>
 </dd></dl>
 
@@ -3315,7 +3316,7 @@ A kernel groups one or more compute units. A kernel has arguments
 from which offset, type, etc can be retrived.</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">size_t</span> <span class="pre">xrtXclbinGetNumKernelComputeUnits</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">size_t</span> <span class="pre">xrtXclbinGetNumKernelComputeUnits</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl)</span></span></dt>
 <dd><p>Get number of CUs in xclbin</p>
 </dd></dl>
 
@@ -3331,7 +3332,7 @@ the total number of compute units as the sum of compute units over
 all kernels.</p>
 <dl class="c function">
 <dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xrtXclbinGetData</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl,</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">data,</span> <span class="pre">int</span> <span class="pre">size,</span> <span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size)</span></span></dt>
+<span class="sig-name descname"><span class="pre">XRT_API_EXPORT</span> <span class="pre">int</span> <span class="pre">xrtXclbinGetData</span> <span class="pre">(xrtXclbinHandle</span> <span class="pre">xhdl,</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">data,</span> <span class="pre">int</span> <span class="pre">size,</span> <span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size)</span></span></dt>
 <dd><p>Get the raw data of the xclbin handle</p>
 </dd></dl>
 
