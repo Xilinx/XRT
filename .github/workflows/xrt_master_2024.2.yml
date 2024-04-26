@@ -1,4 +1,4 @@
-name: XRT Master
+name: XRT Master (2024.2)
 
 env:  
   RELEASE: '2024.2'  
@@ -471,7 +471,7 @@ jobs:
           isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: ${{ env.RELEASE }}      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
@@ -513,7 +513,7 @@ jobs:
           isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: ${{ env.RELEASE }}      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
@@ -547,7 +547,7 @@ jobs:
         with: 
           isProd: 'true'  
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: ${{ env.RELEASE }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
           github-server-url: ${{ secrets.SERVER_URL }}
