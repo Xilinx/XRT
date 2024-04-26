@@ -17,7 +17,13 @@ boost::property_tree::ptree
 populate_aie_partition(const xrt_core::device* device)
 {
   boost::property_tree::ptree pt;
-  auto data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
+  xrt_core::query::aie_partition_info::result_type data;
+  try {
+    data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
+  }
+  catch (...) {
+    return pt; //no hw context found
+  }
   // Group the hw contexts based on their which AIE partitions they use
   std::map<std::tuple<uint64_t, uint64_t>, boost::property_tree::ptree> pt_map;
   for (const auto& entry : data) {
