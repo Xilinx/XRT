@@ -190,7 +190,7 @@ namespace xrt::core::hip
       return std::pair(nullptr, 0);
     }
     else {
-      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      auto offset = reinterpret_cast<uint64_t>(addr) - itr->first.address;
       return {itr->second, offset};
     }
   }
@@ -203,7 +203,7 @@ namespace xrt::core::hip
       return std::pair(nullptr, 0);
     }
     else {
-      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      auto offset = reinterpret_cast<uint64_t>(addr) - itr->first.address;
       return {itr->second, offset};
     }
   }

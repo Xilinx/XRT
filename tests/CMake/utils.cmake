@@ -12,7 +12,7 @@ set(XILINX_VITIS $ENV{XILINX_VITIS})
 if(NOT VITIS_COMPILER)
   find_program(VITIS_COMPILER
   NAMES v++
-  HINTS XILINX_VITIS}
+  HINTS $ENV{XILINX_VITIS}
   )
   if(VITIS_COMPILER)
     message("Vitis Compiler is found at ${VITIS_COMPILER}")

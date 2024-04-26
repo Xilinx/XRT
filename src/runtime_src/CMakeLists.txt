@@ -81,4 +81,8 @@ else()
   xrt_add_subdirectory(xdp)
   xrt_add_subdirectory(tools/scripts)
   xrt_add_subdirectory(core)
+
+  if (XRT_ENABLE_HIP)
+    xrt_add_subdirectory(hip)
+  endif(XRT_ENABLE_HIP)
 endif()

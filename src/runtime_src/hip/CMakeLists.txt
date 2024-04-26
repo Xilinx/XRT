@@ -14,10 +14,18 @@ endif()
 add_subdirectory(core)
 add_subdirectory(api)
 
-add_library(xrt_hip SHARED
- $<TARGET_OBJECTS:hip_core_library_objects>
- $<TARGET_OBJECTS:hip_api_library_objects>
-)
+if (WIN32)
+  add_library(xrt_hip SHARED
+    $<TARGET_OBJECTS:hip_core_library_objects>
+    $<TARGET_OBJECTS:hip_api_library_objects>
+    xrt_hip.def
+  )
+else()
+  add_library(xrt_hip SHARED
+    $<TARGET_OBJECTS:hip_core_library_objects>
+    $<TARGET_OBJECTS:hip_api_library_objects>
+  )
+endif()
 
 target_include_directories(xrt_hip
   PRIVATE
