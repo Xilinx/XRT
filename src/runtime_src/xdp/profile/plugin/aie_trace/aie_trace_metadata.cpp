@@ -942,7 +942,7 @@ namespace xdp {
         std::stringstream msg;
         msg << "Configured interface_tile metric set metric set " << tileMetric.second;
         msg << " skipped for tile (" << +tileMetric.first.col << ", " << +tileMetric.first.row << ").";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         offTiles.push_back(tileMetric.first);
         continue;
       }
