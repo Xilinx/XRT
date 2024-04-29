@@ -49,9 +49,9 @@ static float hip_event_elapsed_time(hipEvent_t start, hipEvent_t stop)
   throw_invalid_value_if(!hip_ev_start, "dynamic_pointer_cast failed");
   auto hip_ev_stop = std::dynamic_pointer_cast<event>(command_cache.get(stop));
   throw_invalid_value_if(!hip_ev_stop, "dynamic_pointer_cast failed");
-  auto duration = hip_ev_stop->get_time() - hip_ev_start->get_time();
-  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-  return static_cast<float>(millis);
+  std::chrono::duration<double> elapsed_seconds = hip_ev_stop->get_time() - hip_ev_start->get_time();
+  auto duration_in_micros = std::chrono::duration_cast<std::chrono::microseconds>(elapsed_seconds).count();
+  return static_cast<float>(duration_in_micros / 1000.0);
 }
 
 static bool hip_event_query(hipEvent_t eve)
