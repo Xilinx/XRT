@@ -69,18 +69,6 @@ endif()
 
 INCLUDE (FindGTest)
 
-# --- Optional HIP bindings ---
-if (XRT_ENABLE_HIP)
-  message("-- Looking for HIP include files...")
-  set(HIP_PLATFORM "amd")
-  # HIP SDK installs hip files to C:/Program Files/AMD/ROCm
-  # Latest version available on windows is 5.7
-  # Users can set HIP_DIR to location of HIP installation or default path is used
-  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{HIP_DIR} "C:/Program Files/AMD/ROCm/5.7/lib/cmake/hip")
-  include(hip-config)
-  message("-- Found at ${HIP_INCLUDE_DIR}")
-endif()
-
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "xrt")
 set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}")

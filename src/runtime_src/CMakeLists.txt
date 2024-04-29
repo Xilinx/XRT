@@ -40,7 +40,9 @@ if (XRT_DKMS_ALVEO STREQUAL "ON")
   xrt_add_subdirectory(ert)
 endif()
 
+# --- Optional HIP bindings ---
 if (XRT_ENABLE_HIP)
+  include(${CMAKE_SOURCE_DIR}/CMake/hip.cmake)
   xrt_add_subdirectory(hip)
 endif(XRT_ENABLE_HIP)
 
@@ -82,7 +84,9 @@ else()
   xrt_add_subdirectory(tools/scripts)
   xrt_add_subdirectory(core)
 
+  # --- Optional HIP bindings ---
   if (XRT_ENABLE_HIP)
+    include(${CMAKE_SOURCE_DIR}/CMake/hip.cmake)
     xrt_add_subdirectory(hip)
   endif(XRT_ENABLE_HIP)
 endif()
