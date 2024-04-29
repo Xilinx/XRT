@@ -135,24 +135,57 @@ namespace xdp {
       }
   }
 
-  bool AieProfile_EdgeImpl::isPortTlastEvent(const XAie_Events event)
-  {
-    switch (event) {
-    case XAIE_EVENT_PORT_TLAST_0_PL:
-    case XAIE_EVENT_PORT_TLAST_1_PL:
-    case XAIE_EVENT_PORT_TLAST_0_MEM_TILE:
-      return true;
-    default:
-      return false;
-    }
-  }
-
   uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(const XAie_Events event)
   {
     switch (event) {
+    case XAIE_EVENT_PORT_RUNNING_7_CORE:
+    case XAIE_EVENT_PORT_STALLED_7_CORE:
+    case XAIE_EVENT_PORT_IDLE_7_CORE:
+    case XAIE_EVENT_PORT_RUNNING_7_PL:
+    case XAIE_EVENT_PORT_STALLED_7_PL:
+    case XAIE_EVENT_PORT_IDLE_7_PL:
+      return 7;
+    case XAIE_EVENT_PORT_RUNNING_6_CORE:
+    case XAIE_EVENT_PORT_STALLED_6_CORE:
+    case XAIE_EVENT_PORT_IDLE_6_CORE:
+    case XAIE_EVENT_PORT_RUNNING_6_PL:
+    case XAIE_EVENT_PORT_STALLED_6_PL:
+    case XAIE_EVENT_PORT_IDLE_6_PL:
+      return 6;
+    case XAIE_EVENT_PORT_RUNNING_5_CORE:
+    case XAIE_EVENT_PORT_STALLED_5_CORE:
+    case XAIE_EVENT_PORT_IDLE_5_CORE:
+    case XAIE_EVENT_PORT_RUNNING_5_PL:
+    case XAIE_EVENT_PORT_STALLED_5_PL:
+    case XAIE_EVENT_PORT_IDLE_5_PL:
+      return 5;
+    case XAIE_EVENT_PORT_RUNNING_4_CORE:
+    case XAIE_EVENT_PORT_STALLED_4_CORE:
+    case XAIE_EVENT_PORT_IDLE_4_CORE:
+    case XAIE_EVENT_PORT_RUNNING_4_PL:
+    case XAIE_EVENT_PORT_STALLED_4_PL:
+    case XAIE_EVENT_PORT_IDLE_4_PL:
+      return 4;
+    case XAIE_EVENT_PORT_RUNNING_3_CORE:
+    case XAIE_EVENT_PORT_STALLED_3_CORE:
+    case XAIE_EVENT_PORT_IDLE_3_CORE:
+    case XAIE_EVENT_PORT_RUNNING_3_PL:
+    case XAIE_EVENT_PORT_STALLED_3_PL:
+    case XAIE_EVENT_PORT_IDLE_3_PL:
+      return 3;
+    case XAIE_EVENT_PORT_RUNNING_2_CORE:
+    case XAIE_EVENT_PORT_STALLED_2_CORE:
+    case XAIE_EVENT_PORT_IDLE_2_CORE:
+    case XAIE_EVENT_PORT_RUNNING_2_PL:
+    case XAIE_EVENT_PORT_STALLED_2_PL:
+    case XAIE_EVENT_PORT_IDLE_2_PL:
+      return 2;
     case XAIE_EVENT_PORT_RUNNING_1_CORE:
     case XAIE_EVENT_PORT_STALLED_1_CORE:
-    case XAIE_EVENT_PORT_TLAST_1_PL:
+    case XAIE_EVENT_PORT_IDLE_1_CORE:
+    case XAIE_EVENT_PORT_RUNNING_1_PL:
+    case XAIE_EVENT_PORT_STALLED_1_PL:
+    case XAIE_EVENT_PORT_IDLE_1_PL:
       return 1;
     default:
       return 0;
@@ -266,10 +299,13 @@ namespace xdp {
       XAie_Events ssEvent;
       if (aie::profile::isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
-      else if (isPortTlastEvent(startEvent))
+      else if (aie::profile::isPortTlastEvent(startEvent))
         switchPortRsc->getSSTlastEvent(ssEvent);
-      else
+      else if (aie::profile::isPortStalledEvent(startEvent))
         switchPortRsc->getSSStalledEvent(ssEvent);
+      else
+        switchPortRsc->getSSIdleEvent(ssEvent);
+
       startEvents.at(i) = ssEvent;
       endEvents.at(i) = ssEvent;
 
