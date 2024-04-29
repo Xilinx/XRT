@@ -1,4 +1,4 @@
-name: XRT Master
+name: XRT 2024.1
 
 env:  
   RELEASE: '2024.1'  
@@ -6,9 +6,10 @@ env:
   ENV: 'prod'
 
 on:
+  push:
+    branches:
+      - '2024.1'
   workflow_dispatch:
-  schedule:
-    - cron: '0 17,7 * * *' 
   
 jobs:
   build:
