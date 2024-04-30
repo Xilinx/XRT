@@ -60,14 +60,13 @@ marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_d
     if (sValue == "HBM")
       *chk_hbm_mem = true;
 
-    else if (sValue == "DDR") {
-		auto banks = pt_mem_entry.get_child("banks");
-
-        for (const auto&bank : banks) {
-		    auto bank_name = bank.second.get<std::string>("name");
-		    bank_names.push_back(bank_name);
-		}
-	}
+    else if (sValue == "DDR" || sValue == "LPDDR4_SDRAM") {
+      auto banks = pt_mem_entry.get_child("banks");
+      for (const auto&bank : banks) {
+        auto bank_name = bank.second.get<std::string>("name");
+        bank_names.push_back(bank_name);
+      }
+    }
   }
 
   if (*chk_hbm_mem) {
@@ -309,6 +308,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       std::vector <double> throughput_per_kernel = throughputs.second;
       logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
       for (int i = 0; i < num_kernel_ddr; i++)
+        if(bank_names.size() > 0 && throughput_per_kernel.size() > 0)
           logger(ptree, "Details", boost::str(boost::format("Throughput of Memory Tag: %s : %.1f MB/s") % bank_names[i] % throughput_per_kernel[i]));
     }
     if (chk_hbm_mem) {
