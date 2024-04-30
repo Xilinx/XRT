@@ -45,7 +45,6 @@ namespace xdp {
       bool checkAieDevice(const uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(const uint64_t deviceId, void* handle);
-      bool isPortTlastEvent(const XAie_Events event);
       uint8_t getPortNumberFromEvent(const XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                              const tile_type& tile, 

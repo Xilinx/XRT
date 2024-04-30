@@ -1,7 +1,7 @@
-name: XRT Master
+name: XRT Master (2024.2)
 
 env:  
-  RELEASE: '2024.1'  
+  RELEASE: '2024.2'  
   PIPELINE: 'xrt' 
   ENV: 'prod'
 
@@ -37,7 +37,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -82,7 +82,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout PR   
@@ -123,14 +123,14 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV        
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV        
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
@@ -172,7 +172,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout private repository    
@@ -204,7 +204,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout extraction Action repository  
@@ -239,7 +239,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout private repository      
@@ -276,13 +276,13 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
-        os_list: ['centos_7.8', 'centos_8.1'] 
+        os_list: ['centos_8.1'] 
     steps:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout private repository      
@@ -320,13 +320,13 @@ jobs:
     runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
-        os_list: ['centos_7.8', 'centos_8.1'] 
+        os_list: ['centos_8.1'] 
     steps:
       - name: Set env variables    
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout private repository      
@@ -368,7 +368,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout test summary Action repository  
@@ -402,7 +402,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout PR   
@@ -449,7 +449,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Extract branch name      
@@ -471,7 +471,7 @@ jobs:
           isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: ${{ env.RELEASE }}      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
@@ -491,7 +491,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Extract branch name      
@@ -513,7 +513,7 @@ jobs:
           isProd: 'true'  
           site: ${{ matrix.site }}       
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: ${{ env.RELEASE }}      
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
@@ -530,7 +530,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Checkout private repository    
@@ -547,7 +547,7 @@ jobs:
         with: 
           isProd: 'true'  
           pipeline: 'xrt'        
-          release: '2024.1'      
+          release: ${{ env.RELEASE }}      
           runNumber: ${{ env.XRT_VERSION_PATCH }} 
           accessToken: ${{ secrets.ACCESS_TOKEN }}      
           github-server-url: ${{ secrets.SERVER_URL }}
@@ -560,7 +560,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER))" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
 
       - name: Extract branch name      
