@@ -868,7 +868,9 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
     auto event = create_profiling_event(handle);
     if (option < 0 || option > 3)
       throw xrt_core::error(-EINVAL, "Not a valid profiling option");
-    auto hdl = event->start_profiling(option, port1Name, port2Name, value);
+    const std::string port1 = port1Name ? port1Name : "";
+    const std::string port2 = port2Name ? port2Name : "";
+    auto hdl = event->start_profiling(option, port1, port2, value);
     if (hdl != xrt::aie::profiling_impl::invalid_handle) {
       profiling_cache[hdl] = event;
       return hdl;
