@@ -136,6 +136,7 @@ __attribute__((visibility("default"))) int pdi_transform(char* pdi_file,  char* 
 		PdiLoad.PdiPtr = data;
 	} else {
 		printf("Invalid PDI file\n");
+	   if (data) free(data);
 		return -1;
 	}
   	PdiLoad.BasePtr = 0;

@@ -235,14 +235,13 @@ void XPdi_Export(const XPdiLoad* PdiLoad, const char* pdi_file_out)
 		return;
 	}
 	size_t elements_written = fwrite(Buf,sizeof(char),len,fp);
-   if (elements_written < len) {
-		printf("Failed to write the buffer to %s\n", pdi_file);
-      return;
-   }
-	// fclose(fp);
    if (fclose(fp) != 0) {
 		printf("Failed to close file %s\n", pdi_file);
 		return;
+   }
+   if (elements_written < len) {
+		printf("Failed to write the buffer to %s\n", pdi_file);
+      return;
    }
 	// printf("the new transform file %s created!\n ", pdi_file);
 	XCdo_Print("the new transform file %s created!\n ", pdi_file);
