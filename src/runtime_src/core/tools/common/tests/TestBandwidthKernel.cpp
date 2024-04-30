@@ -60,14 +60,13 @@ marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_d
     if (sValue == "HBM")
       *chk_hbm_mem = true;
 
-    else if (sValue == "DDR") {
-		auto banks = pt_mem_entry.get_child("banks");
-
-        for (const auto&bank : banks) {
+    else if (sValue == "DDR" || sValue == "LPDDR4_SDRAM") {
+		  auto banks = pt_mem_entry.get_child("banks");
+      for (const auto&bank : banks) {
 		    auto bank_name = bank.second.get<std::string>("name");
 		    bank_names.push_back(bank_name);
-		}
-	}
+		  }
+	  }
   }
 
   if (*chk_hbm_mem) {
