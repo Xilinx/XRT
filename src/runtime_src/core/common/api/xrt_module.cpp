@@ -81,7 +81,7 @@ struct buf
     if (!column_page_size)
       return;
 
-    auto pad = (page + 1) * column_page_size;
+    auto pad = static_cast<size_t>(page + 1) * column_page_size;
 
     if (m_data.size() > pad)
       throw std::runtime_error("Invalid ELF section size");
@@ -116,15 +116,24 @@ struct patcher
     unknown_symbol_kind = 8
   };
 
-  symbol_type m_symbol_type;
+   enum class buf_type {
+       ctrltext = 0,   // control code
+       ctrldata,       // control packet
+       preempt_save,   // preempt_save
+       preempt_restore // preempt_restore
+  };
+
+  buf_type m_buf_type = buf_type::ctrltext;
+  symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
   // Offsets from base address of control code buffer object
   // The base address is passed in as a parameter to patch()
   std::vector<uint64_t> m_ctrlcode_offset;
 
-  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset)
+  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset, buf_type t)
     : m_symbol_type(type)
     , m_ctrlcode_offset(std::move(ctrlcode_offset))
+    , m_buf_type(t)
   {}
 
   void
@@ -179,8 +188,11 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t patch)
+  patch(uint8_t* base, uint64_t patch, buf_type type)
   {
+    if (type != m_buf_type)
+      return;
+
     for (auto offset : m_ctrlcode_offset) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
       switch (m_symbol_type) {
@@ -298,10 +310,14 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Patch ctrlcode buffer object for global argument
+  //
+  // @param symbol - symbol name
+  // @param bo - global argument to patch into ctrlcode
   virtual void
-  patch_instr(const std::string&, const xrt::bo&)
+  patch_instr(const std::string&, const xrt::bo&, const patcher::buf_type)
   {
-    throw std::runtime_error("Not supported");
+    throw std::runtime_error("Not supported ");
   }
 
   // Patch ctrlcode buffer object for global argument
@@ -332,7 +348,7 @@ public:
   // @param patch - patch value
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
-  patch(uint8_t*, const std::string&, uint64_t)
+  patch(uint8_t*, const std::string&, uint64_t, patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -384,7 +400,7 @@ class module_elf : public module_impl
   static std::pair<uint32_t, uint32_t>
   get_column_and_page(const std::string& name)
   {
-    constexpr auto first_dot = 9;  // .ctrltext.<col>.<page>
+    constexpr size_t first_dot = 9;  // .ctrltext.<col>.<page>
     auto dot1 = name.find_first_of(".", first_dot);
     auto dot2 = name.find_first_of(".", first_dot + 1);
     auto col = dot1 != std::string::npos
@@ -538,10 +554,15 @@ class module_elf : public module_impl
         auto secname = section->get_name();
         auto offset = rela->r_offset;
         size_t sec_size = 0;
-        if (secname.compare(".ctrltext") == 0)
+        patcher::buf_type buf_type;
+        if (secname.compare(".ctrltext") == 0) {
           sec_size = instrbuf.size();
-        else if (secname.compare(".ctrldata") == 0)
+          buf_type = patcher::buf_type::ctrltext;
+        }
+        else if (secname.compare(".ctrldata") == 0) {
           sec_size = ctrlpkt.size();
+          buf_type = patcher::buf_type::ctrldata;
+        }
         else
           throw std::runtime_error("Invalid section name " + secname);
 
@@ -556,7 +577,7 @@ class module_elf : public module_impl
           auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
           std::vector<uint64_t> offsets;
           offsets.push_back(offset);
-          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets) });
+          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets), buf_type });
         }
       }
     }
@@ -620,9 +641,10 @@ class module_elf : public module_impl
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
 
+        patcher::buf_type buf_type = patcher::buf_type::ctrltext;
         std::vector<uint64_t> offsets;
         offsets.push_back(ctrlcode_offset);
-        arg2patcher.emplace(std::move(argnm), patcher{ symbol_type, offsets });
+        arg2patcher.emplace(std::move(argnm), patcher{ symbol_type, offsets, buf_type});
       }
     }
 
@@ -630,13 +652,13 @@ class module_elf : public module_impl
   }
 
   bool
-  patch(uint8_t* base, const std::string& argnm, uint64_t patch) override
+  patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
   {
     auto it = m_arg2patcher.find(argnm);
     if (it == m_arg2patcher.end())
       return false;
 
-    it->second.patch(base, patch);
+    it->second.patch(base, patch, type);
     return true;
   }
 
@@ -822,7 +844,7 @@ class module_sram : public module_impl
   create_instr_buf(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_instr_buf()\n");
-    auto data = parent->get_instr();
+    const instr_buf& data = parent->get_instr();
     size_t sz = data.size();
 
     if (sz == 0) {
@@ -841,7 +863,7 @@ class module_sram : public module_impl
 #endif
 
     if (m_ctrlpkt_buf) {
-      patch_instr("control-packet", m_ctrlpkt_buf);
+      patch_instr("control-packet", m_ctrlpkt_buf, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -850,7 +872,7 @@ class module_sram : public module_impl
   create_ctrlpkt_buf(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_ctrlpkt_buf()\n");
-    auto data = parent->get_ctrlpkt();
+    const control_packet& data = parent->get_ctrlpkt();
     size_t sz = data.size();
 
     if (sz == 0) {
@@ -878,7 +900,7 @@ class module_sram : public module_impl
   create_instruction_buffer(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_instruction_buffer()\n");
-    auto data = parent->get_data();
+    const std::vector<ctrlcode>& data = parent->get_data();
 
     // create bo combined size of all ctrlcodes
     size_t sz = std::accumulate(data.begin(), data.end(), static_cast<size_t>(0), [](auto acc, const auto& ctrlcode) {
@@ -897,10 +919,10 @@ class module_sram : public module_impl
     XRT_PRINTF("<- module_sram::create_instruction_buffer()\n");
   }
 
-  void
-  patch_instr(const std::string& argnm, const xrt::bo& bo) override
+  virtual void
+  patch_instr(const std::string& argnm, const xrt::bo& bo, const patcher::buf_type type) override
   {
-    patch_instr_value(argnm, bo.address());
+    patch_instr_value(argnm, bo.address(), type);
   }
 
   void
@@ -910,15 +932,15 @@ class module_sram : public module_impl
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_buf) {
-        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value))
+        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value))
+      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
           patched = true;
     }
-    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value))
+    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
       patched = true;
 
     if (patched) {
@@ -928,9 +950,9 @@ class module_sram : public module_impl
   }
 
   void
-  patch_instr_value(const std::string& argnm, uint64_t value)
+  patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value))
+    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, type))
         return;
 
     m_dirty = true;
@@ -962,7 +984,7 @@ class module_sram : public module_impl
     auto os_abi = m_parent.get()->get_os_abi();
     if (os_abi == Elf_Amd_Aie2ps) {
       if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
-        auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
+          boost::format fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
             % m_parent->number_of_arg_patchers() % m_patched_args.size();
         throw std::runtime_error{ fmt.str() };
       }
