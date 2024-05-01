@@ -81,7 +81,7 @@ struct buf
     if (!column_page_size)
       return;
 
-    auto pad = static_cast<size_t>(page + 1) * column_page_size;
+    auto pad = (page + 1) * column_page_size;
 
     if (m_data.size() > pad)
       throw std::runtime_error("Invalid ELF section size");
@@ -315,7 +315,7 @@ public:
   // @param symbol - symbol name
   // @param bo - global argument to patch into ctrlcode
   virtual void
-  patch_instr(const std::string&, const xrt::bo&, const patcher::buf_type)
+  patch_instr(const std::string&, const xrt::bo&, patcher::buf_type)
   {
     throw std::runtime_error("Not supported ");
   }
@@ -844,7 +844,7 @@ class module_sram : public module_impl
   create_instr_buf(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_instr_buf()\n");
-    const instr_buf& data = parent->get_instr();
+    const auto& data = parent->get_instr();
     size_t sz = data.size();
 
     if (sz == 0) {
@@ -872,7 +872,7 @@ class module_sram : public module_impl
   create_ctrlpkt_buf(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_ctrlpkt_buf()\n");
-    const control_packet& data = parent->get_ctrlpkt();
+    const auto& data = parent->get_ctrlpkt();
     size_t sz = data.size();
 
     if (sz == 0) {
@@ -900,7 +900,7 @@ class module_sram : public module_impl
   create_instruction_buffer(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_instruction_buffer()\n");
-    const std::vector<ctrlcode>& data = parent->get_data();
+    const auto& data = parent->get_data();
 
     // create bo combined size of all ctrlcodes
     size_t sz = std::accumulate(data.begin(), data.end(), static_cast<size_t>(0), [](auto acc, const auto& ctrlcode) {
@@ -920,7 +920,7 @@ class module_sram : public module_impl
   }
 
   virtual void
-  patch_instr(const std::string& argnm, const xrt::bo& bo, const patcher::buf_type type) override
+  patch_instr(const std::string& argnm, const xrt::bo& bo, patcher::buf_type type) override
   {
     patch_instr_value(argnm, bo.address(), type);
   }
