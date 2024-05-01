@@ -16,6 +16,24 @@
 // to the corresponding xdp plugins.  It is responsible for loading all of
 // modules.
 
+namespace xrt_core::xdp::core {
+  void
+  register_callbacks(void*)
+  {}
+
+  void
+  warning_callbacks()
+  {}
+
+  void
+  load_core()
+  {
+    static xrt_core::module_loader xdp_core_loader("xdp_core",
+                                                   register_callbacks,
+                                                   warning_callbacks);
+  }
+}
+
 namespace xrt_core::xdp::aie::profile {
 
 std::function<void (void*)> update_device_cb;
@@ -271,6 +289,21 @@ update_device(void* handle)
   /* Adding the macro guard as the static instances of the following plugins
    * get created unnecessarily when the configs are enabled on Edge.
    */
+
+  if (xrt_core::config::get_ml_timeline()
+      || xrt_core::config::get_aie_profile()
+      || xrt_core::config::get_aie_trace()
+      || xrt_core::config::get_aie_debug()) {
+    /* All the above plugins are dependent on xdp_core library. So,
+     * explicitly load it to avoid library search issue in implicit loading.
+     */
+    try {
+      xrt_core::xdp::core::load_core();
+    } catch (...) {
+      return;
+    }
+  }
+
   if (xrt_core::config::get_aie_profile()) {
     try {
       xrt_core::xdp::aie::profile::load();
