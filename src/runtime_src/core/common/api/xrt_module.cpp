@@ -116,14 +116,23 @@ struct patcher
     unknown_symbol_kind = 8
   };
 
-  symbol_type m_symbol_type;
+   enum class buf_type {
+       ctrltext = 0,   // control code
+       ctrldata,       // control packet
+       preempt_save,   // preempt_save
+       preempt_restore // preempt_restore
+  };
+
+  buf_type m_buf_type = buf_type::ctrltext;
+  symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
   // Offsets from base address of control code buffer object
   // The base address is passed in as a parameter to patch()
   std::vector<uint64_t> m_ctrlcode_offset;
 
-  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset)
-    : m_symbol_type(type)
+  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset, buf_type t)
+    : m_buf_type(t)
+    , m_symbol_type(type)
     , m_ctrlcode_offset(std::move(ctrlcode_offset))
   {}
 
@@ -178,23 +187,12 @@ struct patcher
     bd_data_ptr[2] = (bd_data_ptr[2] & 0xFFFF0000) | (base_address >> 32);            // NOLINT
   }
 
-  // TODO reuse patch_ctrl48 for both DPU sequence and transaction buffer
-  // Need change assembler first
-  void patch_tansaction_ctrlpkt_48(uint32_t* bd_data_ptr, uint64_t patch)
-  {
-    uint64_t val = *reinterpret_cast<uint64_t*>(bd_data_ptr);
-    val &= 0x0000FFFFFFFFFFFF;                                                        // NOLINT
-    val += patch;
-    *bd_data_ptr = static_cast<uint32_t>(val);
-
-    auto higher16BitVal = static_cast<uint16_t>((val & 0x0000FFFF00000000) >> 32);    // NOLINT
-    auto pHigher16Bit = reinterpret_cast<uint16_t*>(bd_data_ptr + 1);
-    *pHigher16Bit = higher16BitVal;
-  }
-
   void
-  patch(uint8_t* base, uint64_t patch)
+  patch(uint8_t* base, uint64_t patch, buf_type type)
   {
+    if (type != m_buf_type)
+      return;
+
     for (auto offset : m_ctrlcode_offset) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
       switch (m_symbol_type) {
@@ -211,10 +209,10 @@ struct patcher
         patch_shim48(bd_data_ptr, patch);
         break;
       case symbol_type::tansaction_ctrlpkt_48:
-        patch_tansaction_ctrlpkt_48(bd_data_ptr, patch);
+        patch_ctrl48(bd_data_ptr, patch);
         break;
       case symbol_type::tansaction_48:
-        // No patching since transaction buffer firmware does not support
+        patch_shim48(bd_data_ptr, patch);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -312,10 +310,15 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Patch ctrlcode buffer object for global argument
+  //
+  // @param symbol - symbol name
+  // @param bo - global argument to patch into ctrlcode
+  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   virtual void
-  patch_instr(const std::string&, const xrt::bo&)
+  patch_instr(const std::string&, const xrt::bo&, patcher::buf_type)
   {
-    throw std::runtime_error("Not supported");
+    throw std::runtime_error("Not supported ");
   }
 
   // Patch ctrlcode buffer object for global argument
@@ -344,9 +347,10 @@ public:
   // @param base - base address of control code buffer object
   // @param symbol - symbol name
   // @param patch - patch value
+  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
-  patch(uint8_t*, const std::string&, uint64_t)
+  patch(uint8_t*, const std::string&, uint64_t, patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -398,7 +402,7 @@ class module_elf : public module_impl
   static std::pair<uint32_t, uint32_t>
   get_column_and_page(const std::string& name)
   {
-    constexpr auto first_dot = 9;  // .ctrltext.<col>.<page>
+    constexpr size_t first_dot = 9;  // .ctrltext.<col>.<page>
     auto dot1 = name.find_first_of(".", first_dot);
     auto dot2 = name.find_first_of(".", first_dot + 1);
     auto col = dot1 != std::string::npos
@@ -552,10 +556,15 @@ class module_elf : public module_impl
         auto secname = section->get_name();
         auto offset = rela->r_offset;
         size_t sec_size = 0;
-        if (secname.compare(".ctrltext") == 0)
+        patcher::buf_type buf_type;
+        if (secname.compare(".ctrltext") == 0) {
           sec_size = instrbuf.size();
-        else if (secname.compare(".ctrldata") == 0)
+          buf_type = patcher::buf_type::ctrltext;
+        }
+        else if (secname.compare(".ctrldata") == 0) {
           sec_size = ctrlpkt.size();
+          buf_type = patcher::buf_type::ctrldata;
+        }
         else
           throw std::runtime_error("Invalid section name " + secname);
 
@@ -570,7 +579,7 @@ class module_elf : public module_impl
           auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
           std::vector<uint64_t> offsets;
           offsets.push_back(offset);
-          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets) });
+          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets), buf_type });
         }
       }
     }
@@ -634,9 +643,10 @@ class module_elf : public module_impl
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
 
+        patcher::buf_type buf_type = patcher::buf_type::ctrltext;
         std::vector<uint64_t> offsets;
         offsets.push_back(ctrlcode_offset);
-        arg2patcher.emplace(std::move(argnm), patcher{ symbol_type, offsets });
+        arg2patcher.emplace(std::move(argnm), patcher{ symbol_type, offsets, buf_type});
       }
     }
 
@@ -644,13 +654,13 @@ class module_elf : public module_impl
   }
 
   bool
-  patch(uint8_t* base, const std::string& argnm, uint64_t patch) override
+  patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
   {
     auto it = m_arg2patcher.find(argnm);
     if (it == m_arg2patcher.end())
       return false;
 
-    it->second.patch(base, patch);
+    it->second.patch(base, patch, type);
     return true;
   }
 
@@ -836,7 +846,7 @@ class module_sram : public module_impl
   create_instr_buf(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_instr_buf()\n");
-    auto data = parent->get_instr();
+    const auto& data = parent->get_instr();
     size_t sz = data.size();
 
     if (sz == 0) {
@@ -854,23 +864,17 @@ class module_sram : public module_impl
     dump_bo(m_instr_buf, "instrBo.bin");
 #endif
 
-    ///// THIS IS A BUG, create_instr_buf is called in constructor
-    // patch_instr is a virtual method, what is actually called here ???
     if (m_ctrlpkt_buf) {
-      patch_instr("control-packet", m_ctrlpkt_buf);
-
-#ifdef _DEBUG
-      dump_bo(m_instr_buf, "instrBoPatchedByCtrlPacket.bin");
-#endif
-      XRT_PRINTF("<- module_sram::create_instr_buf()\n");
+      patch_instr("control-packet", m_ctrlpkt_buf, patcher::buf_type::ctrltext);
     }
+    XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
 
   void
   create_ctrlpkt_buf(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_ctrlpkt_buf()\n");
-    auto data = parent->get_ctrlpkt();
+    const auto& data = parent->get_ctrlpkt();
     size_t sz = data.size();
 
     if (sz == 0) {
@@ -898,7 +902,7 @@ class module_sram : public module_impl
   create_instruction_buffer(const module_impl* parent)
   {
     XRT_PRINTF("-> module_sram::create_instruction_buffer()\n");
-    auto data = parent->get_data();
+    const auto& data = parent->get_data();
 
     // create bo combined size of all ctrlcodes
     size_t sz = std::accumulate(data.begin(), data.end(), static_cast<size_t>(0), [](auto acc, const auto& ctrlcode) {
@@ -917,10 +921,10 @@ class module_sram : public module_impl
     XRT_PRINTF("<- module_sram::create_instruction_buffer()\n");
   }
 
-  void
-  patch_instr(const std::string& argnm, const xrt::bo& bo) override
+  virtual void
+  patch_instr(const std::string& argnm, const xrt::bo& bo, patcher::buf_type type) override
   {
-    patch_instr_value(argnm, bo.address());
+    patch_instr_value(argnm, bo.address(), type);
   }
 
   void
@@ -930,15 +934,15 @@ class module_sram : public module_impl
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_buf) {
-        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value))
+        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value))
+      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
           patched = true;
     }
-    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value))
+    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
       patched = true;
 
     if (patched) {
@@ -948,9 +952,9 @@ class module_sram : public module_impl
   }
 
   void
-  patch_instr_value(const std::string& argnm, uint64_t value)
+  patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value))
+    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, type))
         return;
 
     m_dirty = true;
@@ -990,8 +994,15 @@ class module_sram : public module_impl
     }
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      if (m_ctrlpkt_buf)
+#ifdef _DEBUG
+      dump_bo(m_instr_buf, "instrBoPatched.bin");
+#endif
+      if (m_ctrlpkt_buf) {
         m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+#ifdef _DEBUG
+        dump_bo(m_ctrlpkt_buf, "ctrlpktBoPatched.bin");
+#endif
+        }
     }
 
     m_dirty = false;
