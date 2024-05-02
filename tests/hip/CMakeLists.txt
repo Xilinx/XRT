@@ -21,7 +21,7 @@ if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
 endif()
 
-include(${CMAKE_SOURCE_DIR}/CMake/hip.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../src/CMake/hip.cmake)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   find_program(CLANG_TIDY "clang-tidy")
