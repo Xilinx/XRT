@@ -131,9 +131,9 @@ struct patcher
   std::vector<uint64_t> m_ctrlcode_offset;
 
   patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset, buf_type t)
-    : m_symbol_type(type)
+    : m_buf_type(t)
+    , m_symbol_type(type)
     , m_ctrlcode_offset(std::move(ctrlcode_offset))
-    , m_buf_type(t)
   {}
 
   void
