@@ -13,33 +13,12 @@
 # GNU General Public License for more details.
 #
 
-obj-m	+= xocl.o
+#obj-y += xocl.o
 ccflags-y := -Iinclude/drm
 
 export module_path ?= $(PWD)
-include $(module_path)/../lib/Makefile.in
-
-# Base on Linux Documentation/kbuild/modules.txt.
-# $(src) provides the absolute path by pointing to the directory
-# where the currently executing kbuild file is located.
-ifneq ($(src),)
-# building modules
-ifneq ($(wildcard $(src)/../../common),)
-# dpms dir
+include $(src)/../lib/Makefile
 common_dir = ../../common
-else
-# build from source code
-common_dir = ../../../../../common/drv
-endif
-
-else
-# clean
-common_dir = ../../../../../common/drv
-ifeq ($(wildcard ../../../../../common/drv),)
-common_dir = ../../common
-endif
-
-endif
 
 drv_common-y   := $(common_dir)/kds_hwctx.o \
 		  $(common_dir)/kds_core.o \
@@ -49,7 +28,7 @@ drv_common-y   := $(common_dir)/kds_hwctx.o \
 		  $(common_dir)/xgq_execbuf.o \
 		  $(common_dir)/xrt_xclbin.o
 
-xocl-y := \
+obj-$(CONFIG_XOCL) += \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
@@ -108,48 +87,36 @@ xocl-y := \
 	xocl_kds.o 	\
 	xocl_hwctx.o 	\
 	xocl_sysfs.o
+#	xocl_drv.o	\
+#	xocl_errors.o	\
+#	xocl_bo.o	\
+#	xocl_drm.o	\
+#	xocl_ioctl.o	\
+#	xocl_kds.o 	\
+#	xocl_sysfs.o
 
-xocl-y += $(libfdt-y)
+obj-$(CONFIG_XOCL) += $(libfdt-y)
 
-xocl-y += $(drv_common-y)
+obj-$(CONFIG_XOCL) += xocl_drv.o
+obj-$(CONFIG_XOCL) += xocl_errors.o
+obj-$(CONFIG_XOCL) += xocl_bo.o
+obj-$(CONFIG_XOCL) += xocl_drm.o
+obj-$(CONFIG_XOCL) += xocl_ioctl.o
+obj-$(CONFIG_XOCL) += xocl_kds.o
+obj-$(CONFIG_XOCL) += xocl_sysfs.o
+obj-$(CONFIG_XOCL) += $(drv_common-y)
 
-CONFIG_MODULE_SIG=n
-KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 
-PWD	:= $(shell pwd)
-ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT) -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/include
+XILINXINCLUDE := -I. -I$(src)/../../include -I$(src)/../include -I$(src)/../ -I$(src)/../lib/libqdma -I$(src)../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_soft_access -I$(src)/../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access
 
+<<<<<<< HEAD
 ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__ -DMBOX_INTERRUPT_DISABLE
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif
+=======
+ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__
+>>>>>>> 819fe1a84 (Makefile changes in userpf/ mgmtpf/ to build custom kernel source.)
 
-ifeq ($(SYMBOL),1)
-ccflags-y += -g
-endif
-
-QDMA_PATH := $(src)/../lib/libqdma/QDMA/linux-kernel/driver/libqdma/
+QDMA_PATH := $(src)../lib/libqdma/QDMA/linux-kernel/driver/libqdma/
 ccflags-y += -I$(QDMA_PATH) -I$(QDMA_PATH)/qdma_access/ -I$(QDMA_PATH)/qdma_access/qdma_soft_access/ -I$(QDMA_PATH)/qdma_access/eqdma_soft_access -I$(QDMA_PATH)/qdma_access/qdma_cpm4_access/ -I$(QDMA_PATH)/qdma_access/eqdma_cpm5_access/
-
-all:
-	@echo $(PWD)
-	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
-
-install: all
-	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
-	depmod -a
-	install -m 644 99-xocl.rules /etc/udev/rules.d
-	-rmmod -s xocl || true
-	-rmmod -s xdma || true
-	-modprobe xocl
-
-clean:
-	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
-	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
-	../lib/*.o.ur-safe ../lib/libqdma*/*.o ../lib/libqdma*/.*.o.cmd \
-	../lib/libqdma*/*/*.o ../lib/libqdma*/*/.*.o.cmd \
-	../lib/libqdma*/*.o.ur-safe ../lib/libqdma*/*/*.o.ur-safe \
-	../subdev/*.o.ur-safe ./.cache.mk	\
-	$(common_dir)/*.o $(common_dir)/.*.o.cmd \
-	.tmp_versions *.symvers modules.order
