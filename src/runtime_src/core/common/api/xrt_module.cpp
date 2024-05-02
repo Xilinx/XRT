@@ -314,6 +314,7 @@ public:
   //
   // @param symbol - symbol name
   // @param bo - global argument to patch into ctrlcode
+  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   virtual void
   patch_instr(const std::string&, const xrt::bo&, patcher::buf_type)
   {
@@ -346,6 +347,7 @@ public:
   // @param base - base address of control code buffer object
   // @param symbol - symbol name
   // @param patch - patch value
+  // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
   patch(uint8_t*, const std::string&, uint64_t, patcher::buf_type)
@@ -984,7 +986,7 @@ class module_sram : public module_impl
     auto os_abi = m_parent.get()->get_os_abi();
     if (os_abi == Elf_Amd_Aie2ps) {
       if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
-          boost::format fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
+        auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
             % m_parent->number_of_arg_patchers() % m_patched_args.size();
         throw std::runtime_error{ fmt.str() };
       }
@@ -995,11 +997,12 @@ class module_sram : public module_impl
 #ifdef _DEBUG
       dump_bo(m_instr_buf, "instrBoPatched.bin");
 #endif
-      if (m_ctrlpkt_buf)
+      if (m_ctrlpkt_buf) {
         m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 #ifdef _DEBUG
         dump_bo(m_ctrlpkt_buf, "ctrlpktBoPatched.bin");
 #endif
+        }
     }
 
     m_dirty = false;
