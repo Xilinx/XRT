@@ -42,7 +42,7 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 }
 
 static void
-marshal_build_metadata(std::string test_path, int* num_kernel, unsigned int* num_kernel_ddr, bool* chk_hbm_mem, std::vector<std::string>& bank_names)
+marshal_build_metadata(std::string test_path, unsigned int* num_kernel, unsigned int* num_kernel_ddr, bool* chk_hbm_mem, std::vector<std::string>& bank_names)
 {
   static const std::string filename = "platform.json";
   auto platform_json = std::filesystem::path(test_path) / filename;
@@ -279,7 +279,7 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
     return;
   }
 
-  int num_kernel = 0;
+  unsigned int num_kernel = 0;
   unsigned int num_kernel_ddr = 0;
   bool chk_hbm_mem = false;
   std::vector<std::string> bank_names;
