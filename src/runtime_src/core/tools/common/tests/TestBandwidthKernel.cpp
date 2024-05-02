@@ -42,7 +42,7 @@ TestBandwidthKernel::run(std::shared_ptr<xrt_core::device> dev)
 }
 
 static void
-marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_ddr, bool* chk_hbm_mem, std::vector<std::string>& bank_names)
+marshal_build_metadata(std::string test_path, unsigned int* num_kernel, unsigned int* num_kernel_ddr, bool* chk_hbm_mem, std::vector<std::string>& bank_names)
 {
   static const std::string filename = "platform.json";
   auto platform_json = std::filesystem::path(test_path) / filename;
@@ -60,14 +60,13 @@ marshal_build_metadata(std::string test_path, int* num_kernel, int* num_kernel_d
     if (sValue == "HBM")
       *chk_hbm_mem = true;
 
-    else if (sValue == "DDR") {
-		auto banks = pt_mem_entry.get_child("banks");
-
-        for (const auto&bank : banks) {
-		    auto bank_name = bank.second.get<std::string>("name");
-		    bank_names.push_back(bank_name);
-		}
-	}
+    else if (sValue == "DDR" || sValue == "LPDDR4_SDRAM") {
+      auto banks = pt_mem_entry.get_child("banks");
+      for (const auto&bank : banks) {
+        auto bank_name = bank.second.get<std::string>("name");
+        bank_names.push_back(bank_name);
+      }
+    }
   }
 
   if (*chk_hbm_mem) {
@@ -280,8 +279,8 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
     return;
   }
 
-  int num_kernel = 0;
-  int num_kernel_ddr = 0;
+  unsigned int num_kernel = 0;
+  unsigned int num_kernel_ddr = 0;
   bool chk_hbm_mem = false;
   std::vector<std::string> bank_names;
   try {
@@ -308,8 +307,10 @@ TestBandwidthKernel::runTest(std::shared_ptr<xrt_core::device> dev, boost::prope
       double max_throughput = throughputs.first;
       std::vector <double> throughput_per_kernel = throughputs.second;
       logger(ptree, "Details", boost::str(boost::format("Throughput (Type: DDR) (Bank count: %d) : %.1f MB/s") % num_kernel_ddr % max_throughput));
-      for (int i = 0; i < num_kernel_ddr; i++)
+      if (bank_names.size() == num_kernel_ddr && throughput_per_kernel.size() == num_kernel_ddr) {
+        for (unsigned int i = 0; i < num_kernel_ddr; i++)
           logger(ptree, "Details", boost::str(boost::format("Throughput of Memory Tag: %s : %.1f MB/s") % bank_names[i] % throughput_per_kernel[i]));
+      }
     }
     if (chk_hbm_mem) {
       double max_throughput = test_bandwidth_hbm(device, krnls, num_kernel);
