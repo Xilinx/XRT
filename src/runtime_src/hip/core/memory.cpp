@@ -171,12 +171,14 @@ namespace xrt::core::hip
   void
   memory_database::insert(uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
   {
+    std::lock_guard lock(m_mutex);
     m_addr_map.insert({address_range_key(addr, size), hip_mem});
   }
 
   void
   memory_database::remove(uint64_t addr)
   {
+    std::lock_guard lock(m_mutex);
     m_addr_map.erase(address_range_key(addr, 0));
   }
 

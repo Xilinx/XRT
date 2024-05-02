@@ -126,6 +126,7 @@ namespace xrt::core::hip
   {
   private:
     addr_map m_addr_map;
+    std::mutex m_mutex;
   
   protected:
     memory_database();
