@@ -250,7 +250,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
-          ref: main
+          ref: 2022.2
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
@@ -293,7 +293,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
-          ref: main
+          ref: 2022.2
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -337,7 +337,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
-          ref: main
+          ref: 2022.2
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
