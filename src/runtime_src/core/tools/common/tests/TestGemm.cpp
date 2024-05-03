@@ -5,7 +5,6 @@
 // Local - Include Files
 #include "TestGemm.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -14,6 +13,7 @@ namespace XBU = XBUtilities;
 // System - Include Files
 #include <fstream>
 #include <filesystem>
+#include <thread>
 
 static constexpr size_t host_app = 1; //opcode
 static constexpr uint32_t num_of_cores = 32;
@@ -155,9 +155,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   //Sync BOs
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-  XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
-
   //get current performance mode
   const auto perf_mode = xrt_core::device_query<xrt_core::query::performance_mode>(dev);
 
@@ -218,8 +215,7 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     total_cycle_count = total_cycle_count + cycle_count;
     TOPS = TOPS + temp_TOPS_per_core;
     core_ptr++;
-    }  
-  busy_bar.finish();
+  }
 
   //reset the performance mode
   xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), static_cast<xrt_core::query::performance_mode::power_type>(perf_mode));
