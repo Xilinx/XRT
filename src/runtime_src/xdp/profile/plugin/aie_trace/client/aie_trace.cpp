@@ -930,6 +930,23 @@ namespace xdp {
       cfgTile->active_core = tile.active_core;
       cfgTile->active_memory = tile.active_memory;
 
+      // Catch core execution trace
+      if ((type == module_type::core) && (metricSet == "execution")) {
+        // Set start/end events, use execution packets, and start trace module 
+        XAie_TraceStopEvent(&aieDevInst, loc, XAIE_CORE_MOD, coreTraceEndEvent);
+
+        // Driver requires at least one, non-zero trace event
+        XAie_TraceEvent(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_TRUE_CORE, 0);
+        
+        XAie_Packet pkt = {0, 0};
+        XAie_TraceModeConfig(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_TRACE_INST_EXEC);
+        XAie_TracePktConfig(&aieDevInst, loc, XAIE_CORE_MOD, pkt);
+
+        XAie_TraceStartEvent(&aieDevInst, loc, XAIE_CORE_MOD, coreTraceStartEvent);
+        (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
+        continue;
+      }
+
       // Get vector of pre-defined metrics for this set
       // NOTE: These are local copies to add tile-specific events
       EventVector coreEvents;
