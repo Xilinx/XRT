@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
 
+# config file for getting hip headers
+include(hip_config.cmake)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   find_program(CLANG_TIDY "clang-tidy")
   if(NOT CLANG_TIDY)

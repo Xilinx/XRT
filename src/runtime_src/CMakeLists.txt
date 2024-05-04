@@ -42,7 +42,6 @@ endif()
 
 # --- Optional HIP bindings ---
 if (XRT_ENABLE_HIP)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/../CMake/hip.cmake)
   xrt_add_subdirectory(hip)
 endif(XRT_ENABLE_HIP)
 
@@ -86,7 +85,6 @@ else()
 
   # --- Optional HIP bindings ---
   if (XRT_ENABLE_HIP)
-    include(${CMAKE_CURRENT_SOURCE_DIR}/../CMake/hip.cmake)
     xrt_add_subdirectory(hip)
   endif(XRT_ENABLE_HIP)
 endif()
