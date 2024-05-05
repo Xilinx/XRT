@@ -25,13 +25,13 @@ module(std::shared_ptr<context> ctx, const std::string& file_name)
 }
 
 module::
-module(std::shared_ptr<context> ctx, void* image)
+module(std::shared_ptr<context> ctx, const void* image)
   : m_ctx{std::move(ctx)}
 {
   // we trust pointer sent by application and treat
   // it as xclbin data. Application can crash/seg fault
   // when improper data is passed
-  m_xclbin = xrt::xclbin{static_cast<axlf*>(image)};
+  m_xclbin = xrt::xclbin{static_cast<axlf*>(const_cast<void*>(image))};
   create_hw_context();
 }
 
