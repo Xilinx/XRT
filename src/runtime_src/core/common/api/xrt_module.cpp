@@ -125,7 +125,8 @@ struct patcher
        ctrltext = 0,   // control code
        ctrldata,       // control packet
        preempt_save,   // preempt_save
-       preempt_restore // preempt_restore
+       preempt_restore, // preempt_restore
+       buf_type_count
   };
 
   buf_type m_buf_type = buf_type::ctrltext;
@@ -399,6 +400,7 @@ class module_elf : public module_impl
   std::map<std::string, patcher> m_arg2patcher;
   instr_buf m_instr_buf;
   control_packet m_ctrl_packet;
+  bool m_ctrl_packet_exist = false;
   buf m_save_buf;
   bool m_save_buf_exist = false;
   buf m_restore_buf;
@@ -444,21 +446,18 @@ class module_elf : public module_impl
 
   // Extract control-packet buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
-  control_packet
-  initialize_ctrl_packet(const ELFIO::elfio& elf)
+  bool initialize_ctrl_packet(const ELFIO::elfio& elf, control_packet& ctrlpacket)
   {
-    control_packet ctrlpacket;
-
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Control Packet is in .ctrldata section
       if (name.find(Control_Packet_Section_Name) != std::string::npos) {
         ctrlpacket.append_section_data(sec.get());
-        break;
+        return true;
       }
     }
 
-    return ctrlpacket;
+    return false;
   }
 
   // Extract preempt_save buffer from ELF sections
@@ -604,11 +603,11 @@ class module_elf : public module_impl
           sec_size = m_instr_buf.size();
           buf_type = patcher::buf_type::ctrltext;
         }
-        else if (secname.compare(Control_Packet_Section_Name) == 0) {
+        else if (m_ctrl_packet_exist && (secname.compare(Control_Packet_Section_Name) == 0)) {
           sec_size = m_ctrl_packet.size();
           buf_type = patcher::buf_type::ctrldata;
         }
-        if (m_save_buf_exist && (secname.compare(Preemtp_Save_Section_Name) == 0)) {
+        else if (m_save_buf_exist && (secname.compare(Preemtp_Save_Section_Name) == 0)) {
             sec_size = m_save_buf.size();
             buf_type = patcher::buf_type::preempt_save;
         }
@@ -733,9 +732,9 @@ public:
     }
     else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
-      m_ctrl_packet = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf));
-      initialize_save_buf(xrt_core::elf_int::get_elfio(m_elf), m_save_buf);
-      initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
+      m_ctrl_packet_exist = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf), m_ctrl_packet);
+      m_save_buf_exist = initialize_save_buf(xrt_core::elf_int::get_elfio(m_elf), m_save_buf);
+      m_restore_buf_exist = initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
