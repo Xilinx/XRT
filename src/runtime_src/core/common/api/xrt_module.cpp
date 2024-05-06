@@ -42,6 +42,11 @@ static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
+static const char* Control_Code_Section_Name = ".ctrltext";
+static const char* Control_Packet_Section_Name = ".ctrldata";
+static const char* Preemtp_Save_Section_Name = ".preempt_save";
+static const char* Preempt_Restore_Section_Name = ".preempt_restore";
+
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
 static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 
@@ -389,11 +394,15 @@ public:
 class module_elf : public module_impl
 {
   xrt::elf m_elf;
-  uint8_t m_os_abi;
+  uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::vector<ctrlcode> m_ctrlcodes;
   std::map<std::string, patcher> m_arg2patcher;
   instr_buf m_instr_buf;
   control_packet m_ctrl_packet;
+  buf m_save_buf;
+  bool m_save_buf_exist = false;
+  buf m_restore_buf;
+  bool m_restore_buf_exist = false;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -424,7 +433,7 @@ class module_elf : public module_impl
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Instruction buffer is in .ctrltext section.
-      if (name.find(".ctrltext") != std::string::npos) {
+      if (name.find(Control_Code_Section_Name) != std::string::npos) {
         instrbuf.append_section_data(sec.get());
         break;
       }
@@ -443,13 +452,47 @@ class module_elf : public module_impl
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Control Packet is in .ctrldata section
-      if (name.find(".ctrldata") != std::string::npos) {
+      if (name.find(Control_Packet_Section_Name) != std::string::npos) {
         ctrlpacket.append_section_data(sec.get());
         break;
       }
     }
 
     return ctrlpacket;
+  }
+
+  // Extract preempt_save buffer from ELF sections
+  // return true if section exist
+  bool
+      initialize_save_buf(const ELFIO::elfio& elf,
+                          buf& save_buf)
+  {
+      for (const auto& sec : elf.sections) {
+          auto name = sec->get_name();
+          if (name.find(Preemtp_Save_Section_Name) != std::string::npos) {
+              save_buf.append_section_data(sec.get());
+              return true;
+          }
+      }
+
+      return false;
+  }
+
+  // Extract preempt_restore buffer from ELF sections
+  // return true if section exist
+  bool
+      initialize_restore_buf(const ELFIO::elfio& elf,
+          buf& restore_buf)
+  {
+      for (const auto& sec : elf.sections) {
+          auto name = sec->get_name();
+          if (name.find(Preempt_Restore_Section_Name) != std::string::npos) {
+              restore_buf.append_section_data(sec.get());
+              return true;
+          }
+      }
+
+      return false;
   }
 
   // Extract control code from ELF sections without assuming anything
@@ -486,11 +529,11 @@ class module_elf : public module_impl
     // per column and page
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(".ctrltext") != std::string::npos) {
+      if (name.find(Control_Code_Section_Name) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrltext = sec.get();
       }
-      else if (name.find(".ctrldata") != std::string::npos) {
+      else if (name.find(Control_Packet_Section_Name) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrldata = sec.get();
       }
@@ -519,7 +562,7 @@ class module_elf : public module_impl
   }
 
   std::map<std::string, patcher>
-  initialize_arg_patchers(const ELFIO::elfio& elf, const instr_buf& instrbuf, const control_packet& ctrlpkt)
+  initialize_arg_patchers(const ELFIO::elfio& elf)
   {
     auto dynsym = elf.sections[".dynsym"];
     auto dynstr = elf.sections[".dynstr"];
@@ -557,13 +600,21 @@ class module_elf : public module_impl
         auto offset = rela->r_offset;
         size_t sec_size = 0;
         patcher::buf_type buf_type;
-        if (secname.compare(".ctrltext") == 0) {
-          sec_size = instrbuf.size();
+        if (secname.compare(Control_Code_Section_Name) == 0) {
+          sec_size = m_instr_buf.size();
           buf_type = patcher::buf_type::ctrltext;
         }
-        else if (secname.compare(".ctrldata") == 0) {
-          sec_size = ctrlpkt.size();
+        else if (secname.compare(Control_Packet_Section_Name) == 0) {
+          sec_size = m_ctrl_packet.size();
           buf_type = patcher::buf_type::ctrldata;
+        }
+        if (m_save_buf_exist && (secname.compare(Preemtp_Save_Section_Name) == 0)) {
+            sec_size = m_save_buf.size();
+            buf_type = patcher::buf_type::preempt_save;
+        }
+        else if (m_restore_buf_exist && (secname.compare(Preempt_Restore_Section_Name) == 0)) {
+            sec_size = m_restore_buf.size();
+            buf_type = patcher::buf_type::preempt_restore;
         }
         else
           throw std::runtime_error("Invalid section name " + secname);
@@ -683,7 +734,9 @@ public:
     else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
       m_ctrl_packet = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf));
-      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_instr_buf, m_ctrl_packet);
+      initialize_save_buf(xrt_core::elf_int::get_elfio(m_elf), m_save_buf);
+      initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
+      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
 
