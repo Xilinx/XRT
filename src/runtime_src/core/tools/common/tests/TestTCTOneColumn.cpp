@@ -5,7 +5,6 @@
 // Local - Include Files
 #include "TestTCTOneColumn.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
@@ -152,9 +151,6 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
   logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'bytes") % buffer_size));
   logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
 
-  XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
-
   auto start = std::chrono::high_resolution_clock::now();
   try {
     auto run = kernel(host_app, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
@@ -167,7 +163,6 @@ TestTCTOneColumn::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto end = std::chrono::high_resolution_clock::now();
-  busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
