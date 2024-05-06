@@ -9,6 +9,9 @@
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
 
+#include "hip/config.h"
+#include "hip/hip_runtime_api.h"
+
 namespace xrt::core::hip
 {
   class error
