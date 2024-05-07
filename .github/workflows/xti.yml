@@ -5,9 +5,9 @@ env:
   ENV: 'test' 
 
 on:
-  # push:
-  # workflow_dispatch:
-  # workflow_call:
+  push:
+  workflow_dispatch:
+  workflow_call:
   schedule:
     - cron: '40 4 * * *'
   
@@ -433,6 +433,7 @@ jobs:
   delete_logs:
     runs-on: [self-hosted, Ubuntu-22.04]
     needs: test-summary
+    if: always()
     steps:
       - name: Delete Run Logs  
         run: |  
