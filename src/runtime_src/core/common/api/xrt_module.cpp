@@ -194,11 +194,8 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t patch, buf_type type)
+  patch(uint8_t* base, uint64_t patch)
   {
-    if (type != m_buf_type)
-      return;
-
     for (auto offset : m_ctrlcode_offset) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
       switch (m_symbol_type) {
@@ -471,9 +468,7 @@ class module_elf : public module_impl
 
   // Extract preempt_save buffer from ELF sections
   // return true if section exist
-  bool
-      initialize_save_buf(const ELFIO::elfio& elf,
-                          buf& save_buf)
+  bool initialize_save_buf(const ELFIO::elfio& elf, buf& save_buf)
   {
       for (const auto& sec : elf.sections) {
           auto name = sec->get_name();
@@ -488,9 +483,7 @@ class module_elf : public module_impl
 
   // Extract preempt_restore buffer from ELF sections
   // return true if section exist
-  bool
-      initialize_restore_buf(const ELFIO::elfio& elf,
-          buf& restore_buf)
+  bool initialize_restore_buf(const ELFIO::elfio& elf, buf& restore_buf)
   {
       for (const auto& sec : elf.sections) {
           auto name = sec->get_name();
@@ -719,7 +712,7 @@ class module_elf : public module_impl
     if (it == m_arg2patcher.end())
       return false;
 
-    it->second.patch(base, patch, type);
+    it->second.patch(base, patch);
     return true;
   }
 
