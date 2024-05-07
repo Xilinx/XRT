@@ -692,12 +692,10 @@ class module_elf : public module_impl
 
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
-        std::vector<uint64_t> offsets;
-        offsets.push_back(ctrlcode_offset);
-        arg2patcher.emplace(std::move(argnm), patcher{ symbol_type, offsets, buf_type});
+        std::string key_string = generate_key_string(argnm, buf_type);
+        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+        arg2patcher.emplace(std::move(key_string), patcher{ symbol_type, {ctrlcode_offset}, buf_type});
       }
     }
 
