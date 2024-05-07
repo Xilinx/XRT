@@ -240,6 +240,15 @@ struct patcher
     auto buf = bo.map<char*>();
     ofs.write(buf, bo.size());
   }
+
+  XRT_CORE_UNUSED std::string
+  generate_key_string(const std::string& argument_name, patcher::buf_type type)
+  {
+    char buf_char[16];
+    std::snprintf(buf_char, sizeof(buf_char), "%d", static_cast<int>(type));
+    std::string buf_string = buf_char;
+    return argument_name + buf_string;
+  }
 } // namespace
 
 namespace xrt
@@ -622,14 +631,13 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+        std::string key_string = generate_key_string(argnm, buf_type);
 
-        if (auto search = arg2patchers.find(argnm); search != arg2patchers.end())
+        if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
         else {
           auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-          std::vector<uint64_t> offsets;
-          offsets.push_back(offset);
-          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets), buf_type });
+          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {offset}, buf_type });
         }
       }
     }
@@ -706,7 +714,8 @@ class module_elf : public module_impl
   bool
   patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
   {
-    auto it = m_arg2patcher.find(argnm);
+    std::string key_string = generate_key_string(argnm, type);
+    auto it = m_arg2patcher.find(key_string);
     if (it == m_arg2patcher.end())
       return false;
 
