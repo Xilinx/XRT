@@ -36,14 +36,14 @@ jobs:
         include:      
           - os: centos78      
             packageType: rpm      
-          - os: centos8      
-            packageType: rpm      
-          - os: rhel9      
-            packageType: rpm      
-          - os: ubuntu2004      
-            packageType: deb      
-          - os: ubuntu2204      
-            packageType: deb      
+          # - os: centos8      
+          #   packageType: rpm      
+          # - os: rhel9      
+          #   packageType: rpm      
+          # - os: ubuntu2004      
+          #   packageType: deb      
+          # - os: ubuntu2204      
+          #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     ## runs-on: [apu]
@@ -441,7 +441,8 @@ jobs:
           echo "RUN_ID=${GITHUB_RUN_ID}" >> $GITHUB_ENV    
           echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
       - name: Delete Run Logs  
-        run: |  
+        run: |
+          RUN_ID=${{ github.run_id }}  
           curl -L \  
             -X DELETE \  
             -H "Accept: application/vnd.github+json" \  
