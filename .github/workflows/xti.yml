@@ -9,7 +9,7 @@ on:
   # workflow_dispatch:
   # workflow_call:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '35 22 * * *'
   
 jobs:
   # authorize:
