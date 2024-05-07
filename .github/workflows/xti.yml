@@ -5,9 +5,11 @@ env:
   ENV: 'test' 
 
 on:
-  push:
+  # push:
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron: "0 5 * * *"
   
 jobs:
   # authorize:
