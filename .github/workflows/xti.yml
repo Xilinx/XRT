@@ -429,10 +429,24 @@ jobs:
         run: |    
           # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
           echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY
+
+  cancel_run:
+    runs-on: [self-hosted, Ubuntu-22.04]
+    needs: test-summary
+    steps:
+      - name: Cancel Workflow Run  
+        if: steps.check_status.outputs.status == 'in_progress'  
+        run: |  
+          echo "Cancelling Workflow Run..."  
+          curl \  
+            -X POST \  
+            -H "Authorization: Bearer ${{ secrets.CI_CLOUD_TOKEN }}" \  
+            -H "Accept: application/vnd.github.v3+json" \  
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/cancel"
           
   delete_logs:
     runs-on: [self-hosted, Ubuntu-22.04]
-    needs: test-summary
+    needs: cancel_run
     if: always()
     steps:
       - name: Set env variables    
