@@ -561,6 +561,25 @@ class module_elf : public module_impl
     return ctrlcodes;
   }
 
+  std::pair<size_t, patcher::buf_type>
+  determine_section_type(const std::string& section_name)
+  {
+   if (section_name == Section_Name_Array[patcher::ctrltext])
+     return { m_instr_buf.size(), patcher::buf_type::ctrltext};
+
+   else if (m_ctrl_packet_exist && (section_name == Section_Name_Array[patcher::ctrldata]))
+     return { m_ctrl_packet.size(), patcher::buf_type::ctrldata};
+
+   else if (m_save_buf_exist && (section_name == Section_Name_Array[patcher::preempt_save]))
+     return { m_save_buf.size(), patcher::buf_type::preempt_save };
+
+   else if (m_restore_buf_exist && (section_name == Section_Name_Array[patcher::preempt_restore]))
+     return { m_restore_buf.size(), patcher::buf_type::preempt_restore };
+
+   else
+     throw std::runtime_error("Invalid section name " + section_name);
+  }
+
   std::map<std::string, patcher>
   initialize_arg_patchers(const ELFIO::elfio& elf)
   {
@@ -596,34 +615,14 @@ class module_elf : public module_impl
         if (!section)
           throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
-        auto secname = section->get_name();
         auto offset = rela->r_offset;
-        size_t sec_size = 0;
-        patcher::buf_type buf_type;
-        if (secname == Section_Name_Array[patcher::ctrltext]) {
-          sec_size = m_instr_buf.size();
-          buf_type = patcher::buf_type::ctrltext;
-        }
-        else if (m_ctrl_packet_exist && (secname == Section_Name_Array[patcher::ctrldata])) {
-          sec_size = m_ctrl_packet.size();
-          buf_type = patcher::buf_type::ctrldata;
-        }
-        else if (m_save_buf_exist && (secname == Section_Name_Array[patcher::preempt_save])) {
-            sec_size = m_save_buf.size();
-            buf_type = patcher::buf_type::preempt_save;
-        }
-        else if (m_restore_buf_exist && (secname == Section_Name_Array[patcher::preempt_restore])) {
-            sec_size = m_restore_buf.size();
-            buf_type = patcher::buf_type::preempt_restore;
-        }
-        else
-          throw std::runtime_error("Invalid section name " + secname);
+        auto [sec_size, buf_type] = determine_section_type(section->get_name());
 
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        const std::string key_string = generate_key_string(argnm, buf_type);
+        std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
@@ -692,9 +691,9 @@ class module_elf : public module_impl
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
-        const std::string key_string = generate_key_string(argnm, buf_type);
+
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        arg2patcher.emplace(std::move(key_string), patcher{ symbol_type, {ctrlcode_offset}, buf_type});
+        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {ctrlcode_offset}, buf_type});
       }
     }
 
