@@ -1290,7 +1290,6 @@ struct xocl_clock_counter_funcs {
 	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx) ?		\
 	(struct xocl_clock_counter_funcs *)				\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx)->ops : NULL)
-
 static inline int xocl_clock_c_ops_level(xdev_handle_t xdev)
 {
 	int i;
@@ -2551,7 +2550,7 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 	return kds_fini_ert(&XDEV(xdev)->kds);
 }
 
-#if PF == MGMTPF 
+#if PF == MGMTPF
 static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel)
@@ -2568,6 +2567,7 @@ int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ps_kernel_node *ps_kernel);
 int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
 #endif
+
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;
 extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 64];

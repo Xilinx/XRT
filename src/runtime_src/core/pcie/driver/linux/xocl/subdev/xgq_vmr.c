@@ -88,7 +88,7 @@ MODULE_PARM_DESC(vmr_sc_ready_timeout,
 #define	XGQ_DBG(xgq, fmt, arg...)	\
 	xocl_dbg(&(xgq)->xgq_pdev->dev, fmt "\n", ##arg)
 
-#define	XGQ_DEV_NAME "ospi_xgq"
+#define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
 
 #define XOCL_VMR_INVALID_CID	0xFFFF
 

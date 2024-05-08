@@ -479,7 +479,7 @@ struct xocl_drv_private	ert_priv = {
 };
 
 struct platform_device_id ert_id_table[] = {
-	{XOCL_DEVNAME(XOCL_ERT), (kernel_ulong_t)&ert_priv },
+	{ XOCL_DEVNAME(XOCL_ERT), (kernel_ulong_t)&ert_priv },
 	{ },
 };
 

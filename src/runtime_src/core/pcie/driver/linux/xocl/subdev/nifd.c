@@ -30,7 +30,7 @@
 #include "../xocl_drv.h"
 #include "xclfeatures.h"
 
-#define NIFD_DEV_NAME "nifd"
+#define NIFD_DEV_NAME "nifd" SUBDEV_SUFFIX
 #define SUPPORTED_NIFD_IP_VERSION 1
 #define SUPPORTED_DRIVER_VERSION 1
 #define MINOR_NAME_MASK 0xffffffff

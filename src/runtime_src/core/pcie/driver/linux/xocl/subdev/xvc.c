@@ -67,7 +67,7 @@ struct xil_xvc_properties {
 #define XVC_BAR_TDO_REG		0xC
 #define XVC_BAR_CTRL_REG	0x10
 
-#define XVC_DEV_NAME "xvc"
+#define XVC_DEV_NAME "xvc" SUBDEV_SUFFIX
 
 struct xocl_xvc {
 	void *__iomem base;

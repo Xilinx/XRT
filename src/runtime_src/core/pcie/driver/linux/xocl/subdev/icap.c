@@ -4439,6 +4439,7 @@ failed:
 	return ret;
 }
 
+#if PF == MGMTPF
 static int icap_open(struct inode *inode, struct file *file)
 {
 	struct icap *icap = NULL;
@@ -4704,17 +4705,26 @@ static const struct file_operations icap_fops = {
 	.write = icap_write_rp,
 };
 
+struct xocl_drv_private icap_drv_priv_userpf = {
+	.ops = &icap_ops,
+	.fops = &icap_fops,
+	.dev = -1,
+	.cdev_name = NULL,
+};
 struct xocl_drv_private icap_drv_priv_mgmtpf = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,
 	.dev = -1,
 	.cdev_name = NULL,
 };
-
+#else
 struct xocl_drv_private icap_drv_priv_userpf = {
 	.ops = &icap_ops,
 };
-
+struct xocl_drv_private icap_drv_priv_mgmtpf = {
+	.ops = &icap_ops,
+};
+#endif
 struct platform_device_id icap_id_table_userpf[] = {
 	{ XOCL_DEVNAME(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv_userpf },
 	{ },
@@ -4762,6 +4772,7 @@ int __init xocl_init_icap(bool flag)
 		goto err_reg_driver;
 
 	icap_keys = NULL;
+#if PF == MGMTPF
 if (flag) {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
@@ -4771,8 +4782,8 @@ if (flag) {
 		KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
 		KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
 #endif
-
 }
+#endif
 	if (IS_ERR(icap_keys)) {
 		err = PTR_ERR(icap_keys);
 		icap_keys = NULL;

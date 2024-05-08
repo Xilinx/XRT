@@ -943,7 +943,9 @@ static void chan_worker(struct work_struct *work)
 			 * poll for Rx also when there is data. 
 			 */
 			if(strcmp(XOCL_DEVNAME(XOCL_MAILBOX),ch->mbc_parent->mbx_pdev->name)==0) {
+#if PF == USERPF
 				if (is_rx_chan(ch))
+#endif
 					chan_sleep(ch, false);
 			}
 			else {
@@ -2588,13 +2590,17 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 
 	if (mbx->mbx_irq != -1)
 		return 0;
-if(strcmp(pdev->name,XOCL_DEVNAME(XOCL_MAILBOX))==0) {
+	
+	if(strcmp(pdev->name,XOCL_DEVNAME(XOCL_MAILBOX))==0) {
+#if PF == MGMTPF
 	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_MGMT,
 			IORESOURCE_IRQ, &dyn_res);
+#else
 }
 else {
 	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_USER,
 			IORESOURCE_IRQ, &dyn_res);
+#endif
 }
 	if (ret) {
 		/* fall back to try static defined irq */

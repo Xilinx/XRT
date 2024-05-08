@@ -82,7 +82,7 @@
 #include "../xocl_drv.h"
 #include "xrt_drv.h"
 
-#define	XFER_VERSAL_DEV_NAME "xfer_versal"
+#define	XFER_VERSAL_DEV_NAME "xfer_versal" SUBDEV_SUFFIX
 
 /* Timer interval of checking OSPI done */
 #define XFER_VERSAL_TIMER_INTERVAL	(1000)

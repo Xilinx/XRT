@@ -213,7 +213,7 @@ struct xocl_drv_private m2m_priv = {
 };
 
 struct platform_device_id m2m_id_table[] = {
-	{XOCL_DEVNAME(XOCL_M2M), (kernel_ulong_t)&m2m_priv },
+	{ XOCL_DEVNAME(XOCL_M2M), (kernel_ulong_t)&m2m_priv },
 	{ },
 };
 
