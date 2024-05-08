@@ -124,10 +124,10 @@ struct patcher
        buf_type_count = 4   // total number of buf types
   };
 
-  inline static char*
+  inline static const char*
   section_name_to_string(buf_type bt)
   {
-    static char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
+    static const char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
                                                                                     ".ctrldata",
                                                                                     ".preempt_save",
                                                                                     ".preempt_restore" };
