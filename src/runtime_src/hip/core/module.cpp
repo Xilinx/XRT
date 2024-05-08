@@ -31,7 +31,7 @@ module(std::shared_ptr<context> ctx, const void* image)
   // we trust pointer sent by application and treat
   // it as xclbin data. Application can crash/seg fault
   // when improper data is passed
-  m_xclbin = xrt::xclbin{static_cast<axlf*>(const_cast<void*>(image))};
+  m_xclbin = xrt::xclbin{static_cast<const axlf*>(image)};
   create_hw_context();
 }
 

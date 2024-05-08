@@ -179,7 +179,7 @@ hipModuleLoadData(hipModule_t* module, const void* image)
 hipError_t
 hipModuleLoad(hipModule_t *module, const char *fname)
 {
-  return hip_module_load_data_helper(module, fname);
+  return hip_module_load_data_helper(module, std::string{fname});
 }
 
 hipError_t
