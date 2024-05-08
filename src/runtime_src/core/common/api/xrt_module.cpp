@@ -42,11 +42,6 @@ static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
-static const char* Control_Code_Section_Name = ".ctrltext";
-static const char* Control_Packet_Section_Name = ".ctrldata";
-static const char* Preemtp_Save_Section_Name = ".preempt_save";
-static const char* Preempt_Restore_Section_Name = ".preempt_restore";
-
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
 static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 
@@ -121,7 +116,7 @@ struct patcher
     unknown_symbol_kind = 8
   };
 
-   enum class buf_type {
+  enum buf_type {
        ctrltext = 0,   // control code
        ctrldata,       // control packet
        preempt_save,   // preempt_save
@@ -129,6 +124,7 @@ struct patcher
        buf_type_count
   };
 
+  static const std::string Section_Name_Array[buf_type::buf_type_count];
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
@@ -224,6 +220,11 @@ struct patcher
   }
 };
 
+const std::string Section_Name_Array[patcher::buf_type::buf_type_count] = { ".ctrltext",
+                                                                            ".ctrldata",
+                                                                            ".preempt_save",
+                                                                            ".preempt_restore" };
+
   XRT_CORE_UNUSED void
   dump_bo(xrt::bo& bo, const std::string& filename)
   {
@@ -241,9 +242,7 @@ struct patcher
   XRT_CORE_UNUSED std::string
   generate_key_string(const std::string& argument_name, patcher::buf_type type)
   {
-    char buf_char[16];
-    std::snprintf(buf_char, sizeof(buf_char), "%d", static_cast<int>(type));
-    std::string buf_string = buf_char;
+    std::string buf_string = std::to_string(static_cast<int>(type));
     return argument_name + buf_string;
   }
 } // namespace
@@ -441,10 +440,10 @@ class module_elf : public module_impl
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Instruction buffer is in .ctrltext section.
-      if (name.find(Control_Code_Section_Name) != std::string::npos) {
-        instrbuf.append_section_data(sec.get());
-        break;
-      }
+      if (name.find(Section_Name_Array[patcher::ctrltext]) == std::string::npos)
+        continue;
+      instrbuf.append_section_data(sec.get());
+      break;
     }
 
     return instrbuf;
@@ -456,13 +455,12 @@ class module_elf : public module_impl
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      // Control Packet is in .ctrldata section
-      if (name.find(Control_Packet_Section_Name) != std::string::npos) {
-        ctrlpacket.append_section_data(sec.get());
-        return true;
-      }
-    }
+      if (name.find(Section_Name_Array[patcher::ctrldata]) == std::string::npos)
+        continue;
 
+      ctrlpacket.append_section_data(sec.get());
+      return true;
+    }
     return false;
   }
 
@@ -470,30 +468,31 @@ class module_elf : public module_impl
   // return true if section exist
   bool initialize_save_buf(const ELFIO::elfio& elf, buf& save_buf)
   {
-      for (const auto& sec : elf.sections) {
-          auto name = sec->get_name();
-          if (name.find(Preemtp_Save_Section_Name) != std::string::npos) {
-              save_buf.append_section_data(sec.get());
-              return true;
-          }
-      }
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(Section_Name_Array[patcher::preempt_save]) == std::string::npos)
+        continue;
 
-      return false;
+      save_buf.append_section_data(sec.get());
+      return true;
+    }
+    return false;
   }
 
   // Extract preempt_restore buffer from ELF sections
   // return true if section exist
   bool initialize_restore_buf(const ELFIO::elfio& elf, buf& restore_buf)
   {
-      for (const auto& sec : elf.sections) {
-          auto name = sec->get_name();
-          if (name.find(Preempt_Restore_Section_Name) != std::string::npos) {
-              restore_buf.append_section_data(sec.get());
-              return true;
-          }
-      }
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(Section_Name_Array[patcher::preempt_restore]) == std::string::npos)
+        continue;
 
-      return false;
+      restore_buf.append_section_data(sec.get());
+      return true;
+    }
+
+    return false;
   }
 
   // Extract control code from ELF sections without assuming anything
@@ -530,11 +529,11 @@ class module_elf : public module_impl
     // per column and page
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(Control_Code_Section_Name) != std::string::npos) {
+      if (name.find(Section_Name_Array[patcher::ctrltext]) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrltext = sec.get();
       }
-      else if (name.find(Control_Packet_Section_Name) != std::string::npos) {
+      else if (name.find(Section_Name_Array[patcher::ctrldata]) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrldata = sec.get();
       }
@@ -601,19 +600,19 @@ class module_elf : public module_impl
         auto offset = rela->r_offset;
         size_t sec_size = 0;
         patcher::buf_type buf_type;
-        if (secname.compare(Control_Code_Section_Name) == 0) {
+        if (secname == Section_Name_Array[patcher::ctrltext]) {
           sec_size = m_instr_buf.size();
           buf_type = patcher::buf_type::ctrltext;
         }
-        else if (m_ctrl_packet_exist && (secname.compare(Control_Packet_Section_Name) == 0)) {
+        else if (m_ctrl_packet_exist && (secname == Section_Name_Array[patcher::ctrldata])) {
           sec_size = m_ctrl_packet.size();
           buf_type = patcher::buf_type::ctrldata;
         }
-        else if (m_save_buf_exist && (secname.compare(Preemtp_Save_Section_Name) == 0)) {
+        else if (m_save_buf_exist && (secname == Section_Name_Array[patcher::preempt_save])) {
             sec_size = m_save_buf.size();
             buf_type = patcher::buf_type::preempt_save;
         }
-        else if (m_restore_buf_exist && (secname.compare(Preempt_Restore_Section_Name) == 0)) {
+        else if (m_restore_buf_exist && (secname == Section_Name_Array[patcher::preempt_restore])) {
             sec_size = m_restore_buf.size();
             buf_type = patcher::buf_type::preempt_restore;
         }
@@ -624,7 +623,7 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        std::string key_string = generate_key_string(argnm, buf_type);
+        const std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
@@ -693,7 +692,7 @@ class module_elf : public module_impl
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
-        std::string key_string = generate_key_string(argnm, buf_type);
+        const std::string key_string = generate_key_string(argnm, buf_type);
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
         arg2patcher.emplace(std::move(key_string), patcher{ symbol_type, {ctrlcode_offset}, buf_type});
       }
@@ -705,7 +704,7 @@ class module_elf : public module_impl
   bool
   patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
   {
-    std::string key_string = generate_key_string(argnm, type);
+    const std::string key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
     if (it == m_arg2patcher.end())
       return false;
