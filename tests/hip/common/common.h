@@ -100,8 +100,13 @@ public:
     test_hip_check(hipMalloc((void**)&_buffer, size * sizeof(T)));
   }
 
-  ~hip_test_device_bo() noexcept {
-    test_hip_check(hipFree(_buffer));
+  ~hip_test_device_bo() {
+    try {
+      test_hip_check(hipFree(_buffer));
+    }
+    catch (const std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
   }
 
   hip_test_device_bo(const hip_test_device_bo &) = delete;
@@ -124,12 +129,17 @@ hip_test_host_bo {
   T *_buffer;
 
 public:
-  explicit hip_test_host_bo(size_t size, unsigned int flags) : _buffer(nullptr) {
+  hip_test_host_bo(size_t size, unsigned int flags) : _buffer(nullptr) {
     test_hip_check(hipHostMalloc((void**)&_buffer, size * sizeof(T), flags));
   }
 
-  ~hip_test_host_bo() noexcept {
-    test_hip_check(hipHostFree(_buffer));
+  ~hip_test_host_bo() {
+    try {
+      test_hip_check(hipHostFree(_buffer));
+    }
+    catch (const std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
   }
 
   hip_test_host_bo(const hip_test_host_bo &) = delete;
