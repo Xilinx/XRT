@@ -124,7 +124,17 @@ struct patcher
        buf_type_count = 4   // total number of buf types
   };
 
-  static const std::string Section_Name_Array[static_cast<int>(buf_type::buf_type_count)];
+  inline static char*
+  section_name_to_string(buf_type bt)
+  {
+    static char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
+                                                                                    ".ctrldata",
+                                                                                    ".preempt_save",
+                                                                                    ".preempt_restore" };
+
+    return Section_Name_Array[static_cast<int>(bt)];
+  }
+
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
@@ -219,11 +229,6 @@ struct patcher
     }
   }
 };
-
-const std::string Section_Name_Array[static_cast<int>(patcher::buf_type::buf_type_count)] = { ".ctrltext",
-                                                                                              ".ctrldata",
-                                                                                              ".preempt_save",
-                                                                                              ".preempt_restore" };
 
   XRT_CORE_UNUSED void
   dump_bo(xrt::bo& bo, const std::string& filename)
@@ -440,7 +445,7 @@ class module_elf : public module_impl
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Instruction buffer is in .ctrltext section.
-      if (name.find(Section_Name_Array[static_cast<int>(patcher::buf_type::ctrltext)]) == std::string::npos)
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrltext)) == std::string::npos)
         continue;
       instrbuf.append_section_data(sec.get());
       break;
@@ -455,7 +460,7 @@ class module_elf : public module_impl
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(Section_Name_Array[static_cast<int>(patcher::buf_type::ctrldata)]) == std::string::npos)
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrldata)) == std::string::npos)
         continue;
 
       ctrlpacket.append_section_data(sec.get());
@@ -470,7 +475,7 @@ class module_elf : public module_impl
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(Section_Name_Array[static_cast<int>(patcher::buf_type::preempt_save)]) == std::string::npos)
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::preempt_save)) == std::string::npos)
         continue;
 
       save_buf.append_section_data(sec.get());
@@ -485,7 +490,7 @@ class module_elf : public module_impl
   {
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(Section_Name_Array[static_cast<int>(patcher::buf_type::preempt_restore)]) == std::string::npos)
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::preempt_restore)) == std::string::npos)
         continue;
 
       restore_buf.append_section_data(sec.get());
@@ -529,11 +534,11 @@ class module_elf : public module_impl
     // per column and page
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(Section_Name_Array[static_cast<int>(patcher::buf_type::ctrltext)]) != std::string::npos) {
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrltext)) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrltext = sec.get();
       }
-      else if (name.find(Section_Name_Array[static_cast<int>(patcher::buf_type::ctrldata)]) != std::string::npos) {
+      else if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrldata)) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrldata = sec.get();
       }
@@ -564,16 +569,16 @@ class module_elf : public module_impl
   std::pair<size_t, patcher::buf_type>
   determine_section_type(const std::string& section_name)
   {
-   if (section_name == Section_Name_Array[static_cast<int>(patcher::buf_type::ctrltext)])
+   if (section_name == patcher::section_name_to_string(patcher::buf_type::ctrltext))
      return { m_instr_buf.size(), patcher::buf_type::ctrltext};
 
-   else if (m_ctrl_packet_exist && (section_name == Section_Name_Array[static_cast<int>(patcher::buf_type::ctrldata)]))
+   else if (m_ctrl_packet_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::ctrldata)))
      return { m_ctrl_packet.size(), patcher::buf_type::ctrldata};
 
-   else if (m_save_buf_exist && (section_name == Section_Name_Array[static_cast<int>(patcher::buf_type::preempt_save)]))
+   else if (m_save_buf_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::preempt_save)))
      return { m_save_buf.size(), patcher::buf_type::preempt_save };
 
-   else if (m_restore_buf_exist && (section_name == Section_Name_Array[static_cast<int>(patcher::buf_type::preempt_restore)]))
+   else if (m_restore_buf_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::preempt_restore)))
      return { m_restore_buf.size(), patcher::buf_type::preempt_restore };
 
    else
