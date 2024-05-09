@@ -25,6 +25,7 @@ boost::property_tree::ptree
 TestVerify::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree;
+  ptree = get_test_header();
   xrt::device device(dev);
 
   const std::string test_path = findPlatformPath(dev, ptree);
