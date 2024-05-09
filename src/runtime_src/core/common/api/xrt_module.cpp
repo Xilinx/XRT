@@ -829,8 +829,8 @@ class module_sram : public module_impl
   // column.  The ctrlcodes are concatenated into a single buffer
   // padded at page size specific to hardware.
   xrt::bo m_buffer;
-  xrt::bo m_instr_buf;
-  xrt::bo m_ctrlpkt_buf;
+  xrt::bo m_instr_bo;
+  xrt::bo m_ctrlpkt_bo;
 
   // Column bo address is the address of the ctrlcode for each column
   // in the (sram) buffer object.  The first ctrlcode is at the base
@@ -864,9 +864,9 @@ class module_sram : public module_impl
   fill_bo_addresses()
   {
     m_column_bo_address.clear();
-    m_column_bo_address.push_back({ m_instr_buf.address(), m_instr_buf.size() }); // NOLINT
-    if (m_ctrlpkt_buf) {
-      m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() }); // NOLINT
+    m_column_bo_address.push_back({ m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
+    if (m_ctrlpkt_bo) {
+      m_column_bo_address.push_back({ m_ctrlpkt_bo.address(), m_ctrlpkt_bo.size() }); // NOLINT
     }
   }
 
@@ -912,17 +912,17 @@ class module_sram : public module_impl
     }
 
     // create bo combined size of all ctrlcodes
-    m_instr_buf = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
     // copy instruction into bo
-    fill_instr_buf(m_instr_buf, data);
+    fill_instr_buf(m_instr_bo, data);
 
 #ifdef _DEBUG
-    dump_bo(m_instr_buf, "instrBo.bin");
+    dump_bo(m_instr_bo, "instrBo.bin");
 #endif
 
-    if (m_ctrlpkt_buf) {
-      patch_instr("control-packet", m_ctrlpkt_buf, patcher::buf_type::ctrltext);
+    if (m_ctrlpkt_bo) {
+      patch_instr("control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -940,13 +940,13 @@ class module_sram : public module_impl
     else {
       // create bo combined size of all ctrlcodes
       // m_ctrlpkt_buf = xrt::bo{m_hwctx, sz, xrt::bo::flags::host_only, 0};
-      m_ctrlpkt_buf = xrt::ext::bo{ m_hwctx, sz };
+      m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
 
       // copy instruction into bo
-      fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
+      fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
 
 #ifdef _DEBUG
-      dump_bo(m_ctrlpkt_buf, "ctrlpktBo.bin");
+      dump_bo(m_ctrlpkt_bo, "ctrlpktBo.bin");
 #endif
 
       XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
@@ -990,13 +990,13 @@ class module_sram : public module_impl
     bool patched = false;
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
-      if (m_ctrlpkt_buf) {
-        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
+      if (m_ctrlpkt_bo) {
+        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
+      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
           patched = true;
     }
     else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
@@ -1011,7 +1011,7 @@ class module_sram : public module_impl
   void
   patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, type))
+    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, type))
         return;
 
     m_dirty = true;
@@ -1050,14 +1050,14 @@ class module_sram : public module_impl
       m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
     else if (os_abi == Elf_Amd_Aie2p) {
-      m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 #ifdef _DEBUG
-      dump_bo(m_instr_buf, "instrBoPatched.bin");
+      dump_bo(m_instr_bo, "instrBoPatched.bin");
 #endif
-      if (m_ctrlpkt_buf) {
-        m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      if (m_ctrlpkt_bo) {
+        m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 #ifdef _DEBUG
-        dump_bo(m_ctrlpkt_buf, "ctrlpktBoPatched.bin");
+        dump_bo(m_ctrlpkt_bo, "ctrlpktBoPatched.bin");
 #endif
         }
     }
