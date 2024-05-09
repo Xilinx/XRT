@@ -18,9 +18,9 @@ src/runtime_src/core/common/drv/ @mamin506
 src/runtime_src/core/edge/ @chvamshi-xilinx @stsoe
 src/runtime_src/core/edge/common/ @chvamshi-xilinx @stsoe
 src/runtime_src/core/edge/drm/ @chvamshi-xilinx @mamin506
-src/runtime_src/core/edge/common_em/ @venkatp-xilinx
-src/runtime_src/core/edge/hw_em/ @venkatp-xilinx
-src/runtime_src/core/edge/sw_em/ @venkatp-xilinx
+src/runtime_src/core/edge/common_em/ @akasat
+src/runtime_src/core/edge/hw_em/ @akasat
+src/runtime_src/core/edge/sw_em/ @akasat
 src/runtime_src/core/edge/ps_kernels/ @jeffli-xilinx @rozumx @sonals @stsoe
 src/runtime_src/core/edge/skd/ @jeffli-xilinx @sonals @stsoe
 src/runtime_src/core/edge/user/ @chvamshi-xilinx @stsoe
@@ -28,7 +28,7 @@ src/runtime_src/core/edge/user/plugin/ @jvillarre
 src/runtime_src/core/edge/user/aie/ @larry9523
 src/runtime_src/core/edge/user/aie/common_layer/ @larry9523
 src/runtime_src/core/pcie/ @stsoe
-src/runtime_src/core/pcie/emulation/ @chvamshi-xilinx @venkatp-xilinx
+src/runtime_src/core/pcie/emulation/ @chvamshi-xilinx @akasat
 src/runtime_src/core/pcie/driver/linux/ @maxzhen
 src/runtime_src/core/pcie/driver/windows/ @arpitxilinx
 src/runtime_src/core/pcie/linux/plugin/xdp/ @jvillarre
