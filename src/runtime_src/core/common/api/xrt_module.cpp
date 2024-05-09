@@ -45,6 +45,52 @@ static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
 static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 
+// hexdump - v - e '6/4 "0x%08x, "' - e '"\n"' . / patched_preempt_restore_1col.bin
+static uint32_t preempt_restore_1col[] = {
+0x00000000, 0x0000010c, 0x00000000, 0x000001a8, 0x06040100, 0x00000104,
+0x0000000d, 0x000001a0, 0x00000100, 0x00000000, 0x001b0000, 0x00000000,
+0x80000007, 0x00000018, 0x001c0100, 0x00000000, 0x001b011c, 0x00000000,
+0x80000000, 0x00000018, 0x00300000, 0x00000000, 0x0003f030, 0x00000000,
+0x80000005, 0x00000018, 0x00140000, 0x00000000, 0x0003f114, 0x00000000,
+0x80000000, 0x00000018, 0x00000003, 0x00000000, 0x0001f000, 0x00000000,
+0x00000400, 0x00000c00, 0x00000020, 0x00000000, 0x00000001, 0x00000000,
+0x0001d000, 0x00000030, 0x00020000, 0x00000000, 0x00000000, 0x00000000,
+0x80000000, 0x00000000, 0x00000000, 0x02000000, 0x00000101, 0x00000000,
+0x001a0000, 0x00000030, 0x00010000, 0x00020000, 0x00000000, 0x00000000,
+0x00000000, 0x00000000, 0x007effff, 0x80000000, 0x00000081, 0x00000030,
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x0001d004, 0x00000000,
+0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00140000, 0x00000000,
+0x0001d214, 0x00000000, 0x00000000, 0x00000018, 0x00040100, 0x00000000,
+0x001a0604, 0x00000000, 0x00010000, 0x00000018, 0x00100000, 0x00000000,
+0x0001d210, 0x00000000, 0x00000001, 0x00000018, 0x00000100, 0x00000000,
+0x001a0600, 0x00000000, 0x00000001, 0x00000018, 0x00600104, 0x00000000,
+0x001a0660, 0x00000000, 0x00000000, 0x0078003c, 0x00000020, 0x00000000,
+};
+constexpr size_t preempt_restore_1col_size = sizeof(preempt_restore_1col);
+
+// hexdump -v -e '6/4 "0x%08x, "' -e '"\n"' ./patched_preempt_save_1col.bin
+static uint32_t preempt_save_1col[] = {
+0x00000000, 0x0000010c, 0x00000000, 0x000001a8, 0x06040100, 0x00000104,
+0x0000000d, 0x000001a0, 0x001c0100, 0x00000000, 0x001b001c, 0x00000000,
+0x80000000, 0x00000018, 0x00000100, 0x00000000, 0x001b0100, 0x00000000,
+0x80000000, 0x00000018, 0x00100000, 0x00000000, 0x0003f010, 0x00000000,
+0x8000000e, 0x00000018, 0x00380000, 0x00000000, 0x0003f138, 0x00000000,
+0x80000000, 0x00000018, 0x00040003, 0x00000000, 0x0001f004, 0x00000000,
+0x00000010, 0x00000030, 0x00000020, 0x00000000, 0x00000101, 0x00000000,
+0x001a0000, 0x00000030, 0x00010000, 0x00020000, 0x00000000, 0x00000000,
+0x00000000, 0x00000000, 0x007effff, 0x80000000, 0x00000001, 0x00000000,
+0x0001d000, 0x00000030, 0x00020000, 0x00000000, 0x00000000, 0x00000000,
+0x80000000, 0x00000000, 0x00000000, 0x02000000, 0x00000081, 0x00000030,
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x0001d004, 0x00000000,
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00340100, 0x00000000,
+0x001a0634, 0x00000000, 0x00010000, 0x00000018, 0x00040000, 0x00000000,
+0x0001d204, 0x00000000, 0x00000000, 0x00000018, 0x00300100, 0x00000000,
+0x001a0630, 0x00000000, 0x00000001, 0x00000018, 0x00000000, 0x00000000,
+0x0001d200, 0x00000000, 0x00000001, 0x00000018, 0x00200004, 0x00000000,
+0x0001d220, 0x00000000, 0x00000000, 0x0078003c, 0x00000020, 0x00000000
+};
+constexpr size_t preempt_save_1col_size = sizeof(preempt_save_1col);
+
 struct buf
 {
   std::vector<uint8_t> m_data;
@@ -296,6 +342,18 @@ public:
   get_instr() const
   {
     throw std::runtime_error("Not supported");
+  }
+
+  [[nodiscard]] virtual const buf&
+      get_preempt_save() const
+  {
+      throw std::runtime_error("Not supported");
+  }
+
+  [[nodiscard]] virtual const buf&
+      get_preempt_restore() const
+  {
+      throw std::runtime_error("Not supported");
   }
 
   [[nodiscard]] virtual const control_packet&
@@ -740,6 +798,38 @@ public:
       m_restore_buf_exist = initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
       if (m_save_buf_exist != m_restore_buf_exist)
           throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
+
+     if (!m_save_buf_exist) {
+         // Since elf file does not have preempt_save section, use default preempt instruction
+         auto save_data = reinterpret_cast<const uint8_t*>(preempt_save_1col);
+         m_save_buf.m_data.insert(m_save_buf.m_data.end(), save_data, save_data + preempt_save_1col_size);
+     }
+     else {
+//=======remove test code once test is done================
+      bool test_save = false;
+      const void* p_save = reinterpret_cast<const void*>(m_save_buf.data());
+      auto dezhiSize = m_save_buf.size();
+      if (dezhiSize == preempt_save_1col_size)
+         test_save = memcmp(p_save, reinterpret_cast<const void*>(preempt_save_1col), preempt_save_1col_size);
+//==================================================================================================
+      }
+
+      if (!m_restore_buf_exist) {
+          // Since elf file does not have preempt_restore section, use default preempt instruction
+          auto restore_data = reinterpret_cast<const uint8_t*>(preempt_restore_1col);
+          m_restore_buf.m_data.insert(m_restore_buf.m_data.end(), restore_data, restore_data + preempt_restore_1col_size);
+      }
+      else {
+//=======remove test code once is done================================================================
+      bool test_restore = false;
+      const void* p_restore = reinterpret_cast<const void*>(m_restore_buf.data());
+      auto dezhiSize_restore = m_restore_buf.size();
+      if (dezhiSize_restore == preempt_restore_1col_size)
+          test_restore = memcmp(p_restore, reinterpret_cast<const void*>(preempt_restore_1col), preempt_restore_1col_size);
+//=====================================================================================================
+      }
+
+
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
@@ -754,6 +844,18 @@ public:
   get_instr() const override
   {
     return m_instr_buf;
+  }
+
+  [[nodiscard]] const buf&
+      get_preempt_save() const override
+  {
+      return m_save_buf;
+  }
+
+  [[nodiscard]] const buf&
+      get_preempt_restore() const override
+  {
+      return m_restore_buf;
   }
 
   [[nodiscard]] const control_packet&
@@ -831,6 +933,8 @@ class module_sram : public module_impl
   xrt::bo m_buffer;
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
+  xrt::bo m_preempt_save_bo;
+  xrt::bo m_preempt_restore_bo;
 
   // Column bo address is the address of the ctrlcode for each column
   // in the (sram) buffer object.  The first ctrlcode is at the base
@@ -884,10 +988,10 @@ class module_sram : public module_impl
   }
 
   void
-  fill_instr_buf(xrt::bo& bo, const instr_buf& instrbuf)
+  fill_bo_with_data(xrt::bo& bo, const buf& buf)
   {
     auto ptr = bo.map<char*>();
-    std::memcpy(ptr, instrbuf.data(), instrbuf.size());
+    std::memcpy(ptr, buf.data(), buf.size());
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
@@ -913,13 +1017,20 @@ class module_sram : public module_impl
 
     // create bo combined size of all ctrlcodes
     m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
-
     // copy instruction into bo
-    fill_instr_buf(m_instr_bo, data);
+    fill_bo_with_data(m_instr_bo, data);
 
 #ifdef _DEBUG
     dump_bo(m_instr_bo, "instrBo.bin");
 #endif
+
+    const auto& preempt_save_data = parent->get_preempt_save();
+    m_preempt_save_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
+
+    const auto& preempt_restore_data = parent->get_preempt_restore();
+    m_preempt_restore_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
 
     if (m_ctrlpkt_bo) {
       patch_instr("control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
