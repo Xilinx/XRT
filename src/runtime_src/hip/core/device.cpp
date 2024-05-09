@@ -5,7 +5,7 @@
 
 namespace xrt::core::hip {
 // Implementation
-xrt_core::handle_map<device_handle, std::shared_ptr<device>> device_cache;
+xrt_core::handle_map<device_handle, std::shared_ptr<device>> device_cache; //NOLINT
 
 device::
 device(uint32_t device_id)

@@ -17,13 +17,12 @@ device_init();
 }
 
 namespace {
-thread_local std::once_flag device_init_flag;
+thread_local std::once_flag device_init_flag; //NOLINT
 
 // Creates devices at library load
 // User may not explicitly call init or device create
 const struct X {
-  X()
-  {
+  X() noexcept {
     try {
       // needed if multi threaded
       // or else we can directly call enumerate_devices
@@ -66,7 +65,7 @@ hip_init(unsigned int flags)
   std::call_once(device_init_flag, xrt::core::hip::device_init);
 }
 
-static int
+static size_t
 hip_get_device_count()
 {
   // Get device count
@@ -146,7 +145,7 @@ hipInit(unsigned int flags)
 }
 
 hipError_t
-hipGetDeviceCount(int* count)
+hipGetDeviceCount(size_t* count)
 {
   try {
     throw_invalid_value_if(!count, "arg passed is nullptr");

@@ -159,5 +159,5 @@ get_stream(hipStream_t stream)
 }
 
 // Global map of streams
-xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
+xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache; //NOLINT
 }

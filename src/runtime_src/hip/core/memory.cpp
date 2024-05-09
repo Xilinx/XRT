@@ -142,7 +142,7 @@ namespace xrt::core::hip
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  memory_database* memory_database::m_memory_database = nullptr;
+  memory_database* memory_database::m_memory_database = nullptr; //NOLINT
 
   memory_database& memory_database::instance()
   {

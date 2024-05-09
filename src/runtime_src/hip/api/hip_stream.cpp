@@ -65,7 +65,7 @@ static void
 hip_stream_destroy(hipStream_t stream)
 {
   throw_invalid_handle_if(!stream, "stream is nullptr");
-  throw_invalid_resource_if(stream == hipStreamPerThread, "Stream per thread can't be destroyed");
+  throw_invalid_resource_if(stream == hipStreamPerThread, "Stream per thread can't be destroyed"); //NOLINT
 
   stream_cache.remove(stream);
 }

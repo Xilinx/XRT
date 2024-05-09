@@ -204,6 +204,6 @@ bool copy_buffer::wait()
 }
 
 // Global map of commands
-xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
+xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache; //NOLINT
 
 } // xrt::core::hip
