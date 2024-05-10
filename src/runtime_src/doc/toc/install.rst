@@ -38,6 +38,17 @@ Steps for CENTOS 8.x::
 	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	yum config-manager --set-enabled AppStream
 
+Steps for AlmaLinux 8.x::
+
+        sudo dnf config-manager --set-enabled powertools
+        sudo dnf config-manager --set-enabled appstream
+        sudo dnf install epel-release
+
+Steps for AlmaLinux 9.x::
+
+        sudo dnf config-manager --set-enabled crb
+        sudo dnf install epel-release
+
 
 Install XRT Software Stack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
