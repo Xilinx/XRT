@@ -323,10 +323,11 @@ public:
 
   // Patch ctrlcode buffer object for global argument
   //
-  // @param symbol - symbol name
+  // @param argname - argument name
+  // @param index - argument index
   // @param bo - global argument to patch into ctrlcode
   virtual void
-  patch(const std::string&, const xrt::bo&)
+  patch(const std::string&, size_t, const xrt::bo&)
   {
     throw std::runtime_error("Not supported");
   }
@@ -337,7 +338,7 @@ public:
   // @param value - patch value
   // @param size - size of patch value
   virtual void
-  patch(const std::string&, const void*, size_t)
+  patch(const std::string&, size_t, const void*, size_t)
   {
     throw std::runtime_error("Not supported");
   }
@@ -765,6 +766,15 @@ public:
 // where buffer object address of offset for each column.
 class module_sram : public module_impl
 {
+  // opcode from host app
+  // 1 is dpu_sequence
+  // 2 is transaction_buffer
+  static constexpr uint64_t Transaction_Buffer_Opcode = 2;
+  uint64_t m_opcode = 0;
+
+  // Transaction buffer actual argument start from index 3 in host code
+  static constexpr uint64_t Transaction_Buffer_Arg_Offset = 3;
+
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
 
@@ -961,18 +971,42 @@ class module_sram : public module_impl
   }
 
   void
-  patch(const std::string& argnm, const xrt::bo& bo) override
+  patch(const std::string& argnm, size_t index, const xrt::bo& bo) override
   {
-    patch_value(argnm, bo.address());
+    if (Transaction_Buffer_Opcode == m_opcode) {
+      if (index < Transaction_Buffer_Arg_Offset)
+        return;
+
+      const std::string index_string = std::to_string(index - Transaction_Buffer_Arg_Offset);
+      patch_value(index_string, bo.address());
+    }
+    else
+      patch_value(argnm, bo.address());
   }
 
   void
-  patch(const std::string& argnm, const void* value, size_t size) override
+  patch(const std::string& argnm, size_t index, const void* value, size_t size) override
   {
     if (size > 8) // NOLINT
       throw std::runtime_error{ "patch_value() only supports 64-bit values or less" };
+    
+    auto arg_value = *static_cast<const uint64_t*>(value);
+    if (index == 0) {
+       // First argument is always the opcode, no need to patch
+       m_opcode = arg_value;
+       return;
+    }
+    else {
+      if (Transaction_Buffer_Opcode == m_opcode) {
+        if (index < Transaction_Buffer_Arg_Offset)
+          return;
 
-    patch_value(argnm, *static_cast<const uint64_t*>(value));
+        const std::string index_string = std::to_string(index - Transaction_Buffer_Arg_Offset);
+        patch_value(index_string, arg_value);
+      }
+      else
+        patch_value(argnm, arg_value);
+    }
   }
 
   // Check that all arguments have been patched and sync the buffer
@@ -1050,15 +1084,15 @@ get_ctrlcode_addr_and_size(const xrt::module& module)
 }
 
 void
-patch(const xrt::module& module, const std::string& argnm, const xrt::bo& bo)
+patch(const xrt::module& module, const std::string& argnm, size_t index, const xrt::bo& bo)
 {
-  module.get_handle()->patch(argnm, bo);
+  module.get_handle()->patch(argnm, index, bo);
 }
 
 void
-patch(const xrt::module& module, const std::string& argnm, const void* value, size_t size)
+patch(const xrt::module& module, const std::string& argnm, size_t index, const void* value, size_t size)
 {
-  module.get_handle()->patch(argnm, value, size);
+  module.get_handle()->patch(argnm, index, value, size);
 }
 
 void
