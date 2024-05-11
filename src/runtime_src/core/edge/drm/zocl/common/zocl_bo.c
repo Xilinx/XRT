@@ -1232,8 +1232,8 @@ static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
 			/* Check the given address and size fall
 			 * in this reserved memory region
 			 */
-			if (start_addr >= res_mem.start &&
-					size <= resource_size(&res_mem)) {
+			if (start_addr == res_mem.start &&
+					size == resource_size(&res_mem)) {
 				of_node_put(mem_np);
 				return true;
 			}
