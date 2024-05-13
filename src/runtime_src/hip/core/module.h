@@ -29,7 +29,7 @@ class module
 public:
   module() = default;
   module(std::shared_ptr<context> ctx, const std::string& file_name);
-  module(std::shared_ptr<context> ctx, void* image);
+  module(std::shared_ptr<context> ctx, const void* image);
 
   void
   create_hw_context();

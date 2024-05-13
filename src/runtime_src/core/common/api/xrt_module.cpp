@@ -829,7 +829,6 @@ public:
 //=====================================================================================================
       }
 
-
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
@@ -1017,6 +1016,7 @@ class module_sram : public module_impl
 
     // create bo combined size of all ctrlcodes
     m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+
     // copy instruction into bo
     fill_bo_with_data(m_instr_bo, data);
 

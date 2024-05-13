@@ -185,6 +185,7 @@ namespace xrt::core::hip
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
+    std::lock_guard lock(m_mutex);
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
@@ -198,6 +199,7 @@ namespace xrt::core::hip
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
+    std::lock_guard lock(m_mutex);
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);

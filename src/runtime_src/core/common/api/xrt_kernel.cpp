@@ -2920,16 +2920,27 @@ class runlist_impl
   std::vector<xrt::run> m_runlist;
   std::vector<xrt_core::buffer_handle*> m_bos;
 
+  static const std::string&
+  state_to_string(state st)
+  {
+    static std::map<state, std::string> st2str{
+      { state::idle,   "idle" },
+      { state::closed, "closed" },
+      { state::running,"running" },
+      { state::error,   "error" }
+    };
+    return st2str.at(st);
+  }
+
 public:
   // Internal accessor during command list submission
   const std::vector<xrt_core::buffer_handle*>&
   get_exec_bos() const
   {
     // Allow exec bo access only as part of submission
-    // The command list must have been submitted for
-    // execut
-    if (m_state != state::running)
-      throw std::runtime_error("internal error: wrong state");
+    // The runlist must have been closed.
+    if (m_state != state::closed)
+      throw std::runtime_error("internal error: wrong state: " + state_to_string(m_state));
 
     return m_bos;
   }
@@ -2963,7 +2974,7 @@ public:
   add(xrt::run run)
   {
     if (m_state != state::idle)
-      throw xrt_core::error("runlist must be idle before adding run objects");
+      throw xrt_core::error("runlist must be idle before adding run objects, current state: " + state_to_string(m_state));
 
 
     // Get the potentially throwing action out of the way first
@@ -2991,7 +3002,7 @@ public:
   execute(const xrt::runlist& rl)
   {
     if (m_state != state::idle)
-      throw xrt_core::error("runlist must be idle before submitting for execution");
+      throw xrt_core::error("runlist must be idle before submitting for execution, current state: " + state_to_string(m_state));
 
     if (m_runlist.empty())
       return;
