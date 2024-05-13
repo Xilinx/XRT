@@ -402,11 +402,12 @@ public:
 
   // Patch ctrlcode buffer object for global argument
   //
+  // @param bo_ctrlcode - bo conaining ctrlcode
   // @param symbol - symbol name
   // @param bo - global argument to patch into ctrlcode
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   virtual void
-  patch_instr(const std::string&, const xrt::bo&, patcher::buf_type)
+  patch_instr(xrt::bo&, const std::string&, const xrt::bo&, patcher::buf_type)
   {
     throw std::runtime_error("Not supported ");
   }
@@ -924,12 +925,14 @@ class module_sram : public module_impl
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
 
+  static constexpr size_t m_scratchmem_size = 512 * 1024;
   // The instruction buffer object contains the ctrlcodes for each
   // column.  The ctrlcodes are concatenated into a single buffer
   // padded at page size specific to hardware.
   xrt::bo m_buffer;
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
+  xrt::bo m_scratchmem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
 
@@ -969,6 +972,8 @@ class module_sram : public module_impl
     if (m_ctrlpkt_bo) {
       m_column_bo_address.push_back({ m_ctrlpkt_bo.address(), m_ctrlpkt_bo.size() }); // NOLINT
     }
+    m_column_bo_address.push_back({ m_preempt_save_bo.address(), m_preempt_save_bo.size() }); // NOLINT
+    m_column_bo_address.push_back({ m_preempt_restore_bo.address(), m_preempt_restore_bo.size() }); // NOLINT
   }
 
   // Fill the instruction buffer object with the ctrlcodes for each
@@ -1030,8 +1035,12 @@ class module_sram : public module_impl
     m_preempt_restore_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
     fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
 
+    m_scratchmem = xrt::ext::bo{ m_hwctx, m_scratchmem_size };
+    patch_instr(m_preempt_save_bo, "scratch-pad-mem", m_scratchmem, patcher::buf_type::preempt_save);
+    patch_instr(m_preempt_restore_bo, "scratch-pad-mem", m_scratchmem, patcher::buf_type::preempt_restore);
+
     if (m_ctrlpkt_bo) {
-      patch_instr("control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
+      patch_instr(m_instr_bo, "control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -1088,9 +1097,9 @@ class module_sram : public module_impl
   }
 
   virtual void
-  patch_instr(const std::string& argnm, const xrt::bo& bo, patcher::buf_type type) override
+  patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, const xrt::bo& bo, patcher::buf_type type) override
   {
-    patch_instr_value(argnm, bo.address(), type);
+    patch_instr_value(bo_ctrlcode, argnm, bo.address(), type);
   }
 
   void
@@ -1118,9 +1127,9 @@ class module_sram : public module_impl
   }
 
   void
-  patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
+  patch_instr_value(xrt::bo& bo, const std::string& argnm, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, type))
+    if (!m_parent->patch(bo.map<uint8_t*>(), argnm, value, type))
         return;
 
     m_dirty = true;
