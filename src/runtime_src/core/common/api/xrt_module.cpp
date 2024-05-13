@@ -116,12 +116,24 @@ struct patcher
     unknown_symbol_kind = 8
   };
 
-   enum class buf_type {
+  enum class buf_type {
        ctrltext = 0,   // control code
-       ctrldata,       // control packet
-       preempt_save,   // preempt_save
-       preempt_restore // preempt_restore
+       ctrldata = 1,       // control packet
+       preempt_save = 2,   // preempt_save
+       preempt_restore = 3, // preempt_restore
+       buf_type_count = 4   // total number of buf types
   };
+
+  inline static const char*
+  section_name_to_string(buf_type bt)
+  {
+    static const char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
+                                                                                    ".ctrldata",
+                                                                                    ".preempt_save",
+                                                                                    ".preempt_restore" };
+
+    return Section_Name_Array[static_cast<int>(bt)];
+  }
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
@@ -188,11 +200,8 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t patch, buf_type type)
+  patch(uint8_t* base, uint64_t patch)
   {
-    if (type != m_buf_type)
-      return;
-
     for (auto offset : m_ctrlcode_offset) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
       switch (m_symbol_type) {
@@ -233,6 +242,13 @@ struct patcher
 
     auto buf = bo.map<char*>();
     ofs.write(buf, bo.size());
+  }
+
+  XRT_CORE_UNUSED std::string
+  generate_key_string(const std::string& argument_name, patcher::buf_type type)
+  {
+    std::string buf_string = std::to_string(static_cast<int>(type));
+    return argument_name + buf_string;
   }
 } // namespace
 
@@ -389,11 +405,16 @@ public:
 class module_elf : public module_impl
 {
   xrt::elf m_elf;
-  uint8_t m_os_abi;
+  uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::vector<ctrlcode> m_ctrlcodes;
   std::map<std::string, patcher> m_arg2patcher;
   instr_buf m_instr_buf;
   control_packet m_ctrl_packet;
+  bool m_ctrl_packet_exist = false;
+  buf m_save_buf;
+  bool m_save_buf_exist = false;
+  buf m_restore_buf;
+  bool m_restore_buf_exist = false;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -424,10 +445,10 @@ class module_elf : public module_impl
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
       // Instruction buffer is in .ctrltext section.
-      if (name.find(".ctrltext") != std::string::npos) {
-        instrbuf.append_section_data(sec.get());
-        break;
-      }
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrltext)) == std::string::npos)
+        continue;
+      instrbuf.append_section_data(sec.get());
+      break;
     }
 
     return instrbuf;
@@ -435,21 +456,48 @@ class module_elf : public module_impl
 
   // Extract control-packet buffer from ELF sections without assuming anything
   // about order of sections in the ELF file.
-  control_packet
-  initialize_ctrl_packet(const ELFIO::elfio& elf)
+  bool initialize_ctrl_packet(const ELFIO::elfio& elf, control_packet& ctrlpacket)
   {
-    control_packet ctrlpacket;
-
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      // Control Packet is in .ctrldata section
-      if (name.find(".ctrldata") != std::string::npos) {
-        ctrlpacket.append_section_data(sec.get());
-        break;
-      }
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrldata)) == std::string::npos)
+        continue;
+
+      ctrlpacket.append_section_data(sec.get());
+      return true;
+    }
+    return false;
+  }
+
+  // Extract preempt_save buffer from ELF sections
+  // return true if section exist
+  bool initialize_save_buf(const ELFIO::elfio& elf, buf& save_buf)
+  {
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::preempt_save)) == std::string::npos)
+        continue;
+
+      save_buf.append_section_data(sec.get());
+      return true;
+    }
+    return false;
+  }
+
+  // Extract preempt_restore buffer from ELF sections
+  // return true if section exist
+  bool initialize_restore_buf(const ELFIO::elfio& elf, buf& restore_buf)
+  {
+    for (const auto& sec : elf.sections) {
+      auto name = sec->get_name();
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::preempt_restore)) == std::string::npos)
+        continue;
+
+      restore_buf.append_section_data(sec.get());
+      return true;
     }
 
-    return ctrlpacket;
+    return false;
   }
 
   // Extract control code from ELF sections without assuming anything
@@ -486,11 +534,11 @@ class module_elf : public module_impl
     // per column and page
     for (const auto& sec : elf.sections) {
       auto name = sec->get_name();
-      if (name.find(".ctrltext") != std::string::npos) {
+      if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrltext)) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrltext = sec.get();
       }
-      else if (name.find(".ctrldata") != std::string::npos) {
+      else if (name.find(patcher::section_name_to_string(patcher::buf_type::ctrldata)) != std::string::npos) {
         auto [col, page] = get_column_and_page(sec->get_name());
         col_secs[col].pages[page].ctrldata = sec.get();
       }
@@ -518,8 +566,27 @@ class module_elf : public module_impl
     return ctrlcodes;
   }
 
+  std::pair<size_t, patcher::buf_type>
+  determine_section_type(const std::string& section_name)
+  {
+   if (section_name == patcher::section_name_to_string(patcher::buf_type::ctrltext))
+     return { m_instr_buf.size(), patcher::buf_type::ctrltext};
+
+   else if (m_ctrl_packet_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::ctrldata)))
+     return { m_ctrl_packet.size(), patcher::buf_type::ctrldata};
+
+   else if (m_save_buf_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::preempt_save)))
+     return { m_save_buf.size(), patcher::buf_type::preempt_save };
+
+   else if (m_restore_buf_exist && (section_name == patcher::section_name_to_string(patcher::buf_type::preempt_restore)))
+     return { m_restore_buf.size(), patcher::buf_type::preempt_restore };
+
+   else
+     throw std::runtime_error("Invalid section name " + section_name);
+  }
+
   std::map<std::string, patcher>
-  initialize_arg_patchers(const ELFIO::elfio& elf, const instr_buf& instrbuf, const control_packet& ctrlpkt)
+  initialize_arg_patchers(const ELFIO::elfio& elf)
   {
     auto dynsym = elf.sections[".dynsym"];
     auto dynstr = elf.sections[".dynstr"];
@@ -553,33 +620,20 @@ class module_elf : public module_impl
         if (!section)
           throw std::runtime_error("Invalid section index " + std::to_string(sym->st_shndx));
 
-        auto secname = section->get_name();
         auto offset = rela->r_offset;
-        size_t sec_size = 0;
-        patcher::buf_type buf_type;
-        if (secname.compare(".ctrltext") == 0) {
-          sec_size = instrbuf.size();
-          buf_type = patcher::buf_type::ctrltext;
-        }
-        else if (secname.compare(".ctrldata") == 0) {
-          sec_size = ctrlpkt.size();
-          buf_type = patcher::buf_type::ctrldata;
-        }
-        else
-          throw std::runtime_error("Invalid section name " + secname);
+        auto [sec_size, buf_type] = determine_section_type(section->get_name());
 
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+        std::string key_string = generate_key_string(argnm, buf_type);
 
-        if (auto search = arg2patchers.find(argnm); search != arg2patchers.end())
+        if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
         else {
           auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-          std::vector<uint64_t> offsets;
-          offsets.push_back(offset);
-          arg2patchers.emplace(std::move(argnm), patcher{ symbol_type, std::move(offsets), buf_type });
+          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {offset}, buf_type });
         }
       }
     }
@@ -641,12 +695,10 @@ class module_elf : public module_impl
 
         // Construct the patcher for the argument with the symbol name
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
-        std::vector<uint64_t> offsets;
-        offsets.push_back(ctrlcode_offset);
-        arg2patcher.emplace(std::move(argnm), patcher{ symbol_type, offsets, buf_type});
+
+        auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {ctrlcode_offset}, buf_type});
       }
     }
 
@@ -656,11 +708,12 @@ class module_elf : public module_impl
   bool
   patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
   {
-    auto it = m_arg2patcher.find(argnm);
+    const std::string key_string = generate_key_string(argnm, type);
+    auto it = m_arg2patcher.find(key_string);
     if (it == m_arg2patcher.end())
       return false;
 
-    it->second.patch(base, patch, type);
+    it->second.patch(base, patch);
     return true;
   }
 
@@ -682,8 +735,12 @@ public:
     }
     else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
-      m_ctrl_packet = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf));
-      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_instr_buf, m_ctrl_packet);
+      m_ctrl_packet_exist = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf), m_ctrl_packet);
+      m_save_buf_exist = initialize_save_buf(xrt_core::elf_int::get_elfio(m_elf), m_save_buf);
+      m_restore_buf_exist = initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
+      if (m_save_buf_exist != m_restore_buf_exist)
+          throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
+      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
 
@@ -772,8 +829,8 @@ class module_sram : public module_impl
   // column.  The ctrlcodes are concatenated into a single buffer
   // padded at page size specific to hardware.
   xrt::bo m_buffer;
-  xrt::bo m_instr_buf;
-  xrt::bo m_ctrlpkt_buf;
+  xrt::bo m_instr_bo;
+  xrt::bo m_ctrlpkt_bo;
 
   // Column bo address is the address of the ctrlcode for each column
   // in the (sram) buffer object.  The first ctrlcode is at the base
@@ -807,9 +864,9 @@ class module_sram : public module_impl
   fill_bo_addresses()
   {
     m_column_bo_address.clear();
-    m_column_bo_address.push_back({ m_instr_buf.address(), m_instr_buf.size() }); // NOLINT
-    if (m_ctrlpkt_buf) {
-      m_column_bo_address.push_back({ m_ctrlpkt_buf.address(), m_ctrlpkt_buf.size() }); // NOLINT
+    m_column_bo_address.push_back({ m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
+    if (m_ctrlpkt_bo) {
+      m_column_bo_address.push_back({ m_ctrlpkt_bo.address(), m_ctrlpkt_bo.size() }); // NOLINT
     }
   }
 
@@ -855,17 +912,17 @@ class module_sram : public module_impl
     }
 
     // create bo combined size of all ctrlcodes
-    m_instr_buf = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
     // copy instruction into bo
-    fill_instr_buf(m_instr_buf, data);
+    fill_instr_buf(m_instr_bo, data);
 
 #ifdef _DEBUG
-    dump_bo(m_instr_buf, "instrBo.bin");
+    dump_bo(m_instr_bo, "instrBo.bin");
 #endif
 
-    if (m_ctrlpkt_buf) {
-      patch_instr("control-packet", m_ctrlpkt_buf, patcher::buf_type::ctrltext);
+    if (m_ctrlpkt_bo) {
+      patch_instr("control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -883,13 +940,13 @@ class module_sram : public module_impl
     else {
       // create bo combined size of all ctrlcodes
       // m_ctrlpkt_buf = xrt::bo{m_hwctx, sz, xrt::bo::flags::host_only, 0};
-      m_ctrlpkt_buf = xrt::ext::bo{ m_hwctx, sz };
+      m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
 
       // copy instruction into bo
-      fill_ctrlpkt_buf(m_ctrlpkt_buf, data);
+      fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
 
 #ifdef _DEBUG
-      dump_bo(m_ctrlpkt_buf, "ctrlpktBo.bin");
+      dump_bo(m_ctrlpkt_bo, "ctrlpktBo.bin");
 #endif
 
       XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
@@ -933,13 +990,13 @@ class module_sram : public module_impl
     bool patched = false;
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
-      if (m_ctrlpkt_buf) {
-        if (m_parent->patch(m_ctrlpkt_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
+      if (m_ctrlpkt_bo) {
+        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
+      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
           patched = true;
     }
     else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
@@ -954,7 +1011,7 @@ class module_sram : public module_impl
   void
   patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_buf.map<uint8_t*>(), argnm, value, type))
+    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, type))
         return;
 
     m_dirty = true;
@@ -993,14 +1050,14 @@ class module_sram : public module_impl
       m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
     else if (os_abi == Elf_Amd_Aie2p) {
-      m_instr_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 #ifdef _DEBUG
-      dump_bo(m_instr_buf, "instrBoPatched.bin");
+      dump_bo(m_instr_bo, "instrBoPatched.bin");
 #endif
-      if (m_ctrlpkt_buf) {
-        m_ctrlpkt_buf.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      if (m_ctrlpkt_bo) {
+        m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 #ifdef _DEBUG
-        dump_bo(m_ctrlpkt_buf, "ctrlpktBoPatched.bin");
+        dump_bo(m_ctrlpkt_bo, "ctrlpktBoPatched.bin");
 #endif
         }
     }
