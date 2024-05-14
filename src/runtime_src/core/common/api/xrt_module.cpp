@@ -44,6 +44,8 @@ static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
 static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
+static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+static const char* Control_Packet_Symbol = "control-packet";
 
 // hexdump -v -e '16/1 "0x%02x, "' -e '"\n"' ./preempt_restore_1col.bin
 static uint8_t preempt_restore_1col[] = {
@@ -74,7 +76,8 @@ static uint8_t preempt_restore_1col[] = {
 0x04, 0x01, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x60, 0x06, 0x1a, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x78, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-constexpr size_t preempt_restore_1col_size = sizeof(preempt_restore_1col);
+constexpr size_t Preempt_Restore_1col_Size = sizeof(preempt_restore_1col);
+constexpr size_t Preempt_Save_Patch_Addr_Offset = 0xD8;
 
 // hexdump -v -e '16/1 "0x%02x, "' -e '"\n"' ./preempt_save_1col.bin
 static uint8_t preempt_save_1col[] = {
@@ -105,7 +108,8 @@ static uint8_t preempt_save_1col[] = {
 0x04, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0xd2, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x78, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-constexpr size_t preempt_save_1col_size = sizeof(preempt_save_1col);
+constexpr size_t Preempt_Save_1col_Size = sizeof(preempt_save_1col);
+constexpr size_t Preempt_Restore_Patch_Addr_Offset = 0xD8;
 
 struct buf
 {
@@ -816,19 +820,25 @@ public:
       if (m_save_buf_exist != m_restore_buf_exist)
           throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
 
+     m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
+
      if (!m_save_buf_exist) {
          // Since elf file does not have preempt_save section, use default preempt instruction
          auto save_data = reinterpret_cast<const uint8_t*>(preempt_save_1col);
-         m_save_buf.m_data.insert(m_save_buf.m_data.end(), save_data, save_data + preempt_save_1col_size);
+         m_save_buf.m_data.insert(m_save_buf.m_data.end(), save_data, save_data + Preempt_Save_1col_Size);
+
+         std::string key_string = generate_key_string(Scratch_Pad_Mem_Symbol, patcher::buf_type::preempt_save);
+         m_arg2patcher.emplace(std::move(key_string), patcher{ patcher::symbol_type::shim_dma_48, {Preempt_Save_Patch_Addr_Offset}, patcher::buf_type::preempt_save });
      }
 
       if (!m_restore_buf_exist) {
           // Since elf file does not have preempt_restore section, use default preempt instruction
           auto restore_data = reinterpret_cast<const uint8_t*>(preempt_restore_1col);
-          m_restore_buf.m_data.insert(m_restore_buf.m_data.end(), restore_data, restore_data + preempt_restore_1col_size);
-      }
+          m_restore_buf.m_data.insert(m_restore_buf.m_data.end(), restore_data, restore_data + Preempt_Restore_1col_Size);
 
-      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
+          std::string key_string = generate_key_string(Scratch_Pad_Mem_Symbol, patcher::buf_type::preempt_restore);
+          m_arg2patcher.emplace(std::move(key_string), patcher{ patcher::symbol_type::shim_dma_48, {Preempt_Restore_Patch_Addr_Offset}, patcher::buf_type::preempt_restore });
+      }
     }
   }
 
@@ -1011,11 +1021,8 @@ class module_sram : public module_impl
     XRT_PRINTF("-> module_sram::create_instr_buf()\n");
     const auto& data = parent->get_instr();
     size_t sz = data.size();
-
-    if (sz == 0) {
-      std::cout << "instr buf is empty" << std::endl;
-      return;
-    }
+    if (sz == 0)
+      throw std::runtime_error("Invalid instruction buffer size");
 
     // create bo combined size of all ctrlcodes
     m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
@@ -1028,19 +1035,19 @@ class module_sram : public module_impl
 #endif
 
     const auto& preempt_save_data = parent->get_preempt_save();
-    m_preempt_save_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
     fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
 
     const auto& preempt_restore_data = parent->get_preempt_restore();
-    m_preempt_restore_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
+    m_preempt_restore_bo = xrt::bo{ m_hwctx, preempt_restore_data.size(), xrt::bo::flags::cacheable, 1 /* fix me */ };
     fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
 
     m_scratchmem = xrt::ext::bo{ m_hwctx, m_scratchmem_size };
-    patch_instr(m_preempt_save_bo, "scratch-pad-mem", m_scratchmem, patcher::buf_type::preempt_save);
-    patch_instr(m_preempt_restore_bo, "scratch-pad-mem", m_scratchmem, patcher::buf_type::preempt_restore);
+    patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, m_scratchmem, patcher::buf_type::preempt_save);
+    patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, m_scratchmem, patcher::buf_type::preempt_restore);
 
     if (m_ctrlpkt_bo) {
-      patch_instr(m_instr_bo, "control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
+      patch_instr(m_instr_bo, Control_Packet_Symbol, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
