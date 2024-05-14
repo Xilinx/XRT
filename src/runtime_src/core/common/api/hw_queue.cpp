@@ -8,6 +8,7 @@
 #include "command.h"
 #include "hw_context_int.h"
 #include "fence_int.h"
+#include "kernel_int.h"
 
 #include "core/common/debug.h"
 #include "core/common/device.h"
@@ -107,7 +108,6 @@ private:
   std::mutex work_mutex;
   std::condition_variable work_cond;
   command_queue_type submitted_cmds;
-  uint64_t exec_wait_call_count = 0;
   bool stop = false;
 
   // thread can be constructed only after data members are initialized
@@ -126,7 +126,7 @@ private:
     std::vector<xrt_core::command*> busy_cmds;
     std::vector<xrt_core::command*> running_cmds;
 
-    while (1) {
+    while (true) {
 
       // Larger wait synchronized with launch()
       {
@@ -197,7 +197,7 @@ private:
 
 public:
   // Constructor starts monitor thread
-  command_manager(executor* impl)
+  explicit command_manager(executor* impl)
     : m_impl(impl), monitor_thread(xrt_core::thread(&command_manager::monitor, this))
   {
     XRT_DEBUGF("command_manager::command_manager(0x%x)\n", impl);
@@ -217,6 +217,12 @@ public:
     }
     monitor_thread.join();
   }
+
+  command_manager() = delete;
+  command_manager(const command_manager&) = delete;
+  command_manager(command_manager&&) = delete;
+  command_manager& operator=(const command_manager&) = delete;
+  command_manager& operator=(command_manager&&) = delete;
 
   void
   clear_executor()
@@ -349,13 +355,22 @@ public:
     }
   }
 
+  hw_queue_impl(const hw_queue_impl&) = delete;
+  hw_queue_impl(hw_queue_impl&&) = delete;
+  hw_queue_impl& operator=(const hw_queue_impl&) = delete;
+  hw_queue_impl& operator=(hw_queue_impl&&) = delete;
+
+  // Submit list of commands for execution as atomic unit
+  virtual void
+  submit(const xrt::runlist& runlist) = 0;
+
   // Submit command for execution
   virtual void
-  submit(xrt_core::command* cmd) = 0;
+  submit(xrt_core::command* cmd) = 0;  // NOLINT override from base
 
   // Wait for some command to finish
   virtual std::cv_status
-  wait(size_t timeout_ms) = 0;
+  wait(size_t timeout_ms) = 0;         // NOLINT override from base
 
   // Wait for specified command to finish
   virtual std::cv_status
@@ -428,7 +443,7 @@ public:
     // notify_host is not strictly necessary for unmanaged
     // command execution but provides a central place to update
     // and mark commands as done so they can be re-executed.
-    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state));
+    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state)); // NOLINT
 
     return std::cv_status::no_timeout;
   }
@@ -437,6 +452,12 @@ public:
   submit(xrt_core::command* cmd) override
   {
     m_qhdl->submit_command(cmd->get_exec_bo());
+  }
+
+  void
+  submit(const xrt::runlist& runlist) override
+  {
+    m_qhdl->submit_command(xrt_core::kernel_int::get_runlist_buffer_handles(runlist));
   }
 
   void
@@ -514,18 +535,20 @@ class kds_device : public hw_queue_impl
         // Some other thread is calling device::exec_wait, wait
         // for it complete its work and notify this thread
         auto status = std::cv_status::no_timeout;
-        if (timeout_ms)
+        if (timeout_ms) {
           status = (m_work.wait_for(lk, timeout_ms * 1ms,
                                     [this] {
                                       return thread_exec_wait_call_count != m_exec_wait_call_count;
                                     }))
             ? std::cv_status::no_timeout
             : std::cv_status::timeout;
-        else
+        }
+        else {
           m_work.wait(lk,
                       [this] {
                         return thread_exec_wait_call_count != m_exec_wait_call_count;
                       });
+        }
 
         // The other thread has completed its exec_wait call,
         // sync with current global call count and return
@@ -555,7 +578,8 @@ class kds_device : public hw_queue_impl
     }
     else {
       // wait for ever for some command to complete
-      while (m_device->exec_wait(1000) == 0) {}
+      constexpr size_t default_timeout = 1000;
+      while (m_device->exec_wait(default_timeout) == 0) {}
     }
 
     // Acquire lock before updating shared state
@@ -573,7 +597,7 @@ class kds_device : public hw_queue_impl
   }
 
 public:
-  kds_device(xrt_core::device* device)
+  explicit kds_device(xrt_core::device* device)
     : m_device(device)
   {}
 
@@ -596,7 +620,7 @@ public:
     // notify_host is not strictly necessary for unmanaged
     // command execution but provides a central place to update
     // and mark commands as done so they can be re-executed.
-    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state));
+    notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state)); // NOLINT
 
     return std::cv_status::no_timeout;
   }
@@ -612,6 +636,12 @@ public:
     // device specific execution, e.g. copy command not tied
     // to a context
     m_device->exec_buf(cmd->get_exec_bo());
+  }
+
+  void
+  submit(const xrt::runlist&) override
+  {
+    throw std::runtime_error("kds_device::submit(runlist) not implemented");
   }
 
   void
@@ -651,7 +681,7 @@ exiting()
   return lights_out;
 }
 
-struct uninit
+struct uninit // NOLINT
 {
   ~uninit() { exiting() = true; }
 };
@@ -668,7 +698,7 @@ get_kds_device_nolock(hwc2hwq_type& queues, const xrt_core::device* device)
   auto hwqimpl = queues[nullptr].lock();
   if (!hwqimpl)
     queues[nullptr] = hwqimpl =
-      queue_ptr{new xrt_core::kds_device(const_cast<xrt_core::device*>(device))};
+      queue_ptr{new xrt_core::kds_device(const_cast<xrt_core::device*>(device))}; // NOLINT
 
   return hwqimpl;
 }
@@ -774,6 +804,13 @@ hw_queue::
 unmanaged_start(xrt_core::command* cmd)
 {
   get_handle()->unmanaged_start(cmd);
+}
+
+void
+hw_queue::
+submit(const xrt::runlist& runlist)
+{
+  get_handle()->submit(runlist);
 }
 
 // Wait for command completion for unmanaged command execution

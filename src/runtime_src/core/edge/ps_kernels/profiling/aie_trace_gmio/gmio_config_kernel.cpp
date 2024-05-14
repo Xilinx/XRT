@@ -19,6 +19,7 @@
 #include "xaiefal/xaiefal.hpp"
 #include "core/edge/include/pscontext.h"
 #include "core/edge/user/shim.h"
+#include "core/include/shim_int.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace/x86/aie_trace_kernel_config.h"
 
@@ -66,12 +67,14 @@ namespace {
       //set AXI Burst Length
       XAie_DmaSetAxi(&(gmioDMAInsts[i].shimDmaInst), 0, params->gmioData[i].burstLength, 0, 0, 0); 
 
-      //Allocate the Buffer Objects
-      auto gmioHandle = xclGetHostBO(deviceHandle, params->gmioData[i].physAddr, params->bufAllocSz);
+      // Allocate the Buffer Objects
+      auto gHandle = xclGetHostBO(deviceHandle, params->gmioData[i].physAddr, params->bufAllocSz);
+      auto gmioHandle = xrt::shim_int::get_buffer_handle(xrtDeviceToXclDevice(deviceHandle), gHandle);
   
       XAie_MemInst memInst;
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
-      xclBufferExportHandle boExportHandle = xclExportBO(deviceHandle, gmioHandle);
+      auto shared_handle = gmioHandle->share();
+      xclBufferExportHandle boExportHandle = shared_handle->get_export_handle();
       if(XRT_NULL_BO_EXPORT == boExportHandle)
         return 1;
       

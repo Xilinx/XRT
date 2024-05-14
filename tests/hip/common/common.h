@@ -5,12 +5,13 @@
 #ifndef _XRT_HIP_TEST_COMMON_H
 #define _XRT_HIP_TEST_COMMON_H
 
+#include <map>
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <map>
-#include <stdexcept>
 #include <string>
+#include <stdexcept>
 #include <system_error>
 
 #ifdef __linux__
@@ -19,7 +20,7 @@
 
 #include "hip/hip_runtime_api.h"
 
-namespace {
+namespace xrt_hip_test_common {
 #ifdef _WIN32
 // Copied from src/runtime_src/core/include/windows/uuid.h
 inline void
@@ -33,7 +34,8 @@ uuid_unparse_lower(const unsigned char uuid[16], char* str)
                uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
 }
 #endif
-}
+
+constexpr size_t mega_byte = 0x100000;
 
 class
 test_hip_error : public std::system_error
@@ -92,13 +94,26 @@ public:
 template<typename T> class
 hip_test_device_bo {
   T *_buffer;
+
 public:
-  hip_test_device_bo(size_t size) : _buffer(nullptr) {
+  explicit hip_test_device_bo(size_t size) : _buffer(nullptr) {
     test_hip_check(hipMalloc((void**)&_buffer, size * sizeof(T)));
   }
-  ~hip_test_device_bo() noexcept {
-    test_hip_check(hipFree(_buffer));
+
+  ~hip_test_device_bo() {
+    try {
+      test_hip_check(hipFree(_buffer));
+    }
+    catch (const std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
   }
+
+  hip_test_device_bo(const hip_test_device_bo &) = delete;
+  hip_test_device_bo(hip_test_device_bo &&) = delete;
+  hip_test_device_bo& operator =(hip_test_device_bo const&) = delete;
+  hip_test_device_bo& operator =(hip_test_device_bo &&) = delete;
+
   T *get() const {
     return _buffer;
   }
@@ -106,7 +121,39 @@ public:
   T *&get() {
     return _buffer;
   }
+};
 
+// Abstraction of host buffer so we can do automatic buffer dealocation (RAII)
+template<typename T> class
+hip_test_host_bo {
+  T *_buffer;
+
+public:
+  hip_test_host_bo(size_t size, unsigned int flags) : _buffer(nullptr) {
+    test_hip_check(hipHostMalloc((void**)&_buffer, size * sizeof(T), flags));
+  }
+
+  ~hip_test_host_bo() {
+    try {
+      test_hip_check(hipHostFree(_buffer));
+    }
+    catch (const std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
+  }
+
+  hip_test_host_bo(const hip_test_host_bo &) = delete;
+  hip_test_host_bo(hip_test_host_bo &&) = delete;
+  hip_test_host_bo& operator =(hip_test_host_bo const&) = delete;
+  hip_test_host_bo& operator =(hip_test_host_bo &&) = delete;
+
+  T *get() const {
+    return _buffer;
+  }
+
+  T *&get() {
+    return _buffer;
+  }
 };
 
 class
@@ -126,38 +173,46 @@ public:
       (void)hipModuleUnload(it.second);
   }
 
+  hip_test_device(const hip_test_device &) = delete;
+  hip_test_device(hip_test_device &&) = delete;
+  hip_test_device& operator =(hip_test_device const&) = delete;
+  hip_test_device& operator =(hip_test_device &&) = delete;
+
   void
   show_info(std::ostream &stream) const {
-    char name[64];
-    test_hip_check(hipDeviceGetName(name, sizeof(name), m_device));
-    stream << name << std::endl;
+    std::array<char, 64> name{};
+    test_hip_check(hipDeviceGetName(name.data(), sizeof(name), m_device));
+    stream << name.data() << std::endl;
 
-    hipUUID_t hid;
+    hipUUID_t hid{};
     test_hip_check(hipDeviceGetUuid(&hid, m_device));
-    char uuid_str[40];
-    uuid_unparse_lower((unsigned char *)hid.bytes, uuid_str);
-    stream << uuid_str << std::endl;
+    std::array<char, 40> uuid_str{};
+    uuid_unparse_lower(reinterpret_cast<unsigned char *>(hid.bytes), uuid_str.data());
+    stream << uuid_str.data() << std::endl;
 
     hipDeviceProp_t devProp;
     test_hip_check(hipGetDeviceProperties(&devProp, m_index));
     stream << devProp.name << std::endl;
-    stream << devProp.totalGlobalMem/0x100000 << " MB" << std::endl;
+    stream << devProp.totalGlobalMem/mega_byte << " MB" << std::endl;
     stream << devProp.maxThreadsPerBlock << " Threads" << std::endl;
   }
 
   hipFunction_t
   get_function(const char *fileName, const char *funcName) {
-    std::map<std::string, hipModule_t>::iterator it = mModuleTable.find(fileName);
-    hipModule_t hmodule;
-    hmodule = it->second;
+    auto it = mModuleTable.find(fileName);
+    hipModule_t hmodule = nullptr;
     if (it == mModuleTable.end()) {
       test_hip_check(hipModuleLoad(&hmodule, fileName), fileName);
       mModuleTable.insert(it, std::pair<std::string, hipModule_t>(fileName, hmodule));
     }
-    hipFunction_t hfunction;
+    else {
+      hmodule = it->second;
+    }
+    hipFunction_t hfunction = nullptr;
     test_hip_check(hipModuleGetFunction(&hfunction, hmodule, funcName), funcName);
     return hfunction;
   }
 };
 
+}
 #endif

@@ -18,6 +18,7 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
+#include "core/include/experimental/xrt_system.h"
 
 #include <filesystem>
 
@@ -52,20 +53,6 @@ directoryOrError(const sfs::path& path)
 {
   if (!sfs::is_directory(path))
     throw std::runtime_error("No such directory '" + path.string() + "'");
-}
-
-static std::string&
-propeFunc()
-{
-  static std::string sPropeFunc = "xclProbe";
-  return sPropeFunc;
-}
-
-static std::string&
-versionFunc()
-{
-  static std::string sVersionFunc = "xclVersion";
-  return sVersionFunc;
 }
 
 static std::filesystem::path&
@@ -133,46 +120,11 @@ is_noop_emulation()
 static void
 createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int count=0)
 {
-#ifndef XRT_STATIC_BUILD
-  auto delHandle = [](void* handle) {
-    xrt_core::dlclose(handle);
-  };
-  using handle_type = std::unique_ptr<void,decltype(delHandle)>;
+  if (!count)
+    count = xrt::system::enumerate_devices();
 
-  auto handle = handle_type(xrt_core::dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);
-  if (!handle)
-    throw std::runtime_error("Failed to open HAL driver '" + dll + "'\n" + xrt_core::dlerror());
-
-  typedef unsigned int (* probeFuncType)();
-
-  auto probeFunc = (probeFuncType)xrt_core::dlsym(handle.get(), propeFunc().c_str());
-  if (!probeFunc)
-    return;
-
-  unsigned pmdCount = 0;
-
-  if (count || (count = probeFunc()) || pmdCount) {
-  // Version of HAL
-    typedef unsigned int (* versionFuncType)();
-    auto vFunc = (versionFuncType)xrt_core::dlsym(handle.get(), versionFunc().c_str());
-    auto version = 1;
-    if (vFunc)
-      version = vFunc();
-
-    if (version==1) {
-      throw std::runtime_error("Legacy HAL version " + std::to_string(version) + " not supported");
-    }
-    else if (version==2) {
-      hal2::createDevices(devices,dll,handle.release(),count);
-    }
-    else
-      throw std::runtime_error("HAL version " + std::to_string(version) + " not supported");
-  }
-#else
-  if (count || (count = xclProbe()))
-    hal2::createDevices(devices, dll, nullptr, count);
-#endif
-
+  if (count)
+    hal2::createDevices(devices, dll, count);
 }
 
 } // namespace

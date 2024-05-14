@@ -86,6 +86,7 @@ Please increase trace_buffer_size and trace_buffer_offload_interval together or 
 #define AIE_TRACE_BUF_ALLOC_FAIL              "Allocation of buffer for AIE trace failed. AIE trace will not be available."
 #define AIE_TS2MM_WARN_MSG_BUF_FULL           "AIE Trace Buffer is full. Device trace could be incomplete."
 #define AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE "Circular buffer overwrite was detected in device trace. AIE trace could be incomplete."
+#define AIE_TRACE_TILES_UNAVAILABLE           "No valid tiles found for the provided configuration and design. So, AIE event trace will not be available."
 
 #define AIE_TRACE_BUF_REUSE_WARN              "AIE reuse_buffer may cause overrun. \
 Recommended settings: \

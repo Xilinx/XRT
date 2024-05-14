@@ -431,8 +431,6 @@ namespace xdp {
     xclbin->deviceIntf->setDevice(dev);
     try {
       xclbin->deviceIntf->readDebugIPlayout();
-      // XRT IP are needed for deadlock diagnosis
-      initializeXrtIP(xclbin);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -442,6 +440,25 @@ namespace xdp {
     }
     return xclbin->deviceIntf;
   }
+
+  DeviceIntf* VPStaticDatabase::createDeviceIntfClient(uint64_t deviceId,
+                                                 xdp::Device* dev)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock);
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
+    if (xclbin == nullptr)
+      return nullptr;
+    if (xclbin->deviceIntf != nullptr)
+      return xclbin->deviceIntf;
+
+    xclbin->deviceIntf = new DeviceIntf();
+    xclbin->deviceIntf->setDevice(dev);
+    return xclbin->deviceIntf;
+  }
+
 
   uint64_t VPStaticDatabase::getKDMACount(uint64_t deviceId)
   {
@@ -1479,11 +1496,6 @@ namespace xdp {
     DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, false, device);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
-
-    /*
-     * Initialize xrt IP for deadlock diagnosis
-     */
-    parseXrtIPMetadata(deviceId, device);
   }
 
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
@@ -1683,36 +1695,37 @@ namespace xdp {
     }
   }
 
-  void VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
+  std::unique_ptr<IpMetadata> VPStaticDatabase::populateIpMetadata(
+                                uint64_t deviceId, 
+                                const std::shared_ptr<xrt_core::device>& device)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return;
+      return nullptr;
 
     ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
     if (!config)
-      return;
+      return nullptr;
 
     XclbinInfo *xclbin = config->getPlXclbin();
     if(!xclbin)
-      return;
+      return nullptr;
 
     auto data = device->get_axlf_section(IP_METADATA);
     if (!data.first || !data.second)
-      return;
+      return nullptr;
 
     std::stringstream ss;
     ss.write(data.first,data.second);
     boost::property_tree::ptree pt;
     try {
       boost::property_tree::read_json(ss,pt);
-      xclbin->pl.ip_metadata_section = std::make_unique<ip_metadata>(pt);
-      // Debug
-      //xclbin->pl.ip_metadata_section->print();
+      return std::make_unique<IpMetadata>(pt);
     } catch(...) {
-      xclbin->pl.ip_metadata_section.reset();
+      return nullptr;
     }
+    
   }
 
   void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
@@ -2236,16 +2249,6 @@ namespace xdp {
     xclbin->pl.usesFifo = true ;
   }
 
-  void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
-  {
-    auto& ip_metadata = xclbin->pl.ip_metadata_section;
-    if (!ip_metadata)
-      return;
-
-    for (const auto& cu : xclbin->pl.cus)
-      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname());
-  }
-
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
     std::lock_guard<std::mutex> lock(openCLLock) ;
@@ -2377,10 +2380,14 @@ namespace xdp {
 
   void VPStaticDatabase::readAIEMetadataClient()
   {
-    metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
-    if(!metadataReader) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
-      return;
+    // Check for new then old file formats
+    metadataReader = aie::readAIEMetadata("aie_trace_config.json", aieMetadata);
+    if (!metadataReader) {
+      metadataReader = aie::readAIEMetadata("aie_control_config.json", aieMetadata);
+      if (!metadataReader) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "AIE metadata read failed on client!");
+        return;
+      }
     }
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "AIE metadata read successfully on client!");
   } 

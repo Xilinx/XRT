@@ -3,6 +3,10 @@
 #ifndef xrthip_device_h
 #define xrthip_device_h
 
+#ifdef _WIN32
+#undef max
+#endif
+
 #include "core/common/api/handle.h"
 #include "xrt/xrt_device.h"
 
@@ -26,16 +30,18 @@ class device
 
 public:
   device() = default;
-  
+
   explicit
   device(uint32_t device_id);
 
+  [[nodiscard]]
   const xrt::device&
   get_xrt_device() const
   {
     return m_xrt_device;
   }
 
+  [[nodiscard]]
   uint32_t
   get_device_id() const
   {
@@ -66,4 +72,3 @@ extern xrt_core::handle_map<device_handle, std::shared_ptr<device>> device_cache
 } // xrt::core::hip
 
 #endif
-

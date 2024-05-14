@@ -21,13 +21,8 @@ if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
 endif()
 
-message("-- Looking for HIP include files...")
-# We should find HIP cmake either in standard cmake locations or in the /opt/rocm location
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/opt/rocm/lib/cmake/hip;/opt/rocm/lib/cmake/amd_comgr")
-# hip-config itself requires these other directories to find its dependencies
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/rocm/lib/cmake/hip;/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
-include(hip-config)
-message("-- Found at ${HIP_INCLUDE_DIR}")
+# config file for getting hip headers
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../src/runtime_src/hip/hip_config.cmake)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   find_program(CLANG_TIDY "clang-tidy")
@@ -39,7 +34,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 endif()
 
-include_directories(${HIP_INCLUDE_DIRS})
+include_directories(${HIP_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/common" )
 
 add_subdirectory(device)
 add_subdirectory(vadd)

@@ -30,7 +30,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/common/xrt_profiling.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
@@ -136,24 +135,57 @@ namespace xdp {
       }
   }
 
-  bool AieProfile_EdgeImpl::isPortTlastEvent(const XAie_Events event)
-  {
-    switch (event) {
-    case XAIE_EVENT_PORT_TLAST_0_PL:
-    case XAIE_EVENT_PORT_TLAST_1_PL:
-    case XAIE_EVENT_PORT_TLAST_0_MEM_TILE:
-      return true;
-    default:
-      return false;
-    }
-  }
-
   uint8_t AieProfile_EdgeImpl::getPortNumberFromEvent(const XAie_Events event)
   {
     switch (event) {
+    case XAIE_EVENT_PORT_RUNNING_7_CORE:
+    case XAIE_EVENT_PORT_STALLED_7_CORE:
+    case XAIE_EVENT_PORT_IDLE_7_CORE:
+    case XAIE_EVENT_PORT_RUNNING_7_PL:
+    case XAIE_EVENT_PORT_STALLED_7_PL:
+    case XAIE_EVENT_PORT_IDLE_7_PL:
+      return 7;
+    case XAIE_EVENT_PORT_RUNNING_6_CORE:
+    case XAIE_EVENT_PORT_STALLED_6_CORE:
+    case XAIE_EVENT_PORT_IDLE_6_CORE:
+    case XAIE_EVENT_PORT_RUNNING_6_PL:
+    case XAIE_EVENT_PORT_STALLED_6_PL:
+    case XAIE_EVENT_PORT_IDLE_6_PL:
+      return 6;
+    case XAIE_EVENT_PORT_RUNNING_5_CORE:
+    case XAIE_EVENT_PORT_STALLED_5_CORE:
+    case XAIE_EVENT_PORT_IDLE_5_CORE:
+    case XAIE_EVENT_PORT_RUNNING_5_PL:
+    case XAIE_EVENT_PORT_STALLED_5_PL:
+    case XAIE_EVENT_PORT_IDLE_5_PL:
+      return 5;
+    case XAIE_EVENT_PORT_RUNNING_4_CORE:
+    case XAIE_EVENT_PORT_STALLED_4_CORE:
+    case XAIE_EVENT_PORT_IDLE_4_CORE:
+    case XAIE_EVENT_PORT_RUNNING_4_PL:
+    case XAIE_EVENT_PORT_STALLED_4_PL:
+    case XAIE_EVENT_PORT_IDLE_4_PL:
+      return 4;
+    case XAIE_EVENT_PORT_RUNNING_3_CORE:
+    case XAIE_EVENT_PORT_STALLED_3_CORE:
+    case XAIE_EVENT_PORT_IDLE_3_CORE:
+    case XAIE_EVENT_PORT_RUNNING_3_PL:
+    case XAIE_EVENT_PORT_STALLED_3_PL:
+    case XAIE_EVENT_PORT_IDLE_3_PL:
+      return 3;
+    case XAIE_EVENT_PORT_RUNNING_2_CORE:
+    case XAIE_EVENT_PORT_STALLED_2_CORE:
+    case XAIE_EVENT_PORT_IDLE_2_CORE:
+    case XAIE_EVENT_PORT_RUNNING_2_PL:
+    case XAIE_EVENT_PORT_STALLED_2_PL:
+    case XAIE_EVENT_PORT_IDLE_2_PL:
+      return 2;
     case XAIE_EVENT_PORT_RUNNING_1_CORE:
     case XAIE_EVENT_PORT_STALLED_1_CORE:
-    case XAIE_EVENT_PORT_TLAST_1_PL:
+    case XAIE_EVENT_PORT_IDLE_1_CORE:
+    case XAIE_EVENT_PORT_RUNNING_1_PL:
+    case XAIE_EVENT_PORT_STALLED_1_PL:
+    case XAIE_EVENT_PORT_IDLE_1_PL:
       return 1;
     default:
       return 0;
@@ -267,10 +299,13 @@ namespace xdp {
       XAie_Events ssEvent;
       if (aie::profile::isPortRunningEvent(startEvent))
         switchPortRsc->getSSRunningEvent(ssEvent);
-      else if (isPortTlastEvent(startEvent))
+      else if (aie::profile::isPortTlastEvent(startEvent))
         switchPortRsc->getSSTlastEvent(ssEvent);
-      else
+      else if (aie::profile::isPortStalledEvent(startEvent))
         switchPortRsc->getSSStalledEvent(ssEvent);
+      else
+        switchPortRsc->getSSIdleEvent(ssEvent);
+
       startEvents.at(i) = ssEvent;
       endEvents.at(i) = ssEvent;
 
@@ -370,9 +405,9 @@ namespace xdp {
         << ") Module : " << moduleName << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, mod, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, mod, XAIE_BCAST_CHANNEL_RSC);
+      auto pc = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, mod, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, mod, xaiefal::XAIE_BROADCAST);
       msg << "Resource Group : " << std::left <<  std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
@@ -404,18 +439,27 @@ namespace xdp {
       
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : configMetrics) {
+        auto& metricSet  = tileMetric.second;
         auto tile        = tileMetric.first;
         auto col         = tile.col;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
         auto type        = aie::getModuleType(row, metadata->getAIETileRowOffset());
-        
-        if (mod == XAIE_MEM_MOD && type == module_type::core)
+        if ((mod == XAIE_MEM_MOD) && (type == module_type::core))
           type = module_type::dma;
+
+        // Ignore invalid types and inactive modules
+        // NOTE: Inactive core modules are configured when utilizing
+        //       stream switch monitor ports to profile DMA channels
         if (!aie::profile::isValidType(type, mod))
           continue;
+        if ((type == module_type::dma) && !tile.active_memory)
+          continue;
+        if ((type == module_type::core) && !tile.active_core) {
+          if (metadata->getPairModuleIndex(metricSet, type) < 0)
+            continue;
+        }
 
-        auto& metricSet  = tileMetric.second;
         auto loc         = XAie_TileLoc(col, row);
         auto& xaieTile   = aieDevice->tile(col, row);
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()
@@ -432,7 +476,7 @@ namespace xdp {
                          : memTileEndEvents[metricSet]));
 
         int numCounters  = 0;
-        auto numFreeCtr  = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
+        auto numFreeCtr  = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
         numFreeCtr = (startEvents.size() < numFreeCtr) ? startEvents.size() : numFreeCtr;
 
         // Specify Sel0/Sel1 for memory tile events 21-44

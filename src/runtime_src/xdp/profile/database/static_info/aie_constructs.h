@@ -61,13 +61,14 @@ enum class module_type {
 
   struct tile_type
   { 
-    uint8_t row;
-    uint8_t col;
-    uint8_t subtype;
-    uint8_t stream_id;
-    uint8_t is_master;
+    uint8_t  row;
+    uint8_t  col;
+    uint8_t  subtype;
+    uint8_t  stream_id;
+    uint8_t  is_master;
     uint64_t itr_mem_addr;
-    bool     is_dma_only;
+    bool     active_core;
+    bool     active_memory;
     bool     is_trigger;
     
     bool operator==(const tile_type &tile) const {
@@ -292,6 +293,8 @@ enum class module_type {
   class aie_cfg_tile
   {
   public:
+    bool active_core = true;
+    bool active_memory = true;
     uint32_t column;
     uint32_t row;
     module_type type;

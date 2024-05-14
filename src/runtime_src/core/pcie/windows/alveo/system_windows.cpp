@@ -91,11 +91,9 @@ get_bdf_info(device::id_type id, bool is_user) const
 
 void
 system_windows::
-scan_devices(bool verbose, bool json) const
+scan_devices(bool /*verbose*/, bool /*json*/) const
 {
-  std::cout << "TO-DO: scan_devices\n";
-  verbose = verbose;
-  json = json;
+  // TODO
 }
 
 std::shared_ptr<device>

@@ -242,18 +242,23 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         // Make sure it's desired polarity
         // NOTE: input = slave (data flowing from PLIO)
         //       output = master (data flowing to PLIO)
-        if ((metricStr != "ports")
-            && ((isMaster && (metricStr.find("input") != std::string::npos
-                || metricStr.find("mm2s") != std::string::npos))
-            || (!isMaster && (metricStr.find("output") != std::string::npos
-                || metricStr.find("s2mm") != std::string::npos))))
+        if ((isMaster && (metricStr.find("output") == std::string::npos)
+                && (metricStr.find("s2mm") == std::string::npos))
+            || (!isMaster && (metricStr.find("input") == std::string::npos)
+                && (metricStr.find("mm2s") == std::string::npos)))
             continue;
+
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
-
-        if ((channelId >= 0) && (channelId != io.second.channelNum)) 
+        // Make sure channel number is same as specified (GMIO only)
+        if ((type == 1) && (channelId >= 0) && (channelId != io.second.channelNum)) {
+            std::stringstream msg;
+            msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
+                << +shimCol <<" and stream ID " << +streamId;
+            xrt_core::message::send(severity_level::info, "XRT", msg.str());
             continue;
+        }
 
         tile_type tile = {0};
         tile.col = shimCol;
@@ -341,7 +346,7 @@ AIEControlConfigFiletype::getAIETiles(const std::string& graph_name) const
             tiles.push_back(tile_type());
             auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
-            t.is_dma_only = false;
+            t.active_core = true;
         }
 
         int num_tiles = count;
@@ -383,7 +388,20 @@ AIEControlConfigFiletype::getAllAIETiles(const std::string& graph_name) const
     std::vector<tile_type> tiles;
     tiles = getEventTiles(graph_name, module_type::core);
     auto dmaTiles = getEventTiles(graph_name, module_type::dma);
-    std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
+
+    // Specify if active core tiles also have active DMAs
+    for (auto& tile : tiles)
+        tile.active_memory = (std::find(dmaTiles.begin(), dmaTiles.end(), tile) != dmaTiles.end());
+
+    // Identify and add DMA-only tiles to list
+    for (auto& tile : dmaTiles) {
+        if (std::find(tiles.begin(), tiles.end(), tile) == tiles.end()) {
+            tile.active_core = false;
+            tile.active_memory = true;
+            tiles.push_back(tile);
+        }
+    }
+    //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles), xdp::aie::tileCompare);
     return tiles;
 }
 
@@ -400,13 +418,12 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
         return {};
     }
 
-    bool is_dma_only = (type == module_type::dma);
     const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
 
     std::vector<tile_type> tiles;
     auto rowOffset = getAIETileRowOffset();
-    int allTilesIdx = 0;
+    int startCount = 0;
 
     for (auto& graph : graphsMetadata.get()) {
         auto currGraph = graph.second.get<std::string>("name");
@@ -414,21 +431,24 @@ AIEControlConfigFiletype::getEventTiles(const std::string& graph_name,
             && (graph_name.compare("all") != 0))
             continue;
 
-        int count = 0;
+        int count = startCount;
         for (auto& node : graph.second.get_child(col_name)) {
             tiles.push_back(tile_type());
-            auto& t = tiles.at(allTilesIdx);
+            auto& t = tiles.at(count++);
             t.col = xdp::aie::convertStringToUint8(node.second.data());
-            t.is_dma_only = is_dma_only;
-            allTilesIdx++;
-            count++;
+            if (type == module_type::core)
+              t.active_core = true;
+            else
+              t.active_memory = true;
         }
 
         int num_tiles = count;
-        count = 0;
+        count = startCount;
         for (auto& node : graph.second.get_child(row_name))
-            tiles.at(allTilesIdx-num_tiles+count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
+            tiles.at(count++).row = xdp::aie::convertStringToUint8(node.second.data()) + rowOffset;
         xdp::aie::throwIfError(count < num_tiles,"rows < num_tiles");
+
+        startCount = count;
     }
 
     return tiles;
@@ -442,9 +462,10 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
                                    module_type type,
                                    const std::string& kernel_name) const
 {
+    // Catch memory tiles and 'all' AIE tiles
     if (type == module_type::mem_tile)
         return getMemoryTiles(graph_name, kernel_name);
-    if ((type == module_type::dma) && (kernel_name.compare("all") == 0))
+    if (kernel_name.compare("all") == 0)
         return getAllAIETiles(graph_name);
 
     // Now search by graph-kernel pairs
@@ -475,7 +496,8 @@ AIEControlConfigFiletype::getTiles(const std::string& graph_name,
         tile_type tile;
         tile.col = mapping.second.get<uint8_t>("column");
         tile.row = mapping.second.get<uint8_t>("row") + rowOffset;
-        tile.is_dma_only = false;
+        tile.active_core = true;
+        tile.active_memory = true;
         tiles.emplace_back(std::move(tile));
     }
     return tiles;

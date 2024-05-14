@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache License 2.0 #
+# Copyright (c) 2021-2022 Xilinx, Inc. All rights reserved #
+# Copyright (C) 2022-2024 Advanced Micro Devices, Inc. #
+
+ROCM_ROOT = /opt/rocm
+SRC = main.cpp
+OBJ = main.o
+HIPCC = $(ROCM_ROOT)/bin/hipcc
+HIPCCFLAGS= --rocm-device-lib-path=/usr/lib/x86_64-linux-gnu/amdgcn/bitcode
+CXX = g++
+CC = g++
+CXXFLAGS = -Wall -Werror -D__HIP_PLATFORM_HCC__= -D__HIP_PLATFORM_AMD__ -I$(ROCM_ROOT)/include -I$(ROCM_ROOT)/llvm/bin/../lib/clang/14.0.0 -I$(ROCM_ROOT)/hsa/include -I../common
+RPROF = $(ROCM_ROOT)/rocprof
+LDFLAGS = -L$(ROCM_ROOT)/hip/lib
+LDLIBS = -lamdhip64 -luuid -lm -lrt
+COMPILE_DB = compile_commands.json
+
+export LD_LIBRARY_PATH += :$(ROCM_ROOT)/hip/lib
+
+debug ?= 0
+ifeq ($(debug), 1)
+    CXXFLAGS +=-DDEBUG -g
+else
+    CXXFLAGS +=-DNDEBUG -O2
+endif
+
+all: main kernel.co nop.co
+
+main: main.o
+
+%.co: %.cpp
+	$(HIPCC) $(HIPCCFLAGS) --genco $< -o $@
+
+run: all
+	@echo "LD_LIBRARY_PATH = $(LD_LIBRARY_PATH)"
+	./main
+
+
+profile: all
+	$(RPROF) --hip-trace ./main
+	$(RPROF) --hsa-trace ./main
+	jq '.traceEvents[] | .name' results.json | sort | uniq
+	strace -e trace=ioctl -o strace.log ./main
+	grep AMDKFD strace.log | awk '-F,' '{print $$2}' | sort | uniq
+
+$(COMPILE_DB): main.cpp kernel.cpp nop.cpp Makefile
+	bear -- make debug=1 all
+
+compdb: $(COMPILE_DB)
+
+clean:
+	rm -f main *.co results.* *.o

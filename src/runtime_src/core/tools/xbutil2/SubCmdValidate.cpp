@@ -36,6 +36,9 @@
 #include "tools/common/tests/TestDF_bandwidth.h"
 #include "tools/common/tests/TestTCTOneColumn.h"
 #include "tools/common/tests/TestTCTAllColumn.h"
+#include "tools/common/tests/TestGemm.h"
+#include "tools/common/tests/TestNPUThroughput.h"
+#include "tools/common/tests/TestNPULatency.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -102,7 +105,10 @@ std::vector<std::shared_ptr<TestRunner>> testSuite = {
   std::make_shared<TestPsIops>(),
   std::make_shared<TestDF_bandwidth>(),
   std::make_shared<TestTCTOneColumn>(),
-  std::make_shared<TestTCTAllColumn>()
+  std::make_shared<TestTCTAllColumn>(),
+  std::make_shared<TestGemm>(),
+  std::make_shared<TestNPUThroughput>(),
+  std::make_shared<TestNPULatency>()
 };
 
 /*
@@ -241,6 +247,9 @@ get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
                         boost::property_tree::ptree& ptTree)
 {
   ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+  const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
+  ptTree.put("performance_mode", xrt_core::query::performance_mode::parse_status(mode));
+  ptTree.put("power", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query_default<xrt_core::query::power_microwatts>(device, 0)));
 }
 
 static void
@@ -271,6 +280,12 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   const std::string& plat_id = ptTree.get("platform_id", "");
   if (!plat_id.empty())
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
+  const std::string& perf_mode = ptTree.get("performance_mode", "");
+  if (!perf_mode.empty())
+    oStream << boost::format("    %-22s: %s\n") % "Performance Mode" % perf_mode;
+  const std::string& power = ptTree.get("power", "");
+  if (!boost::starts_with(power, ""))
+    oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
 }
 
 static test_status

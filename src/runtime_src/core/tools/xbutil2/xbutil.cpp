@@ -32,7 +32,7 @@ R"(
 [{
   "alveo": [{
     "examine": [{
-      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "error", "firewall", "mailbox", "debug-ip-status", "qspi-status"]
+      "report": ["dynamic-regions", "electrical", "host", "mechanical", "memory", "pcie-info", "platform", "thermal", "error", "firewall", "mailbox", "debug-ip-status", "qspi-status", "aie", "aiemem", "aieshim"]
     }]
   },{
     "configure": [{
@@ -54,7 +54,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["electrical", "host", "memory", "platform", "aie", "aiemem", "aieshim", "aie-partitions", "telemetry"]
+      "report": ["electrical", "host", "platform", "aie", "aiemem", "aieshim", "aie-partitions"]
     }]
   },{
     "configure": [{
@@ -66,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["verify", "df-bw", "tct-one-col", "tct-all-col"]
+      "test": ["latency", "throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
     }]
   }]
 }]

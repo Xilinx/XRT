@@ -28,15 +28,6 @@ extern "C" {
 
 namespace xdp::aie::profile {
 
-  const std::vector<XAie_Events> sSEventList = {
-    XAIE_EVENT_PORT_RUNNING_0_CORE,
-    XAIE_EVENT_PORT_STALLED_0_CORE,
-    XAIE_EVENT_PORT_RUNNING_0_PL,
-    XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-    XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-    XAIE_EVENT_PORT_TLAST_0_MEM_TILE
-  };
-
   const std::map<xdp::module_type, uint16_t> counterBases = {
     {module_type::core,     static_cast<uint16_t>(0)},
     {module_type::dma,      BASE_MEMORY_COUNTER},
@@ -100,6 +91,26 @@ namespace xdp::aie::profile {
    */
   bool isPortRunningEvent(const XAie_Events event);
 
+  /**
+   * @brief  Check if event is a port stalled event
+   * @param  event Event ID to check
+   * @return True if given event is a port stalled event
+   */
+  bool isPortStalledEvent(const XAie_Events event);
+
+  /**
+   * @brief  Check if event is a port idle event
+   * @param  event Event ID to check
+   * @return True if given event is a port idle event
+   */
+  bool isPortIdleEvent(const XAie_Events event);
+
+  /**
+   * @brief  Check if event is a port tlast event
+   * @param  event Event ID to check
+   * @return True if given event is a port tlast event
+   */
+  bool isPortTlastEvent(const XAie_Events event);
 
   /**
    * @brief Get XAie module enum at the module index 

@@ -9,6 +9,7 @@
 
 #ifdef __cplusplus
 # include <string>
+# include <istream>
 #endif
 
 #ifdef __cplusplus
@@ -32,7 +33,17 @@ class elf : public detail::pimpl<elf_impl>
 public:
   XRT_API_EXPORT
   elf(const std::string& fnm);
-  
+
+  /**
+   * elf() - Constructor from raw ELF data
+   *
+   * @param data
+   *  Raw data of elf
+   *
+   */
+  XRT_API_EXPORT
+  elf(std::istream& stream);
+
   XRT_API_EXPORT
   xrt::uuid
   get_cfg_uuid() const;

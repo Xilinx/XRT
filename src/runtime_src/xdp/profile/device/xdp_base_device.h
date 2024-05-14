@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -42,10 +42,6 @@ public:
   virtual int write(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) = 0;
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) = 0;
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
-
-  // Access to IP in IP_LAYOUT
-  virtual int readXrtIP(uint32_t id, uint32_t offset, uint32_t *data) = 0;
-  virtual int initXrtIP(const char *name, uint64_t base, uint32_t range) = 0;
 
   virtual std::vector<char> getDebugIpLayout() = 0;
 

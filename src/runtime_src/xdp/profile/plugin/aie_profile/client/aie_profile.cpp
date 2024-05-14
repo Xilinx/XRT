@@ -28,7 +28,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/common/xrt_profiling.h"
 #include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/profile/database/database.h"
@@ -37,6 +36,7 @@
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/util/aie_profile_config.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 // XRT headers
 #include "xrt/xrt_bo.h"
@@ -48,8 +48,7 @@ namespace xdp {
   using tile_type = xdp::tile_type;
   using module_type = xdp::module_type;
 
-  AieProfile_WinImpl::
-  AieProfile_WinImpl(VPDatabase* database,
+  AieProfile_WinImpl::AieProfile_WinImpl(VPDatabase* database,
     std::shared_ptr<AieProfileMetadata> metadata
   )
     : AieProfileImpl(database, metadata)
@@ -74,15 +73,13 @@ namespace xdp {
   }
 
   void
-  AieProfile_WinImpl::
-  updateDevice()
+  AieProfile_WinImpl::updateDevice()
   {
     setMetricsSettings(metadata->getDeviceID());
   }
 
   bool
-  AieProfile_WinImpl::
-  setMetricsSettings(const uint64_t deviceId)
+  AieProfile_WinImpl::setMetricsSettings(const uint64_t deviceId)
   {
     xrt_core::message::send(severity_level::info, "XRT", "Setting AIE Profile Metrics Settings.");
 
@@ -114,6 +111,10 @@ namespace xdp {
       return false;
     }
 
+    // Get partition columns
+    // NOTE: for now, assume a single partition
+    auto partitionCols = xdp::aie::getPartitionStartColumnsClient(metadata->getHandle());
+    uint8_t startCol = partitionCols.at(0);
 
     //Start recording the transaction
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
@@ -126,16 +127,25 @@ namespace xdp {
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         int numCounters  = 0;
 
+        auto& metricSet  = tileMetric.second;
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto col  = tile.col;
         auto subtype = tile.subtype;
         auto type = aie::getModuleType(row, metadata->getAIETileRowOffset());
-
+        
+        // Ignore invalid types and inactive modules
+        // NOTE: Inactive core modules are configured when utilizing
+        //       stream switch monitor ports to profile DMA channels
         if (!aie::profile::isValidType(type, mod))
           continue;
+        if ((type == module_type::dma) && !tile.active_memory)
+          continue;
+        if ((type == module_type::core) && !tile.active_core) {
+          if (metadata->getPairModuleIndex(metricSet, type) < 0)
+            continue;
+        }
 
-        auto& metricSet  = tileMetric.second;
         auto loc         = XAie_TileLoc(col, row);
         auto startEvents = (type  == module_type::core) ? coreStartEvents[metricSet]
                          : ((type == module_type::dma)  ? memoryStartEvents[metricSet]
@@ -201,7 +211,9 @@ namespace xdp {
           op_profile_data.emplace_back(profile_data_t{Regs[i] + (col << 25) + (row << 20)});
 
           std::vector<uint64_t> values;
-          values.insert(values.end(), {col, row, phyStartEvent, phyEndEvent, resetEvent, 0, 0, payload});
+          uint8_t absCol = col + startCol;
+          values.insert(values.end(), {absCol, row, phyStartEvent, phyEndEvent, 
+                        resetEvent, 0, 0, payload});
           outputValues.push_back(values);
 
           counterId++;
@@ -209,8 +221,8 @@ namespace xdp {
         }
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," 
-            << row << ") using metric set " << metricSet << " and channel " << (int)channel0 << ".";
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << +col << "," 
+            << +row << ") using metric set " << metricSet << " and channel " << +channel0 << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         // numTileCounters[numCounters]++;
       }
@@ -243,9 +255,7 @@ namespace xdp {
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and MEM tiles
   void
-  AieProfile_WinImpl::
-  configStreamSwitchPorts( 
-    const tile_type& tile, const XAie_LocType& loc,
+  AieProfile_WinImpl::configStreamSwitchPorts(const tile_type& tile, const XAie_LocType& loc,
     const module_type& type, const std::string& metricSet, const uint8_t channel)
   {
     // Hardcoded
@@ -256,7 +266,8 @@ namespace xdp {
         XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
       XAie_EventSelectStrmPort(&aieDevInst, loc, rscId, slaveOrMaster, DMA, channel);
       std::stringstream msg;
-      msg << "Configured core tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
+      msg << "Configured core tile " << (aie::isInputSet(type,metricSet) ? "S2MM" : "MM2S") 
+          << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       return;
     }
@@ -286,11 +297,15 @@ namespace xdp {
   }
 
   void
-  AieProfile_WinImpl::
-  poll(const uint32_t index, void* handle)
+  AieProfile_WinImpl::poll(const uint32_t index, void* handle)
   {
     if (finishedPoll)
       return;
+
+    if (db->infoAvailable(xdp::info::ml_timeline)) {
+      db->broadcast(VPDatabase::MessageType::READ_RECORD_TIMESTAMPS, nullptr);
+      xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
+    }
 
     (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;
@@ -338,8 +353,7 @@ namespace xdp {
   }
 
   void
-  AieProfile_WinImpl::
-  freeResources()
+  AieProfile_WinImpl::freeResources()
   {
     
   }

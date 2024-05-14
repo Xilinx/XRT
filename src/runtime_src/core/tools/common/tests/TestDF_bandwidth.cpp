@@ -5,7 +5,6 @@
 // Local - Include Files
 #include "TestDF_bandwidth.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
@@ -26,12 +25,8 @@ static constexpr int itr_count = 600;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 TestDF_bandwidth::TestDF_bandwidth()
-  : TestRunner("df-bw", 
-                "Run bandwidth test on data fabric",
-                "validate.xclbin")
-                {
-                  m_dpu_name = "df_bw.txt";
-                }
+  : TestRunner("df-bw", "Run bandwidth test on data fabric")
+{}
 
 namespace {
 
@@ -82,23 +77,11 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
 
-  #ifdef _WIN32
-  auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
-  switch (device_id) {
-  case 5378: // 0x1502
-    ptree.put("xclbin", "validate_phx.xclbin");
-    break;
-  case 6128: // 0x17f0
-    ptree.put("xclbin", "validate_stx.xclbin");
-    break;
-  }
-  #endif
-
-  auto xclbin_path = findXclbinPath(dev, ptree);
-  if (!std::filesystem::exists(xclbin_path)) {
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
+  auto xclbin_path = findPlatformFile(xclbin_name, ptree);
+  if (!std::filesystem::exists(xclbin_path))
     return ptree;
-  }
-  // log xclbin test dir for debugging purposes
+
   logger(ptree, "Xclbin", xclbin_path);
 
   xrt::xclbin xclbin;
@@ -135,8 +118,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
   xrt::kernel kernel{hwctx, kernelName};
 
-  // Find DPU instruction file
-  std::string dpu_instr = findDPUPath(dev, ptree, m_dpu_name);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
+  auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
@@ -168,8 +151,9 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-  XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+  //Log
+  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'GB") % buffer_size_gb));
+  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
 
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; i++) {
@@ -185,7 +169,6 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
-    busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
@@ -202,7 +185,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   //Data is read and written in parallel hence x2
   float bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%f's") % elapsedSecs));
+  logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%.1f' GB/s") % bandwidth));
 
   ptree.put("status", test_token_passed);

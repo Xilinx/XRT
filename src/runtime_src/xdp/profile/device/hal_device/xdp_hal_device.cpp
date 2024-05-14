@@ -22,7 +22,6 @@
 #include "core/common/system.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
-#include "core/common/xrt_profiling.h"
 
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/experimental/xrt_device.h"
@@ -109,43 +108,6 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 #pragma GCC diagnostic pop
 #endif
 }
-
-// This uses mmap and is recommended way to access an XRT IP
-int HalDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
-{
-  return xclRegRead(mHalDevice, index, offset, data);
-}
-
-#if defined(_WIN32) || defined(XDP_HWEMU_USING_HAL_BUILD)
-int HalDevice::initXrtIP(const char * /*name*/, uint64_t /*base*/, uint32_t /*range*/)
-{
-  // The required APIs are missing from windows and hw emulation shim
-  return -1;
-}
-#else
-int HalDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
-{
-  // We cannot always get index from ip_layout
-  // For some cases, this is determined by the driver
-  int index = xclIPName2Index(mHalDevice, name);
-  if (index < 0)
-    return index;
-
-  // A shared context is needed
-  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(mHalDevice);
-  int ret = xclOpenContext(mHalDevice, device->get_xclbin_uuid().get(), index, true);
-  if (ret < 0)
-    return ret;
-
-  // Open access to IP Registers. base should be > 0x10
-  ret = xclIPSetReadRange(mHalDevice, index, base, range);
-  if (ret < 0)
-    return ret;
-
-  return index;
-}
-#endif
-
 
 int HalDevice::unmgdRead(unsigned , void *buf, size_t count, uint64_t offset)
 {

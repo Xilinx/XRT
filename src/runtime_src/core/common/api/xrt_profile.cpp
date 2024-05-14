@@ -31,7 +31,7 @@
 #include <functional>
 #include <mutex>
 
-namespace xrt { namespace profile {
+namespace xrt::profile {
 
 user_range::
 user_range(const char* label, const char* tooltip)
@@ -78,12 +78,10 @@ end()
 }
 
 user_event::
-user_event()
-{}
+user_event() = default;
 
 user_event::
-~user_event()
-{}
+~user_event() = default;
 
 void user_event::
 mark(const char* label)
@@ -97,7 +95,7 @@ mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label)
   xrtUEMarkTimeNs(static_cast<unsigned long long int>(time_ns.count()), label);
 }
 
-}} // end namespaces profile and xrt
+} // xrt::profile
 
 
 // Anonymous namespace for dynamic loading and connection

@@ -55,6 +55,7 @@ enum {
 	XOCL_DSAFLAG_MPSOC			= (1 << 12),
 	XOCL_DSAFLAG_CUSTOM_DTB                 = (1 << 13),
 	XOCL_DSAFLAG_VERSAL_ES3			= (1 << 14),
+	XOCL_DSAFLAG_EEMI_API_SRST              = (1 << 15),
 };
 
 /* sysmon flags */
@@ -2897,12 +2898,13 @@ struct xocl_subdev_map {
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_VERSAL |				\
 			XOCL_DSAFLAG_FIXED_INTR |			\
-			XOCL_DSAFLAG_DYNAMIC_IP,			\
+			XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_EEMI_API_SRST,			\
 		.subdev_info = RES_MGMT_VSEC,				\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
 		.board_name = "rave",				\
-		.vbnv       = "xilinx_rave"				\
+		.vbnv       = "emb-plus"				\
 	}
 #define	XOCL_BOARD_RAVE_USER_RAPTOR2_ES3				\
 	(struct xocl_board_private){					\
@@ -2912,7 +2914,7 @@ struct xocl_subdev_map {
 		.subdev_info = RES_USER_RAVE_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_RAVE_VSEC),		\
 		.board_name = "rave",				\
-		.vbnv       = "xilinx_rave"				\
+		.vbnv       = "emb-plus"				\
 	}
 
 #define	XOCL_BOARD_AVALON_USER_RAPTOR2				\
@@ -3584,11 +3586,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_V80_USER_RAPTOR2_ES3,	\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5700, PCI_ANY_ID,					\
-		.vbnv = "xilinx_rave",				\
+		.vbnv = "emb-plus",				\
 		.priv_data = &XOCL_BOARD_RAVE_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5701, PCI_ANY_ID,					\
-		.vbnv = "xilinx_rave",				\
+		.vbnv = "emb-plus",				\
 		.priv_data = &XOCL_BOARD_RAVE_USER_RAPTOR2_ES3,	\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x6098, PCI_ANY_ID,					\

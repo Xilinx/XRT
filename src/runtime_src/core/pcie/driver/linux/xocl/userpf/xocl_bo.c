@@ -406,6 +406,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	xobj->user_flags = user_flags;
 	xobj->flags = bo_type;
+	xobj->actual_bo_size = unaligned_size;
 	mutex_lock(&drm_p->mm_lock);
 	/* Assume there is only 1 HOST bank. We ignore the  memidx
 	 * for host bank. This is required for supporting No flag
@@ -956,7 +957,7 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 	xobj = to_xocl_bo(gem_obj);
 	BO_ENTER("xobj %p", xobj);
 
-	args->size = xobj->base.size;
+	args->size = xobj->actual_bo_size;
 	args->flags = xobj->user_flags;
 
 	args->paddr = xocl_bo_physical_addr(xobj);

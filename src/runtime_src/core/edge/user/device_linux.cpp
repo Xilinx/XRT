@@ -138,6 +138,8 @@ struct dev_info
     }
     case key_type::rom_time_since_epoch:
       return static_cast<uint64_t>(deviceInfo.mTimeStamp);
+    case key_type::device_class:
+            return xrt_core::query::device_class::type::alveo;
     default:
       throw query::no_such_key(key);
     }
@@ -265,8 +267,6 @@ struct aie_mem_info_sysfs
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
 
-    ptarray.put("hw_gen",std::to_string(aie_meta.hw_gen));
-
     /* Loop all mem tiles and collect all dma, events, errors, locks status */
     for (int i = 0; i < aie_meta.num_cols; ++i)
       for (int j = 0; j < (aie_meta.num_mem_row-1); ++j)
@@ -275,6 +275,7 @@ struct aie_mem_info_sysfs
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_mem",ptarray);
+    pt.put("hw_gen",std::to_string(aie_meta.hw_gen));
     std::ostringstream oss;
     boost::property_tree::write_json(oss, pt);
     std::string inifile_text = oss.str();
@@ -999,6 +1000,7 @@ initialize_query_table()
   emplace_func0_request<query::rom_time_since_epoch,    dev_info>();
 
   emplace_func0_request<query::clock_freqs_mhz,         dev_info>();
+  emplace_func0_request<query::device_class,            dev_info>();
   emplace_func0_request<query::aie_core_info_sysfs,     aie_core_info_sysfs>();
   emplace_func0_request<query::aie_shim_info_sysfs,     aie_shim_info_sysfs>();
   emplace_func0_request<query::aie_mem_info_sysfs,      aie_mem_info_sysfs>();
@@ -1131,6 +1133,27 @@ import_bo(pid_t pid, shared_handle::export_handle ehdl)
     return xrt::shim_int::import_bo(get_device_handle(), ehdl);
 
   throw xrt_core::error(std::errc::not_supported, __func__);
+}
+
+void
+device_linux::
+get_device_info(xclDeviceInfo2 *info)
+{
+  if (auto ret = xclGetDeviceInfo2(get_device_handle(), info))
+    throw system_error(ret, "failed to get device info");
+}
+
+std::string
+device_linux::
+get_sysfs_path(const std::string& subdev, const std::string& entry)
+{
+  constexpr size_t max_path = 256;
+  std::string path_buf(max_path, '\0');
+
+  if (auto ret = xclGetSysfsPath(get_device_handle(), subdev.c_str(), entry.c_str(), path_buf.data(), max_path))
+    throw system_error(ret, "failed to get device info");
+
+  return path_buf;
 }
 
 ////////////////////////////////////////////////////////////////

@@ -437,6 +437,7 @@ struct drm_zocl_kds {
  * @za_kernels:	pointer of argument array
  * @za_slot_id:	xclbin slot
  * @hw_gen:	aie generation
+ * @partition_id: aie partition id
  **/
 struct drm_zocl_axlf {
 	struct axlf		*za_xclbin_ptr;
@@ -448,6 +449,7 @@ struct drm_zocl_axlf {
 	uint32_t		za_dtbo_path_len;
 	uint8_t		        hw_gen;
 	struct drm_zocl_kds	kds_cfg;
+	uint32_t		partition_id;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32

@@ -108,7 +108,8 @@ namespace xdp::aie::trace {
           XAIE_EVENT_PORT_RUNNING_3_CORE}},
         {"s2mm_channels",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
-          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_RUNNING_1_CORE}},
+          XAIE_EVENT_PORT_RUNNING_0_CORE,                  XAIE_EVENT_PORT_STALLED_0_CORE,
+          XAIE_EVENT_PORT_RUNNING_1_CORE,                  XAIE_EVENT_PORT_STALLED_1_CORE}},
         {"all_stalls_s2mm",
          {XAIE_EVENT_INSTR_CALL_CORE,                      XAIE_EVENT_INSTR_RETURN_CORE,
           XAIE_EVENT_MEMORY_STALL_CORE,                    XAIE_EVENT_STREAM_STALL_CORE, 
@@ -200,12 +201,20 @@ namespace xdp::aie::trace {
         {"output_ports",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
           XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
+        {"input_output_ports",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_RUNNING_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                    XAIE_EVENT_PORT_RUNNING_3_PL}},
         {"input_ports_stalls",
          {XAIE_EVENT_PORT_RUNNING_0_PL,                    XAIE_EVENT_PORT_STALLED_0_PL,
           XAIE_EVENT_PORT_RUNNING_1_PL,                    XAIE_EVENT_PORT_STALLED_1_PL}},
         {"output_ports_stalls",
         {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
-         XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}}
+         XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL}},
+        {"input_output_ports_stalls",
+         {XAIE_EVENT_PORT_RUNNING_0_PL,                     XAIE_EVENT_PORT_STALLED_0_PL,
+          XAIE_EVENT_PORT_RUNNING_1_PL,                     XAIE_EVENT_PORT_STALLED_1_PL,
+          XAIE_EVENT_PORT_RUNNING_2_PL,                     XAIE_EVENT_PORT_STALLED_2_PL,
+          XAIE_EVENT_PORT_RUNNING_3_PL,                     XAIE_EVENT_PORT_STALLED_3_PL}}
     };
 
     if (hwGen == 1) {
@@ -230,12 +239,14 @@ namespace xdp::aie::trace {
           XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL,      XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL};
     }
 
-    eventSets["mm2s_ports"]           = eventSets["input_ports"];
-    eventSets["s2mm_ports"]           = eventSets["output_ports"];
-    eventSets["mm2s_ports_stalls"]    = eventSets["input_ports_stalls"];
-    eventSets["s2mm_ports_stalls"]    = eventSets["output_ports_stalls"];
-    eventSets["mm2s_ports_details"]   = eventSets["input_ports_details"];
-    eventSets["s2mm_ports_details"]   = eventSets["output_ports_details"];
+    eventSets["mm2s_ports"]             = eventSets["input_ports"];
+    eventSets["s2mm_ports"]             = eventSets["output_ports"];
+    eventSets["mm2s_s2mm_ports"]        = eventSets["input_output_ports"];
+    eventSets["mm2s_ports_stalls"]      = eventSets["input_ports_stalls"];
+    eventSets["s2mm_ports_stalls"]      = eventSets["output_ports_stalls"];
+    eventSets["mm2s_s2mm_ports_stalls"] = eventSets["input_output_ports_stalls"];
+    eventSets["mm2s_ports_details"]     = eventSets["input_ports_details"];
+    eventSets["s2mm_ports_details"]     = eventSets["output_ports_details"];
     return eventSets;
   }
 
@@ -500,9 +511,9 @@ namespace xdp::aie::trace {
     msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
     for (auto& g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
       msg << "Resource Group : " << std::left << std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "
@@ -512,9 +523,9 @@ namespace xdp::aie::trace {
     msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
     for (auto& g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
+      auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
+      auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
+      auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_BROADCAST);
       msg << "Resource Group : " << std::left << std::setw(10) << g << " "
           << "Performance Counters : " << pc << " "
           << "Trace Slots : " << ts << " "

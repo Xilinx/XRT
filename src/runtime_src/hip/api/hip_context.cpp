@@ -51,7 +51,7 @@ static device_handle
 hip_ctx_get_device()
 {
   auto ctx = get_current_context();
-  throw_invalid_value_if(!ctx, "Error retrieving context");
+  throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
 
   return ctx->get_dev_id();
 }
@@ -169,7 +169,7 @@ hipCtxGetDevice(hipDevice_t* device)
   try {
     throw_invalid_value_if(!device, "device passed is nullptr");
 
-    *device = xrt::core::hip::hip_ctx_get_device();
+    *device = static_cast<int>(xrt::core::hip::hip_ctx_get_device());
     return hipSuccess;
   }
   catch (const xrt_core::system_error& ex) {
@@ -235,4 +235,3 @@ hipDevicePrimaryCtxRelease(hipDevice_t dev)
   }
   return hipErrorUnknown;
 }
-

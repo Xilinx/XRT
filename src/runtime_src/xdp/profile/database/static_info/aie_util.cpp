@@ -16,6 +16,16 @@
 
 #define XDP_CORE_SOURCE
 
+#include "aie_util.h"
+#include "core/common/api/hw_context_int.h"
+#include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query.h"
+#include "core/common/query_requests.h"
+#include "filetypes/aie_control_config_filetype.h"
+#include "filetypes/aie_trace_config_filetype.h"
+
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <cstdint>
@@ -23,10 +33,6 @@
 #include <memory>
 #include <optional>
 #include <set>
-
-#include "aie_util.h"
-#include "core/common/message.h"
-#include "filetypes/aie_control_config_filetype.h"
 
 // ***************************************************************
 // Anonymous namespace for helper functions local to this file
@@ -61,6 +67,16 @@ namespace xdp::aie {
   std::unique_ptr<xdp::aie::BaseFiletypeImpl>
   determineFileType(boost::property_tree::ptree& aie_project)
   {
+    // aie_trace_config.json format
+    try {
+      int majorVersion = aie_project.get("schema_version.major", 1);
+      if (majorVersion == 2)
+        return std::make_unique<xdp::aie::AIETraceConfigFiletype>(aie_project);
+    }
+    catch(...) {
+      // Most likely not an aie_trace_config
+    }
+
     // aie_control_config.json format
     try {
       auto c = aie_project.get_child_optional("aie_metadata.aiecompiler_options");
@@ -336,10 +352,49 @@ namespace xdp::aie {
     return modNames[mod];
   }
 
+  /****************************************************************************
+   * Convert string to uint8
+   ***************************************************************************/
   uint8_t
   convertStringToUint8(const std::string& input) {
     return static_cast<uint8_t>(std::stoi(input));
   }
 
+  /****************************************************************************
+   * Get AIE partition information
+   ***************************************************************************/
+  std::vector<uint8_t>
+  getPartitionStartColumnsClient(void* handle)
+  {
+    std::vector<uint8_t> startCols;
+
+    try {
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+      auto device = xrt_core::hw_context_int::get_core_device(context);
+      if (device==nullptr)
+        return std::vector<uint8_t>{0};
+
+      auto infoVector = xrt_core::device_query<xrt_core::query::aie_partition_info>(device.get());
+      if (infoVector.empty()) {
+        xrt_core::message::send(severity_level::info, "XRT", "No AIE partition information found.");
+        return std::vector<uint8_t>{0};
+      }
+
+      for (auto& info : infoVector) {
+        auto startCol = static_cast<uint8_t>(info.start_col);
+        xrt_core::message::send(severity_level::info, "XRT",
+            "Partition shift of " + std::to_string(startCol) +
+            " was found, number of columns: " + std::to_string(info.num_cols));
+        startCols.push_back(startCol);
+      }
+    }
+    catch(...) {
+      // Query not available
+      xrt_core::message::send(severity_level::info, "XRT", "Unable to query AIE partition information.");
+      return std::vector<uint8_t>{0};
+    }
+
+    return startCols;
+  }
 
 } // namespace xdp::aie

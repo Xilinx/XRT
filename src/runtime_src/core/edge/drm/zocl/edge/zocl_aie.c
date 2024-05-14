@@ -244,8 +244,46 @@ zocl_cleanup_aie(struct drm_zocl_dev *zdev)
 	return 0;
 }
 
+int 
+zocl_read_aieresbin(struct drm_zocl_dev *zdev, struct axlf* axlf, char __user *xclbin)
+{
+	struct axlf_section_header *header = NULL;
+	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
+	while (header) {
+		int err = 0;
+		long start_col = 0, num_col = 0;
+
+		struct aie_resources_bin *aie_p = (struct aie_resources_bin *)(xclbin + header->m_sectionOffset);
+		void *data_portion = vmalloc(aie_p->m_image_size);
+		if (!data_portion)
+			return -ENOMEM;
+		err = copy_from_user(data_portion, (char *)aie_p + aie_p->m_image_offset, aie_p->m_image_size);
+		if (err) {
+			vfree(data_portion);
+			return err;
+		}
+
+		if (kstrtol((char*)aie_p +aie_p->m_start_column, 10, &start_col) ||
+		    kstrtol((char*)aie_p +aie_p->m_num_columns, 10, &num_col)) {
+			vfree(data_portion);
+			return -EINVAL; 
+		}
+
+		//Call the AIE Driver API 
+		int ret = aie_part_rscmgr_set_static_range(zdev->aie->aie_dev, start_col, num_col, data_portion);
+		if (ret != 0) {
+			vfree(data_portion);
+			return ret;
+		}
+		vfree(data_portion);
+        	header = xrt_xclbin_get_section_hdr_next(axlf, AIE_RESOURCES_BIN, header);
+	}
+	return 0;
+}
+
+
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uint8_t hw_gen)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin, void *aie_res, uint8_t hw_gen)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -255,7 +293,6 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	rval = xrt_xclbin_section_info(axlf, AIE_METADATA, &offset, &size);
 	if (rval)
 		return rval;
-
 	mutex_lock(&zdev->aie_lock);
 
 	/* AIE is reset and no PDI is loaded after reset */
@@ -299,8 +336,9 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
-	/* only aie-1 supports resources */
-	if (hw_gen == 1)
+	req.meta_data = 0;
+
+	if (aie_res) 
 		req.meta_data = (u64)aie_res;
 
 	if (zdev->aie->aie_dev) {
@@ -310,6 +348,12 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uin
 	}
 
 	zdev->aie->aie_dev = aie_partition_request(&req);
+
+	if (!aie_res) {
+		int res = zocl_read_aieresbin(zdev, axlf, xclbin);
+		if (res)
+			goto done;
+	}
 
 	if (IS_ERR(zdev->aie->aie_dev)) {
 		rval = PTR_ERR(zdev->aie->aie_dev);

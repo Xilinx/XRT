@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
 
 #define XRT_CORE_COMMON_SOURCE
-#include "asd_parser.h"
 #include "info_aie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -332,10 +331,6 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_shim);
   }
-  catch (const qr::no_such_key&) {
-    // Not Edge device
-    pt_shim = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::shim);
-  }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
@@ -413,10 +408,6 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_mem);
   }
-  catch (const xrt_core::query::no_such_key&) {
-    // Not Edge device
-    pt_mem = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::mem);
-  }
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
@@ -433,7 +424,7 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
 
     // Populate the mem tile information such as dma, lock, error, events
     // for each tiles.
-    for (const auto& am: pt_mem.get_child("aie_mem")) {
+    for (const auto& am : pt_mem.get_child("aie_mem")) {
       const boost::property_tree::ptree& imem = am.second;
       boost::property_tree::ptree omem;
       int col = imem.get<uint32_t>("col");
@@ -465,10 +456,10 @@ populate_aie_mem(const xrt_core::device* device, const std::string& desc)
     }
 
     pt.add_child("tiles", tile_array);
-
+    
   }
   catch (const std::exception& ex) {
-    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
+    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE mem"));
   }
 
   return pt;
@@ -730,14 +721,14 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
       boost::property_tree::ptree tile;
       tile.put("column", node.second.data());
       tile.put("row", dma_row_it->second.data());
+      if (dma_row_it != g_node.second.end())
+        dma_row_it++;
       // Check whether this core is already added
       if (is_duplicate_core(tile_array, tile))
         continue;
 
       populate_aie_core(core_info, tile);
       tile_array.push_back({"", tile});
-      if (dma_row_it != g_node.second.end())
-        dma_row_it++;
     }
   }
 }
@@ -848,6 +839,11 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
   pt.put("schema_version.minor", pt_aie.get<uint32_t>("schema_version.minor"));
   pt.put("schema_version.patch", pt_aie.get<uint32_t>("schema_version.patch"));
 
+  auto start_col = 0;
+  auto overlay_start_cols = pt_aie.get_child_optional("aie_metadata.driver_config.partition_overlay_start_cols");
+  if (overlay_start_cols && !overlay_start_cols->empty()) 
+    start_col = overlay_start_cols->begin()->second.get_value<uint8_t>();
+
   // Extract Graphs from aie_metadata and populate the aie
   for (auto& gr: pt_aie.get_child("aie_metadata.graphs", empty_pt)) {
     boost::property_tree::ptree& igraph = gr.second;
@@ -863,9 +859,9 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
     auto memaddr_it = gr.second.get_child("iteration_memory_addresses").begin();
     for (const auto& node : gr.second.get_child("core_columns", empty_pt)) {
       boost::property_tree::ptree tile;
-      tile.put("column", node.second.data());
+      tile.put("column", (std::stoul(node.second.data()) + start_col));
       tile.put("row", row_it->second.data());
-      tile.put("memory_column", memcol_it->second.data());
+      tile.put("memory_column", (std::stoul(memcol_it->second.data()) + start_col));
       tile.put("memory_row", memrow_it->second.data());
       tile.put("memory_address", memaddr_it->second.data());
       populate_aie_core(core_info, tile);
@@ -899,65 +895,6 @@ populate_aie_from_metadata(const xrt_core::device* device, boost::property_tree:
   populate_aie_core_gmio(pt_aie, pt);
 }
 
-// TODO: Remove this function
-static void
-add_dummy_graphs(boost::property_tree::ptree& pt, boost::property_tree::ptree& tile_array)
-{
-  boost::property_tree::ptree graph;
-  boost::property_tree::ptree graph_array;
-
-  graph.put("id", "");
-  graph.put("name", "");
-  graph.put("status", "");
-  graph.add_child("tile", tile_array);
-  
-  graph_array.push_back({"", graph});
-    
-  pt.add_child("graphs", graph_array);
-}
-
-// Populate AIE core information
-static void
-populate_aie_helper(const xrt_core::device* device, boost::property_tree::ptree& pt)
-{
-  boost::property_tree::ptree core_info;
-
-  try {
-    boost::property_tree::ptree tile_array;
-    asd_parser::aie_tiles_info tiles_info{0};
-    uint32_t cols_filled = 0;
-
-    core_info = asd_parser::get_formated_tiles_info(device, asd_parser::aie_tile_type::core, tiles_info,
-                                                    cols_filled);
-
-    pt.put("schema_version.major", core_info.get<uint32_t>("schema_version.major"));
-    pt.put("schema_version.minor", core_info.get<uint32_t>("schema_version.minor"));
-
-    for (uint16_t col = 0; col < tiles_info.cols; col++) {
-      // skip this col if not filled
-      if (!(cols_filled & (1 << col)))
-        continue;
-
-      for (uint16_t row = tiles_info.core_row_start; row < tiles_info.core_row_start + tiles_info.core_rows; row++) {
-        boost::property_tree::ptree tile;
-        tile.put("column", col);
-        tile.put("row", row);
-        populate_aie_core(core_info, tile);
-
-        tile_array.push_back({"", tile});
-      }
-    }
-
-    // Top level reporter expects graphs, so adding dummy entries
-    // TODO: remove this function
-    add_dummy_graphs(pt, tile_array);
-  }
-  catch (const std::exception& ex) {
-    pt.put("error_msg", ex.what());
-    return;
-  }
-}
-
 boost::property_tree::ptree
 populate_aie(const xrt_core::device* device, const std::string& desc)
 {
@@ -970,10 +907,6 @@ populate_aie(const xrt_core::device* device, const std::string& desc)
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_aie);
     populate_aie_from_metadata(device, pt_aie, pt);
-  }
-  catch (const qr::no_such_key&) {
-    // Populate aie info for PCIe platforms
-    populate_aie_helper(device, pt);
   }
   catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));

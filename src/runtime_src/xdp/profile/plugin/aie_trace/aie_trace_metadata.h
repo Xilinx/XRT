@@ -110,6 +110,11 @@ class AieTraceMetadata {
     }
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
 
+    bool isGMIOMetric(const std::string& metric) const {
+      return gmioMetricSets.find(metric) != gmioMetricSets.end();
+    }
+    bool configMetricsEmpty() const { return configMetrics.empty(); }
+
   private:
     bool useDelay = false;
     bool useUserControl = false;
@@ -148,7 +153,8 @@ class AieTraceMetadata {
                                 "all_stalls", "all_dma", "all_stalls_dma",
                                 "all_stalls_s2mm", "all_stalls_mm2s",
                                 "s2mm_channels", "mm2s_channels",
-                                "s2mm_channels_stalls", "mm2s_channels_stalls"} },
+                                "s2mm_channels_stalls", "mm2s_channels_stalls",
+                                "execution"} },
       { module_type::mem_tile, {"input_channels", "input_channels_stalls", 
                                 "output_channels", "output_channels_stalls",
                                 "s2mm_channels", "s2mm_channels_stalls", 
@@ -159,8 +165,14 @@ class AieTraceMetadata {
                                 "input_ports_details", "output_ports_details",
                                 "mm2s_ports", "s2mm_ports",
                                 "mm2s_ports_stalls", "s2mm_ports_stalls", 
-                                "mms2_ports_details", "s2mm_ports_details"} }
+                                "mm2s_ports_details", "s2mm_ports_details",
+                                "input_output_ports", "mm2s_s2mm_ports",
+                                "input_output_ports_stalls", "mm2s_s2mm_ports_stalls"} }
     };
+
+    std::set<std::string> gmioMetricSets {
+                                "input_ports_details", "output_ports_details",
+                                "mm2s_ports_details", "s2mm_ports_details" };
 
     void* handle;
     xrt::hw_context hwContext;

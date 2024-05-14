@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,7 +41,7 @@ namespace xdp::hw_emu {
       if (xrt_core::config::get_sc_profile())
         xdp::hw_emu::sc::load();
       if (xrt_core::config::get_pl_deadlock_detection())
-        xdp::pl_deadlock::load();
+        xdp::hw_emu::pl_deadlock::load();
     }
     catch (...) {
       // Boost property tree might throw an error.  If that happens

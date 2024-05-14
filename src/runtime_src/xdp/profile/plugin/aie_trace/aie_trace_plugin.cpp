@@ -19,7 +19,6 @@
 #include "core/common/api/device_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -130,10 +129,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #else
   // Update the static database with information from xclbin
   (db->getStaticInfo()).updateDevice(deviceID, handle);
-  struct xclDeviceInfo2 info;
-
-  if (xclGetDeviceInfo2(handle, &info) == 0)
-    (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+  std::string deviceName = util::getDeviceName(handle);
+  if (deviceName != "")
+    (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
 
 #endif
 
@@ -144,6 +142,13 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     xrt_core::message::send(severity_level::warning, "XRT", "AIE Metadata is empty for AIE Trace");
     return;
   }
+  if (AIEData.metadata->configMetricsEmpty()) {
+    AIEData.valid = false;
+    xrt_core::message::send(severity_level::warning, "XRT",
+                            AIE_TRACE_TILES_UNAVAILABLE);
+    return;
+  }
+
 #ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);
   AIEData.implementation = std::make_unique<AieTrace_WinImpl>(db, AIEData.metadata);
@@ -158,7 +163,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
 #ifdef XDP_CLIENT_BUILD
   if (deviceIntf == nullptr)
-    deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new ClientDevice(handle));
+    deviceIntf = db->getStaticInfo().createDeviceIntfClient(deviceID, new ClientDevice(handle));
 #else
   if (deviceIntf == nullptr)
     deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
@@ -317,9 +322,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #ifdef _WIN32
     std::string deviceName = "win_device";
 #else
-    struct xclDeviceInfo2 info;
-    xclGetDeviceInfo2(handle, &info);
-    std::string deviceName = std::string(info.mName);
+    std::string deviceName = util::getDeviceName(handle);
 #endif
 
     // Writer for timestamp file

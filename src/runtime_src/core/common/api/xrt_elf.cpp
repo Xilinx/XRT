@@ -22,19 +22,25 @@ class elf_impl
 {
   ELFIO::elfio m_elf;
 public:
-  elf_impl(const std::string& fnm)
+  explicit elf_impl(const std::string& fnm)
   {
     if (!m_elf.load(fnm))
       throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
   }
 
-  const ELFIO::elfio&
+  explicit elf_impl(std::istream& stream)
+  {
+    if (!m_elf.load(stream))
+      throw std::runtime_error("not a valid ELF stream");
+  }
+
+  [[nodiscard]] const ELFIO::elfio&
   get_elfio() const
   {
     return m_elf;
   }
 
-  xrt::uuid
+  [[nodiscard]] xrt::uuid
   get_cfg_uuid() const
   {
     return {}; // tbd
@@ -83,6 +89,11 @@ namespace xrt {
 elf::
 elf(const std::string& fnm)
   : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(fnm)}
+{}
+
+elf::
+elf(std::istream& stream)
+  : detail::pimpl<elf_impl>{std::make_shared<elf_impl>(stream)}
 {}
 
 xrt::uuid

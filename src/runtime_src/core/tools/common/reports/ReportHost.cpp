@@ -112,6 +112,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
 
   _output << "System Configuration\n";
+  const boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
   try {
     _output << boost::format("  %-20s : %s\n") % "OS Name" % _pt.get<std::string>("host.os.sysname");
     _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release");
@@ -151,16 +152,21 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
       if (boost::iequals(drv_name, "xclmgmt") && boost::iequals(driver.get<std::string>("version", "N/A"), "unknown"))
         _output << "WARNING: xclmgmt version is unknown. Is xclmgmt driver loaded? Or is MSD/MPD running?" << std::endl;
     }
-    _output << std::endl;
   }
   catch (const boost::property_tree::ptree_error &ex) {
     throw xrt_core::error(boost::str(boost::format("%s. Please contact your Xilinx representative to fix the issue")
          % ex.what()));
   }
 
-  _output << "Devices present\n";
-  const boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
+  try {
+    if (!available_devices.empty())
+      _output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+  }
+  catch (const xrt_core::query::exception&) {
+    //no device available
+  }
 
+  _output << std::endl << "Devices present\n";
   if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
 

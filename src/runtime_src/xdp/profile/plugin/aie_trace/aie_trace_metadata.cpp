@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,8 +26,7 @@
 
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
-#include "core/edge/common/aie_parser.h"
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -516,6 +515,8 @@ namespace xdp {
           tile_type tile;
           tile.col = col;
           tile.row = row;
+          tile.active_core   = true;
+          tile.active_memory = true;
 
           // Make sure tile is used
           if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -565,6 +566,8 @@ namespace xdp {
       tile_type tile;
       tile.col = col;
       tile.row = row;
+      tile.active_core   = true;
+      tile.active_memory = true;
 
       // Make sure tile is used
       if (allValidTiles.find(tile) == allValidTiles.end()) {
@@ -773,6 +776,7 @@ namespace xdp {
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting
+    // all:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
@@ -782,16 +786,25 @@ namespace xdp {
         continue;
 
       processed.insert(i);
-      uint8_t channelId = (metrics[i].size() < 3) ? 0 : aie::convertStringToUint8(metrics[i][2]);
-      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId);
+      
+      // By-default select both the channels (all:output_ports selects both channels)
+      uint8_t channelId0 = 0;
+      uint8_t channelId1 = 1;
+      if (metrics[i].size()>2) {
+        channelId0 = aie::convertStringToUint8(metrics[i][2]);
+        channelId1 = (metrics[i].size() < 4) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
+      }
 
+      auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1], channelId0);
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][1];
-        configChannel0[t] = channelId;
+        configChannel0[t] = channelId0;
+        configChannel1[t] = channelId1;
       }
     }  // Pass 1
 
     // Pass 2 : process only range of tiles metric setting
+    // <minclumn>:<maxcolumn>:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
         continue;
@@ -818,10 +831,13 @@ namespace xdp {
         continue;
       }
 
-      uint8_t channelId = 0;
-      if (metrics[i].size() == 4) {
+      // By-default select both the channels
+      uint8_t channelId0 = 0;
+      uint8_t channelId1 = 1;
+      if (metrics[i].size() >= 4) {
         try {
-          channelId = aie::convertStringToUint8(metrics[i][3]);
+          channelId0 = aie::convertStringToUint8(metrics[i][3]);
+          channelId1 = (metrics[i].size() == 4) ? channelId0 : aie::convertStringToUint8(metrics[i][4]);
         }
         catch (std::invalid_argument const&) {
           // Expected channel Id is not an integer. Give warning and ignore.
@@ -834,15 +850,17 @@ namespace xdp {
 
       processed.insert(i);
       auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][2],
-                                          channelId, true, minCol, maxCol);
+                                          channelId0, true, minCol, maxCol);
 
       for (auto& t : tiles) {
         configMetrics[t] = metrics[i][2];
-        configChannel0[t] = channelId;
+        configChannel0[t] = channelId0;
+        configChannel1[t] = channelId1;
       }
     }  // Pass 2
 
     // Pass 3 : process only single tile metric setting
+    // <singleColumn>:<metric>[:<channel0>[:<channel1>]]
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Skip if already processed or invalid format
       if ((processed.find(i) != processed.end()) || (metrics[i].size() < 2))
@@ -864,11 +882,14 @@ namespace xdp {
                                   "is not an integer and hence skipped.");
           continue;
         }
-
-        uint8_t channelId = 0;
-        if (metrics[i].size() == 3) {
+ 
+        // By-default select both the channels
+        uint8_t channelId0 = 0;
+        uint8_t channelId1 = 1;
+        if (metrics[i].size() >= 3) {
           try {
-            channelId = aie::convertStringToUint8(metrics[i][2]);
+            channelId0 = aie::convertStringToUint8(metrics[i][2]);
+            channelId1 = (metrics[i].size() == 3) ? channelId0 : aie::convertStringToUint8(metrics[i][3]);
           }
           catch (std::invalid_argument const&) {
             // Expected channel Id is not an integer, give warning and ignore
@@ -880,11 +901,12 @@ namespace xdp {
         }
 
         auto tiles = metadataReader->getInterfaceTiles(metrics[i][0], "all", metrics[i][1],
-                                            channelId, true, col, col);
+                                            channelId0, true, col, col);
 
         for (auto& t : tiles) {
           configMetrics[t] = metrics[i][1];
-          configChannel0[t] = channelId;
+          configChannel0[t] = channelId0;
+          configChannel1[t] = channelId1;
         }
       }
     }  // Pass 3
@@ -893,6 +915,7 @@ namespace xdp {
 
     // Set default, check validity, and remove "off" tiles
     bool showWarning = true;
+    bool showWarningGMIOMetric = true;
     std::vector<tile_type> offTiles;
     auto defaultSet = defaultSets[module_type::shim];
     auto metricVec = metricSets[module_type::shim];
@@ -903,6 +926,23 @@ namespace xdp {
         continue;
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Check for PLIO tiles and it's compatible metric settings
+      if ((tileMetric.first.subtype == 0) && isGMIOMetric(tileMetric.second)) {
+        if (showWarningGMIOMetric) {
+          std::string msg = "Configured interface_tile metric set " + tileMetric.second 
+                          + " is only applicable for GMIO type tiles.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          showWarningGMIOMetric = false;
+        }
+
+        std::stringstream msg;
+        msg << "Configured interface_tile metric set metric set " << tileMetric.second;
+        msg << " skipped for tile (" << +tileMetric.first.col << ", " << +tileMetric.first.row << ").";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         offTiles.push_back(tileMetric.first);
         continue;
       }

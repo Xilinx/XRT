@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -86,9 +86,6 @@ namespace xdp {
     std::vector<Monitor*> aims ;
     std::vector<Monitor*> asms ;
 
-    // HLS deadlock diagnosis registers
-    std::unique_ptr<ip_metadata> ip_metadata_section = nullptr;
-    
     // Informs if this PLInfo is valid for current xclbins configuration
     bool valid = true ;
 

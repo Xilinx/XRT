@@ -368,7 +368,7 @@ namespace {
         // : ((mod == XAIE_MEM_MOD) ? config.mMemoryEndEvents[static_cast<MemoryMetrics>(metricSet)]
         // : config.mShimEndEvents[static_cast<InterfaceMetrics>(metricSet)]);
 
-        auto numFreeCtr = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
+        auto numFreeCtr = stats.getNumRsc(loc, mod, xaiefal::XAIE_PERFCOUNT);
         auto iter0 = configChannel0.find(tile);
         auto iter1 = configChannel1.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;

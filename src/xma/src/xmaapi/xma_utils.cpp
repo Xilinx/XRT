@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019 Xilinx, Inc
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
@@ -11,6 +11,7 @@
 #include "lib/xmalimits_lib.h"
 #include "ert.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "core/pcie/linux/pcidev.h"
 #include "core/common/utils.h"
 #include "core/common/api/bo.h"
@@ -404,7 +405,8 @@ void get_system_info() {
 
     while (!g_xma_singleton->log_msg_list.empty()) {
         auto itr1 = g_xma_singleton->log_msg_list.begin();
-        xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+        xrt_core::message::send(static_cast<xrt_core::message::severity_level>(itr1->level),
+                                "XMA", itr1->msg.c_str());
         g_xma_singleton->log_msg_list.pop_front();
     }
 

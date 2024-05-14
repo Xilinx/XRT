@@ -30,7 +30,6 @@
 
 #include "core/common/message.h"
 #include "core/common/time.h"
-#include "core/common/xrt_profiling.h"
 #include "core/edge/user/shim.h"
 #include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/database/database.h"
@@ -154,7 +153,7 @@ namespace xdp {
 
     // Check trace events for interface tiles
     if (type == module_type::shim) {
-      available = stats.getNumRsc(loc, XAIE_PL_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+      available = stats.getNumRsc(loc, XAIE_PL_MOD, xaiefal::XAIE_TRACEEVENT);
       required = interfaceTileEventSets[metricSet].size();
       if (available < required) {
         msg << "Available interface tile trace slots for AIE trace : " << available << std::endl
@@ -166,7 +165,7 @@ namespace xdp {
     }
 
     // Memory module/tile perf counters
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_PERFCOUNT);
     required = memoryCounterStartEvents.size();
     if (available < required) {
       msg << "Available memory performance counters for AIE trace : " << available << std::endl
@@ -176,7 +175,7 @@ namespace xdp {
     }
 
     // Memory module/tile trace slots
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACEEVENT);
     required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
     if (available < required) {
       msg << "Available memory trace slots for AIE trace : " << available << std::endl
@@ -190,7 +189,7 @@ namespace xdp {
       return true;
 
     // Core module perf counters
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_PERFCOUNT);
     required = coreCounterStartEvents.size();
     if (metadata->getUseDelay()) {
       ++required;
@@ -207,7 +206,7 @@ namespace xdp {
     }
 
     // Core module trace slots
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACEEVENT);
     required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
     if (available < required) {
       msg << "Available core module trace slots for AIE trace : " << available << std::endl
@@ -217,7 +216,7 @@ namespace xdp {
     }
 
     // Core module broadcasts. 2 events for starting/ending trace
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_BROADCAST);
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
       msg << "Available core module broadcast channels for AIE trace : " << available << std::endl
@@ -328,13 +327,25 @@ namespace xdp {
       auto typeInt    = static_cast<int>(type);
       auto& xaieTile  = aieDevice->tile(col, row);
       auto loc        = XAie_TileLoc(col, row);
-      
-      if ((type == module_type::core) && tile.is_dma_only && !aie::trace::isDmaSet(metricSet))
-        continue;
+
+      if ((type == module_type::core) && !aie::trace::isDmaSet(metricSet)) {
+        // If we're not looking at DMA events, then don't display the DMA
+        // If core is not active (i.e., DMA-only tile), then ignore this tile
+        if (tile.active_core)
+          tile.active_memory = false;
+        else
+          continue;
+      }
 
       std::string tileName = (type == module_type::mem_tile) ? "memory" 
                            : ((type == module_type::shim) ? "interface" : "AIE");
       tileName.append(" tile (" + std::to_string(col) + "," + std::to_string(row) + ")");
+
+      if (aie::isInfoVerbosity()) {
+        std::stringstream infoMsg;
+        infoMsg << "Configuring " << tileName << " for trace using metric set " << metricSet;
+        xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
+      }
 
       xaiefal::XAieMod core;
       xaiefal::XAieMod memory;
@@ -361,6 +372,30 @@ namespace xdp {
       auto cfgTile = std::make_unique<aie_cfg_tile>(col, row, type);
       cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
+      cfgTile->active_core = tile.active_core;
+      cfgTile->active_memory = tile.active_memory;
+
+      // Catch core execution trace
+      if ((type == module_type::core) && (metricSet == "execution")) {
+        // Set start/end events, use execution packets, and start trace module 
+        auto coreTrace = core.traceControl();
+        if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK)
+          continue;
+        coreTrace->reserve();
+
+        // Driver requires at least one, non-zero trace event
+        uint8_t slot;
+        coreTrace->reserveTraceSlot(slot);
+        coreTrace->setTraceEvent(slot, XAIE_EVENT_TRUE_CORE);
+
+        coreTrace->setMode(XAIE_TRACE_INST_EXEC);
+        XAie_Packet pkt = {0, 0};
+        coreTrace->setPkt(pkt);
+        coreTrace->start();
+
+        (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
+        continue;
+      }
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
@@ -376,12 +411,6 @@ namespace xdp {
       }
       else if (type == module_type::shim) {
         interfaceEvents = interfaceTileEventSets[metricSet];
-      }
-
-      if (aie::isInfoVerbosity()) {
-        std::stringstream infoMsg;
-        infoMsg << "Configuring " << tileName << " for trace using metric set " << metricSet;
-        xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
       }
 
       // Check Resource Availability

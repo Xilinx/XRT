@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -56,6 +56,7 @@ namespace xdp {
   struct DeviceInfo ;
   struct ConfigInfo ;
   struct XclbinInfo ;
+  class  IpMetadata;
 
   //Forward declaration of XDP's device structure
   class Device;
@@ -125,7 +126,6 @@ namespace xdp {
     void setXclbinName(XclbinInfo*, const char*, size_t);
     void updateSystemDiagram(const char*, size_t);
     void addPortInfo(XclbinInfo*, const char*, size_t);
-    void parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that initialize the structure of the debug/profiling IP
     void initializeAM(DeviceInfo* devInfo, const std::string& name,
@@ -139,7 +139,6 @@ namespace xdp {
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
     void initializeFIFO(DeviceInfo* devInfo) ;
-    void initializeXrtIP(XclbinInfo* xclbin);
 
     void setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin);
     void setAIEGeneration(uint64_t deviceId, xrt::xclbin xrtXclbin) ;
@@ -168,6 +167,10 @@ namespace xdp {
 
     XDP_CORE_EXPORT bool getAieApplication() const ;
     XDP_CORE_EXPORT void setAieApplication() ;
+
+    XDP_CORE_EXPORT 
+    std::unique_ptr<IpMetadata> populateIpMetadata(uint64_t deviceId, 
+                                  const std::shared_ptr<xrt_core::device>&);
 
     // Due to changes in hardware IP, we can only support profiling on
     // xclbins built using 2019.2 or later tools.  Each xclbin is stamped
@@ -256,6 +259,7 @@ namespace xdp {
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
     XDP_CORE_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
+    XDP_CORE_EXPORT DeviceIntf* createDeviceIntfClient(uint64_t deviceId, xdp::Device* dev);
     XDP_CORE_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_CORE_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_CORE_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;

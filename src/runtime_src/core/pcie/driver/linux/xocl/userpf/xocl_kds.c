@@ -2251,6 +2251,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		goto out;
 	}
 
+        XDEV(xdev)->kds.cu_mgmt.rw_shared = cfg.rw_shared;
+
 	/* Don't send config command if ERT doesn't present */
 	if (!XDEV(xdev)->kds.ert)
 		goto create_regular_cu;

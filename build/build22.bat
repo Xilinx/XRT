@@ -61,15 +61,18 @@ IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS
   if [%1] == [-nocmake] (
     set NOCMAKE=1
   ) else (
+  if [%1] == [-hip] (
+    set CMAKEFLAGS=%CMAKEFLAGS% -DXRT_ENABLE_HIP=ON
+  ) else (
     echo Unknown option: %1
     goto Help
-  ))))))))))))
+  )))))))))))))
   shift
   goto parseArgs
 
 :argsParsed
 
-set CMAKEFLAGS=-DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%EXT_DIR% -DBOOST_ROOT=%EXT_DIR% -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+set CMAKEFLAGS=%CMAKEFLAGS% -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%EXT_DIR% -DBOOST_ROOT=%EXT_DIR% -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ECHO CMAKEFLAGS=%CMAKEFLAGS%
 
 if [%DEBUG%] == [1] (
@@ -99,6 +102,7 @@ ECHO [-xclmgmt arg]             - The directory to the xclmgmt drivers (used wit
 ECHO [-xocluser arg]            - The directory to the xocluser drivers (used with [-package])
 ECHO [-xclmgmt2 arg]            - The directory to the xclmgmt2 drivers (used with [-package])
 ECHO [-xocluser2 arg]           - The directory to the xocluser2 drivers (used with [-package])
+ECHO [-hip]                     - Enable hip library build
 GOTO:EOF
 
 REM --------------------------------------------------------------------------

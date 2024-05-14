@@ -199,6 +199,7 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro,
 /* bifurcation-reset.c */
 long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,
 	struct xclmgmt_dev *buddy_lro, bool force);
+int xclmgmt_eemi_pmc_srst(struct xclmgmt_dev *lro, bool force);
 /* firewall.c */
 void init_firewall(struct xclmgmt_dev *lro);
 void xclmgmt_killall_processes(struct xclmgmt_dev *lro);

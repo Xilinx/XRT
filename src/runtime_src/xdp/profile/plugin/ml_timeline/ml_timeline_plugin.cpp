@@ -16,21 +16,15 @@
 
 #define XDP_PLUGIN_SOURCE
 
-#include <array>
-
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 #include "core/common/api/hw_context_int.h"
 
-#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 
 #ifdef XDP_CLIENT_BUILD
-  #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
+#include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
 #endif
 
 namespace xdp {
@@ -65,90 +59,68 @@ namespace xdp {
     return MLTimelinePlugin::live;
   }
 
-  uint64_t MLTimelinePlugin::getDeviceIDFromHandle(void* handle)
-  { 
-    auto itr = handleToDeviceData.find(handle);
-    if (itr != handleToDeviceData.end())
-      return itr->second.deviceID;
-
-#ifdef XDP_CLIENT_BUILD
-    return db->addDevice("win_device");
-#else
-    return db->addDevice(""); // Not supported for non-client device 
-#endif
-  }
-
-  void MLTimelinePlugin::updateDevice(void* handle)
+  void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
   {
-    if (!handle)
+#ifdef XDP_CLIENT_BUILD
+    if (mHwCtxImpl) {
+      // For client device flow, only 1 device and xclbin is supported now.
       return;
-
-    uint64_t deviceID = getDeviceIDFromHandle(handle);
-
-    (db->getStaticInfo()).updateDevice(deviceID, handle);
-#ifdef XDP_CLIENT_BUILD
-    (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
-#endif
-
-    // Clean out old data every time xclbin gets updated
-    if (handleToDeviceData.find(handle) != handleToDeviceData.end())
-      handleToDeviceData.erase(handle);
-
-    //Setting up struct 
-    auto& DeviceDataEntry = handleToDeviceData[handle];
-
-    DeviceDataEntry.deviceID = deviceID;
-    DeviceDataEntry.valid = true; // initialize struct
-
-#ifndef XDP_CLIENT_BUILD
-    // Get Device info // Investigate further (isDeviceReady should be always called??)
-    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
-      // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceID, handle);
-      {
-        struct xclDeviceInfo2 info;
-        if (xclGetDeviceInfo2(handle, &info) == 0)
-          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
-      }
     }
-#endif
+    mHwCtxImpl = hwCtxImpl;
 
+    xrt::hw_context hwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(mHwCtxImpl);
+    std::shared_ptr<xrt_core::device> coreDevice = xrt_core::hw_context_int::get_core_device(hwContext);
 
-#ifdef XDP_CLIENT_BUILD
+    // Only one device for Client Device flow
+    uint64_t deviceId = db->addDevice("win_device");
+    (db->getStaticInfo()).updateDeviceClient(deviceId, coreDevice);
+    (db->getStaticInfo()).setDeviceName(deviceId, "win_device");
+
+    DeviceDataEntry.valid = true;
     DeviceDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
-    DeviceDataEntry.implementation->setHwContext(xrt_core::hw_context_int::create_hw_context_from_implementation(handle));
+    DeviceDataEntry.implementation->setHwContext(hwContext);
 #endif
   }
 
-  void MLTimelinePlugin::finishflushDevice(void* handle)
+  void MLTimelinePlugin::finishflushDevice(void* hwCtxImpl)
   {
-    if (!handle)
-      return;
-
-    auto itr = handleToDeviceData.find(handle);
-    if (itr == handleToDeviceData.end()) {
+#ifdef XDP_CLIENT_BUILD
+    if (!mHwCtxImpl || !DeviceDataEntry.valid) {
       return;
     }
-    auto& DeviceDataEntry = itr->second;
-    if (!DeviceDataEntry.valid)
-      return;
 
-    DeviceDataEntry.implementation->finishflushDevice(handle);
-    handleToDeviceData.erase(handle);
+    if (hwCtxImpl != mHwCtxImpl) {
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+          "Cannot retrieve ML Timeline data as a new HW Context Implementation is passed.");
+      return;
+    } 
+    DeviceDataEntry.valid = false;
+    DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);
+#endif
   }
 
   void MLTimelinePlugin::writeAll(bool /*openNewFiles*/)
   {
-    for (const auto& entry : handleToDeviceData) {
-      auto& DeviceDataEntry = entry.second;
-
-      if (!DeviceDataEntry.valid) {
-        continue;
-      }
-      DeviceDataEntry.implementation->finishflushDevice(entry.first);
-      handleToDeviceData.erase(entry.first);
+#ifdef XDP_CLIENT_BUILD
+    if (!mHwCtxImpl || !DeviceDataEntry.valid) {
+      return;
     }
-    handleToDeviceData.clear();
+    DeviceDataEntry.valid = false;
+    DeviceDataEntry.implementation->finishflushDevice(mHwCtxImpl);
+#endif
   }
 
+  void MLTimelinePlugin::broadcast(VPDatabase::MessageType msgType, void* /*blob*/)
+  {
+    switch(msgType)
+    {
+      case VPDatabase::READ_RECORD_TIMESTAMPS:
+      {
+        writeAll(false);
+        break;
+      }
+      default:
+        break;
+    }
+  }
 }

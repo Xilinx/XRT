@@ -9,11 +9,11 @@
   STAP_PROBEV(xrt, probe##_log, ##__VA_ARGS__)
 
 #define XRT_DETAIL_TRACE_POINT_SCOPE(probe)                             \
-  struct xrt_trace_scope {                                              \
-    xrt_trace_scope()                                                   \
-    { DTRACE_PROBE(xrt, probe##_enter); }                               \
-    ~xrt_trace_scope()                                                  \
-    { DTRACE_PROBE(xrt, probe##_exit); }                                \
+  struct xrt_trace_scope {                  /* NOLINT */                \
+    xrt_trace_scope()                       /* NOLINT */                \
+    { DTRACE_PROBE(xrt, probe##_enter); }   /* NOLINT */                \
+    ~xrt_trace_scope()                      /* NOLINT */                \
+    { DTRACE_PROBE(xrt, probe##_exit); }    /* NOLINT */                \
   } xrt_trace_scope_instance
 
 #define XRT_DETAIL_TRACE_POINT_SCOPE1(probe, arg1)                      \

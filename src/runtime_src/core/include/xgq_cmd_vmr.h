@@ -110,6 +110,7 @@ enum xgq_cmd_vmr_control_type {
 	XGQ_CMD_BOOT_BACKUP	= 0x2,
 	XGQ_CMD_PROGRAM_SC	= 0x3,
 	XGQ_CMD_VMR_DEBUG	= 0x4,
+	XGQ_CMD_VMR_EEMI_SRST	= 0x5, /* Request VMR to perform SRST using EEMI based PMC API request */
 };
 
 /**
@@ -248,7 +249,8 @@ struct xgq_cmd_vmr_control_payload {
 	uint32_t req_type:8;
 	uint32_t debug_level:3;
 	uint32_t debug_type:5;
-	uint32_t rsvd:16;
+	uint32_t eemi_boot_from_backup:1;
+	uint32_t rsvd:15;
 };
 
 /**

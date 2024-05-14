@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,44 +18,22 @@
 #define XDP_PLUGIN_SOURCE
 
 #include <map>
+#include <string>
+
+#include "core/common/config_reader.h"
+#include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/time.h"
+#include "core/include/experimental/xrt-next.h"
+#include "core/common/query_requests.h"
+#include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/plugin/power/power_plugin.h"
 #include "xdp/profile/writer/power/power_writer.h"
 #include "xdp/profile/plugin/vp_base/info.h"
-#include "core/common/system.h"
-#include "core/common/time.h"
-#include "core/common/config_reader.h"
-#include "core/include/experimental/xrt-next.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
-
-  const char* PowerProfilingPlugin::powerFiles[] = 
-    {
-      "xmc_12v_aux_curr",
-      "xmc_12v_aux_vol",
-      "xmc_12v_pex_curr",
-      "xmc_12v_pex_vol",
-      "xmc_vccint_curr",
-      "xmc_vccint_vol",
-      "xmc_3v3_pex_curr",
-      "xmc_3v3_pex_vol",
-      "xmc_cage_temp0",
-      "xmc_cage_temp1",
-      "xmc_cage_temp2",
-      "xmc_cage_temp3",
-      "xmc_dimm_temp0",
-      "xmc_dimm_temp1",
-      "xmc_dimm_temp2",
-      "xmc_dimm_temp3",
-      "xmc_fan_temp",
-      "xmc_fpga_temp",
-      "xmc_hbm_temp",
-      "xmc_se98_temp0",
-      "xmc_se98_temp1",
-      "xmc_se98_temp2",
-      "xmc_vccint_temp",
-      "xmc_fan_rpm"      
-    } ;
 
   PowerProfilingPlugin::PowerProfilingPlugin() :
     XDPPlugin(), keepPolling(true), pollingInterval(20)
@@ -69,49 +47,41 @@ namespace xdp {
     //  different boards.  We number them all individually.
     std::map<std::string, uint64_t> deviceNumbering ;
 
-    // Just like HAL level device profiling, go through the devices 
-    //  that exist in order to find all of the sysfs paths
-    uint64_t index = 0 ;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    while (handle != nullptr)
-    {
-      // For each device, keep track of the paths to the sysfs files
-      std::vector<std::string> paths ;
-      for (auto f : powerFiles)
-      {
-        char sysfsPath[512] ;
-        xclGetSysfsPath(handle, "xmc", f, sysfsPath, 512) ;
-        paths.push_back(sysfsPath) ;
-      }
-      filePaths.push_back(paths) ;
+   uint32_t numDevices = xrt_core::get_total_devices(true).second;
+   uint32_t index = 0;
+   while (index < numDevices) {
+     try {
+       xrtDevices.push_back(std::make_unique<xrt::device>(index));
+       auto ownedHandle = xrtDevices[index]->get_handle()->get_device_handle();
 
-      // Determine the name of the device
-      struct xclDeviceInfo2 info ;
-      xclGetDeviceInfo2(handle, &info) ;
-      std::string deviceName = std::string(info.mName) ;
+        // Determine the name of the device
+        std::string deviceName = util::getDeviceName(ownedHandle);
+  
+        if (deviceNumbering.find(deviceName) == deviceNumbering.end()) {
+          deviceNumbering[deviceName] = 0 ;
+        }
+        deviceName += "-" ;
+        deviceName += std::to_string(deviceNumbering[deviceName]) ;
+        deviceNumbering[deviceName]++ ;
 
-      if (deviceNumbering.find(deviceName) == deviceNumbering.end()) {
-        deviceNumbering[deviceName] = 0 ;
-      }
-      deviceName += "-" ;
-      deviceName += std::to_string(deviceNumbering[deviceName]) ;
-      deviceNumbering[deviceName]++ ;
-
-      std::string outputFile = "power_profile_" + deviceName + ".csv" ; 
-
-      VPWriter* writer = new PowerProfilingWriter(outputFile.c_str(),
-                                                  deviceName.c_str(),
-                                                  index) ;
-      writers.push_back(writer) ;
-      (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), 
+        std::string outputFile = "power_profile_" + deviceName + ".csv" ; 
+  
+        VPWriter* writer = new PowerProfilingWriter(outputFile.c_str(),
+                                                    deviceName.c_str(),
+                                                    index) ;
+        writers.push_back(writer) ;
+        (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), 
                                           "XRT_POWER_PROFILE") ;
 
-      // Move on to the next device
-      xclClose(handle) ;
-      ++index ;
-      handle = xclOpen(index, "/dev/null", XCL_INFO) ;
+        // Move on to the next device
+        ++index;
+      } catch (const std::runtime_error& e) {
+        std::string msg = "Could not open device at index " + std::to_string(index) + e.what();
+        xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
+        ++index;
+        continue;
+      }  
     }
-
     // Start the power profiling thread
     pollingThread = std::thread(&PowerProfilingPlugin::pollPower, this) ;
   }
@@ -140,31 +110,79 @@ namespace xdp {
       // Get timestamp in milliseconds
       double timestamp = xrt_core::time_ns() / 1.0e6 ;
       uint64_t index = 0 ;
-      for (const auto& device : filePaths)
+
+      for(auto& xrtDevice : xrtDevices)
       {
         std::vector<uint64_t> values ;
-        for (const auto& file : device)
-        {
-          std::ifstream fs(file) ;
-          if (!fs)
-          {
-            // When we tried to get the path to this file, we got a bad
-            //  result (like empty string).  So all devices are aligned and
-            //  have the same amount of information we'll just record this
-            //  data element as 0.
-            values.push_back(0) ;
-            continue ;
-          }
-          std::string data ;
-          std::getline(fs, data) ;
-          uint64_t dp = data.empty() ? 0 : std::stoul(data) ;
-          values.push_back(dp) ;
-          fs.close() ;
+        std::shared_ptr<xrt_core::device> coreDevice = xrtDevice->get_handle();
+        
+        if (!coreDevice) {
+          ++index;
+          continue;
+        }
+
+        try{
+          uint64_t data = 0;
+          data = xrt_core::device_query<xrt_core::query::v12v_aux_milliamps>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::v12v_aux_millivolts>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::v12v_pex_milliamps>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::v12v_pex_millivolts>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::int_vcc_milliamps>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::int_vcc_millivolts>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::v3v3_pex_milliamps>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::v3v3_pex_millivolts>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::cage_temp_0>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::cage_temp_1>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::cage_temp_2>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::cage_temp_3>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::dimm_temp_0>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::dimm_temp_1>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::dimm_temp_2>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::dimm_temp_3>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::fan_trigger_critical_temp>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::temp_fpga>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::hbm_temp>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::temp_card_top_front>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::temp_card_top_rear>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::temp_card_bottom_front>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::int_vcc_temp>(coreDevice);
+          values.push_back(data);
+          data = xrt_core::device_query<xrt_core::query::fan_speed_rpm>(coreDevice); 
+          values.push_back(data);
+        }
+        catch (const xrt_core::query::no_such_key&) {
+          //query is not implemented
+        }
+        catch (const std::exception&) {
+          // error retrieving information
+          std::string msg = "Error while retrieving data from power files. Using default value.";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
         (db->getDynamicInfo()).addPowerSample(index, timestamp, values) ;
-        ++index ;	
+        ++index ;
       }
-
       std::this_thread::sleep_for(std::chrono::milliseconds(pollingInterval)) ;
     }
   }

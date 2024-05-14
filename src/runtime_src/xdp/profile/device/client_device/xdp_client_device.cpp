@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,7 +19,6 @@
 #include "xdp_client_device.h"
 #include "core/common/time.h"
 #include "core/common/system.h"
-#include "core/common/xrt_profiling.h"
 
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/experimental/xrt_device.h"
@@ -63,31 +62,6 @@ int ClientDevice::write(xclAddressSpace space, uint64_t offset, const void *host
   (void) size;
   return 0;
 }
-
-// This uses mmap and is recommended way to access an XRT IP
-int ClientDevice::readXrtIP(uint32_t index, uint32_t offset, uint32_t *data)
-{
-  (void) offset;
-  (void) data;
-  return index;
-}
-
-#if defined(_WIN32) || defined(XDP_HWEMU_USING_HAL_BUILD)
-int ClientDevice::initXrtIP(const char * /*name*/, uint64_t /*base*/, uint32_t /*range*/)
-{
-  // The required APIs are missing from windows and hw emulation shim
-  return -1;
-}
-#else
-int ClientDevice::initXrtIP(const char *name, uint64_t base, uint32_t range)
-{
- (void) name;
- (void) base;
- (void) range;
- return 0;
-}
-#endif
-
 
 int ClientDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
