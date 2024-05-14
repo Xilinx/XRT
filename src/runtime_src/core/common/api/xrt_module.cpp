@@ -77,7 +77,7 @@ static uint8_t preempt_restore_1col[] = {
 0x00, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x78, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 constexpr size_t Preempt_Restore_1col_Size = sizeof(preempt_restore_1col);
-constexpr size_t Preempt_Save_Patch_Addr_Offset = 0xD8;
+constexpr size_t Preempt_Save_Patch_Addr_Offset = 0xD0;
 
 // hexdump -v -e '16/1 "0x%02x, "' -e '"\n"' ./preempt_save_1col.bin
 static uint8_t preempt_save_1col[] = {
@@ -109,7 +109,7 @@ static uint8_t preempt_save_1col[] = {
 0x00, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x78, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 constexpr size_t Preempt_Save_1col_Size = sizeof(preempt_save_1col);
-constexpr size_t Preempt_Restore_Patch_Addr_Offset = 0xD8;
+constexpr size_t Preempt_Restore_Patch_Addr_Offset = 0xD0;
 
 struct buf
 {
