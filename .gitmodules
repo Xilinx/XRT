@@ -4,3 +4,6 @@
 [submodule "src/runtime_src/core/common/elf"]
 	path = src/runtime_src/core/common/elf
 	url = https://github.com/serge1/ELFIO.git
+[submodule "src/runtime_src/core/common/gsl"]
+	path = src/runtime_src/core/common/gsl
+	url = https://github.com/microsoft/GSL.git
