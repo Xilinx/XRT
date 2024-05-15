@@ -119,7 +119,11 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::global : {
           if (!args[idx])
             break;
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> c1c4b8ba7 (fix typo.)
           auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
           if (!hip_mem)
             throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
