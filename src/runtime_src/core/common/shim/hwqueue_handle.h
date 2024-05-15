@@ -6,6 +6,8 @@
 #include "buffer_handle.h"
 #include "fence_handle.h"
 
+#include "core/common/span.h"
+
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -30,7 +32,7 @@ public:
 
   // Submit command list for execution
   virtual void
-  submit_command(const std::vector<buffer_handle*>&)
+  submit_command(const xrt_core::span<buffer_handle*>&)
   {
     throw std::runtime_error("not supported");
   }

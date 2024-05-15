@@ -362,7 +362,7 @@ public:
 
   // Submit list of commands for execution as atomic unit
   virtual void
-  submit(const xrt::runlist& runlist) = 0;
+  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist) = 0;
 
   // Submit command for execution
   virtual void
@@ -455,9 +455,9 @@ public:
   }
 
   void
-  submit(const xrt::runlist& runlist) override
+  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist) override
   {
-    m_qhdl->submit_command(xrt_core::kernel_int::get_runlist_buffer_handles(runlist));
+    m_qhdl->submit_command(runlist);
   }
 
   void
@@ -639,7 +639,7 @@ public:
   }
 
   void
-  submit(const xrt::runlist&) override
+  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist) override
   {
     throw std::runtime_error("kds_device::submit(runlist) not implemented");
   }
@@ -808,7 +808,7 @@ unmanaged_start(xrt_core::command* cmd)
 
 void
 hw_queue::
-submit(const xrt::runlist& runlist)
+submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist)
 {
   get_handle()->submit(runlist);
 }
