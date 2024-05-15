@@ -220,7 +220,7 @@ jobs:
 
   pcie-hw-tests:  
     needs: extract-platforms    
-    runs-on: [xrt, trx]
+    runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
