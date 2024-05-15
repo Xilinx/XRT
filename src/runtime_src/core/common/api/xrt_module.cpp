@@ -318,6 +318,12 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  [[nodiscard]] virtual xrt::bo&
+  get_scratchmem()
+  {
+    throw std::runtime_error("Not supported");
+  }
+
   [[nodiscard]] virtual xrt::hw_context
   get_hw_context() const
   {
@@ -342,7 +348,7 @@ public:
 
   // Patch ctrlcode buffer object for global argument
   //
-  // @param bo_ctrlcode - bo conaining ctrlcode
+  // @param bo_ctrlcode - bo containing ctrlcode
   // @param symbol - symbol name
   // @param bo - global argument to patch into ctrlcode
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
@@ -756,7 +762,7 @@ public:
       if (m_save_buf_exist != m_restore_buf_exist)
           throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
 
-     m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
+      m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
 
@@ -853,7 +859,9 @@ class module_sram : public module_impl
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
 
+  //TODO get scratch-pad-mem size from elf
   static constexpr size_t m_scratchmem_size = 512 * 1024;
+
   // The instruction buffer object contains the ctrlcodes for each
   // column.  The ctrlcodes are concatenated into a single buffer
   // padded at page size specific to hardware.
@@ -1114,6 +1122,12 @@ class module_sram : public module_impl
         dump_bo(m_ctrlpkt_bo, "ctrlpktBoPatched.bin");
 #endif
         }
+
+      if (m_preempt_save_bo)
+        m_preempt_save_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+      if (m_preempt_restore_bo)
+        m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
     m_dirty = false;
@@ -1144,6 +1158,12 @@ public:
   get_ctrlcode_addr_and_size() const override
   {
     return m_column_bo_address;
+  }
+
+  [[nodiscard]] virtual xrt::bo&
+      get_scratchmem() override
+  {
+      return m_scratchmem;
   }
 };
 
