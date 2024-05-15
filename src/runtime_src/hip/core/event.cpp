@@ -118,19 +118,18 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
         xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
         break;
       case karg::argtype::global : {
-        if (!args[idx])
-          break;
+          if (!args[idx])
+            break;
         
-        auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
-        if (!hip_mem)
-          throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
+          auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
+          if (!hip_mem)
+            throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
 
         // NPU device is not coherent. We need to sync the buffer objects before launching kernel
         if (hip_mem->get_type() != memory_type::device)
           hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE);
         r.set_arg(arg->index, hip_mem->get_xrt_bo());
         break;
-      }
       case karg::argtype::constant :
       case karg::argtype::local :
       case karg::argtype::stream :
