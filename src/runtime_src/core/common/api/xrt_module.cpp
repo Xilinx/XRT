@@ -250,6 +250,22 @@ struct patcher
     std::string buf_string = std::to_string(static_cast<int>(type));
     return argument_name + buf_string;
   }
+
+  XRT_CORE_UNUSED uint64_t
+  generate_unique_number(uint64_t a, uint64_t b)
+  {
+    return (a+b)*(a+b+1)/2 + b; // Cantor pairing function
+  }
+
+  XRT_CORE_UNUSED bool
+  is_pure_digit(const std::string& str)
+  {
+    for (char c : str) {
+      if (!std::isdigit(static_cast<unsigned char>(c)))
+        return false;
+    }
+    return !str.empty();
+  }
 } // namespace
 
 namespace xrt
@@ -329,10 +345,11 @@ public:
   // Patch ctrlcode buffer object for global argument
   //
   // @param symbol - symbol name
+  // @param index - argument index
   // @param bo - global argument to patch into ctrlcode
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   virtual void
-  patch_instr(const std::string&, const xrt::bo&, patcher::buf_type)
+  patch_instr(const std::string&, size_t, const xrt::bo&, patcher::buf_type)
   {
     throw std::runtime_error("Not supported ");
   }
@@ -363,11 +380,12 @@ public:
   //
   // @param base - base address of control code buffer object
   // @param symbol - symbol name
+  // @param index - argument index
   // @param patch - patch value
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
-  patch(uint8_t*, const std::string&, uint64_t, patcher::buf_type)
+  patch(uint8_t*, const std::string&, size_t, uint64_t, patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -628,7 +646,10 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        std::string key_string = generate_key_string(argnm, buf_type);
+
+        std::string key_string = (is_pure_digit(argnm)) ? // If true then argnm is argument index
+                                 std::to_string(generate_unique_number(static_cast<uint64_t>(std::stoi(argnm)), static_cast<uint64_t>(buf_type))) :
+                                 generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
@@ -707,12 +728,17 @@ class module_elf : public module_impl
   }
 
   bool
-  patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
+  patch(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
   {
     const std::string key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
-    if (it == m_arg2patcher.end())
-      return false;
+    auto found_use_argument_name = (it == m_arg2patcher.end());
+    if (false == found_use_argument_name) {// Search using index
+      auto unique_num = generate_unique_number(index, static_cast<uint64_t>(type));
+      it = m_arg2patcher.find(std::to_string(unique_num));
+      if (it == m_arg2patcher.end())
+        return false;
+    }
 
     it->second.patch(base, patch);
     return true;
@@ -823,15 +849,6 @@ public:
 // where buffer object address of offset for each column.
 class module_sram : public module_impl
 {
-  // opcode from host app
-  // 1 is dpu_sequence
-  // 2 is transaction_buffer
-  static constexpr uint64_t Transaction_Buffer_Opcode = 2;
-  uint64_t m_opcode = 0;
-
-  // Transaction buffer actual argument start from index 3 in host code
-  static constexpr uint64_t Transaction_Buffer_Arg_Offset = 3;
-
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
 
@@ -932,7 +949,7 @@ class module_sram : public module_impl
 #endif
 
     if (m_ctrlpkt_bo) {
-      patch_instr("control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
+      patch_instr("control-packet", 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -989,27 +1006,27 @@ class module_sram : public module_impl
   }
 
   virtual void
-  patch_instr(const std::string& argnm, const xrt::bo& bo, patcher::buf_type type) override
+  patch_instr(const std::string& argnm, size_t index, const xrt::bo& bo, patcher::buf_type type) override
   {
-    patch_instr_value(argnm, bo.address(), type);
+    patch_instr_value(argnm, index, bo.address(), type);
   }
 
   void
-  patch_value(const std::string& argnm, uint64_t value)
+  patch_value(const std::string& argnm, size_t index, uint64_t value)
   {
     bool patched = false;
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
-        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
+        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
+      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
           patched = true;
     }
-    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
+    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
       patched = true;
 
     if (patched) {
@@ -1019,9 +1036,9 @@ class module_sram : public module_impl
   }
 
   void
-  patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
+  patch_instr_value(const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, type))
+    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, type))
         return;
 
     m_dirty = true;
@@ -1030,15 +1047,7 @@ class module_sram : public module_impl
   void
   patch(const std::string& argnm, size_t index, const xrt::bo& bo) override
   {
-    if (Transaction_Buffer_Opcode == m_opcode) {
-      if (index < Transaction_Buffer_Arg_Offset)
-        return;
-
-      const std::string index_string = std::to_string(index - Transaction_Buffer_Arg_Offset);
-      patch_value(index_string, bo.address());
-    }
-    else
-      patch_value(argnm, bo.address());
+    patch_value(argnm, index, bo.address());
   }
 
   void
@@ -1048,22 +1057,7 @@ class module_sram : public module_impl
       throw std::runtime_error{ "patch_value() only supports 64-bit values or less" };
     
     auto arg_value = *static_cast<const uint64_t*>(value);
-    if (index == 0) {
-       // First argument is always the opcode, no need to patch
-       m_opcode = arg_value;
-       return;
-    }
-    else {
-      if (Transaction_Buffer_Opcode == m_opcode) {
-        if (index < Transaction_Buffer_Arg_Offset)
-          return;
-
-        const std::string index_string = std::to_string(index - Transaction_Buffer_Arg_Offset);
-        patch_value(index_string, arg_value);
-      }
-      else
-        patch_value(argnm, arg_value);
-    }
+    patch_value(argnm, index, arg_value);
   }
 
   // Check that all arguments have been patched and sync the buffer
