@@ -49,13 +49,14 @@ hip_module_get_function(hipModule_t hmod, const char* name)
   return hip_mod->add_function(std::make_shared<function>(mod_hdl, std::string(name)));
 }
 
+template <typename T>
 static module_handle
-create_module(const void* image)
+create_module(T&& t)
 {
   auto ctx = get_current_context();
   throw_context_destroyed_if(!ctx, "context is destroyed, no active context");
   // create module and store it in module map
-  return insert_in_map(module_cache, std::make_shared<module>(ctx, const_cast<void*>(image)));
+  return insert_in_map(module_cache, std::make_shared<module>(ctx, std::forward<T>(t)));
 }
 
 static module_handle
@@ -63,13 +64,6 @@ hip_module_load_data_ex(const void* image, unsigned int /*numOptions*/,
                         hipJitOption* /*options*/, void** /*optionsValues*/)
 {
   // Jit options are ignored for now
-  return create_module(image);
-}
-
-// image is mapped address of program to be loaded
-static module_handle
-hip_module_load_data(const void* image)
-{
   return create_module(image);
 }
 
@@ -154,13 +148,14 @@ hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOpti
   return hipErrorUnknown;
 }
 
-hipError_t
-hipModuleLoadData(hipModule_t* module, const void* image)
+template <typename T>
+static hipError_t
+hip_module_load_data_helper(hipModule_t* module, T&& t)
 {
   try {
     throw_invalid_resource_if(!module, "module is nullptr");
 
-    auto handle = xrt::core::hip::hip_module_load_data(image);
+    auto handle = xrt::core::hip::create_module(std::forward<T>(t));
     *module = reinterpret_cast<hipModule_t>(handle);
     return hipSuccess;
   }
@@ -172,6 +167,19 @@ hipModuleLoadData(hipModule_t* module, const void* image)
     xrt_core::send_exception_message(ex.what());
   }
   return hipErrorUnknown;
+}
+
+hipError_t
+hipModuleLoadData(hipModule_t* module, const void* image)
+{
+  // image is mapped address of program to be loaded
+  return hip_module_load_data_helper(module, image);
+}
+
+hipError_t
+hipModuleLoad(hipModule_t *module, const char *fname)
+{
+  return hip_module_load_data_helper(module, std::string{fname});
 }
 
 hipError_t
