@@ -212,13 +212,13 @@ namespace xrt::core::hip
   static void
   hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
   {
-    throw_invalid_value_if(!src, "Invalid src pointer in hipMemCpyH2DAsync!");
+    throw_invalid_value_if(!src, "Invalid src pointer in hip_memcpy_host2device_async!");
 
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle in hipMemCpyH2DAsync!");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hipMemCpyH2DAsync!");
+    throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle in hip_memcpy_host2device_async!");
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memcpy_host2device_async!");
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle in hipMemCpyH2DAsync!");
@@ -229,6 +229,32 @@ namespace xrt::core::hip
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
+  // fill data to dst async.
+  template<typename element_type> static void
+  hip_memset_async(void* dst, int value, size_t size, hipStream_t stream)
+  {
+    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto hip_mem_dst = hip_mem_info.first;
+    auto offset = hip_mem_info.second;
+    assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memset!");
+
+    auto element_size = sizeof(element_type);
+
+    throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), "invalid element_type in hip_memset_async!");
+    throw_invalid_value_if(size % element_size != 0, "invalid size in hip_memset_async!");
+
+    auto element_count = size / element_size;
+    std::vector<element_type> host_src(element_count, value);
+
+    auto hip_stream = get_stream(stream);
+    throw_invalid_value_if(!hip_stream, "Invalid stream handle in hip_memset_async!");
+
+    auto s_hdl = hip_stream.get();
+    auto cmd_hdl = insert_in_map(command_cache,
+                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, host_src.data(), size, offset));
+    s_hdl->enqueue(command_cache.get(cmd_hdl));
+  }
 } // xrt::core::hip
 
 template<typename F> hipError_t
@@ -325,4 +351,32 @@ hipError_t
 hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
 {
   return handle_hip_memory_error([&] { xrt::core::hip::hip_memcpy_host2device_async(dst, src, size, stream); });
+}
+
+// Fills the first sizeBytes bytes of the memory area pointed to by dev with the constant byte value value.
+hipError_t
+hipMemsetAsync(void* dst, int value, size_t size, hipStream_t stream)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, size, stream); });
+}
+
+// Fills the memory area pointed to by dev with the constant integer value for specified number of times.
+hipError_t
+hipMemsetD32Async(void* dst, int value, size_t count, hipStream_t stream)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint32_t>(dst, value, count*sizeof(std::uint32_t), stream); });
+}
+
+// Fills the memory area pointed to by dev with the constant integer value for specified number of times.
+hipError_t
+hipMemsetD16Async(void* dst, int value, size_t count, hipStream_t stream)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count*sizeof(std::uint16_t), stream); });
+}
+
+// Fills the memory area pointed to by dev with the constant integer value for specified number of times.
+hipError_t
+hipMemsetD8Async(void* dst, int value, size_t count, hipStream_t stream)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count*sizeof(std::uint8_t), stream); });
 }
