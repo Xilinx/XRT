@@ -2936,6 +2936,7 @@ class runlist_impl
     return st2str.at(st);
   }
 
+  // Mark all runs in runlist range [start, end[ as aborted
   void
   abort_runs(size_t start, size_t end) const
   {
@@ -2943,6 +2944,10 @@ class runlist_impl
       m_runlist.at(idx).get_ert_packet()->state = ERT_CMD_STATE_ABORT;
   }
 
+  // Wait for the last command in the runlist that was submitted
+  // successfully to hwqueue.  If the last submitted command has
+  // completed (error or not), then in-order execution guarantees that
+  // all prior commands have completed (error or not)
   std::cv_status
   wait_last_run(const std::chrono::milliseconds& timeout) const
   {
@@ -2965,6 +2970,10 @@ class runlist_impl
     return std::cv_status::no_timeout;
   }
 
+  // Find the index of the first command in runlist range that has not
+  // completed successfully.  The function is called when some error
+  // has occurred within the range, alas it is an error if all
+  // commands are in a good complete state.
   size_t
   find_first_error(size_t start, size_t end) const
   {
@@ -2977,6 +2986,11 @@ class runlist_impl
     throw xrt_core::error("internal error: no run with error found");
   }
 
+  // Wait for runlist to complete, then check last run in each chunk
+  // submitted to determine potential error within chunk.  Locate the
+  // first failing command if any and mark all subsequent commands as
+  // aborted. Throw a runlist exception with first failing command if
+  // any.
   std::cv_status
   wait(const std::chrono::milliseconds& timeout) const
   {
@@ -3013,13 +3027,15 @@ class runlist_impl
     return std::cv_status::no_timeout;
   }
 
+
+  // Submit runlist in chunks of submit size.  Make a note of last
+  // submitted command; in case of submit failure at least the last
+  // successfully submitted command must be waited for before the list
+  // can be reset. Pre-condition ensured by execute() is that size of
+  // runlist is greater than 0.
   void
   submit()
   {
-    // Submit runlist in chunks of submit size.  Make a note of last
-    // submitted command, in case of submit failure at least the last
-    // command must be waited for before the list can be reset
-    // Pre-condition ensured by execute() is that size of runlist > 0
     m_last_submitted_idx = noidx;
     xrt_core::span<xrt_core::buffer_handle*> bos {m_bos};
     for (size_t idx = 0; idx < m_bos.size(); idx += submit_size) {
@@ -3098,14 +3114,15 @@ public:
     // Close the command list.
     m_state = state::closed;
 
+    // Need to manage submit errors.  Treat submit error as if the
+    // runlist is running.  This forces the user to call wait() even
+    // as submit() throws.  The burden is on application to handle the
+    // error properly while at least giving some hint as to where
+    // things failed.
     try {
       submit();
     }
     catch (const std::exception&) {
-      // Treat submit error as if the runlist is running.  This forces
-      // the user to call wait() even as submit() throws.  The burden
-      // is on application to handle the error properly while at least
-      // giving some hint as to where things failed.
       m_state = state::running;
       throw;
     }
@@ -3115,6 +3132,8 @@ public:
     m_state = state::running;
   }
 
+  // Wait for runlist completion.  Throw exception with first failing
+  // command if any.
   std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout)
   {
