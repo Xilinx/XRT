@@ -117,7 +117,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
         xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
         break;
       case karg::argtype::global : {
-          if (!args[idx])
+          if (!args[idx])../src/runtime_src/hip/core/event.h
+
             break;
           auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
           if (!hip_mem)
