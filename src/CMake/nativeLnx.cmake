@@ -108,6 +108,10 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
     set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
   endif()
 
+  # When using boost from specific path we need to tell linker
+  # to look for libraries from that path
+  link_directories($ENV{XRT_BOOST_INSTALL}/lib)
+
 else()
   find_package(Boost
     REQUIRED COMPONENTS system filesystem program_options)
