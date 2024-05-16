@@ -518,6 +518,12 @@ namespace xdp {
     case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM:
     case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM:
     case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL:
+    case XAIE_EVENT_DMA_MM2S_0_START_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL:
+    case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL:
+    case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL:
       return 0;
     case XAIE_EVENT_DMA_S2MM_1_START_TASK_MEM:
     case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM:
@@ -531,6 +537,12 @@ namespace xdp {
     case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM:
     case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM:
     case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL:
+    case XAIE_EVENT_DMA_MM2S_1_START_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL:
+    case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL:
+    case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL:
       return 1;
     default:
       return -1;
@@ -1349,6 +1361,19 @@ namespace xdp {
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, interfaceTileTraceEndEvent) != XAIE_OK)
           break;
         cfgTile->interface_tile_trace_config.packet_type = packetType;
+        auto channelNum = getChannelNumberFromEvent(interfaceEvents.at(0));
+        if (channelNum >= 0) {
+          if (aie::isInputSet(type, metricSet)) {
+            cfgTile->interface_tile_trace_config.mm2s_channels[0] = channelNum;
+            if (channel0 != channel1)
+              cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
+          }
+          else {
+            cfgTile->interface_tile_trace_config.s2mm_channels[0] = channelNum;
+            if (channel0 != channel1)
+              cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
+          }
+        }
       } // Interface tiles
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
