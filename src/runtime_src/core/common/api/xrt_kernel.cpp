@@ -2913,7 +2913,7 @@ public:
 // class runlist_impl - The internals of a runlist
 class runlist_impl
 {
-  static constexpr size_t submit_size = 25;
+  static constexpr size_t submit_size = 24;
   static constexpr size_t noidx = std::numeric_limits<size_t>::max();
 
   enum class state { idle, closed, running, error };
