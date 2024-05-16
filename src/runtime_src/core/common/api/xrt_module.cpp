@@ -732,8 +732,8 @@ class module_elf : public module_impl
   {
     const std::string key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
-    auto found_use_argument_name = (it == m_arg2patcher.end());
-    if (false == found_use_argument_name) {// Search using index
+    auto not_found_use_argument_name = (it == m_arg2patcher.end());
+    if (true == not_found_use_argument_name) {// Search using index
       auto unique_num = generate_unique_number(index, static_cast<uint64_t>(type));
       it = m_arg2patcher.find(std::to_string(unique_num));
       if (it == m_arg2patcher.end())
