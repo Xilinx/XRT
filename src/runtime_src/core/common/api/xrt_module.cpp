@@ -990,8 +990,8 @@ class module_sram : public module_impl
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
       m_scratchmem = xrt::ext::bo{ m_hwctx, m_scratchmem_size };
-      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, m_scratchmem, patcher::buf_type::preempt_save);
-      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, m_scratchmem, patcher::buf_type::preempt_restore);
+      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratchmem, patcher::buf_type::preempt_save);
+      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratchmem, patcher::buf_type::preempt_restore);
     }
 
     if (m_ctrlpkt_bo) {
