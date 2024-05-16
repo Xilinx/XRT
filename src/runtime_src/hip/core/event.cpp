@@ -120,7 +120,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::global : {
           if (!args[idx])
             break;
-        
+
           auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
           if (!hip_mem)
             throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
@@ -134,7 +134,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::local :
       case karg::argtype::stream :
       default :
-       throw std::runtime_error("function has unsupported arg type");
+        throw std::runtime_error("function has unsupported arg type");
     }
     idx++;
   }

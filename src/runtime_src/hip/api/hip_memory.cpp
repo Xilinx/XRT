@@ -15,6 +15,14 @@
 
 namespace xrt::core::hip
 {
+  static std::string
+  to_hex(const void* addr)
+  {
+    std::stringstream str;
+    str << std::hex << addr;
+    return str.str();
+  }
+
   // Allocate memory on the device.
   static void
   hip_malloc(void** ptr, size_t size)
@@ -75,7 +83,7 @@ namespace xrt::core::hip
     assert(device_ptr);
 
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
-    throw_invalid_value_if(!hip_mem, "Error getting device pointer from host_malloced memory!");
+    throw_invalid_value_if(!hip_mem, "Error getting device pointer from host pointer " + to_hex(host_ptr) + " in " + __func__);
     throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag!");
 
     *device_ptr = nullptr;
@@ -92,7 +100,7 @@ namespace xrt::core::hip
   hip_free(void* ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
-    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "Invalid handle passed to hipFree!");
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "invalid handle " + to_hex(ptr) + " was passed to " + __func__);
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
@@ -102,7 +110,7 @@ namespace xrt::core::hip
   hip_host_free(void* ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
-    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "Invalid handle passed to hipHostFree!");
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "invalid handle " + to_hex(ptr) + " was passed to " + __func__);
 
     auto device_addr = hip_mem->get_device_address();
     // if device address is differrent than host address, remove it from the map
@@ -117,11 +125,10 @@ namespace xrt::core::hip
   hip_host_unregister(void* host_ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
-    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::registered, "Invalid handle passed to hipHostUnregister!");
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::registered, "invalid handle " + to_hex(host_ptr) + " was passed to " + __func__);
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(host_ptr));
   }
-
 
   static void
   hip_memcpy_host2device(void* dst, const void* src, size_t size)
@@ -129,8 +136,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dev = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle in hipMemCpy!");
-    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst out of bound in hip_memcpy_host2device!");
+    throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle " + to_hex(dst) + " in " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst " + to_hex(dst) + " out of bound in " + __func__);
 
     hip_mem_dev->write(src, size, 0, offset);
   }
@@ -148,8 +155,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
     auto hip_mem_dev = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_handle_if(!hip_mem_dev, "Invalid src handle in hipMemCpy!");
-    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "src out of bound in hip_memcpy_device2host!");
+    throw_invalid_handle_if(!hip_mem_dev, "invalid source handle: " + to_hex(src) + " " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "source " + to_hex(src) + " out of bound in " + __func__);
 
     // src is device address. Get device address
     hip_mem_dev->read(dst, size, 0, offset);
@@ -161,8 +168,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle in hipMemCpy!");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memcpy_device2host!");
+    throw_invalid_handle_if(!hip_mem_dst, "invalid destination handle: " + to_hex(dst) + " " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
 
     hip_mem_dst->write(src, size, 0, offset);
   }
@@ -201,7 +208,7 @@ namespace xrt::core::hip
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memset!");
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
 
     auto host_src = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
     memset(host_src.get(), value, size);
@@ -212,16 +219,16 @@ namespace xrt::core::hip
   static void
   hip_memcpy_host2device_async(hipDeviceptr_t dst, void* src, size_t size, hipStream_t stream)
   {
-    throw_invalid_value_if(!src, "Invalid src pointer in hip_memcpy_host2device_async!");
+    throw_invalid_value_if(!src, std::string("src is nullptr in ") + __func__);
 
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_value_if(!hip_mem_dst, "Invalid destination handle in hip_memcpy_host2device_async!");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memcpy_host2device_async!");
+    throw_invalid_value_if(!hip_mem_dst, "invalid destination handle " + to_hex(dst) + " in " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
 
     auto hip_stream = get_stream(stream);
-    throw_invalid_value_if(!hip_stream, "Invalid stream handle in hipMemCpyH2DAsync!");
+    throw_invalid_value_if(!hip_stream, "invalid stream handle " + to_hex(stream) + " in " + __func__);
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
@@ -231,24 +238,24 @@ namespace xrt::core::hip
 
   // fill data to dst async.
   template<typename element_type> static void
-  hip_memset_async(void* dst, int value, size_t size, hipStream_t stream)
+  hip_memset_async(void* dst, element_type value, size_t size, hipStream_t stream)
   {
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound in hip_memset!");
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
 
     auto element_size = sizeof(element_type);
 
-    throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), "invalid element_type in hip_memset_async!");
-    throw_invalid_value_if(size % element_size != 0, "invalid size in hip_memset_async!");
+    throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), std::string("invalid element_type in ") + __func__);
+    throw_invalid_value_if(size % element_size != 0, "invalid size " + std::to_string(size) + " in " + __func__);
 
     auto element_count = size / element_size;
     std::vector<element_type> host_src(element_count, value);
 
     auto hip_stream = get_stream(stream);
-    throw_invalid_value_if(!hip_stream, "Invalid stream handle in hip_memset_async!");
+    throw_invalid_value_if(!hip_stream, "invalid stream handle "  + to_hex(stream) + " in " + __func__);
 
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
@@ -369,14 +376,14 @@ hipMemsetD32Async(void* dst, int value, size_t count, hipStream_t stream)
 
 // Fills the memory area pointed to by dev with the constant integer value for specified number of times.
 hipError_t
-hipMemsetD16Async(void* dst, int value, size_t count, hipStream_t stream)
+hipMemsetD16Async(void* dst, unsigned short value, size_t count, hipStream_t stream)
 {
   return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint16_t>(dst, value, count*sizeof(std::uint16_t), stream); });
 }
 
 // Fills the memory area pointed to by dev with the constant integer value for specified number of times.
 hipError_t
-hipMemsetD8Async(void* dst, int value, size_t count, hipStream_t stream)
+hipMemsetD8Async(void* dst, unsigned char value, size_t count, hipStream_t stream)
 {
   return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, count*sizeof(std::uint8_t), stream); });
 }
