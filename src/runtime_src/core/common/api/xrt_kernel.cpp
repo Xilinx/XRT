@@ -2264,7 +2264,7 @@ public:
     cmd->bind_arg_at_index(arg.index(), bo);
 
     if (m_module)
-      xrt_core::module_int::patch(m_module, arg.name(), bo);
+      xrt_core::module_int::patch(m_module, arg.name(), arg.index(), bo);
   }
 
   void
@@ -2273,7 +2273,7 @@ public:
     set_arg_value(arg, arg_range<uint8_t>{value, bytes});
 
     if (m_module)
-      xrt_core::module_int::patch(m_module, arg.name(), value, bytes);
+      xrt_core::module_int::patch(m_module, arg.name(), arg.index(), value, bytes);
   }
 
   void

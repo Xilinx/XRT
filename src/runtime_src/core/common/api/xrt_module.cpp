@@ -250,6 +250,7 @@ struct patcher
     std::string buf_string = std::to_string(static_cast<int>(type));
     return argument_name + buf_string;
   }
+
 } // namespace
 
 namespace xrt
@@ -329,20 +330,22 @@ public:
   // Patch ctrlcode buffer object for global argument
   //
   // @param symbol - symbol name
+  // @param index - argument index
   // @param bo - global argument to patch into ctrlcode
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   virtual void
-  patch_instr(const std::string&, const xrt::bo&, patcher::buf_type)
+  patch_instr(const std::string&, size_t, const xrt::bo&, patcher::buf_type)
   {
     throw std::runtime_error("Not supported ");
   }
 
   // Patch ctrlcode buffer object for global argument
   //
-  // @param symbol - symbol name
+  // @param argname - argument name
+  // @param index - argument index
   // @param bo - global argument to patch into ctrlcode
   virtual void
-  patch(const std::string&, const xrt::bo&)
+  patch(const std::string&, size_t, const xrt::bo&)
   {
     throw std::runtime_error("Not supported");
   }
@@ -353,7 +356,7 @@ public:
   // @param value - patch value
   // @param size - size of patch value
   virtual void
-  patch(const std::string&, const void*, size_t)
+  patch(const std::string&, size_t, const void*, size_t)
   {
     throw std::runtime_error("Not supported");
   }
@@ -362,11 +365,12 @@ public:
   //
   // @param base - base address of control code buffer object
   // @param symbol - symbol name
+  // @param index - argument index
   // @param patch - patch value
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   // @Return true if symbol was patched, false otherwise  //
   virtual bool
-  patch(uint8_t*, const std::string&, uint64_t, patcher::buf_type)
+  patch(uint8_t*, const std::string&, size_t, uint64_t, patcher::buf_type)
   {
     throw std::runtime_error("Not supported");
   }
@@ -627,6 +631,7 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+
         std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
@@ -706,12 +711,18 @@ class module_elf : public module_impl
   }
 
   bool
-  patch(uint8_t* base, const std::string& argnm, uint64_t patch, patcher::buf_type type) override
+  patch(uint8_t* base, const std::string& argnm, size_t index, uint64_t patch, patcher::buf_type type) override
   {
     const std::string key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
-    if (it == m_arg2patcher.end())
-      return false;
+    auto not_found_use_argument_name = (it == m_arg2patcher.end());
+    if (not_found_use_argument_name) {// Search using index
+      auto index_string = std::to_string(index);
+      const std::string key_index_string = generate_key_string(index_string, type);
+      it = m_arg2patcher.find(key_index_string);
+      if (it == m_arg2patcher.end())
+        return false;
+    }
 
     it->second.patch(base, patch);
     return true;
@@ -922,7 +933,7 @@ class module_sram : public module_impl
 #endif
 
     if (m_ctrlpkt_bo) {
-      patch_instr("control-packet", m_ctrlpkt_bo, patcher::buf_type::ctrltext);
+      patch_instr("control-packet", 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -979,27 +990,27 @@ class module_sram : public module_impl
   }
 
   virtual void
-  patch_instr(const std::string& argnm, const xrt::bo& bo, patcher::buf_type type) override
+  patch_instr(const std::string& argnm, size_t index, const xrt::bo& bo, patcher::buf_type type) override
   {
-    patch_instr_value(argnm, bo.address(), type);
+    patch_instr_value(argnm, index, bo.address(), type);
   }
 
   void
-  patch_value(const std::string& argnm, uint64_t value)
+  patch_value(const std::string& argnm, size_t index, uint64_t value)
   {
     bool patched = false;
     if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
-        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrldata))
+        if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
           patched = true;
       }
 
       // patch instruction buffer
-      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
+      if (m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
           patched = true;
     }
-    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, value, patcher::buf_type::ctrltext))
+    else if (m_parent->patch(m_buffer.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrltext))
       patched = true;
 
     if (patched) {
@@ -1009,27 +1020,28 @@ class module_sram : public module_impl
   }
 
   void
-  patch_instr_value(const std::string& argnm, uint64_t value, patcher::buf_type type)
+  patch_instr_value(const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, value, type))
+    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, type))
         return;
 
     m_dirty = true;
   }
 
   void
-  patch(const std::string& argnm, const xrt::bo& bo) override
+  patch(const std::string& argnm, size_t index, const xrt::bo& bo) override
   {
-    patch_value(argnm, bo.address());
+    patch_value(argnm, index, bo.address());
   }
 
   void
-  patch(const std::string& argnm, const void* value, size_t size) override
+  patch(const std::string& argnm, size_t index, const void* value, size_t size) override
   {
     if (size > 8) // NOLINT
       throw std::runtime_error{ "patch_value() only supports 64-bit values or less" };
-
-    patch_value(argnm, *static_cast<const uint64_t*>(value));
+    
+    auto arg_value = *static_cast<const uint64_t*>(value);
+    patch_value(argnm, index, arg_value);
   }
 
   // Check that all arguments have been patched and sync the buffer
@@ -1107,15 +1119,15 @@ get_ctrlcode_addr_and_size(const xrt::module& module)
 }
 
 void
-patch(const xrt::module& module, const std::string& argnm, const xrt::bo& bo)
+patch(const xrt::module& module, const std::string& argnm, size_t index, const xrt::bo& bo)
 {
-  module.get_handle()->patch(argnm, bo);
+  module.get_handle()->patch(argnm, index, bo);
 }
 
 void
-patch(const xrt::module& module, const std::string& argnm, const void* value, size_t size)
+patch(const xrt::module& module, const std::string& argnm, size_t index, const void* value, size_t size)
 {
-  module.get_handle()->patch(argnm, value, size);
+  module.get_handle()->patch(argnm, index, value, size);
 }
 
 void
