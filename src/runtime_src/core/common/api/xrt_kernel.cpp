@@ -2957,7 +2957,7 @@ class runlist_impl
       if (status == std::cv_status::timeout)
         return status;
     }
-    catch (const xrt::run::command_error& ex) {
+    catch (const xrt::run::command_error&) {
       // errors are picked up by caller, here just change state
       m_state = state::error;
     }

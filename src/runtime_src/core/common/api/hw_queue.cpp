@@ -639,7 +639,7 @@ public:
   }
 
   void
-  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist) override
+  submit(const xrt_core::span<xrt_core::buffer_handle*>&) override
   {
     throw std::runtime_error("kds_device::submit(runlist) not implemented");
   }
