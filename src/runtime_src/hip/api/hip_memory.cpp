@@ -252,10 +252,12 @@ namespace xrt::core::hip
     throw_invalid_value_if(size % element_size != 0, "invalid size " + std::to_string(size) + " in " + __func__);
 
     auto element_count = size / element_size;
-    std::vector<element_type> vec(element_count, value);
     auto host_src = std::shared_ptr<uint8_t>(new uint8_t[size]);
-    memcpy(host_src.get(), vec.data(), size);
-
+    auto elements = reinterpret_cast<element_type*>(host_src.get());
+    for (size_t i=0; i<element_count; i++)
+    {
+      elements[i] = value;
+    }
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "invalid stream handle "  + to_hex(stream) + " in " + __func__);
