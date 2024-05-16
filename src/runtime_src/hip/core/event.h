@@ -127,6 +127,7 @@ public:
 class copy_buffer : public command
 {
 public:
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<uint8_t> ptr, size_t size, size_t offset);
   copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
   bool submit() override;
   bool wait() override;

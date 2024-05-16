@@ -170,6 +170,12 @@ bool kernel_start::wait()
   return false;
 }
 
+copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<uint8_t> ptr, size_t size, size_t offset)
+  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(std::move(ptr).get()), copy_size(size), dev_offset(offset)
+{
+  ctype = type::buffer_copy;
+}
+
 copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
   : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), copy_size(size), dev_offset(offset)
 {
