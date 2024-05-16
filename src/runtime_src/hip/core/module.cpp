@@ -41,5 +41,6 @@ function(module_xclbin* xclbin_mod_hdl, const xrt::module& xrt_module, const std
 {}
 
 // Global map of modules
+//we should override clang-tidy warning by adding NOLINT since module_cache is non-const parameter
 xrt_core::handle_map<module_handle, std::shared_ptr<module>> module_cache; //NOLINT
 }

@@ -5,6 +5,7 @@
 
 namespace xrt::core::hip {
 // Implementation
+//we should override clang-tidy warning by adding NOLINT since device_cache is non-const parameter
 xrt_core::handle_map<device_handle, std::shared_ptr<device>> device_cache; //NOLINT
 
 device::

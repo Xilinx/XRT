@@ -13,9 +13,11 @@ context(std::shared_ptr<device> device)
 {}
 
 // Global map of contexts
+//we should override clang-tidy warning by adding NOLINT since context_cache is non-const parameter
 xrt_core::handle_map<context_handle, std::shared_ptr<context>> context_cache; //NOLINT
 
 // thread local hip objects
+//we should override clang-tidy warning by adding NOLINT since tls_objs is non-const parameter
 thread_local hip_tls_objs tls_objs; //NOLINT
 
 // returns current context

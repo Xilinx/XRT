@@ -204,6 +204,7 @@ bool copy_buffer::wait()
 }
 
 // Global map of commands
+//we should override clang-tidy warning by adding NOLINT since command_cache is non-const parameter
 xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache; //NOLINT
 
 } // xrt::core::hip

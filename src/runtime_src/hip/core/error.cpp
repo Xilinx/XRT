@@ -12,8 +12,8 @@ constexpr std::pair<T, const char*> HIP_ERROR_NAME_PAIR(T x, const char* name) {
 
 namespace xrt::core::hip
 {
-
-  thread_local static error* hip_error_state = nullptr; //NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  //we should override clang-tidy warning by adding NOLINT since hip_error_state is non-const parameter
+  thread_local static error* hip_error_state = nullptr; //NOLINT
 
   error::error()
     : m_last_error(hipSuccess)
@@ -43,6 +43,7 @@ namespace xrt::core::hip
     throw std::runtime_error("error singleton is not loaded");  
   }
 
+  //we should override clang-tidy warning by adding NOLINT since hip_error_names is non-const parameter
   static std::map<hipError_t, std::string> hip_error_names = //NOLINT
   {
     HIP_ERROR_NAME_PAIR(hipSuccess, "hipSuccess"),
