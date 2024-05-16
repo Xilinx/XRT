@@ -119,15 +119,6 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::global : {
           if (!args[idx])
             break;
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
-        
->>>>>>> c1c4b8ba7 (fix typo.)
-=======
-
->>>>>>> 82cea9b21 (Replace hard coded name with __func__.)
           auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
           if (!hip_mem)
             throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
@@ -149,7 +140,8 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
 
 bool kernel_start::submit()
 {
-  state kernel_start_state = get_state();
+  state kernel_s../src/runtime_src/hip/core/event.cpp
+tart_state = get_state();
   if (kernel_start_state == state::init)
   {
     r.start();
@@ -185,7 +177,8 @@ copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direct
 }
 
 template<typename T>
-copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
+copy_buffer<T>::../src/runtime_src/hip/core/event.cpp
+copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
   : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), host_vec(), copy_size(size), dev_offset(offset)
 {
   //ctype = type::buffer_copy;
