@@ -251,21 +251,6 @@ struct patcher
     return argument_name + buf_string;
   }
 
-  XRT_CORE_UNUSED uint64_t
-  generate_unique_number(uint64_t a, uint64_t b)
-  {
-    return (a+b)*(a+b+1)/2 + b; // Cantor pairing function
-  }
-
-  XRT_CORE_UNUSED bool
-  is_pure_digit(const std::string& str)
-  {
-    for (char c : str) {
-      if (!std::isdigit(static_cast<unsigned char>(c)))
-        return false;
-    }
-    return !str.empty();
-  }
 } // namespace
 
 namespace xrt
@@ -647,9 +632,7 @@ class module_elf : public module_impl
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
-        std::string key_string = (is_pure_digit(argnm)) ? // If true then argnm is argument index
-                                 std::to_string(generate_unique_number(static_cast<uint64_t>(std::stoi(argnm)), static_cast<uint64_t>(buf_type))) :
-                                 generate_key_string(argnm, buf_type);
+        std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
@@ -733,9 +716,10 @@ class module_elf : public module_impl
     const std::string key_string = generate_key_string(argnm, type);
     auto it = m_arg2patcher.find(key_string);
     auto not_found_use_argument_name = (it == m_arg2patcher.end());
-    if (true == not_found_use_argument_name) {// Search using index
-      auto unique_num = generate_unique_number(index, static_cast<uint64_t>(type));
-      it = m_arg2patcher.find(std::to_string(unique_num));
+    if (not_found_use_argument_name) {// Search using index
+      auto index_string = std::to_string(index);
+      const std::string key_index_string = generate_key_string(index_string, type);
+      it = m_arg2patcher.find(key_index_string);
       if (it == m_arg2patcher.end())
         return false;
     }
