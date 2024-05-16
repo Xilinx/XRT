@@ -22,11 +22,11 @@ get_ctrlcode_addr_and_size(const xrt::module& module);
 
 // Patch buffer object into control code at given argument
 void
-patch(const xrt::module&, const std::string& argnm, const xrt::bo& bo);
+patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
 
 // Patch scalar into control code at given argument
 void
-patch(const xrt::module&, const std::string& argnm, const void* value, size_t size);
+patch(const xrt::module&, const std::string& argnm, size_t index, const void* value, size_t size);
 
 // Check that all arguments have been patched and sync the buffer
 // to device if necessary.  Throw if not all arguments have been
