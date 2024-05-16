@@ -2936,6 +2936,23 @@ class runlist_impl
     return st2str.at(st);
   }
 
+  // Pre-condition is that all commands in runlist have completed
+  // (error or not) or they have not been successfully submitted
+  // in the first place.  This function uses xrt::run::wait() 
+  // because the state of the run object may be lazy updated only when
+  // wait() is called, alas accurate state may not be reflected in
+  // command packet even if command has completed.
+  ert_cmd_state
+  get_state(size_t idx) const
+  {
+    // Handle border case where a command has not been submitted
+    if (idx > m_last_submitted_idx)
+      return ERT_CMD_STATE_NEW;
+
+    // wait() cannot hang as all commands have completed per pre-cond
+    return m_runlist.at(idx).wait();
+  }
+
   // Mark all runs in runlist range [start, end[ as aborted
   void
   abort_runs(size_t start, size_t end) const
@@ -2977,11 +2994,9 @@ class runlist_impl
   size_t
   find_first_error(size_t start, size_t end) const
   {
-    for (size_t idx = start; idx < end; ++idx) {
-      auto& run = m_runlist.at(idx);
-      if (auto state = run.state(); state != ERT_CMD_STATE_COMPLETED)
+    for (size_t idx = start; idx < end; ++idx)
+      if (auto state = get_state(idx); state != ERT_CMD_STATE_COMPLETED)
         return idx;
-    }
 
     throw xrt_core::error("internal error: no run with error found");
   }
@@ -2999,27 +3014,30 @@ class runlist_impl
     if (wait_last_run(timeout) == std::cv_status::timeout)
       return std::cv_status::timeout;
 
-    // All commands have either have completed (error or not), or they
+    // All commands have either completed (error or not), or they
     // have not been submitted. If any command failed to complete
     // successfully, then all subsequent commands are marked aborted
     // including any unsubmitted commands.
     for (size_t idx = 0; idx < m_runlist.size(); idx += submit_size) {
       auto count = std::min(submit_size, m_bos.size() - idx);
       auto last_idx = idx + count - 1;
-      auto last_run = m_runlist.at(last_idx);
 
-      // If all good, continue to next chunk
-      if (last_run.state() == ERT_CMD_STATE_COMPLETED)
+      // If all good, continue to next chunk.  Note that xrt::run::wait()
+      // is used here because the state of the run object may be lazy
+      // updated only when wait() is called, alas accurate state may not
+      // be reflected in command packet even if command has completed.
+      if (get_state(last_idx) == ERT_CMD_STATE_COMPLETED)
         continue;
 
       // First failed run index starting at this chunk
-      auto first_error_idx = find_first_error(idx, last_idx);
+      auto first_error_idx = find_first_error(idx, last_idx + 1);
 
       // Mark all subsequent commands as aborted. The state of
       // the first incomplete run is not changed.
       abort_runs(first_error_idx + 1, m_runlist.size());
 
-      // Throw command error for first failed command
+      // Throw command error for first failed command.  The state of
+      // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
       throw xrt::runlist::command_error(run, run.state(), "runlist failed execution");
     }
