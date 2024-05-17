@@ -24,6 +24,10 @@ int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
         mutex_lock(&client->lock);
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_id);
         if (!hw_ctx) {
+		/* This is a woraround. This is only valid for single slot case
+		 * and application use legacy application flow but create
+		 * multiple IPs. For multi-slot case consider this is an Error.
+		 */
                 userpf_info(xdev, "WARNING !!!! No valid HW context is open."
 			    " Continuing with default one");
                 mutex_unlock(&client->lock);
