@@ -6,8 +6,8 @@
 
 namespace xrt::core::hip {
 event::event()
+  : command(type::event)
 {
-  ctype = type::event;
 }
 
 void event::record(std::shared_ptr<stream> s)
@@ -97,10 +97,9 @@ void event::add_dependency(std::shared_ptr<command> cmd)
 }
 
 kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
-  : command(std::move(s))
+  : command(type::kernel_start, std::move(s))
   , func{std::move(f)}
 {
-  ctype = type::kernel_start;
   auto k = func->get_kernel();
 
   // create run object and set args
@@ -170,27 +169,31 @@ bool kernel_start::wait()
   return false;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<uint8_t> ptr, size_t size, size_t offset)
-  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(std::move(ptr).get()), copy_size(size), dev_offset(offset)
+template<typename T>
+copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset)
+  : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(nullptr), host_vec(std::move(vec)), copy_size(size), dev_offset(offset)
 {
-  ctype = type::buffer_copy;
+  //ctype = type::buffer_copy;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
-  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), copy_size(size), dev_offset(offset)
+template<typename T>
+copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
+  : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), host_vec(), copy_size(size), dev_offset(offset)
 {
-  ctype = type::buffer_copy;
+  //ctype = type::buffer_copy;
 }
 
-bool copy_buffer::submit()
+template<typename T>
+bool copy_buffer<T>::submit()
 {
   switch(cdirection)
   {
     case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr, copy_size, 0, dev_offset);
+      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr?host_ptr:host_vec->data(), copy_size, 0, dev_offset);
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
+      throw_invalid_handle_if(!host_ptr, "destination is nullptr");
       handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, copy_size, dev_offset, 0);
       break;
 
@@ -201,7 +204,8 @@ bool copy_buffer::submit()
   return true;
 }
 
-bool copy_buffer::wait()
+template<typename T>
+bool copy_buffer<T>::wait()
 {
   handle.wait();
   set_state(state::completed);

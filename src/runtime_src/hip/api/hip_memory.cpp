@@ -232,13 +232,13 @@ namespace xrt::core::hip
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
+                                std::make_shared<copy_buffer<uint8_t>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
   // fill data to dst async.
-  template<typename element_type> static void
-  hip_memset_async(void* dst, element_type value, size_t size, hipStream_t stream)
+  template<typename T> static void
+  hip_memset_async(void* dst, T value, size_t size, hipStream_t stream)
   {
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
@@ -246,25 +246,26 @@ namespace xrt::core::hip
     assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
 
-    auto element_size = sizeof(element_type);
+    auto element_size = sizeof(T);
 
     throw_invalid_value_if((element_size != 1 && element_size != 2 && element_size != 4), std::string("invalid element_type in ") + __func__);
     throw_invalid_value_if(size % element_size != 0, "invalid size " + std::to_string(size) + " in " + __func__);
 
     auto element_count = size / element_size;
-    auto host_src = std::shared_ptr<uint8_t>(new uint8_t[size]);
-    auto elements = reinterpret_cast<element_type*>(host_src.get());
-    for (size_t i=0; i<element_count; i++)
-    {
-      elements[i] = value;
-    }
+    auto vec = std::make_shared<std::vector<T>>(element_count, value);
+    //auto host_src = std::shared_ptr<uint8_t>(new uint8_t[size]);
+    //auto elements = reinterpret_cast<element_type*>(host_src.get());
+    //for (size_t i=0; i<element_count; i++)
+    //{
+    //  elements[i] = value;
+    //}
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "invalid stream handle "  + to_hex(stream) + " in " + __func__);
 
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, host_src, size, offset));
+                                std::make_shared<copy_buffer<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, vec, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 } // xrt::core::hip

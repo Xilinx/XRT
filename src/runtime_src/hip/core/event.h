@@ -43,16 +43,20 @@ public:
   };
 
 protected:
-  std::shared_ptr<stream> cstream;
   type ctype = type::event;
+  std::shared_ptr<stream> cstream;
   std::chrono::time_point<std::chrono::system_clock> ctime;
   state cstate = state::init;
 
 public:
-    command() = default;
+  command() = default;
 
-  explicit command(std::shared_ptr<stream> s)
-    : cstream{std::move(s)}
+  explicit command(type copy_type)
+    : ctype(copy_type)
+  {}
+
+  explicit command(type copy_type, std::shared_ptr<stream> s)
+    : ctype(copy_type), cstream{std::move(s)}
   {}
 
   virtual ~command() = default;
@@ -124,10 +128,11 @@ public:
   bool wait() override;
 };
 
+template<typename T>
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<uint8_t> ptr, size_t size, size_t offset);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset);
   copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
   bool submit() override;
   bool wait() override;
@@ -136,6 +141,7 @@ private:
   xclBOSyncDirection cdirection;
   std::shared_ptr<memory> buffer;
   void* host_ptr;
+  std::shared_ptr<std::vector<T>> host_vec;
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
