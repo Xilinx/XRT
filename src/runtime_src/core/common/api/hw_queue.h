@@ -9,6 +9,9 @@
 #include "experimental/xrt_fence.h"
 #include "experimental/xrt_kernel.h"
 
+#include "core/common/span.h"
+#include "core/common/shim/buffer_handle.h"
+
 #include <chrono>
 #include <condition_variable>
 #include <vector>
@@ -56,7 +59,7 @@ public:
 
   // Submit a runlist for execution
   void
-  submit(const xrt::runlist& runlist);
+  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist);
 
   // Wait for command completion.  Supports both managed and unmanaged
   // commands.
