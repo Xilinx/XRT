@@ -215,7 +215,7 @@ struct aie_core_info_sysfs
     const aie_sys_parser asp(aiepart);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
-    for (int i = 0; i < aie_meta .num_cols; ++i)
+    for (int i = 0; i < aie_meta.num_cols; ++i)
       for (int j = 0; j < (aie_meta.num_rows-1); ++j)
         ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
                           asp.aie_sys_read(i,(j + aie_meta.core_row))));
