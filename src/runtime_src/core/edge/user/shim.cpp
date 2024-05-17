@@ -141,7 +141,6 @@ shim::
   xdp::aie::finish_flush_device(this);
 #endif
   xdp::aie::ctr::end_poll(this);
-  xdp::aie::sts::end_poll(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
