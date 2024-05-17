@@ -502,6 +502,7 @@ namespace xdp {
 
   /****************************************************************************
    * Get channel number based on event
+   * NOTE: This only covers AIE Tiles and Interface Tiles
    ***************************************************************************/
   int8_t AieTrace_WinImpl::getChannelNumberFromEvent(XAie_Events event)
   {
@@ -1376,14 +1377,10 @@ namespace xdp {
         auto channelNum = getChannelNumberFromEvent(interfaceEvents.at(0));
         if (channelNum >= 0) {
           if (aie::isInputSet(type, metricSet)) {
-            cfgTile->interface_tile_trace_config.mm2s_channels[0] = channelNum;
-            if (channel0 != channel1)
-              cfgTile->interface_tile_trace_config.mm2s_channels[1] = channel1;
+            cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
           }
           else {
-            cfgTile->interface_tile_trace_config.s2mm_channels[0] = channelNum;
-            if (channel0 != channel1)
-              cfgTile->interface_tile_trace_config.s2mm_channels[1] = channel1;
+            cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
           }
         }
       } // Interface tiles
