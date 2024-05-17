@@ -11,7 +11,6 @@ include_directories(
   ${EM_SRC_DIR}
   ${COMMON_EM_SRC_DIR}
   ${COMMON_EM_GEN_DIR}
-  ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
 file(GLOB EM_SRC_FILES

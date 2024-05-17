@@ -107,11 +107,8 @@ get_total_devices(bool is_user) const
 
 void
 system_linux::
-scan_devices(bool verbose, bool json) const
+scan_devices(bool /*verbose*/, bool /*json*/) const
 {
-  std::cout << "TO-DO: scan_devices\n";
-  verbose = verbose;
-  json = json;
 }
 
 std::shared_ptr<device>
