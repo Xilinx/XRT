@@ -173,7 +173,6 @@ template<typename T>
 copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset)
   : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(nullptr), host_vec(std::move(vec)), copy_size(size), dev_offset(offset)
 {
-  //ctype = type::buffer_copy;
 }
 
 template<typename T>
@@ -181,7 +180,6 @@ copy_buffer<T>::../src/runtime_src/hip/core/event.cpp
 copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
   : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), host_vec(), copy_size(size), dev_offset(offset)
 {
-  //ctype = type::buffer_copy;
 }
 
 template<typename T>
