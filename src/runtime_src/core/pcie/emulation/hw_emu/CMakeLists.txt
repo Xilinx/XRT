@@ -11,7 +11,6 @@ include_directories(
   ${EM_SRC_DIR}
   ${COMMON_EM_SRC_DIR}
   ${COMMON_EM_GEN_DIR}
-  ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
 file(GLOB EM_SRC_FILES
@@ -45,7 +44,6 @@ set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 target_link_libraries(xrt_hwemu
   PRIVATE
-  ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
   xrt_coreutil
   common_em
@@ -55,7 +53,6 @@ target_link_libraries(xrt_hwemu
 
 target_link_libraries(xrt_hwemu_static
   INTERFACE
-  boost_system
   ${PROTOBUF_LIBRARY}
   xrt_coreutil_static
   rt

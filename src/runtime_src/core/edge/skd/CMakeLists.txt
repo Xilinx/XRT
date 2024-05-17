@@ -6,7 +6,6 @@ pkg_check_modules(LIBFFI REQUIRED libffi)
 find_package(libffi REQUIRED)
 
 include_directories(
-  ${BOOST_SYSTEM_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
   ${LIBFFI_INCLUDE_DIR}
@@ -31,7 +30,6 @@ add_dependencies(skd
 
 target_link_libraries(skd
   PRIVATE
-  ${Boost_SYSTEM_LIBRARY}
   xrt_core
   xrt_coreutil
   dl
