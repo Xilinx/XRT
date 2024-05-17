@@ -24,9 +24,10 @@ int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
         mutex_lock(&client->lock);
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_id);
         if (!hw_ctx) {
-                userpf_err(xdev, "No valid HW context is open");
+                userpf_info(xdev, "WARNING !!!! No valid HW context is open."
+			    " Continuing with default one");
                 mutex_unlock(&client->lock);
-                return -EINVAL;
+                return 0;
         }
 	mutex_unlock(&client->lock);
 
