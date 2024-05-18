@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,20 +25,19 @@
 class aie_sys_parser {
 
 private:
-    std::fstream sysfs_open_path(const std::string& path, bool write, bool binary);
-    std::fstream sysfs_open(const std::string& entry, bool write, bool binary);
-    void sysfs_get(const std::string& entry, std::vector<std::string>& sv);
+    std::fstream sysfs_open_path(const std::string& path, bool write, bool binary) const;
+    std::fstream sysfs_open(const std::string& entry, bool write, bool binary) const;
+    void sysfs_get(const std::string& entry, std::vector<std::string>& sv) const;
     void addrecursive(const int col, const int row, const std::string& tag, const std::string& line,
-                      boost::property_tree::ptree &pt);
+                      boost::property_tree::ptree &pt) const;
 
     std::string sysfs_root;
-    aie_sys_parser(const std::string& sysfs_base);
     aie_sys_parser(const aie_sys_parser& s) = delete;
     aie_sys_parser& operator=(const aie_sys_parser& s) = delete;
 
 public:
-    static aie_sys_parser *get_parser(const std::string& aiepart);
-    boost::property_tree::ptree aie_sys_read(const int col, const int row);
+    aie_sys_parser(const std::string& sysfs_base);
+    boost::property_tree::ptree aie_sys_read(const int col, const int row) const;
 
 };
 
