@@ -137,14 +137,16 @@ struct patcher
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
+  uint64_t m_add_end = 0;
 
   // Offsets from base address of control code buffer object
   // The base address is passed in as a parameter to patch()
   std::vector<uint64_t> m_ctrlcode_offset;
 
-  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset, buf_type t)
+  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset, buf_type t, uint64_t add_end)
     : m_buf_type(t)
     , m_symbol_type(type)
+    , m_add_end(add_end)
     , m_ctrlcode_offset(std::move(ctrlcode_offset))
   {}
 
@@ -200,8 +202,9 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t patch)
+  patch(uint8_t* base, uint64_t bo_addr)
   {
+    uint64_t patch = bo_addr + m_add_end;
     for (auto offset : m_ctrlcode_offset) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
       switch (m_symbol_type) {
@@ -637,8 +640,10 @@ class module_elf : public module_impl
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
         else {
-          auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {offset}, buf_type });
+          uint64_t add_end_higher_28bit = (rela->r_addend & 0xFFFFFFF0) >> 4;
+          uint64_t patch_scheme_lower_4bit = rela->r_addend & 0xF; // NOLINT
+          auto symbol_type = static_cast<patcher::symbol_type>(patch_scheme_lower_4bit);
+          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {offset}, buf_type, add_end_higher_28bit });
         }
       }
     }
@@ -703,7 +708,7 @@ class module_elf : public module_impl
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {ctrlcode_offset}, buf_type});
+        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {ctrlcode_offset}, buf_type, 0});
       }
     }
 
