@@ -893,16 +893,11 @@ namespace xdp {
           break;
         cfgTile->interface_tile_trace_config.packet_type = packetType;
         auto channelNum = aie::trace::getChannelNumberFromEvent(interfaceEvents.at(0));
-        std::cout<<"!!! returned channelNum: "<<+channelNum<<std::endl;
         if (channelNum >= 0) {
-          if (aie::isInputSet(type, metricSet)) {
-            std::cout<<"!!! MM2S channelNum: "<<+channelNum<<std::endl;
+          if (aie::isInputSet(type, metricSet))
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
-          }
-          else {
+          else
             cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
-            std::cout<<"!!! S2MM channelNum: "<<+channelNum<<std::endl;
-          }
         }
       } // interface tiles
 

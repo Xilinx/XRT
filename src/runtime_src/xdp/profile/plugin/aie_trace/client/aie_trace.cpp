@@ -1376,12 +1376,10 @@ namespace xdp {
         cfgTile->interface_tile_trace_config.packet_type = packetType;
         auto channelNum = getChannelNumberFromEvent(interfaceEvents.at(0));
         if (channelNum >= 0) {
-          if (aie::isInputSet(type, metricSet)) {
+          if (aie::isInputSet(type, metricSet))
             cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
-          }
-          else {
+          else
             cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
-          }
         }
       } // Interface tiles
 
