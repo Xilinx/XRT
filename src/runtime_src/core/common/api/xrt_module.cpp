@@ -137,17 +137,20 @@ struct patcher
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
-  uint64_t m_add_end = 0;
+
+  struct patch_info {
+      uint64_t offset;
+      uint32_t addend;
+  };
 
   // Offsets from base address of control code buffer object
   // The base address is passed in as a parameter to patch()
-  std::vector<uint64_t> m_ctrlcode_offset;
+  std::vector<patch_info> m_ctrlcode_patchinfo;
 
-  patcher(symbol_type type, std::vector<uint64_t> ctrlcode_offset, buf_type t, uint64_t add_end)
+  patcher(symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
     : m_buf_type(t)
     , m_symbol_type(type)
-    , m_add_end(add_end)
-    , m_ctrlcode_offset(std::move(ctrlcode_offset))
+    , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
   void
@@ -204,27 +207,26 @@ struct patcher
   void
   patch(uint8_t* base, uint64_t bo_addr)
   {
-    uint64_t patch = bo_addr + m_add_end;
-    for (auto offset : m_ctrlcode_offset) {
-      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + offset);
+    for (auto item : m_ctrlcode_patchinfo) {
+      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset);
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
-        patch32(bd_data_ptr, patch);
+        patch32(bd_data_ptr, bo_addr + item.addend);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
-        patch57(bd_data_ptr, patch);
+        patch57(bd_data_ptr, bo_addr + item.addend);
         break;
       case symbol_type::control_packet_48:
-        patch_ctrl48(bd_data_ptr, patch);
+        patch_ctrl48(bd_data_ptr, bo_addr + item.addend);
         break;
       case symbol_type::shim_dma_48:
-        patch_shim48(bd_data_ptr, patch);
+        patch_shim48(bd_data_ptr, bo_addr + item.addend);
         break;
       case symbol_type::tansaction_ctrlpkt_48:
-        patch_ctrl48(bd_data_ptr, patch);
+        patch_ctrl48(bd_data_ptr, bo_addr + item.addend);
         break;
       case symbol_type::tansaction_48:
-        patch_shim48(bd_data_ptr, patch);
+        patch_shim48(bd_data_ptr, bo_addr + item.addend);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -411,6 +413,11 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
+  // rela->addend have addend info along with schema
+  // [0:3] bit are used for schema, [4:31] used for addend
+  constexpr static uint32_t Addend_Shift = 4;
+  constexpr static uint32_t Addend_Mask = ~((uint32_t)0) << Addend_Shift;
+  constexpr static uint32_t Schema_Mask = ~Addend_Mask;
   xrt::elf m_elf;
   uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::vector<ctrlcode> m_ctrlcodes;
@@ -633,17 +640,18 @@ class module_elf : public module_impl
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
-        std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+        uint32_t add_end_higher_28bit = (rela->r_addend & Addend_Mask) >> Addend_Shift;
+        patcher::patch_info pi = { offset, add_end_higher_28bit };
 
+        std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
         std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
-          search->second.m_ctrlcode_offset.emplace_back(offset);
+          search->second.m_ctrlcode_patchinfo.emplace_back(pi);
         else {
-          uint64_t add_end_higher_28bit = (rela->r_addend & 0xFFFFFFF0) >> 4;
-          uint64_t patch_scheme_lower_4bit = rela->r_addend & 0xF; // NOLINT
+          uint32_t patch_scheme_lower_4bit = rela->r_addend & Schema_Mask;
           auto symbol_type = static_cast<patcher::symbol_type>(patch_scheme_lower_4bit);
-          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {offset}, buf_type, add_end_higher_28bit });
+          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {pi}, buf_type});
         }
       }
     }
@@ -708,7 +716,7 @@ class module_elf : public module_impl
         patcher::buf_type buf_type = patcher::buf_type::ctrltext;
 
         auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
-        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {ctrlcode_offset}, buf_type, 0});
+        arg2patcher.emplace(std::move(generate_key_string(argnm, buf_type)), patcher{ symbol_type, {{ctrlcode_offset, 0}}, buf_type});
       }
     }
 
