@@ -139,12 +139,10 @@ struct patcher
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
   struct patch_info {
-      uint64_t offset;
-      uint32_t addend;
+      uint64_t offset_to_patch_buffer;
+      uint32_t offset_to_base_bo_addr;
   };
 
-  // Offsets from base address of control code buffer object
-  // The base address is passed in as a parameter to patch()
   std::vector<patch_info> m_ctrlcode_patchinfo;
 
   patcher(symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
@@ -208,25 +206,25 @@ struct patcher
   patch(uint8_t* base, uint64_t bo_addr)
   {
     for (auto item : m_ctrlcode_patchinfo) {
-      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset);
+      auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
-        patch32(bd_data_ptr, bo_addr + item.addend);
+        patch32(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
-        patch57(bd_data_ptr, bo_addr + item.addend);
+        patch57(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
-        patch_ctrl48(bd_data_ptr, bo_addr + item.addend);
+        patch_ctrl48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       case symbol_type::shim_dma_48:
-        patch_shim48(bd_data_ptr, bo_addr + item.addend);
+        patch_shim48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       case symbol_type::tansaction_ctrlpkt_48:
-        patch_ctrl48(bd_data_ptr, bo_addr + item.addend);
+        patch_ctrl48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       case symbol_type::tansaction_48:
-        patch_shim48(bd_data_ptr, bo_addr + item.addend);
+        patch_shim48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -413,8 +411,8 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
-  // rela->addend have addend info along with schema
-  // [0:3] bit are used for schema, [4:31] used for addend
+  // rela->addend have offset to base-bo-addr info along with schema
+  // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
   constexpr static uint32_t Addend_Shift = 4;
   constexpr static uint32_t Addend_Mask = ~((uint32_t)0) << Addend_Shift;
   constexpr static uint32_t Schema_Mask = ~Addend_Mask;
