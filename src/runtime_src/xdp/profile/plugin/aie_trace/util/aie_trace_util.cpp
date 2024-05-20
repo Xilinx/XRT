@@ -454,6 +454,7 @@ namespace xdp::aie::trace {
 
   /****************************************************************************
    * Get channel number based on event
+   * NOTE: This only covers AIE Tiles and Interface Tiles
    ***************************************************************************/
   int8_t getChannelNumberFromEvent(XAie_Events event)
   {
