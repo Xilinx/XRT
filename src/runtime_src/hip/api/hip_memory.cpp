@@ -172,8 +172,7 @@ namespace xrt::core::hip
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
 
     hip_mem_dst->write(src, size, 0, offset);
-  }../src/runtime_src/hip/core/event.cpp
-
+  }
 
   static void
   hip_memcpy(void* dst, const void* src, size_t size, hipMemcpyKind kind)
@@ -191,7 +190,6 @@ namespace xrt::core::hip
       case hipMemcpyDeviceToDevice:
         hip_memcpy_device2device(dst, src, size);
         break;
-../src/runtime_src/hip/core/event.cpp
 
       case hipMemcpyHostToHost:
         hip_memcpy_host2host(dst, src, size);
