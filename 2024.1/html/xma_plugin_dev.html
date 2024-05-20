@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+<!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
+
+<script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" data-document-language="true" type="text/javascript" charset="UTF-8" data-domain-script="03af8d57-0a04-47a6-8f10-322fa00d8fc7" ></script>
+<script type="text/javascript">
+function OptanonWrapper() { }
+</script>
+<!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
+  <title>Plugin Development Guide &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="XMA Upper Edge API Library" href="xmakernels.main.html" />
+    <link rel="prev" title="Application Development Guide" href="xma_apps_dev.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                Master
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Plugin Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#initalization">Initalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#handling-incoming-application-data">Handling Incoming Application Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sending-output-to-the-application">Sending Output to the Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#termination">Termination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zerocopy-special-case">Zerocopy Special Case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#standalone-example">Standalone Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: black" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Plugin Development Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/xma_plugin_dev.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="plugin-development-guide">
+<h1>Plugin Development Guide<a class="headerlink" href="#plugin-development-guide" title="Permalink to this headline">¶</a></h1>
+<p>The XMA Plugin Interface is used to write software capable of managing a
+specific video kernel hardware resource.  The plugin interface consists of a
+library for moving data between device memory and host memory and accessing
+hardware registers.  Additionally, standard interfaces are defined to
+represent various video kernel archtypes such as encoders, decoders, and
+filters.</p>
+<p>The plugin developer, by implementing a given plugin interface, permits XMA
+to translate requests from XMA applications into hardware-specific actions
+(i.e. register programming, buffer processing). The XMA plugin is akin to a
+software ‘driver’ in this regard.</p>
+<p>The first step in developing an XMA plugin requires you to decide which XMA
+kernel interface accurately represents the type of hardware kernel for which
+you seek to provide support:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 49%" />
+<col style="width: 51%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Kernel Type</p></th>
+<th class="head"><p>XMA Plugin Interface</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Encoders (VP9, H.264, H.265)</p></td>
+<td><p>xmaplgenc</p></td>
+</tr>
+<tr class="row-odd"><td><p>Decoders (VP9, H.264, H.265)</p></td>
+<td><p>xmaplgdec</p></td>
+</tr>
+<tr class="row-even"><td><p>Filters (colorspace converter, scalers)</p></td>
+<td><p>xmaplgfilter or xmaplgscaler</p></td>
+</tr>
+<tr class="row-odd"><td><p>Scalers</p></td>
+<td><p>xmaplgscaler</p></td>
+</tr>
+<tr class="row-even"><td><p>Other (embedded cpu)</p></td>
+<td><p>xmaplgkernel</p></td>
+</tr>
+</tbody>
+</table>
+<p>Once selected, the job of the plugin author is to implement the interface
+for the given kernel thus providing a mapping between the xma_app_intf and
+the kernel.  Most callbacks specified are implicitly mandatory with some exceptions
+which will be noted below.</p>
+<p>Your plugin will be compiled into a shared object library and linked to the
+kernel via create_session properties:</p>
+<p>All plugin code must include xmaplugin.h</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;xmaplugin.h&gt;
+</pre></div>
+</div>
+<p>This will provide the plugin code access to all data structures necessary
+to author XMA plugin code.  This includes access to the structures used
+by the xma_app_intf as xmaplugin.h includes xma.h.</p>
+<p>What follows is a general description of what is expected of a plugin in
+response to the xma_app_intf.</p>
+<p>From the application perspective, the following operations
+will be peformed:</p>
+<ol class="arabic simple">
+<li><p>Create session</p></li>
+<li><p>Send data/frame or write**</p></li>
+<li><p>Receive data/frame or read**</p></li>
+<li><p>Destroy</p></li>
+</ol>
+<p>** in the case of a non-video kernel</p>
+<p>Steps 2 and 3 will form the runtime processing of frames/data and likely
+repeated for as long as there is data to be processed.</p>
+<p>A general mapping between the application interface and plugin interface:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Application Call</p></th>
+<th class="head"><p>Plugin Callbacks Invoked</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>session_create()</p></td>
+<td><p>init()</p></td>
+</tr>
+<tr class="row-odd"><td><p>send_(data|frame)()</p></td>
+<td><p>send_(data|frame)()</p></td>
+</tr>
+<tr class="row-even"><td><p>recv_(data|frame)()</p></td>
+<td><p>recv_(data|frame)()</p></td>
+</tr>
+<tr class="row-odd"><td><p>destroy()</p></td>
+<td><p>close()</p></td>
+</tr>
+</tbody>
+</table>
+<section id="initalization">
+<h2>Initalization<a class="headerlink" href="#initalization" title="Permalink to this headline">¶</a></h2>
+<p>Initialization is the time for a plugin to perform one or more of the
+following:</p>
+<ol class="arabic simple">
+<li><p>allocate device buffers to handle input data as well as output data</p></li>
+<li><p>initalize the state of the kernel</p></li>
+</ol>
+<p>When a session has been created in response to an application request,
+XMA will allocate plugin data that
+is session-specific.</p>
+<p>XmaSession-&gt;plugin_data member is
+available to plugin to store the necessary session-specific
+state as necessary. There is no need to free these data structures during
+termination; XMA frees this data for you.</p>
+<p>To allocate buffers necessary to handle both incoming and outgoing
+data, please see</p>
+<ol class="arabic simple">
+<li><p>xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank</p></li>
+<li><p>xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument</p></li>
+</ol>
+</section>
+<section id="handling-incoming-application-data">
+<h2>Handling Incoming Application Data<a class="headerlink" href="#handling-incoming-application-data" title="Permalink to this headline">¶</a></h2>
+<p>For each kernel type, there is an application interface to send data to be
+proceessed (i.e. encoded, decoded, or otherwised transformed).
+Data being sent by an application to the kernel will result in the invocation
+of your send()/write() callback.</p>
+<p>The most common operation within the plugin is to copy data from host
+memory to device memory so that it may be operated on by the kernel.
+Subsequently, the kernel must be programmed to know which device buffer
+contains the data to be processed and programmed appropriately.</p>
+<p>The XMA Plugin library call xma_plg_buffer_write() can be used to copy
+host data to device data.</p>
+<p>xma_plg_schedule_cu_cmd() or xma_plg_schedule_work_item() can be used to program
+the kernel registers and start kernel processing.</p>
+</section>
+<section id="sending-output-to-the-application">
+<h2>Sending Output to the Application<a class="headerlink" href="#sending-output-to-the-application" title="Permalink to this headline">¶</a></h2>
+<p>For each kernel type, there is an application interface to request processed
+data (i.e. encoded, decoded, otherwise transformed) by the kernel.  Data
+being requested by an application from the kernel will invoke your
+recv()/read() callback implementation.</p>
+<p>The most common operation within the plugin is to copy data from device
+memory back to host memory so that it may be processed by the application.
+Subsequently, the kernel may be prepared for new data to arrive for processing.</p>
+<p>The XMA Plugin library call xma_plg_buffer_read() can be used to copy
+host data to device data.</p>
+</section>
+<section id="termination">
+<h2>Termination<a class="headerlink" href="#termination" title="Permalink to this headline">¶</a></h2>
+<p>When an XMA application has concluded data processing, it will destroy its
+kernel session.  Your close() callback will be invoked to perform the necessary
+cleanup.  Your close() implementation should free any buffers that were
+allocated in device memory during your init() via xma_plg_buffer_free().
+Freeing XmaSession-&gt;plugin_data is not necessary
+as this will be done by the XMA library.</p>
+</section>
+<section id="zerocopy-special-case">
+<h2>Zerocopy Special Case<a class="headerlink" href="#zerocopy-special-case" title="Permalink to this headline">¶</a></h2>
+<p>Encoders are capable of receiving data directly from upstream video processing
+kernels such as filters or scalers.  In such a case, it may improve the
+the performance of a video processing pipeline that includes both a filter and
+an encoder to exchange data directly within device memory rather than have
+the filter copy data back to a host buffer only to be re-copied from the host
+to the device buffer of the downstream encoder.  This double-copy can be
+avoided if the two kernels can share a buffer within the device memory; a
+buffer that serves as an ‘output’ buffer for the filter but an ‘input’
+buffer for the encoder. This optimization is known as ‘zerocopy’.</p>
+<p>Use XRM for system resource reservation such that zero-copy is possible
+XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
+Plugins may use dev_index, bank_index &amp; device_only info from BufferObject to enable or disable zero-copy</p>
+</section>
+<section id="standalone-example">
+<h2>Standalone Example<a class="headerlink" href="#standalone-example" title="Permalink to this headline">¶</a></h2>
+<p>See XMA <a class="reference external" href="https://github.com/Xilinx/xma-samples">copy_encoder</a> example for an standalone working example of encoder kernel type.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          
+                  <style>
+                        .footer {
+                        position: fixed;
+                        left: 0;
+                        bottom: 0;
+                        width: 100%;
+                        }
+                  </style>
+				  
+				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="xma_apps_dev.html" class="btn btn-neutral float-left" title="Application Development Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="xmakernels.main.html" class="btn btn-neutral float-right" title="XMA Upper Edge API Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
+      </span></p>
+  </div>
+
+
+
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+
+													                    <div class="row">
+                        <div class="col-xs-24">
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                        </div>
+                    </div>
+												</div>
+											</div>
+										</div>
+										
+</br>
+
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>

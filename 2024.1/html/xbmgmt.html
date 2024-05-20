@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+<!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
+
+<script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" data-document-language="true" type="text/javascript" charset="UTF-8" data-domain-script="03af8d57-0a04-47a6-8f10-322fa00d8fc7" ></script>
+<script type="text/javascript">
+function OptanonWrapper() { }
+</script>
+<!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
+  <title>xbmgmt &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="xbflash2" href="xbflash2.html" />
+    <link rel="prev" title="xbutil" href="xbutil.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                Master
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xbmgmt</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-configure">xbmgmt configure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-dump">xbmgmt dump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-examine">xbmgmt examine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-program">xbmgmt program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-reset">xbmgmt reset</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: black" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>xbmgmt</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/xbmgmt.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <span class="target" id="xbmgmt-rst"></span><section id="xbmgmt">
+<h1>xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h1>
+<p>This document describes the latest <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. These latest commands are default from 21.1 release.</p>
+<p>For an instructive video on xbmgmt commands listed below click <a class="reference external" href="https://www.youtube.com/watch?v=ORYSrYegX_g">here</a>.</p>
+<p><strong>Global options</strong>: These are the global options can be used with any command.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code>: Turn on verbosity and shows more outputs whenever applicable</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--batch</span></code>: Enable batch mode</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code>: When possible, force an operation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code> : Get help message</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--version</span></code> : Report the version of XRT and its drivers</p></li>
+</ul>
+</div></blockquote>
+<p>Currently supported <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands are</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code></p></li>
+</ul>
+</div></blockquote>
+<p><strong>Note</strong>: For applicable commands, if only one device is present on the system <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is not required. If more than one device is present in the system, <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) is required.</p>
+<section id="xbmgmt-configure">
+<h2>xbmgmt configure<a class="headerlink" href="#xbmgmt-configure" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code> command provides advanced options for configuring a device’s memory, clock, and DDR memory retention settings. A .ini file input is required for configuration except for DDR memory retention. The .ini file can be located in a directory of your choosing with the path specified in the command.</p>
+<ul class="simple">
+<li><p>TIP: Instead of creating a .ini file from scratch, use <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span> <span class="pre">--config</span></code> (see the <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> section) to generate the file contents which can be edited accordingly.</p></li>
+</ul>
+<p><strong>Command Options</strong></p>
+<p>The supported options are <code class="docutils literal notranslate"><span class="pre">--input</span></code> and <code class="docutils literal notranslate"><span class="pre">--retention</span></code>. Command usage is below.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--input<span class="o">]</span> &lt;path to filename with .ini extension&gt;
+</pre></div>
+</div>
+<p>Enabling/Disabling clock throttling on a device</p>
+<ul class="simple">
+<li><p>When enabled, clock throttling reduces the kernel clock frequency dynamically when either thermal or electrical sensors exceed defined threshold values. By lowering the clock frequency, clock throttling reduces the required power and subsequently generated heat. Only when all sensor values fall below their respective clock throttling threshold values will the kernel clock be restored to full performance.</p></li>
+<li><p>Default clock throttling threshold values are available in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a> for supported platforms.</p></li>
+<li><p>The contents of the .ini file for clock throttling configuration should be similar to the example provided below. Underneath the first line, <code class="docutils literal notranslate"><span class="pre">[Device]</span></code>, specify one or more key-value pairings as needed.</p></li>
+</ul>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Device]</span><span class="w"></span>
+<span class="na">throttling_enabled</span><span class="o">=</span><span class="s">true</span><span class="w"></span>
+<span class="na">throttling_power_override</span><span class="o">=</span><span class="s">200</span><span class="w"></span>
+<span class="na">throttling_temp_override</span><span class="o">=</span><span class="s">90</span><span class="w"></span>
+</pre></div>
+</div>
+<ul>
+<li><p>The definition of the three key-value pairings are given below.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">throttling_enabled</span></code> : When set to <code class="docutils literal notranslate"><span class="pre">true</span></code>, clock throttling will be enabled. When set to <code class="docutils literal notranslate"><span class="pre">false</span></code>, clock throttling will be disabled, and no clock throttling will occur. The default value is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">throttling_power_override</span></code> : Provide a power threshold override in watts for clock throttling to activate. The default threshold value is given in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">throttling_temp_override</span></code> : Provide a temperature threshold override in Celsius for clock throttling to activate. The default threshold value is given in <a class="reference external" href="https://docs.xilinx.com/r/en-US/ug1120-alveo-platforms">&lt;UG1120&gt;</a>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If a pairing is not listed in the .ini file, the default value (or the updated value from previous usage of <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span> <span class="pre">--input</span></code>) is used.</p></li>
+<li><p>Thresholds can be set higher or lower as necessary (e.g. debugging purposes). Note that cards still have built-in card and clock shutdown logic with independent thresholds to protect the cards.</p></li>
+<li><p>To check clock throttling settings, use <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> with the <code class="docutils literal notranslate"><span class="pre">cmc</span></code> report.</p></li>
+</ul>
+<p>Enabling/Disabling DDR memory retention on a device</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --retention <span class="o">[</span>ENABLE<span class="p">|</span>DISABLE<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--input</span></code> specifies an INI file with configuration details (e.g. memory, clock throttling).</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--retention</span></code> option enables / disables DDR memory retention.</p></li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure a device&#39;s memory settings using an image</span>
+xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/memory_config.ini
+
+<span class="c1">#Configure a device using edited output .ini from xbmgmt dump --config</span>
+xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/config.ini
+
+<span class="c1">#Enable a device&#39;s DDR memory retention</span>
+xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
+</pre></div>
+</div>
+</section>
+<section id="xbmgmt-dump">
+<h2>xbmgmt dump<a class="headerlink" href="#xbmgmt-dump" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> command dumps out content of the specified option</p>
+<p><strong>The supported options</strong></p>
+<p>Dumping the output of system configuration.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--config<span class="p">|</span> -c<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .ini extension&gt;
+</pre></div>
+</div>
+<p>Dumping the output of programmed system image</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--flash<span class="p">|</span> -f<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .bin extension&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--flash</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) option dumps the output of programmed system image. Requires a .bin output file by <code class="docutils literal notranslate"><span class="pre">-o</span></code> option.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--config</span></code> (or <code class="docutils literal notranslate"><span class="pre">-c</span></code>) option dumps the output of system configuration. Requires a .ini output file by <code class="docutils literal notranslate"><span class="pre">-o</span></code> option.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the dumped output.</p></li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dump programmed system image data</span>
+xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --flash -o /tmp/flash_dump.bin
+
+<span class="c1">#Dump system configuration. This .ini file can be edited and used as input for xbmgmt configure.</span>
+xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config_dump.ini
+
+<span class="c1">#Example .ini file contents from xbmgmt dump --config.</span>
+<span class="c1">#Only edit the throttling_enabled, throttling_power_override, and throttling_temp_override values when editing clock throttling settings.</span>
+<span class="o">[</span>Device<span class="o">]</span>
+<span class="nv">mailbox_channel_disable</span><span class="o">=</span>0x0
+<span class="nv">mailbox_channel_switch</span><span class="o">=</span>0x0
+<span class="nv">xclbin_change</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">cache_xclbin</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">throttling_enabled</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">throttling_power_override</span><span class="o">=</span><span class="m">200</span>
+<span class="nv">throttling_temp_override</span><span class="o">=</span><span class="m">90</span>
+</pre></div>
+</div>
+</section>
+<section id="xbmgmt-examine">
+<h2>xbmgmt examine<a class="headerlink" href="#xbmgmt-examine" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> command reports detail status information of the specified device <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=137">&lt;video reference&gt;</a>.</p>
+<p><strong>The supported options</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt examine <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--report</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) switch can be used to view specific report(s) of interest from the following options</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: All known reports are produced</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">firewall</span></code>: Firewall status</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: Host information</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mailbox</span></code>: Mailbox metrics of the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mechanical</span></code>: Mechanical sensors on and surrounding the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platform information</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cmc</span></code>: Reports cmc status of the device, such as clock throttling information</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Report all the information for a specific device</span>
+xbmgmt examine --device <span class="m">0000</span>:d8:00.0 --report all
+
+<span class="c1">#Reports platform information in JSON format</span>
+xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --format JSON --output output.json
+</pre></div>
+</div>
+</section>
+<section id="xbmgmt-program">
+<h2>xbmgmt program<a class="headerlink" href="#xbmgmt-program" title="Permalink to this headline">¶</a></h2>
+<p><strong>The supported usecases and their options</strong></p>
+<p>Program the Base partition (applicable for 1RP platform too) <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=193">&lt;video reference&gt;</a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span>
+</pre></div>
+</div>
+<p>Program the Base partition when multiple base partitions are installed in the system</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span> <span class="o">[</span>--image<span class="p">|</span>-i<span class="o">]</span> &lt;partition name&gt;
+</pre></div>
+</div>
+<p>Program the Shell Partition for 2RP platform <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=300">&lt;video reference&gt;</a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--shell<span class="p">|</span>-s<span class="o">]</span> &lt;shell partition file with path&gt;
+</pre></div>
+</div>
+<p>Program the user partition with an XCLBIN file</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;XCLBIN file with path&gt;
+</pre></div>
+</div>
+<p>Revert to golden image <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=280">&lt;video reference&gt;</a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --revert-to-golden
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--base</span></code> option is used to update the base partition. This option is applicable for both the 1RP and 2RP platforms. No action is performed if the card’s existing base partition is already up-to-date, in a higher version, or a different platform’s partition. The option <code class="docutils literal notranslate"><span class="pre">--base</span></code> only works if only one base partition package is also installed on the host system. In case of multiple base partitions are installed on the system an additional <code class="docutils literal notranslate"><span class="pre">--image</span></code> option is required (discussed next).</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--image</span></code> option is used with the <code class="docutils literal notranslate"><span class="pre">--base</span></code> option if multiple base partitions are installed on the system. Multiple base partitions installed on the system can be viewed by executing the command <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--report</span> <span class="pre">platform</span></code> (shown under <strong>Flashable partitions installed in system</strong> section). The user then choose the desired base partition for programming the platform and execute the full command as <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--base</span> <span class="pre">--image</span> <span class="pre">&lt;base</span> <span class="pre">partition</span> <span class="pre">name&gt;</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--shell</span></code> option is used to program shell partition, applicable for 2RP platform only. The user can get the full path of installed shell partition in the system from the json file generated by <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span> <span class="pre">-r</span> <span class="pre">platform</span> <span class="pre">--format</span> <span class="pre">json</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;.json</span></code> command</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;shell partition with path&gt; : The shell partition with full path to program the shell partition</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--user</span></code> (or <code class="docutils literal notranslate"><span class="pre">-u</span></code>) is required to specify the .xclbin file</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;xclbin file&gt; : The xclbin file with full-path to program the device</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--revert-to-golden</span></code> command is used to reverts the flash image back to the golden version of the card.</p></li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Program the base partition</span>
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --base
+
+
+<span class="c1">#Program the base partition</span>
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --base --image xilinx-u250-gen3x16-base
+
+<span class="c1">#Program the shell partition</span>
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --shell &lt;partition file with path&gt;
+
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
+</pre></div>
+</div>
+</section>
+<section id="xbmgmt-reset">
+<h2>xbmgmt reset<a class="headerlink" href="#xbmgmt-reset" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code> command can be used to reset device .</p>
+<p><strong>The supported options</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to reset</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset --device <span class="m">0000</span>:65:00.0
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          
+                  <style>
+                        .footer {
+                        position: fixed;
+                        left: 0;
+                        bottom: 0;
+                        width: 100%;
+                        }
+                  </style>
+				  
+				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="xbutil.html" class="btn btn-neutral float-left" title="xbutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="xbflash2.html" class="btn btn-neutral float-right" title="xbflash2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
+      </span></p>
+  </div>
+
+
+
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+
+													                    <div class="row">
+                        <div class="col-xs-24">
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                        </div>
+                    </div>
+												</div>
+											</div>
+										</div>
+										
+</br>
+
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>
