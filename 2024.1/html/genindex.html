@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+<!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
+
+<script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" data-document-language="true" type="text/javascript" charset="UTF-8" data-domain-script="03af8d57-0a04-47a6-8f10-322fa00d8fc7" ></script>
+<script type="text/javascript">
+function OptanonWrapper() { }
+</script>
+<!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
+  <title>Index &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                Master
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: black" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Index</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#X"><strong>X</strong></a>
+ 
+</div>
+<h2 id="X">X</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xmakernels.main.html#c.xma_dec_session_create">xma_dec_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_dec_session_destroy">xma_dec_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_dec_session_get_properties">xma_dec_session_get_properties (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_dec_session_recv_frame">xma_dec_session_recv_frame (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_dec_session_send_data">xma_dec_session_send_data (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_create">xma_enc_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_destroy">xma_enc_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_recv_data">xma_enc_session_recv_data (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_enc_session_send_frame">xma_enc_session_send_frame (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_create">xma_filter_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_destroy">xma_filter_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_recv_frame">xma_filter_session_recv_frame (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_filter_session_send_frame">xma_filter_session_send_frame (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_initialize">xma_initialize (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_create">xma_kernel_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_destroy">xma_kernel_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_read">xma_kernel_session_read (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_kernel_session_write">xma_kernel_session_write (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_arg_num">xma_plg_buffer_alloc_arg_num (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_ddr">xma_plg_buffer_alloc_ddr (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_free">xma_plg_buffer_free (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_read">xma_plg_buffer_read (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_write">xma_plg_buffer_write (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_channel_id">xma_plg_channel_id (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_get_dev_handle">xma_plg_get_dev_handle (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_work_item_return_code">xma_plg_work_item_return_code (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_default_filter_coeff_set">xma_scaler_default_filter_coeff_set (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_create">xma_scaler_session_create (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_destroy">xma_scaler_session_destroy (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_recv_frame_list">xma_scaler_session_recv_frame_list (C function)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.xma_scaler_session_send_frame">xma_scaler_session_send_frame (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boE">xrt::bo (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo7addressEv">xrt::bo::address (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5asyncE18xclBOSyncDirection">xrt::bo::async (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo5asyncE18xclBOSyncDirection6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo12async_handleE">xrt::bo::async_handle (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo">xrt::bo::bo (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo6size_t6size_t">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_t12memory_group">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextE6size_tN2bo5flagsE12memory_group">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_t12memory_group">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt10hw_contextEPv6size_tN2bo5flagsE12memory_group">[5]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceE13export_handle">[6]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_t12memory_group">[7]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceE6size_tN2bo5flagsE12memory_group">[8]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceE8pid_type13export_handle">[9]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_t12memory_group">[10]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERKN3xrt6deviceEPv6size_tN2bo5flagsE12memory_group">[11]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERR2bo">[12]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boEv">[13]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4copyERK2bo">xrt::bo::copy (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4copyERK2bo6size_t6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo13export_bufferEv">xrt::bo::export_buffer (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flagsE">xrt::bo::flags (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags9cacheableE">xrt::bo::flags::cacheable (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags11device_onlyE">xrt::bo::flags::device_only (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags9host_onlyE">xrt::bo::flags::host_only (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags6normalE">xrt::bo::flags::normal (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags3p2pE">xrt::bo::flags::p2p (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags3svmE">xrt::bo::flags::svm (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo9get_flagsEv">xrt::bo::get_flags (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo16get_memory_groupEv">xrt::bo::get_memory_group (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt2bo3mapE7MapTypev">xrt::bo::map (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo3mapEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bocvbEv">xrt::bo::operator bool (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2boaSERK2bo">xrt::bo::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2boaSERR2bo">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2boeqERK2bo">xrt::bo::operator== (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4readEPv">xrt::bo::read (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4readEPv6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo4sizeEv">xrt::bo::size (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection">xrt::bo::sync (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5writeEPKv">xrt::bo::write (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo5writeEPKv6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceE">xrt::device (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceE15xclDeviceHandle">xrt::device::device (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERK6device">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERKNSt6stringE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceERR6device">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEj">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device6deviceEv">[5]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv">xrt::device::get_info (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0ENK3xrt6device18get_xclbin_sectionE11SectionType17axlf_section_kindRK4uuid">xrt::device::get_xclbin_section (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6device15get_xclbin_uuidEv">xrt::device::get_xclbin_uuid (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinEPK4axlf">xrt::device::load_xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinERKN3xrt6xclbinE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinERKNSt6stringE">[2]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceaSERK6device">xrt::device::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6deviceaSERR6device">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceD0Ev">xrt::device::~device (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4infoE">xrt::info (C++ type)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6deviceE">xrt::info::device (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3aieE">xrt::info::device::aie (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device7aie_memE">xrt::info::device::aie_mem (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device8aie_shimE">xrt::info::device::aie_shim (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3bdfE">xrt::info::device::bdf (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device15dynamic_regionsE">xrt::info::device::dynamic_regions (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device10electricalE">xrt::info::device::electrical (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4hostE">xrt::info::device::host (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device14interface_uuidE">xrt::info::device::interface_uuid (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4kdmaE">xrt::info::device::kdma (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3m2mE">xrt::info::device::m2m (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device23max_clock_frequency_mhzE">xrt::info::device::max_clock_frequency_mhz (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device10mechanicalE">xrt::info::device::mechanical (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device6memoryE">xrt::info::device::memory (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4nameE">xrt::info::device::name (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device5nodmaE">xrt::info::device::nodma (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device7offlineE">xrt::info::device::offline (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device9pcie_infoE">xrt::info::device::pcie_info (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device8platformE">xrt::info::device::platform (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device7thermalE">xrt::info::device::thermal (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3vmrE">xrt::info::device::vmr (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3iniE">xrt::ini (C++ type)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3ini3setERKNSt6stringERKNSt6stringE">xrt::ini::set (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3ini3setERKNSt6stringEj">[1]</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ipE">xrt::ip (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip23create_interrupt_notifyEv">xrt::ip::create_interrupt_notify (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interruptE">xrt::ip::interrupt (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interrupt7disableEv">xrt::ip::interrupt::disable (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interrupt6enableEv">xrt::ip::interrupt::enable (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interrupt4waitEv">xrt::ip::interrupt::wait (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt2ip9interrupt4waitERKNSt6chrono12millisecondsE">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip2ipERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE">xrt::ip::ip (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2ip2ipEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt2ip13read_registerE8uint32_t">xrt::ip::read_register (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip14write_registerE8uint32_t8uint32_t">xrt::ip::write_register (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernelE">xrt::kernel (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8get_nameEv">xrt::kernel::get_name (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel10get_xclbinEv">xrt::kernel::get_xclbin (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel8group_idEi">xrt::kernel::group_id (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">xrt::kernel::kernel (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6kernel6kernelEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6kernel6offsetEi">xrt::kernel::offset (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt6kernelclE3runDpRR4Args">xrt::kernel::operator() (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7messageE">xrt::message (C++ type)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5levelE">xrt::message::level (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level5alertE">xrt::message::level::alert (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level8criticalE">xrt::message::level::critical (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level5debugE">xrt::message::level::debug (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level9emergencyE">xrt::message::level::emergency (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level5errorE">xrt::message::level::error (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level4infoE">xrt::message::level::info (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level6noticeE">xrt::message::level::notice (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message5level7warningE">xrt::message::level::warning (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt7message3logE5levelRKNSt6stringERKNSt6stringE">xrt::message::log (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt7message4logfEv5levelRKNSt6stringEPKcDpRR4Args">xrt::message::logf (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3runE">xrt::run (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run5abortEv">xrt::run::abort (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv">xrt::run::add_callback (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run13command_errorE">xrt::run::command_error (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run13command_error17get_command_stateEv">xrt::run::command_error::get_command_state (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runcvbEv">xrt::run::operator bool (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4IDpEN3xrt3runclEvDpRR4Args">xrt::run::operator() (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4IDpEN3xrt3runclEvRR9autostartDpRR4Args">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3runltERKN3xrt3runE">xrt::run::operator&lt; (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run11return_codeEv">xrt::run::return_code (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run3runERK6kernel">xrt::run::run (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run3runEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEvRKNSt6stringERR7ArgType">xrt::run::set_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4I0EN3xrt3run7set_argEviRR7ArgType">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRKN3xrt2boE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRN3xrt2boE">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run7set_argEiRRN3xrt2boE">[4]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run5startERK9autostart">xrt::run::start (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run5startEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5stateEv">xrt::run::state (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run4stopEv">xrt::run::stop (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt3run10update_argEviRR7ArgType">xrt::run::update_arg (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt3run10update_argEiRKN3xrt2boE">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitERKNSt6chrono12millisecondsE">xrt::run::wait (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run4waitEj">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2ERKNSt6chrono12millisecondsE">xrt::run::wait2 (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt3run5wait2Ev">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6systemE">xrt::system (C++ type)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6system17enumerate_devicesEv">xrt::system::enumerate_devices (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4uuidE">xrt::uuid (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt4uuid3getEv">xrt::uuid::get (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt4uuidcvbEv">xrt::uuid::operator bool (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt4uuidneERK4uuid">xrt::uuid::operator!= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt4uuidneERK6xuid_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt4uuidltERK4uuid">xrt::uuid::operator&lt; (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4uuidaSERK4uuid">xrt::uuid::operator= (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt4uuideqERK4uuid">xrt::uuid::operator== (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4NK3xrt4uuideqERK6xuid_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt4uuid9to_stringEv">xrt::uuid::to_string (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4uuid4uuidEK6xuid_t">xrt::uuid::uuid (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt4uuid4uuidERK4uuid">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt4uuid4uuidERKNSt6stringE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt4uuid4uuidEv">[3]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbinE">xrt::xclbin (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3argE">xrt::xclbin::arg (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ipE">xrt::xclbin::ip (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip12control_typeE">xrt::xclbin::ip::control_type (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip12control_type5chainE">xrt::xclbin::ip::control_type::chain (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip12control_type2faE">xrt::xclbin::ip::control_type::fa (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip12control_type2hsE">xrt::xclbin::ip::control_type::hs (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip12control_type4noneE">xrt::xclbin::ip::control_type::none (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip7ip_typeE">xrt::xclbin::ip::ip_type (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip7ip_type2plE">xrt::xclbin::ip::ip_type::pl (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ip7ip_type2psE">xrt::xclbin::ip::ip_type::ps (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernelE">xrt::xclbin::kernel (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernel11kernel_typeE">xrt::xclbin::kernel::kernel_type (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernel11kernel_type3dpuE">xrt::xclbin::kernel::kernel_type::dpu (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernel11kernel_type4noneE">xrt::xclbin::kernel::kernel_type::none (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernel11kernel_type2plE">xrt::xclbin::kernel::kernel_type::pl (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6kernel11kernel_type2psE">xrt::xclbin::kernel::kernel_type::ps (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3memE">xrt::xclbin::mem (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_typeE">xrt::xclbin::mem::memory_type (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type3areE">xrt::xclbin::mem::memory_type::are (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4bramE">xrt::xclbin::mem::memory_type::bram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4ddr3E">xrt::xclbin::mem::memory_type::ddr3 (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4ddr4E">xrt::xclbin::mem::memory_type::ddr4 (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4dramE">xrt::xclbin::mem::memory_type::dram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type3hbmE">xrt::xclbin::mem::memory_type::hbm (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4hostE">xrt::xclbin::mem::memory_type::host (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type19preallocated_globalE">xrt::xclbin::mem::memory_type::preallocated_global (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type9streamingE">xrt::xclbin::mem::memory_type::streaming (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE">xrt::xclbin::mem::memory_type::streaming_connection (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4uramE">xrt::xclbin::mem::memory_type::uram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin11target_typeE">xrt::xclbin::target_type (C++ enum)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin11target_type2hwE">xrt::xclbin::target_type::hw (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin11target_type6hw_emuE">xrt::xclbin::target_type::hw_emu (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin11target_type6sw_emuE">xrt::xclbin::target_type::sw_emu (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinEPK4axlf">xrt::xclbin::xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinEv">[3]</a>
+</li>
+  </ul></td>
+</tr></table>
+
+
+
+           </div>
+          </div>
+          
+                  <style>
+                        .footer {
+                        position: fixed;
+                        left: 0;
+                        bottom: 0;
+                        width: 100%;
+                        }
+                  </style>
+				  
+				  <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
+      </span></p>
+  </div>
+
+
+
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+
+													                    <div class="row">
+                        <div class="col-xs-24">
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                        </div>
+                    </div>
+												</div>
+											</div>
+										</div>
+										
+</br>
+
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

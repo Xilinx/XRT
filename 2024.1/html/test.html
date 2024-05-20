@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+<!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
+
+<script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" data-document-language="true" type="text/javascript" charset="UTF-8" data-domain-script="03af8d57-0a04-47a6-8f10-322fa00d8fc7" ></script>
+<script type="text/javascript">
+function OptanonWrapper() { }
+</script>
+<!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
+  <title>Developer Build and Test Instructions &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Execution Model Overview" href="execution-model.html" />
+    <link rel="prev" title="XRT Installation" href="install.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                Master
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Build and Test Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-xrt">Building XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-xrt">Running XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-xrt">Testing XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unit-testing-xrt">Unit Testing XRT</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Build and Test Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-xrt">Building XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-xrt">Running XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-xrt">Testing XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unit-testing-xrt">Unit Testing XRT</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: black" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Developer Build and Test Instructions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/test.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="developer-build-and-test-instructions">
+<h1>Developer Build and Test Instructions<a class="headerlink" href="#developer-build-and-test-instructions" title="Permalink to this headline">¶</a></h1>
+<p>Switching XRT development work from P4 to Git can be done without much
+downtime provided you use a few scripts we have created:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> build script that builds XRT for both Debug and Release profiles.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run.sh</span></code> loader script that sets up environment assuming XRT was
+built with <code class="docutils literal notranslate"><span class="pre">build.sh</span></code>.</p></li>
+</ul>
+<section id="building-xrt">
+<h2>Building XRT<a class="headerlink" href="#building-xrt" title="Permalink to this headline">¶</a></h2>
+<p>Building XRT is tested on Ubuntu 20.04/22.04, CentOs 7.9+ and RHEL9 host OS.</p>
+<p>It is probably safest if you keep your Git clone of XRT on a network
+mounted drive that can be accessed from different hosts.  One
+advantage is that you can have your editor run on a host that is not
+used for board testing, since you don’t really want host/driver
+crashes to leave your unsaved edits in limbo.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/Xilinx/XRT.git
+cd XRT/build
+./build.sh
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.  It is
+necessary to use the build script if you intend to use the loader
+script <code class="docutils literal notranslate"><span class="pre">run.sh</span></code> and the board testing script <code class="docutils literal notranslate"><span class="pre">board.sh</span></code>.</p>
+<p>For the normal development flow, it is not necessary to build RPM or
+DEB packages.  The loader and test scripts both work by
+setting the environment to point at the binaries created by the build
+script.</p>
+</section>
+<section id="running-xrt">
+<h2>Running XRT<a class="headerlink" href="#running-xrt" title="Permalink to this headline">¶</a></h2>
+<p>To run your locally built XRT with a sample <code class="docutils literal notranslate"><span class="pre">host.exe</span></code> and
+<code class="docutils literal notranslate"><span class="pre">kernel.xclbin</span></code>, simply prepend your command line invocation with
+<code class="docutils literal notranslate"><span class="pre">XRT/build/run.sh</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh ./host.exe kernel.xclbin
+</pre></div>
+</div>
+<p>By default the <code class="docutils literal notranslate"><span class="pre">run.sh</span></code> script uses the binaries from the Release
+profile.  In order run with the binaries from Debug profile use <code class="docutils literal notranslate"><span class="pre">-dbg</span></code>
+flag; this way you can even start your favorite debugger by prefixing its
+invocation with <code class="docutils literal notranslate"><span class="pre">run.sh</span> <span class="pre">-dbg</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh -dbg emacs
+</pre></div>
+</div>
+</section>
+<section id="testing-xrt">
+<h2>Testing XRT<a class="headerlink" href="#testing-xrt" title="Permalink to this headline">¶</a></h2>
+<p>After making changes to XRT in your Git clone, rebuild with
+<code class="docutils literal notranslate"><span class="pre">build.sh</span></code> as explained above, then run a full set of pre-harvested
+board tests using the <code class="docutils literal notranslate"><span class="pre">board.sh</span></code> script.</p>
+<p>The script is not supported, and the havesting part of the script no longer
+works. Assuming tests are harvested manually, then a bit of reverse engineering
+is needed to figure out how to organize these tests such that they can be
+run with <code class="docutils literal notranslate"><span class="pre">board.sh</span></code>.</p>
+<p>Assuming all is well, the  the board script will
+run all tests that organized under current directory.</p>
+<p>While tests run, a file named <code class="docutils literal notranslate"><span class="pre">results.all</span></code> will list the test with
+<code class="docutils literal notranslate"><span class="pre">PASS</span></code>/<code class="docutils literal notranslate"><span class="pre">FAIL</span></code> keyword.  This file is appended (not removed
+between runs).  A complete run should take 5-10 mins for approximately
+70 tests.</p>
+</section>
+<section id="unit-testing-xrt">
+<h2>Unit Testing XRT<a class="headerlink" href="#unit-testing-xrt" title="Permalink to this headline">¶</a></h2>
+<p>We use GTest to do unit testing. The GTest package is installed by
+running <code class="docutils literal notranslate"><span class="pre">XRT/src/runtime_src/tools/scripts/xrtdeps.sh</span></code>.</p>
+<p>The GTest package on CentOS/RHEL 7.5 provides the GTest libraries
+here:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest.so</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest_main.so</span></code></p></li>
+</ul>
+</div></blockquote>
+<p>In recent versions of Ubuntu, the GTest <code class="docutils literal notranslate"><span class="pre">libgtest-dev</span></code> package
+provides the compiled libraries in</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest.a</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest_main.a</span></code></p></li>
+</ul>
+</div></blockquote>
+<p>However, the GTest package on Ubuntu up to 18.04 provides source only!
+So, to use GTest on older Ubuntu versions, use:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd /usr/src/gtest
+sudo cmake CMakeLists.txt
+sudo make
+cd /usr/lib
+sudo ln -s /usr/src/gtest/libgtest.a
+sudo ln -s /usr/src/gtest/libgtest_main.a
+# Validate:
+ls *gtest*
+</pre></div>
+</div>
+<p>This will add GTest static library symbolic links here:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest.a</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest_main.a</span></code></p></li>
+</ul>
+</div></blockquote>
+<p>CMake will handle linking, finding etc. for you.</p>
+<p>To add GTest support to a <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> use the following, and this is using
+an example executable called <code class="docutils literal notranslate"><span class="pre">xclbintest</span></code>:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>find_package(GTest)
+if (GTEST_FOUND)
+  enable_testing()
+  message (STATUS &quot;GTest include dirs: &#39;${GTEST_INCLUDE_DIRS}&#39;&quot;)
+  include_directories(${GTEST_INCLUDE_DIRS})
+  add_executable(xclbintest unittests/main.cpp unittests/test.cpp)
+  message (STATUS &quot;GTest libraries: &#39;${GTEST_BOTH_LIBRARIES}&#39;&quot;)
+  target_link_libraries(xclbintest ${GTEST_BOTH_LIBRARIES} pthread)
+else()
+  message (STATUS &quot;GTest was not found, skipping generation of test executables&quot;)
+endif()
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          
+                  <style>
+                        .footer {
+                        position: fixed;
+                        left: 0;
+                        bottom: 0;
+                        width: 100%;
+                        }
+                  </style>
+				  
+				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="install.html" class="btn btn-neutral float-left" title="XRT Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="execution-model.html" class="btn btn-neutral float-right" title="Execution Model Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
+      </span></p>
+  </div>
+
+
+
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+
+													                    <div class="row">
+                        <div class="col-xs-24">
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                        </div>
+                    </div>
+												</div>
+											</div>
+										</div>
+										
+</br>
+
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>

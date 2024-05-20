@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+<!-- OneTrust Cookies Consent Notice start for xilinx.github.io -->
+
+<script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" data-document-language="true" type="text/javascript" charset="UTF-8" data-domain-script="03af8d57-0a04-47a6-8f10-322fa00d8fc7" ></script>
+<script type="text/javascript">
+function OptanonWrapper() { }
+</script>
+<!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
+  <title>ZOCL Driver Interfaces &mdash; XRT Master documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="xclbinutil" href="xclbintools.html" />
+    <link rel="prev" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+            <a href="index.html" class="icon icon-home"> XRT
+            <img src="_static/xilinx-header-logo.svg" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                Master
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">XRT Developer's Space</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: black" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>ZOCL Driver Interfaces</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/zocl_ioctl.main.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <span class="target" id="zocl-ioctl-main-rst"></span><section id="zocl-driver-interfaces">
+<h1>ZOCL Driver Interfaces<a class="headerlink" href="#zocl-driver-interfaces" title="Permalink to this headline">¶</a></h1>
+<p><strong>A GEM style driver for Xilinx edge based accelerators</strong></p>
+<p>File <em>zynq_ioctl.h</em> defines ioctl command codes and associated structures for interacting with
+<em>zocl</em> driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).</p>
+<p>Accelerator memory allocation is modeled as buffer objects (bo). zocl
+supports both SMMU based shared virtual memory and CMA based shared physical memory
+between PS and PL. zocl also supports memory management of PL-DDRs and PL-BRAMs.
+PL-DDR is reserved by zocl driver via device tree. Both PS Linux and PL logic can access PL-DDRs</p>
+<p>Execution model is asynchronous where execute commands are submitted using command buffers and
+POSIX poll is used to wait for finished commands. Commands for a compute unit can only be submitted
+after an explicit context has been opened by the client for that compute unit.</p>
+<p><em>zocl</em> driver functionality is described in the following table.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 4%" />
+<col style="width: 36%" />
+<col style="width: 28%" />
+<col style="width: 32%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>#</p></th>
+<th class="head"><p>Functionality</p></th>
+<th class="head"><p>ioctl request code</p></th>
+<th class="head"><p>data format</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Allocate buffer on device</p></td>
+<td><p>DRM_IOCTL_ZOCL_CREATE_BO</p></td>
+<td><p>drm_zocl_create_bo</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>Allocate buffer on device with
+userptr</p></td>
+<td><p>DRM_IOCTL_ZOCL_USERPTR_BO</p></td>
+<td><p>drm_zocl_userptr_bo</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>Get the buffer handle of given
+physical address</p></td>
+<td><p>DRM_IOCTL_ZOCL_GET_HOST_BO</p></td>
+<td><p>drm_zocl_host_bo</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>Prepare bo for mapping into user’s
+address space</p></td>
+<td><p>DRM_IOCTL_ZOCL_MAP_BO</p></td>
+<td><p>drm_zocl_map_bo</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>Synchronize (DMA) buffer contents in
+requested direction</p></td>
+<td><p>DRM_IOCTL_ZOCL_SYNC_BO</p></td>
+<td><p>drm_zocl_sync_bo</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p>Obtain information about buffer
+object</p></td>
+<td><p>DRM_IOCTL_ZOCL_INFO_BO</p></td>
+<td><p>drm_zocl_info_bo</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p>Update bo backing storage with user’s
+data</p></td>
+<td><p>DRM_IOCTL_ZOCL_PWRITE_BO</p></td>
+<td><p>drm_zocl_pwrite_bo</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p>Read back data in bo backing storage</p></td>
+<td><p>DRM_IOCTL_ZOCL_PREAD_BO</p></td>
+<td><p>drm_zocl_pread_bo</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p>Update device view with a specific
+xclbin image</p></td>
+<td><p>DRM_IOCTL_ZOCL_PCAP_DOWNLOAD</p></td>
+<td><p>drm_zocl_pcap_download</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p>Read the xclbin and map the compute
+units.</p></td>
+<td><p>DRM_IOCTL_ZOCL_READ_AXLF</p></td>
+<td><p>drm_zocl_axlf</p></td>
+</tr>
+<tr class="row-even"><td><p>11</p></td>
+<td><p>Send an execute job to a compute unit</p></td>
+<td><p>DRM_IOCTL_ZOCL_EXECBUF</p></td>
+<td><p>drm_zocl_execbuf</p></td>
+</tr>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p>Get the soft kernel command
+(experimental)</p></td>
+<td><p>DRM_IOCTL_ZOCL_SK_GETCMD</p></td>
+<td><p>drm_zocl_sk_getcmd</p></td>
+</tr>
+<tr class="row-even"><td><p>13</p></td>
+<td><p>Create the soft kernel
+(experimental)</p></td>
+<td><p>DRM_IOCTL_ZOCL_SK_CREATE</p></td>
+<td><p>drm_zocl_sk_create</p></td>
+</tr>
+<tr class="row-odd"><td><p>14</p></td>
+<td><p>Report the soft kernel state
+(experimental)</p></td>
+<td><p>DRM_IOCTL_ZOCL_SK_REPORT</p></td>
+<td><p>drm_zocl_sk_report</p></td>
+</tr>
+<tr class="row-even"><td><p>15</p></td>
+<td><p>Get Information about Compute Unit
+(experimental)</p></td>
+<td><p>DRM_IOCTL_ZOCL_INFO_CU</p></td>
+<td><p>drm_zocl_info_cu</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_create_bo</span></span></dt>
+<dd><p>Create buffer object used with DRM_IOCTL_ZOCL_CREATE_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_create_bo {
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Requested size of the buffer object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle returned by the driver</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>DRM_ZOCL_BO_XXX flags</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_userptr_bo</span></span></dt>
+<dd><p>Create buffer object with user’s pointer used with DRM_IOCTL_ZOCL_USERPTR_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_userptr_bo {
+  uint64_t addr;
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt><dd><p>Address of buffer allocated by user</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Requested size of the buffer object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle returned by the driver</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>DRM_XOCL_BO_XXX flags</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_map_bo</span></span></dt>
+<dd><p>Prepare a buffer object for mmap used with DRM_IOCTL_ZOCL_MAP_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_map_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>‘Fake’ offset returned by the driver which can be used with POSIX mmap</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sync_bo</span></span></dt>
+<dd><p>Synchronize the buffer in the requested direction via cache flush/invalidation. used with DRM_ZOCL_SYNC_BO ioctl.</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sync_bo {
+  uint32_t handle;
+  enum drm_zocl_sync_bo_dir dir;
+  uint64_t offset;
+  uint64_t size;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>GEM object handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt><dd><p>DRM_ZOCL_SYNC_DIR_XXX</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the object to write to</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to write</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_info_bo</span></span></dt>
+<dd><p>Obtain information about buffer object used with DRM_IOCTL_ZOCL_INFO_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t paddr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>GEM object handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>User BO flags</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Size of BO</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>physical address</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_host_bo</span></span></dt>
+<dd><p>Get the buffer handle of given physical address used with DRM_IOCTL_ZOCL_GET_HOST_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_host_bo {
+  uint64_t paddr;
+  size_t size;
+  uint32_t handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>physical address</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Size of BO</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>GEM object handle</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_set_cu_range</span></span></dt>
+<dd><p>Set CU range used with DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_set_cu_range {
+  uint32_t cu_index;
+  uint32_t start;
+  uint32_t size;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt><dd><p>Index of the compute unit</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start</span></code></dt><dd><p>Start offset of the range</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Size of the range</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_pwrite_bo</span></span></dt>
+<dd><p>Update bo with user’s data used with DRM_IOCTL_ZOCL_PWRITE_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pwrite_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>GEM object handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Padding</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the object to write to</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to write</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt><dd><p>Pointer to read the data from (pointers not 32/64 compatible)</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_pread_bo</span></span></dt>
+<dd><p>Read data from bo used with DRM_IOCTL_ZOCL_PREAD_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pread_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>GEM object handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Padding</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the object to read from</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to wrreadite</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt><dd><p>Pointer to write the data into (pointers not 32/64 compatible)</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_info_cu</span></span></dt>
+<dd><p>Get information about Compute Unit (experimental) used with DRM_IOCTL_ZOCL_INFO_CU ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_cu {
+  uint64_t paddr;
+  int apt_idx;
+  int cu_idx;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>Physical address</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">apt_idx</span></code></dt><dd><p>Aperture index</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_idx</span></code></dt><dd><p>CU index</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_execbuf</span></span></dt>
+<dd><p>Submit a command buffer for execution on a compute unit (experimental) used with DRM_IOCTL_ZOCL_EXECBUF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_execbuf {
+  uint32_t ctx_id;
+  uint32_t exec_bo_handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ctx_id</span></code></dt><dd><p>Pass 0</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt><dd><p>BO handle of command buffer formatted as ERT command</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">argument_info</span></span></dt>
+<dd><p>Kernel argument information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct argument_info {
+  char name;
+  uint32_t offset;
+  uint32_t size;
+  uint32_t dir;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>argument name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>argument offset in CU</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>argument size in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt><dd><p>input or output argument for a CU</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">kernel_info</span></span></dt>
+<dd><p>Kernel information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
+  char name;
+  uint32_t range;
+  int anums;
+  struct argument_info args;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>kernel name</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">range</span></code></dt><dd><p>kernel range</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt><dd><p>number of argument</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt><dd><p>argument array</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_kds</span></span></dt>
+<dd><p>KDS user configuration</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_kds {
+  uint32_t polling:1;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt><dd><p>poll for command completion</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_axlf</span></span></dt>
+<dd><p>Read xclbin (AXLF) device image and map CUs (experimental) used with DRM_IOCTL_ZOCL_READ_AXLF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_axlf {
+  struct axlf * za_xclbin_ptr;
+  uint32_t za_flags;
+  int za_ksize;
+  char * za_kernels;
+  uint32_t za_slot_id;
+  uint8_t hw_gen;
+  uint32_t partition_id;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">za_xclbin_ptr</span></code></dt><dd><p>Pointer to xclbin (AXLF) object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_flags</span></code></dt><dd><p>platform flags</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_ksize</span></code></dt><dd><p>size of kernels in bytes</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_kernels</span></code></dt><dd><p>pointer of argument array</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_slot_id</span></code></dt><dd><p>xclbin slot</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">hw_gen</span></code></dt><dd><p>aie generation</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">partition_id</span></code></dt><dd><p>aie partition id</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sk_getcmd</span></span></dt>
+<dd><p>Get the soft kernel command (experimental) used with DRM_IOCTL_ZOCL_SK_GETCMD ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_getcmd {
+  uint32_t opcode;
+  uint32_t start_cuidx;
+  uint32_t cu_nums;
+  char name;
+  int bohdl;
+  int meta_bohdl;
+  unsigned char uuid;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">opcode</span></code></dt><dd><p>opcode for the Soft Kernel Command Packet</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt><dd><p>start index of compute units</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_nums</span></code></dt><dd><p>number of compute units in program</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>symbol name of soft kernel</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bohdl</span></code></dt><dd><p>BO to hold soft kernel image</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">meta_bohdl</span></code></dt><dd><p>BO to hold metadata</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt><dd><p>UUID for the xclbin</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_aie_cmd</span></span></dt>
+<dd><p>Get the aie command used with DRM_IOCTL_ZOCL_AIE_GETCMD and DRM_IOCTL_ZOCL_AIE_PUTCMD ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_aie_cmd {
+  uint32_t opcode;
+  uint32_t size;
+  char info;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">opcode</span></code></dt><dd><p>opcode for the Aie Command Packet</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>size in bytes of info data</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">info</span></code></dt><dd><p>information to transfer</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sk_create</span></span></dt>
+<dd><p>Create a soft kernel (experimental) used with DRM_IOCTL_ZOCL_SK_CREATE ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_create {
+  uint32_t cu_idx;
+  int handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_idx</span></code></dt><dd><p>Compute unit index</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>Buffer object handle</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sk_report</span></span></dt>
+<dd><p>Report the Soft Kernel State (experimental) used with DRM_IOCTL_ZOCL_SK_REPORT ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_report {
+  uint32_t cu_idx;
+  enum drm_zocl_scu_state cu_state;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_idx</span></code></dt><dd><p>Compute unit index</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_state</span></code></dt><dd><p>State of the Soft Compute Unit</p>
+</dd>
+</dl>
+</section>
+
+
+           </div>
+          </div>
+          
+                  <style>
+                        .footer {
+                        position: fixed;
+                        left: 0;
+                        bottom: 0;
+                        width: 100%;
+                        }
+                  </style>
+				  
+				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-left" title="XOCL (PCIe User Physical Function) Driver Interfaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="xclbintools.html" class="btn btn-neutral float-right" title="xclbinutil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017-2023, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
+      </span></p>
+  </div>
+
+
+
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+
+													                    <div class="row">
+                        <div class="col-xs-24">
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                        </div>
+                    </div>
+												</div>
+											</div>
+										</div>
+										
+</br>
+
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>
