@@ -161,6 +161,6 @@ aie_sys_parser::aie_sys_read(const int col, const int row) const
     return pt;	
 }
 
-aie_sys_parser::aie_sys_parser(const std::string& root) : sysfs_root("sys/class/aie/aiepart_" + root + "/")
+aie_sys_parser::aie_sys_parser(const std::string& root) : sysfs_root("/sys/class/aie/aiepart_" + root + "/")
 {
 }
