@@ -416,7 +416,7 @@ failed:
 };
 
 struct platform_device_id ps_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_PS), (kernel_ulong_t)&ps_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_PS), (kernel_ulong_t)&ps_priv },
 	{ },
 };
 
@@ -429,12 +429,12 @@ static struct platform_driver ps_driver = {
 	.id_table = ps_id_table,
 };
 
-int __init xocl_init_ps(void)
+int __init xocl_init_ps(bool flag)
 {
 	return platform_driver_register(&ps_driver);
 }
 
-void xocl_fini_ps(void)
+void xocl_fini_ps(bool flag)
 {
 	platform_driver_unregister(&ps_driver);
 }

@@ -481,7 +481,7 @@ static struct uart_ops ulite_ops = {
 
 static struct uart_driver xcl_ulite_driver = {
 	.owner		= THIS_MODULE,
-	.driver_name	= XOCL_DEVNAME(XOCL_UARTLITE),
+	.driver_name	= XOCL_MGMTPF_DEVICE(XOCL_UARTLITE),
 	.dev_name	= ULITE_NAME,
 	.nr		= ULITE_NR_UARTS,
 };
@@ -594,7 +594,7 @@ struct xocl_drv_private ulite_priv = {
 };
 
 struct platform_device_id ulite_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_UARTLITE), (kernel_ulong_t)&ulite_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_UARTLITE), (kernel_ulong_t)&ulite_priv },
 	{ },
 };
 
@@ -602,7 +602,7 @@ static struct platform_driver ulite_platform_driver = {
 	.probe = ulite_probe,
 	.remove = ulite_remove,
 	.driver = {
-		.name  = XOCL_DEVNAME(XOCL_UARTLITE),
+		.name  = XOCL_MGMTPF_DEVICE(XOCL_UARTLITE),
 	},
 	.id_table = ulite_id_table,
 };
@@ -611,7 +611,7 @@ static struct platform_driver ulite_platform_driver = {
  * Module setup/teardown
  */
 
-int __init xocl_init_ulite(void)
+int __init xocl_init_ulite(bool flag)
 {
 	int ret;
 
@@ -626,7 +626,7 @@ int __init xocl_init_ulite(void)
 	return ret;
 }
 
-void xocl_fini_ulite(void)
+void xocl_fini_ulite(bool flag)
 {
 	platform_driver_unregister(&ulite_platform_driver);
 	uart_unregister_driver(&xcl_ulite_driver);

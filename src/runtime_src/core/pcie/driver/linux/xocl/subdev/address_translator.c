@@ -416,7 +416,7 @@ struct xocl_drv_private addr_translator_priv = {
 };
 
 struct platform_device_id addr_translator_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_ADDR_TRANSLATOR), (kernel_ulong_t)&addr_translator_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_ADDR_TRANSLATOR), (kernel_ulong_t)&addr_translator_priv },
 	{ },
 };
 
@@ -424,17 +424,17 @@ static struct platform_driver	addr_translator_driver = {
 	.probe		= addr_translator_probe,
 	.remove		= addr_translator_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_ADDR_TRANSLATOR),
+		.name = XOCL_USERPF_DEVICE(XOCL_ADDR_TRANSLATOR),
 	},
 	.id_table = addr_translator_id_table,
 };
 
-int __init xocl_init_addr_translator(void)
+int __init xocl_init_addr_translator(bool flag)
 {
 	return platform_driver_register(&addr_translator_driver);
 }
 
-void xocl_fini_addr_translator(void)
+void xocl_fini_addr_translator(bool flag)
 {
 	platform_driver_unregister(&addr_translator_driver);
 }

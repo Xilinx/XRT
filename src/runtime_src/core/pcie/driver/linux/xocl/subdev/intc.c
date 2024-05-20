@@ -687,7 +687,7 @@ struct xocl_drv_private intc_priv = {
 };
 
 struct platform_device_id intc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_INTC), (kernel_ulong_t)&intc_priv },
+	{ XOCL_USERPF_DEVICE(XOCL_INTC), (kernel_ulong_t)&intc_priv },
 	{ },
 };
 
@@ -695,17 +695,17 @@ static struct platform_driver intc_driver = {
 	.probe		= intc_probe,
 	.remove		= intc_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_INTC),
+		.name = XOCL_USERPF_DEVICE(XOCL_INTC),
 	},
 	.id_table = intc_id_table,
 };
 
-int __init xocl_init_intc(void)
+int __init xocl_init_intc(bool flag)
 {
 	return platform_driver_register(&intc_driver);
 }
 
-void xocl_fini_intc(void)
+void xocl_fini_intc(bool flag)
 {
 	platform_driver_unregister(&intc_driver);
 }

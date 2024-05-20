@@ -1318,30 +1318,58 @@ failed:
 	return ret;
 }
 
-struct xocl_drv_private clock_wiz_priv = {
+struct xocl_drv_private clock_wiz_priv_mgmtpf = {
 	.ops = &clock_wiz_ops,
 };
 
-struct platform_device_id clock_wiz_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv },
+struct platform_device_id clock_wiz_id_table_mgmtpf[] = {
+	{ XOCL_MGMTPF_DEVICE(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv_mgmtpf },
 	{ },
 };
 
-static struct platform_driver clock_wiz_driver = {
+static struct platform_driver clock_wiz_driver_mgmtpf = {
 	.probe		= clock_wiz_probe,
 	.remove		= clock_wiz_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_CLOCK_WIZ),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_CLOCK_WIZ),
 	},
-	.id_table = clock_wiz_id_table,
+	.id_table = clock_wiz_id_table_mgmtpf,
 };
 
-int __init xocl_init_clock_wiz(void)
+struct xocl_drv_private clock_wiz_priv_userpf = {
+        .ops = &clock_wiz_ops,
+};
+
+struct platform_device_id clock_wiz_id_table_userpf[] = {
+        { XOCL_USERPF_DEVICE(XOCL_CLOCK_WIZ), (kernel_ulong_t)&clock_wiz_priv_userpf },
+        { },
+};
+
+static struct platform_driver clock_wiz_driver_userpf = {
+        .probe          = clock_wiz_probe,
+        .remove         = clock_wiz_remove,
+        .driver         = {
+                .name = XOCL_USERPF_DEVICE(XOCL_CLOCK_WIZ),
+        },
+        .id_table = clock_wiz_id_table_userpf,
+};
+
+int __init xocl_init_clock_wiz(bool flag)
 {
-	return platform_driver_register(&clock_wiz_driver);
+	if(flag)
+	{
+	    return platform_driver_register(&clock_wiz_driver_mgmtpf);
+	}
+	else
+	{
+	    return platform_driver_register(&clock_wiz_driver_userpf);
+	}
 }
 
-void xocl_fini_clock_wiz(void)
+void xocl_fini_clock_wiz(bool flag)
 {
-	platform_driver_unregister(&clock_wiz_driver);
+    if (flag) 
+	platform_driver_unregister(&clock_wiz_driver_mgmtpf);
+    else
+	platform_driver_unregister(&clock_wiz_driver_userpf);
 }

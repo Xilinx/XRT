@@ -212,8 +212,8 @@ int xclmgmt_config_pci(struct xclmgmt_dev *lro);
 /* mgmt-xvc.c */
 long xvc_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
 
-int __init xocl_init_nifd(void);
-void xocl_fini_nifd(void);
+int __init xocl_init_nifd(bool);
+void xocl_fini_nifd(bool);
 
 /* mgmt-sysfs.c */
 int mgmt_init_sysfs(struct device *dev);

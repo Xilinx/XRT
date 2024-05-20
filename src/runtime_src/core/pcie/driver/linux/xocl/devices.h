@@ -213,7 +213,6 @@ enum {
 
 #define	MGMTPF		0
 #define	USERPF		1
-
 #if PF == MGMTPF
 #define SUBDEV_SUFFIX	".m"
 #elif PF == USERPF
@@ -284,7 +283,8 @@ enum {
 #define XOCL_ERT_CTRL           "ert_ctrl"
 #define XOCL_ERT_CTRL_VERSAL    "ert_ctrl.versal"
 
-#define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
+#define XOCL_USERPF_DEVICE(str) str ".u"
+#define XOCL_MGMTPF_DEVICE(str) str ".m"
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
