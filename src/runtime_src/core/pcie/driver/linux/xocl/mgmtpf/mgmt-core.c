@@ -1774,7 +1774,8 @@ static int __init xclmgmt_init(void)
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 
-	res = xocl_debug_init();
+	char *module="mgmtpf";
+	res = xocl_debug_init(module);
 	if (res) {
 		pr_err("failed to init debug");
 		goto alloc_err;
