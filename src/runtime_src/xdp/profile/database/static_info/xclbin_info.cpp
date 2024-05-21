@@ -52,9 +52,6 @@ namespace xdp {
     this->aims = std::vector<Monitor*>(other.aims.begin(), other.aims.end()) ;
     this->asms = std::vector<Monitor*>(other.asms.begin(), other.asms.end()) ;
 
-    if(other.ip_metadata_section)
-      this->ip_metadata_section = std::make_unique<ip_metadata>(*other.ip_metadata_section) ;
-  
     return *this ;
   }
 

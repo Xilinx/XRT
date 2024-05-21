@@ -2233,7 +2233,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
         xdp::aie::sts::update_device(handle);
 
         #ifndef __HWEM__
-        xdp::pl_deadlock::update_device(handle);
+        //xdp::pl_deadlock::update_device(handle);
 
         START_DEVICE_PROFILING_CB(handle);
         #else
