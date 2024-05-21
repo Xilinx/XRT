@@ -56,10 +56,10 @@ set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 # Determine the name of the executable
 if(WIN32)
   set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
-  set(XRT_HELPER_SCRIPTS "xbutil" "xbutil.bat")
+  set(XRT_HELPER_SCRIPTS "npu-smi" "npu-smi.bat" "xbutil" "xbutil.bat")
 else()
   set(XBUTIL2_NAME "xbutil2")
-  set(XRT_HELPER_SCRIPTS "xbutil")
+  set(XRT_HELPER_SCRIPTS "npu-smi" "xbutil")
 endif()
 
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
