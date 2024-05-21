@@ -44,6 +44,8 @@ static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
 static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
+static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
+static const char* Control_Packet_Symbol = "control-packet";
 
 struct buf
 {
@@ -299,8 +301,26 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  [[nodiscard]] virtual const buf&
+      get_preempt_save() const
+  {
+      throw std::runtime_error("Not supported");
+  }
+
+  [[nodiscard]] virtual const buf&
+      get_preempt_restore() const
+  {
+      throw std::runtime_error("Not supported");
+  }
+
   [[nodiscard]] virtual const control_packet&
   get_ctrlpkt() const
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  [[nodiscard]] virtual xrt::bo&
+  get_scratchmem()
   {
     throw std::runtime_error("Not supported");
   }
@@ -329,12 +349,13 @@ public:
 
   // Patch ctrlcode buffer object for global argument
   //
+  // @param bo_ctrlcode - bo containing ctrlcode
   // @param symbol - symbol name
   // @param index - argument index
   // @param bo - global argument to patch into ctrlcode
   // @param buf_type - whether it is control-code, control-packet, preempt-save or preempt-restore
   virtual void
-  patch_instr(const std::string&, size_t, const xrt::bo&, patcher::buf_type)
+  patch_instr(xrt::bo&, const std::string&, size_t, const xrt::bo&, patcher::buf_type)
   {
     throw std::runtime_error("Not supported ");
   }
@@ -756,6 +777,7 @@ public:
       m_restore_buf_exist = initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
       if (m_save_buf_exist != m_restore_buf_exist)
           throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
+
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
   }
@@ -770,6 +792,18 @@ public:
   get_instr() const override
   {
     return m_instr_buf;
+  }
+
+  [[nodiscard]] const buf&
+      get_preempt_save() const override
+  {
+      return m_save_buf;
+  }
+
+  [[nodiscard]] const buf&
+      get_preempt_restore() const override
+  {
+      return m_restore_buf;
   }
 
   [[nodiscard]] const control_packet&
@@ -841,12 +875,18 @@ class module_sram : public module_impl
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
 
+  //TODO get scratch-pad-mem size from elf
+  static constexpr size_t m_scratchmem_size = 512 * 1024;
+
   // The instruction buffer object contains the ctrlcodes for each
   // column.  The ctrlcodes are concatenated into a single buffer
   // padded at page size specific to hardware.
   xrt::bo m_buffer;
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
+  xrt::bo m_scratchmem;
+  xrt::bo m_preempt_save_bo;
+  xrt::bo m_preempt_restore_bo;
 
   // Column bo address is the address of the ctrlcode for each column
   // in the (sram) buffer object.  The first ctrlcode is at the base
@@ -881,9 +921,14 @@ class module_sram : public module_impl
   {
     m_column_bo_address.clear();
     m_column_bo_address.push_back({ m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
-    if (m_ctrlpkt_bo) {
+    if (m_ctrlpkt_bo)
       m_column_bo_address.push_back({ m_ctrlpkt_bo.address(), m_ctrlpkt_bo.size() }); // NOLINT
-    }
+
+    if (m_preempt_save_bo)
+      m_column_bo_address.push_back({ m_preempt_save_bo.address(), m_preempt_save_bo.size() }); // NOLINT
+
+    if (m_preempt_restore_bo)
+      m_column_bo_address.push_back({ m_preempt_restore_bo.address(), m_preempt_restore_bo.size() }); // NOLINT
   }
 
   // Fill the instruction buffer object with the ctrlcodes for each
@@ -900,10 +945,10 @@ class module_sram : public module_impl
   }
 
   void
-  fill_instr_buf(xrt::bo& bo, const instr_buf& instrbuf)
+  fill_bo_with_data(xrt::bo& bo, const buf& buf)
   {
     auto ptr = bo.map<char*>();
-    std::memcpy(ptr, instrbuf.data(), instrbuf.size());
+    std::memcpy(ptr, buf.data(), buf.size());
     bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
@@ -921,24 +966,41 @@ class module_sram : public module_impl
     XRT_PRINTF("-> module_sram::create_instr_buf()\n");
     const auto& data = parent->get_instr();
     size_t sz = data.size();
-
-    if (sz == 0) {
-      std::cout << "instr buf is empty" << std::endl;
-      return;
-    }
+    if (sz == 0)
+      throw std::runtime_error("Invalid instruction buffer size");
 
     // create bo combined size of all ctrlcodes
     m_instr_bo = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
     // copy instruction into bo
-    fill_instr_buf(m_instr_bo, data);
+    fill_bo_with_data(m_instr_bo, data);
 
 #ifdef _DEBUG
     dump_bo(m_instr_bo, "instrBo.bin");
 #endif
 
+    const auto& preempt_save_data = parent->get_preempt_save();
+    auto preempt_save_data_size = preempt_save_data.size();
+    if (preempt_save_data_size > 0) {
+      m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+      fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
+    }
+
+    const auto& preempt_restore_data = parent->get_preempt_restore();
+    auto preempt_restore_data_size = preempt_restore_data.size();
+    if (preempt_restore_data_size > 0) {
+      m_preempt_restore_bo = xrt::bo{ m_hwctx, preempt_restore_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+      fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
+    }
+
+    if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
+      m_scratchmem = xrt::ext::bo{ m_hwctx, m_scratchmem_size };
+      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratchmem, patcher::buf_type::preempt_save);
+      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratchmem, patcher::buf_type::preempt_restore);
+    }
+
     if (m_ctrlpkt_bo) {
-      patch_instr("control-packet", 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
+      patch_instr(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
     XRT_PRINTF("<- module_sram::create_instr_buf()\n");
   }
@@ -995,9 +1057,9 @@ class module_sram : public module_impl
   }
 
   virtual void
-  patch_instr(const std::string& argnm, size_t index, const xrt::bo& bo, patcher::buf_type type) override
+  patch_instr(xrt::bo& bo_ctrlcode, const std::string& argnm, size_t index, const xrt::bo& bo, patcher::buf_type type) override
   {
-    patch_instr_value(argnm, index, bo.address(), type);
+    patch_instr_value(bo_ctrlcode, argnm, index, bo.address(), type);
   }
 
   void
@@ -1025,10 +1087,10 @@ class module_sram : public module_impl
   }
 
   void
-  patch_instr_value(const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
+  patch_instr_value(xrt::bo& bo, const std::string& argnm, size_t index, uint64_t value, patcher::buf_type type)
   {
-    if (!m_parent->patch(m_instr_bo.map<uint8_t*>(), argnm, index, value, type))
-        return;
+    if (!m_parent->patch(bo.map<uint8_t*>(), argnm, index, value, type))
+      return;
 
     m_dirty = true;
   }
@@ -1077,6 +1139,12 @@ class module_sram : public module_impl
         dump_bo(m_ctrlpkt_bo, "ctrlpktBoPatched.bin");
 #endif
         }
+
+      if (m_preempt_save_bo)
+        m_preempt_save_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+      if (m_preempt_restore_bo)
+        m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
 
     m_dirty = false;
@@ -1107,6 +1175,12 @@ public:
   get_ctrlcode_addr_and_size() const override
   {
     return m_column_bo_address;
+  }
+
+  [[nodiscard]] virtual xrt::bo&
+      get_scratchmem() override
+  {
+      return m_scratchmem;
   }
 };
 
