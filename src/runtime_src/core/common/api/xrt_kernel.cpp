@@ -12,7 +12,6 @@
 
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
-#include "core/common/usage_metrics.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/experimental/xrt_ext.h"
@@ -42,8 +41,10 @@
 #include "core/common/debug.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/span.h"
 #include "core/common/system.h"
 #include "core/common/trace.h"
+#include "core/common/usage_metrics.h"
 #include "core/common/xclbin_parser.h"
 
 #include <boost/format.hpp>
@@ -2911,18 +2912,35 @@ public:
 };
 
 // class runlist_impl - The internals of a runlist
+//
+// Execution of a runlist is carved into multiple
+// submissions of chained ert commands.  The size
+// of a chain is currently hardwired, but at some
+// point will be dyanmic.
 class runlist_impl
 {
   static constexpr size_t submit_size = 24;
   static constexpr size_t noidx = std::numeric_limits<size_t>::max();
+  static constexpr size_t execbuf_size = sizeof(ert_packet) + sizeof(ert_cmd_chain_data) + submit_size * sizeof(uint64_t);
+
+  // The runlist creates its own execution buffers, which are
+  // ert_packets with payload interpreted as ert_cmd_chain_data
+  using cmd_type = ert_packet;
+  using execbuf_type = xrt_core::bo_cache::cmd_bo<cmd_type>;
+  xrt_core::bo_cache_t<execbuf_size> m_exec_buffer_cache;
 
   enum class state { idle, closed, running, error };
   mutable state m_state = state::idle;
+  
   xrt::hw_context m_hwctx;
   xrt_core::hw_queue m_hwqueue;
   std::vector<xrt::run> m_runlist;
   std::vector<xrt_core::buffer_handle*> m_bos;
-  size_t m_last_submitted_idx = noidx;
+
+  // Commands are submitted in chained ert commands where the number
+  // of chained commands in less than 'submit_size'. This list is a
+  // list of currently submitted chained commands.
+  std::vector<execbuf_type> m_submitted_cmds;
 
   static const std::string&
   state_to_string(state st)
@@ -2936,21 +2954,23 @@ class runlist_impl
     return st2str.at(st);
   }
 
-  // Pre-condition is that all commands in runlist have completed
-  // (error or not) or they have not been successfully submitted
-  // in the first place.  This function uses xrt::run::wait() 
-  // because the state of the run object may be lazy updated only when
-  // wait() is called, alas accurate state may not be reflected in
-  // command packet even if command has completed.
-  ert_cmd_state
-  get_state(size_t idx) const
+  static std::pair<xrt_core::buffer_handle*, cmd_type*>
+  unpack(const execbuf_type& execbuf)
   {
-    // Handle border case where a command has not been submitted
-    if (idx > m_last_submitted_idx)
-      return ERT_CMD_STATE_NEW;
+    return {execbuf.first.get(), execbuf.second};
+  }
 
-    // wait() cannot hang as all commands have completed per pre-cond
-    return m_runlist.at(idx).wait();
+  // Execution buffers are cached and reused within this runlist
+  execbuf_type
+  get_exec_buf()
+  {
+    return m_exec_buffer_cache.alloc<cmd_type>();
+  }
+
+  void
+  set_run_state(const xrt::run& run, ert_cmd_state state) const
+  {
+    run.get_ert_packet()->state = state;
   }
 
   // Mark all runs in runlist range [start, end[ as aborted
@@ -2958,50 +2978,39 @@ class runlist_impl
   abort_runs(size_t start, size_t end) const
   {
     for (size_t idx = start; idx < end; ++idx)
-      m_runlist.at(idx).get_ert_packet()->state = ERT_CMD_STATE_ABORT;
+      set_run_state(m_runlist.at(idx), ERT_CMD_STATE_ABORT);
   }
 
-  // Wait for the last command in the runlist that was submitted
-  // successfully to hwqueue.  If the last submitted command has
-  // completed (error or not), then in-order execution guarantees that
-  // all prior commands have completed (error or not)
-  std::cv_status
-  wait_last_run(const std::chrono::milliseconds& timeout) const
+  // Pre: command has completed (error or not)
+  // Note that hwqueue::wait_command is used here because the state of
+  // the cmd object may be lazy updated only when wait() is called,
+  // alas accurate state may not be reflected in command packet even
+  // if command has completed.
+  ert_cmd_state
+  get_completed_state(const execbuf_type& execbuf, const std::chrono::milliseconds& timeout) const
   {
-    // In case all submission failed
-    if (m_last_submitted_idx == noidx)
+    auto [cmd, pkt] = unpack(execbuf);
+    if (auto status = m_hwqueue.wait(cmd, timeout); status == std::cv_status::timeout)
+      throw xrt_core::error("internal error: wait times out on completed command");
+
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
+  // Wait for the last succesfully submitted command to complete.  If
+  // the last submitted command has completed (error or not), then
+  // in-order execution guarantees that all prior commands have
+  // completed (error or not).
+  std::cv_status
+  wait_last_cmd(const std::chrono::milliseconds& timeout) const
+  {
+    if (m_submitted_cmds.empty())
       return std::cv_status::no_timeout;
 
-    auto last_run = m_runlist[m_last_submitted_idx];
-
-    try {
-      auto status = last_run.wait2(timeout);
-      if (status == std::cv_status::timeout)
-        return status;
-    }
-    catch (const xrt::run::command_error&) {
-      // errors are picked up by caller, here just change state
-      m_state = state::error;
-    }
-
-    return std::cv_status::no_timeout;
+    auto [cmd, pkt] = unpack(m_submitted_cmds.back());
+    return m_hwqueue.wait(cmd, timeout);
   }
 
-  // Find the index of the first command in runlist range that has not
-  // completed successfully.  The function is called when some error
-  // has occurred within the range, alas it is an error if all
-  // commands are in a good complete state.
-  size_t
-  find_first_error(size_t start, size_t end) const
-  {
-    for (size_t idx = start; idx < end; ++idx)
-      if (auto state = get_state(idx); state != ERT_CMD_STATE_COMPLETED)
-        return idx;
-
-    throw xrt_core::error("internal error: no run with error found");
-  }
-
-  // Wait for runlist to complete, then check last run in each chunk
+  // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
   // aborted. Throw a runlist exception with first failing command if
@@ -3009,42 +3018,76 @@ class runlist_impl
   std::cv_status
   wait(const std::chrono::milliseconds& timeout) const
   {
-    // Wait on very last command that was submitted; this implies all
-    // have finished.
-    if (wait_last_run(timeout) == std::cv_status::timeout)
+    // Wait on last chained command that was submitted; this implies
+    // all have finished.
+    if (wait_last_cmd(timeout) == std::cv_status::timeout)
       return std::cv_status::timeout;
 
-    // All commands have either completed (error or not), or they
-    // have not been submitted. If any command failed to complete
-    // successfully, then all subsequent commands are marked aborted
-    // including any unsubmitted commands.
-    for (size_t idx = 0; idx < m_runlist.size(); idx += submit_size) {
-      auto count = std::min(submit_size, m_bos.size() - idx);
-      auto last_idx = idx + count - 1;
-
-      // If all good, continue to next chunk.  Note that xrt::run::wait()
-      // is used here because the state of the run object may be lazy
-      // updated only when wait() is called, alas accurate state may not
-      // be reflected in command packet even if command has completed.
-      if (get_state(last_idx) == ERT_CMD_STATE_COMPLETED)
+    // All submitted commands have completed (error or not).  If any
+    // command failed to complete successfully, then all subsequent
+    // commands are marked aborted including any unsubmitted commands.
+    size_t runidx = 0;
+    for (auto& execbuf : m_submitted_cmds) {
+      auto state = get_completed_state(execbuf, 1ms);
+      if (state == ERT_CMD_STATE_COMPLETED) {
+        runidx += submit_size;
         continue;
+      }
 
-      // First failed run index starting at this chunk
-      auto first_error_idx = find_first_error(idx, last_idx + 1);
+      // The runlist is idle now but an exception will be thrown
+      // with the first run object that failed.  The application
+      // must handle the exception and decide what to do next.
+      m_state = state::idle;
+
+      // Get the index of the first failing run object in the chained
+      // command structure.  The index in chain_data is relative to
+      // this submission so add running runidx
+      auto [cmd, pkt] = unpack(execbuf);
+      auto chain_data = get_ert_cmd_chain_data(pkt); // ert.h
+      auto first_error_idx = chain_data->error_index + runidx;
 
       // Mark all subsequent commands as aborted. The state of
       // the first incomplete run is not changed.
       abort_runs(first_error_idx + 1, m_runlist.size());
-
+                 
       // Throw command error for first failed command.  The state of
       // the failing run object has been updated by find_first_error()
       auto run = m_runlist.at(first_error_idx);
-      throw xrt::runlist::command_error(run, run.state(), "runlist failed execution");
+      set_run_state(run, state);
+      throw xrt::runlist::command_error(run, state, "runlist failed execution");
     }
 
     return std::cv_status::no_timeout;
   }
 
+  // Submit a chunk of run objects as one atomic chained command
+  // The payload of the chained command is the individual commands
+  // associated with the run objects.
+  void
+  submit(const xrt_core::span<xrt_core::buffer_handle*>& cmds)
+  {
+    auto execbuf = get_exec_buf();
+    auto [cmd, pkt] = unpack(execbuf);
+
+    pkt->state = ERT_CMD_STATE_NEW;
+    pkt->opcode = ERT_CMD_CHAIN;
+    
+    auto chain = get_ert_cmd_chain_data(pkt); // ert.h
+    
+    size_t count = 0;
+    for (const auto& c : cmds)
+      chain->data[count++] = reinterpret_cast<uint64_t>(c);
+
+    chain->command_count = count;
+    pkt->count = (sizeof(ert_cmd_chain_data) + sizeof(uint64_t) * count) / sizeof(uint32_t);
+
+    // m_submitted commands reflect what has been successfully
+    // submitted to the hwqueue. Resize to avoid exception during
+    // emplace_back after hwqueue::submit.
+    m_submitted_cmds.reserve(m_submitted_cmds.size() + 1);  // can throw
+    m_hwqueue.submit(cmd); // can throw
+    m_submitted_cmds.emplace_back(std::move(execbuf)); // no throw
+  }
 
   // Submit runlist in chunks of submit size.  Make a note of last
   // submitted command; in case of submit failure at least the last
@@ -3054,12 +3097,11 @@ class runlist_impl
   void
   submit()
   {
-    m_last_submitted_idx = noidx;
+    m_submitted_cmds.clear();
     xrt_core::span<xrt_core::buffer_handle*> bos {m_bos};
     for (size_t idx = 0; idx < m_bos.size(); idx += submit_size) {
       auto count = std::min(submit_size, m_bos.size() - idx);
-      m_hwqueue.submit(bos.subspan(idx, count));
-      m_last_submitted_idx = idx + count - 1; // pre-cond safe
+      submit(bos.subspan(idx, count));
     }
   }
 
@@ -3074,7 +3116,8 @@ public:
 public:
   explicit
   runlist_impl(xrt::hw_context hwctx)
-    : m_hwctx(std::move(hwctx))
+    : m_exec_buffer_cache{hwctx.get_device().get_handle(), 128}
+    , m_hwctx{std::move(hwctx)}
     , m_hwqueue{m_hwctx}
   {}
 
@@ -3158,9 +3201,12 @@ public:
     if (m_state != state::running)
       return std::cv_status::no_timeout;
 
-    if (wait(timeout) == std::cv_status::no_timeout)
-      m_state = state::idle;
+    // Wait throws on error. On timeout just return
+    if (wait(timeout) == std::cv_status::timeout)
+      return std::cv_status::timeout;
 
+    // On succesful wait, the runlist becomes idle
+    m_state = state::idle;
     return std::cv_status::no_timeout;
   }
 
@@ -3176,10 +3222,10 @@ public:
 
     m_runlist.clear();
     m_bos.clear();
+    m_submitted_cmds.clear();
     m_state = state::idle;
   }
 };
-
 
 class runlist::command_error_impl
 {

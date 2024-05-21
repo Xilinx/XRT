@@ -7,6 +7,7 @@
 #include "pcidev.h"
 #include "xclhal2.h"
 
+#include "core/common/bo_cache.h"
 #include "core/common/device.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
@@ -28,11 +29,6 @@
 #include <memory>
 #include <mutex>
 #include <vector>
-
-// Forward declaration
-namespace xrt_core {
-    class bo_cache;
-}
 
 namespace xocl {
 

@@ -360,9 +360,13 @@ public:
   hw_queue_impl& operator=(const hw_queue_impl&) = delete;
   hw_queue_impl& operator=(hw_queue_impl&&) = delete;
 
-  // Submit list of commands for execution as atomic unit
+  // Submit single raw command for execution
   virtual void
-  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist) = 0;
+  submit(xrt_core::buffer_handle* cmd) = 0;
+
+  // Wait for single raw command to complete
+  virtual std::cv_status
+  wait(xrt_core::buffer_handle* cmd, size_t timeout_ms) const = 0;
 
   // Submit command for execution
   virtual void
@@ -455,9 +459,17 @@ public:
   }
 
   void
-  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist) override
+  submit(xrt_core::buffer_handle* cmd) override
   {
-    m_qhdl->submit_command(runlist);
+    m_qhdl->submit_command(cmd);
+  }
+
+  std::cv_status
+  wait(xrt_core::buffer_handle* cmd, size_t timeout_ms) const override
+  {
+    return m_qhdl->wait_command(cmd, static_cast<uint32_t>(timeout_ms))
+      ? std::cv_status::no_timeout
+      : std::cv_status::timeout;
   }
 
   void
@@ -639,9 +651,15 @@ public:
   }
 
   void
-  submit(const xrt_core::span<xrt_core::buffer_handle*>&) override
+  submit(xrt_core::buffer_handle*) override
   {
-    throw std::runtime_error("kds_device::submit(runlist) not implemented");
+    throw std::runtime_error("kds_device::submit(buffer_handle) not implemented");
+  }
+
+  std::cv_status
+  wait(xrt_core::buffer_handle*, size_t) const override
+  {
+    throw std::runtime_error("kds_device::wait(buffer_handle) not implemented");
   }
 
   void
@@ -808,9 +826,16 @@ unmanaged_start(xrt_core::command* cmd)
 
 void
 hw_queue::
-submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist)
+submit(xrt_core::buffer_handle* cmd)
 {
-  get_handle()->submit(runlist);
+  get_handle()->submit(cmd);
+}
+
+std::cv_status
+hw_queue::
+wait(xrt_core::buffer_handle* cmd, const std::chrono::milliseconds& timeout) const
+{
+  return get_handle()->wait(cmd, timeout.count());
 }
 
 // Wait for command completion for unmanaged command execution
