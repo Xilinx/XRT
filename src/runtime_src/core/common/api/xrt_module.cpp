@@ -429,6 +429,11 @@ public:
 // construct patcher objects for each argument.
 class module_elf : public module_impl
 {
+  // rela->addend have offset to base-bo-addr info along with schema
+  // [0:3] bit are used for patching schema, [4:31] used for base-bo-addr
+  constexpr static uint32_t addend_shift = 4;
+  constexpr static uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
+  constexpr static uint32_t schema_mask = ~addend_mask;
   xrt::elf m_elf;
   uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::vector<ctrlcode> m_ctrlcodes;
@@ -658,7 +663,7 @@ class module_elf : public module_impl
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_offset.emplace_back(offset);
         else {
-          auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend);
+          auto symbol_type = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
           arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {offset}, buf_type });
         }
       }
