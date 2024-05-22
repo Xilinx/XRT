@@ -5,6 +5,7 @@
 #include "core/common/error.h"
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/common/utils.h"
 #include "hip/config.h"
 #include "hip/core/device.h"
 #include "hip/core/context.h"
@@ -15,13 +16,7 @@
 
 namespace xrt::core::hip
 {
-  static std::string
-  to_hex(const void* addr)
-  {
-    std::stringstream str;
-    str << std::hex << addr;
-    return str.str();
-  }
+  using namespace xrt_core::utils;
 
   // Allocate memory on the device.
   static void

@@ -29,6 +29,7 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/utils.h"
 
 #include <iostream>
 #include <fstream>
@@ -43,14 +44,7 @@ namespace {
 
 static unsigned int uid_count = 0;
 
-static
-std::string
-to_hex(void* addr)
-{
-  std::stringstream str;
-  str << std::hex << addr;
-  return str.str();
-}
+using namespace xrt_core::utils;
 
 static void
 unaligned_message(void* addr)
