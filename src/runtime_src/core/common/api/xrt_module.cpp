@@ -963,7 +963,7 @@ class module_sram : public module_impl
   void
   create_instr_buf(const module_impl* parent)
   {
-    XRT_PRINTF("-> module_sram::create_instr_buf()\n");
+    XRT_DEBUGF("-> module_sram::create_instr_buf()\n");
     const auto& data = parent->get_instr();
     size_t sz = data.size();
     if (sz == 0)
@@ -1002,18 +1002,18 @@ class module_sram : public module_impl
     if (m_ctrlpkt_bo) {
       patch_instr(m_instr_bo, Control_Packet_Symbol, 0, m_ctrlpkt_bo, patcher::buf_type::ctrltext);
     }
-    XRT_PRINTF("<- module_sram::create_instr_buf()\n");
+    XRT_DEBUGF("<- module_sram::create_instr_buf()\n");
   }
 
   void
   create_ctrlpkt_buf(const module_impl* parent)
   {
-    XRT_PRINTF("-> module_sram::create_ctrlpkt_buf()\n");
+    XRT_DEBUGF("-> module_sram::create_ctrlpkt_buf()\n");
     const auto& data = parent->get_ctrlpkt();
     size_t sz = data.size();
 
     if (sz == 0) {
-      XRT_PRINTF("ctrlpkt buf is empty\n");
+      XRT_DEBUGF("ctrlpkt buf is empty\n");
     }
     else {
       // create bo combined size of all ctrlcodes
@@ -1027,7 +1027,7 @@ class module_sram : public module_impl
       dump_bo(m_ctrlpkt_bo, "ctrlpktBo.bin");
 #endif
 
-      XRT_PRINTF("<- module_sram::create_ctrlpkt_buffer()\n");
+      XRT_DEBUGF("<- module_sram::create_ctrlpkt_buffer()\n");
     }
   }
 
@@ -1036,7 +1036,7 @@ class module_sram : public module_impl
   void
   create_instruction_buffer(const module_impl* parent)
   {
-    XRT_PRINTF("-> module_sram::create_instruction_buffer()\n");
+    XRT_DEBUGF("-> module_sram::create_instruction_buffer()\n");
     const auto& data = parent->get_data();
 
     // create bo combined size of all ctrlcodes
@@ -1053,7 +1053,7 @@ class module_sram : public module_impl
     // copy ctrlcodes into bo
     fill_instruction_buffer(m_buffer, data);
 
-    XRT_PRINTF("<- module_sram::create_instruction_buffer()\n");
+    XRT_DEBUGF("<- module_sram::create_instruction_buffer()\n");
   }
 
   virtual void
