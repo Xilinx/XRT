@@ -3161,6 +3161,14 @@ public:
     auto run_bo = run_cmd->get_exec_bo();
     auto run_bo_props = run_bo->get_properties();
 
+    auto data_idx = chain_data->command_count;
+    chain_data->data[data_idx] = run_bo_props.kmhdl;
+
+    // Let shim handle binding of run_bo arguments to the command
+    // that cahins the run_bo.  This allows pinning if necessary.
+    // May throw, but so far no state change, so still safe.
+    cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); 
+
     // Once a run object is added to a list it will be in a state that
     // makes it impossible to add to another list or to same list
     // twice.  This state is managed by the run object itself by
@@ -3169,23 +3177,11 @@ public:
     // which is undefined behavior.  No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
 
-    // No throw zone.  Add the run command to the command chain
-    auto data_idx = chain_data->command_count++;
+    // Non throwing state change
+    chain_data->command_count++;
+    pkt->count += sizeof(uint64_t) / word_size; // account for added command
     m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
     m_bos.push_back(run_bo);              // ptr noexcept
-    chain_data->data[data_idx] = run_bo_props.kmhdl;
-    pkt->count += sizeof(uint64_t) / word_size; // account for added command
-
-    try {
-      // Let shim handle binding of run_bo arguments to
-      // the command that cahins the run_bo.  This allows
-      // pinning if necessary.
-      cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); // what size do I pass?
-    }
-    catch (const std::exception&) {
-      run_impl->clear_runlist();
-      throw;
-    }
   }
 
   void
