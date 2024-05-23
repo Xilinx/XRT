@@ -200,7 +200,7 @@ bool copy_buffer<T>::submit()
   switch(cdirection)
   {
     case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_buffer.get(), copy_size, 0, dev_offset);
+      handle = std::async(std::launch::async, &memory::write, buffer, host_buffer->data(), copy_size, 0, dev_offset);
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
