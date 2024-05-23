@@ -2922,6 +2922,7 @@ class runlist_impl
   static constexpr size_t submit_size = 24;
   static constexpr size_t noidx = std::numeric_limits<size_t>::max();
   static constexpr size_t execbuf_size = sizeof(ert_packet) + sizeof(ert_cmd_chain_data) + submit_size * sizeof(uint64_t);
+  static constexpr size_t word_size = sizeof(uint32_t); // ert payload word size
 
   // The runlist creates its own execution buffers, which are
   // ert_packets with payload interpreted as ert_cmd_chain_data
@@ -2938,9 +2939,13 @@ class runlist_impl
   std::vector<xrt_core::buffer_handle*> m_bos;
 
   // Commands are submitted in chained ert commands where the number
-  // of chained commands in less than 'submit_size'. This list is a
-  // list of currently submitted chained commands.
-  std::vector<execbuf_type> m_submitted_cmds;
+  // of chained commands in less than 'submit_size'. The ert chained
+  // commands are created when run objects are added to the runlist.
+  // The created commands are owned by m_cmds, but passed around as
+  // pointers. Successfully submitted chained commands are added to
+  // m_submitted_cmds only after the runlist is closed.
+  std::vector<execbuf_type> m_cmds;
+  std::vector<execbuf_type*> m_submitted_cmds;
 
   static const std::string&
   state_to_string(state st)
@@ -2960,11 +2965,40 @@ class runlist_impl
     return {execbuf.first.get(), execbuf.second};
   }
 
-  // Execution buffers are cached and reused within this runlist
-  execbuf_type
-  get_exec_buf()
+  static std::pair<xrt_core::buffer_handle*, cmd_type*>
+  unpack(const execbuf_type* execbuf)
   {
-    return m_exec_buffer_cache.alloc<cmd_type>();
+    return unpack(*execbuf);
+  }
+
+  // Execution buffers are cached and reused within this runlist
+  // This function creates or gets an execbuf from the cache
+  // and initializes the command in prep for add chained commands.
+  execbuf_type
+  create_exec_buf()
+  {
+    auto execbuf = m_exec_buffer_cache.alloc<cmd_type>();
+    auto pkt = execbuf.second;
+    pkt->opcode = ERT_CMD_CHAIN;
+    pkt->count = sizeof(ert_cmd_chain_data) / word_size;  // payload size in words
+    auto chain_data = get_ert_cmd_chain_data(pkt);
+    std::memset(chain_data, 0, sizeof(*chain_data));
+    return execbuf;
+  }
+
+  // The chained command execbufs are created as needed
+  // when commands are added to the runlist.  Here we
+  // get the cmd that chains the run at specified index.
+  execbuf_type*
+  get_cmd_chain_for_run_at_index(size_t runidx)
+  {
+    auto idx = runidx / submit_size;
+    if (idx < m_cmds.size())
+      return &m_cmds[idx];
+
+    m_cmds.push_back(create_exec_buf());
+    m_submitted_cmds.reserve(m_cmds.size());
+    return &m_cmds.at(idx);
   }
 
   void
@@ -2987,7 +3021,7 @@ class runlist_impl
   // alas accurate state may not be reflected in command packet even
   // if command has completed.
   ert_cmd_state
-  get_completed_state(const execbuf_type& execbuf, const std::chrono::milliseconds& timeout) const
+  get_completed_state(const execbuf_type* execbuf, const std::chrono::milliseconds& timeout) const
   {
     auto [cmd, pkt] = unpack(execbuf);
     if (auto status = m_hwqueue.wait(cmd, timeout); status == std::cv_status::timeout)
@@ -3027,7 +3061,7 @@ class runlist_impl
     // command failed to complete successfully, then all subsequent
     // commands are marked aborted including any unsubmitted commands.
     size_t runidx = 0;
-    for (auto& execbuf : m_submitted_cmds) {
+    for (auto execbuf : m_submitted_cmds) {
       auto state = get_completed_state(execbuf, 1ms);
       if (state == ERT_CMD_STATE_COMPLETED) {
         runidx += submit_size;
@@ -3060,35 +3094,6 @@ class runlist_impl
     return std::cv_status::no_timeout;
   }
 
-  // Submit a chunk of run objects as one atomic chained command
-  // The payload of the chained command is the individual commands
-  // associated with the run objects.
-  void
-  submit(const xrt_core::span<xrt_core::buffer_handle*>& cmds)
-  {
-    auto execbuf = get_exec_buf();
-    auto [cmd, pkt] = unpack(execbuf);
-
-    pkt->state = ERT_CMD_STATE_NEW;
-    pkt->opcode = ERT_CMD_CHAIN;
-    
-    auto chain = get_ert_cmd_chain_data(pkt); // ert.h
-    
-    size_t count = 0;
-    for (const auto& c : cmds)
-      chain->data[count++] = reinterpret_cast<uint64_t>(c);
-
-    chain->command_count = count;
-    pkt->count = (sizeof(ert_cmd_chain_data) + sizeof(uint64_t) * count) / sizeof(uint32_t);
-
-    // m_submitted commands reflect what has been successfully
-    // submitted to the hwqueue. Resize to avoid exception during
-    // emplace_back after hwqueue::submit.
-    m_submitted_cmds.reserve(m_submitted_cmds.size() + 1);  // can throw
-    m_hwqueue.submit(cmd); // can throw
-    m_submitted_cmds.emplace_back(std::move(execbuf)); // no throw
-  }
-
   // Submit runlist in chunks of submit size.  Make a note of last
   // submitted command; in case of submit failure at least the last
   // successfully submitted command must be waited for before the list
@@ -3098,10 +3103,14 @@ class runlist_impl
   submit()
   {
     m_submitted_cmds.clear();
-    xrt_core::span<xrt_core::buffer_handle*> bos {m_bos};
-    for (size_t idx = 0; idx < m_bos.size(); idx += submit_size) {
-      auto count = std::min(submit_size, m_bos.size() - idx);
-      submit(bos.subspan(idx, count));
+    for (auto& execbuf : m_cmds) {
+      auto [cmd, pkt] = unpack(execbuf);
+      pkt->state = ERT_CMD_STATE_NEW;
+      // m_submitted commands reflect what has been successfully
+      // submitted to the hwqueue. Resize to avoid exception during
+      // emplace_back after hwqueue::submit.
+      m_hwqueue.submit(cmd); // can throw
+      m_submitted_cmds.emplace_back(&execbuf); // no throw reserved size
     }
   }
 
@@ -3139,12 +3148,18 @@ public:
       throw xrt_core::error("runlist must be idle before adding run objects, current state: " + state_to_string(m_state));
 
     // Get the potentially throwing action out of the way first
-    m_runlist.reserve(m_runlist.size() + 1);
-    m_bos.reserve(m_bos.size() + 1);
+    auto runidx = m_runlist.size();
+    m_runlist.reserve(runidx + 1);
+    m_bos.reserve(runidx + 1);
 
+    auto execbuf = get_cmd_chain_for_run_at_index(runidx);
+    auto [cmd, pkt] = unpack(execbuf);
+    auto chain_data = get_ert_cmd_chain_data(pkt);
+    
     auto run_impl = run.get_handle();
-    auto cmd = run_impl->get_cmd();
-    auto bo = cmd->get_exec_bo();
+    auto run_cmd = run_impl->get_cmd();
+    auto run_bo = run_cmd->get_exec_bo();
+    auto run_bo_props = run_bo->get_properties();
 
     // Once a run object is added to a list it will be in a state that
     // makes it impossible to add to another list or to same list
@@ -3154,9 +3169,23 @@ public:
     // which is undefined behavior.  No exceptions after this point.
     run_impl->set_runlist(this);  // throws or changes state of run
 
-    // No throw zone
+    // No throw zone.  Add the run command to the command chain
+    auto data_idx = chain_data->command_count++;
     m_runlist.push_back(std::move(run));  // move of shared_ptr is noexcept
-    m_bos.push_back(bo);                  // ptr noexcept
+    m_bos.push_back(run_bo);              // ptr noexcept
+    chain_data->data[data_idx] = run_bo_props.kmhdl;
+    pkt->count += sizeof(uint64_t) / word_size; // account for added command
+
+    try {
+      // Let shim handle binding of run_bo arguments to
+      // the command that cahins the run_bo.  This allows
+      // pinning if necessary.
+      cmd->bind_at(data_idx, run_bo, 0, run_bo_props.size); // what size do I pass?
+    }
+    catch (const std::exception&) {
+      run_impl->clear_runlist();
+      throw;
+    }
   }
 
   void
@@ -3223,6 +3252,7 @@ public:
     m_runlist.clear();
     m_bos.clear();
     m_submitted_cmds.clear();
+    m_cmds.clear();
     m_state = state::idle;
   }
 };
