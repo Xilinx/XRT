@@ -128,20 +128,22 @@ public:
   bool wait() override;
 };
 
-template<typename T>
+template<class T>
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset);
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
+  //copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset);
+  //copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, T host_buf, size_t size, size_t offset);
   bool submit() override;
   bool wait() override;
 
 private:
   xclBOSyncDirection cdirection;
   std::shared_ptr<memory> buffer;
-  void* host_ptr;
-  std::shared_ptr<std::vector<T>> host_vec;
+  T host_buffer;
+  //void* host_ptr;
+  //std::shared_ptr<std::vector<T>> host_vec;
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;

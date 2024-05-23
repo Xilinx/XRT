@@ -168,30 +168,43 @@ bool kernel_start::wait()
   return false;
 }
 
-template<typename T>
-copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset)
-  : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(nullptr), host_vec(std::move(vec)), copy_size(size), dev_offset(offset)
+template<class T>
+copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, T host_buf, size_t size, size_t offset)
+  : command(command::type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_buffer(std::move(host_buf)), copy_size(size), dev_offset(offset)
 {
 }
 
-template<typename T>
-copy_buffer<T>::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
-  : command(type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), host_vec(), copy_size(size), dev_offset(offset)
+template<>
+bool copy_buffer<void*>::submit()
 {
+  switch(cdirection)
+  {
+    case XCL_BO_SYNC_BO_TO_DEVICE:
+      handle = std::async(std::launch::async, &memory::write, buffer, host_buffer, copy_size, 0, dev_offset);
+      break;
+
+    case XCL_BO_SYNC_BO_FROM_DEVICE:
+      handle = std::async(std::launch::async, &memory::read, buffer, host_buffer, copy_size, dev_offset, 0);
+      break;
+
+    default:
+      break;
+  };
+
+  return true;
 }
 
-template<typename T>
+template<class T>
 bool copy_buffer<T>::submit()
 {
   switch(cdirection)
   {
     case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr?host_ptr:host_vec->data(), copy_size, 0, dev_offset);
+      handle = std::async(std::launch::async, &memory::write, buffer, host_buffer.get(), copy_size, 0, dev_offset);
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
-      throw_invalid_handle_if(!host_ptr, "destination is nullptr");
-      handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, copy_size, dev_offset, 0);
+      throw std::runtime_error("host_buffer is invalid destination");
       break;
 
     default:

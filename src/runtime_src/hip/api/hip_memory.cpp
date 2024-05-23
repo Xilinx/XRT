@@ -16,8 +16,6 @@
 
 namespace xrt::core::hip
 {
-  using namespace xrt_core::utils;
-
   // Allocate memory on the device.
   static void
   hip_malloc(void** ptr, size_t size)
@@ -78,7 +76,7 @@ namespace xrt::core::hip
     assert(device_ptr);
 
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
-    throw_invalid_value_if(!hip_mem, "Error getting device pointer from host pointer " + to_hex(host_ptr) + " in " + __func__);
+    throw_invalid_value_if(!hip_mem, "Error getting device pointer from host pointer " + xrt_core::utils::to_hex(host_ptr) + " in " + __func__);
     throw_invalid_value_if(hip_mem->get_flags() != hipHostMallocMapped, "Getting device pointer is valid only for memories created with hipHostMallocMapped flag!");
 
     *device_ptr = nullptr;
@@ -95,7 +93,7 @@ namespace xrt::core::hip
   hip_free(void* ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
-    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "invalid handle " + to_hex(ptr) + " was passed to " + __func__);
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::device, "invalid handle " + xrt_core::utils::to_hex(ptr) + " was passed to " + __func__);
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
@@ -105,7 +103,7 @@ namespace xrt::core::hip
   hip_host_free(void* ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(ptr).first;
-    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "invalid handle " + to_hex(ptr) + " was passed to " + __func__);
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::host, "invalid handle " + xrt_core::utils::to_hex(ptr) + " was passed to " + __func__);
 
     auto device_addr = hip_mem->get_device_address();
     // if device address is differrent than host address, remove it from the map
@@ -120,7 +118,7 @@ namespace xrt::core::hip
   hip_host_unregister(void* host_ptr)
   {
     auto hip_mem = memory_database::instance().get_hip_mem_from_addr(host_ptr).first;
-    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::registered, "invalid handle " + to_hex(host_ptr) + " was passed to " + __func__);
+    throw_invalid_handle_if(!hip_mem || hip_mem->get_type() != memory_type::registered, "invalid handle " + xrt_core::utils::to_hex(host_ptr) + " was passed to " + __func__);
 
     memory_database::instance().remove(reinterpret_cast<uint64_t>(host_ptr));
   }
@@ -131,8 +129,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dev = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle " + to_hex(dst) + " in " + __func__);
-    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst " + to_hex(dst) + " out of bound in " + __func__);
+    throw_invalid_handle_if(!hip_mem_dev, "Invalid destination handle " + xrt_core::utils::to_hex(dst) + " in " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "dst " + xrt_core::utils::to_hex(dst) + " out of bound in " + __func__);
 
     hip_mem_dev->write(src, size, 0, offset);
   }
@@ -150,8 +148,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
     auto hip_mem_dev = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_handle_if(!hip_mem_dev, "invalid source handle: " + to_hex(src) + " " + __func__);
-    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "source " + to_hex(src) + " out of bound in " + __func__);
+    throw_invalid_handle_if(!hip_mem_dev, "invalid source handle: " + xrt_core::utils::to_hex(src) + " " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dev->get_size(), "source " + xrt_core::utils::to_hex(src) + " out of bound in " + __func__);
 
     // src is device address. Get device address
     hip_mem_dev->read(dst, size, 0, offset);
@@ -163,8 +161,8 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_handle_if(!hip_mem_dst, "invalid destination handle: " + to_hex(dst) + " " + __func__);
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
+    throw_invalid_handle_if(!hip_mem_dst, "invalid destination handle: " + xrt_core::utils::to_hex(dst) + " " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + xrt_core::utils::to_hex(dst) + " out of bound in " + __func__);
 
     hip_mem_dst->write(src, size, 0, offset);
   }
@@ -203,7 +201,7 @@ namespace xrt::core::hip
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + xrt_core::utils::to_hex(dst) + " out of bound in " + __func__);
 
     auto host_src = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
     memset(host_src.get(), value, size);
@@ -219,15 +217,15 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    throw_invalid_value_if(!hip_mem_dst, "invalid destination handle " + to_hex(dst) + " in " + __func__);
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
+    throw_invalid_value_if(!hip_mem_dst, "invalid destination handle " + xrt_core::utils::to_hex(dst) + " in " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + xrt_core::utils::to_hex(dst) + " out of bound in " + __func__);
 
     auto hip_stream = get_stream(stream);
-    throw_invalid_value_if(!hip_stream, "invalid stream handle " + to_hex(stream) + " in " + __func__);
+    throw_invalid_value_if(!hip_stream, "invalid stream handle " + xrt_core::utils::to_hex(stream) + " in " + __func__);
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer<char>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
+                                std::make_shared<copy_buffer<void*>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -239,7 +237,7 @@ namespace xrt::core::hip
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
     assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + to_hex(dst) + " out of bound in " + __func__);
+    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst: " + xrt_core::utils::to_hex(dst) + " out of bound in " + __func__);
 
     auto element_size = sizeof(T);
 
@@ -250,11 +248,11 @@ namespace xrt::core::hip
     auto vec = std::make_shared<std::vector<T>>(element_count, value);
 
     auto hip_stream = get_stream(stream);
-    throw_invalid_value_if(!hip_stream, "invalid stream handle "  + to_hex(stream) + " in " + __func__);
+    throw_invalid_value_if(!hip_stream, "invalid stream handle "  + xrt_core::utils::to_hex(stream) + " in " + __func__);
 
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, vec, size, offset));
+                                std::make_shared<copy_buffer<std::shared_ptr<std::vector<T>>>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, vec, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 } // xrt::core::hip
