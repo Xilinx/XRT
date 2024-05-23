@@ -60,7 +60,7 @@
 
 #ifdef _WIN32
 # pragma warning( push )
-# pragma warning( disable : 4201 )
+# pragma warning( disable : 4200 4201 )
 #endif
 
 #if defined(__GNUC__)
@@ -170,6 +170,24 @@ struct ert_dpu_data {
   uint64_t instruction_buffer;       /* buffer address 2 words */
   uint32_t instruction_buffer_size;  /* size of buffer in bytes */
   uint32_t chained;                  /* number of following ert_dpu_data elements */
+};
+
+/**
+ * struct ert_cmd_chain_data - interpretation of data payload for ERT_CMD_CHAIN
+ *
+ * @command_count: number of commands in chain
+ * @submit_index:  index of last successfully submitted command in chain
+ * @error_index:   index of failing command if cmd status is not completed
+ * @data[]:        address of each command in chain
+ *
+ * This is the payload of an *ert_packet* when the opcode is ERT_CMD_CHAIN
+ */
+struct ert_cmd_chain_data {
+  uint32_t command_count;
+  uint32_t submit_index;
+  uint32_t error_index;
+  uint32_t reserved[3];
+  uint64_t data[];
 };
 
 #ifndef U30_DEBUG
@@ -541,6 +559,7 @@ struct cu_cmd_state_timestamps {
  * @ERT_SK_UNCONFIG:    unconfigure a soft kernel
  * @ERT_START_KEY_VAL:  same as ERT_START_CU but with key-value pair flavor
  * @ERT_START_DPU:      instruction buffer command format
+ * @ERT_CMD_CHAIN:      command chain
  */
 enum ert_cmd_opcode {
   ERT_START_CU      = 0,
@@ -562,6 +581,7 @@ enum ert_cmd_opcode {
   ERT_ACCESS_TEST_C = 16,
   ERT_ACCESS_TEST   = 17,
   ERT_START_DPU     = 18,
+  ERT_CMD_CHAIN     = 19,
 };
 
 /**
@@ -870,6 +890,7 @@ ert_valid_opcode(struct ert_packet *pkt)
   struct ert_start_copybo_cmd *sccmd;
   struct ert_configure_cmd *ccmd;
   struct ert_configure_sk_cmd *cscmd;
+  struct ert_cmd_chain_data *ccdata;
   bool valid;
 
   switch (pkt->opcode) {
@@ -882,6 +903,11 @@ ert_valid_opcode(struct ert_packet *pkt)
     skcmd = to_start_krnl_pkg(pkt);
     /* 1 mandatory cumask + extra_cu_masks + size (in words) of ert_dpu_data */
     valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_dpu_data) / sizeof(uint32_t));
+    break;
+  case ERT_CMD_CHAIN:
+    ccdata = (struct ert_cmd_chain_data*) pkt->data;
+    /* header count must match number of commands in payload */
+    valid = (pkt->count == (ccdata->command_count * sizeof(uint64_t) + sizeof(struct ert_cmd_chain_data)) / sizeof(uint32_t));
     break;
   case ERT_START_KEY_VAL:
     skcmd = to_start_krnl_pkg(pkt);
@@ -961,6 +987,15 @@ get_ert_dpu_data_next(struct ert_dpu_data* dpu_data)
     return NULL;
   
   return dpu_data + 1;
+}
+
+static inline struct ert_cmd_chain_data*
+get_ert_cmd_chain_data(struct ert_packet* pkt)
+{
+  if (pkt->opcode != ERT_CMD_CHAIN)
+    return NULL;
+
+  return (struct ert_cmd_chain_data*) pkt->data;
 }
 
 static inline uint32_t*
