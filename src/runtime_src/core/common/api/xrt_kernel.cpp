@@ -41,7 +41,6 @@
 #include "core/common/debug.h"
 #include "core/common/error.h"
 #include "core/common/message.h"
-#include "core/common/span.h"
 #include "core/common/system.h"
 #include "core/common/trace.h"
 #include "core/common/usage_metrics.h"
