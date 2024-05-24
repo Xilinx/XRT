@@ -659,7 +659,7 @@ class module_elf : public module_impl
         if (offset >= sec_size)
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
-        uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_Shift;
+        uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_shift;
         patcher::patch_info pi = { offset, add_end_higher_28bit };
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
