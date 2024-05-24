@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "device_linux.h"
 #include "xrt.h"
 #include "zynq_dev.h"
@@ -212,12 +212,13 @@ struct aie_core_info_sysfs
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+    const aie_sys_parser asp(aiepart);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
     for (int i = 0; i < aie_meta.num_cols; ++i)
       for (int j = 0; j < (aie_meta.num_rows-1); ++j)
         ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
-                          aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.core_row))));
+                          asp.aie_sys_read(i,(j + aie_meta.core_row))));
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
@@ -239,11 +240,12 @@ struct aie_shim_info_sysfs
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+    const aie_sys_parser asp(aiepart);
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for (int i=0; i < aie_meta.num_cols; ++i) {
       ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(aie_meta.shim_row),
-			aie_sys_parser::get_parser(aiepart)->aie_sys_read(i, aie_meta.shim_row)));
+				       asp.aie_sys_read(i, aie_meta.shim_row)));
     }
 
     boost::property_tree::ptree pt;
@@ -266,12 +268,15 @@ struct aie_mem_info_sysfs
     boost::property_tree::ptree ptarray;
     aie_metadata_info aie_meta = get_aie_metadata_info(device);
     const std::string aiepart = std::to_string(aie_meta.shim_row) + "_" + std::to_string(aie_meta.num_cols);
+    const aie_sys_parser asp(aiepart);
 
-    /* Loop all mem tiles and collect all dma, events, errors, locks status */
-    for (int i = 0; i < aie_meta.num_cols; ++i)
-      for (int j = 0; j < (aie_meta.num_mem_row-1); ++j)
-	ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
-			  aie_sys_parser::get_parser(aiepart)->aie_sys_read(i,(j + aie_meta.mem_row))));
+    if (aie_meta.num_mem_row != 0) {
+      /* Loop all mem tiles and collect all dma, events, errors, locks status */
+      for (int i = 0; i < aie_meta.num_cols; ++i)
+        for (int j = 0; j < (aie_meta.num_mem_row-1); ++j)
+	  ptarray.push_back(std::make_pair(std::to_string(i) + "_" + std::to_string(j),
+                            asp.aie_sys_read(i,(j + aie_meta.mem_row))));
+    }
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_mem",ptarray);

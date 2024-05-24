@@ -9,7 +9,6 @@
 #include "experimental/xrt_fence.h"
 #include "experimental/xrt_kernel.h"
 
-#include "core/common/span.h"
 #include "core/common/shim/buffer_handle.h"
 
 #include <chrono>
@@ -57,9 +56,13 @@ public:
   void
   unmanaged_start(xrt_core::command* cmd);
 
-  // Submit a runlist for execution
+  // Submit a raw cmd for execution
   void
-  submit(const xrt_core::span<xrt_core::buffer_handle*>& runlist);
+  submit(xrt_core::buffer_handle* cmd);
+
+  // Wait for raw cmd to complete
+  std::cv_status
+  wait(xrt_core::buffer_handle* cmd, const std::chrono::milliseconds& timeout) const;
 
   // Wait for command completion.  Supports both managed and unmanaged
   // commands.
@@ -70,7 +73,7 @@ public:
   // Wait for command completion with timeout.  Supports both managed
   // and unmanaged commands.
   std::cv_status
-  wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const;
+  wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout) const;
 
   // Enqueue a command dependency
   void
@@ -84,7 +87,7 @@ public:
   // some command completing or from a timeout.
   XRT_CORE_COMMON_EXPORT
   static std::cv_status
-  exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms);
+  exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout);
 
   // Cleanup after device object is no longer valid
   // Static data is cached per xrt_core::device object, this function

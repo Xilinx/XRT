@@ -621,8 +621,9 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		return -EINVAL;
 	}
 
-	ert->submit(ert, xcmd);
 	set_xcmd_timestamp(xcmd, KDS_QUEUED);
+	ert->submit(ert, xcmd);
+
 	return 0;
 }
 
