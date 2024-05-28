@@ -131,6 +131,12 @@ public:
   run() = default;
 
   /**
+   * ~run() - Destruct run object
+   */
+  XCL_DRIVER_DLLESPEC
+  ~run();
+
+  /**
    * run() - Construct run object from a kernel object
    *
    * @param krnl: Kernel object representing the kernel to execute
@@ -669,6 +675,12 @@ public:
    * kernel() - Construct for empty kernel
    */
   kernel() = default;
+
+  /**
+   * Destructor for kernel - needed for tracing
+   */
+  XCL_DRIVER_DLLESPEC
+  ~kernel();
 
   /**
    * kernel() - Constructor from a device and xclbin

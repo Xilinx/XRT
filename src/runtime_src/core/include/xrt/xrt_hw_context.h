@@ -77,6 +77,12 @@ public:
   hw_context() = default;
 
   /**
+   * ~hw_context() - Destructor
+   */
+  XCL_DRIVER_DLLESPEC
+  ~hw_context();
+
+  /**
    * hw_context() - Constructor with QoS control
    *
    * @param device
