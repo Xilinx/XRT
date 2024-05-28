@@ -53,7 +53,7 @@ namespace {
 namespace xdp {
 
   HWEmuDeviceOffloadPlugin::HWEmuDeviceOffloadPlugin()
-    : DeviceOffloadPlugin()
+    : PLDeviceOffloadPlugin()
   {
     db->registerInfo(info::device_offload) ;
   }
@@ -137,7 +137,7 @@ namespace xdp {
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
-    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    PLDeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
     if (devInterface == nullptr)
       devInterface = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(userHandle));
 

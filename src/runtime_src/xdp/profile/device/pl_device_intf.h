@@ -54,14 +54,18 @@ namespace xdp {
 XDP_CORE_EXPORT
 uint64_t GetTS2MMBufSize(bool isAIETrace = false);
 
+// This class handles the interface between the runtime and all of the
+// debug/profiling IP that are inside the PL portion of the design.
+// Some of the PL IP are connected to AIE outputs, but this class does NOT
+// handle access to the internals of the AIE.
 
-class DeviceIntf {
+class PLDeviceIntf {
   public:
 
-    DeviceIntf() {}
+    PLDeviceIntf() = default;
 
     XDP_CORE_EXPORT
-    ~DeviceIntf();
+    ~PLDeviceIntf();
 
   public:
     // Set device handle
@@ -253,7 +257,7 @@ class DeviceIntf {
     double mKernelMaxReadBW  = hw_constants::ddr4_2400_bandwidth;
     double mKernelMaxWriteBW = hw_constants::ddr4_2400_bandwidth;
 
-}; /* DeviceIntf */
+}; /* PLDeviceIntf */
 
 } /* xdp */
 

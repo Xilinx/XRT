@@ -47,7 +47,7 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/database/static_info_database.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
@@ -380,7 +380,7 @@ namespace xdp {
     return deviceInfo[deviceId]->deviceName ;
   }
 
-  DeviceIntf* VPStaticDatabase::getDeviceIntf(uint64_t deviceId)
+  PLDeviceIntf* VPStaticDatabase::getDeviceIntf(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -393,8 +393,8 @@ namespace xdp {
     return xclbin->deviceIntf ;
   }
 
-  DeviceIntf* VPStaticDatabase::createDeviceIntf(uint64_t deviceId,
-                                                 xdp::Device* dev)
+  PLDeviceIntf* VPStaticDatabase::createDeviceIntf(uint64_t deviceId,
+                                                   xdp::Device* dev)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -406,7 +406,7 @@ namespace xdp {
     if (xclbin->deviceIntf != nullptr)
       return xclbin->deviceIntf;
 
-    xclbin->deviceIntf = new DeviceIntf();
+    xclbin->deviceIntf = new PLDeviceIntf();
     xclbin->deviceIntf->setDevice(dev);
     try {
       xclbin->deviceIntf->readDebugIPlayout();
@@ -420,8 +420,8 @@ namespace xdp {
     return xclbin->deviceIntf;
   }
 
-  DeviceIntf* VPStaticDatabase::createDeviceIntfClient(uint64_t deviceId,
-                                                 xdp::Device* dev)
+  PLDeviceIntf* VPStaticDatabase::createDeviceIntfClient(uint64_t deviceId,
+                                                         xdp::Device* dev)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -433,7 +433,7 @@ namespace xdp {
     if (xclbin->deviceIntf != nullptr)
       return xclbin->deviceIntf;
 
-    xclbin->deviceIntf = new DeviceIntf();
+    xclbin->deviceIntf = new PLDeviceIntf();
     xclbin->deviceIntf->setDevice(dev);
     return xclbin->deviceIntf;
   }
@@ -650,7 +650,7 @@ namespace xdp {
       return ;
 
     // User space AM in sorted order of their slotIds.  Matches with
-    //  sorted list of AM in xdp::DeviceIntf
+    //  sorted list of AM in xdp::PLDeviceIntf
     size_t count = 0 ;
     for (auto mon : xclbin->pl.ams) {
       if (count >= size)
@@ -2027,7 +2027,7 @@ namespace xdp {
     NoCNode* noc = new NoCNode(index, debugIpData->m_name, readTrafficClass,
                                writeTrafficClass) ;
     xclbin->aie.nocList.push_back(noc) ;
-    // nocList in xdp::DeviceIntf is sorted; Is that required here?
+    // nocList in xdp::PLDeviceIntf is sorted; Is that required here?
   }
 
   void VPStaticDatabase::initializeTS2MM(DeviceInfo* devInfo,

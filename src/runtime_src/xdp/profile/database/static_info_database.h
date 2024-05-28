@@ -38,7 +38,7 @@ namespace xdp {
   // Forward declarations of general XDP constructs
   class VPDatabase;
   class VPWriter;
-  class DeviceIntf ;
+  class PLDeviceIntf;
 
   // Forward declarations of PL contents
   struct Monitor ;
@@ -255,9 +255,9 @@ namespace xdp {
     XDP_CORE_EXPORT double getPLMaxClockRateMHz(uint64_t deviceId);
     XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ;
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
-    XDP_CORE_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
-    XDP_CORE_EXPORT DeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
-    XDP_CORE_EXPORT DeviceIntf* createDeviceIntfClient(uint64_t deviceId, xdp::Device* dev);
+    XDP_CORE_EXPORT PLDeviceIntf* getDeviceIntf(uint64_t deviceId) ;
+    XDP_CORE_EXPORT PLDeviceIntf* createDeviceIntf(uint64_t deviceId, xdp::Device* dev);
+    XDP_CORE_EXPORT PLDeviceIntf* createDeviceIntfClient(uint64_t deviceId, xdp::Device* dev);
     XDP_CORE_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_CORE_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_CORE_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;

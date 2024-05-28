@@ -23,7 +23,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
@@ -154,7 +154,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 #endif
 
   // Check for device interface
-  DeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
+  PLDeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
 
 #ifdef XDP_CLIENT_BUILD
   if (deviceIntf == nullptr)

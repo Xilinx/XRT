@@ -32,7 +32,7 @@
 namespace xdp {
 
   // Forward declarations
-  class DeviceIntf ;
+  class PLDeviceIntf;
   struct Monitor ;
   struct Memory ;
   class ComputeUnitInstance ;
@@ -162,7 +162,7 @@ namespace xdp {
     // The interface with actually communicating with the device.  This
     //  handles the abstractions necessary for communicating in emulation,
     //  actual hardware, and through different mechanisms.
-    DeviceIntf* deviceIntf = nullptr ;
+    PLDeviceIntf* deviceIntf = nullptr ;
 
     // The configuration of the PL portion of the design
     PLInfo pl ;

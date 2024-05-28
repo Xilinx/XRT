@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,7 +25,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;

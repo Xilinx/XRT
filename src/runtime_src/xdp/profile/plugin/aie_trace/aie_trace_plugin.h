@@ -55,7 +55,7 @@ private:
   struct AIEData {
     uint64_t deviceID;
     bool valid;
-    DeviceIntf *devIntf;
+    PLDeviceIntf *devIntf;
     std::unique_ptr<AIETraceOffload> offloader;
     std::unique_ptr<AIETraceLogger> logger;
     std::unique_ptr<AieTraceImpl> implementation;
