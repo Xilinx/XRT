@@ -111,28 +111,26 @@ struct patcher
     uc_dma_remote_ptr_symbol_kind = 1,
     shim_dma_base_addr_symbol_kind = 2, // patching scheme needed by AIE2PS firmware
     scalar_32bit_kind = 3,
-    control_packet_48 = 4,              // patching scheme needed by firmware to patch dpu-sequence control packet
-    shim_dma_48 = 5,                    // patching scheme needed by firmware to patch dpu-seuqnece instruction buffer
-    tansaction_ctrlpkt_48 = 6,          // patching scheme needed by firmware to patch transaction buffer control packet
-    tansaction_48 = 7,                  // patching scheme needed by firmware to patch transaction buffer
+    control_packet_48 = 4,              // patching scheme needed by firmware to patch control packet
+    shim_dma_48 = 5,                    // patching scheme needed by firmware to patch instruction buffer
     unknown_symbol_kind = 8
   };
 
   enum class buf_type {
-       ctrltext = 0,   // control code
-       ctrldata = 1,       // control packet
-       preempt_save = 2,   // preempt_save
-       preempt_restore = 3, // preempt_restore
-       buf_type_count = 4   // total number of buf types
+    ctrltext = 0,   // control code
+    ctrldata = 1,       // control packet
+    preempt_save = 2,   // preempt_save
+    preempt_restore = 3, // preempt_restore
+    buf_type_count = 4   // total number of buf types
   };
 
   inline static const char*
   section_name_to_string(buf_type bt)
   {
     static const char* Section_Name_Array[static_cast<int>(buf_type::buf_type_count)] = { ".ctrltext",
-                                                                                    ".ctrldata",
-                                                                                    ".preempt_save",
-                                                                                    ".preempt_restore" };
+                                                                                          ".ctrldata",
+                                                                                          ".preempt_save",
+                                                                                          ".preempt_restore" };
 
     return Section_Name_Array[static_cast<int>(bt)];
   }
@@ -141,8 +139,8 @@ struct patcher
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
 
   struct patch_info {
-      uint64_t offset_to_patch_buffer;
-      uint32_t offset_to_base_bo_addr;
+    uint64_t offset_to_patch_buffer;
+    uint32_t offset_to_base_bo_addr;
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
@@ -220,12 +218,6 @@ struct patcher
         patch_ctrl48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       case symbol_type::shim_dma_48:
-        patch_shim48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
-        break;
-      case symbol_type::tansaction_ctrlpkt_48:
-        patch_ctrl48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
-        break;
-      case symbol_type::tansaction_48:
         patch_shim48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
         break;
       default:
