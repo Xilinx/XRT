@@ -392,7 +392,7 @@ get_abs_col(const xrt_core::device* device, uint16_t context_id, uint16_t col)
       continue;
 
     auto abs_col = col + entry.start_col;
-    if (abs_col >= entry.num_cols)
+    if (abs_col >= entry.start_col + entry.num_cols)
       throw std::out_of_range("col index out of range");
     return abs_col;
   }
