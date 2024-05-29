@@ -1964,14 +1964,14 @@ static void (*xocl_drv_unreg_funcs[])(bool) = {
 static int __init xocl_init(void)
 {
 	int		ret, i = 0;
-
+	char *module="xocl"; 
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
 	if (IS_ERR(xrt_class)) {
 		ret = PTR_ERR(xrt_class);
 		goto err_class_create;
 	}
 
-	ret = xocl_debug_init();
+	ret = xocl_debug_init(module);
 	if (ret) {
 		pr_err("failed to init debug");
 		goto failed;
