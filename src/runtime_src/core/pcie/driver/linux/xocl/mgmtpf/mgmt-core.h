@@ -175,11 +175,11 @@ u16 get_dsa_version(struct xclmgmt_dev *lro);
 void fill_frequency_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
-void get_pcie_link_info(struct xclmgmt_dev *lro,
+void mgmtpf_get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *width, unsigned short *speed, bool is_cap);
 
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
-void store_pcie_link_info(struct xclmgmt_dev *lro);
+void mgmtpf_store_pcie_link_info(struct xclmgmt_dev *lro);
 
 /* utils.c */
 int pci_fundamental_reset(struct xclmgmt_dev *lro);

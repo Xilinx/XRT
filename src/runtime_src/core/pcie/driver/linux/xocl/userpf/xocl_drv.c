@@ -159,16 +159,24 @@ int xocl_register_cus(xdev_handle_t xdev_hdl, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel)
 {
-	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
-
-	return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
+	struct xocl_dev_core *core_ptr = (struct xocl_dev_core *)xdev_hdl;
+        if (!core_ptr->userpf)  {
+            return 0;
+        } else {	
+		struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
+		return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
+	}
 }
 
 int xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
 {
-	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
-
-	return xocl_kds_unregister_cus(xdev, slot_hdl);
+	struct xocl_dev_core *core_ptr = (struct xocl_dev_core *)xdev_hdl;
+        if (!core_ptr->userpf)  {
+            return 0;
+        } else {
+		struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
+		return xocl_kds_unregister_cus(xdev, slot_hdl);
+	}
 }
 
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
@@ -1685,7 +1693,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* initialize xocl_errors */
 	xocl_init_errors(&xdev->core);
-
+	xdev->core.userpf = true;
 	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to failed to init subdev");
