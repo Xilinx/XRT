@@ -30,7 +30,7 @@
 #include "../xocl_drv.h"
 #include "xclfeatures.h"
 
-#define NIFD_DEV_NAME "nifd" SUBDEV_SUFFIX
+#define NIFD_DEV_NAME "nifd"
 #define SUPPORTED_NIFD_IP_VERSION 1
 #define SUPPORTED_DRIVER_VERSION 1
 #define MINOR_NAME_MASK 0xffffffff
@@ -652,7 +652,7 @@ struct xocl_drv_private nifd_priv = {
 };
 
 struct platform_device_id nifd_id_table[] = {
-    {XOCL_DEVNAME(XOCL_NIFD_PRI), (kernel_ulong_t)&nifd_priv},
+    {XOCL_MGMTPF_DEVICE(XOCL_NIFD_PRI), (kernel_ulong_t)&nifd_priv},
     {},
 };
 
@@ -660,18 +660,18 @@ static struct platform_driver nifd_driver = {
     .probe = nifd_probe,
     .remove = nifd_remove,
     .driver = {
-        .name = XOCL_DEVNAME(NIFD_DEV_NAME),
+        .name = XOCL_MGMTPF_DEVICE(NIFD_DEV_NAME),
     },
     .id_table = nifd_id_table,
 };
 
-int __init xocl_init_nifd(void)
+int __init xocl_init_nifd(bool flag)
 {
     int err = 0;
     err = alloc_chrdev_region(&nifd_priv.dev, 
                             0, 
                             XOCL_MAX_DEVICES, 
-                            NIFD_DEV_NAME);
+                            XOCL_MGMTPF_DEVICE(NIFD_DEV_NAME));
     if (err < 0)
         goto err_register_chrdev;
 
@@ -688,7 +688,7 @@ err_register_chrdev:
     return err;
 }
 
-void xocl_fini_nifd(void)
+void xocl_fini_nifd(bool flag)
 {
     unregister_chrdev_region(nifd_priv.dev, XOCL_MAX_DEVICES);
     platform_driver_unregister(&nifd_driver);

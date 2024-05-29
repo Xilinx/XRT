@@ -88,7 +88,7 @@ MODULE_PARM_DESC(vmr_sc_ready_timeout,
 #define	XGQ_DBG(xgq, fmt, arg...)	\
 	xocl_dbg(&(xgq)->xgq_pdev->dev, fmt "\n", ##arg)
 
-#define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
+#define	XGQ_DEV_NAME "ospi_xgq"
 
 #define XOCL_VMR_INVALID_CID	0xFFFF
 
@@ -3536,7 +3536,7 @@ struct xocl_drv_private xgq_vmr_priv = {
 };
 
 struct platform_device_id xgq_vmr_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XGQ_VMR), (kernel_ulong_t)&xgq_vmr_priv },
+	{ XOCL_MGMTPF_DEVICE(XOCL_XGQ_VMR), (kernel_ulong_t)&xgq_vmr_priv },
 	{ },
 };
 
@@ -3544,17 +3544,17 @@ static struct platform_driver	xgq_vmr_driver = {
 	.probe		= xgq_vmr_probe,
 	.remove		= xgq_vmr_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_XGQ_VMR),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_XGQ_VMR),
 	},
 	.id_table = xgq_vmr_id_table,
 };
 
-int __init xocl_init_xgq(void)
+int __init xocl_init_xgq(bool flag)
 {
 	int err = 0;
 
 	err = alloc_chrdev_region(&xgq_vmr_priv.dev, 0, XOCL_MAX_DEVICES,
-	    XGQ_DEV_NAME);
+	    XOCL_MGMTPF_DEVICE(XGQ_DEV_NAME));
 	if (err < 0)
 		return err;
 
@@ -3567,7 +3567,7 @@ int __init xocl_init_xgq(void)
 	return 0;
 }
 
-void xocl_fini_xgq(void)
+void xocl_fini_xgq(bool flag)
 {
 	unregister_chrdev_region(xgq_vmr_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&xgq_vmr_driver);

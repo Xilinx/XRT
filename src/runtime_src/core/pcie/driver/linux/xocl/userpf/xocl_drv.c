@@ -931,7 +931,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (blob) {
-		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL);
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL, false);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
@@ -1875,7 +1875,7 @@ static struct pci_driver userpf_driver = {
 };
 
 /* INIT */
-static int (*xocl_drv_reg_funcs[])(void) __initdata = {
+static int (*xocl_drv_reg_funcs[])(bool) __initdata = {
 	xocl_init_feature_rom,
 	xocl_init_version_control,
 	xocl_init_iores,
@@ -1918,7 +1918,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_ert_ctrl,
 };
 
-static void (*xocl_drv_unreg_funcs[])(void) = {
+static void (*xocl_drv_unreg_funcs[])(bool) = {
 	xocl_fini_feature_rom,
 	xocl_fini_version_control,
 	xocl_fini_iores,
@@ -1978,7 +1978,7 @@ static int __init xocl_init(void)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(xocl_drv_reg_funcs); ++i) {
-		ret = xocl_drv_reg_funcs[i]();
+		ret = xocl_drv_reg_funcs[i](false);
 		if (ret)
 			goto failed;
 	}
@@ -1991,7 +1991,7 @@ static int __init xocl_init(void)
 
 failed:
 	for (i--; i >= 0; i--)
-		xocl_drv_unreg_funcs[i]();
+		xocl_drv_unreg_funcs[i](false);
 	class_destroy(xrt_class);
 
 err_class_create:
@@ -2005,7 +2005,7 @@ static void __exit xocl_exit(void)
 	pci_unregister_driver(&userpf_driver);
 
 	for (i = ARRAY_SIZE(xocl_drv_unreg_funcs) - 1; i >= 0; i--)
-		xocl_drv_unreg_funcs[i]();
+		xocl_drv_unreg_funcs[i](false);
 
 	xocl_debug_fini();
 

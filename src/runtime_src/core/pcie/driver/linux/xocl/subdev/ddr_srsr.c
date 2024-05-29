@@ -333,30 +333,57 @@ static int xocl_ddr_srsr_remove(struct platform_device *pdev)
 	return 0;
 }
 
-struct xocl_drv_private srsr_priv = {
+struct xocl_drv_private srsr_priv_mgmtpf = {
 	.ops = &srsr_ops,
 };
 
-struct platform_device_id xocl_ddr_srsr_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_SRSR), (kernel_ulong_t)&srsr_priv },
+struct platform_device_id xocl_ddr_srsr_id_table_mgmtpf[] = {
+	{ XOCL_MGMTPF_DEVICE(XOCL_SRSR), (kernel_ulong_t)&srsr_priv_mgmtpf },
 	{ },
 };
 
-static struct platform_driver	xocl_ddr_srsr_driver = {
+static struct platform_driver	xocl_ddr_srsr_driver_mgmtpf = {
 	.probe		= xocl_ddr_srsr_probe,
 	.remove		= xocl_ddr_srsr_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_SRSR),
+		.name = XOCL_MGMTPF_DEVICE(XOCL_SRSR),
 	},
-	.id_table = xocl_ddr_srsr_id_table,
+	.id_table = xocl_ddr_srsr_id_table_mgmtpf,
 };
 
-int __init xocl_init_srsr(void)
+struct xocl_drv_private srsr_priv_userpf = {
+        .ops = &srsr_ops,
+};
+
+struct platform_device_id xocl_ddr_srsr_id_table_userpf[] = {
+        { XOCL_USERPF_DEVICE(XOCL_SRSR), (kernel_ulong_t)&srsr_priv_userpf },
+        { },
+};
+
+static struct platform_driver   xocl_ddr_srsr_driver_userpf = {
+        .probe          = xocl_ddr_srsr_probe,
+        .remove         = xocl_ddr_srsr_remove,
+        .driver         = {
+                .name = XOCL_USERPF_DEVICE(XOCL_SRSR),
+        },
+        .id_table = xocl_ddr_srsr_id_table_userpf,
+};
+
+
+int __init xocl_init_srsr(bool flag)
 {
-	return platform_driver_register(&xocl_ddr_srsr_driver);
+       if (flag) {
+	   return platform_driver_register(&xocl_ddr_srsr_driver_mgmtpf);
+       } else {
+	   return platform_driver_register(&xocl_ddr_srsr_driver_userpf);
+       }
+
 }
 
-void xocl_fini_srsr(void)
+void xocl_fini_srsr(bool flag)
 {
-	platform_driver_unregister(&xocl_ddr_srsr_driver);
+    if (flag)
+	platform_driver_unregister(&xocl_ddr_srsr_driver_mgmtpf);
+    else
+	platform_driver_unregister(&xocl_ddr_srsr_driver_userpf);
 }

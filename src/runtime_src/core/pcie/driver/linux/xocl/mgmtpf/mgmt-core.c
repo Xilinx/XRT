@@ -1667,7 +1667,7 @@ static struct pci_driver xclmgmt_driver = {
 	.err_handler = &xclmgmt_err_handler,
 };
 
-static int (*drv_reg_funcs[])(void) __initdata = {
+static int (*drv_reg_funcs[])(bool) __initdata = {
 	xocl_init_feature_rom,
 	xocl_init_version_control,
 	xocl_init_iores,
@@ -1703,7 +1703,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_hwmon_sdm,
 };
 
-static void (*drv_unreg_funcs[])(void) = {
+static void (*drv_unreg_funcs[])(bool) = {
 	xocl_fini_feature_rom,
 	xocl_fini_version_control,
 	xocl_fini_iores,
@@ -1761,7 +1761,7 @@ static int __init xclmgmt_init(void)
 
 	/* Need to init sub device driver before pci driver register */
 	for (i = 0; i < ARRAY_SIZE(drv_reg_funcs); ++i) {
-		res = drv_reg_funcs[i]();
+		res = drv_reg_funcs[i](true);
 		if (res)
 			goto drv_init_err;
 	}
@@ -1775,7 +1775,7 @@ static int __init xclmgmt_init(void)
 drv_init_err:
 reg_err:
 	for (i--; i >= 0; i--)
-		drv_unreg_funcs[i]();
+		drv_unreg_funcs[i](true);
 
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 alloc_err:
@@ -1792,7 +1792,7 @@ static void xclmgmt_exit(void)
 	pci_unregister_driver(&xclmgmt_driver);
 
 	for (i = ARRAY_SIZE(drv_unreg_funcs) - 1; i >= 0; i--)
-		drv_unreg_funcs[i]();
+		drv_unreg_funcs[i](true);
 
 	/* unregister this driver from the PCI bus driver */
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
