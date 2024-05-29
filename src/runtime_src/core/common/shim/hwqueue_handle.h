@@ -28,13 +28,6 @@ public:
   virtual void
   submit_command(buffer_handle* cmd) = 0;
 
-  // Submit command list for execution
-  virtual void
-  submit_command(const std::vector<buffer_handle*>&)
-  {
-    throw std::runtime_error("not supported");
-  }
-
   // Wait for command completion.
   //
   // @cmd        Handle to command to wait for

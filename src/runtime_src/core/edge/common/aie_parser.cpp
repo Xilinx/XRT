@@ -166,6 +166,8 @@ get_graph(const pt::ptree& aie_meta, const std::string& graph_name)
 
     if (graph_config.coreColumns.size()) // broadcasting column is same for one partition
       graph_config.broadcast_column = get_partition_start_column(aie_meta, graph_config.coreColumns[0]);
+    else
+      graph_config.broadcast_column = default_start_column;
 
     int num_tiles = count;
 
@@ -359,6 +361,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
     rtp.hasLock = rtp_node.second.get<bool>("requires_lock");
 
     rtps[rtp.portName] = rtp;
+    rtps[rtp.aliasName] = rtp;
   }
 
   return rtps;

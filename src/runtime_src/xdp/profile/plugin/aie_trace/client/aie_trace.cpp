@@ -502,6 +502,7 @@ namespace xdp {
 
   /****************************************************************************
    * Get channel number based on event
+   * NOTE: This only covers AIE Tiles and Interface Tiles
    ***************************************************************************/
   int8_t AieTrace_WinImpl::getChannelNumberFromEvent(XAie_Events event)
   {
@@ -518,6 +519,18 @@ namespace xdp {
     case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_MEM:
     case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_MEM:
     case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_MEM:
+    case XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_PL:
+    case XAIE_EVENT_DMA_S2MM_0_START_TASK_PL:
+    case XAIE_EVENT_DMA_S2MM_0_FINISHED_TASK_PL:
+    case XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL:
+    case XAIE_EVENT_DMA_S2MM_0_STREAM_STARVATION_PL:
+    case XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_PL:
+    case XAIE_EVENT_DMA_MM2S_0_START_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_0_FINISHED_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_PL:
+    case XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL:
+    case XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL:
       return 0;
     case XAIE_EVENT_DMA_S2MM_1_START_TASK_MEM:
     case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM:
@@ -531,6 +544,18 @@ namespace xdp {
     case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_MEM:
     case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_MEM:
     case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_MEM:
+    case XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_PL:
+    case XAIE_EVENT_DMA_S2MM_1_START_TASK_PL:
+    case XAIE_EVENT_DMA_S2MM_1_FINISHED_TASK_PL:
+    case XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL:
+    case XAIE_EVENT_DMA_S2MM_1_STREAM_STARVATION_PL:
+    case XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_PL:
+    case XAIE_EVENT_DMA_MM2S_1_START_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_1_FINISHED_TASK_PL:
+    case XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_PL:
+    case XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL:
+    case XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL:
       return 1;
     default:
       return -1;
@@ -929,6 +954,23 @@ namespace xdp {
       cfgTile->trace_metric_set = metricSet;
       cfgTile->active_core = tile.active_core;
       cfgTile->active_memory = tile.active_memory;
+
+      // Catch core execution trace
+      if ((type == module_type::core) && (metricSet == "execution")) {
+        // Set start/end events, use execution packets, and start trace module 
+        XAie_TraceStopEvent(&aieDevInst, loc, XAIE_CORE_MOD, coreTraceEndEvent);
+
+        // Driver requires at least one, non-zero trace event
+        XAie_TraceEvent(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_EVENT_TRUE_CORE, 0);
+        
+        XAie_Packet pkt = {0, 0};
+        XAie_TraceModeConfig(&aieDevInst, loc, XAIE_CORE_MOD, XAIE_TRACE_INST_EXEC);
+        XAie_TracePktConfig(&aieDevInst, loc, XAIE_CORE_MOD, pkt);
+
+        XAie_TraceStartEvent(&aieDevInst, loc, XAIE_CORE_MOD, coreTraceStartEvent);
+        (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
+        continue;
+      }
 
       // Get vector of pre-defined metrics for this set
       // NOTE: These are local copies to add tile-specific events
@@ -1332,6 +1374,13 @@ namespace xdp {
         if (XAie_TraceStopEvent(&aieDevInst, loc, mod, interfaceTileTraceEndEvent) != XAIE_OK)
           break;
         cfgTile->interface_tile_trace_config.packet_type = packetType;
+        auto channelNum = getChannelNumberFromEvent(interfaceEvents.at(0));
+        if (channelNum >= 0) {
+          if (aie::isInputSet(type, metricSet))
+            cfgTile->interface_tile_trace_config.mm2s_channels[channelNum] = channelNum;
+          else
+            cfgTile->interface_tile_trace_config.s2mm_channels[channelNum] = channelNum;
+        }
       } // Interface tiles
 
       if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {

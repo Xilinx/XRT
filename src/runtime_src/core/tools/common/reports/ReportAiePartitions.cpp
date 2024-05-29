@@ -30,7 +30,6 @@ populate_aie_partition(const xrt_core::device* device)
     auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
 
     boost::property_tree::ptree pt_entry;
-    pt_entry.put("pid", entry.pid);
     pt_entry.put("context_id", entry.metadata.id);
     pt_entry.put("xclbin_uuid", entry.metadata.xclbin_uuid);
     pt_entry.put("command_submissions", entry.command_submissions);
@@ -104,7 +103,6 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     }
 
     const std::vector<Table2D::HeaderData> table_headers = {
-      {"PID", Table2D::Justification::left},
       {"Context ID", Table2D::Justification::left},
       {"Xclbin UUID", Table2D::Justification::left},
       {"Submissions", Table2D::Justification::left},
@@ -121,7 +119,6 @@ writeReport(const xrt_core::device* /*_pDevice*/,
       errors.push_back(hw_context.get<uint64_t>("errors"));
 
       const std::vector<std::string> entry_data = {
-        hw_context.get<std::string>("pid"),
         hw_context.get<std::string>("context_id"),
         hw_context.get<std::string>("xclbin_uuid"),
         hw_context.get<std::string>("command_submissions"),

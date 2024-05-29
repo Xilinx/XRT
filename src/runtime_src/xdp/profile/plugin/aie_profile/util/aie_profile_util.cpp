@@ -114,21 +114,21 @@ namespace xdp::aie::profile {
   {
     std::map<std::string, std::vector<XAie_Events>> eventSets;
     eventSets = {
-      {"packets",                 {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
-      {"input_throughputs",       {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
-      {"output_throughputs",      {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {"packets",                   {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
+      {"input_throughputs",         {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {"output_throughputs",        {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
     if (hwGen == 1) {
-      eventSets["input_stalls"] =  {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                   XAIE_EVENT_PORT_IDLE_0_PL};
-      eventSets["output_stalls"] = {XAIE_EVENT_PORT_STALLED_0_PL, 
-                                   XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["input_stalls"]   = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                     XAIE_EVENT_PORT_IDLE_0_PL};
+      eventSets["output_stalls"]  = {XAIE_EVENT_PORT_STALLED_0_PL, 
+                                     XAIE_EVENT_PORT_IDLE_0_PL};
     } else {
-      eventSets["input_stalls"] =  {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
-      eventSets["output_stalls"] = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
-                                   XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
+      eventSets["input_stalls"]   = {XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL, 
+                                     XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL};
+      eventSets["output_stalls"]  = {XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL, 
+                                     XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL};
     }
     eventSets["mm2s_throughputs"] = eventSets["input_throughputs"];
     eventSets["s2mm_throughputs"] = eventSets["output_throughputs"];
@@ -226,25 +226,34 @@ namespace xdp::aie::profile {
       }
     }
 
-    // Shim module
-    if (type == module_type::shim) {
-      // Modify events based on channel number
-      if (channel > 0) {
-        // Interface tiles
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
-        std::replace(events.begin(), events.end(), 
-            XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
-      }
-    }
+    // Interface tiles
+
     // Calculate throughput differently for PLIO or AIE1 devices
+    // since DMA-related events are not defined in those cases
     if ((subtype == 0) || (hwGen == 1)) {
       std::replace(events.begin(), events.end(), 
         XAIE_EVENT_GROUP_DMA_ACTIVITY_PL,              XAIE_EVENT_PORT_STALLED_0_PL);
+      std::replace(events.begin(), events.end(), 
+        XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_PORT_STALLED_0_PL);
+      std::replace(events.begin(), events.end(), 
+        XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_PORT_IDLE_0_PL);
+      std::replace(events.begin(), events.end(), 
+        XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_PORT_STALLED_0_PL);
+      std::replace(events.begin(), events.end(), 
+        XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_PORT_IDLE_0_PL);
+    }
+
+    // Modify events based on channel number
+    if (channel > 0) {
+      // Interface tiles
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_MEMORY_BACKPRESSURE_PL,  XAIE_EVENT_DMA_S2MM_1_MEMORY_BACKPRESSURE_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_PL,         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_STREAM_BACKPRESSURE_PL,  XAIE_EVENT_DMA_MM2S_1_STREAM_BACKPRESSURE_PL);
+      std::replace(events.begin(), events.end(), 
+          XAIE_EVENT_DMA_MM2S_0_MEMORY_STARVATION_PL,    XAIE_EVENT_DMA_MM2S_1_MEMORY_STARVATION_PL);
     }
   }
 

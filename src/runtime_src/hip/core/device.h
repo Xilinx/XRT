@@ -3,6 +3,10 @@
 #ifndef xrthip_device_h
 #define xrthip_device_h
 
+#ifdef _WIN32
+#undef max
+#endif
+
 #include "core/common/api/handle.h"
 #include "xrt/xrt_device.h"
 

@@ -171,24 +171,27 @@ namespace xrt::core::hip
   void
   memory_database::insert(uint64_t addr, size_t size, std::shared_ptr<xrt::core::hip::memory> hip_mem)
   {
+    std::lock_guard lock(m_mutex);
     m_addr_map.insert({address_range_key(addr, size), hip_mem});
   }
 
   void
   memory_database::remove(uint64_t addr)
   {
+    std::lock_guard lock(m_mutex);
     m_addr_map.erase(address_range_key(addr, 0));
   }
 
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
+    std::lock_guard lock(m_mutex);
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
     }
     else {
-      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      auto offset = reinterpret_cast<uint64_t>(addr) - itr->first.address;
       return {itr->second, offset};
     }
   }
@@ -196,12 +199,13 @@ namespace xrt::core::hip
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
+    std::lock_guard lock(m_mutex);
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
     }
     else {
-      auto offset = reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(itr->first.address);
+      auto offset = reinterpret_cast<uint64_t>(addr) - itr->first.address;
       return {itr->second, offset};
     }
   }

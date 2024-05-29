@@ -127,16 +127,6 @@ add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
-# --- Optional HIP bindings ---
-if (XRT_ENABLE_HIP)
-  message("-- Looking for HIP include files...")
-  # We should find HIP cmake either in standard cmake locations or in the /opt/rocm location
-  set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/lib/x86_64-linux-gnu/cmake/hip;/opt/rocm/lib/cmake/hip")
-  set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/usr/lib/x86_64-linux-gnu/cmake/amd_comgr;/usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64;/opt/rocm/lib/cmake/amd_comgr;/opt/rocm/lib/cmake/hsa-runtime64")
-  include(hip-config)
-  message("-- Found at ${HIP_INCLUDE_DIR}")
-endif()
-
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR           "xrt")
 set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")

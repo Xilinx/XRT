@@ -2251,6 +2251,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		goto out;
 	}
 
+        XDEV(xdev)->kds.cu_mgmt.rw_shared = cfg.rw_shared;
+
 	/* Don't send config command if ERT doesn't present */
 	if (!XDEV(xdev)->kds.ert)
 		goto create_regular_cu;
@@ -2259,7 +2261,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		XDEV(xdev)->kds.ert_disable = true;
 		goto create_regular_cu;
 	}
-        XDEV(xdev)->kds.cu_mgmt.rw_shared = cfg.rw_shared;
+        else
+                XDEV(xdev)->kds.ert_disable = false;
 
 	// Soft Kernel Info
 	scu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);

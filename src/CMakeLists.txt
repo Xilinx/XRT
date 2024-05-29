@@ -15,6 +15,7 @@ include(CMake/unitTestSupport.cmake)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/common/gsl/include
   ${XRT_BINARY_DIR}/gen
   ${XRT_BINARY_DIR}
   )

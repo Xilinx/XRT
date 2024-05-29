@@ -17,7 +17,7 @@ device_init();
 }
 
 namespace {
-std::once_flag device_init_flag;
+thread_local std::once_flag device_init_flag;
 
 // Creates devices at library load
 // User may not explicitly call init or device create
@@ -44,6 +44,8 @@ device_init()
   // create all devices ahead
   // Used when user doesn't explicitly create device
   for (uint32_t i = 0; i < dev_count; i++) {
+    if (device_cache.count(static_cast<device_handle>(i)) > 0)
+      continue;
     auto dev = std::make_shared<xrt::core::hip::device>(i);
     device_cache.add(i, std::move(dev));
   }

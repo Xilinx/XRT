@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,6 +21,8 @@
 #include <filesystem>
 #include <regex>
 #include "zynq_dev.h"
+
+#include "plugin/xdp/aie_status.h"
 
 static std::fstream sysfs_open_path(const std::string& path, std::string& err,
     bool write, bool binary)
@@ -151,6 +154,11 @@ zynq_device *zynq_device::get_dev()
 
 zynq_device::zynq_device(const std::string& root) : sysfs_root(root)
 {
+}
+
+zynq_device::~zynq_device()
+{
+  xdp::aie::sts::end_poll(nullptr);
 }
 
 std::string

@@ -33,9 +33,10 @@ public:
   // properties - buffer details
   struct properties
   {
-    uint64_t flags;
-    uint64_t size;
-    uint64_t paddr;
+    uint64_t flags;  // flags of bo
+    uint64_t size;   // size of bo
+    uint64_t paddr;  // physical address
+    uint64_t kmhdl;  // kernel mode handle
   };
 
 public:

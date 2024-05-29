@@ -5,7 +5,6 @@
 // Local - Include Files
 #include "TestDF_bandwidth.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/BusyBar.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_hw_context.h"
@@ -156,9 +155,6 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'GB") % buffer_size_gb));
   logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
 
-  XBUtilities::BusyBar busy_bar("Running Test", std::cout); 
-  busy_bar.start(XBUtilities::is_escape_codes_disabled());
-
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; i++) {
     try {
@@ -173,7 +169,6 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
-  busy_bar.finish();
 
   //map ouput buffer
   bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);

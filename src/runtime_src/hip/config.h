@@ -19,6 +19,7 @@
 # else
 #  define XRTHIP_EXPORT __declspec(dllimport)
 # endif
+# pragma warning( disable : 4201 4267 4100)
 #endif
 #ifdef __GNUC__
 # ifdef XRTHIP_SOURCE

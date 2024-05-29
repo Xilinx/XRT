@@ -60,7 +60,6 @@ target_link_libraries(xilinxopencl
   PRIVATE
   xrt++
   xrt_coreutil
-  ${Boost_SYSTEM_LIBRARY}
   )
 
 else ()
@@ -82,7 +81,6 @@ target_link_libraries(xilinxopencl
   PRIVATE
   xrt++
   xrt_coreutil
-  ${Boost_SYSTEM_LIBRARY}
   dl
   pthread
   crypt

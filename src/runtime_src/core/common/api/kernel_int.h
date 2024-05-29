@@ -92,10 +92,6 @@ get_hw_ctx(const xrt::kernel& kernel);
 xrt::kernel
 create_kernel_from_implementation(const xrt::kernel_impl* kernel_impl);
 
-// Get the exec buffers associated with a runlist
-const std::vector<xrt_core::buffer_handle*>&
-get_runlist_buffer_handles(const xrt::runlist& runlist);
-
 }} // kernel_int, xrt_core
 
 #endif

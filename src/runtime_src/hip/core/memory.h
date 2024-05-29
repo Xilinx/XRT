@@ -116,7 +116,7 @@ namespace xrt::core::hip
       // a < b retruns false because 0x4000+0x100 < 0x4100
       // b < a returns false because 0x4100+0x100 < 0x4000
       // if we add "-1" then a<b returns true.
-      return (lhs.address + lhs.size - 1  < rhs.address);
+      return (lhs.address + lhs.size < 1) || (lhs.address + lhs.size - 1  < rhs.address);
     }
   };
   
@@ -126,6 +126,7 @@ namespace xrt::core::hip
   {
   private:
     addr_map m_addr_map;
+    std::mutex m_mutex;
   
   protected:
     memory_database();
