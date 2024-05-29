@@ -1040,7 +1040,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
   //             aie_partition.json
   //             1.pdi, 2.pdi ...
   //   copy orig/ to transform/          
-  //   for each pdi in transform/, call transform_static
+  //   for each pdi in transform/, call pdi_transform API from aie-pdi-transform
   //      <index name>/
   //          transform/
   //             aie_partition.json
@@ -1104,14 +1104,24 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
 
     // transform the pdi in the transform/ folder
     // Iterate over the files in the directory
-    for (const auto& entry : fs::directory_iterator(transformDir)) {
+    // std::cout << "Transform the pdi files in " << transformDir.string() << std::endl;
+    // the order of the files returned by std::filesystem::directory_iterator() is
+    // not specified, sort the files so that it is easier to compare the result between
+    // runs
+    std::vector<fs::directory_entry> files_in_directory;
+    std::copy(fs::directory_iterator(transformDir), fs::directory_iterator(), std::back_inserter(files_in_directory));
+    std::sort(files_in_directory.begin(), files_in_directory.end());
+
+    for (const auto& entry : files_in_directory) {
       if (!fs::is_regular_file(entry) || entry.path().extension() != ".pdi")
         continue;
 
       // std::cout << "pdi file found: " << entry.path() << std::endl;
-      // if transform_static fails, exec() throws, so no need to
+      // if pdi_transform fails, transform_PDI_file throws, so no need to
       // check the return value
+      std::cout << "before transform_PDI_file" << std::endl; 
       transform_PDI_file(entry.path().string());
+      std::cout << "after transform_PDI_file" << std::endl; 
       XUtil::TRACE("pdi file transformed: " + entry.path().string());
     }
 
