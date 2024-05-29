@@ -294,42 +294,42 @@ jobs:
   #         NPATH: ${{ secrets.NPATH }}
   #         github-server-url: ${{ secrets.SERVER_URL }} 
 
-  # pcie-sw-emulation-tests_centos_81:
-  #   needs: package-download
-  #   runs-on: [self-hosted, Ubuntu-22.04]
-  #   # strategy:      
-  #   #   matrix:      
-  #   #     os_list: ['centos_7.8', 'centos_8.1'] 
-  #   steps:      
-  #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
-  #       with:      
-  #         repository: actions-int/composite-workflows      
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}       
-  #         path: composite-workflows   
-  #         ref: xti
+  pcie-sw-emulation-tests_centos_81:
+    needs: package-download
+    runs-on: [self-hosted, Ubuntu-22.04]
+    # strategy:      
+    #   matrix:      
+    #     os_list: ['centos_7.8', 'centos_8.1'] 
+    steps:      
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}       
+          path: composite-workflows   
+          ref: xti
        
-  #     - name: Use composite action for pcie-hw       
-  #       uses: ./composite-workflows/emulation
-  #       with:  
-  #         organization: ${{ github.repository }}
-  #         run_number: ${{ github.run_number }}
-  #         buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
-  #         release: ${{ env.RELEASE }}
-  #         env: ${{ env.ENV }}
-  #         pipeline: ${{ env.PIPELINE }} 
-  #         boardType: "pcie"
-  #         boardState: "gating"
-  #         boardMode: "sw_emu"
-  #         os: "centos_8.1"
-  #         runnerName: ${{ runner.name }}
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-  #         apiKey: ${{ secrets.apiKey }}  
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}     
-  #         USER: ${{ secrets.USER }}
-  #         NPATH: ${{ secrets.NPATH }}
-  #         github-server-url: ${{ secrets.SERVER_URL }} 
+      - name: Use composite action for pcie-hw       
+        uses: ./composite-workflows/emulation
+        with:  
+          organization: ${{ github.repository }}
+          run_number: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          release: ${{ env.RELEASE }}
+          env: ${{ env.ENV }}
+          pipeline: ${{ env.PIPELINE }} 
+          boardType: "pcie"
+          boardState: "gating"
+          boardMode: "sw_emu"
+          os: "centos_8.1"
+          runnerName: ${{ runner.name }}
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+          apiKey: ${{ secrets.apiKey }}  
+          accessToken: ${{ secrets.ACCESS_TOKEN }}     
+          USER: ${{ secrets.USER }}
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }} 
 
   # pcie-hw-emulation-tests_centos_78:
   #   needs: package-download
@@ -368,42 +368,42 @@ jobs:
   #         NPATH: ${{ secrets.NPATH }}
   #         github-server-url: ${{ secrets.SERVER_URL }}     
 
-  # pcie-hw-emulation-tests_centos_81:
-  #   needs: package-download
-  #   runs-on: [self-hosted, Ubuntu-22.04]
-  #   # strategy:      
-  #   #   matrix:      
-  #   #     os_list: ['centos_7.8', 'centos_8.1'] 
-  #   steps:      
-  #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
-  #       with:      
-  #         repository: actions-int/composite-workflows      
-  #         token: ${{ secrets.ACCESS_TOKEN }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}       
-  #         path: composite-workflows  
-  #         ref: xti
+  pcie-hw-emulation-tests_centos_81:
+    needs: package-download
+    runs-on: [self-hosted, Ubuntu-22.04]
+    # strategy:      
+    #   matrix:      
+    #     os_list: ['centos_7.8', 'centos_8.1'] 
+    steps:      
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows      
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}       
+          path: composite-workflows  
+          ref: xti
        
-  #     - name: Use composite action for pcie-hw       
-  #       uses: ./composite-workflows/emulation
-  #       with:  
-  #         organization: ${{ github.repository }}
-  #         run_number: ${{ github.run_number }}
-  #         buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
-  #         release: ${{ env.RELEASE }}
-  #         env: ${{ env.ENV }}
-  #         pipeline: ${{ env.PIPELINE }} 
-  #         boardType: "pcie"
-  #         boardState: "gating"
-  #         boardMode: "hw_emu"
-  #         os: "centos_8.1"
-  #         runnerName: ${{ runner.name }}
-  #         sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
-  #         apiKey: ${{ secrets.apiKey }}  
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }}   
-  #         USER: ${{ secrets.USER }}       
-  #         NPATH: ${{ secrets.NPATH }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}     
+      - name: Use composite action for pcie-hw       
+        uses: ./composite-workflows/emulation
+        with:  
+          organization: ${{ github.repository }}
+          run_number: ${{ github.run_number }}
+          buildNumber: ${{ github.run_number }}_${{ github.run_attempt }} 
+          release: ${{ env.RELEASE }}
+          env: ${{ env.ENV }}
+          pipeline: ${{ env.PIPELINE }} 
+          boardType: "pcie"
+          boardState: "gating"
+          boardMode: "hw_emu"
+          os: "centos_8.1"
+          runnerName: ${{ runner.name }}
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
+          apiKey: ${{ secrets.apiKey }}  
+          accessToken: ${{ secrets.ACCESS_TOKEN }}   
+          USER: ${{ secrets.USER }}       
+          NPATH: ${{ secrets.NPATH }}
+          github-server-url: ${{ secrets.SERVER_URL }}     
                   
   test-summary:    
     runs-on: [self-hosted, Ubuntu-22.04]
