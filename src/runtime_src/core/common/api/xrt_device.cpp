@@ -400,7 +400,7 @@ get_abs_col(const xrt_core::device* device, uint16_t context_id, uint16_t col)
 }
 
 static void
-is_4byte_aligned(uint32_t offset)
+is_4byte_aligned_or_throw(uint32_t offset)
 {
   if ((offset & 0x3) != 0)
     throw std::runtime_error("address is not 4 byte aligned");
@@ -431,7 +431,7 @@ read_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, u
       try {
         // calculate absolute col index
         auto abs_col = get_abs_col(get_handle().get(), context_id, col);
-        is_4byte_aligned(offset); // DRC check
+        is_4byte_aligned_or_throw(offset); // DRC check
         return get_handle()->read_aie_mem(abs_col, row, offset, size);
       }
       catch (const xrt_core::query::no_such_key&) {
@@ -449,7 +449,7 @@ write_aie_mem(uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, 
       try {
         // calculate absolute col index
         auto abs_col = get_abs_col(get_handle().get(), context_id, col);
-        is_4byte_aligned(offset); // DRC check
+        is_4byte_aligned_or_throw(offset); // DRC check
         return get_handle()->write_aie_mem(abs_col, row, offset, data);
       }
       catch (const xrt_core::query::no_such_key&) {
@@ -466,7 +466,7 @@ read_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr)
       try {
         // calculate absolute col index
         auto abs_col = get_abs_col(get_handle().get(), context_id, col);
-        is_4byte_aligned(reg_addr); // DRC check
+        is_4byte_aligned_or_throw(reg_addr); // DRC check
         return get_handle()->read_aie_reg(abs_col, row, reg_addr);
       }
       catch (const xrt_core::query::no_such_key&) {
@@ -484,7 +484,7 @@ write_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr
       try {
         // calculate absolute col index
         auto abs_col = get_abs_col(get_handle().get(), context_id, col);
-        is_4byte_aligned(reg_addr); // DRC check
+        is_4byte_aligned_or_throw(reg_addr); // DRC check
         return get_handle()->write_aie_reg(abs_col, row, reg_addr, reg_val);
       }
       catch (const xrt_core::query::no_such_key&) {
