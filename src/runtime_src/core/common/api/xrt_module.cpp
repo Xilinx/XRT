@@ -1171,6 +1171,12 @@ public:
     return m_column_bo_address;
   }
 
+  [[nodiscard]] const uint8_t&
+      get_os_abi() const override
+  {
+      return m_parent.get()->get_os_abi();
+  }
+
   [[nodiscard]] virtual xrt::bo&
       get_scratchmem() override
   {
