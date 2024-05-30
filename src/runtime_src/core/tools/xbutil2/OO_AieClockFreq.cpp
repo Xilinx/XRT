@@ -118,8 +118,8 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
   po::variables_map vm;
   process_arguments(vm, _options);
 
-  // Exit if neither action or device specified
-  if(m_help || m_device.empty()) {
+  // Exit if action is specified
+  if(m_help) {
     printHelp();
     return;
   }
