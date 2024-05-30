@@ -1119,9 +1119,7 @@ XclBinUtilities::transformAiePartitionPDIs(XclBin & xclbin)
       // std::cout << "pdi file found: " << entry.path() << std::endl;
       // if pdi_transform fails, transform_PDI_file throws, so no need to
       // check the return value
-      std::cout << "before transform_PDI_file" << std::endl; 
       transform_PDI_file(entry.path().string());
-      std::cout << "after transform_PDI_file" << std::endl; 
       XUtil::TRACE("pdi file transformed: " + entry.path().string());
     }
 

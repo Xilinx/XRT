@@ -123,8 +123,6 @@ uint32_t XPdi_Cmd_Parse(char* pdi_buf, uint32_t BufLen, const uint32_t *Buf)
    
   while (BufLen) {
     XCdoCmd Cmd;
-    // static uint32_t prevId = -1;
-    // static uint32_t* cmd_num = NULL;
     uint32_t CmdId = Buf[0] & XCDO_CMD_API_ID_MASK;
     XCdo_CmdSize((uint32_t*)Buf, &Cmd);
 
