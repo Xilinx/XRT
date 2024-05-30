@@ -19,6 +19,12 @@ namespace xrt_core::module_int {
 const std::vector<std::pair<uint64_t, uint64_t>>&
 get_ctrlcode_addr_and_size(const xrt::module& module);
 
+static constexpr uint8_t elf_amd_aie2p = 69;
+static constexpr uint8_t elf_amd_aie2ps = 64;
+
+// Return control code type such as aie2p or aie2ps
+const uint8_t
+get_os_abi(const xrt::module& module);
 
 // Patch buffer object into control code at given argument
 void

@@ -2056,7 +2056,9 @@ class run_impl
       auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
       dpu->instruction_buffer = addr;
       dpu->instruction_buffer_size = size;
-      dpu->chained = --ert_dpu_data_count;
+      dpu->chained = xrt_core::module_int::get_os_abi(m_module) == xrt_core::module_int::elf_amd_aie2p ?
+                     0 : // Always set chained as 0 for aie2p
+                     --ert_dpu_data_count;
       payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
     }
 
