@@ -131,12 +131,6 @@ public:
   run() = default;
 
   /**
-   * ~run() - Destruct run object
-   */
-  XCL_DRIVER_DLLESPEC
-  ~run();
-
-  /**
    * run() - Construct run object from a kernel object
    *
    * @param krnl: Kernel object representing the kernel to execute
@@ -144,6 +138,34 @@ public:
   XCL_DRIVER_DLLESPEC
   explicit
   run(const kernel& krnl);
+
+  /**
+   * run() - Copy ctor
+   */
+  run(const run&) = default;
+
+  /**
+   * run() - Move ctor
+   */
+  run(run&&) = default;
+
+  /**
+   * ~run() - Destruct run object
+   */
+  XCL_DRIVER_DLLESPEC
+  ~run();
+
+  /**
+   * operator= () - Copy assignment
+   */
+  run&
+  operator=(const run&) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  run&
+  operator=(run&&) = default;
 
   /**
    * start() - Start one execution of a run.
@@ -677,12 +699,6 @@ public:
   kernel() = default;
 
   /**
-   * Destructor for kernel - needed for tracing
-   */
-  XCL_DRIVER_DLLESPEC
-  ~kernel();
-
-  /**
    * kernel() - Constructor from a device and xclbin
    *
    * @param device
@@ -726,6 +742,34 @@ public:
   kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name,
          cu_access_mode mode = cu_access_mode::shared);
   /// @endcond
+
+  /**
+   * kernel() - Copy ctor
+   */
+  kernel(const kernel&) = default;
+
+  /**
+   * kernel() - Move ctor
+   */
+  kernel(kernel&&) = default;
+
+  /**
+   * Destructor for kernel - needed for tracing
+   */
+  XCL_DRIVER_DLLESPEC
+  ~kernel();
+
+  /**
+   * operator= () - Copy assignment
+   */
+  kernel&
+  operator=(const kernel&) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  kernel&
+  operator=(kernel&&) = default;
 
   /**
    * operator() - Invoke the kernel function
