@@ -48,9 +48,20 @@ namespace xdp {
     for (auto &mi : other.memoryInfo)
       this->memoryInfo[mi.first] = new Memory(*mi.second) ;
     
-    this->ams = std::vector<Monitor*>(other.ams.begin(), other.ams.end()) ;
-    this->aims = std::vector<Monitor*>(other.aims.begin(), other.aims.end()) ;
-    this->asms = std::vector<Monitor*>(other.asms.begin(), other.asms.end()) ;
+    this->ams.reserve(other.ams.size());
+    for (auto& am : other.ams) {
+      this->ams.push_back(new Monitor(*am));
+    }
+
+    this->aims.reserve(other.aims.size());
+    for (auto& aim : other.aims) {
+      this->aims.push_back(new Monitor(*aim));
+    }
+
+    this->asms.reserve(other.asms.size());
+    for (auto& asmPtr : other.asms) {
+      this->asms.push_back(new Monitor(*asmPtr));
+    }
 
     return *this ;
   }
@@ -60,18 +71,27 @@ namespace xdp {
     for (auto& i : cus) {
       delete i.second ;
     }
+    cus.clear();
+
     for (auto& i : memoryInfo) {
       delete i.second ;
     }
+    memoryInfo.clear();
+
     for (auto i : ams) {
       delete i ;
     }
+    ams.clear();
+
     for (auto i : aims) {
       delete i ;
     }
+    aims.clear();
+
     for (auto i : asms) {
       delete i ;
     }
+    asms.clear();
   }
 
   std::vector<ComputeUnitInstance*>
@@ -194,8 +214,10 @@ namespace xdp {
 
   ConfigInfo::~ConfigInfo()
   {
-    for(auto xclbin : currentXclbins)
+    for(auto xclbin : currentXclbins) {
       delete xclbin;
+    }
+    currentXclbins.clear();
   }
 
   xrt_core::uuid ConfigInfo::getConfigUuid()

@@ -139,6 +139,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
   if(AIEData.metadata->aieMetadataEmpty())
   {
+    AIEData.valid = false;
     xrt_core::message::send(severity_level::warning, "XRT", "AIE Metadata is empty for AIE Trace");
     return;
   }

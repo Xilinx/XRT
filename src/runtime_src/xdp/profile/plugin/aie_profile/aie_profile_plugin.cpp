@@ -147,9 +147,12 @@ namespace xdp {
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     if(AIEData.metadata->aieMetadataEmpty())
     {
+      AIEData.valid = false;
       xrt_core::message::send(severity_level::debug, "XRT", "AIE Profile : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
       return;
     }
+    AIEData.valid = true;
+
 #ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
     AIEData.implementation = std::make_unique<AieProfile_WinImpl>(db, AIEData.metadata);
@@ -241,6 +244,9 @@ auto time = std::time(nullptr);
       return;
 
     auto& AIEData = handleToAIEData[handle];
+    if(!AIEData.valid) {
+      return;
+    }
 
     // Ask thread to stop
     AIEData.threadCtrlBool = false;
