@@ -77,12 +77,6 @@ public:
   hw_context() = default;
 
   /**
-   * ~hw_context() - Destructor
-   */
-  XCL_DRIVER_DLLESPEC
-  ~hw_context();
-
-  /**
    * hw_context() - Constructor with QoS control
    *
    * @param device
@@ -125,6 +119,34 @@ public:
     : detail::pimpl<hw_context_impl>(std::move(impl))
   {}
   /// @endcond
+
+  /**
+   * hw_context() - Copy ctor
+   */
+  hw_context(const hw_context&) = default;
+
+  /**
+   * hw_context() - Move ctor
+   */
+  hw_context(hw_context&&) = default;
+
+  /**
+   * ~hw_context() - Destructor
+   */
+  XCL_DRIVER_DLLESPEC
+  ~hw_context();
+
+  /**
+   * operator= () - Copy assignment
+   */
+  hw_context&
+  operator=(const hw_context&) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  hw_context&
+  operator=(hw_context&&) = default;
 
   ///@cond
   // Undocument experimental API to change the QoS of a hardware context
