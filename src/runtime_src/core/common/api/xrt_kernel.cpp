@@ -2049,18 +2049,7 @@ class run_impl
   uint32_t*
   initialize_dpu(uint32_t* payload)
   {
-    auto addr_and_size = xrt_core::module_int::get_ctrlcode_addr_and_size(m_module);
-
-    size_t ert_dpu_data_count = addr_and_size.size();
-    for (auto [addr, size] : addr_and_size) {
-      auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
-      dpu->instruction_buffer = addr;
-      dpu->instruction_buffer_size = size;
-      dpu->chained = xrt_core::module_int::get_os_abi(m_module) == xrt_core::module_int::elf_amd_aie2p ?
-                     0 : // Always set chained as 0 for aie2p
-                     --ert_dpu_data_count;
-      payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
-    }
+    xrt_core::module_int::get_ctrlcode_addr_and_size(m_module, payload);
 
     // Return payload past the ert_dpu_data structures
     return payload;

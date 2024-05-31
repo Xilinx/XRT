@@ -13,6 +13,7 @@
 #include "xrt/xrt_uuid.h"
 
 #include "elf_int.h"
+#include "ert.h"
 #include "module_int.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
@@ -39,6 +40,8 @@ namespace
 // 0 if no padding is required.   The page size should be
 // embedded as ELF metadata in the future.
 static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
+static constexpr uint8_t Elf_Amd_Aie2p  = 69;
+static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
 // When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
 static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
@@ -328,8 +331,8 @@ public:
   // or for a single partition.  The returned vector has elements
   // that are used when populating ert_dpu_data elements embedded
   // in an ert_packet.
-  [[nodiscard]] virtual const std::vector<std::pair<uint64_t, uint64_t>>&
-  get_ctrlcode_addr_and_size() const
+  [[nodiscard]] virtual void
+  get_ctrlcode_addr_and_size(uint32_t*)
   {
     throw std::runtime_error("Not supported");
   }
@@ -428,7 +431,7 @@ class module_elf : public module_impl
   constexpr static uint32_t addend_mask = ~((uint32_t)0) << addend_shift;
   constexpr static uint32_t schema_mask = ~addend_mask;
   xrt::elf m_elf;
-  uint8_t m_os_abi = xrt_core::module_int::elf_amd_aie2p;
+  uint8_t m_os_abi = Elf_Amd_Aie2p;
   std::vector<ctrlcode> m_ctrlcodes;
   std::map<std::string, patcher> m_arg2patcher;
   instr_buf m_instr_buf;
@@ -762,11 +765,11 @@ public:
     , m_elf(std::move(elf))
     , m_os_abi{ xrt_core::elf_int::get_elfio(m_elf).get_os_abi() }
   {
-    if (m_os_abi == xrt_core::module_int::elf_amd_aie2ps) {
+    if (m_os_abi == Elf_Amd_Aie2ps) {
       m_ctrlcodes = initialize_column_ctrlcode(xrt_core::elf_int::get_elfio(m_elf));
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf), m_ctrlcodes);
     }
-    else if (m_os_abi == xrt_core::module_int::elf_amd_aie2p) {
+    else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
       m_ctrl_packet_exist = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf), m_ctrl_packet);
       m_save_buf_exist = initialize_save_buf(xrt_core::elf_int::get_elfio(m_elf), m_save_buf);
@@ -913,7 +916,7 @@ class module_sram : public module_impl
   }
 
   void
-  aie2p_fill_bo_addresses()
+  fill_bo_addresses()
   {
     m_column_bo_address.clear();
     m_column_bo_address.push_back({ m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
@@ -1060,7 +1063,7 @@ class module_sram : public module_impl
   patch_value(const std::string& argnm, size_t index, uint64_t value)
   {
     bool patched = false;
-    if (m_parent->get_os_abi() == xrt_core::module_int::elf_amd_aie2p) {
+    if (m_parent->get_os_abi() == Elf_Amd_Aie2p) {
       // patch control-packet buffer
       if (m_ctrlpkt_bo) {
         if (m_parent->patch(m_ctrlpkt_bo.map<uint8_t*>(), argnm, index, value, patcher::buf_type::ctrldata))
@@ -1114,7 +1117,7 @@ class module_sram : public module_impl
       return;
 
     auto os_abi = m_parent.get()->get_os_abi();
-    if (os_abi == xrt_core::module_int::elf_amd_aie2ps) {
+    if (os_abi == Elf_Amd_Aie2ps) {
       if (m_patched_args.size() != m_parent->number_of_arg_patchers()) {
         auto fmt = boost::format("ctrlcode requires %d patched arguments, but only %d are patched")
             % m_parent->number_of_arg_patchers() % m_patched_args.size();
@@ -1122,7 +1125,7 @@ class module_sram : public module_impl
       }
       m_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     }
-    else if (os_abi == xrt_core::module_int::elf_amd_aie2p) {
+    else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 #ifdef _DEBUG
       dump_bo(m_instr_bo, "instrBoPatched.bin");
@@ -1152,29 +1155,42 @@ public:
   {
     auto os_abi = m_parent.get()->get_os_abi();
 
-    if (os_abi == xrt_core::module_int::elf_amd_aie2p) {
+    if (os_abi == Elf_Amd_Aie2p) {
       // make sure to create control-packet buffer frist because we may
       // need to patch control-packet address to instruction buffer
       create_ctrlpkt_buf(m_parent.get());
       create_instr_buf(m_parent.get());
-      aie2p_fill_bo_addresses();
+      fill_bo_addresses();
     }
-    else if (os_abi == xrt_core::module_int::elf_amd_aie2ps) {
+    else if (os_abi == Elf_Amd_Aie2ps) {
       create_instruction_buffer(m_parent.get());
       fill_column_bo_address(m_parent->get_data());
     }
   }
 
-  [[nodiscard]] const std::vector<std::pair<uint64_t, uint64_t>>&
-  get_ctrlcode_addr_and_size() const override
+  [[nodiscard]] void
+  get_ctrlcode_addr_and_size(uint32_t* payload) override
   {
-    return m_column_bo_address;
-  }
-
-  [[nodiscard]] const uint8_t&
-      get_os_abi() const override
-  {
-      return m_parent.get()->get_os_abi();
+    auto os_abi = m_parent.get()->get_os_abi();
+    if (os_abi == Elf_Amd_Aie2p) {
+      for (auto [addr, size] : m_column_bo_address) {
+        auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+        dpu->instruction_buffer = addr;
+        dpu->instruction_buffer_size = static_cast<uint32_t>(size);
+        dpu->chained = 0; // Always set chained as 0 for aie2p
+        payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
+      }
+    }
+    else {
+      auto ert_dpu_data_count = static_cast<uint32_t>(m_column_bo_address.size());
+      for (auto [addr, size] : m_column_bo_address) {
+        auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+        dpu->instruction_buffer = addr;
+        dpu->instruction_buffer_size = static_cast<uint32_t>(size);
+        dpu->chained = --ert_dpu_data_count;
+        payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
+      }
+    }
   }
 
   [[nodiscard]] virtual xrt::bo&
@@ -1191,16 +1207,10 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::module_int {
 
-const std::vector<std::pair<uint64_t, uint64_t>>&
-get_ctrlcode_addr_and_size(const xrt::module& module)
+void
+get_ctrlcode_addr_and_size(const xrt::module& module, uint32_t* payload)
 {
-  return module.get_handle()->get_ctrlcode_addr_and_size();
-}
-
-const uint8_t
-get_os_abi(const xrt::module& module)
-{
-    return module.get_handle()->get_os_abi();
+  return module.get_handle()->get_ctrlcode_addr_and_size(payload);
 }
 
 void
