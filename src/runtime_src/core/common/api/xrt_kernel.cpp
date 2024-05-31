@@ -2049,7 +2049,7 @@ class run_impl
   uint32_t*
   initialize_dpu(uint32_t* payload)
   {
-    xrt_core::module_int::get_ctrlcode_addr_and_size(m_module, payload);
+    xrt_core::module_int::fill_ert_dpu_data(m_module, payload);
 
     // Return payload past the ert_dpu_data structures
     return payload;

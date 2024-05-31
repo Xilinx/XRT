@@ -332,7 +332,7 @@ public:
   // that are used when populating ert_dpu_data elements embedded
   // in an ert_packet.
   [[nodiscard]] virtual void
-  get_ctrlcode_addr_and_size(uint32_t*)
+  fill_ert_dpu_data(uint32_t*)
   {
     throw std::runtime_error("Not supported");
   }
@@ -1169,7 +1169,7 @@ public:
   }
 
   [[nodiscard]] void
-  get_ctrlcode_addr_and_size(uint32_t* payload) override
+  fill_ert_dpu_data(uint32_t* payload) override
   {
     auto os_abi = m_parent.get()->get_os_abi();
     if (os_abi == Elf_Amd_Aie2p) {
@@ -1208,9 +1208,9 @@ public:
 namespace xrt_core::module_int {
 
 void
-get_ctrlcode_addr_and_size(const xrt::module& module, uint32_t* payload)
+fill_ert_dpu_data(const xrt::module& module, uint32_t* payload)
 {
-  return module.get_handle()->get_ctrlcode_addr_and_size(payload);
+  return module.get_handle()->fill_ert_dpu_data(payload);
 }
 
 void

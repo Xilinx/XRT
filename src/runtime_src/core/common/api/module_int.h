@@ -15,7 +15,7 @@
 namespace xrt_core::module_int {
 
 void
-get_ctrlcode_addr_and_size(const xrt::module& module, uint32_t* payload);
+fill_ert_dpu_data(const xrt::module& module, uint32_t* payload);
 
 
 // Patch buffer object into control code at given argument
