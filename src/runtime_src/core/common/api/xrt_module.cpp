@@ -331,7 +331,7 @@ public:
   // or for a single partition.  The returned vector has elements
   // that are used when populating ert_dpu_data elements embedded
   // in an ert_packet.
-  [[nodiscard]] virtual void
+  virtual void
   fill_ert_dpu_data(uint32_t*)
   {
     throw std::runtime_error("Not supported");
@@ -1168,7 +1168,7 @@ public:
     }
   }
 
-  [[nodiscard]] void
+  void
   fill_ert_dpu_data(uint32_t* payload) override
   {
     auto os_abi = m_parent.get()->get_os_abi();
