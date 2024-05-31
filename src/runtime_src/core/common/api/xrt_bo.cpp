@@ -1547,6 +1547,10 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
     });
 }
 
+bo::
+~bo()
+{}
+
 } // xrt
 
 ////////////////////////////////////////////////////////////////

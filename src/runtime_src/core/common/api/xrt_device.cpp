@@ -372,6 +372,10 @@ operator== (const device& d1, const device& d2)
   return d1.get_handle()->get_device_id() == d2.get_handle()->get_device_id();
 }
 
+device::
+~device()
+{}
+
 } // xrt
 
 #ifdef XRT_ENABLE_AIE

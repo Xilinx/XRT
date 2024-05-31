@@ -3792,6 +3792,10 @@ submit_signal(const xrt::fence& fence)
   });
 }
 
+run::
+~run()
+{}
+
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
@@ -3859,6 +3863,10 @@ get_xclbin() const
 {
   return handle->get_xclbin();
 }
+
+kernel::
+~kernel()
+{}
 
 // Experimental API
 // This function defines the read-only register range on a compute unit
