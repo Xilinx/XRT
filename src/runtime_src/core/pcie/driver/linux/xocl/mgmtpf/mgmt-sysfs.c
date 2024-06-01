@@ -434,7 +434,13 @@ static ssize_t mgmt_reset_store(struct device *dev,
 	 */
 	switch(val) {
 	case 1:
-		ret = (int) xclmgmt_hot_reset(lro, true);
+		if (XOCL_DSA_EEMI_API_SRST(lro)) {
+			ret = (int) xclmgmt_eemi_pmc_reset(lro);
+		}
+		else {
+			ret = (int) xclmgmt_hot_reset(lro, false);
+		}
+
 		if (ret < 0)
 			return ret;
 		break;
