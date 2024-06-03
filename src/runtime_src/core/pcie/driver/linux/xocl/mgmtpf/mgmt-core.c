@@ -608,16 +608,16 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return xclmgmt_reset_device(lro);
+	return xclmgmt_reset_device(lro, true);
 }
 
-int xclmgmt_reset_device(struct xclmgmt_dev *lro)
+long xclmgmt_reset_device(struct xclmgmt_dev *lro, bool force)
 {
 	if (XOCL_DSA_EEMI_API_SRST(lro)) {
 		return xclmgmt_eemi_pmc_reset(lro);
 	}
 	else {
-		return xclmgmt_hot_reset(lro, true);
+		return xclmgmt_hot_reset(lro, force);
 	}
 }
 
@@ -1424,13 +1424,13 @@ static void xclmgmt_work_cb(struct work_struct *work)
 
 	switch (_work->op) {
 	case XOCL_WORK_RESET:
-		xclmgmt_reset_device(lro);
+		ret = (int) xclmgmt_reset_device(lro, false);
 
 		if (!ret)
 			xocl_drvinst_set_offline(lro, false);
 		break;
 	case XOCL_WORK_FORCE_RESET:
-		xclmgmt_reset_device(lro);
+		ret = (int) xclmgmt_reset_device(lro, true);
 
 		if (!ret)
 			xocl_drvinst_set_offline(lro, false);
