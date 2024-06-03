@@ -4481,7 +4481,7 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
 void
 xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
 {
-  xdp::native::profiling_wrapper(__func__, [run, index, value, bytes]{
+  xdp::native::profiling_wrapper(__func__, [&run, index, value, bytes]{
     const auto& rimpl = run.get_handle();
     rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
   });
