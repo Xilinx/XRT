@@ -44,7 +44,6 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsPreliminary(_isPreliminary);
 
   m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -77,7 +76,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // No suboption print help
   if (!optionOption) {
-    printHelp(false, "", XBU::get_device_class(m_device, true));
+    printHelp();
     return;
   }
 
