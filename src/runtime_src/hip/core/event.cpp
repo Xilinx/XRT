@@ -128,7 +128,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
         // NPU device is not coherent. We need to sync the buffer objects before launching kernel
         if (hip_mem->get_type() != memory_type::device)
           hip_mem->sync(xclBOSyncDirection::XCL_BO_SYNC_BO_TO_DEVICE);
-        r.set_arg(idx, hip_mem->get_xrt_bo());
+        r.set_arg(arg->index, hip_mem->get_xrt_bo());
         break;
       }
       case karg::argtype::constant :

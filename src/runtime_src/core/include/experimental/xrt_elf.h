@@ -31,6 +31,8 @@ class elf_impl;
 class elf : public detail::pimpl<elf_impl>
 {
 public:
+  elf() = default;
+
   XRT_API_EXPORT
   elf(const std::string& fnm);
 
