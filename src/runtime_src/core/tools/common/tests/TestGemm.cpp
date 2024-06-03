@@ -134,7 +134,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
 
-  logger(ptree, "DPU-Sequence", dpu_instr);
+  if(XBU::getVerbose())
+    logger(ptree, "DPU-Sequence", dpu_instr);
 
   size_t instr_size = 0;
   try {
@@ -219,10 +220,11 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //reset the performance mode
   xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), static_cast<xrt_core::query::performance_mode::power_type>(perf_mode));
-
-  logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
-  logger(ptree, "Details", boost::str(boost::format("Average cycle count: '%.1f'") % (total_cycle_count/num_of_cores)));
-  logger(ptree, "Details", boost::str(boost::format("IPU H-Clock: '%f' MHz") % ipu_hclock));
+  if(XBU::getVerbose()) {
+    logger(ptree, "Details", boost::str(boost::format("Total Duration: '%.1f' ns") % (ipu_hclck_period * (total_cycle_count/num_of_cores))));
+    logger(ptree, "Details", boost::str(boost::format("Average cycle count: '%.1f'") % (total_cycle_count/num_of_cores)));
+    logger(ptree, "Details", boost::str(boost::format("NPU H-Clock: '%f' MHz") % ipu_hclock));
+  }
   logger(ptree, "Details", boost::str(boost::format("TOPS: '%.1f'") % TOPS));
 
   ptree.put("status", test_token_passed);
