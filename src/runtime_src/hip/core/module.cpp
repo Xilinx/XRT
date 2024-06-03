@@ -12,36 +12,34 @@ module_xclbin::
 create_hw_context()
 {
   auto xrt_dev = get_context()->get_xrt_device();
-  auto uuid = xrt_dev.register_xclbin(m_xclbin);
-  m_hw_ctx = xrt::hw_context{xrt_dev, uuid};
+  auto uuid = xrt_dev.register_xclbin(m_xrt_xclbin);
+  m_xrt_hw_ctx = xrt::hw_context{xrt_dev, uuid};
 }
 
 module_xclbin::
 module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name)
-  : module{ctx, true}
+  : module{std::move(ctx), true}
 {
-  m_xclbin = xrt::xclbin{file_name};
+  m_xrt_xclbin = xrt::xclbin{file_name};
   create_hw_context();
 }
 
 module_elf::
 module_elf(module_xclbin* xclbin_module, const std::string& file_name)
-  : module(xclbin_module->get_context(), false)
-  , m_xclbin_module(xclbin_module)
+  : module{xclbin_module->get_context(), false}
+  , m_xclbin_module{xclbin_module}
+  , m_xrt_elf{xrt::elf{file_name}}
+  , m_xrt_module{xrt::module{m_xrt_elf}}
 {
-  m_elf = xrt::elf{file_name};
-  m_module = xrt::module{m_elf};
 }
 
 function::
 function(module_xclbin* xclbin_mod_hdl, const xrt::module& xrt_module, const std::string& name)
-  : m_module(xclbin_mod_hdl)
+  : m_xclbin_module{xclbin_mod_hdl}
   , m_func_name{name}
-{
-  m_kernel = xrt::ext::kernel{m_module->get_hw_context(), xrt_module, name};
-}
+  , m_xrt_kernel{xrt::ext::kernel{m_xclbin_module->get_hw_context(), xrt_module, name}}
+{}
 
 // Global map of modules
 xrt_core::handle_map<module_handle, std::shared_ptr<module>> module_cache;
 }
-

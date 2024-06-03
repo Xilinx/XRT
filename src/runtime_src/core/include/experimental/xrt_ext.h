@@ -235,8 +235,6 @@ public:
 class kernel : public xrt::kernel
 {
 public:
-  kernel() = default;
-
   /**
    * kernel() - Constructor from module
    *

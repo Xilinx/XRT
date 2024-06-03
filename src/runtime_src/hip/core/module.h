@@ -27,18 +27,18 @@ class function;
 class module
 {
   std::shared_ptr<context> m_ctx;
-  bool m_xclbin_type;
+  bool m_is_xclbin;
 
 public:
-  module(std::shared_ptr<context> ctx, bool xclbin_type)
+  module(std::shared_ptr<context> ctx, bool is_xclbin)
     : m_ctx{std::move(ctx)}
-    , m_xclbin_type{xclbin_type}
+    , m_is_xclbin{is_xclbin}
   {}
 
   bool
   is_xclbin_module() const
   {
-    return m_xclbin_type;
+    return m_is_xclbin;
   }
 
   std::shared_ptr<context>
@@ -53,8 +53,8 @@ public:
 
 class module_xclbin : public module
 {
-  xrt::xclbin m_xclbin;
-  xrt::hw_context m_hw_ctx;
+  xrt::xclbin m_xrt_xclbin;
+  xrt::hw_context m_xrt_hw_ctx;
   xrt_core::handle_map<function_handle, std::shared_ptr<function>> function_cache;
 
 public:
@@ -70,23 +70,23 @@ public:
   }
 
   std::shared_ptr<function>
-  get_function(function_handle handle)
+  get_function(function_handle handle) const
   {
     return function_cache.get(handle);
   }
 
   const xrt::hw_context&
-  get_hw_context()
+  get_hw_context() const
   {
-    return m_hw_ctx;
+    return m_xrt_hw_ctx;
   }
 };
 
 class module_elf : public module
 {
-  xrt::elf m_elf;
-  xrt::module m_module;
   module_xclbin* m_xclbin_module;
+  xrt::elf m_xrt_elf;
+  xrt::module m_xrt_module;
 
 public:
   module_elf(module_xclbin* xclbin_module, const std::string& file_name);
@@ -95,14 +95,14 @@ public:
   get_xclbin_module() const { return m_xclbin_module; }
 
   const xrt::module&
-  get_xrt_module() const { return m_module; }
+  get_xrt_module() const { return m_xrt_module; }
 };
 
 class function
 {
-  module_xclbin* m_module = nullptr;
+  module_xclbin* m_xclbin_module = nullptr;
   std::string m_func_name;
-  xrt::ext::kernel m_kernel;
+  xrt::kernel m_xrt_kernel;
 
 public:
   function() = default;
@@ -111,13 +111,13 @@ public:
   module_xclbin*
   get_module() const
   {
-    return m_module;
+    return m_xclbin_module;
   }
 
-  const xrt::ext::kernel&
-  get_kernel()
+  const xrt::kernel&
+  get_kernel() const
   {
-    return m_kernel;
+    return m_xrt_kernel;
   }
 };
 
