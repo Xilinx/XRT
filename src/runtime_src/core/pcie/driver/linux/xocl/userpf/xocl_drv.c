@@ -1993,6 +1993,7 @@ static int __init xocl_init(void)
 	int		ret, i = 0;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
+        char *module="xocl";\
 	xrt_class = class_create(THIS_MODULE, "xrt_user");
 #else
 	xrt_class = class_create("xrt_user");
@@ -2003,7 +2004,7 @@ static int __init xocl_init(void)
 		goto err_class_create;
 	}
 
-	ret = xocl_debug_init();
+	ret = xocl_debug_init(module);
 	if (ret) {
 		pr_err("failed to init debug");
 		goto failed;
