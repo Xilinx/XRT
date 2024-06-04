@@ -108,6 +108,11 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
     set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
   endif()
 
+  # Targets linked with xrt static libraries on CentOS/RHEL somehow
+  # link with dynamic library of boost_system even when Boost_USE_STATIC_LIBS
+  # is set. So explicitly adding boost install path to linker search paths
+  link_directories($ENV{XRT_BOOST_INSTALL}/lib)
+
 else()
   find_package(Boost
     REQUIRED COMPONENTS system filesystem program_options)
