@@ -162,7 +162,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     if (!available_devices.empty())
       _output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
   }
-  catch (const xrt_core::query::exception&) {
+  catch (...) {
     //no device available
   }
 
