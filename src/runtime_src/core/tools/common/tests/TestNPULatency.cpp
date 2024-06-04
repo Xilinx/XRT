@@ -61,7 +61,8 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -87,8 +88,10 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
-  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
-  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+  if(XBU::getVerbose()) {
+    logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+  }
 
   // Run the test to compute latency where we submit one job at a time and wait for its completion before
   // we submit the next one

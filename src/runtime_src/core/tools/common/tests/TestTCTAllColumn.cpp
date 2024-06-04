@@ -107,7 +107,8 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -148,8 +149,10 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
-  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f' bytes") % buffer_size));
-  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+  if(XBU::getVerbose()) {
+    logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f' bytes") % buffer_size));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+  }
 
   auto start = std::chrono::high_resolution_clock::now();
   try {
@@ -179,7 +182,8 @@ TestTCTAllColumn::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   float throughput = itr_count / elapsedSecs;
   float latency = (elapsedSecs / itr_count) * 1000000; //convert s to us
-  logger(ptree, "Details", boost::str(boost::format("Average time for TCT: '%.1f' us") % latency));
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Average time for TCT: '%.1f' us") % latency));
   logger(ptree, "Details", boost::str(boost::format("Average TCT throughput: '%.1f' TCT/s") % throughput));
 
   ptree.put("status", test_token_passed);

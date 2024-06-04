@@ -60,7 +60,8 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -86,8 +87,10 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
-  logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
-  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count_throughput));
+  if(XBU::getVerbose()) {
+    logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count_throughput));
+  }
 
   // Run the test to compute throughput where we saturate NPU with jobs and then wait for all
   // completions at the end
@@ -111,7 +114,7 @@ TestNPUThroughput::run(std::shared_ptr<xrt_core::device> dev)
   // Compute the throughput
   const double throughput = (elapsedSecs != 0.0) ? runhandles.size() / elapsedSecs : 0.0;
 
-  logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops/s") % throughput));
+  logger(ptree, "Details", boost::str(boost::format("Average throughput: '%.1f' ops") % throughput));
   ptree.put("status", test_token_passed);
   return ptree;
 }
