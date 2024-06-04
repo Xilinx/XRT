@@ -13,6 +13,7 @@
 #include "xrt/xrt_uuid.h"
 
 #include "elf_int.h"
+#include "ert.h"
 #include "module_int.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
@@ -326,12 +327,11 @@ public:
     return {};
   }
 
-  // Get the address and size of the control code for all columns
-  // or for a single partition.  The returned vector has elements
-  // that are used when populating ert_dpu_data elements embedded
-  // in an ert_packet.
-  [[nodiscard]] virtual const std::vector<std::pair<uint64_t, uint64_t>>&
-  get_ctrlcode_addr_and_size() const
+  // Fill in ERT command payload in ELF flow. The payload is after
+  // extra_cu_mask and before CU arguments. Return the current point of
+  // the ERT command payload
+  virtual uint32_t*
+  fill_ert_dpu_data(uint32_t *)
   {
     throw std::runtime_error("Not supported");
   }
@@ -404,6 +404,13 @@ public:
   // buffer if necessary.  Throw if not all arguments have been patched.
   virtual void
   sync_if_dirty()
+  {
+    throw std::runtime_error("Not supported");
+  }
+
+  // Get the ERT command opcode in ELF flow.
+  virtual enum ert_cmd_opcode
+  get_ert_opcode()
   {
     throw std::runtime_error("Not supported");
   }
@@ -758,6 +765,21 @@ class module_elf : public module_impl
     return m_os_abi;
   }
 
+  enum ert_cmd_opcode
+  get_ert_opcode() override
+  {
+    if (m_os_abi == Elf_Amd_Aie2ps)
+      return ERT_START_DPU;
+
+    if (m_os_abi != Elf_Amd_Aie2p)
+      throw std::runtime_error("ELF os_abi Not supported");
+
+    if (m_save_buf_exist && m_restore_buf_exist)
+      return ERT_START_IPU_PREEMPT;
+
+    return ERT_START_IPU;
+  }
+
 public:
   explicit module_elf(xrt::elf elf)
     : module_impl{ elf.get_cfg_uuid() }
@@ -919,14 +941,6 @@ class module_sram : public module_impl
   {
     m_column_bo_address.clear();
     m_column_bo_address.push_back({ m_instr_bo.address(), m_instr_bo.size() }); // NOLINT
-    if (m_ctrlpkt_bo)
-      m_column_bo_address.push_back({ m_ctrlpkt_bo.address(), m_ctrlpkt_bo.size() }); // NOLINT
-
-    if (m_preempt_save_bo)
-      m_column_bo_address.push_back({ m_preempt_save_bo.address(), m_preempt_save_bo.size() }); // NOLINT
-
-    if (m_preempt_restore_bo)
-      m_column_bo_address.push_back({ m_preempt_restore_bo.address(), m_preempt_restore_bo.size() }); // NOLINT
   }
 
   // Fill the instruction buffer object with the ctrlcodes for each
@@ -1169,10 +1183,47 @@ public:
     }
   }
 
-  [[nodiscard]] const std::vector<std::pair<uint64_t, uint64_t>>&
-  get_ctrlcode_addr_and_size() const override
+  uint32_t*
+  fill_ert_dpu_data(uint32_t *payload) override
   {
-    return m_column_bo_address;
+    auto os_abi = m_parent.get()->get_os_abi();
+    if (os_abi == Elf_Amd_Aie2p) {
+      if (m_preempt_save_bo && m_preempt_restore_bo) {
+        // ipu preemption
+        auto ipu = reinterpret_cast<ert_ipu_preempt_data*>(payload);
+        ipu->instruction_buffer = m_instr_bo.address();
+        ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+        ipu->save_buffer = m_preempt_save_bo.address();
+        ipu->save_buffer_size = static_cast<uint32_t>(m_preempt_save_bo.size());
+        ipu->restore_buffer = m_preempt_restore_bo.address();
+        ipu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
+        ipu->instruction_prop_count = 0; // Reserved for future use
+        payload += sizeof(ert_ipu_preempt_data) / sizeof(uint32_t);
+      } else {
+        // ipu non-preemption
+        auto ipu = reinterpret_cast<ert_ipu_data*>(payload);
+        ipu->instruction_buffer = m_instr_bo.address();
+        ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+        ipu->instruction_prop_count = 0; // Reserved for future use
+        payload += sizeof(ert_ipu_data) / sizeof(uint32_t);
+      }
+    } else {
+      // aie2ps
+      auto ert_dpu_data_count = static_cast<uint32_t>(m_column_bo_address.size());
+      // For multiple instruction buffers, the ert_dpu_data::chained has
+      // the number of words remaining in the payload after the current
+      // instruction buffer. The ert_dpu_data::chained of the last buffer
+      // is zero.
+      for (auto [addr, size] : m_column_bo_address) {
+        auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+        dpu->instruction_buffer = addr;
+        dpu->instruction_buffer_size = static_cast<uint32_t>(size);
+        dpu->chained = --ert_dpu_data_count;
+        payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
+      }
+    }
+
+    return payload;
   }
 
   [[nodiscard]] virtual xrt::bo&
@@ -1189,10 +1240,10 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::module_int {
 
-const std::vector<std::pair<uint64_t, uint64_t>>&
-get_ctrlcode_addr_and_size(const xrt::module& module)
+uint32_t*
+fill_ert_dpu_data(const xrt::module& module, uint32_t* payload)
 {
-  return module.get_handle()->get_ctrlcode_addr_and_size();
+  return module.get_handle()->fill_ert_dpu_data(payload);
 }
 
 void
@@ -1211,6 +1262,12 @@ void
 sync(const xrt::module& module)
 {
   module.get_handle()->sync_if_dirty();
+}
+
+enum ert_cmd_opcode
+get_ert_opcode(const xrt::module& module)
+{
+  return module.get_handle()->get_ert_opcode();
 }
 
 } // xrt_core::module_int

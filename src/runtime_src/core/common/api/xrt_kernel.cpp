@@ -1481,7 +1481,7 @@ private:
       kcmd->opcode = (protocol == control_type::fa) ? ERT_START_FA : ERT_START_CU;
       break;
     case kernel_type::dpu :
-      kcmd->opcode = (m_module ? ERT_START_DPU : ERT_START_CU);
+      kcmd->opcode = (m_module ? xrt_core::module_int::get_ert_opcode(m_module) : ERT_START_CU);
       break;
     case kernel_type::none:
       throw std::runtime_error("Internal error: wrong kernel type can't set cmd opcode");
@@ -2041,24 +2041,10 @@ class run_impl
   // kernel arguments.  The function returns the data payload after
   // the preceeding instruction buffer(s); this data payload is where
   // regular kernel arguments are placed.
-  //
-  // For multiple instruction buffers, the ert_dpu_data::chained has
-  // the number of words remaining in the payload after the current
-  // instruction buffer.  The ert_dpu_data::chained of the last buffer
-  // is zero.
   uint32_t*
   initialize_dpu(uint32_t* payload)
   {
-    auto addr_and_size = xrt_core::module_int::get_ctrlcode_addr_and_size(m_module);
-
-    size_t ert_dpu_data_count = addr_and_size.size();
-    for (auto [addr, size] : addr_and_size) {
-      auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
-      dpu->instruction_buffer = addr;
-      dpu->instruction_buffer_size = size;
-      dpu->chained = --ert_dpu_data_count;
-      payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
-    }
+    payload = xrt_core::module_int::fill_ert_dpu_data(m_module, payload);
 
     // Return payload past the ert_dpu_data structures
     return payload;
@@ -2071,7 +2057,7 @@ class run_impl
     auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
     auto payload = kernel->initialize_command(pkt);
 
-    if (kcmd->opcode == ERT_START_DPU) {
+    if (kcmd->opcode == ERT_START_DPU || kcmd->opcode == ERT_START_IPU || kcmd->opcode == ERT_START_IPU_PREEMPT) {
       auto payload_past_dpu = initialize_dpu(payload);
 
       // adjust count to include the prepended ert_dpu_data structures
