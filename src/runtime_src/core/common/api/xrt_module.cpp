@@ -331,12 +331,12 @@ public:
   // extra_cu_mask and before CU arguments. Return the current point of
   // the ERT command payload
   virtual uint32_t*
-  fill_ert_dpu_data(uint32_t *)
+  fill_ert_dpu_data(uint32_t *) const
   {
     throw std::runtime_error("Not supported");
   }
 
-  [[nodiscard]] virtual const uint8_t&
+  [[nodiscard]] virtual uint8_t
   get_os_abi() const
   {
     throw std::runtime_error("Not supported");
@@ -409,8 +409,8 @@ public:
   }
 
   // Get the ERT command opcode in ELF flow.
-  virtual enum ert_cmd_opcode
-  get_ert_opcode()
+  virtual ert_cmd_opcode
+  get_ert_opcode() const
   {
     throw std::runtime_error("Not supported");
   }
@@ -759,14 +759,14 @@ class module_elf : public module_impl
     return true;
   }
 
-  [[nodiscard]] const uint8_t&
+  [[nodiscard]] uint8_t
   get_os_abi() const override
   {
     return m_os_abi;
   }
 
-  enum ert_cmd_opcode
-  get_ert_opcode() override
+  ert_cmd_opcode
+  get_ert_opcode() const override
   {
     if (m_os_abi == Elf_Amd_Aie2ps)
       return ERT_START_DPU;
@@ -1162,6 +1162,53 @@ class module_sram : public module_impl
     m_dirty = false;
   }
 
+  uint32_t*
+  fill_ert_aie2p(uint32_t *payload) const
+  {
+     if (m_preempt_save_bo && m_preempt_restore_bo) {
+       // ipu preemption
+       auto ipu = reinterpret_cast<ert_ipu_preempt_data*>(payload);
+       ipu->instruction_buffer = m_instr_bo.address();
+       ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+       ipu->save_buffer = m_preempt_save_bo.address();
+       ipu->save_buffer_size = static_cast<uint32_t>(m_preempt_save_bo.size());
+       ipu->restore_buffer = m_preempt_restore_bo.address();
+       ipu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
+       ipu->instruction_prop_count = 0; // Reserved for future use
+       payload += sizeof(ert_ipu_preempt_data) / sizeof(uint32_t);
+
+       return payload;
+     }
+
+     // ipu non-preemption
+     auto ipu = reinterpret_cast<ert_ipu_data*>(payload);
+     ipu->instruction_buffer = m_instr_bo.address();
+     ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+     ipu->instruction_prop_count = 0; // Reserved for future use
+     payload += sizeof(ert_ipu_data) / sizeof(uint32_t);
+
+     return payload;
+  }
+
+  uint32_t*
+  fill_ert_aie2ps(uint32_t *payload) const
+  {
+    auto ert_dpu_data_count = static_cast<uint32_t>(m_column_bo_address.size());
+    // For multiple instruction buffers, the ert_dpu_data::chained has
+    // the number of words remaining in the payload after the current
+    // instruction buffer. The ert_dpu_data::chained of the last buffer
+    // is zero.
+    for (auto [addr, size] : m_column_bo_address) {
+      auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
+      dpu->instruction_buffer = addr;
+      dpu->instruction_buffer_size = static_cast<uint32_t>(size);
+      dpu->chained = --ert_dpu_data_count;
+      payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
+    }
+
+    return payload;
+  }
+
 public:
   module_sram(std::shared_ptr<module_impl> parent, xrt::hw_context hwctx)
     : module_impl{ parent->get_cfg_uuid() }
@@ -1184,46 +1231,14 @@ public:
   }
 
   uint32_t*
-  fill_ert_dpu_data(uint32_t *payload) override
+  fill_ert_dpu_data(uint32_t *payload) const override
   {
     auto os_abi = m_parent.get()->get_os_abi();
-    if (os_abi == Elf_Amd_Aie2p) {
-      if (m_preempt_save_bo && m_preempt_restore_bo) {
-        // ipu preemption
-        auto ipu = reinterpret_cast<ert_ipu_preempt_data*>(payload);
-        ipu->instruction_buffer = m_instr_bo.address();
-        ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
-        ipu->save_buffer = m_preempt_save_bo.address();
-        ipu->save_buffer_size = static_cast<uint32_t>(m_preempt_save_bo.size());
-        ipu->restore_buffer = m_preempt_restore_bo.address();
-        ipu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
-        ipu->instruction_prop_count = 0; // Reserved for future use
-        payload += sizeof(ert_ipu_preempt_data) / sizeof(uint32_t);
-      } else {
-        // ipu non-preemption
-        auto ipu = reinterpret_cast<ert_ipu_data*>(payload);
-        ipu->instruction_buffer = m_instr_bo.address();
-        ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
-        ipu->instruction_prop_count = 0; // Reserved for future use
-        payload += sizeof(ert_ipu_data) / sizeof(uint32_t);
-      }
-    } else {
-      // aie2ps
-      auto ert_dpu_data_count = static_cast<uint32_t>(m_column_bo_address.size());
-      // For multiple instruction buffers, the ert_dpu_data::chained has
-      // the number of words remaining in the payload after the current
-      // instruction buffer. The ert_dpu_data::chained of the last buffer
-      // is zero.
-      for (auto [addr, size] : m_column_bo_address) {
-        auto dpu = reinterpret_cast<ert_dpu_data*>(payload);
-        dpu->instruction_buffer = addr;
-        dpu->instruction_buffer_size = static_cast<uint32_t>(size);
-        dpu->chained = --ert_dpu_data_count;
-        payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
-      }
-    }
 
-    return payload;
+    if (os_abi == Elf_Amd_Aie2p)
+      return fill_ert_aie2p(payload);
+
+    return fill_ert_aie2ps(payload);
   }
 
   [[nodiscard]] virtual xrt::bo&

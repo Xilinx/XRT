@@ -34,7 +34,8 @@ void
 sync(const xrt::module&);
 
 // Get the ERT command opcode in ELF flow
-enum ert_cmd_opcode get_ert_opcode(const xrt::module& module);
+ert_cmd_opcode
+get_ert_opcode(const xrt::module& module);
 
 } // xrt_core::module_int
 
