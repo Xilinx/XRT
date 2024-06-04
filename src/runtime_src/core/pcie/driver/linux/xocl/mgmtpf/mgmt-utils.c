@@ -391,7 +391,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_thread_start(lro);
 
 	xocl_clear_pci_errors(lro);
-	store_pcie_link_info(lro);
+	mgmtpf_store_pcie_link_info(lro);
 
 	/*
 	 * Update the userspace fdt with the current values in the mgmt driver
