@@ -14,7 +14,7 @@
 
 namespace xrt_core::module_int {
 
-void
+uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t* payload);
 
 

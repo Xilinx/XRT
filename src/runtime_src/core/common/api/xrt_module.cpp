@@ -327,11 +327,10 @@ public:
     return {};
   }
 
-  // Get the address and size of the control code for all columns
-  // or for a single partition.  The returned vector has elements
-  // that are used when populating ert_dpu_data elements embedded
-  // in an ert_packet.
-  virtual void
+  // Using the address and size of the control code for all columns to fill ert_epu_data
+  // return a pointer to the payload after it is filled
+  // @param payload pointing to the memory before payload is filled
+  [[nodiscard]] virtual uint32_t*
   fill_ert_dpu_data(uint32_t*)
   {
     throw std::runtime_error("Not supported");
@@ -1168,7 +1167,10 @@ public:
     }
   }
 
-  void
+  // Using the address and size of the control code for all columns to fill ert_epu_data
+  // return a pointer to the payload after it is filled and offsetted
+  // @param payload pointing to the memory before payload is filled
+  [[nodiscard]] virtual uint32_t*
   fill_ert_dpu_data(uint32_t* payload) override
   {
     auto os_abi = m_parent.get()->get_os_abi();
@@ -1191,6 +1193,7 @@ public:
         payload += sizeof(ert_dpu_data) / sizeof(uint32_t);
       }
     }
+    return payload;
   }
 
   [[nodiscard]] virtual xrt::bo&
@@ -1207,7 +1210,7 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::module_int {
 
-void
+uint32_t*
 fill_ert_dpu_data(const xrt::module& module, uint32_t* payload)
 {
   return module.get_handle()->fill_ert_dpu_data(payload);
