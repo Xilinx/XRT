@@ -177,7 +177,10 @@ void store_pcie_link_info(struct xclmgmt_dev *lro);
 /* utils.c */
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
+
+long xclmgmt_reset_device(struct xclmgmt_dev *lro, bool force);
 long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force);
+long xclmgmt_eemi_pmc_reset(struct xclmgmt_dev *lro);
 int xocl_wait_master_off(struct xclmgmt_dev *lro);
 int xocl_set_master_on(struct xclmgmt_dev *lro);
 void xocl_pci_save_config_all(struct xclmgmt_dev *lro);
