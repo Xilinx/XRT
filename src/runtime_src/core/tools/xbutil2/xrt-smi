@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2020-2022 Xilinx, Inc.
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
