@@ -472,9 +472,9 @@ jobs:
     name: "Notify"
     needs: [build]
     runs-on: [self-hosted, Ubuntu-22.04]
+    if: ${{ always() }} && contains(needs.*.result, 'failure') 
     steps:
       - name: Send GitHub trigger to Slack Workflow Builder
-        if: ${{ always() }} && contains(needs.*.result, 'failure') 
         uses: actions-ext/slackapi-slack-github-action@v1.19.0
         with:
           payload: |
