@@ -261,6 +261,145 @@ static int xclmgmt_get_buddy_cb(struct device *dev, void *data)
 }
 
 /**
+ * Perform a EEMI based PMC reset.
+ * This method uses EEMI PMC based system reset API to perform a system reset. 
+ */
+long xclmgmt_eemi_pmc_reset(struct xclmgmt_dev *lro)
+{
+	long err = 0;
+	const char *ep_name;
+	struct pci_dev *pdev = lro->pci_dev;
+	struct xocl_board_private *dev_info = &lro->core.priv;
+	int retry = 0;
+	u16 devctl;
+	u16 slot_ctrl_orig = 0, slot_ctrl;
+
+	if (!pdev->bus || !pdev->bus->self) {
+		mgmt_err(lro, "Unable to identify device root port for card %d",
+		       lro->instance);
+		err = -ENODEV;
+		goto failed;
+	}
+
+	ep_name = pdev->bus->name;
+	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
+		lro->instance, ep_name,
+		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
+
+	xocl_thread_stop(lro);
+
+	xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_HWMON_SDM);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_UARTLITE);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_FLASH);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AXIGATE);
+
+	xocl_pci_save_config_all(lro);
+
+	/* Mask the Correctable Error Reporting Enable bit.
+	 * This is required to mask the correctable errors reported by device
+	 * during system reset 
+	 */
+	pcie_capability_read_word(pdev->bus->self, PCI_EXP_DEVCTL, &devctl);
+    pcie_capability_write_word(pdev->bus->self, PCI_EXP_DEVCTL, (devctl & ~PCI_EXP_DEVCTL_CERE));
+
+	/* Disable the Hotplug Interrupt bit to avoid device slot disable during system reset */
+	pcie_capability_read_word(pdev->bus->self, PCI_EXP_SLTCTL, &slot_ctrl);
+	if (slot_ctrl != (u16) ~0) {
+		slot_ctrl_orig = slot_ctrl;
+		slot_ctrl &= ~(PCI_EXP_SLTCTL_HPIE);
+		pcie_capability_write_word(pdev->bus->self, PCI_EXP_SLTCTL, slot_ctrl);
+	}
+	/* Send XGQ command to VMR to perform EEMI PMC based system reset */
+	err = xocl_vmr_eemi_pmc_srst(lro);
+	if (err) {
+		mgmt_err(lro, "EMMI PMC SRST Failed. err: %ld", err);
+		goto failed;
+	}
+	/* Offline the XGQ subdev here as this is required to process the above SRST XGQ command */
+	(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_XGQ_VMR);
+
+	pci_disable_device(pdev);
+
+	/* Restore the device control register info */
+	pcie_capability_write_word(pdev->bus->self, PCI_EXP_DEVCTL, devctl);
+	/* Restore the slot control register info */
+	if (!slot_ctrl_orig)
+		pcie_capability_write_word(pdev->bus->self, PCI_EXP_SLTCTL, slot_ctrl_orig);
+
+	msleep(100);
+	if (pci_enable_device(pdev))
+		mgmt_err(lro, "failed to enable pci device");
+	xocl_wait_pci_status(pdev, 0, 0, 0);
+
+	xocl_pci_restore_config_all(lro);
+
+	xclmgmt_config_pci(lro);
+
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AF);
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_FLASH);
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_UARTLITE);
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_XGQ_VMR);
+	(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_HWMON_SDM);
+
+	/* Workaround for some DSAs. Flush axilite busses */
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+		platform_axilite_flush(lro);
+
+	/*
+	 * Check firewall status. Status should be 0 (cleared)
+	 * Otherwise issue message that a warm reboot is required.
+	 */
+	msleep(20);
+	while (retry++ < XCLMGMT_RESET_MAX_RETRY && xocl_af_check(lro, NULL)) {
+		xocl_af_clear(lro);
+		msleep(20);
+	}
+
+	if (retry >= XCLMGMT_RESET_MAX_RETRY) {
+		mgmt_err(lro, "Board is not able to recover by PCI Hot reset. "
+			"Please warm reboot");
+		return -EIO;
+	}
+
+	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
+
+	/* Workaround for some DSAs. Flush axilite busses */
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+		platform_axilite_flush(lro);
+
+	lro->reset_requested = false;
+	xocl_thread_start(lro);
+
+	xocl_clear_pci_errors(lro);
+	store_pcie_link_info(lro);
+
+	/*
+	 * Update the userspace fdt with the current values in the mgmt driver
+	 *
+	 * For vmr supported versal devices, we enabled A/B boot, thus we should
+	 * reload fdt from the right boot image instead of using unchanged fdt
+	 * for other ALEVO devices.
+	 */
+	mutex_lock(&lro->busy_mutex);
+	(void) xclmgmt_reload_fdt_blob_vmr(lro);
+	(void) xclmgmt_update_userpf_blob(lro);
+	mutex_unlock(&lro->busy_mutex);
+
+	xclmgmt_connect_notify(lro, true);
+
+	return 0;
+
+failed:
+	return err;
+}
+
+/**
  * Perform a PCIe secondary bus reset. Note: Use this method over pcie fundamental reset.
  * This method is known to work better.
  */
@@ -297,22 +436,11 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 	xocl_thread_stop(lro);
 
-	if (XOCL_DSA_EEMI_API_SRST(lro)) {
-		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
-		err = xocl_vmr_eemi_pmc_srst(lro);
-		if (err) {
-			mgmt_err(lro, "EMMI PMC SRST Failed. err: %ld", err);
-			goto failed;
-		}
-		return 0;
-	}
-	else {
-		err = xocl_enable_vmr_boot(lro);
-		if (err) {
-			mgmt_err(lro, "enable reset failed");
-			err = -ENODEV;
-			goto failed;
-		}
+	err = xocl_enable_vmr_boot(lro);
+	if (err) {
+		mgmt_err(lro, "enable reset failed");
+		err = -ENODEV;
+		goto failed;
 	}
 
 	if (!force && xrt_reset_syncup) {
