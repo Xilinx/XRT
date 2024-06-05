@@ -14,7 +14,15 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
 fi
 
 # Working variables
-XRT_PROG=xbutil2
+XRT_PROG=xrt-smi
+echo "----------------------------------------------------------------------"
+echo "                              WARNING:
+                xbutil has been renamed to xrt-smi
+        Please migrate to using xrt-smi instead of xbutil.
+
+    Commands, options, arguments and their descriptions can also be 
+                    reported via the --help option."
+echo "----------------------------------------------------------------------"
 
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0

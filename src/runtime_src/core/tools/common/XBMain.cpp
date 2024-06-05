@@ -30,7 +30,7 @@ void  main_(int argc, char** argv,
             const SubCmdsCollection &_subCmds,
             const boost::property_tree::ptree& configurations) 
 {
-  bool isUserDomain = boost::iequals(_executable, "xbutil"); 
+  bool isUserDomain = boost::iequals(_executable, "xrt-smi"); 
 
   // Global options
   bool bVerbose = false;

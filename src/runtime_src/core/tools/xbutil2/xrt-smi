@@ -14,7 +14,7 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
 fi
 
 # Working variables
-XRT_PROG=xbutil2
+XRT_PROG=xrt-smi
 
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
