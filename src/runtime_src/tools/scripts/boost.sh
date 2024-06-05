@@ -4,6 +4,11 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 
+# Get directory path of this XRT ROOT
+THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
+THIS_SCRIPT_DIR=$(dirname "$THIS_SCRIPT")
+XRT_BUILD_DIR=`readlink -f $THIS_SCRIPT_DIR/../../../../build`
+
 usage()
 {
     echo "Usage: boost.sh [options] [<version>]"
@@ -16,11 +21,12 @@ usage()
     echo "Version defaults to boost-1.71.0"
     echo ""
     echo "[-help]                    List this help"
-    echo "[-prefix <path>]           Prefix for install and srcdir (default: $PWD/boost)"
-    echo "[-install <path>]          Path to install directory (default: $PWD/boost/xrt)"
-    echo "[-srcdir <path>]           Directory for boost sources (default: $PWD/boost/build)"
+    echo "[-prefix <path>]           Prefix for install and srcdir (default: $XRT_BUILD_DIR/boost)"
+    echo "[-install <path>]          Path to install directory (default: $XRT_BUILD_DIR/boost/xrt)"
+    echo "[-srcdir <path>]           Directory for boost sources (default: $XRT_BUILD_DIR/boost/build)"
     echo "[-noclone]                 Don't clone fresh, use exist 'srcdir'"
     echo "[-nobuild]                 Don't build boost, just exit with message"
+    echo "[-force]                   Run script in non interactive mode"
     echo ""
     echo "Clone, build, and install boost"
     echo "% boost.sh -prefix $HOME/tmp/boost"
@@ -35,11 +41,12 @@ usage()
 }
 
 version="boost-1.71.0"
-prefix=$PWD/boost
+prefix=$XRT_BUILD_DIR/boost
 srcdir=$prefix/build
 install=$prefix/xrt
 noclone=0
 nobuild=0
+force=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -71,6 +78,10 @@ while [ $# -gt 0 ]; do
             nobuild=1
             shift
             ;;
+	-force)
+	    force=1
+	    shift
+	    ;;
         *)
             version=$1
             shift
@@ -101,12 +112,14 @@ if [[ $nobuild == 0 ]] ; then
     echo "Building Boost from '$srcdir' and installing in '$install'"
 fi
 
-read -p "Ok to continue (Y/n): " answer
-answer=${answer:-Y}
-echo $answer
-if [[ $answer != "Y" ]]; then
-    echo "exiting ..."
-    exit 1
+if [[ $force == 0 ]] ; then
+    read -p "Ok to continue (Y/n): " answer
+    answer=${answer:-Y}
+    echo $answer
+    if [[ $answer != "Y" ]]; then
+        echo "exiting ..."
+        exit 1
+    fi
 fi
 
 # Clone
@@ -126,7 +139,7 @@ if [[ $nobuild == 0 ]]; then
     fi
 
     ./bootstrap.sh > /dev/null
-    ./b2 -a -d+2 cxxflags="-std=gnu++14 -fPIC" -j6 install --prefix=$install link=static --with-filesystem --with-program_options --with-system --layout=tagged
+    ./b2 -a -d+2 cxxflags="-std=c++17 -fPIC" -j6 install --prefix=$install link=static --with-filesystem --with-program_options --with-system --layout=tagged
 
     # copy _mt-x64.a to .a, to faciliate linking with -lboost_<lib>
     for f in $(find $install/lib -type f -name *-mt-x64.a); do
