@@ -475,12 +475,9 @@ jobs:
     if: ${{ always() }} && contains(needs.*.result, 'failure') 
     steps:
       - name: Send GitHub trigger to Slack Workflow Builder
-        uses: actions-ext/slackapi-slack-github-action@v1.19.0
+        uses: 8398a7/action-slack@v3  
         with:
-          payload: |
-            {
-                "Build Type": "Nila Artifactory Publish",
-                "ta_status": "${{ job.status }}"
-            }
+          status: ${{ job.status }}  
+          fields: repo,message,commit,author,action
         env:
           SLACK_WEBHOOK_URL: " ${{ secrets.SLACK_WEBHOOK_URL }}"
