@@ -128,25 +128,57 @@ public:
   bool wait() override;
 };
 
-template<class T>
+// copy command for copying data from/to host buffer
 class copy_buffer : public command
 {
 public:
-  //copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> vec, size_t size, size_t offset);
-  //copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, T host_buf, size_t size, size_t offset);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* host_buf, size_t size, size_t offset)
+      : command(command::type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_buffer(host_buf), copy_size(size), dev_offset(offset)
+  {}
   bool submit() override;
   bool wait() override;
 
-private:
-  xclBOSyncDirection cdirection;
-  std::shared_ptr<memory> buffer;
-  T host_buffer;
-  //void* host_ptr;
-  //std::shared_ptr<std::vector<T>> host_vec;
+protected:
+  xclBOSyncDirection cdirection; // copy direction
+  std::shared_ptr<memory> buffer; // device buffer
+  void* host_buffer;
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
+};
+
+
+// copy command for copying data from a read only host source of type shared_ptr
+template<class T>
+class copy_shared_host_buffer : public copy_buffer
+{
+public:
+  copy_shared_host_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> shared_host_buf, size_t size, size_t offset)
+    : copy_buffer(s, direction, buf, nullptr, size, offset), shared_host_buffer(std::move(shared_host_buf))
+  {
+  }
+
+  bool submit() override
+  {
+    switch (cdirection)
+    {
+    case XCL_BO_SYNC_BO_TO_DEVICE:
+      handle = std::async(std::launch::async, &memory::write, buffer, shared_host_buffer->data(), copy_size, 0, dev_offset);
+      break;
+
+    case XCL_BO_SYNC_BO_FROM_DEVICE:
+      throw std::runtime_error("host_buffer is invalid destination");
+      break;
+
+    default:
+      break;
+    };
+
+    return true;
+  }
+
+private:
+  std::shared_ptr<std::vector<T>> shared_host_buffer;
 };
 
 // Global map of commands

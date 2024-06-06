@@ -225,7 +225,7 @@ namespace xrt::core::hip
    
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer<void*>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
+                                std::make_shared<copy_buffer>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, src, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -252,7 +252,7 @@ namespace xrt::core::hip
 
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_buffer<std::shared_ptr<std::vector<T>>>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, vec, size, offset));
+                                std::make_shared<copy_shared_host_buffer<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, vec, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 } // xrt::core::hip
@@ -357,7 +357,7 @@ hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t size, hipStream_t strea
 hipError_t
 hipMemsetAsync(void* dst, int value, size_t size, hipStream_t stream)
 {
-  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, value, size, stream); });
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_memset_async<std::uint8_t>(dst, static_cast<std::uint8_t>(value), size, stream); });
 }
 
 // Fills the memory area pointed to by dev with the constant integer value for specified number of times.
