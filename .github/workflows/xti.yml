@@ -474,8 +474,8 @@ jobs:
     needs: [build]
     runs-on: [self-hosted, Ubuntu-22.04]
     # if: always() || contains(needs.*.result, 'failure') && ${{ github.event_name != 'pull_request' }} 
-    if: always() || (contains(needs.*.result, 'failure') && github.event_name != 'pull_request') 
+    if: (always() || contains(needs.*.result, 'failure')) && github.event_name != 'pull_request'
     steps:
       - name: Send GitHub trigger to Slack Workflow Builder
-        run: echo "testing conditions"
+        run: echo "${{ needs.*.result }}"
 
