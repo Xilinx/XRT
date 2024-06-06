@@ -6,8 +6,9 @@ env:
   ENV: 'test' 
 
 on:
-  pull_request_target:
-    types: [opened, edited, synchronize, labeled]
+  # pull_request_target:
+  workflow_call:
+    # types: [opened, edited, synchronize, labeled]
 
 concurrency:  
   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
