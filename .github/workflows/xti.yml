@@ -477,5 +477,5 @@ jobs:
     if: (always() || contains(needs.*.result, 'failure')) && github.event_name != 'pull_request'
     steps:
       - name: Send GitHub trigger to Slack Workflow Builder
-        run: echo "${{ needs.*.result }}"
+        run: echo "${{ needs.build.result }}"
 
