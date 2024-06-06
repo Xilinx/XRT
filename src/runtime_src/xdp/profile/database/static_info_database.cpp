@@ -280,7 +280,7 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     for (const auto& device : deviceInfo) {
-      for (auto config : device.second->getLoadedConfigs()) {
+      for (const auto& config : device.second->getLoadedConfigs()) {
 
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
@@ -626,13 +626,13 @@ namespace xdp {
     return config->getXclbinNames();
   }
 
-  std::vector<ConfigInfo*> VPStaticDatabase::getLoadedConfigs(uint64_t deviceId)
+  const std::vector<std::unique_ptr<ConfigInfo>>& VPStaticDatabase::getLoadedConfigs(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
     if (deviceInfo.find(deviceId) == deviceInfo.end()) {
-      // std::vector<XclbinInfo*> blank ;
-      return {} ;
+      static const std::vector<std::unique_ptr<xdp::ConfigInfo>> emptyVector;
+      return emptyVector;
     }
     return deviceInfo[deviceId]->getLoadedConfigs() ;
   }
@@ -761,7 +761,7 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return false ;
 
-    for (auto config : deviceInfo[deviceId]->getLoadedConfigs()) {
+    for (const auto& config : deviceInfo[deviceId]->getLoadedConfigs()) {
       XclbinInfo* xclbin = config->getAieXclbin();
       if (!xclbin)
         continue ;

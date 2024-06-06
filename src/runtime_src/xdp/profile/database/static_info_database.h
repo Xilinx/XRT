@@ -270,7 +270,7 @@ namespace xdp {
     XDP_CORE_EXPORT void setKernelMaxWriteBW(uint64_t deviceId, double bw) ;
     XDP_CORE_EXPORT double getKernelMaxWriteBW(uint64_t deviceId) ;
     XDP_CORE_EXPORT std::string getXclbinName(uint64_t deviceId) ;
-    XDP_CORE_EXPORT std::vector<ConfigInfo*> getLoadedConfigs(uint64_t deviceId) ;
+    XDP_CORE_EXPORT const std::vector<std::unique_ptr<ConfigInfo>>& getLoadedConfigs(uint64_t deviceId) ;
     XDP_CORE_EXPORT ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId) ;
     XDP_CORE_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added

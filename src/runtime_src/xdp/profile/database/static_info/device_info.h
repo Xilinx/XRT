@@ -67,7 +67,7 @@ namespace xdp {
     // *******************************************************************
     // ****** Information specific to all previously loaded XCLBINs ******
     // *******************************************************************
-    std::vector<ConfigInfo*> loadedConfigInfos ;
+    std::vector<std::unique_ptr<ConfigInfo>> loadedConfigInfos ;
 
     // Our AMs don't currently support profiling kernels that were compiled
     //  as multiple context kernels.  We call the XRT function
@@ -95,7 +95,7 @@ namespace xdp {
     XDP_CORE_EXPORT xrt_core::uuid currentXclbinUUID() ;
 
     // ****** Functions for information on the device for the current config ******
-    inline std::vector<ConfigInfo*> getLoadedConfigs() const { return loadedConfigInfos ;}
+    const std::vector<std::unique_ptr<ConfigInfo>>& getLoadedConfigs() const { return loadedConfigInfos ;}
     XDP_CORE_EXPORT ConfigInfo* currentConfig() const ;
     XDP_CORE_EXPORT void cleanCurrentXclbinInfo(XclbinInfoType type);
     inline bool isNoDMA() const { return isNoDMADevice ; }

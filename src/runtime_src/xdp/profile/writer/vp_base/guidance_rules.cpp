@@ -75,8 +75,8 @@ namespace {
     else {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos();
       for (auto device : deviceInfos) {
-        auto loadedConfigs = device->getLoadedConfigs();
-        for (auto config : loadedConfigs) {
+        auto& loadedConfigs = device->getLoadedConfigs();
+        for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
           if(!xclbin)
             continue;
@@ -123,8 +123,8 @@ namespace {
 
     auto deviceInfos = db->getStaticInfo().getDeviceInfos();
     for (auto device : deviceInfos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         xdp::XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -182,8 +182,8 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
 
       for (auto device : deviceInfos) {
-        auto loadedConfigs = device->getLoadedConfigs();
-        for (auto config : loadedConfigs) {
+        auto& loadedConfigs = device->getLoadedConfigs();
+        for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
           if(!xclbin)
             continue;
@@ -208,8 +208,8 @@ namespace {
     else {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos();
       for (auto device : deviceInfos) {
-        auto loadedConfigs = device->getLoadedConfigs();
-        for (auto config : loadedConfigs) {
+        auto& loadedConfigs = device->getLoadedConfigs();
+        for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
           if(!xclbin)
             continue;
@@ -245,8 +245,8 @@ namespace {
     else {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
-        auto loadedConfigs = device->getLoadedConfigs();
-        for (auto config : loadedConfigs) {
+        auto& loadedConfigs = device->getLoadedConfigs();
+        for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
           if(!xclbin)
             continue;
@@ -349,8 +349,8 @@ namespace {
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
 
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         xdp::XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -392,8 +392,8 @@ namespace {
     else {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
-        auto loadedConfigs = device->getLoadedConfigs();
-        for (auto config : loadedConfigs) {
+        auto& loadedConfigs = device->getLoadedConfigs();
+        for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
           if(!xclbin)
             continue;
@@ -442,8 +442,8 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
 
       for (auto device : deviceInfos) {
-        auto loadedConfigs = device->getLoadedConfigs();
-        for (auto config : loadedConfigs) {
+        auto& loadedConfigs = device->getLoadedConfigs();
+        for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
           if(!xclbin)
             continue;
@@ -490,8 +490,8 @@ namespace {
     bool done = false ;
 
     for (auto device : deviceInfos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         xdp::XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;

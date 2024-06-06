@@ -80,10 +80,11 @@ namespace xdp {
   void DeviceTraceWriter::writeLoadedXclbinsStructure()
   {
     uint32_t rowCount = 0;
-    std::vector<ConfigInfo*> configs =
+    //std::vector<ConfigInfo*> configs =
+    auto& configs =
       (db->getStaticInfo()).getLoadedConfigs(deviceId);
     
-    for(auto config : configs) {
+    for(const auto& config : configs) {
         std::string configXclbinNames = config->getXclbinNames();
         fout << "Group_Start," << configXclbinNames << "\n";
         XclbinInfo* xclbin = config->getPlXclbin();
@@ -323,14 +324,14 @@ namespace xdp {
     fout << "EVENTS\n";
     auto DeviceEvents = db->getDynamicInfo().moveDeviceEvents(deviceId);
 
-    std::vector<ConfigInfo*> loadedConfigs =
+    auto& loadedConfigs =
       (db->getStaticInfo()).getLoadedConfigs(deviceId);
     if (loadedConfigs.size() <= 0) {
       return;
     }
 
     int configIndex = 0;
-    ConfigInfo* config = loadedConfigs[configIndex];
+    ConfigInfo* config = loadedConfigs[configIndex].get();
     XclbinInfo* xclbin = config->getPlXclbin();
     if(!xclbin)
       return;
@@ -346,7 +347,7 @@ namespace xdp {
         // If we hit the end of an xclbin's execution, then increment xclbins
         configIndex++;
         if(configIndex < static_cast<int>(loadedConfigs.size())) {
-          config = loadedConfigs[configIndex];
+          config = loadedConfigs[configIndex].get();
           xclbin = config->getPlXclbin();
         }
         // TODO: Check if expect invalid PL xclbin here?
@@ -439,10 +440,10 @@ namespace xdp {
 
   void DeviceTraceWriter::initialize()
   {
-    std::vector<ConfigInfo*> loadedConfigs =
+    auto& loadedConfigs =
       (db->getStaticInfo()).getLoadedConfigs(deviceId);
 
-    for (auto config : loadedConfigs) {
+    for (const auto& config : loadedConfigs) {
       XclbinInfo* xclbin = config->getPlXclbin();
       if(!xclbin)
         continue;

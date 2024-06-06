@@ -45,8 +45,8 @@ namespace {
       return false;
 
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for(auto cfg : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for(const auto& cfg : loadedConfigs) {
         for (auto xclbin : cfg->currentXclbins) {
           if(!xclbin->pl.valid)
             continue;
@@ -536,8 +536,8 @@ namespace xdp {
     for (auto device : infos) {
       uint64_t deviceId = device->deviceId;
 
-      auto loadedConfigs = device->getLoadedConfigs();
-      for(auto cfg : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for(const auto& cfg : loadedConfigs) {
 
 	      xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(deviceId, cfg->getConfigUuid());
@@ -603,8 +603,8 @@ namespace xdp {
       uint64_t deviceId = device->deviceId;
 
       // For every xclbin that was loaded on this device
-      std::vector<ConfigInfo*> loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -694,8 +694,8 @@ namespace xdp {
 
     for (auto device : infos)
     {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto cfg : loadedConfigs)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& cfg : loadedConfigs)
       {
         xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, cfg->getConfigUuid()) ;
         
@@ -957,8 +957,8 @@ namespace xdp {
 
     bool printTable = false ;
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
 
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
@@ -1004,8 +1004,8 @@ namespace xdp {
 
     for (auto device : infos)
     {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs)
       {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
@@ -1109,8 +1109,8 @@ namespace xdp {
 
     for (auto device : infos)
     {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs)
       {
       
       XclbinInfo* xclbin = config->getPlXclbin();
@@ -1232,8 +1232,8 @@ namespace xdp {
     printTable = false ;
     for (auto device : infos) {
 
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
@@ -1277,8 +1277,8 @@ namespace xdp {
          << "\n" ;
 
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -1367,8 +1367,8 @@ namespace xdp {
 
     bool hasMemoryMonitors = false ;
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
 
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
@@ -1401,8 +1401,8 @@ namespace xdp {
          << "Average latency in ns of each transaction\n" ;
 
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -1463,8 +1463,8 @@ namespace xdp {
     if (infos.size() == 0) return ;
     bool printTable = false ;
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -1503,8 +1503,8 @@ namespace xdp {
          << "\n" ;
 
     for (auto device : infos) {
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -1657,8 +1657,8 @@ namespace xdp {
     std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos();
     for (auto device : infos) {
       // TODO: Iterate on each config instead.
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
           continue;
@@ -1766,8 +1766,8 @@ namespace xdp {
     {
       uint64_t deviceId = device->deviceId ;
 
-      auto loadedConfigs = device->getLoadedConfigs();
-      for (auto config : loadedConfigs)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs)
       {
         XclbinInfo* xclbin = config->getPlXclbin();
         if(!xclbin)
