@@ -133,7 +133,7 @@ public:
   /**
    * ~hw_context() - Destructor
    */
-  XCL_DRIVER_DLLESPEC
+  XRT_API_EXPORT
   ~hw_context();
 
   /**
