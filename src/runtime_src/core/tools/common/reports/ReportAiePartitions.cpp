@@ -104,11 +104,9 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
     const std::vector<Table2D::HeaderData> table_headers = {
       {"Context ID", Table2D::Justification::left},
-      {"Xclbin UUID", Table2D::Justification::left},
       {"Submissions", Table2D::Justification::left},
       {"Completions", Table2D::Justification::left},
       {"Migrations", Table2D::Justification::left},
-      {"Preemptions", Table2D::Justification::left},
     };
     Table2D context_table(table_headers);
 
@@ -120,11 +118,9 @@ writeReport(const xrt_core::device* /*_pDevice*/,
 
       const std::vector<std::string> entry_data = {
         hw_context.get<std::string>("context_id"),
-        hw_context.get<std::string>("xclbin_uuid"),
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),
-        hw_context.get<std::string>("migrations"),
-        hw_context.get<std::string>("preemptions")
+        hw_context.get<std::string>("migrations")
       };
       context_table.addEntry(entry_data);
     }
