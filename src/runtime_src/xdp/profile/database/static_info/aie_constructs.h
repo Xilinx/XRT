@@ -50,8 +50,7 @@ namespace xdp::aie {
 
 namespace xdp {
 
-
-enum class module_type {
+  enum class module_type : uint8_t {
     core = 0,
     dma,
     shim,
@@ -59,18 +58,23 @@ enum class module_type {
     num_types
   };
 
+  enum class io_type : uint8_t {
+    PLIO,
+    GMIO
+  };
+
   struct tile_type
-  { 
+  {
     uint8_t  row;
     uint8_t  col;
-    uint8_t  subtype;
     uint8_t  stream_id;
     uint8_t  is_master;
     uint64_t itr_mem_addr;
     bool     active_core;
     bool     active_memory;
     bool     is_trigger;
-    
+    io_type  subtype;
+
     bool operator==(const tile_type &tile) const {
       return (col == tile.col) && (row == tile.row);
     }
@@ -88,7 +92,7 @@ enum class module_type {
   };
 
   struct io_config
-  { 
+  {
     // Object id
     int id;
     // Variable name
@@ -105,9 +109,9 @@ enum class module_type {
     uint8_t channelNum;
     // Burst length
     uint8_t burstLength;
-    // I/O type - 0:PLIO, 1:GMIO
-    uint8_t type;
-  };  
+    // I/O type
+    io_type type;
+  };
 
   /*
    * Represents AIE counter configuration for a single counter

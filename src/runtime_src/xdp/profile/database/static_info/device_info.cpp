@@ -18,6 +18,7 @@
 #define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/static_info/device_info.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/device/device_intf.h"
@@ -318,13 +319,13 @@ namespace xdp {
       return ;
 
     switch (moduleType) {
-    case 0:
+    case static_cast<int>(module_type::core):
       xclbin->aie.aieCoreCountersMap[numCounters] = numTiles ;
       break ;
-    case 1:
+    case static_cast<int>(module_type::dma):
       xclbin->aie.aieMemoryCountersMap[numCounters] = numTiles ;
       break ;
-    case 2:
+    case static_cast<int>(module_type::shim):
       xclbin->aie.aieShimCountersMap[numCounters] = numTiles ;
       break ;
     default:

@@ -931,7 +931,7 @@ namespace xdp {
       }
 
       // Check for PLIO tiles and it's compatible metric settings
-      if ((tileMetric.first.subtype == 0) && isGMIOMetric(tileMetric.second)) {
+      if ((tileMetric.first.subtype == io_type::PLIO) && isGMIOMetric(tileMetric.second)) {
         if (showWarningGMIOMetric) {
           std::string msg = "Configured interface_tile metric set " + tileMetric.second 
                           + " is only applicable for GMIO type tiles.";
