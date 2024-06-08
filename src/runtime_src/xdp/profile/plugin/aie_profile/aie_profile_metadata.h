@@ -132,6 +132,8 @@ class AieProfileMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
+
+    const AIEProfileFinalConfig& getAIEProfileConfig() const ;
 };
 
 } // end XDP namespace

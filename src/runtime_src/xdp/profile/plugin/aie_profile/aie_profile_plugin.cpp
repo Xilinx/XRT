@@ -166,6 +166,8 @@ namespace xdp {
       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
     }
 
+    (db->getStats()).saveProfileConfig(AIEData.metadata->getAIEProfileConfig());
+
 
 // Open the writer for this device
 auto time = std::time(nullptr);
