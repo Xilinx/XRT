@@ -52,7 +52,7 @@ namespace xdp {
 
     fout << "HEADER"<<"\n";
     fout << "File Version," <<fileVersion << "\n";
-    fout << "Target device: " << mDeviceName << "\n";
+    fout << "Target device," << mDeviceName << "\n";
     fout << "Hardware generation," << static_cast<int>(aieGeneration) << "\n";
 
     // Grab AIE clock freq from first counter in metadata
@@ -97,7 +97,7 @@ namespace xdp {
     for(auto &setting : aieTileMetrics)
       fout << setting << "\n";
 
-    fout << "# AIE tile metric sets:" << "\n";
+    fout << "# Memory tile metric sets:" << "\n";
     for(auto &setting : memTileMetrics)
       fout << setting << "\n";
 
