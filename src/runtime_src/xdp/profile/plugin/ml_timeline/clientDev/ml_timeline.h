@@ -17,6 +17,8 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 
+#include "core/common/api/bo_int.h"
+
 #include "xdp/config.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 
@@ -24,6 +26,8 @@ namespace xdp {
 
   class MLTimelineClientDevImpl : public MLTimelineImpl
   {
+    xrt::bo  mResultBO;
+
     public :
       MLTimelineClientDevImpl(VPDatabase* dB);
 

@@ -79,6 +79,7 @@ namespace xdp {
     DeviceDataEntry.valid = true;
     DeviceDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
     DeviceDataEntry.implementation->setHwContext(hwContext);
+    DeviceDataEntry.implementation->setBufSize(0x20000);  // 128KB
     DeviceDataEntry.implementation->updateDevice(mHwCtxImpl);
 #endif
   }

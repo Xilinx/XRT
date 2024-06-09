@@ -25,10 +25,10 @@ namespace xdp {
 
   class MLTimelineImpl
   {
-
     protected :
       VPDatabase* db = nullptr;
       xrt::hw_context mHwContext;
+      uint32_t mBufSz;
 
     public:
       MLTimelineImpl(VPDatabase* dB)
@@ -45,6 +45,11 @@ namespace xdp {
       void setHwContext(xrt::hw_context ctx)
       {
         mHwContext = std::move(ctx);
+      }
+      
+      void setBufSize(uint32_t sz)
+      {
+        mBufSz = sz;
       }
   };
 
