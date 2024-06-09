@@ -29,6 +29,7 @@ namespace xdp {
 
       ~MLTimelineClientDevImpl() = default;
 
+      virtual void updateDevice(void* hwCtxImpl);
       virtual void finishflushDevice(void* hwCtxImpl);
   };
 

@@ -39,6 +39,10 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Created ML Timeline Plugin for Client Device.");
   }
 
+  void MLTimelineClientDevImpl::updateDevice(void* /*hwCtxImpl*/)
+  {
+  }
+
   void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
   {
     xrt::kernel instKernel;
