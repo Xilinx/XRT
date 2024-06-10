@@ -23,8 +23,10 @@
 #include <fstream>
 #include <regex>
 
+#include "core/common/api/bo_int.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -33,8 +35,31 @@
 
 namespace xdp {
 
+  class ResultBOContainer
+  {
+    public:
+      xrt::bo  mBO;
+      ResultBOContainer(xrt::hw_context hwCtx, uint32_t sz)
+      {
+        mBO = xrt_core::bo_int::create_debug_bo(hwCtx, sz);
+      }
+      ~ResultBOContainer() {}
+
+      void 
+      syncFromDevice()
+      {
+        mBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+      }
+      uint32_t*
+      map()
+      {
+        return mBO.map<uint32_t>();
+      }
+  };
+
   MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
-    : MLTimelineImpl(dB)
+    : MLTimelineImpl(dB),
+      mResultBOHolder(nullptr)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Created ML Timeline Plugin for Client Device.");
@@ -45,8 +70,9 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineClientDevImpl::updateDevice");
     try {
-      obj->mResultBO = xrt_core::bo_int::create_debug_bo(mHwContext, mBufSz);
-      
+
+      mResultBOHolder = new ResultBOContainer(mHwContext, mBufSz);
+
     } catch (std::exception& e) {
       std::stringstream msg;
       msg << "Unable to create result buffer of size "
@@ -64,10 +90,9 @@ namespace xdp {
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Using Allocated buffer In MLTimelineClientDevImpl::finishflushDevice");
-    obj->mResultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    
-    auto resultBOMap = obj->mResultBO.map<uint8_t*>();
-    uint32_t* ptr = reinterpret_cast<uint32_t*>(resultBOMap);
+              
+    mResultBOHolder->syncFromDevice();    
+    uint32_t* ptr = mResultBOHolder->map();
       
     boost::property_tree::ptree ptTop;
     boost::property_tree::ptree ptHeader;
@@ -138,6 +163,9 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Finished writing record_timer_ts.json in MLTimelineClientDevImpl::finishflushDevice");
 
+    // Destroy the Result BO
+    delete mResultBOHolder;
+    mResultBOHolder = nullptr;
   }
 }
 
