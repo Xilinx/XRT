@@ -53,7 +53,7 @@ namespace xdp {
       uint32_t*
       map()
       {
-        return mBO.map<uint32_t>();
+        return mBO.map<uint32_t*>();
       }
   };
 
