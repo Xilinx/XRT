@@ -346,10 +346,18 @@ namespace xdp {
     if (!config)
       return PL ? 300.0 : 1000.0 ;
 
-    if (PL)
-      return config->getPlXclbin()->pl.clockRatePLMHz ;
-    else
-      return config->getAieXclbin()->aie.clockRateAIEMHz ;
+    if (PL) {
+      XclbinInfo* xclbin = config->getPlXclbin();
+      if (!xclbin)
+        return 300.0 ;
+      return xclbin->pl.clockRatePLMHz ;
+    }
+    else {
+      XclbinInfo* xclbin = config->getAieXclbin();
+      if (!xclbin)
+        return 1000.0 ;
+      return xclbin->aie.clockRateAIEMHz ;
+    }
   }
 
   double VPStaticDatabase::getPLMaxClockRateMHz(uint64_t deviceId)
@@ -360,11 +368,15 @@ namespace xdp {
     //  defaults.  300 MHz for PL clock rate.
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return 300.0;
-
-    //TODO : update APIs here.
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    
+    ConfigInfo* config = deviceInfo[deviceId]->currentConfig();
+    if (!config)
+      return 300.0;
+  
+    XclbinInfo* xclbin = config->getPlXclbin();
     if (!xclbin)
       return 300.0;
+
     //We will consider the clock rate of the Compute Unit with the highest Clock Frequency
     double plClockFreq = 0;
       for (const auto& cu : xclbin->pl.cus) {
@@ -448,9 +460,15 @@ namespace xdp {
 
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return nullptr;
-    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
-    if (xclbin == nullptr)
+
+    ConfigInfo* config = deviceInfo[deviceId]->currentConfig();
+    if (!config)
       return nullptr;
+
+    XclbinInfo* xclbin = config->getPlXclbin();
+    if(!xclbin)
+      return nullptr;
+
     if (xclbin->deviceIntf != nullptr)
       return xclbin->deviceIntf;
 
@@ -723,6 +741,7 @@ namespace xdp {
     XclbinInfo* xclbin = currentConfig->getPlXclbin();
     if(!xclbin)
       return;
+
     size_t count = 0 ;
     for (auto mon : xclbin->pl.ams) {
       if (count >= size)
@@ -2003,6 +2022,7 @@ namespace xdp {
                               "Attempt to initialize an AIM without a loaded xclbin") ;
       return ;
     }
+
     XclbinInfo* xclbin = config->getPlXclbin() ;
     if(!xclbin) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
@@ -2103,10 +2123,10 @@ namespace xdp {
     }
 
     XclbinInfo* xclbin = config->getPlXclbin() ;
-    if(!xclbin) {
+    if (!xclbin) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                               "Attempt to initialize an ASM without a loaded PL xclbin") ;
-      return;
+      return ;
     }
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
@@ -2225,7 +2245,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = config->getAieXclbin() ;
-    if(!xclbin)
+    if (!xclbin)
       xclbin = config->getPlXclbin() ;
 
     // TS2MM IP for either AIE PLIO or PL trace offload
@@ -2244,7 +2264,7 @@ namespace xdp {
       return ;
 
     XclbinInfo*  xclbin = config->getPlXclbin() ;
-    if(!xclbin)
+    if (!xclbin)
       return;
     xclbin->pl.usesFifo = true ;
   }

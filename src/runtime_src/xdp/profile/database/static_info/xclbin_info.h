@@ -199,8 +199,8 @@ namespace xdp {
     ConfigInfo(XclbinInfo* xclbin) ;
     ~ConfigInfo() ;
 
-    std::vector<xrt_core::uuid> getConfigUuids() ;
     xrt_core::uuid getConfigUuid() ;
+    std::vector<xrt_core::uuid> getConfigUuids() ;
 
     void addXclbin(XclbinInfo* newXclbin) ;
     void updateType(ConfigInfoType cfgType) ; 
@@ -208,7 +208,7 @@ namespace xdp {
     bool containsXclbin(xrt_core::uuid& uuid) ; 
 
     XDP_CORE_EXPORT XclbinInfo* getPlXclbin() ;
-    XclbinInfo* getAieXclbin() ;
+    XDP_CORE_EXPORT XclbinInfo* getAieXclbin() ;
     XDP_CORE_EXPORT std::string getXclbinNames() ;
 
     bool isAiePlusPl() ;

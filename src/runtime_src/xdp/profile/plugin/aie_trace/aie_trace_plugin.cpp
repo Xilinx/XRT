@@ -119,7 +119,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   // Setting up struct
   auto &AIEData = handleToAIEData[handle];
   AIEData.deviceID = deviceID;
-  AIEData.valid = true; // initialize struct
   AIEData.devIntf = nullptr;
 
   // Update the static database with information from xclbin
@@ -149,6 +148,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
                             AIE_TRACE_TILES_UNAVAILABLE);
     return;
   }
+  AIEData.valid = true; // initialize struct
 
 #ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);

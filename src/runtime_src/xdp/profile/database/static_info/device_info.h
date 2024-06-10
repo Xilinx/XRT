@@ -105,7 +105,6 @@ namespace xdp {
     inline uint8_t getAIEGeneration() const { return aieGeneration ; }
 
     // ****** Functions for information on the currently loaded xclbin *******
-    XDP_CORE_EXPORT XclbinInfo* currentXclbin() ;
     XDP_CORE_EXPORT bool hasDMAMonitor() ;
     XDP_CORE_EXPORT bool hasDMABypassMonitor() ;
     XDP_CORE_EXPORT bool hasKDMAMonitor() ;

@@ -43,14 +43,6 @@ namespace xdp {
     return loadedConfigInfos.back()->getConfigUuid();
   }
 
-  XclbinInfo* DeviceInfo::currentXclbin()
-  {
-    if (loadedConfigInfos.size() <= 0)
-      return nullptr ;
-    return loadedConfigInfos.back()->currentXclbins.back();
-  }
-
-
   XclbinInfo* DeviceInfo::createXclbinFromLastConfig(XclbinInfoType xclbinQueryType)
   {
     XclbinInfo* requiredXclbinInfo = nullptr;
@@ -194,8 +186,8 @@ namespace xdp {
       if (cfg->hasXclbin(xclbin))
         num += cfg->getNumUserAMWithTrace(xclbin) ;
     }
-    return 0 ;
-     }
+    return num ;
+  }
 
   uint64_t DeviceInfo::getNumAIM(XclbinInfo* xclbin) const
   {

@@ -237,7 +237,7 @@ namespace xdp {
     std::vector<xrt_core::uuid> uuids;
     for(auto &xclbin : currentXclbins)
       uuids.push_back(xclbin->uuid);
-    
+
     return uuids;
   }
 
@@ -253,7 +253,7 @@ namespace xdp {
 
   bool ConfigInfo::containsXclbin(xrt_core::uuid& uuid)
   {
-    for(auto &xclbin : currentXclbins)
+    for(auto xclbin : currentXclbins)
     {
       if(xclbin->uuid == uuid)
         return true;
@@ -323,7 +323,7 @@ namespace xdp {
     bool ConfigInfo::hasFloatingAIMWithTrace(XclbinInfo* xclbin)
     {
       for(auto bin : currentXclbins)
-        if(bin == xclbin)
+        if(bin == xclbin && bin->pl.valid)
           return bin->pl.hasFloatingAIMWithTrace ;
 
       return false ;
@@ -332,7 +332,7 @@ namespace xdp {
     bool ConfigInfo::hasFloatingASMWithTrace(XclbinInfo* xclbin)
     {
       for(auto bin : currentXclbins)
-        if(bin == xclbin)
+        if(bin == xclbin && bin->pl.valid)
           return bin->pl.hasFloatingASMWithTrace ;
       
       return false ;
@@ -340,8 +340,8 @@ namespace xdp {
 
     uint64_t ConfigInfo::getNumAM(XclbinInfo* xclbin)
     {
-      for(auto &bin : currentXclbins)
-        if(bin == xclbin)
+      for(auto bin : currentXclbins)
+        if(bin == xclbin && bin->pl.valid)
           return bin->pl.ams.size() ;
       
       return 0;
