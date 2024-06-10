@@ -14,7 +14,6 @@
 
 #include "core/include/xrt/xrt_hw_context.h"
 
-
 extern "C" {
   #include <xaiengine.h>
   #include <xaiengine/xaiegbl_params.h>
@@ -46,6 +45,7 @@ namespace xdp {
       {module_type::mem_tile, "Memory Tile"}
     };
     
+    xrt::hw_context mHwContext;
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
     uint8_t* txn_ptr;
     XAie_DevInst aieDevInst = {0};

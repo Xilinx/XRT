@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include "core/common/api/bo_int.h"
 #include "core/common/api/hw_context_int.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -23,9 +24,6 @@ namespace xdp {
   namespace pt = boost::property_tree;
 
   bool AieDebugPlugin::live = false;
-
-  constexpr uint32_t size_4K   = 0x1000;
-  constexpr uint32_t offset_3K = 0x0C00;
 
   AieDebugPlugin::
   AieDebugPlugin() : XDPPlugin()
@@ -63,8 +61,8 @@ namespace xdp {
       return;
 
     // AIE Debug plugin is built only for client 
-    auto context = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
-    auto device = xrt_core::hw_context_int::get_core_device(context);
+    mHwContext = xrt_core::hw_context_int::create_hw_context_from_implementation(handle);
+    auto device = xrt_core::hw_context_int::get_core_device(mHwContext);
     auto deviceID = getDeviceIDFromHandle(handle);
     
     (db->getStaticInfo()).updateDeviceClient(deviceID, device);
@@ -82,7 +80,7 @@ namespace xdp {
     if (!metadataReader)
       return;
 
-    transactionHandler = std::make_unique<aie::ClientTransaction>(context, "AIE Debug");
+    transactionHandler = std::make_unique<aie::ClientTransaction>(mHwContext, "AIE Debug");
     xdp::aie::driver_config meta_config = getAIEConfigMetadata();
 
     XAie_Config cfg {
@@ -155,11 +153,7 @@ namespace xdp {
     for (int i = 0; i < op_profile_data.size(); i++)
       op->profile_data[i] = op_profile_data[i];
 
-    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-    // Profiling is 3rd custom OP
-    XAie_RequestCustomTxnOp(&aieDevInst);
-    XAie_RequestCustomTxnOp(&aieDevInst);
-    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
+
 
     // try {
     //   mKernel = xrt::kernel(context, "XDP_KERNEL");  
@@ -170,11 +164,6 @@ namespace xdp {
     //   return;
     // }
 
-    if (!transactionHandler->initializeKernel("XDP_KERNEL"))
-      return;
-
-    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
-    txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
 
 
     // op_buf instr_buf;
@@ -204,8 +193,13 @@ namespace xdp {
 
     XAie_ClearTransaction(&aieDevInst);
 
-    // Poll once at beginning
+  #if 0
+    /* For larger debug buffer support, only one Debug BO can be aliva at a time.
+     * Need ML Timeline Buffer to be created at update device to capture all calls.
+     * So, skip this poll
+     */
     poll();
+  #endif
   }
 
 
@@ -287,25 +281,37 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
     }
 
+    xrt::bo resultBO;
+    try {
+      resultBO = xrt_core::bo_int::create_debug_bo(mHwContext, 0x2000);
+    } catch (std::exception& e) {
+      std::stringstream msg;
+      msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug info. " << e.what() << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      return;
+    }
+
+        XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+    // Profiling is 3rd custom OP
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    XAie_RequestCustomTxnOp(&aieDevInst);
+    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
+
+    if (!transactionHandler->initializeKernel("XDP_KERNEL"))
+      return;
+
+    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
+    txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
+
+
     if (!transactionHandler->submitTransaction(txn_ptr))
       return;
-    auto result_bo = transactionHandler->syncResults();
-    if (!result_bo)
-      return;
 
-    // auto run = mKernel(CONFIGURE_OPCODE, instr_bo, instr_bo.size()/sizeof(int), 0, 0, 0, 0);
-    // try {
-    //   run.wait2();
-    // } catch (std::exception &e) {
-    //   std::stringstream msg;
-    //   msg << "Unable to successfully execute AIE Debug polling kernel. " << e.what() << std::endl;
-    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-    //   return;
-    // }
+    XAie_ClearTransaction(&aieDevInst);
 
-    auto result_bo_map = result_bo.map<uint8_t*>();
-
-    uint32_t* output = reinterpret_cast<uint32_t*>(result_bo_map+offset_3K);
+    resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    auto resultBOMap = resultBO.map<uint8_t*>();
+    uint32_t* output = reinterpret_cast<uint32_t*>(resultBOMap);
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;
