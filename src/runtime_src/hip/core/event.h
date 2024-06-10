@@ -141,14 +141,14 @@ public:
 protected:
   xclBOSyncDirection cdirection; // copy direction
   std::shared_ptr<memory> buffer; // device buffer
-  void* host_buffer;
+  void* host_buffer; // host buffer copy source/destination
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
 };
 
 
-// copy command for copying data from a read only host source of type shared_ptr
+// copy command for copying data from a read only host source of type shared_ptr<std::vector<uint8|uint16|uint32>>
 template<class T>
 class copy_shared_host_buffer : public copy_buffer
 {
@@ -167,7 +167,7 @@ public:
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
-      throw std::runtime_error("host_buffer is invalid destination");
+      throw std::runtime_error("host_buffer is an invalid destination");
       break;
 
     default:
@@ -178,7 +178,7 @@ public:
   }
 
 private:
-  std::shared_ptr<std::vector<T>> shared_host_buffer;
+  std::shared_ptr<std::vector<T>> shared_host_buffer; // host buffer copy source
 };
 
 // Global map of commands
