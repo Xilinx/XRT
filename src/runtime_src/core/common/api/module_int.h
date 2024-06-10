@@ -23,6 +23,10 @@ fill_ert_dpu_data(const xrt::module& module, uint32_t *payload);
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
 
+// Patch buffer address into control code at given argument
+void
+patch(const xrt::module&, const std::string& argnm, size_t index, uint64_t address);
+
 // Patch scalar into control code at given argument
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, const void* value, size_t size);
