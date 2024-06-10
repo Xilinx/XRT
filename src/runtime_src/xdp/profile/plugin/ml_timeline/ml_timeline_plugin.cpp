@@ -22,6 +22,7 @@
 
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
@@ -31,6 +32,34 @@ namespace xdp {
 
   bool MLTimelinePlugin::live = false;
 
+  uint32_t ParseMLTimelineBufferSizeConfig()
+  {
+    uint32_t bufSz = 0;
+    std::string szCfgStr = xrt_core::config::get_ml_timeline_buffer_size();
+    std::smatch subStr;
+
+    const std::regex validSzRegEx("\\s*([0-9]+)\\s*(K|k|M|m|)\\s*");
+    if (std::regex_match(szCfgStr, subStr, validSzRegEx)) {
+      try {
+        if ("K" == subStr[2] || "k" == subStr[2]) {
+          bufSz = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_kb;
+        } else if ("M" == subStr[2] || "m" == subStr[2]) {
+          bufSz = (uint32_t)std::stoull(subStr[1]) * uint_constants::one_mb;
+        }
+
+      } catch (const std::exception &e) {
+        std::stringstream msg;
+        msg << "Invalid string specified for ML Timeline Buffer Size. "
+            << e.what() << std::endl;
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      }
+
+    } else {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                "Invalid string specified for ML Timeline Buffer Size");
+    }
+  }
+
   MLTimelinePlugin::MLTimelinePlugin()
     : XDPPlugin()
   {
@@ -38,6 +67,8 @@ namespace xdp {
 
     db->registerPlugin(this);
     db->registerInfo(info::ml_timeline);
+
+    mBufSz = ParseMLTimelineBufferSizeConfig();
   }
 
   MLTimelinePlugin::~MLTimelinePlugin()
@@ -79,7 +110,7 @@ namespace xdp {
     DeviceDataEntry.valid = true;
     DeviceDataEntry.implementation = std::make_unique<MLTimelineClientDevImpl>(db);
     DeviceDataEntry.implementation->setHwContext(hwContext);
-    DeviceDataEntry.implementation->setBufSize(0x20000);  // 128KB
+    DeviceDataEntry.implementation->setBufSize(mBufSz);
     DeviceDataEntry.implementation->updateDevice(mHwCtxImpl);
 #endif
   }
