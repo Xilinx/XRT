@@ -24,6 +24,8 @@ void
 patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
 
 // Patch buffer address into control code at given argument
+// This API may be useful for developing unit test case at SHIM level where
+// you do not have access to an xrt::bo object.
 void
 patch(const xrt::module&, const std::string& argnm, size_t index, uint64_t address);
 
