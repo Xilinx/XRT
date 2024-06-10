@@ -115,14 +115,12 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
       const auto& hw_context = pt_hw_context.second;
 
-      const std::string error_count = std::to_string(hw_context.get<uint64_t>("errors"));
-
       const std::vector<std::string> entry_data = {
         hw_context.get<std::string>("context_id"),
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
-        error_count
+        std::to_string(hw_context.get<uint64_t>("errors"))
       };
       context_table.addEntry(entry_data);
     }
