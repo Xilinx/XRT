@@ -26,6 +26,7 @@
 #include <memory>
 #include <vector>
 
+#include "core/common/api/bo_int.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
 #include "core/include/xrt/xrt_kernel.h"
@@ -307,6 +308,17 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", "Done reading recorded timestamps.");
     }
 
+    auto context = metadata->getHwContext();
+    xrt::bo resultBO;
+    try {
+      resultBO = xrt_core::bo_int::create_debug_bo(context, 0x20000);
+    } catch (std::exception& e) {
+      std::stringstream msg;
+      msg << "Unable to create 128KB buffer for AIE Profile results. Cannot get AIE Profile info. " << e.what() << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      return;
+    }
+
     (void)handle;
     double timestamp = xrt_core::time_ns() / 1.0e6;
 
@@ -329,15 +341,9 @@ namespace xdp {
 
     XAie_ClearTransaction(&aieDevInst);
 
-    static constexpr uint32_t size_4K   = 0x1000;
-    static constexpr uint32_t offset_3K = 0x0C00;
-
-    auto result_bo = transactionHandler->syncResults();
-    if (!result_bo)
-      return;
-    auto result_bo_map = result_bo.map<uint8_t*>();
-    // result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    uint32_t* output = reinterpret_cast<uint32_t*>(result_bo_map+offset_3K);
+    resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    auto resultBOMap = resultBO.map<uint8_t*>();
+    uint32_t* output = reinterpret_cast<uint32_t*>(resultBOMap);
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;
