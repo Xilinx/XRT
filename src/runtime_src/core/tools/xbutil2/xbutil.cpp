@@ -77,7 +77,7 @@ int main( int argc, char** argv )
 {
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
-  const std::string executable = "xbutil";
+  const std::string executable = "xrt-smi";
 
   boost::property_tree::ptree configTree;
   std::istringstream command_config_stream(command_config);
