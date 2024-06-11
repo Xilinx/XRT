@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #define XDP_PLUGIN_SOURCE
 
@@ -153,46 +153,6 @@ namespace xdp {
     for (int i = 0; i < op_profile_data.size(); i++)
       op->profile_data[i] = op_profile_data[i];
 
-
-
-    // try {
-    //   mKernel = xrt::kernel(context, "XDP_KERNEL");  
-    // } catch (std::exception &e){
-    //   std::stringstream msg;
-    //   msg << "Unable to find XDP_KERNEL from hardware context. Not configuring AIE Debug. " << e.what() ;
-    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-    //   return;
-    // }
-
-
-
-    // op_buf instr_buf;
-    // instr_buf.addOP(transaction_op(txn_ptr));
-
-    // Initialize instructions
-    // try {
-    //   instr_bo = xrt::bo(context.get_device(), instr_buf.ibuf_.size(), XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    // } catch (std::exception &e){
-    //   std::stringstream msg;
-    //   msg << "Unable to create the instruction buffer for polling during AIE Debug. " << e.what() << std::endl;
-    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-    //   return;
-    // }
-    // instr_bo.write(instr_buf.ibuf_.data());
-    // instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
-    // // results BO syncs AIE Debug result from device
-    // try {
-    //   result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, mKernel.group_id(1));
-    // } catch (std::exception &e) {
-    //   std::stringstream msg;
-    //   msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug Info." << e.what() << std::endl;
-    //   xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-    //   return;
-    // }
-
-    XAie_ClearTransaction(&aieDevInst);
-
   #if 0
     /* For larger debug buffer support, only one Debug BO can be aliva at a time.
      * Need ML Timeline Buffer to be created at update device to capture all calls.
@@ -286,12 +246,12 @@ namespace xdp {
       resultBO = xrt_core::bo_int::create_debug_bo(mHwContext, 0x20000);
     } catch (std::exception& e) {
       std::stringstream msg;
-      msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug info. " << e.what() << std::endl;
+      msg << "Unable to create 128KB buffer for AIE Debug results. Cannot get AIE Debug info. " << e.what() << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       return;
     }
 
-        XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
+    XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
     // Profiling is 3rd custom OP
     XAie_RequestCustomTxnOp(&aieDevInst);
     XAie_RequestCustomTxnOp(&aieDevInst);
@@ -302,7 +262,6 @@ namespace xdp {
 
     XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
     txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
-
 
     if (!transactionHandler->submitTransaction(txn_ptr))
       return;

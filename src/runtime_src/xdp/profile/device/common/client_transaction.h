@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,9 +29,8 @@ namespace xdp::aie {
       ClientTransaction(xrt::hw_context c, std::string tName) : context(c), transactionName(tName) {}
       bool initializeKernel(std::string kernelName);
       bool submitTransaction(uint8_t* txn_ptr);
-      xrt::bo syncResults();
       void setTransactionName(std::string newTransactionName) {transactionName = newTransactionName;}
-      int getGroupID(int id) {return kernel.group_id(id); }
+
     private:
       std::string transactionName;
       xrt::kernel kernel;

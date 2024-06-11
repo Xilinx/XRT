@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
