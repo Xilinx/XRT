@@ -71,6 +71,11 @@ namespace xdp {
               "In MLTimelineClientDevImpl::updateDevice");
     try {
 
+      /* Use a container for Debug BO for results to control its lifetime.
+       * The result BO should be deleted after reading out recorded data in
+       * finishFlushDevice so that AIE Profile/Debug Plugins, if enabled,
+       * can use their own Debug BO to capture their data.
+       */
       mResultBOHolder = new ResultBOContainer(mHwContext, mBufSz);
 
     } catch (std::exception& e) {
@@ -117,7 +122,7 @@ namespace xdp {
     uint32_t max_count = mBufSz / (2*sizeof(uint32_t));
     // Each record timer entry has 32bit ID and 32bit AIE Timer low value.
 
-    uint32_t numEntries = max_count;    // First 32bits contains the total num of entries
+    uint32_t numEntries = max_count;
     std::stringstream msg;
     msg << " A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size"
         << std::hex << mBufSz << std::dec << std::endl;
@@ -163,7 +168,9 @@ namespace xdp {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Finished writing record_timer_ts.json in MLTimelineClientDevImpl::finishflushDevice");
 
-    // Destroy the Result BO
+    /* Delete the result BO so that AIE Profile/Debug Plugins, if enabled,
+     * can use their own Debug BO to capture their data.
+     */
     delete mResultBOHolder;
     mResultBOHolder = nullptr;
   }
