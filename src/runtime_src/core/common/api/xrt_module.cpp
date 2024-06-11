@@ -366,6 +366,17 @@ public:
     throw std::runtime_error("Not supported");
   }
 
+  // Patch ctrlcode buffer address for global argument
+  //
+  // @param argname - argument name
+  // @param index - argument index
+  // @param address - global argument to patch into ctrlcode
+  virtual void
+  patch(const std::string&, size_t, uint64_t)
+  {
+    throw std::runtime_error("Not supported");
+  }
+
   // Patch ctrlcode buffer object for scalar argument
   //
   // @param symbol - symbol name
@@ -1114,6 +1125,12 @@ class module_sram : public module_impl
   }
 
   void
+  patch(const std::string& argnm, size_t index, uint64_t address) override
+  {
+    patch_value(argnm, index, address);
+  }
+
+  void
   patch(const std::string& argnm, size_t index, const void* value, size_t size) override
   {
     if (size > 8) // NOLINT
@@ -1265,6 +1282,12 @@ void
 patch(const xrt::module& module, const std::string& argnm, size_t index, const xrt::bo& bo)
 {
   module.get_handle()->patch(argnm, index, bo);
+}
+
+void
+patch(const xrt::module& module, const std::string& argnm, size_t index, uint64_t address)
+{
+  module.get_handle()->patch(argnm, index, address);
 }
 
 void

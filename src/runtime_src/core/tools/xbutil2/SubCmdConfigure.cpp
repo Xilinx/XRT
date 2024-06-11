@@ -13,7 +13,7 @@
 std::vector<std::shared_ptr<OptionOptions>> SubCmdConfigureInternal::optionOptionsCollection = {
   std::make_shared<OO_HostMem>("host-mem"),
   std::make_shared<OO_P2P>("p2p"),
-  std::make_shared<OO_Performance>("performance"),
+  std::make_shared<OO_Performance>("pmode"),
 };
 
 SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary, const boost::property_tree::ptree& configurations)
