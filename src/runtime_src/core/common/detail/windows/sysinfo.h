@@ -68,28 +68,6 @@ osNameImpl()
   }
 }
 
-static std::string
-get_bios_version() {
-  struct SMBIOSData {
-    uint8_t  Used20CallingMethod;
-    uint8_t  SMBIOSMajorVersion;
-    uint8_t  SMBIOSMinorVersion;
-    uint8_t  DmiRevision;
-    uint32_t  Length;
-    uint8_t  SMBIOSTableData[1];
-  };
-
-  DWORD bios_size = GetSystemFirmwareTable('RSMB', 0, NULL, 0);
-  if (bios_size > 0) {
-    std::vector<char> bios_vector(bios_size);
-    auto bios_data = reinterpret_cast<SMBIOSData*>(bios_vector.data());
-    // Retrieve the SMBIOS table
-    GetSystemFirmwareTable('RSMB', 0, bios_data, bios_size);
-    return std::to_string(bios_data->SMBIOSMajorVersion) + "." + std::to_string(bios_data->SMBIOSMinorVersion);
-  }
-  return "unknown";
-}
-
 } //end anonymous namespace
 
 namespace xrt_core::sysinfo::detail {
@@ -103,16 +81,13 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("sysname", osNameImpl());
   //Reassign buffer size since it get override with size of value by RegGetValueA() call
   BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuild", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("release", value);
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("version", value);
 
   pt.put("machine", getmachinename());
 
   BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("distribution", value);
 
   BufferSize = sizeof value;
@@ -132,9 +107,11 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("cores", std::thread::hardware_concurrency());
 
   BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System", "SystemBiosVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  RegGetValueA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", "BIOSVendor", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("bios_vendor", value);
-  pt.put("bios_version", get_bios_version());
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", "BIOSVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("bios_version", value);
 }
 
 } //xrt_core::sysinfo

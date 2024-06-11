@@ -114,7 +114,6 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   try {
     _output << boost::format("  %-20s : %s\n") % "OS Name" % _pt.get<std::string>("host.os.sysname");
     _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release");
-    _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version");
     _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine");
     _output << boost::format("  %-20s : %s\n") % "CPU Cores" % _pt.get<std::string>("host.os.cores");
     _output << boost::format("  %-20s : %lld MB\n") % "Memory" % (std::strtoll(_pt.get<std::string>("host.os.memory_bytes").c_str(),nullptr,16) / BYTES_TO_MEGABYTES);
