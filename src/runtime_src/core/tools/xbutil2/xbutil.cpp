@@ -54,11 +54,11 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["electrical", "host", "platform", "aie", "aiemem", "aieshim", "aie-partitions"]
+      "report": ["electrical", "host", "platform", "aie-partitions"]
     }]
   },{
     "configure": [{
-      "suboption": ["performance"]
+      "suboption": ["pmode"]
     }]
   },{
     "advanced":[{
