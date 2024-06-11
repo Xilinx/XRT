@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
@@ -13,7 +13,6 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 #include "core/include/xrt/xrt_hw_context.h"
-
 
 extern "C" {
   #include <xaiengine.h>
@@ -46,6 +45,7 @@ namespace xdp {
       {module_type::mem_tile, "Memory Tile"}
     };
     
+    xrt::hw_context mHwContext;
     std::unique_ptr<aie::ClientTransaction> transactionHandler;
     uint8_t* txn_ptr;
     XAie_DevInst aieDevInst = {0};
