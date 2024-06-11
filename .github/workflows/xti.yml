@@ -5,7 +5,9 @@ env:
   ENV: 'test' 
 
 on:
-  push:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+  # push:
   workflow_dispatch:
   workflow_call:
   # schedule:
