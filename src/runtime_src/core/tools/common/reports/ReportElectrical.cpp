@@ -61,7 +61,6 @@ ReportElectrical::writeReport( const xrt_core::device* _pDevice,
 
   const std::vector<Table2D::HeaderData> table_headers = {
     {"Power Rails", Table2D::Justification::left},
-    {":", Table2D::Justification::left},
     {"Voltage", Table2D::Justification::right},
     {"Current", Table2D::Justification::right}
   };
@@ -74,7 +73,6 @@ ReportElectrical::writeReport( const xrt_core::device* _pDevice,
 
     const std::vector<std::string> entry_data = {
       pt_sensor.get<std::string>("description"),
-      ":",
       (voltage == "N/A") ? voltage : voltage + " V",
       (amps == "N/A") ? amps : amps + " A",
     };
