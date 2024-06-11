@@ -16,6 +16,9 @@
 
 #define XDP_PLUGIN_SOURCE
 
+#include<regex>
+#include<string>
+
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/api/hw_context_int.h"
@@ -34,7 +37,7 @@ namespace xdp {
 
   uint32_t ParseMLTimelineBufferSizeConfig()
   {
-    uint32_t bufSz = 0;
+    uint32_t bufSz = 0x20000;
     std::string szCfgStr = xrt_core::config::get_ml_timeline_buffer_size();
     std::smatch subStr;
 
@@ -58,6 +61,7 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                 "Invalid string specified for ML Timeline Buffer Size");
     }
+    return bufSz;
   }
 
   MLTimelinePlugin::MLTimelinePlugin()

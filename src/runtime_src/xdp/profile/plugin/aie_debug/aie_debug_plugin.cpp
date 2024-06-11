@@ -283,7 +283,7 @@ namespace xdp {
 
     xrt::bo resultBO;
     try {
-      resultBO = xrt_core::bo_int::create_debug_bo(mHwContext, 0x2000);
+      resultBO = xrt_core::bo_int::create_debug_bo(mHwContext, 0x20000);
     } catch (std::exception& e) {
       std::stringstream msg;
       msg << "Unable to create result buffer for AIE Debug. Cannot get AIE Debug info. " << e.what() << std::endl;
