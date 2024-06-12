@@ -54,7 +54,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["electrical", "host", "platform", "aie-partitions", "telemetry"]
+      "report": ["host", "platform", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
