@@ -30,6 +30,7 @@ namespace xdp::aie {
       bool initializeKernel(std::string kernelName);
       bool submitTransaction(uint8_t* txn_ptr);
       void setTransactionName(std::string newTransactionName) {transactionName = newTransactionName;}
+      int  getGroupID(int id) {return kernel.group_id(id); }
 
     private:
       std::string transactionName;
