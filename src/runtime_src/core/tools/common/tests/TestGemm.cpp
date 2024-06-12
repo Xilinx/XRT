@@ -8,6 +8,9 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
+
+#include "core/common/api/bo_int.h"
+
 namespace XBU = XBUtilities;
 
 // System - Include Files
@@ -17,14 +20,7 @@ namespace XBU = XBUtilities;
 
 static constexpr size_t host_app = 1; //opcode
 static constexpr uint32_t num_of_cores = 32;
-static constexpr uint32_t size_4K   = 0x1000;
-static constexpr uint32_t offset_3K = 0x0C00;
-/* Each record timer entry has 32bit ID and 32bit AIE Timer low value.
-* The first 32 bit in the buffer is used to store total number 
-* of record timer entries written so far. So, max_count_in_size_3K is 1 less 
-* than total number of entries possible in 3K buffer section.
-*/ 
-static constexpr uint32_t max_count_in_size_3K = (offset_3K / (2 * sizeof(uint32_t))) - 1;
+
 /*
 * Essentially, we are doing 4 unrolled loop of 8x8_8x8 matmult.
 * Each 8x8_8x8 matmult involves 8x8x8=512 MAC or 512*2 OP=1024 OPs.
@@ -147,14 +143,14 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  //Create BOs
+  //Create Instruction BO
   xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-  xrt::bo bo_result(working_dev, size_4K, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
-
   init_instr_buf(bo_instr, dpu_instr);
-
-  //Sync BOs
+  //Sync Instruction BO
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+  // Create 128KB Debug BO to capture TOPS data
+  xrt::bo bo_result = xrt_core::bo_int::create_debug_bo(hwctx, 0x20000);
 
   //get current performance mode
   const auto perf_mode = xrt_core::device_query<xrt_core::query::performance_mode>(dev);
@@ -190,10 +186,6 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
   bo_result.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
   auto bo_result_map = bo_result.map<uint8_t*>();
 
-  //Add time delay to wait till the device has transferred data back to the host
-  //To-do: remove this delay after CR-1194803 is fixed
-  std::this_thread::sleep_for(std::chrono::milliseconds(30));
-
   //Calculate TOPS
   if (ipu_hclock == 0) {
     logger(ptree, "Error", "IPU H-clock is 0");
@@ -201,7 +193,8 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   double ipu_hclck_period = 1000000000.0 / (ipu_hclock * 1000000); // MHz to ns
-  uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map+offset_3K);
+
+  uint32_t* core_ptr = reinterpret_cast<uint32_t*>(bo_result_map);
   double TOPS = 0.0;
   double total_cycle_count = 0.0;
 
