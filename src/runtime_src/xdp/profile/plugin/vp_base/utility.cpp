@@ -110,6 +110,15 @@ namespace xdp {
     return false;
   }
 
+  bool isClient()
+  {
+#ifdef XDP_CLIENT_BUILD
+    return true;
+#else
+    return false;
+#endif
+  }
+
   // Get the size of the physical device memory (in bytes) when running
   // on the PS of Edge boards.  If called on x86 or Windows this should
   // return 0.

@@ -120,7 +120,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   auto &AIEData = handleToAIEData[handle];
   AIEData.deviceID = deviceID;
   AIEData.valid = true; // initialize struct
-  AIEData.devIntf = nullptr;
 
   // Update the static database with information from xclbin
 #ifdef XDP_CLIENT_BUILD
@@ -128,7 +127,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
   // Update the static database with information from xclbin
-  (db->getStaticInfo()).updateDevice(deviceID, handle);
+  (db->getStaticInfo()).updateDevice(deviceID, new HalDevice(handle), handle);
   std::string deviceName = util::getDeviceName(handle);
   if (deviceName != "")
     (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
@@ -155,14 +154,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   // Check for device interface
   PLDeviceIntf *deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
-
-#ifdef XDP_CLIENT_BUILD
-  if (deviceIntf == nullptr)
-    deviceIntf = db->getStaticInfo().createDeviceIntfClient(deviceID, new ClientDevice(handle));
-#else
-  if (deviceIntf == nullptr)
-    deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
-#endif
 
   // Create gmio metadata
   if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
@@ -432,7 +423,6 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   AIEData.implementation->flushTraceModules();
   flushOffloader(AIEData.offloader, true);
   XDPPlugin::endWrite();
-  (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
 
   handleToAIEData.erase(itr);
 }

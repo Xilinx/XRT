@@ -48,6 +48,7 @@
 #include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
@@ -393,18 +394,22 @@ namespace xdp {
     return xclbin->deviceIntf ;
   }
 
-  PLDeviceIntf* VPStaticDatabase::createDeviceIntf(uint64_t deviceId,
-                                                   xdp::Device* dev)
+  // This function will create a PL Device Interface if an xdp::Device is
+  // passed in, and then associate it with the current xclbin loaded onto
+  // the device corresponding to deviceId.
+  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, xdp::Device* dev)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
+    if (dev == nullptr)
+      return;
     if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return nullptr;
+      return;
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
     if (xclbin == nullptr)
-      return nullptr;
+      return;
     if (xclbin->deviceIntf != nullptr)
-      return xclbin->deviceIntf;
+      delete xclbin->deviceIntf; // It shouldn't be...
 
     xclbin->deviceIntf = new PLDeviceIntf();
     xclbin->deviceIntf->setDevice(dev);
@@ -417,7 +422,6 @@ namespace xdp {
       delete xclbin->deviceIntf;
       xclbin->deviceIntf = nullptr;
     }
-    return xclbin->deviceIntf;
   }
 
   PLDeviceIntf* VPStaticDatabase::createDeviceIntfClient(uint64_t deviceId,
@@ -1323,9 +1327,10 @@ namespace xdp {
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, xdp::Device* xdpDevice, void* devHandle)
   {
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+    std::shared_ptr<xrt_core::device> device =
+      xrt_core::get_userpf_device(devHandle);
     if (nullptr == device)
       return;
 
@@ -1336,7 +1341,7 @@ namespace xdp {
       return;
 
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, false);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, xdpDevice, false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
   }
@@ -1344,7 +1349,8 @@ namespace xdp {
   void VPStaticDatabase::updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device)
   {
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    updateDevice(deviceId, xrtXclbin, true);
+    // Client should have no PL interface
+    updateDevice(deviceId, xrtXclbin, nullptr, true);
   }
 
   // Return true if we should reset the device information.
@@ -2066,19 +2072,26 @@ namespace xdp {
   {
     xrt::xclbin xrtXclbin = xrt::xclbin(xclbinFile);
 
-    updateDevice(deviceId, xrtXclbin, false);
+    // The PL post-processor does not need a connection to the actual hardware
+    updateDevice(deviceId, xrtXclbin, nullptr, false);
   }
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, bool clientBuild)
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, xdp::Device* xdpDevice, bool clientBuild)
   {
     // We need to update the device, but if we had an xclbin previously loaded
-    //  then we need to mark it
+    //  then we need to mark it and remove the PL interface.  We'll
+    //  create a new PL interface if necessary
     if (deviceInfo.find(deviceId) != deviceInfo.end()) {
       XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
-      if (xclbin)
+      if (xclbin) {
         db->getDynamicInfo().markXclbinEnd(deviceId) ;
+        if (xclbin->deviceIntf != nullptr) {
+          delete xclbin->deviceIntf;
+          xclbin->deviceIntf = nullptr;
+        }
+      }
     }
 
     DeviceInfo* devInfo = nullptr ;
@@ -2111,6 +2124,8 @@ namespace xdp {
 
     if (!initializeStructure(currentXclbin, xrtXclbin)) {
       delete currentXclbin;
+      if (xdpDevice != nullptr)
+        delete xdpDevice;
       return devInfo;
     }
 
@@ -2121,8 +2136,10 @@ namespace xdp {
     // Add aie clock to xclbin
     setAIEClockRateMHz(deviceId, xrtXclbin);
 
-    return devInfo;
+    if (xdpDevice != nullptr)
+      createPLDeviceIntf(deviceId, xdpDevice);
 
+    return devInfo;
   }
 
   void VPStaticDatabase::setDeviceNameFromXclbin(uint64_t deviceId, xrt::xclbin xrtXclbin)

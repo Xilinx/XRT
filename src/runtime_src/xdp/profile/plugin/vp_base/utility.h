@@ -30,6 +30,7 @@ namespace xdp {
   XDP_CORE_EXPORT const char* getToolVersion();
   XDP_CORE_EXPORT std::string getXRTVersion();
   XDP_CORE_EXPORT bool isEdge();
+  XDP_CORE_EXPORT bool isClient();
   XDP_CORE_EXPORT uint64_t getPSMemorySize();
 
   enum Flow {

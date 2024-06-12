@@ -178,7 +178,7 @@ class PLDeviceIntf {
     XDP_CORE_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_CORE_EXPORT
-      void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector);
+    void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector);
 
     XDP_CORE_EXPORT
     void resetAIETs2mm(uint64_t index);

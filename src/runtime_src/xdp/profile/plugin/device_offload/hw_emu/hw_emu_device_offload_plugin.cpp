@@ -94,7 +94,6 @@ namespace xdp {
     readCounters();
 
     clearOffloader(deviceId) ;
-    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
   void HWEmuDeviceOffloadPlugin::updateDevice(void* userHandle)
@@ -127,7 +126,7 @@ namespace xdp {
     
     // Update the static database with all the information that
     //  will be needed later
-    (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
+    db->getStaticInfo().updateDevice(deviceId, new HalDevice(userHandle), userHandle) ;
     {
       std::string deviceName = util::getDeviceName(userHandle);
       if (deviceName != "") {
@@ -138,8 +137,6 @@ namespace xdp {
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
     PLDeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if (devInterface == nullptr)
-      devInterface = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(userHandle));
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;

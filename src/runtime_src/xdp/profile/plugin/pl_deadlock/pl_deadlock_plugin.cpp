@@ -192,7 +192,7 @@ namespace xdp {
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId, handle);
+      (db->getStaticInfo()).updateDevice(deviceId, new HalDevice(handle), handle);
       {
         std::string deviceName = util::getDeviceName(handle);
         if(deviceName != "") {
@@ -202,12 +202,6 @@ namespace xdp {
     }
 
     PLDeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if (nullptr == deviceIntf) {
-      deviceIntf = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(handle));
-      if (nullptr == deviceIntf) {
-        return;
-      }
-    }
 
     if (!deviceIntf->hasDeadlockDetector()) {
       std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);

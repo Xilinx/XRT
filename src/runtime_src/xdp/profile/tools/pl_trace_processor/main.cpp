@@ -45,7 +45,6 @@ int main(int argc, char* argv[])
   // Add metadata to the database from the xclbin
   auto deviceId = db->addDevice("local");
 
-
   db->getStaticInfo().updateDevice(deviceId, xclbinFile);
 
   std::vector<uint64_t> traceData;

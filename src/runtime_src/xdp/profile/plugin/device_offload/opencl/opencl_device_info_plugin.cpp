@@ -138,8 +138,9 @@ namespace xdp {
     }
 
     // Update the static database with all the information that will
-    //  be needed later.
-    (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
+    //  be needed later.  OpenCL device info does not require a connection
+    //  to the physical PL part of the device.
+    (db->getStaticInfo()).updateDevice(deviceId, nullptr, device->get_xcl_handle()) ;
     (db->getStaticInfo()).setDeviceName(deviceId, device->getName()) ;
   }
 

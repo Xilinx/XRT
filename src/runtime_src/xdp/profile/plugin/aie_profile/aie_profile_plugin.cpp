@@ -126,7 +126,7 @@ namespace xdp {
       (db->getStaticInfo()).updateDeviceClient(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
-      (db->getStaticInfo()).updateDevice(deviceID, handle);
+      (db->getStaticInfo()).updateDevice(deviceID, new HalDevice(handle), handle);
       std::string deviceName = util::getDeviceName(handle);
       if (deviceName != "") {
         (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
