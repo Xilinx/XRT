@@ -7,7 +7,13 @@
 // System - Include Files
 #include <windows.h>
 #include <string>
+#include <locale>
+#include <codecvt>
 #include <thread>
+#include <comdef.h>
+#include <wbemidl.h>
+
+#pragma comment(lib, "wbemuuid.lib")
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -49,6 +55,82 @@ getmachinename()
 }
 
 static std::string
+getmachinedistribution()
+{
+  HRESULT hres;
+
+  // Initialize COM
+  hres = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+  if (FAILED(hres))
+    throw xrt_core::error("Failed to initialize COM library. Cannot get machine distribution information");
+
+  // Set COM security levels
+  hres = CoInitializeSecurity(
+        NULL, 
+        -1,                          // COM authentication
+        NULL,                        // Authentication services
+        NULL,                        // Reserved
+        RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication
+        RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation
+        NULL,                        // Authentication info
+        EOAC_NONE,                   // Additional capabilities
+        NULL                         // Reserved
+        );
+  if (FAILED(hres))
+    throw xrt_core::error("Failed to initialize security. Cannot get machine distribution information");
+
+  // Obtain initial locator to WMI
+  IWbemLocator *pWbemLocator = NULL;
+  hres = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID *) &pWbemLocator);
+  if (FAILED(hres))
+    throw xrt_core::error("Failed to obtain locator. Cannot get machine distribution information");
+
+  // Connect to WMI
+  IWbemServices *pWbemServices = NULL;
+  hres = pWbemLocator->ConnectServer(
+         _bstr_t(L"ROOT\\CIMV2"), // Object path of WMI namespace
+         NULL,                    // User name, NULL indicated current in these args
+         NULL,                    // User password
+         0,                       // Locale
+         NULL,                    // Security flags
+         0,                       // Authority
+         NULL,                    // Context object
+         &pWbemServices           // pointer to IWbemServices proxy
+         );
+  if (FAILED(hres))
+    throw xrt_core::error("Failed to connect to WMI. Cannot get machine distribution information");
+
+  // Make WMI Request
+  IEnumWbemClassObject* pEnum = NULL;
+  hres = pWbemServices->ExecQuery(bstr_t("WQL"), bstr_t(L"Select Caption from Win32_OperatingSystem"), WBEM_FLAG_FORWARD_ONLY, NULL, &pEnum);
+  if (FAILED(hres))
+    throw xrt_core::error("WMI Query failed. Cannot get machine distribution information");
+  ULONG uObjectCount = 0;
+  IWbemClassObject *pWmiObject = NULL;
+  hres = pEnum->Next(WBEM_INFINITE, 1, &pWmiObject, &uObjectCount);
+  if (FAILED(hres))
+    throw xrt_core::error("WMI Query failed. Cannot get machine distribution information");
+  VARIANT cvtDistribution;
+  VariantInit(&cvtDistribution);
+  hres = pWmiObject->Get(L"Caption", 0, &cvtDistribution, 0, 0);
+  if (FAILED(hres))
+    throw xrt_core::error("WMI Query failed. Cannot get machine distribution information");
+  _bstr_t bstrValue(cvtDistribution.bstrVal);
+  std::wstring wstrValue(bstrValue);
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  std::string distribution = converter.to_bytes(wstrValue);
+
+  // Cleanup
+  VariantClear(&cvtDistribution);
+  pWmiObject->Release();
+  pWbemServices->Release();
+  pWbemLocator->Release();
+  pEnum->Release();
+  CoUninitialize();
+  return distribution;
+}
+
+static std::string
 osNameImpl()
 {
   OSVERSIONINFO vi;
@@ -86,9 +168,7 @@ get_os_info(boost::property_tree::ptree &pt)
 
   pt.put("machine", getmachinename());
 
-  BufferSize = sizeof value;
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("distribution", value);
+  pt.put("distribution", getmachinedistribution());
 
   BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
