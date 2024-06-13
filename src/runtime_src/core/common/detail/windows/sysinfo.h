@@ -76,14 +76,18 @@ getmachinedistribution()
         EOAC_NONE,                   // Additional capabilities
         NULL                         // Reserved
         );
-  if (FAILED(hres))
+  if (FAILED(hres)) {
+    CoUninitialize();
     throw xrt_core::error("Failed to initialize security. Cannot get machine distribution information");
+  }
 
   // Obtain initial locator to WMI
   IWbemLocator *pWbemLocator = NULL;
   hres = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID *) &pWbemLocator);
-  if (FAILED(hres))
+  if (FAILED(hres)) {
+    CoUninitialize();
     throw xrt_core::error("Failed to obtain locator. Cannot get machine distribution information");
+  }
 
   // Connect to WMI
   IWbemServices *pWbemServices = NULL;
@@ -97,24 +101,43 @@ getmachinedistribution()
          NULL,                    // Context object
          &pWbemServices           // pointer to IWbemServices proxy
          );
-  if (FAILED(hres))
+  if (FAILED(hres)) {
+    pWbemLocator->Release();
+    CoUninitialize();
     throw xrt_core::error("Failed to connect to WMI. Cannot get machine distribution information");
+  }
 
   // Make WMI Request
   IEnumWbemClassObject* pEnum = NULL;
   hres = pWbemServices->ExecQuery(bstr_t("WQL"), bstr_t(L"Select Caption from Win32_OperatingSystem"), WBEM_FLAG_FORWARD_ONLY, NULL, &pEnum);
-  if (FAILED(hres))
+  if (FAILED(hres)) {
+    pWbemServices->Release();
+    pWbemLocator->Release();
+    CoUninitialize();
     throw xrt_core::error("WMI Query failed. Cannot get machine distribution information");
+  }
   ULONG uObjectCount = 0;
   IWbemClassObject *pWmiObject = NULL;
   hres = pEnum->Next(WBEM_INFINITE, 1, &pWmiObject, &uObjectCount);
-  if (FAILED(hres))
+  if (FAILED(hres)) {
+    pWbemServices->Release();
+    pWbemLocator->Release();
+    pEnum->Release();
+    CoUninitialize();
     throw xrt_core::error("WMI Query failed. Cannot get machine distribution information");
+  }
   VARIANT cvtDistribution;
   VariantInit(&cvtDistribution);
   hres = pWmiObject->Get(L"Caption", 0, &cvtDistribution, 0, 0);
-  if (FAILED(hres))
+  if (FAILED(hres)) {
+    VariantClear(&cvtDistribution);
+    pWmiObject->Release();
+    pWbemServices->Release();
+    pWbemLocator->Release();
+    pEnum->Release();
+    CoUninitialize();
     throw xrt_core::error("WMI Query failed. Cannot get machine distribution information");
+  }
   _bstr_t bstrValue(cvtDistribution.bstrVal);
   std::wstring wstrValue(bstrValue);
   std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
