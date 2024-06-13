@@ -31,15 +31,12 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/device/pl_device_intf.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_profile.h"
-// #include "shim.h"
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_profile.h"
 #else
@@ -126,7 +123,7 @@ namespace xdp {
       (db->getStaticInfo()).updateDeviceClient(deviceID, device);
       (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
-      (db->getStaticInfo()).updateDevice(deviceID, new HalDevice(handle), handle);
+      (db->getStaticInfo()).updateDevice(deviceID, nullptr, handle);
       std::string deviceName = util::getDeviceName(handle);
       if (deviceName != "") {
         (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
