@@ -43,17 +43,12 @@
 #include <sys/mman.h>
 
 #include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/aie_status.h"
 
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
-#include "plugin/xdp/hal_device_offload.h"
-
-#include "plugin/xdp/aie_trace.h"
-#else
-#include "plugin/xdp/hw_emu_device_offload.h"
 #endif
+
+#include "plugin/xdp/shim_callbacks.h"
 
 #if defined(XRT_ENABLE_LIBDFX)
 extern "C" {
@@ -137,10 +132,9 @@ shim::
 {
   xclLog(XRT_INFO, "%s", __func__);
 
-#ifndef __HWEM__
-  xdp::aie::finish_flush_device(this);
-#endif
-  xdp::aie::ctr::end_poll(this);
+  // Flush all of the profiling information from the device to the profiling
+  // library before the device is closed (when profiling is enabled).
+  xdp::finish_flush_device(this);
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -2196,12 +2190,10 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
-#ifndef __HWEM__
-    xdp::hal::flush_device(handle);
-    xdp::aie::flush_device(handle);
-#else
-    xdp::hal::hw_emu::flush_device(handle);
-#endif
+    // Retrieve any profiling information still on this device from any previous
+    // configuration before the device is reconfigured with the new xclbin (when
+    // profiling is enabled).
+    xdp::flush_device(handle);
 
     int ret;
     if (!meta) {
@@ -2224,20 +2216,16 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 
     /* If PDI is the only section, return here */
     if (xrt_core::xclbin::is_pdi_only(buffer)) {
-        #ifndef __HWEM__
-          xdp::hal::update_device(handle);
-          xdp::aie::update_device(handle);
-        #endif
-        xdp::aie::ctr::update_device(handle);
-        xdp::aie::sts::update_device(handle);
+        // Update the profiling library with the information on this new AIE xclbin
+        // configuration on this device as appropriate (when profiling is enabled).
+        xdp::update_device(handle);
 
-        #ifndef __HWEM__
-        //xdp::pl_deadlock::update_device(handle);
-
+#ifndef __HWEM__
+        // Setup the user-accessible HAL API profiling interface so user host
+        // code can call functions to directly read counter values on profiling IP
+        // (if enabled in the xrt.ini).
         START_DEVICE_PROFILING_CB(handle);
-        #else
-        xdp::hal::hw_emu::update_device(handle);
-        #endif
+#endif
 
         return 0;
     }
@@ -2261,16 +2249,14 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
       }
     }
 
+    // Update the profiling library with the information on this new AIE xclbin
+    // configuration on this device as appropriate (when profiling is enabled).
+    xdp::update_device(handle);
 #ifndef __HWEM__
-    xdp::hal::update_device(handle);
-    xdp::aie::update_device(handle);
-#endif
-    xdp::aie::ctr::update_device(handle);
-    xdp::aie::sts::update_device(handle);
-#ifndef __HWEM__
+    // Setup the user-accessible HAL API profiling interface so user host
+    // code can call functions to directly read counter values on profiling IP
+    // (if enabled in the xrt.ini).
     START_DEVICE_PROFILING_CB(handle);
-#else
-    xdp::hal::hw_emu::update_device(handle);
 #endif
 
     return 0;
