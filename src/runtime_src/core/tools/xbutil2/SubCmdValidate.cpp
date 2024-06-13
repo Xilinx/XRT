@@ -40,7 +40,7 @@
 #include "tools/common/tests/TestNPUThroughput.h"
 #include "tools/common/tests/TestNPULatency.h"
 #include "tools/common/tests/TestCmdChainLatency.h"
-#include "tools/common/tests/TestCmdChainThroighput.h"
+#include "tools/common/tests/TestCmdChainThroughput.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
