@@ -57,12 +57,8 @@ namespace xdp {
       xclbinAvailable = true;
     
     if (!xclbinAvailable) {
-      for(auto xclbin : loadedConfigInfos.back()->currentXclbins) {
-        if(xclbin->type == xclbinQueryType) {
-          xclbinAvailable = true;
-          break;
-        }
-      }
+      if (loadedConfigInfos.back()->containsXclbinType(xclbinQueryType))
+        xclbinAvailable = true;
     }
 
     if(xclbinAvailable) {
@@ -75,13 +71,13 @@ namespace xdp {
           requiredXclbinInfo = new XclbinInfo(xclbinQueryType);
           if(xclbinQueryType == XCLBIN_AIE_ONLY)
           {
-            // Copying missing AIE xclbin
+            // Perform deep copy of missing AIE xclbin
             requiredXclbinInfo->aie = xclbin->aie;
             requiredXclbinInfo->pl.valid = false ;
           }
           else
           {
-            // Copying missing PL xclbin
+            // Perform deep copy of missing PL xclbin
             requiredXclbinInfo->pl = xclbin->pl;
             requiredXclbinInfo->aie.valid = false ;
 
@@ -425,8 +421,7 @@ namespace xdp {
     return getLoadedConfigs().back().get() ;
   }
   
-  // TODO: Change name to cleanCurrenConfig() 
-  void DeviceInfo::cleanCurrentXclbinInfo(XclbinInfoType type)
+  void DeviceInfo::cleanCurrentConfig(XclbinInfoType type)
   {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())

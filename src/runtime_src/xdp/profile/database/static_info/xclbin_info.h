@@ -103,6 +103,9 @@ namespace xdp {
                             int32_t memId);
     // Collect all compute units of a kernel
     std::vector<ComputeUnitInstance*> collectCUs(const std::string& kernelName);
+
+    private:
+      void releaseResources();
   } ;
 
   // The AIEInfo struct keeps track of all of the information associated
@@ -153,8 +156,9 @@ namespace xdp {
 
     AIEInfo& operator=(const AIEInfo& other) ;
     ~AIEInfo() ;
-    
-    // std::string print() const;
+
+    private:
+      void releaseResources();
   } ;
 
   // The struct XclbinInfo contains all of the information and configuration
@@ -184,7 +188,6 @@ namespace xdp {
 
     XclbinInfo(XclbinInfoType xclbinType) ;
     ~XclbinInfo() ;
-    // std::string print() const;
   } ;
 
   // The config struct stores multiple xclbins
@@ -205,7 +208,8 @@ namespace xdp {
     void addXclbin(XclbinInfo* newXclbin) ;
     void updateType(ConfigInfoType cfgType) ; 
 
-    bool containsXclbin(xrt_core::uuid& uuid) ; 
+    bool containsXclbin(xrt_core::uuid& uuid) ;
+    bool containsXclbinType(XclbinInfoType& xclbinQueryType);
 
     XDP_CORE_EXPORT XclbinInfo* getPlXclbin() ;
     XDP_CORE_EXPORT XclbinInfo* getAieXclbin() ;

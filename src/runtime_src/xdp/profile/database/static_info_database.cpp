@@ -2333,7 +2333,10 @@ namespace xdp {
     } else {
       // This is a previously used device being reloaded with a new xclbin
       devInfo = itr->second.get();
-      devInfo->cleanCurrentXclbinInfo(xclbinType) ; // Do not clean if AIE_ONLY, it could be mix xclbins run.
+
+      // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run
+      // It is expected to have AIE type xclbin loaded after PL type
+      devInfo->cleanCurrentConfig(xclbinType) ;
     }
 
     XclbinInfo* currentXclbin = new XclbinInfo(xclbinType) ;

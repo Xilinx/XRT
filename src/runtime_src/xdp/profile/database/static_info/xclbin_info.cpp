@@ -27,8 +27,12 @@ namespace xdp {
 
   PLInfo& PLInfo::operator=(const PLInfo& other)
   {
+    // Check for self assignment
     if (this == &other)
       return *this;
+
+    // Release existing PLInfo resources
+    releaseResources() ;
 
     this->hostMaxReadBW    = other.hostMaxReadBW ;
     this->hostMaxWriteBW   = other.hostMaxWriteBW ;
@@ -67,6 +71,11 @@ namespace xdp {
   }
 
   PLInfo::~PLInfo()
+  {
+    releaseResources();
+  }
+
+  void PLInfo::releaseResources()
   {
     for (auto& i : cus) {
       delete i.second ;
@@ -147,8 +156,12 @@ namespace xdp {
 
   AIEInfo& AIEInfo::operator=(const AIEInfo& other)
   {
+    // Check for self assignment
     if(this == &other)
       return *this ;
+
+    // Release existing PLInfo resources
+    releaseResources() ;
 
     this->clockRateAIEMHz = other.clockRateAIEMHz ;
     this->numTracePLIO = other.numTracePLIO ;
@@ -180,9 +193,24 @@ namespace xdp {
 
   AIEInfo::~AIEInfo()
   {
-    for (auto i : nocList) {
+    releaseResources();
+  }
+
+  void AIEInfo::releaseResources()
+  {
+    for (auto i : aieList)
       delete i ;
-    }
+    aieList.clear();
+
+    for (auto i: gmioList)
+      delete i;
+    gmioList.clear();
+
+    for (auto i : nocList)
+      delete i;
+
+    // clear aie_cfg_tile unique pointers
+    aieCfgList.clear() ;
   }
 
   XclbinInfo::XclbinInfo(XclbinInfoType xclbinType) : type(xclbinType)
@@ -259,6 +287,17 @@ namespace xdp {
         return true;
     }
     
+    return false;
+  }
+
+  bool ConfigInfo::containsXclbinType(XclbinInfoType& xclbinQueryType)
+  {
+    for(auto xclbin : currentXclbins)
+    {
+      if(xclbin->type == xclbinQueryType)
+        return true;
+    }
+
     return false;
   }
 
