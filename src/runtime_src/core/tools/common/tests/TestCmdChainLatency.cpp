@@ -115,7 +115,7 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   //Log
   if(XBU::getVerbose()) {
     logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));
-    logger(ptree, "Details", boost::str(boost::format("No. of commands: '%f'") % itr_count*run_count));
+    logger(ptree, "Details", boost::str(boost::format("No. of commands: '%f'") % (itr_count*run_count)));
   }
 
   // Start via runlist
