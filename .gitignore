@@ -2,6 +2,11 @@ build/Debug*
 build/WDebug*
 build/Release*
 build/WRelease*
+build/aarch64
+build/versal
+build/deb_arm32
+build/deb_arm64
+build/boost
 docs/.buildinfo
 docs/.doctrees
 tests/xrt/build/Debug*
@@ -23,4 +28,5 @@ a.out
 a.xclbin
 vivado.log
 vivado.jou
-/.vs
+.vs
+.vscode

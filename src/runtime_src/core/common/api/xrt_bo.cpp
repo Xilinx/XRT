@@ -1547,6 +1547,10 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
     });
 }
 
+bo::
+~bo()
+{}
+
 } // xrt
 
 ////////////////////////////////////////////////////////////////
@@ -1661,7 +1665,7 @@ bo(const xrt::hw_context& hwctx, pid_type pid, xrt::bo::export_handle ehdl)
 ////////////////////////////////////////////////////////////////
 namespace xrt_core::bo_int {
 
-const xrt_core::buffer_handle*
+xrt_core::buffer_handle*
 get_buffer_handle(const xrt::bo& bo)
 {
   auto handle = bo.get_handle();

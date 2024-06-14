@@ -30,13 +30,10 @@ populate_aie_partition(const xrt_core::device* device)
     auto partition = pt_map.emplace(std::make_tuple(entry.start_col, entry.num_cols), boost::property_tree::ptree());
 
     boost::property_tree::ptree pt_entry;
-    pt_entry.put("pid", entry.pid);
     pt_entry.put("context_id", entry.metadata.id);
-    pt_entry.put("xclbin_uuid", entry.metadata.xclbin_uuid);
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
     pt_entry.put("migrations", entry.migrations);
-    pt_entry.put("preemptions", entry.preemptions);
     pt_entry.put("errors", entry.errors);
 
     partition.first->second.push_back(std::make_pair("", pt_entry));
@@ -104,13 +101,11 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     }
 
     const std::vector<Table2D::HeaderData> table_headers = {
-      {"PID", Table2D::Justification::left},
       {"Context ID", Table2D::Justification::left},
-      {"Xclbin UUID", Table2D::Justification::left},
       {"Submissions", Table2D::Justification::left},
       {"Completions", Table2D::Justification::left},
       {"Migrations", Table2D::Justification::left},
-      {"Preemptions", Table2D::Justification::left},
+      {"Errors", Table2D::Justification::left},
     };
     Table2D context_table(table_headers);
 
@@ -118,32 +113,18 @@ writeReport(const xrt_core::device* /*_pDevice*/,
     for (const auto& pt_hw_context : partition.get_child("hw_contexts", empty_ptree)) {
       const auto& hw_context = pt_hw_context.second;
 
-      errors.push_back(hw_context.get<uint64_t>("errors"));
-
       const std::vector<std::string> entry_data = {
-        hw_context.get<std::string>("pid"),
         hw_context.get<std::string>("context_id"),
-        hw_context.get<std::string>("xclbin_uuid"),
         hw_context.get<std::string>("command_submissions"),
         hw_context.get<std::string>("command_completions"),
         hw_context.get<std::string>("migrations"),
-        hw_context.get<std::string>("preemptions")
+        std::to_string(hw_context.get<uint64_t>("errors"))
       };
       context_table.addEntry(entry_data);
     }
 
-    // Currently the error counts are per partition vs per context.
-    // Future releases will enable per context error resolution.
-    // In the meantime, each context within a partition must have the same error count.
-    uint64_t error_count = errors.empty() ? 0 : errors[0];
-    for (size_t i = 1; i < errors.size(); i++) {
-      if (errors[i - 1] != errors[i])
-        throw xrt_core::error("Invalid error counts within AIE partition");
-    }
-
     _output << boost::str(boost::format("  Partition Index: %d\n") % partition.get<uint64_t>("partition_index"));
     _output << boost::str(boost::format("    Columns: [%s]\n") % column_string);
-    _output << boost::str(boost::format("    Errors: %lu\n") % error_count);
     _output << "    HW Contexts:\n";
     _output << boost::str(boost::format("%s\n") % context_table.toString("      "));
   }

@@ -147,9 +147,10 @@ public:
   device() = default;
 
   /**
-   * device() - Dtor
+   * ~device() - Destructor for device object
    */
-  ~device() = default;
+  XCL_DRIVER_DLLESPEC
+  ~device();
 
   /**
    * device() - Constructor from device index

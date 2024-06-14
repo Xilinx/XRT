@@ -11,7 +11,6 @@ include_directories(
   ${EM_SRC_DIR}
   ${DRM_INCLUDE_DIRS}
   ${COMMON_EM_SRC_DIR}
-  ${BOOST_SYSTEM_INCLUDE_DIRS}
   ${CMAKE_BINARY_DIR} # includes version.h
   )
 
@@ -83,7 +82,6 @@ if (DEFINED XRT_AIE_BUILD)
     rt
     dl
     uuid
-    ${Boost_SYSTEM_LIBRARY}
     xaiengine
     )
 else()
@@ -94,7 +92,6 @@ else()
     rt
     dl
     uuid
-    ${Boost_SYSTEM_LIBRARY}
   )
 endif()
 

@@ -14,25 +14,34 @@
 
 namespace xrt_core::module_int {
 
-// Provide access to underlying xrt::bo representing the instruction
-// buffer
-const std::vector<std::pair<uint64_t, uint64_t>>&
-get_ctrlcode_addr_and_size(const xrt::module& module);
-
+// Fill in ERT command payload in ELF flow. The payload is after extra_cu_mask
+// and before CU arguments.
+uint32_t*
+fill_ert_dpu_data(const xrt::module& module, uint32_t *payload);
 
 // Patch buffer object into control code at given argument
 void
-patch(const xrt::module&, const std::string& argnm, const xrt::bo& bo);
+patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo& bo);
+
+// Patch buffer address into control code at given argument
+// This API may be useful for developing unit test case at SHIM level where
+// you do not have access to an xrt::bo object.
+void
+patch(const xrt::module&, const std::string& argnm, size_t index, uint64_t address);
 
 // Patch scalar into control code at given argument
 void
-patch(const xrt::module&, const std::string& argnm, const void* value, size_t size);
+patch(const xrt::module&, const std::string& argnm, size_t index, const void* value, size_t size);
 
 // Check that all arguments have been patched and sync the buffer
 // to device if necessary.  Throw if not all arguments have been
 // patched.
 void
 sync(const xrt::module&);
+
+// Get the ERT command opcode in ELF flow
+ert_cmd_opcode
+get_ert_opcode(const xrt::module& module);
 
 } // xrt_core::module_int
 

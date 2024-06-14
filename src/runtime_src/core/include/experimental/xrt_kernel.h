@@ -113,6 +113,13 @@ public:
    * not executing when this method is called.  This can be done by
    * calling the wait() method on the runlist object.
    *
+   * The state of run objects in a runlist should be ignored.  The
+   * `xrt::run::state()` function is not guaranteed to reflect the
+   * actual run object state and cannot be called for run objects that
+   * are part of a runlist. If any run object fails to complete
+   * successfully, `xrt::runlist::wait()` will throw an exception with
+   * the failed run object and it's fail state.
+   *
    * Throws if the kernel from which the run object was created does
    * not match the hwctx from which the runlist was created.
    *
@@ -151,10 +158,10 @@ public:
    *  prior to all run objects completing.
    *
    * Completion of a runlist execution means that all run objects have
-   * completed succesfully with ERT_CMD_STATE_COMPLETED.  If any run
-   * object in the list fails to complete successfully, the function
-   * throws `xrt::runlist::command_error` with the failed run object
-   * and state.
+   * completed succesfully.  If any run object in the list fails to
+   * complete successfully, the function throws
+   * `xrt::runlist::command_error` with the failed run object and
+   * state.
    */
   XRT_API_EXPORT
   std::cv_status

@@ -23,8 +23,10 @@
 #include <fstream>
 #include <regex>
 
+#include "core/common/api/bo_int.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -33,52 +35,70 @@
 
 namespace xdp {
 
-  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
-    : MLTimelineImpl(dB)
+  class ResultBOContainer
   {
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Created ML Timeline Plugin for Client Device.");
+    public:
+      xrt::bo  mBO;
+      ResultBOContainer(xrt::hw_context hwCtx, uint32_t sz)
+      {
+        mBO = xrt_core::bo_int::create_debug_bo(hwCtx, sz);
+      }
+      ~ResultBOContainer() {}
+
+      void 
+      syncFromDevice()
+      {
+        mBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+      }
+      uint32_t*
+      map()
+      {
+        return mBO.map<uint32_t*>();
+      }
+  };
+
+  MLTimelineClientDevImpl::MLTimelineClientDevImpl(VPDatabase*dB)
+    : MLTimelineImpl(dB),
+      mResultBOHolder(nullptr)
+  {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Created ML Timeline Plugin for Client Device.");
+  }
+
+  void MLTimelineClientDevImpl::updateDevice(void* /*hwCtxImpl*/)
+  {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "In MLTimelineClientDevImpl::updateDevice");
+    try {
+
+      /* Use a container for Debug BO for results to control its lifetime.
+       * The result BO should be deleted after reading out recorded data in
+       * finishFlushDevice so that AIE Profile/Debug Plugins, if enabled,
+       * can use their own Debug BO to capture their data.
+       */
+      mResultBOHolder = new ResultBOContainer(mHwContext, mBufSz);
+
+    } catch (std::exception& e) {
+      std::stringstream msg;
+      msg << "Unable to create result buffer of size "
+          << std::hex << mBufSz << std::dec
+          << " Bytes for Record Timer Values. Cannot get ML Timeline info. " 
+          << e.what() << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+      return;
+    }
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Allocated buffer In MLTimelineClientDevImpl::updateDevice");
   }
 
   void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
   {
-    xrt::kernel instKernel;
-    try {
-      // Currently this kernel helps in creating XRT BO connected to SRAM memory
-      instKernel = xrt::kernel(mHwContext, "XDP_KERNEL");
-    }
-    catch (std::exception& e) {
-      std::stringstream msg;
-      msg << "Unable to find XDP_KERNEL kernel from hardware context. Cannot get ML Timeline info. " << e.what();
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-      return;
-    }
-
-    static constexpr uint32_t size_4K = 0x1000;
-
-    // Read Record Timer TS buffer
-    xrt::bo resultBO;
-    try {
-      resultBO = xrt::bo(mHwContext.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, instKernel.group_id(1));
-    }
-    catch (std::exception& e) {
-      std::stringstream msg;
-      msg << "Unable to create result buffer for Record Timer Values. Cannot get ML Timeline info. " << e.what() << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-      return;
-    }
-
-    auto resultBOMap = resultBO.map<uint8_t*>();
-    resultBO.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
-    uint32_t* ptr = reinterpret_cast<uint32_t*>(resultBOMap);
-
-    // Assuming correct Stub has been called and Write Buffer contains valid data
-    uint32_t numEntries = *ptr;    // First 32bits contains the total num of entries
-
-    std::string msg = "Found " + std::to_string(numEntries) + " ML timestamps have been recorded.";
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
-
-    // Record Timer TS in JSON
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Using Allocated buffer In MLTimelineClientDevImpl::finishflushDevice");
+              
+    mResultBOHolder->syncFromDevice();    
+    uint32_t* ptr = mResultBOHolder->map();
+      
     boost::property_tree::ptree ptTop;
     boost::property_tree::ptree ptHeader;
     boost::property_tree::ptree ptRecordTimerTS;
@@ -96,25 +116,35 @@ namespace xdp {
     ptHeader.put("clock_freq_MHz", 1000);
     ptTop.add_child("header", ptHeader);
 
-    /* Each record timer entry has 32bit ID and 32bit AIE Timer low value.
-     * Also, the first 32 bit in the buffer is used to store total number 
-     * of record timer entries written so far. So, max_count_in_size_3K is 1 less 
-     * than total number of entries possible in 3K buffer section.
-     */ 
-    static constexpr uint32_t max_count_in_size_3K = (0x0C00 / (2 * sizeof(uint32_t))) - 1;
+    // Record Timer TS in JSON
+    // Assuming correct Stub has been called and Write Buffer contains valid data
+    
+    uint32_t max_count = mBufSz / (2*sizeof(uint32_t));
+    // Each record timer entry has 32bit ID and 32bit AIE Timer low value.
 
-    if (numEntries <= max_count_in_size_3K) {
-      ptr++;
+    uint32_t numEntries = max_count;
+    std::stringstream msg;
+    msg << " A maximum of " << numEntries << " record can be accommodated in given buffer of bytes size"
+        << std::hex << mBufSz << std::dec << std::endl;
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+
+    if (numEntries <= max_count) {
       for (uint32_t i = 0 ; i < numEntries; i++) {
         boost::property_tree::ptree ptIdTS;
         ptIdTS.put("id", *ptr);
         ptr++;
+        if (0 == *ptr) {
+          // Zero value for Timestamp in cycles indicates end of recorded data
+          std::string msgEntries = " Got " + std::to_string(i) + " records in buffer";
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msgEntries);
+          break;
+        }
         ptIdTS.put("cycle", *ptr);
         ptr++;
 
         ptRecordTimerTS.push_back(std::make_pair("", ptIdTS));
       }
-    }
+    }    
 
     if (ptRecordTimerTS.empty()) {
       boost::property_tree::ptree ptEmpty;
@@ -134,7 +164,15 @@ namespace xdp {
     fOut.open("record_timer_ts.json");
     fOut << result;
     fOut.close();
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Completed writing recorded timestamps to record_timer_ts.json.");
+
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+              "Finished writing record_timer_ts.json in MLTimelineClientDevImpl::finishflushDevice");
+
+    /* Delete the result BO so that AIE Profile/Debug Plugins, if enabled,
+     * can use their own Debug BO to capture their data.
+     */
+    delete mResultBOHolder;
+    mResultBOHolder = nullptr;
   }
 }
 

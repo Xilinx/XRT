@@ -723,6 +723,12 @@ public:
     copy(src, src.size());
   }
 
+  /**
+   * ~bo() - Destructor for bo object
+   */
+  XCL_DRIVER_DLLESPEC
+  ~bo();
+
 public:
   /// @cond
   const std::shared_ptr<bo_impl>&

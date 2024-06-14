@@ -69,22 +69,6 @@ set_target_properties(xrt_coreutil PROPERTIES
   SOVERSION ${XRT_SOVERSION}
   )
 
-# Private dependencies for fully resolved dynamic xrt_coreutil
-target_link_libraries(xrt_coreutil
-  PRIVATE
-  ${Boost_SYSTEM_LIBRARY}
-  )
-
-# Targets linking with xrt_coreutil_static must also link with boost
-# libraries used by coreutil.  These type of link dependencies are
-# known as INTERFACE dependencies.  Here the libraries are specified
-# by their system name so that static of target can pick static link
-# libraries of boost
-target_link_libraries(xrt_coreutil_static
-  INTERFACE
-  boost_system
-  )
-
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
   # xrt_uuid.h depends on uuid
