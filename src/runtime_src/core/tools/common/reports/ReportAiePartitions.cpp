@@ -31,11 +31,9 @@ populate_aie_partition(const xrt_core::device* device)
 
     boost::property_tree::ptree pt_entry;
     pt_entry.put("context_id", entry.metadata.id);
-    pt_entry.put("xclbin_uuid", entry.metadata.xclbin_uuid);
     pt_entry.put("command_submissions", entry.command_submissions);
     pt_entry.put("command_completions", entry.command_completions);
     pt_entry.put("migrations", entry.migrations);
-    pt_entry.put("preemptions", entry.preemptions);
     pt_entry.put("errors", entry.errors);
 
     partition.first->second.push_back(std::make_pair("", pt_entry));

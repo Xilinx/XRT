@@ -22,13 +22,16 @@
 
 namespace xdp {
 
+  class ResultBOContainer;
   class MLTimelineClientDevImpl : public MLTimelineImpl
   {
+    ResultBOContainer* mResultBOHolder;
     public :
       MLTimelineClientDevImpl(VPDatabase* dB);
 
       ~MLTimelineClientDevImpl() = default;
 
+      virtual void updateDevice(void* hwCtxImpl);
       virtual void finishflushDevice(void* hwCtxImpl);
   };
 

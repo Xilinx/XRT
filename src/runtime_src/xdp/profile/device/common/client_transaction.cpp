@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,7 +35,7 @@ extern "C" {
 // ***************************************************************
 namespace xdp::aie {
     using severity_level = xrt_core::message::severity_level;
-    static constexpr uint32_t size_4K   = 0x1000;
+
     constexpr std::uint64_t CONFIGURE_OPCODE = std::uint64_t{2};
 
     bool 
@@ -77,25 +77,5 @@ namespace xdp::aie {
       xrt_core::message::send(severity_level::info, "XRT","Successfully scheduled " + transactionName + " instruction buffer.");
       return true;
     }
-
-    xrt::bo 
-    ClientTransaction::syncResults() {
-      // results BO syncs profile result from device
-      xrt::bo result_bo;
-      try {
-        result_bo = xrt::bo(context.get_device(), size_4K, XCL_BO_FLAGS_CACHEABLE, kernel.group_id(1));
-      } catch (std::exception &e) {
-        std::stringstream msg;
-        msg << "Unable to create result buffer for "  << transactionName << ". Cannot get " << transactionName << " Results." << e.what() << std::endl;
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
-        return nullptr;
-      }
-
-      result_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-
-      return result_bo;
-    }
-
-
 
 } // namespace xdp::aie

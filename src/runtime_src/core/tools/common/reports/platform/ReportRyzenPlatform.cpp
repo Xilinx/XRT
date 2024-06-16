@@ -29,7 +29,7 @@ ReportRyzenPlatform::getPropertyTree20202(const xrt_core::device* dev,
   std::stringstream ss;
   ss << device.get_info<xrt::info::device::platform>();
   boost::property_tree::read_json(ss, pt_platform);
- 
+
   // There can only be 1 root node
   pt = pt_platform;
 }
@@ -61,6 +61,9 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
         _output << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
       }
     }
+
+    auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
+    _output << std::endl << boost::format("%-23s: %s Watts\n") % "Power" % watts;
   }
 
   _output << std::endl;

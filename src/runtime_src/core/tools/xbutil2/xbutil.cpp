@@ -54,7 +54,7 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["electrical", "host", "platform", "aie-partitions"]
+      "report": ["host", "platform", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
@@ -66,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["latency", "throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
+      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
     }]
   }]
 }]

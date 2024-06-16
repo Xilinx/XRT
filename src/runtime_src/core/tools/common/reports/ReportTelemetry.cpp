@@ -34,6 +34,9 @@ generate_rtos_dtlb_string(const boost::property_tree::ptree& pt)
 
   boost::property_tree::ptree rtos_tasks = pt.get_child("rtos_tasks", empty_ptree);
   boost::property_tree::ptree rtos_dtlb_data = pt.get_child("rtos_tasks..dtlb_data", empty_ptree);
+  if(rtos_tasks.empty() && rtos_dtlb_data.empty())
+    return ss.str();
+
   std::vector<Table2D::HeaderData> dtlb_headers = {
     {"RTOS Task", Table2D::Justification::left}
   };
@@ -61,7 +64,7 @@ generate_rtos_dtlb_string(const boost::property_tree::ptree& pt)
   }
 
   ss << "  RTOS DTLBs\n";
-  ss << rtos_dtlb_table.toString("  ");
+  ss << rtos_dtlb_table.toString("  ") << "\n";
 
   return ss.str();
 }
@@ -72,6 +75,8 @@ generate_rtos_string(const boost::property_tree::ptree& pt)
   std::stringstream ss;
 
   boost::property_tree::ptree rtos_tasks = pt.get_child("rtos_tasks", empty_ptree);
+  if(rtos_tasks.empty())
+    return ss.str();
 
   const std::vector<Table2D::HeaderData> rtos_headers = {
     {"RTOS Task", Table2D::Justification::left},
@@ -98,7 +103,7 @@ generate_rtos_string(const boost::property_tree::ptree& pt)
     index++;
   }
 
-  ss << rtos_table.toString("  ");
+  ss << rtos_table.toString("  ") << "\n";
 
   return ss.str();
 }
@@ -116,6 +121,8 @@ generate_opcode_string(const boost::property_tree::ptree& pt)
 
   int index = 0;
   boost::property_tree::ptree opcodes = pt.get_child("opcodes", empty_ptree);
+  if(opcodes.empty())
+    return ss.str();
   for (const auto& [name, opcode] : opcodes) {
     std::vector<std::string> opcode_data = {
       std::to_string(index),
@@ -125,7 +132,7 @@ generate_opcode_string(const boost::property_tree::ptree& pt)
     index++;
   }
 
-  ss << opcode_table.toString("  ");
+  ss << opcode_table.toString("  ") << "\n";
 
   return ss.str();
 }
@@ -143,6 +150,9 @@ generate_stream_buffer_string(const boost::property_tree::ptree& pt)
 
   int index = 0;
   boost::property_tree::ptree stream_buffers = pt.get_child("stream_buffers", empty_ptree);
+  if(stream_buffers.empty())
+      return ss.str();
+
   for (const auto& [name, stream_buffer] : stream_buffers) {
     std::vector<std::string> stream_buffer_data = {
       std::to_string(index),
@@ -152,7 +162,7 @@ generate_stream_buffer_string(const boost::property_tree::ptree& pt)
     index++;
   }
 
-  ss << stream_buffer_table.toString("  ");
+  ss << stream_buffer_table.toString("  ") << "\n";
 
   return ss.str();
 }
@@ -170,6 +180,8 @@ generate_aie_string(const boost::property_tree::ptree& pt)
 
   int index = 0;
   boost::property_tree::ptree aie_cols = pt.get_child("aie_columns", empty_ptree);
+  if(aie_cols.empty())
+    return ss.str();
   for (const auto& [name, aie_col] : aie_cols) {
     std::vector<std::string> aie_data = {
       std::to_string(index),
@@ -179,7 +191,7 @@ generate_aie_string(const boost::property_tree::ptree& pt)
     index++;
   }
 
-  ss << aie_table.toString("  ");
+  ss << aie_table.toString("  ") << "\n";
 
   return ss.str();
 }
@@ -188,8 +200,10 @@ static std::string
 generate_misc_string(const boost::property_tree::ptree& pt)
 {
   std::stringstream ss;
+  auto l1_int = pt.get<std::string>("level_one_interrupt_count", "");
 
-  ss << boost::format("  %-23s: %s \n") % "L1 Interrupt Count" % pt.get<std::string>("level_one_interrupt_count");
+  if(!l1_int.empty())
+    ss << boost::format("  %-23s: %s \n") % "L1 Interrupt Count" % l1_int << "\n";
 
   return ss.str();
 }
@@ -208,11 +222,11 @@ ReportTelemetry::writeReport(const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  _output << generate_misc_string(telemetry_pt) << "\n";
-  _output << generate_rtos_string(telemetry_pt) << "\n";
-  _output << generate_rtos_dtlb_string(telemetry_pt) << "\n";
-  _output << generate_opcode_string(telemetry_pt) << "\n";
-  _output << generate_stream_buffer_string(telemetry_pt) << "\n";
-  _output << generate_aie_string(telemetry_pt) << "\n";
+  _output << generate_misc_string(telemetry_pt);
+  _output << generate_rtos_string(telemetry_pt);
+  _output << generate_rtos_dtlb_string(telemetry_pt);
+  _output << generate_opcode_string(telemetry_pt);
+  _output << generate_stream_buffer_string(telemetry_pt);
+  _output << generate_aie_string(telemetry_pt);
   _output << std::endl;
 }
