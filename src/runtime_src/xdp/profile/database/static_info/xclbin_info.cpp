@@ -25,45 +25,45 @@
 
 namespace xdp {
 
-  PLInfo& PLInfo::operator=(const PLInfo& other)
+  PLInfo& PLInfo::operator=(const PLInfo& src)
   {
     // Check for self assignment
-    if (this == &other)
+    if (this == &src)
       return *this;
 
     // Release existing PLInfo resources
     releaseResources() ;
 
-    this->hostMaxReadBW    = other.hostMaxReadBW ;
-    this->hostMaxWriteBW   = other.hostMaxWriteBW ;
-    this->kernelMaxReadBW  = other.kernelMaxReadBW ;
-    this->kernelMaxWriteBW = other.kernelMaxWriteBW ;
-    this->clockRatePLMHz = other.clockRatePLMHz ;
+    this->hostMaxReadBW    = src.hostMaxReadBW ;
+    this->hostMaxWriteBW   = src.hostMaxWriteBW ;
+    this->kernelMaxReadBW  = src.kernelMaxReadBW ;
+    this->kernelMaxWriteBW = src.kernelMaxWriteBW ;
+    this->clockRatePLMHz = src.clockRatePLMHz ;
 
-    this->usesTs2mm = other.usesTs2mm ;
-    this->usesFifo = other.usesFifo ;
-    this->hasFloatingAIMWithTrace = other.hasFloatingAIMWithTrace ;
-    this->hasFloatingASMWithTrace = other.hasFloatingASMWithTrace ;
-    this->hasMemoryAIM = other.hasMemoryAIM ;
+    this->usesTs2mm = src.usesTs2mm ;
+    this->usesFifo = src.usesFifo ;
+    this->hasFloatingAIMWithTrace = src.hasFloatingAIMWithTrace ;
+    this->hasFloatingASMWithTrace = src.hasFloatingASMWithTrace ;
+    this->hasMemoryAIM = src.hasMemoryAIM ;
 
-    for(auto &cu : other.cus)
+    for(auto &cu : src.cus)
       this->cus[cu.first] = new ComputeUnitInstance(*cu.second) ;
 
-    for (auto &mi : other.memoryInfo)
+    for (auto &mi : src.memoryInfo)
       this->memoryInfo[mi.first] = new Memory(*mi.second) ;
     
-    this->ams.reserve(other.ams.size());
-    for (auto& am : other.ams) {
+    this->ams.reserve(src.ams.size());
+    for (auto& am : src.ams) {
       this->ams.push_back(new Monitor(*am));
     }
 
-    this->aims.reserve(other.aims.size());
-    for (auto& aim : other.aims) {
+    this->aims.reserve(src.aims.size());
+    for (auto& aim : src.aims) {
       this->aims.push_back(new Monitor(*aim));
     }
 
-    this->asms.reserve(other.asms.size());
-    for (auto& asmPtr : other.asms) {
+    this->asms.reserve(src.asms.size());
+    for (auto& asmPtr : src.asms) {
       this->asms.push_back(new Monitor(*asmPtr));
     }
 
@@ -154,38 +154,38 @@ namespace xdp {
     }
   }
 
-  AIEInfo& AIEInfo::operator=(const AIEInfo& other)
+  AIEInfo& AIEInfo::operator=(const AIEInfo& src)
   {
     // Check for self assignment
-    if(this == &other)
+    if(this == &src)
       return *this ;
 
     // Release existing PLInfo resources
     releaseResources() ;
 
-    this->clockRateAIEMHz = other.clockRateAIEMHz ;
-    this->numTracePLIO = other.numTracePLIO ;
-    this->isGMIORead = other.isGMIORead ;
-    this->isAIEcounterRead = other.isAIEcounterRead ;
+    this->clockRateAIEMHz = src.clockRateAIEMHz ;
+    this->numTracePLIO = src.numTracePLIO ;
+    this->isGMIORead = src.isGMIORead ;
+    this->isAIEcounterRead = src.isAIEcounterRead ;
 
-    for(auto &aie : other.aieList)
+    for(auto &aie : src.aieList)
       this->aieList.push_back(new AIECounter(*aie)) ;
 
-    for(auto &gmio : other.gmioList)
+    for(auto &gmio : src.gmioList)
       this->gmioList.push_back(new TraceGMIO(*gmio)) ;
 
-    this->aieCoreCountersMap    = other.aieCoreCountersMap ;
-    this->aieShimCountersMap    = other.aieShimCountersMap ;
-    this->aieMemTileCountersMap = other.aieMemTileCountersMap ;
-    this->aieCoreEventsMap      = other.aieCoreEventsMap ;
-    this->aieMemoryEventsMap    = other.aieMemoryEventsMap ;
-    this->aieShimEventsMap      = other.aieShimEventsMap ;
-    this->aieMemTileEventsMap   = other.aieMemTileEventsMap ;
+    this->aieCoreCountersMap    = src.aieCoreCountersMap ;
+    this->aieShimCountersMap    = src.aieShimCountersMap ;
+    this->aieMemTileCountersMap = src.aieMemTileCountersMap ;
+    this->aieCoreEventsMap      = src.aieCoreEventsMap ;
+    this->aieMemoryEventsMap    = src.aieMemoryEventsMap ;
+    this->aieShimEventsMap      = src.aieShimEventsMap ;
+    this->aieMemTileEventsMap   = src.aieMemTileEventsMap ;
 
-    for(auto &tile : other.aieCfgList)
+    for(auto &tile : src.aieCfgList)
       this->aieCfgList.push_back(std::make_unique<aie_cfg_tile>(*tile)) ;
 
-    for(auto &noc : other.nocList)
+    for(auto &noc : src.nocList)
       this->nocList.push_back(new NoCNode(*noc)) ;
 
     return *this ;
@@ -589,7 +589,7 @@ namespace xdp {
       {
         if(xclbin->aie.valid)
         {
-          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "added GMIO trace: "+ std::to_string(id));
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Added GMIO trace of ID "+ std::to_string(id) + ".");
           xclbin->aie.gmioList.push_back(new TraceGMIO(id, col, num, stream, len)) ;
           return ;
         }

@@ -89,7 +89,7 @@ namespace xdp {
     // Informs if this PLInfo is valid for current xclbins configuration
     bool valid = true ;
 
-    PLInfo& operator=(const PLInfo& other) ;
+    PLInfo& operator=(const PLInfo& src) ;
     ~PLInfo() ;
     void addComputeUnitPorts(const std::string& kernelName,
                              const std::string& portName,
@@ -154,7 +154,7 @@ namespace xdp {
     // Informs if this AIEInfo is valid for current xclbins configuration
     bool valid = true ;
 
-    AIEInfo& operator=(const AIEInfo& other) ;
+    AIEInfo& operator=(const AIEInfo& src) ;
     ~AIEInfo() ;
 
     private:

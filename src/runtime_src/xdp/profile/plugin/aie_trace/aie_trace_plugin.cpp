@@ -438,7 +438,8 @@ void AieTracePluginUnified::finishFlushAIEDevice(void *handle) {
   AIEData.implementation->flushTraceModules();
   flushOffloader(AIEData.offloader, true);
   XDPPlugin::endWrite();
-  (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
+  // TODO: this is temporary change, not required as part of this PR.
+  // (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
 
   handleToAIEData.erase(itr);
 }
