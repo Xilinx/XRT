@@ -260,15 +260,6 @@ namespace xdp {
     return xrt_core::uuid(mix_uuid_str);
   }
 
-  std::vector<xrt_core::uuid> ConfigInfo::getConfigUuids()
-  {
-    std::vector<xrt_core::uuid> uuids;
-    for(auto &xclbin : currentXclbins)
-      uuids.push_back(xclbin->uuid);
-
-    return uuids;
-  }
-
   void ConfigInfo::addXclbin(XclbinInfo* xclbin)
   {
     currentXclbins.push_back(xclbin);

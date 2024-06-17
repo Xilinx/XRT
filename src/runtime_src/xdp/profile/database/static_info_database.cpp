@@ -1533,9 +1533,12 @@ namespace xdp {
     if(itr != deviceInfo.end()) {
       DeviceInfo *devInfo = itr->second.get();
       ConfigInfo* config = devInfo->currentConfig() ;
-      auto xclbinUuids = config->getConfigUuids() ;
 
-      if(!xclbinUuids.empty() && std::find(xclbinUuids.begin(), xclbinUuids.end(), new_xclbin_uuid) != xclbinUuids.end()) {
+      if (config->containsXclbin(new_xclbin_uuid)) {
+        std::stringstream msg;
+        msg << "Loaded xclbins on device already contains this new xclbin with UID: " << new_xclbin_uuid.to_string() <<"." ;
+        msg << " Skipping update of the device.\n";
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         return false;
       }
     }

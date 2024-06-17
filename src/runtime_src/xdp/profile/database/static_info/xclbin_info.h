@@ -203,10 +203,8 @@ namespace xdp {
     ~ConfigInfo() ;
 
     xrt_core::uuid getConfigUuid() ;
-    std::vector<xrt_core::uuid> getConfigUuids() ;
-
     void addXclbin(XclbinInfo* newXclbin) ;
-    void updateType(ConfigInfoType cfgType) ; 
+    inline void updateType(ConfigInfoType cfgType) ;
 
     bool containsXclbin(xrt_core::uuid& uuid) ;
     bool containsXclbinType(XclbinInfoType& xclbinQueryType);
