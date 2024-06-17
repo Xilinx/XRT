@@ -82,9 +82,9 @@ namespace xdp {
     std::map<int32_t, Memory*> memoryInfo ;
 
     // Information on all our Monitor IPs (including shell monitors)
-    std::vector<Monitor*> ams ;
-    std::vector<Monitor*> aims ;
-    std::vector<Monitor*> asms ;
+    std::vector<Monitor*> ams ;   // Accelerator Monitors
+    std::vector<Monitor*> aims ;  // AXI Interface Monitors
+    std::vector<Monitor*> asms ;  // AXI Stream Monitors
 
     // Informs if this PLInfo is valid for current xclbins configuration
     bool valid = true ;
@@ -220,15 +220,16 @@ namespace xdp {
    
     bool hasFloatingAIMWithTrace(XclbinInfo* xclbin);
     bool hasFloatingASMWithTrace(XclbinInfo* xclbin);
-    uint64_t getNumAM(XclbinInfo* xclbin) ;
-    uint64_t getNumUserAMWithTrace(XclbinInfo* xclbin) ;
-    uint64_t getNumAIM(XclbinInfo* xclbin) ;
-    uint64_t getNumUserAIM(XclbinInfo* xclbin) ;
-    uint64_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
 
-    uint64_t getNumASM(XclbinInfo* xclbin) const ;
-    uint64_t getNumUserASM(XclbinInfo* xclbin) const ;
-    uint64_t getNumUserASMWithTrace(XclbinInfo* xclbin) ;
+    uint64_t getNumAM(XclbinInfo* xclbin) ;
+    uint8_t getNumUserAMWithTrace(XclbinInfo* xclbin) ;
+    uint8_t getNumAIM(XclbinInfo* xclbin) ;
+    uint8_t getNumUserAIM(XclbinInfo* xclbin) ;
+    uint8_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
+
+    uint8_t getNumASM(XclbinInfo* xclbin) const ;
+    uint8_t getNumUserASM(XclbinInfo* xclbin) const ;
+    uint8_t getNumUserASMWithTrace(XclbinInfo* xclbin) ;
 
     uint64_t getNumNOC(XclbinInfo* xclbin) ;
     Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotId) ;

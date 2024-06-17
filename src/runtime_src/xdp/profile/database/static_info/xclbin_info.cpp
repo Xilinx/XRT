@@ -377,21 +377,20 @@ namespace xdp {
       return 0;
     }
 
-    uint64_t ConfigInfo::getNumUserAMWithTrace(XclbinInfo* xclbin)
+    uint8_t ConfigInfo::getNumUserAMWithTrace(XclbinInfo* xclbin)
     {
-      uint64_t num = 0 ;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto am : bin->pl.ams) {
             if (am->traceEnabled)
-              ++num ;
+              return 1 ;
           }
         }
       }
-      return num ;
+      return 0 ;
     }
 
-    uint64_t ConfigInfo::getNumAIM(XclbinInfo* xclbin)
+    uint8_t ConfigInfo::getNumAIM(XclbinInfo* xclbin)
     {
       for (auto bin : currentXclbins) {
         if (bin == xclbin)
@@ -401,36 +400,34 @@ namespace xdp {
       return 0 ;
     }
 
-    uint64_t ConfigInfo::getNumUserAIM(XclbinInfo* xclbin)
+    uint8_t ConfigInfo::getNumUserAIM(XclbinInfo* xclbin)
     {
-      uint64_t num = 0 ;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto aim : bin->pl.aims) {
             if (!aim->isShellMonitor())
-              ++num ;
+              return 1 ;
           }
         }
       }
-      return num ;
+      return 0 ;
     }
 
-    uint64_t ConfigInfo::getNumUserAIMWithTrace(XclbinInfo* xclbin) const
+    uint8_t ConfigInfo::getNumUserAIMWithTrace(XclbinInfo* xclbin) const
     {
-      uint64_t num = 0 ;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto aim : bin->pl.aims) {
             if (aim->traceEnabled && !aim->isShellMonitor())
-              ++num ;
+              return 1 ;
           }
         }
       }
     
-      return num ;
+      return 0 ;
     }
 
-    uint64_t ConfigInfo::getNumASM(XclbinInfo* xclbin) const
+    uint8_t ConfigInfo::getNumASM(XclbinInfo* xclbin) const
     {
       for (auto bin : currentXclbins) {
         if (bin == xclbin)
@@ -439,32 +436,30 @@ namespace xdp {
       return 0 ;
     }
 
-    uint64_t ConfigInfo::getNumUserASM(XclbinInfo* xclbin) const
+    uint8_t ConfigInfo::getNumUserASM(XclbinInfo* xclbin) const
     {
-      uint64_t num = 0 ;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto mon : bin->pl.asms) {
             if (!mon->isShellMonitor())
-              ++num ;
+              return 1 ;
           }
         }
       }
-      return num ;
+      return 0 ;
     }
 
-    uint64_t ConfigInfo::getNumUserASMWithTrace(XclbinInfo* xclbin)
+    uint8_t ConfigInfo::getNumUserASMWithTrace(XclbinInfo* xclbin)
     {
-      uint64_t num = 0 ;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto mon : bin->pl.asms) {
             if (mon->traceEnabled && !mon->isShellMonitor())
-              ++num ;
+              return 1 ;
           }
         }
       }
-      return num ;
+      return 0 ;
     }
 
     uint64_t ConfigInfo::getNumNOC(XclbinInfo* xclbin)
