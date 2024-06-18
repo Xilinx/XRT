@@ -120,6 +120,34 @@ public:
   {}
   /// @endcond
 
+  /**
+   * hw_context() - Copy ctor
+   */
+  hw_context(const hw_context&) = default;
+
+  /**
+   * hw_context() - Move ctor
+   */
+  hw_context(hw_context&&) = default;
+
+  /**
+   * ~hw_context() - Destructor
+   */
+  XRT_API_EXPORT
+  ~hw_context();
+
+  /**
+   * operator= () - Copy assignment
+   */
+  hw_context&
+  operator=(const hw_context&) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  hw_context&
+  operator=(hw_context&&) = default;
+
   ///@cond
   // Undocument experimental API to change the QoS of a hardware context
   // Subject to change or removal

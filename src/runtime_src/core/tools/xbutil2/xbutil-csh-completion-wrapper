@@ -14,5 +14,5 @@ alias __xbutil_completion_csh tcsh $XILINX_XRT/share/completions/xbutil-csh-comp
 # 
 # The options that bypass the script parsing are as follows:
 # -u, --user, -o, --output, -p, --path
-complete xbutil 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'n/-p/f/' 'n/--path/f/' 'p/*/`__xbutil_completion_csh`/'
-echo Autocomplete enabled for the xbutil command
+complete xrt-smi 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'n/-p/f/' 'n/--path/f/' 'p/*/`__xbutil_completion_csh`/'
+echo Autocomplete enabled for the xrt-smi command

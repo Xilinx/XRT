@@ -60,7 +60,7 @@ static int XCdo_DmaWrite_Trans(uint64_t BasePtr, uint32_t dst_high, uint32_t dst
 	uint64_t DestAddr;
 	int Ret = XCDO_OK;
 
-	DestAddr = dst_low;
+	// DestAddr = dst_low;
 	DestAddr = ((uint64_t)dst_low | (((uint64_t)dst_high) << 32U));
 
 	XCdo_PDebug("%s DestAddr: 0x%x%08x, Len(32): 0x%u\n\r", __func__,

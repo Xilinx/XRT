@@ -361,6 +361,7 @@ get_rtp(const pt::ptree& aie_meta, int graph_id)
     rtp.hasLock = rtp_node.second.get<bool>("requires_lock");
 
     rtps[rtp.portName] = rtp;
+    rtps[rtp.aliasName] = rtp;
   }
 
   return rtps;

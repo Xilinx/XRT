@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,6 +17,7 @@
 #ifndef _XCL_ZYNQ_DEV_H_
 #define _XCL_ZYNQ_DEV_H_
 
+#include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -58,6 +60,7 @@ private:
     zynq_device(const std::string& sysfs_base);
     zynq_device(const zynq_device& s) = delete;
     zynq_device& operator=(const zynq_device& s) = delete;
+    ~zynq_device();
 };
 
 std::string get_render_devname();

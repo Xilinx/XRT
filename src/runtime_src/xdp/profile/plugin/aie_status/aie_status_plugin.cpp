@@ -447,7 +447,16 @@ namespace xdp {
     // Last chance at writing status reports
     for (auto w : writers)
       w->write(false, handle);
- 
+
+    // When ending polling for a device, if we are on edge we must instead
+    // shut down all of the threads and not just a single one in order
+    // to avoid race conditions between the zynq driver destructor and our own.
+    //
+    // Currently, Edge is the only supported type of platform so we can
+    // safely end all threads here, but this must be revisited if we extend
+    // AIE status functionality to other types of platforms.
+    endPoll();
+    /* 
     // Ask threads to stop
     mThreadCtrlMap[handle] = false;
 
@@ -468,6 +477,7 @@ namespace xdp {
     }
 
     mThreadCtrlMap.erase(handle);
+    */
   }
 
   void AIEStatusPlugin::endPoll()

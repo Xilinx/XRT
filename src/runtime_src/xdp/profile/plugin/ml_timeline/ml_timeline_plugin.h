@@ -47,6 +47,7 @@ namespace xdp {
     } DeviceDataEntry;
 
     void* mHwCtxImpl = nullptr;
+    uint32_t mBufSz  = 0x20000;
 
   };
 

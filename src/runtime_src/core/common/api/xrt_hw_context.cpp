@@ -259,4 +259,8 @@ operator xrt_core::hwctx_handle* () const
   return get_handle()->get_hwctx_handle();
 }
 
+hw_context::
+~hw_context()
+{}
+
 } // xrt

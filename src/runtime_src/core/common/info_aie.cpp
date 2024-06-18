@@ -721,14 +721,14 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
       boost::property_tree::ptree tile;
       tile.put("column", node.second.data());
       tile.put("row", dma_row_it->second.data());
+      if (dma_row_it != g_node.second.end())
+        dma_row_it++;
       // Check whether this core is already added
       if (is_duplicate_core(tile_array, tile))
         continue;
 
       populate_aie_core(core_info, tile);
       tile_array.push_back({"", tile});
-      if (dma_row_it != g_node.second.end())
-        dma_row_it++;
     }
   }
 }

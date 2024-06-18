@@ -14,27 +14,21 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
 fi
 
 # Working variables
-XRT_PROG=xbutil2
+XRT_PROG=xrt-smi
+echo "----------------------------------------------------------------------"
+echo "                              WARNING:
+                xbutil has been renamed to xrt-smi
+        Please migrate to using xrt-smi instead of xbutil.
+
+    Commands, options, arguments and their descriptions can also be 
+                    reported via the --help option."
+echo "----------------------------------------------------------------------"
 
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
     case "$1" in
-    # Indicates that the legacy was specified
-    -legacy|--legacy)
-        echo "----------------------------------------------------------------------"
-        echo "Error: Obsoleted option
-       The --legacy option is no longer supported.
-    
-       For legacy migration, please refer to the XRT github.io utility 
-       migration guide.
-
-       Commands, options, arguments and their descriptions can also be 
-       reported via the --help option."
-        echo "----------------------------------------------------------------------"
-        exit 1
-	    ;;
 	# Copy the options the remaining options
 	*)
 	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"

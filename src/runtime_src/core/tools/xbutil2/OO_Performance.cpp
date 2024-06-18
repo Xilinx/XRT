@@ -15,7 +15,7 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Change performance mode of the device")
+    : OptionOptions(_longName, _isHidden, "Change power mode of the device")
     , m_device("")
     , m_action("")
     , m_help(false)
@@ -34,7 +34,7 @@ OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
 void
 OO_Performance::execute(const SubCmdOptions& _options) const
 {
-  XBUtilities::verbose("SubCommand option: Performance");
+  XBUtilities::verbose("SubCommand option: Power Mode");
 
   XBUtilities::verbose("Option(s):");
   for (auto & aString : _options)
@@ -93,7 +93,7 @@ OO_Performance::execute(const SubCmdOptions& _options) const
       printHelp();
       throw xrt_core::error(std::errc::operation_canceled);
     }
-    std::cout << boost::format("\nPerformance mode is set to %s \n") % (boost::algorithm::to_lower_copy(m_action));
+    std::cout << boost::format("\nPower mode is set to %s \n") % (boost::algorithm::to_lower_copy(m_action));
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();

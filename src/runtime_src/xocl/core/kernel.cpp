@@ -177,7 +177,7 @@ kernel(program* prog, const std::string& name, xrt::xclbin::kernel xk)
     // throws and the kernel should be ignored
     try {
       xrt_core::kernel_int::set_cus(xrun, cumask);
-      m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrun}));
+      m_xruns.emplace(std::make_pair(device, xkr{std::move(xkernel), std::move(xrun)}));
     }
     catch (const std::exception&) {
     }

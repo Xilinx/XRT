@@ -111,7 +111,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
   auto kernelName = xkernel.get_name();
-  logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Kernel name is '%s'") % kernelName));
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
@@ -152,8 +153,10 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
-  logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'GB") % buffer_size_gb));
-  logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+  if(XBU::getVerbose()) { 
+    logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'GB") % buffer_size_gb));
+    logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
+  }
 
   auto start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < itr_count; i++) {
@@ -185,7 +188,8 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   //Data is read and written in parallel hence x2
   float bandwidth = (buffer_size_gb*itr_count*2) / elapsedSecs;
-  logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
+  if(XBU::getVerbose())
+    logger(ptree, "Details", boost::str(boost::format("Total duration: '%.1f's") % elapsedSecs));
   logger(ptree, "Details", boost::str(boost::format("Average bandwidth per shim DMA: '%.1f' GB/s") % bandwidth));
 
   ptree.put("status", test_token_passed);

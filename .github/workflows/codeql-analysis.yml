@@ -47,7 +47,7 @@ jobs:
       run: |
        sudo apt update
        sudo src/runtime_src/tools/scripts/xrtdeps.sh
-       ./build/build.sh -opt -verbose -driver
+       ./build/build.sh -opt -verbose -driver -noert
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2

@@ -75,7 +75,15 @@ enum class module_type {
       return (col == tile.col) && (row == tile.row);
     }
     bool operator<(const tile_type &tile) const {
-      return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+      if(col != tile.col) return col<tile.col;
+      if(row != tile.row) return row<tile.row;
+      if(subtype != tile.subtype) return subtype < tile.subtype;
+      if(stream_id != tile.stream_id) return stream_id < tile.stream_id;
+      if(is_master != tile.is_master) return is_master < tile.is_master;
+      if(itr_mem_addr != tile.itr_mem_addr) return itr_mem_addr < tile.itr_mem_addr;
+      if(active_core != tile.active_core) return active_core < tile.active_core;
+      if(active_memory != tile.active_memory) return active_memory < tile.active_memory;
+      return is_trigger < tile.is_trigger;
     }
   };
 

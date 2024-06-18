@@ -73,7 +73,6 @@ if (DEFINED XRT_AIE_BUILD)
     rt
     dl
     uuid
-    ${Boost_SYSTEM_LIBRARY}
     xaiengine
     )
 else()
@@ -84,7 +83,6 @@ else()
     rt
     dl
     uuid
-    ${Boost_SYSTEM_LIBRARY}
     )
 
 endif()
