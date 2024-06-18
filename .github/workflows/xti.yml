@@ -38,14 +38,14 @@ jobs:
         include:      
            - os: centos78      
              packageType: rpm      
-           - os: centos8      
-             packageType: rpm      
-           - os: rhel9      
-             packageType: rpm      
-           - os: ubuntu2004      
-             packageType: deb      
-           - os: ubuntu2204      
-             packageType: deb      
+           # - os: centos8      
+           #   packageType: rpm      
+           # - os: rhel9      
+           #   packageType: rpm      
+           # - os: ubuntu2004      
+           #   packageType: deb      
+           # - os: ubuntu2204      
+           #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     # runs-on: [apu]
@@ -91,38 +91,37 @@ jobs:
           appConfig2: ${{ secrets.APP_CONFIG2 }} 
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
-  # windows-build:
-  #   needs: authorize
-  #   runs-on: Windows
-  #   steps:
-  #     - name: Checkout PR   
-  #       uses: actions/checkout@v4 
-  #       with: 
-  #         repository: "${{ github.event.pull_request.head.repo.full_name }}"
-  #         ref: "${{ github.event.pull_request.head.ref }}"
-  #         fetch-depth: 0
-  #         path: ${{ github.workspace }}/${{ github.run_number }}  
-  #         submodules: recursive
-  #         persist-credentials: false 
+  windows-build:
+    runs-on: Windows
+    steps:
+      - name: Checkout PR   
+        uses: actions/checkout@v4 
+        with: 
+          repository: "Xilinx/XRT"
+          ref: "master"
+          fetch-depth: 0
+          path: ${{ github.workspace }}/${{ github.run_number }}  
+          submodules: recursive
+          persist-credentials: false 
             
-  #     - name: Checkout private repository      
-  #       uses: actions/checkout@v3   
-  #       with:      
-  #         repository: actions-int/composite-workflows
-  #         github-server-url: ${{ secrets.SERVER_URL }}      
-  #         token: ${{ secrets.ACCESS_TOKEN }}      
-  #         path: composite-workflows 
-  #         ref: main
+      - name: Checkout private repository      
+        uses: actions/checkout@v3   
+        with:      
+          repository: actions-int/composite-workflows
+          github-server-url: ${{ secrets.SERVER_URL }}      
+          token: ${{ secrets.ACCESS_TOKEN }}      
+          path: composite-workflows 
+          ref: xti
        
-  #     - name: XRT windows build     
-  #       uses: ./composite-workflows/windows-build
-  #       with:     
-  #         workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
-  #         buildNumber: ${{ github.run_number }}    
-  #         release: ${{ env.RELEASE }}
-  #         accessToken: ${{ secrets.ACCESS_TOKEN }} 
-  #         workspaceg: ${{ github.workspace }}
-  #         github-server-url: ${{ secrets.SERVER_URL }}
+      - name: XRT windows build     
+        uses: ./composite-workflows/windows-build
+        with:     
+          workspace: ${{ github.workspace }}/${{ github.run_number }}   
+          buildNumber: ${{ github.run_number }}    
+          release: ${{ env.RELEASE }}
+          accessToken: ${{ secrets.ACCESS_TOKEN }} 
+          workspaceg: ${{ github.workspace }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
   # apu-package-build:
   #   # needs: authorize
