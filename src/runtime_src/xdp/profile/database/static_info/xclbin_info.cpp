@@ -357,7 +357,7 @@ namespace xdp {
         if (bin == xclbin && bin->pl.valid)
           return bin->pl.ams.size() ;
       }
-      
+
       return 0;
     }
 
@@ -374,7 +374,7 @@ namespace xdp {
       return 0 ;
     }
 
-    uint8_t ConfigInfo::getNumAIM(XclbinInfo* xclbin)
+    uint64_t ConfigInfo::getNumAIM(XclbinInfo* xclbin)
     {
       for (auto bin : currentXclbins) {
         if (bin == xclbin)
@@ -407,11 +407,11 @@ namespace xdp {
           }
         }
       }
-    
+
       return 0 ;
     }
 
-    uint8_t ConfigInfo::getNumASM(XclbinInfo* xclbin) const
+    uint64_t ConfigInfo::getNumASM(XclbinInfo* xclbin) const
     {
       for (auto bin : currentXclbins) {
         if (bin == xclbin)

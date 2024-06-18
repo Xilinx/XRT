@@ -223,11 +223,11 @@ namespace xdp {
 
     uint64_t getNumAM(XclbinInfo* xclbin) ;
     uint8_t getNumUserAMWithTrace(XclbinInfo* xclbin) ;
-    uint8_t getNumAIM(XclbinInfo* xclbin) ;
+    uint64_t getNumAIM(XclbinInfo* xclbin) ;
     uint8_t getNumUserAIM(XclbinInfo* xclbin) ;
     uint8_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
 
-    uint8_t getNumASM(XclbinInfo* xclbin) const ;
+    uint64_t getNumASM(XclbinInfo* xclbin) const ;
     uint8_t getNumUserASM(XclbinInfo* xclbin) const ;
     uint8_t getNumUserASMWithTrace(XclbinInfo* xclbin) ;
 
