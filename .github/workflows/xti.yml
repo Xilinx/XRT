@@ -38,14 +38,14 @@ jobs:
         include:      
            - os: centos78      
              packageType: rpm      
-           # - os: centos8      
-           #   packageType: rpm      
-           # - os: rhel9      
-           #   packageType: rpm      
-           # - os: ubuntu2004      
-           #   packageType: deb      
-           # - os: ubuntu2204      
-           #   packageType: deb      
+           - os: centos8      
+             packageType: rpm      
+           - os: rhel9      
+             packageType: rpm      
+           - os: ubuntu2004      
+             packageType: deb      
+           - os: ubuntu2204      
+             packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     # runs-on: [apu]
@@ -223,8 +223,8 @@ jobs:
 
   pcie-hw-tests:  
     needs: extract-platforms
-    # runs-on: [xrt, trx]
-    runs-on: [self-hosted, Ubuntu-22.04]
+    runs-on: [xrt, trx]
+    # runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
