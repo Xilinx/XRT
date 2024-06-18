@@ -153,7 +153,7 @@ class copy_from_host_buffer_command : public copy_buffer
 {
 public:
   copy_from_host_buffer_command(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::vector<T>&& vec, size_t size, size_t offset)
-    : copy_buffer(s, direction, buf, nullptr, size, offset), host_vec(vec)
+    : copy_buffer(s, direction, buf, nullptr, size, offset), host_vec(std::move(vec))
   {
   }
 
