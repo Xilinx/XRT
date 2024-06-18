@@ -252,7 +252,7 @@ namespace xrt::core::hip
 
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_from_host_buffer_command<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, host_vec, size, offset));
+                                std::make_shared<copy_from_host_buffer_command<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, std::move(host_vec), size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 } // xrt::core::hip
