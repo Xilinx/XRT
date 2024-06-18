@@ -245,14 +245,14 @@ namespace xrt::core::hip
     throw_invalid_value_if(size % element_size != 0, "Invalid size.");
 
     auto element_count = size / element_size;
-    auto vec = std::make_shared<std::vector<T>>(element_count, value);
+    std::vector<T> host_vec(element_count, value);
 
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-                                std::make_shared<copy_shared_host_buffer<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, vec, size, offset));
+                                std::make_shared<copy_from_host_buffer_command<T>>(hip_stream, XCL_BO_SYNC_BO_TO_DEVICE, hip_mem_dst, host_vec, size, offset));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 } // xrt::core::hip

@@ -128,7 +128,7 @@ public:
   bool wait() override;
 };
 
-// copy command for copying data from/to host buffer
+// copy command for copying data from/to host buffer of type void*
 class copy_buffer : public command
 {
 public:
@@ -147,14 +147,13 @@ protected:
   std::future<void> handle;
 };
 
-
-// copy command for copying data from a read only host source of type shared_ptr<std::vector<uint8|uint16|uint32>>
+// copy command for copying data from a source only bost buffer of type std::vector<uint8|uint16|uint32>
 template<class T>
-class copy_shared_host_buffer : public copy_buffer
+class copy_from_host_buffer_command : public copy_buffer
 {
 public:
-  copy_shared_host_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::shared_ptr<std::vector<T>> shared_host_buf, size_t size, size_t offset)
-    : copy_buffer(s, direction, buf, nullptr, size, offset), shared_host_buffer(std::move(shared_host_buf))
+  copy_from_host_buffer_command(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::vector<T>& host_vec, size_t size, size_t offset)
+    : copy_buffer(s, direction, buf, nullptr, size, offset), host_vec(std::move(host_vec))
   {
   }
 
@@ -163,7 +162,7 @@ public:
     switch (cdirection)
     {
     case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, shared_host_buffer->data(), copy_size, 0, dev_offset);
+      handle = std::async(std::launch::async, &memory::write, buffer, host_vec.data(), copy_size, 0, dev_offset);
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
@@ -178,7 +177,7 @@ public:
   }
 
 private:
-  std::shared_ptr<std::vector<T>> shared_host_buffer; // host buffer copy source
+  std::vector<T> host_vec; // host buffer (source only, not valid as destination)
 };
 
 // Global map of commands
