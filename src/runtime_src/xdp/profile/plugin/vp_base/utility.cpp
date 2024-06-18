@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,7 @@
 #include <fstream>
 #include <sstream>
 
+#include "core/common/message.h"
 #include "core/common/sysinfo.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -147,6 +148,36 @@ namespace xdp {
     }
 #endif
     return 0;
+  }
+
+  // All buffers allocated in DDR have to be 4K aligned.  This function
+  // will give the size of each individual buffer when we are splitting
+  // a totalBytes amongst numChunks buffers.
+  // 
+  // This is moved from PLDeviceIntf because it is not specific to PL.
+  uint64_t getAlignedTraceBufSize(uint64_t totalBytes, unsigned int numChunks)
+  {
+    constexpr uint64_t TRACE_BUFFER_4K_MASK = 0xfffffffffffff000;
+    constexpr uint64_t TS2MM_MIN_BUF_SIZE = 0x2000;
+
+    if (!numChunks)
+      return 0;
+
+    uint64_t alignedSize = (totalBytes/numChunks) & TRACE_BUFFER_4K_MASK;
+    if (alignedSize < TS2MM_MIN_BUF_SIZE)
+      alignedSize = TS2MM_MIN_BUF_SIZE;
+
+    // Should this verbosity be in this function?
+    if (xrt_core::config::get_verbosity() >=
+        static_cast<unsigned int>(xrt_core::message::severity_level::info)) {
+      std::stringstream info_msg;
+      info_msg << "Setting 4K aligned trace buffer size to : " << alignedSize
+               << " for num chunks: " << numChunks;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+                              info_msg.str());
+    }
+
+    return alignedSize;
   }
 
   Flow getFlowMode()
