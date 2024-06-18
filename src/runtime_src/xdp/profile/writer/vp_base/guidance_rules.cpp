@@ -78,7 +78,7 @@ namespace {
         auto& loadedConfigs = device->getLoadedConfigs();
         for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
-          if(!xclbin)
+          if (!xclbin)
             continue;
           for (const auto& cu : xclbin->pl.cus) {
             std::string cuName = cu.second->getName();
@@ -126,7 +126,7 @@ namespace {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         xdp::XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         monitors[ACCEL_MONITOR]->numTotal += xclbin->pl.ams.size();
         for (auto am : xclbin->pl.ams) {
@@ -185,7 +185,7 @@ namespace {
         auto& loadedConfigs = device->getLoadedConfigs();
         for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
-          if(!xclbin)
+          if (!xclbin)
             continue;
           for (const auto& memory : xclbin->pl.memoryInfo) {
             std::string memName = memory.second->spTag ;
@@ -211,7 +211,7 @@ namespace {
         auto& loadedConfigs = device->getLoadedConfigs();
         for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
-          if(!xclbin)
+          if (!xclbin)
             continue;
           for (const auto& memory : xclbin->pl.memoryInfo) {
             if (memory.second->spTag.find("PLRAM") != std::string::npos) {
@@ -248,7 +248,7 @@ namespace {
         auto& loadedConfigs = device->getLoadedConfigs();
         for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
-          if(!xclbin)
+          if (!xclbin)
             continue;
           for (const auto& memory : xclbin->pl.memoryInfo) {
             if (memory.second->spTag.find("HBM") != std::string::npos) {
@@ -352,7 +352,7 @@ namespace {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         xdp::XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         for (const auto& cu : xclbin->pl.cus) {
           std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
@@ -395,7 +395,7 @@ namespace {
         auto& loadedConfigs = device->getLoadedConfigs();
         for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
-          if(!xclbin)
+          if (!xclbin)
             continue;
           for (const auto& cu : xclbin->pl.cus) {
             std::string kernelName = cu.second->getKernelName() ;
@@ -445,7 +445,7 @@ namespace {
         auto& loadedConfigs = device->getLoadedConfigs();
         for (const auto& config : loadedConfigs) {
           xdp::XclbinInfo* xclbin = config->getPlXclbin();
-          if(!xclbin)
+          if (!xclbin)
             continue;
           if (xclbin->pl.usesTs2mm) {
             memType = "TS2MM" ;
@@ -493,7 +493,7 @@ namespace {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         xdp::XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         for (const auto& memory : xclbin->pl.memoryInfo) {
           if (memory.second->spTag.find("PLRAM") != std::string::npos) {

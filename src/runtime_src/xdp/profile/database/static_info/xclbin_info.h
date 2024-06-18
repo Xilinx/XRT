@@ -198,13 +198,13 @@ namespace xdp {
   // The currently loaded XCLbinInfo for the device.
     std::vector<XclbinInfo*> currentXclbins ;
 
-    ConfigInfo() ;
+    ConfigInfo() : type(CONFIG_AIE_PL) {};
     ConfigInfo(XclbinInfo* xclbin) ;
     ~ConfigInfo() ;
 
     xrt_core::uuid getConfigUuid() ;
     void addXclbin(XclbinInfo* newXclbin) ;
-    inline void updateType(ConfigInfoType cfgType) ;
+    inline void updateType(ConfigInfoType cfgType) { type=cfgType; }
 
     bool containsXclbin(xrt_core::uuid& uuid) ;
     bool containsXclbinType(XclbinInfoType& xclbinQueryType);

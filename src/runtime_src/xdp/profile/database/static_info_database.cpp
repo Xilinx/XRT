@@ -283,7 +283,7 @@ namespace xdp {
       for (const auto& config : device.second->getLoadedConfigs()) {
 
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         for (const auto& cu : xclbin->pl.cus) {
           if (cu.second->getStallEnabled())
@@ -315,7 +315,7 @@ namespace xdp {
       return ;
 
     XclbinInfo *xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     if (xclbin->deviceIntf) {
@@ -416,7 +416,7 @@ namespace xdp {
       return nullptr ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return nullptr;
 
     return xclbin->deviceIntf ;
@@ -433,7 +433,7 @@ namespace xdp {
     if (!config)
       return nullptr;
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return nullptr;
 
     if (xclbin->deviceIntf != nullptr)
@@ -466,7 +466,7 @@ namespace xdp {
       return nullptr;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return nullptr;
 
     if (xclbin->deviceIntf != nullptr)
@@ -498,7 +498,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     xclbin->pl.hostMaxReadBW = bw ;
@@ -516,7 +516,7 @@ namespace xdp {
       return 0.0 ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return 0.0;
 
     return xclbin->pl.hostMaxReadBW ;
@@ -534,7 +534,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return ;
 
     xclbin->pl.hostMaxWriteBW = bw ;
@@ -552,7 +552,7 @@ namespace xdp {
       return 0.0 ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return 0.0;
 
     return xclbin->pl.hostMaxWriteBW ;
@@ -570,7 +570,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     xclbin->pl.kernelMaxReadBW = bw ;
@@ -588,7 +588,7 @@ namespace xdp {
       return 0.0 ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return 0.0;
 
     return xclbin->pl.kernelMaxReadBW ;
@@ -606,7 +606,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     xclbin->pl.kernelMaxWriteBW = bw ;
@@ -624,7 +624,7 @@ namespace xdp {
       return 0.0 ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return 0.0;
 
     return xclbin->pl.kernelMaxWriteBW ;
@@ -668,7 +668,7 @@ namespace xdp {
       return nullptr ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return nullptr;
 
     return xclbin->pl.cus[cuId] ;
@@ -686,7 +686,7 @@ namespace xdp {
       return nullptr ;
 
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return nullptr;
 
     if (xclbin->pl.memoryInfo.find(memId) == xclbin->pl.memoryInfo.end())
@@ -709,7 +709,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = currentConfig->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     // User space AM in sorted order of their slotIds.  Matches with
@@ -739,7 +739,7 @@ namespace xdp {
     // User space AM in sorted order of their slotIds.  Matches with
     //  sorted list of AM in xdp::DeviceIntf
     XclbinInfo* xclbin = currentConfig->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     size_t count = 0 ;
@@ -1500,7 +1500,7 @@ namespace xdp {
       return;
 
     auto xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(device.get());
-    if(xclbin_slot_info.empty())
+    if (xclbin_slot_info.empty())
       return;
     xrt::uuid new_xclbin_uuid = xrt::uuid(xclbin_slot_info.back().uuid);
 
@@ -1731,7 +1731,7 @@ namespace xdp {
       return nullptr;
 
     XclbinInfo *xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return nullptr;
 
     auto data = device->get_axlf_section(IP_METADATA);
@@ -2027,7 +2027,7 @@ namespace xdp {
     }
 
     XclbinInfo* xclbin = config->getPlXclbin() ;
-    if(!xclbin) {
+    if (!xclbin) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                               "Attempt to initialize an AIM without loaded PL xclbin");
       return;
@@ -2226,7 +2226,7 @@ namespace xdp {
       return ;
 
     XclbinInfo* xclbin = config->getAieXclbin() ;
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
@@ -2357,7 +2357,7 @@ namespace xdp {
     devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
     if (!initializeStructure(currentXclbin, xrtXclbin)) {
-      if(xclbinType != XCLBIN_AIE_ONLY) {
+      if (xclbinType != XCLBIN_AIE_ONLY) {
         delete currentXclbin;
         return devInfo;
       }
@@ -2467,7 +2467,7 @@ namespace xdp {
     if (!config)
       return;
     XclbinInfo* xclbin = config->getAieXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     if (!metadataReader)

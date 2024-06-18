@@ -46,14 +46,14 @@ namespace xdp {
   XclbinInfo* DeviceInfo::createXclbinFromLastConfig(XclbinInfoType xclbinQueryType)
   {
     XclbinInfo* requiredXclbinInfo = nullptr;
-    if(loadedConfigInfos.empty()) {
+    if (loadedConfigInfos.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "loaded config is empty.");
       return requiredXclbinInfo;
     }
 
     bool xclbinAvailable = false;
     auto lastConfigType = loadedConfigInfos.back()->type;
-    if(lastConfigType == CONFIG_AIE_PL || lastConfigType == CONFIG_AIE_PL_FORMED )
+    if (lastConfigType == CONFIG_AIE_PL || lastConfigType == CONFIG_AIE_PL_FORMED)
       xclbinAvailable = true;
     
     if (!xclbinAvailable) {
@@ -61,15 +61,15 @@ namespace xdp {
         xclbinAvailable = true;
     }
 
-    if(xclbinAvailable) {
+    if (xclbinAvailable) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "Missing xclbin is available in config.");
       ConfigInfo* lastCfg = loadedConfigInfos.back().get();
-      for(auto &xclbin : lastCfg->currentXclbins)
+      for (auto &xclbin : lastCfg->currentXclbins)
       {
-        if(xclbin->type == xclbinQueryType || xclbin->type == XCLBIN_AIE_PL) {
+        if (xclbin->type == xclbinQueryType || xclbin->type == XCLBIN_AIE_PL) {
           // Create a copy of required missing xclbinInfo.
           requiredXclbinInfo = new XclbinInfo(xclbinQueryType);
-          if(xclbinQueryType == XCLBIN_AIE_ONLY)
+          if (xclbinQueryType == XCLBIN_AIE_ONLY)
           {
             // Perform deep copy of missing AIE xclbin
             requiredXclbinInfo->aie = xclbin->aie;
@@ -132,7 +132,7 @@ namespace xdp {
     }
 
     // If missing part of XclbinInfo is available. 
-    if(missingXclbin)
+    if (missingXclbin)
     {
       config->currentXclbins.back()->aie.numTracePLIO = loadedConfigInfos.size() == 0 ? 0 : loadedConfigInfos.back()->currentXclbins.back()->aie.numTracePLIO;
       config->addXclbin(missingXclbin);
@@ -415,7 +415,7 @@ namespace xdp {
 
   ConfigInfo* DeviceInfo::currentConfig() const
   {
-    if(getLoadedConfigs().empty())
+    if (getLoadedConfigs().empty())
       return nullptr ;
     
     return getLoadedConfigs().back().get() ;

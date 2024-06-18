@@ -46,7 +46,7 @@ namespace xdp {
 
     ConfigInfo* config = (db->getStaticInfo()).getCurrentlyLoadedConfig(devId);
     xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     // Use the total number of Accelerator Monitors for the size

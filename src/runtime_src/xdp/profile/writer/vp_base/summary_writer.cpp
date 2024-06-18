@@ -46,9 +46,9 @@ namespace {
 
     for (auto device : infos) {
       auto& loadedConfigs = device->getLoadedConfigs();
-      for(const auto& cfg : loadedConfigs) {
+      for (const auto& cfg : loadedConfigs) {
         for (auto xclbin : cfg->currentXclbins) {
-          if(!xclbin->pl.valid)
+          if (!xclbin->pl.valid)
             continue;
           for (auto aim : xclbin->pl.aims) {
             // A CU index of -1 is a floating AIM not attached to a compute unit
@@ -537,12 +537,12 @@ namespace xdp {
       uint64_t deviceId = device->deviceId;
 
       auto& loadedConfigs = device->getLoadedConfigs();
-      for(const auto& cfg : loadedConfigs) {
+      for (const auto& cfg : loadedConfigs) {
 
 	      xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(deviceId, cfg->getConfigUuid());
 
-        for(auto xclbin : cfg->currentXclbins) {
+        for (auto xclbin : cfg->currentXclbins) {
           if (!xclbin->pl.valid)
             continue;
           for (const auto& cuInfo : xclbin->pl.cus) {
@@ -606,7 +606,7 @@ namespace xdp {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         xdp::CounterResults values =
@@ -699,8 +699,8 @@ namespace xdp {
       {
         xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, cfg->getConfigUuid()) ;
         
-        for(auto xclbin : cfg->currentXclbins) {
-          if(!xclbin->pl.valid)
+        for (auto xclbin : cfg->currentXclbins) {
+          if (!xclbin->pl.valid)
             continue;
           uint64_t j = 0 ;      
           for (const auto& cu : (xclbin->pl.cus))
@@ -961,7 +961,7 @@ namespace xdp {
       for (const auto& config : loadedConfigs) {
 
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         xdp::CounterResults values =
@@ -1008,7 +1008,7 @@ namespace xdp {
       for (const auto& config : loadedConfigs)
       {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, config->getConfigUuid()) ;
@@ -1114,7 +1114,7 @@ namespace xdp {
       {
       
       XclbinInfo* xclbin = config->getPlXclbin();
-      if(!xclbin)
+      if (!xclbin)
         continue;
 
       for (auto monitor : xclbin->pl.aims)
@@ -1236,7 +1236,7 @@ namespace xdp {
       for (const auto& config : loadedConfigs) {
         
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         for (auto monitor : xclbin->pl.aims) {
@@ -1280,7 +1280,7 @@ namespace xdp {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         for (auto monitor : xclbin->pl.aims) {
@@ -1371,7 +1371,7 @@ namespace xdp {
       for (const auto& config : loadedConfigs) {
 
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         hasMemoryMonitors |= xclbin->pl.hasMemoryAIM ;
@@ -1404,7 +1404,7 @@ namespace xdp {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         xdp::CounterResults values =
@@ -1466,7 +1466,7 @@ namespace xdp {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         for (auto monitor : xclbin->pl.aims) {
@@ -1506,7 +1506,7 @@ namespace xdp {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
 
         for (auto monitor : xclbin->pl.aims) {
@@ -1660,7 +1660,7 @@ namespace xdp {
       auto& loadedConfigs = device->getLoadedConfigs();
       for (const auto& config : loadedConfigs) {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId, config->getConfigUuid());
@@ -1770,7 +1770,7 @@ namespace xdp {
       for (const auto& config : loadedConfigs)
       {
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         
         xdp::CounterResults values =

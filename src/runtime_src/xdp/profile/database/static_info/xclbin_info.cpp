@@ -46,26 +46,23 @@ namespace xdp {
     this->hasFloatingASMWithTrace = src.hasFloatingASMWithTrace ;
     this->hasMemoryAIM = src.hasMemoryAIM ;
 
-    for(auto &cu : src.cus)
+    for (auto &cu : src.cus)
       this->cus[cu.first] = new ComputeUnitInstance(*cu.second) ;
 
     for (auto &mi : src.memoryInfo)
       this->memoryInfo[mi.first] = new Memory(*mi.second) ;
     
-    this->ams.reserve(src.ams.size());
-    for (auto& am : src.ams) {
-      this->ams.push_back(new Monitor(*am));
-    }
+    this->ams.reserve(src.ams.size()) ;
+    for (auto& am : src.ams)
+      this->ams.push_back(new Monitor(*am)) ;
 
-    this->aims.reserve(src.aims.size());
-    for (auto& aim : src.aims) {
-      this->aims.push_back(new Monitor(*aim));
-    }
+    this->aims.reserve(src.aims.size()) ;
+    for (auto& aim : src.aims)
+      this->aims.push_back(new Monitor(*aim)) ;
 
-    this->asms.reserve(src.asms.size());
-    for (auto& asmPtr : src.asms) {
-      this->asms.push_back(new Monitor(*asmPtr));
-    }
+    this->asms.reserve(src.asms.size()) ;
+    for (auto& asmPtr : src.asms)
+      this->asms.push_back(new Monitor(*asmPtr)) ;
 
     return *this ;
   }
@@ -77,29 +74,24 @@ namespace xdp {
 
   void PLInfo::releaseResources()
   {
-    for (auto& i : cus) {
+    for (auto& i : cus)
       delete i.second ;
-    }
     cus.clear();
 
-    for (auto& i : memoryInfo) {
+    for (auto& i : memoryInfo)
       delete i.second ;
-    }
     memoryInfo.clear();
 
-    for (auto i : ams) {
+    for (auto i : ams)
       delete i ;
-    }
     ams.clear();
 
-    for (auto i : aims) {
+    for (auto i : aims)
       delete i ;
-    }
     aims.clear();
 
-    for (auto i : asms) {
+    for (auto i : asms)
       delete i ;
-    }
     asms.clear();
   }
 
@@ -157,7 +149,7 @@ namespace xdp {
   AIEInfo& AIEInfo::operator=(const AIEInfo& src)
   {
     // Check for self assignment
-    if(this == &src)
+    if (this == &src)
       return *this ;
 
     // Release existing PLInfo resources
@@ -168,10 +160,10 @@ namespace xdp {
     this->isGMIORead = src.isGMIORead ;
     this->isAIEcounterRead = src.isAIEcounterRead ;
 
-    for(auto &aie : src.aieList)
+    for (auto &aie : src.aieList)
       this->aieList.push_back(new AIECounter(*aie)) ;
 
-    for(auto &gmio : src.gmioList)
+    for (auto &gmio : src.gmioList)
       this->gmioList.push_back(new TraceGMIO(*gmio)) ;
 
     this->aieCoreCountersMap    = src.aieCoreCountersMap ;
@@ -182,10 +174,10 @@ namespace xdp {
     this->aieShimEventsMap      = src.aieShimEventsMap ;
     this->aieMemTileEventsMap   = src.aieMemTileEventsMap ;
 
-    for(auto &tile : src.aieCfgList)
+    for (auto &tile : src.aieCfgList)
       this->aieCfgList.push_back(std::make_unique<aie_cfg_tile>(*tile)) ;
 
-    for(auto &noc : src.nocList)
+    for (auto &noc : src.nocList)
       this->nocList.push_back(new NoCNode(*noc)) ;
 
     return *this ;
@@ -209,16 +201,16 @@ namespace xdp {
     for (auto i : nocList)
       delete i;
 
-    // clear aie_cfg_tile unique pointers
+    // release aie_cfg_tile unique pointers
     aieCfgList.clear() ;
   }
 
   XclbinInfo::XclbinInfo(XclbinInfoType xclbinType) : type(xclbinType)
   {
-      if(xclbinType == XclbinInfoType::XCLBIN_PL_ONLY) {
+      if (xclbinType == XclbinInfoType::XCLBIN_PL_ONLY) {
         pl.valid  = true;
         aie.valid = false;
-      } else if(xclbinType == XclbinInfoType::XCLBIN_AIE_ONLY) {
+      } else if (xclbinType == XclbinInfoType::XCLBIN_AIE_ONLY) {
         pl.valid  = false;
         aie.valid = true;
       }
@@ -230,11 +222,6 @@ namespace xdp {
       delete deviceIntf ;
   }
 
-  ConfigInfo::ConfigInfo() : type(CONFIG_AIE_PL)
-  {
-
-  }
-
   ConfigInfo::ConfigInfo(XclbinInfo* xclbin) : type(CONFIG_AIE_PL)
   {
     currentXclbins.push_back(xclbin);
@@ -242,7 +229,7 @@ namespace xdp {
 
   ConfigInfo::~ConfigInfo()
   {
-    for(auto xclbin : currentXclbins) {
+    for (auto xclbin : currentXclbins) {
       delete xclbin;
     }
     currentXclbins.clear();
@@ -250,11 +237,11 @@ namespace xdp {
 
   xrt_core::uuid ConfigInfo::getConfigUuid()
   {
-    if(currentXclbins.size()==1)
+    if (currentXclbins.size()==1)
       return currentXclbins.back()->uuid;
 
     std::string mix_uuid_str;
-    for(auto xclbin : currentXclbins)
+    for (auto xclbin : currentXclbins)
       mix_uuid_str += xclbin->uuid.to_string();
     
     return xrt_core::uuid(mix_uuid_str);
@@ -265,16 +252,11 @@ namespace xdp {
     currentXclbins.push_back(xclbin);
   }
 
-  void ConfigInfo::updateType(ConfigInfoType cfgType)
-  {
-    type = cfgType;
-  }
-
   bool ConfigInfo::containsXclbin(xrt_core::uuid& uuid)
   {
-    for(auto xclbin : currentXclbins)
+    for (auto xclbin : currentXclbins)
     {
-      if(xclbin->uuid == uuid)
+      if (xclbin->uuid == uuid)
         return true;
     }
     
@@ -283,9 +265,9 @@ namespace xdp {
 
   bool ConfigInfo::containsXclbinType(XclbinInfoType& xclbinQueryType)
   {
-    for(auto xclbin : currentXclbins)
+    for (auto xclbin : currentXclbins)
     {
-      if(xclbin->type == xclbinQueryType)
+      if (xclbin->type == xclbinQueryType)
         return true;
     }
 
@@ -294,9 +276,9 @@ namespace xdp {
 
   XclbinInfo* ConfigInfo::getPlXclbin()
   {
-    for(auto xclbin : currentXclbins)
+    for (auto xclbin : currentXclbins)
     {
-      if(xclbin->pl.valid)
+      if (xclbin->pl.valid)
         return xclbin;
     }
     return nullptr;
@@ -304,9 +286,9 @@ namespace xdp {
 
   XclbinInfo* ConfigInfo::getAieXclbin()
   {
-    for(auto xclbin : currentXclbins)
+    for (auto xclbin : currentXclbins)
     {
-      if(xclbin->aie.valid)
+      if (xclbin->aie.valid)
         return xclbin;
     }
     return nullptr;
@@ -315,11 +297,10 @@ namespace xdp {
   std::string ConfigInfo::getXclbinNames()
   {
     std::string name = "";
-    if(!currentXclbins.empty()) {
+    if (!currentXclbins.empty()) {
       name += currentXclbins.front()->name;
-      for(size_t i=1; i<currentXclbins.size(); i++) {
+      for (size_t i=1; i<currentXclbins.size(); i++)
         name += ", " + currentXclbins[i]->name;
-      }
     }
     return name ;
   }
@@ -343,8 +324,8 @@ namespace xdp {
 
   bool ConfigInfo::hasXclbin(XclbinInfo* xclbin)
   {
-    for(auto bin : currentXclbins) {
-      if(bin == xclbin)
+    for (auto bin : currentXclbins) {
+      if (bin == xclbin)
         return true;
     }
     return false;
@@ -352,27 +333,30 @@ namespace xdp {
 
     bool ConfigInfo::hasFloatingAIMWithTrace(XclbinInfo* xclbin)
     {
-      for(auto bin : currentXclbins)
-        if(bin == xclbin && bin->pl.valid)
+      for (auto bin : currentXclbins) {
+        if (bin == xclbin && bin->pl.valid)
           return bin->pl.hasFloatingAIMWithTrace ;
+      }
 
       return false ;
     }
 
     bool ConfigInfo::hasFloatingASMWithTrace(XclbinInfo* xclbin)
     {
-      for(auto bin : currentXclbins)
-        if(bin == xclbin && bin->pl.valid)
+      for (auto bin : currentXclbins) {
+        if (bin == xclbin && bin->pl.valid)
           return bin->pl.hasFloatingASMWithTrace ;
+      }
       
       return false ;
     }
 
     uint64_t ConfigInfo::getNumAM(XclbinInfo* xclbin)
     {
-      for(auto bin : currentXclbins)
-        if(bin == xclbin && bin->pl.valid)
+      for (auto bin : currentXclbins) {
+        if (bin == xclbin && bin->pl.valid)
           return bin->pl.ams.size() ;
+      }
       
       return 0;
     }
@@ -571,9 +555,9 @@ namespace xdp {
     void ConfigInfo::addTraceGMIO(uint32_t id, uint8_t col, uint8_t num,
                                 uint8_t stream, uint8_t len)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Added GMIO trace of ID "+ std::to_string(id) + ".");
           xclbin->aie.gmioList.push_back(new TraceGMIO(id, col, num, stream, len)) ;
@@ -588,9 +572,9 @@ namespace xdp {
                                    const std::string& mod,
                                    const std::string& aieName)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xclbin->aie.aieList.push_back(new AIECounter(i, col, r, num, start, end,
                                                     reset, load, freq, mod, aieName)) ;
@@ -604,16 +588,16 @@ namespace xdp {
                                             uint8_t moduleType)
     {
       XclbinInfo* xclbin = nullptr ;
-      for(auto bin : currentXclbins)
+      for (auto bin : currentXclbins)
       {
-        if(bin->aie.valid)
+        if (bin->aie.valid)
         {
           xclbin = bin;
           break ;
         }
       }
 
-      if(!xclbin)
+      if (!xclbin)
         return;
 
       switch (moduleType)
@@ -636,9 +620,9 @@ namespace xdp {
     void ConfigInfo::addAIECoreEventResources(uint32_t numEvents,
                                               uint32_t numTiles)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xclbin->aie.aieCoreEventsMap[numEvents] = numTiles ;
           break ;
@@ -649,9 +633,9 @@ namespace xdp {
     void ConfigInfo::addAIEMemoryEventResources(uint32_t numEvents,
                                                 uint32_t numTiles)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xclbin->aie.aieMemoryEventsMap[numEvents] = numTiles ;
           break ;
@@ -662,9 +646,9 @@ namespace xdp {
     void ConfigInfo::addAIEShimEventResources(uint32_t numEvents,
                                               uint32_t numTiles)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xclbin->aie.aieShimEventsMap[numEvents] = numTiles ;
           break ;
@@ -675,9 +659,9 @@ namespace xdp {
     void ConfigInfo::addAIEMemTileEventResources(uint32_t numEvents,
                                                  uint32_t numTiles)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xclbin->aie.aieMemTileEventsMap[numEvents] = numTiles ;
           break ;
@@ -688,9 +672,9 @@ namespace xdp {
 
     void ConfigInfo::addAIECfgTile(std::unique_ptr<aie_cfg_tile>&& tile)
     {
-      for(auto xclbin : currentXclbins)
+      for (auto xclbin : currentXclbins)
       {
-        if(xclbin->aie.valid)
+        if (xclbin->aie.valid)
         {
           xclbin->aie.aieCfgList.push_back(std::move(tile)) ;
           break ;
@@ -700,13 +684,13 @@ namespace xdp {
 
     void ConfigInfo::cleanCurrentXclbinInfos(XclbinInfoType xclbinType)
     {
-      if(xclbinType == XCLBIN_AIE_ONLY)   {
+      if (xclbinType == XCLBIN_AIE_ONLY)   {
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "Skipping the current config clean for new xclbin");
         return;
       }
 
-      for(auto xclbin : currentXclbins) {
-        if(xclbin->aie.valid) {
+      for (auto xclbin : currentXclbins) {
+        if (xclbin->aie.valid) {
           
           for (auto i : xclbin->aie.aieList) {
             delete i ;
@@ -725,7 +709,7 @@ namespace xdp {
 
     bool ConfigInfo::hasAIMNamed(const std::string& name)
     {
-      for(auto xclbin : currentXclbins) {
+      for (auto xclbin : currentXclbins) {
         for (auto aim : xclbin->pl.aims) {
           if (aim->name.find(name) != std::string::npos)
             return true ;

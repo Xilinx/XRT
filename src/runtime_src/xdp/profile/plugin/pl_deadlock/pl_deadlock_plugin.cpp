@@ -101,7 +101,7 @@ namespace xdp {
         std::string allCUDiagnosis;
 
         ConfigInfo* currConfig = db->getStaticInfo().getCurrentlyLoadedConfig(deviceId);
-        if(!currConfig)
+        if (!currConfig)
           return;
         
         XclbinInfo* currXclbin = currConfig->getPlXclbin();

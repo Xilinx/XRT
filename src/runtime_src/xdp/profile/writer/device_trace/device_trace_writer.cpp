@@ -84,11 +84,11 @@ namespace xdp {
     auto& configs =
       (db->getStaticInfo()).getLoadedConfigs(deviceId);
     
-    for(const auto& config : configs) {
+    for (const auto& config : configs) {
         std::string configXclbinNames = config->getXclbinNames();
         fout << "Group_Start," << configXclbinNames << "\n";
         XclbinInfo* xclbin = config->getPlXclbin();
-        if(!xclbin)
+        if (!xclbin)
           continue;
         writeSingleXclbinStructure(xclbin, rowCount);
         fout << "Group_End," << configXclbinNames << "\n";
@@ -333,7 +333,7 @@ namespace xdp {
     int configIndex = 0;
     ConfigInfo* config = loadedConfigs[configIndex].get();
     XclbinInfo* xclbin = config->getPlXclbin();
-    if(!xclbin)
+    if (!xclbin)
       return;
 
     for(auto& e : DeviceEvents) {
@@ -445,7 +445,7 @@ namespace xdp {
 
     for (const auto& config : loadedConfigs) {
       XclbinInfo* xclbin = config->getPlXclbin();
-      if(!xclbin)
+      if (!xclbin)
         continue;
 
       for (const auto& iter : xclbin->pl.cus) {
