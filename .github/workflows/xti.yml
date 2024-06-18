@@ -406,7 +406,8 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }}   
           USER: ${{ secrets.USER }}       
           NPATH: ${{ secrets.NPATH }}
-          github-server-url: ${{ secrets.SERVER_URL }}     
+          github-server-url: ${{ secrets.SERVER_URL }}
+          workspace: ${{ github.workspace }}     
                   
   test-summary:    
     runs-on: [self-hosted, Ubuntu-22.04]
