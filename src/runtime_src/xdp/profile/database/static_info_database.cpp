@@ -307,9 +307,9 @@ namespace xdp {
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
     if (!xclbin)
       return ;
-    if (xclbin->deviceIntf) {
-      delete xclbin->deviceIntf ;
-      xclbin->deviceIntf = nullptr ;
+    if (xclbin->plDeviceIntf) {
+      delete xclbin->plDeviceIntf ;
+      xclbin->plDeviceIntf = nullptr ;
     }
   }
 
@@ -391,7 +391,7 @@ namespace xdp {
     if (!xclbin)
       return nullptr ;
 
-    return xclbin->deviceIntf ;
+    return xclbin->plDeviceIntf ;
   }
 
   // This function will create a PL Device Interface if an xdp::Device is
@@ -408,19 +408,19 @@ namespace xdp {
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
     if (xclbin == nullptr)
       return;
-    if (xclbin->deviceIntf != nullptr)
-      delete xclbin->deviceIntf; // It shouldn't be...
+    if (xclbin->plDeviceIntf != nullptr)
+      delete xclbin->plDeviceIntf; // It shouldn't be...
 
-    xclbin->deviceIntf = new PLDeviceIntf();
-    xclbin->deviceIntf->setDevice(dev);
+    xclbin->plDeviceIntf = new PLDeviceIntf();
+    xclbin->plDeviceIntf->setDevice(dev);
     try {
-      xclbin->deviceIntf->readDebugIPlayout();
+      xclbin->plDeviceIntf->readDebugIPlayout();
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
       // any device interface at all
-      delete xclbin->deviceIntf;
-      xclbin->deviceIntf = nullptr;
+      delete xclbin->plDeviceIntf;
+      xclbin->plDeviceIntf = nullptr;
     }
   }
 
@@ -2068,9 +2068,9 @@ namespace xdp {
       XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
       if (xclbin) {
         db->getDynamicInfo().markXclbinEnd(deviceId) ;
-        if (xclbin->deviceIntf != nullptr) {
-          delete xclbin->deviceIntf;
-          xclbin->deviceIntf = nullptr;
+        if (xclbin->plDeviceIntf != nullptr) {
+          delete xclbin->plDeviceIntf;
+          xclbin->plDeviceIntf = nullptr;
         }
       }
     }

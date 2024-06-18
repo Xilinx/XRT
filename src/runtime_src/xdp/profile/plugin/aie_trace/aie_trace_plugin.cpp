@@ -32,7 +32,6 @@
 
 #ifdef XDP_CLIENT_BUILD
 #include "client/aie_trace.h"
-#include "xdp/profile/device/client_device/xdp_client_device.h"
 #elif defined(XRT_X86_BUILD)
 #include "x86/aie_trace.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"

@@ -103,8 +103,8 @@ namespace xdp {
 
   XclbinInfo::~XclbinInfo()
   {
-    if (deviceIntf)
-      delete deviceIntf ;
+    if (plDeviceIntf)
+      delete plDeviceIntf ;
   }
 
 } // end namespace xdp
