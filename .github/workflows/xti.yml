@@ -92,7 +92,7 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
-    runs-on: windows-working
+    runs-on: win10
     steps:
       - name: Checkout PR   
         uses: actions/checkout@v4 
@@ -116,7 +116,7 @@ jobs:
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
         with:     
-          workspace: ${{ github.workspace }}/${{ github.run_number }}   
+          workspace: ${{ github.workspace }}/${{ github.run_number }}/build   
           buildNumber: ${{ github.run_number }}    
           release: ${{ env.RELEASE }}
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
