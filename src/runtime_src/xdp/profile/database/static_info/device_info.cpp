@@ -319,13 +319,13 @@ namespace xdp {
       return ;
 
     switch (moduleType) {
-    case static_cast<int>(module_type::core):
+    case module_type::core:
       xclbin->aie.aieCoreCountersMap[numCounters] = numTiles ;
       break ;
-    case static_cast<int>(module_type::dma):
+    case module_type::dma:
       xclbin->aie.aieMemoryCountersMap[numCounters] = numTiles ;
       break ;
-    case static_cast<int>(module_type::shim):
+    case module_type::shim:
       xclbin->aie.aieShimCountersMap[numCounters] = numTiles ;
       break ;
     default:

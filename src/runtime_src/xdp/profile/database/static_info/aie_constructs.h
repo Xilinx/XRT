@@ -50,7 +50,7 @@ namespace xdp::aie {
 
 namespace xdp {
 
-  enum class module_type : uint8_t {
+  enum module_type {
     core = 0,
     dma,
     shim,
@@ -58,8 +58,8 @@ namespace xdp {
     num_types
   };
 
-  enum class io_type : uint8_t {
-    PLIO,
+  enum io_type {
+    PLIO = 0,
     GMIO
   };
 
