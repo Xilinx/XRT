@@ -57,13 +57,13 @@ namespace xdp {
     // find device for handle ; if not found then create and add device
     // for now directly create the device
 
-    DeviceIntf* dev = new DeviceIntf();
+    PLDeviceIntf* dev = new PLDeviceIntf();
 
-    auto ret = devices.insert(std::pair<xclDeviceHandle, DeviceIntf*>(handle, dev));
+    auto ret = devices.insert(std::pair<xclDeviceHandle, PLDeviceIntf*>(handle, dev));
     if(false == ret.second) {
       // HAL handle already exists. New xclbin is being loaded on the device.
       // So, reset and clear old DeviceIntf and add the new device
-      DeviceIntf* oldDeviceIntf = ret.first->second;
+      PLDeviceIntf* oldDeviceIntf = ret.first->second;
       delete oldDeviceIntf;
       devices.erase(handle);
       
@@ -103,7 +103,7 @@ namespace xdp {
     
     // Initialise profile monitor numbers in ProfileResult and allocate memory
     // Use 1 device now
-    DeviceIntf* currDevice = nullptr;
+    PLDeviceIntf* currDevice = nullptr;
     
     try {
       currDevice = devices[deviceHandle];
@@ -176,7 +176,7 @@ namespace xdp {
     }
   }
  
-  void HALAPIInterface::recordAMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, const std::string& key)
+  void HALAPIInterface::recordAMResult(ProfileResults* results, PLDeviceIntf* /*currDevice*/, const std::string& key)
   {
     xdp::CounterResults& counterResults = mFinalCounterResultsMap[key];
     
@@ -195,7 +195,7 @@ namespace xdp {
     }
   }
   
-  void HALAPIInterface::recordAIMResult(ProfileResults* results, DeviceIntf* currDevice, const std::string& key)
+  void HALAPIInterface::recordAIMResult(ProfileResults* results, PLDeviceIntf* currDevice, const std::string& key)
   {
     xdp::CounterResults& counterResults = mFinalCounterResultsMap[key];
    
@@ -218,7 +218,7 @@ namespace xdp {
     }
   }
   
-  void HALAPIInterface::recordASMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, const std::string& key)
+  void HALAPIInterface::recordASMResult(ProfileResults* results, PLDeviceIntf* /*currDevice*/, const std::string& key)
   {
     xdp::CounterResults& counterResults = mFinalCounterResultsMap[key];
     
@@ -239,7 +239,7 @@ namespace xdp {
     // Step 3: populate ProfileResults
     
     // check one device for now
-    DeviceIntf* currDevice = nullptr;
+    PLDeviceIntf* currDevice = nullptr;
     
     try {
       currDevice = devices[deviceHandle];

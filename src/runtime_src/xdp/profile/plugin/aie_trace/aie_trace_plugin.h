@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -55,7 +55,7 @@ private:
   struct AIEData {
     uint64_t deviceID;
     bool valid;
-    DeviceIntf *devIntf;
+
     std::unique_ptr<AIETraceOffload> offloader;
     std::unique_ptr<AIETraceLogger> logger;
     std::unique_ptr<AieTraceImpl> implementation;

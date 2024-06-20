@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,8 +20,8 @@
 
 #include "core/common/message.h"
 #include "xdp/config.h"
-#include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/pl_device_trace_logger.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -102,18 +102,18 @@ struct Ts2mmInfo {
   
 };
 
-class DeviceTraceLogger;
+class PLDeviceTraceLogger;
 
 #define debug_stream \
 if(!m_debug); else std::cout
 
-class DeviceTraceOffload {
+class PLDeviceTraceOffload {
 public:
   XDP_CORE_EXPORT
-  DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
-                     uint64_t offload_sleep_ms, uint64_t trbuf_sz);
+  PLDeviceTraceOffload(PLDeviceIntf* dInt, PLDeviceTraceLogger* dTraceLogger,
+                       uint64_t offload_sleep_ms, uint64_t trbuf_sz);
   XDP_CORE_EXPORT
-  virtual ~DeviceTraceOffload();
+  virtual ~PLDeviceTraceOffload();
   XDP_CORE_EXPORT
   void start_offload(OffloadThreadType type);
   XDP_CORE_EXPORT
@@ -171,12 +171,12 @@ private:
   bool sync_and_log(uint64_t index);
 
 protected:
-  DeviceIntf* dev_intf;
+  PLDeviceIntf* dev_intf;
   bool m_initialized = false;
   bool m_debug = false; /* Enable Output stream for log */
 
 private:
-  DeviceTraceLogger* deviceTraceLogger;
+  PLDeviceTraceLogger* deviceTraceLogger;
   std::function<void(bool)> m_read_trace;
   Ts2mmInfo ts2mm_info;
 

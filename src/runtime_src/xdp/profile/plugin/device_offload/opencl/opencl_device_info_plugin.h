@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -32,7 +32,7 @@ namespace xdp {
   //  some information in the database necessary for guidance, summary,
   //  and trace only available at the OpenCL layer.  It no longer communicates
   //  with the actual device.
-  class OpenCLDeviceInfoPlugin : public DeviceOffloadPlugin
+  class OpenCLDeviceInfoPlugin : public PLDeviceOffloadPlugin
   {
   private:
     // I have to keep a shared pointer to the platform to make sure

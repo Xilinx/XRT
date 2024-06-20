@@ -18,12 +18,13 @@
 #ifndef XDP_PROFILE_AIE_TRACE_OFFLOAD_WIN_H_
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_WIN_H_
 
-#include "xdp/config.h"
-#include "xdp/profile/device/tracedefs.h"
 #include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+
+#include "xdp/config.h"
 #include "xdp/profile/device/common/client_transaction.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 
 extern "C" {
@@ -33,7 +34,7 @@ extern "C" {
 
 namespace xdp {
 
-class DeviceIntf;
+class PLDeviceIntf;
 class AIETraceLogger;
 
 #define debug_stream \
@@ -70,7 +71,7 @@ class AIETraceOffload
 {
   public:
     AIETraceOffload(void* handle, uint64_t id,
-                    DeviceIntf*, AIETraceLogger*,
+                    PLDeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
                     uint64_t numStrm,
@@ -101,7 +102,7 @@ class AIETraceOffload
   private:
     void*           deviceHandle;
     uint64_t        deviceId;
-    DeviceIntf*     deviceIntf;
+    PLDeviceIntf*   plDeviceIntf;
     AIETraceLogger* traceLogger;
 
     bool isPLIO;
