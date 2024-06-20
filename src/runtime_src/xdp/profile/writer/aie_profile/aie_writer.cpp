@@ -36,15 +36,15 @@ namespace xdp {
   {    
   }
 
+  //  HEADER
+  //  File Version,1.0
+  //  Target device,edge
+  //  Hardware generation,2
+  //  Clock frequency (MHz),1250
+  //
   void AIEProfilingWriter::writeHeader()
   {
-    /*
-     * HEADER
-       File Version,1.0
-       Target device,edge
-       Hardware generation,2
-       Clock frequency (MHz),1250
-    */
+   
     float fileVersion = 1.0;
     
     // Report HW generation to inform analysis how to interpret event IDs
@@ -60,30 +60,25 @@ namespace xdp {
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
     fout << "Clock frequency (MHz)," << aieClockFreqMhz << "\n";
+    fout << "\n"; 
   }
 
-
-  /*
-    METRIC_SETS
-    # AIE tile metric sets:
-    8,1,s2mm_throughputs
-    # Memory tile metric sets:
-    5,0,s2mm_channels_details
-    # Interface tile metric sets:
-    6,0,mm2s_stalls
-  */
   void AIEProfilingWriter::writeMetricSettings()
   {
 
     auto validConfig = (db->getStats()).getProfileConfig();
-    std::vector<std::string> aieTileMetrics, memTileMetrics, intfTileMetrics;
+    std::vector<std::string> aieTileCoreModMetrics, aieTileMemModMetrics, memTileMetrics, intfTileMetrics;
     for(auto &cfg : validConfig.configMetrics) {
       
       for(auto &elm : cfg) {
         auto type = aie::getModuleType(elm.first.row, (db->getStaticInfo()).getAIEmetadataReader()->getAIETileRowOffset());
-        if(type == module_type::core) {
-          aieTileMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
-        }else if (type == module_type::mem_tile) {
+        if (type == module_type::core) {
+          aieTileCoreModMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
+        } 
+        if (type == module_type::dma) {
+          aieTileMemModMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
+        }
+        else if (type == module_type::mem_tile) {
           memTileMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
         } else if (type == module_type::shim) {
           intfTileMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
@@ -92,9 +87,14 @@ namespace xdp {
         }
       }
     }
+    
     fout << "METRIC_SETS" << "\n";
-    fout << "# AIE tile metric sets:" <<"\n";
-    for(auto &setting : aieTileMetrics)
+    fout << "# AIE tile core module metric sets:" << "\n";
+    for(auto &setting : aieTileCoreModMetrics)
+      fout << setting << "\n";
+
+    fout << "# AIE tile memory module metric sets:" << "\n";
+    for(auto &setting : aieTileMemModMetrics)
       fout << setting << "\n";
 
     fout << "# Memory tile metric sets:" << "\n";
@@ -105,11 +105,13 @@ namespace xdp {
     for(auto &setting : intfTileMetrics)
       fout << setting << "\n";
 
+    fout << "n";
   }
 
   void AIEProfilingWriter::writerDataColumnHeader()
   {
     // Write data columns header
+    fout << "METRIC_DATA" << "\n";
     fout << "timestamp"    << ","
          << "column"       << ","
          << "row"          << ","
