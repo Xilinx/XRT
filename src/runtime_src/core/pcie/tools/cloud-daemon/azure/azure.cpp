@@ -9,9 +9,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <syslog.h>
-#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/sha.h>
-#undef OPENSSL_SUPPRESS_DEPRECATED
+#include <openssl/evp.h>
 #include <curl/curl.h>
 
 #include <cstdio>
@@ -563,22 +562,29 @@ int AzureDev::Sha256AndSplit(
     std::vector<std::string> &output,
     std::string &sha)
 {
+
+    std::stringstream shastr;
+    unsigned pos = 0;
     // Initialize openssl
-    SHA256_CTX context;
-    if (!SHA256_Init(&context)) {
-        std::cerr << "Unable to initiate SHA256" << std::endl;
-        return 1;
+    EVP_MD_CTX *context;
+    if(!(context = EVP_MD_CTX_new())) {
+       std::cerr << "Failed to initialize OpenSSL context" << std::endl;
+       return 1;
     }
 
-    unsigned pos = 0;
+    if (!EVP_DigestInit(context, EVP_sha256())) {
+        std::cerr << "Unable to initiate SHA256" << std::endl;
+        goto out;
+    }
+
 
     while (pos < input.size()) {
         std::string segment = input.substr(pos, transfer_segment_size);
 
-        if(!SHA256_Update(&context, segment.c_str(), segment.size()))
+        if(!EVP_DigestUpdate(context, segment.c_str(), segment.size()))
         {
             std::cerr << "Unable to Update SHA256 buffer" << std::endl;
-            return 1;
+            goto out;
         }
         output.push_back(segment);
         pos += transfer_segment_size;
@@ -586,19 +592,24 @@ int AzureDev::Sha256AndSplit(
 
     // Get Final SHA
     unsigned char result[SHA256_DIGEST_LENGTH];
-    if(!SHA256_Final(result, &context)) {
+    if(!EVP_DigestFinal(context, result, NULL)) {
         std::cerr << "Error finalizing SHA256 calculation" << std::endl;
-        return 1;
+        goto out;
     }
 
     // Convert the byte array into a string
-    std::stringstream shastr;
     shastr << std::hex << std::setfill('0');
     for (auto &byte: result)
         shastr << std::setw(2) << (int)byte;
 
     sha = shastr.str();
+    EVP_MD_CTX_free(context);
     return 0;
+
+out:
+    if (context) 
+       EVP_MD_CTX_free(context);
+    return 1;
 }
 
 void AzureDev::get_fpga_serialNo(std::string &fpgaSerialNo)
