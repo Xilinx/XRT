@@ -17,6 +17,7 @@
 #ifndef _XCL_ZYNQ_DEV_H_
 #define _XCL_ZYNQ_DEV_H_
 
+#include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>

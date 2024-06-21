@@ -27,7 +27,7 @@
 #include "core/include/xrt/xrt_device.h"
 
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
@@ -37,7 +37,7 @@
 
 namespace xdp {
 
-  HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
+  HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : PLDeviceOffloadPlugin()
   {
     db->registerInfo(info::device_offload) ;
 
@@ -114,7 +114,6 @@ namespace xdp {
     readCounters();
 
     clearOffloader(deviceId) ;
-    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle)
@@ -146,7 +145,7 @@ namespace xdp {
     
     // Update the static database with all the information that
     //  will be needed later
-    (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
+    db->getStaticInfo().updateDevice(deviceId, new HalDevice(ownedHandle), userHandle) ;
     {
       std::string deviceName = util::getDeviceName(userHandle);
       if (deviceName != "")
@@ -155,9 +154,7 @@ namespace xdp {
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
-    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if (devInterface == nullptr)
-      devInterface = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(ownedHandle));
+    PLDeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;

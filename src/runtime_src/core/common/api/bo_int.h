@@ -11,7 +11,8 @@
 
 namespace xrt_core::bo_int {
 
-const xrt_core::buffer_handle*
+XRT_CORE_COMMON_EXPORT  
+xrt_core::buffer_handle*
 get_buffer_handle(const xrt::bo& bo);
 
 size_t

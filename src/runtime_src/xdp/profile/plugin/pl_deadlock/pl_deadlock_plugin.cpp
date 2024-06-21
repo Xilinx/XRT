@@ -32,7 +32,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -84,7 +84,7 @@ namespace xdp {
 
     auto& should_continue = it->second;
 
-    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    PLDeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
     if (nullptr == deviceIntf)
       return;
 
@@ -192,7 +192,7 @@ namespace xdp {
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId, handle);
+      (db->getStaticInfo()).updateDevice(deviceId, new HalDevice(handle), handle);
       {
         std::string deviceName = util::getDeviceName(handle);
         if(deviceName != "") {
@@ -201,13 +201,7 @@ namespace xdp {
       }
     }
 
-    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if (nullptr == deviceIntf) {
-      deviceIntf = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(handle));
-      if (nullptr == deviceIntf) {
-        return;
-      }
-    }
+    PLDeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
 
     if (!deviceIntf->hasDeadlockDetector()) {
       std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);

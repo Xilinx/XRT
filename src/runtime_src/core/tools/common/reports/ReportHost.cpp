@@ -53,12 +53,11 @@ static void
 printAlveoDevices(const boost::property_tree::ptree& available_devices, std::ostream& _output)
 {
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
-  const Table2D::HeaderData colon = {":", Table2D::Justification::left};
   const Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::left};
   const Table2D::HeaderData id = {"Logic UUID", Table2D::Justification::left};
   const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::left};
   const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, vbnv, id, instance, ready};
   Table2D device_table(table_headers);
 
   for (const auto& kd : available_devices) {
@@ -69,7 +68,7 @@ printAlveoDevices(const boost::property_tree::ptree& available_devices, std::ost
 
     const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
     const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
-    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
+    const std::vector<std::string> entry_data = {bdf_string, dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
     device_table.addEntry(entry_data);
   }
 
@@ -83,9 +82,8 @@ static void
 printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ostream& _output)
 {
   const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::left};
-  const Table2D::HeaderData colon = {":", Table2D::Justification::left};
   const Table2D::HeaderData name = {"Name", Table2D::Justification::left};
-  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, name};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, name};
   Table2D device_table(table_headers);
 
   for (const auto& kd : available_devices) {
@@ -95,7 +93,7 @@ printRyzenDevices(const boost::property_tree::ptree& available_devices, std::ost
       continue;
 
     const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
-    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("name", "n/a")};
+    const std::vector<std::string> entry_data = {bdf_string, dev.get<std::string>("name", "n/a")};
     device_table.addEntry(entry_data);
   }
 
@@ -116,7 +114,6 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   try {
     _output << boost::format("  %-20s : %s\n") % "OS Name" % _pt.get<std::string>("host.os.sysname");
     _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release");
-    _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version");
     _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine");
     _output << boost::format("  %-20s : %s\n") % "CPU Cores" % _pt.get<std::string>("host.os.cores");
     _output << boost::format("  %-20s : %lld MB\n") % "Memory" % (std::strtoll(_pt.get<std::string>("host.os.memory_bytes").c_str(),nullptr,16) / BYTES_TO_MEGABYTES);
@@ -142,7 +139,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     for(auto& drv : available_drivers) {
       const boost::property_tree::ptree& driver = drv.second;
       std::string drv_name = driver.get<std::string>("name", "N/A");
-      boost::algorithm::to_upper(drv_name);
+      boost::algorithm::to_lower(drv_name);
       std::string drv_hash = driver.get<std::string>("hash", "N/A");
       if (!boost::iequals(drv_hash, "N/A")) {
         _output << boost::format("  %-20s : %s, %s\n") % drv_name
@@ -159,10 +156,16 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   }
 
   try {
-    if (!available_devices.empty())
-      _output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+    if (!available_devices.empty()) {
+      // This check depends on the assumption that if there is a RyzenAI device, it is on its own.
+      const boost::property_tree::ptree& dev = available_devices.begin()->second;
+      if (dev.get<std::string>("device_class") == xrt_core::query::device_class::enum_to_str(xrt_core::query::device_class::type::ryzen))
+        _output << boost::format("  %-20s : %s\n") % "NPU Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+      else
+        _output << boost::format("  %-20s : %s\n") % "Firmware Version" % available_devices.begin()->second.get<std::string>("firmware_version");
+    }
   }
-  catch (const xrt_core::query::exception&) {
+  catch (...) {
     //no device available
   }
 

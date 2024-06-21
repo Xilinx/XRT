@@ -16,15 +16,14 @@
  */
 
 
-#ifndef _XDP_PROIFLE_XDP_BASE_DEVICE_H
-#define _XDP_PROIFLE_XDP_BASE_DEVICE_H
+#ifndef _XDP_PROFILE_XDP_BASE_DEVICE_H
+#define _XDP_PROFILE_XDP_BASE_DEVICE_H
 
-#include<string>
-#include<vector>
+#include <string>
+#include <vector>
 #include "core/include/xrt.h"
 
 namespace xdp {
-
 
 // interface class
 class Device
@@ -34,8 +33,8 @@ public:
   enum class direction { HOST2DEVICE, DEVICE2HOST };
 
 public:
-  Device() {}
-  virtual ~Device() {}
+  Device() = default;
+  virtual ~Device() = default;
 
   virtual std::string getDebugIPlayoutPath() = 0;
   virtual uint32_t getNumLiveProcesses() = 0;

@@ -33,7 +33,7 @@ namespace xdp {
   // This plugin should be completely agnostic of what the host code profiling
   //  plugin is.  So, this should work with HAL profiling, OpenCL profiling, 
   //  LOP profiling, user events, and any other plugin.
-  class HALDeviceOffloadPlugin : public DeviceOffloadPlugin
+  class HALDeviceOffloadPlugin : public PLDeviceOffloadPlugin
   {
   private:
     // In order to guarantee that we will be able to flush information

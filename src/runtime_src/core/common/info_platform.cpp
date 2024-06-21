@@ -4,6 +4,7 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "info_platform.h"
 #include "query_requests.h"
+#include "sensor.h"
 #include "utils.h"
 #include "xclbin.h"
 
@@ -352,6 +353,17 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_electrical_info(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    pt.put_child("electrical", xrt_core::sensor::read_electrical(device));
+  }
+  catch (const xq::exception&) {
+    // ignoring if not available: Edge Case
+  }
+}
+
+void
 add_mac_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_mac;
@@ -412,6 +424,11 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
     add_clock_info(device, pt_platform);
     add_mac_info(device, pt_platform);
     add_config_info(device, pt_platform);
+    break;
+  }
+  case xrt_core::query::device_class::type::ryzen:
+  {
+    add_electrical_info(device, pt_platform);
     break;
   }
   default:

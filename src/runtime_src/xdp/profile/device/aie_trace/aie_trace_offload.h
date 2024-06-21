@@ -40,7 +40,7 @@
 
 namespace xdp {
 
-class DeviceIntf;
+class PLDeviceIntf;
 class AIETraceLogger;
 
 #define debug_stream \
@@ -90,7 +90,7 @@ class AIETraceOffload
 {
   public:
     AIETraceOffload(void* handle, uint64_t id,
-                    DeviceIntf*, AIETraceLogger*,
+                    PLDeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
                     uint64_t numStrm
@@ -121,7 +121,7 @@ private:
 
     void*           deviceHandle;
     uint64_t        deviceId;
-    DeviceIntf*     deviceIntf;
+    PLDeviceIntf*     deviceIntf;
     AIETraceLogger* traceLogger;
 
     bool isPLIO;

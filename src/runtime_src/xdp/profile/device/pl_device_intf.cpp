@@ -33,7 +33,7 @@
 #include "core/include/xdp/fifo.h"
 
 #include "xdp/profile/device/aieTraceS2MM.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -178,7 +178,7 @@ uint64_t GetTS2MMBufSize(bool isAIETrace) {
 }
 
 // Destructor
-DeviceIntf::~DeviceIntf() {
+PLDeviceIntf::~PLDeviceIntf() {
   for (auto mon : mAimList) {
     delete mon;
   }
@@ -222,7 +222,7 @@ DeviceIntf::~DeviceIntf() {
   delete mDevice;
 }
 
-void DeviceIntf::setDevice(xdp::Device *devHandle) {
+void PLDeviceIntf::setDevice(xdp::Device *devHandle) {
   if (mDevice && mDevice != devHandle) {
     // ERROR : trying to set device when it is already populated with some other
     // device
@@ -242,7 +242,7 @@ void DeviceIntf::setDevice(xdp::Device *devHandle) {
 // Debug IP Layout
 // ***************************************************************************
 
-uint32_t DeviceIntf::getNumMonitors(xdp::MonitorType type) {
+uint32_t PLDeviceIntf::getNumMonitors(xdp::MonitorType type) {
   if (type == xdp::MonitorType::memory)
     return mAimList.size();
 
@@ -294,7 +294,7 @@ uint32_t DeviceIntf::getNumMonitors(xdp::MonitorType type) {
   return 0;
 }
 
-std::string DeviceIntf::getMonitorName(xdp::MonitorType type, uint32_t index) {
+std::string PLDeviceIntf::getMonitorName(xdp::MonitorType type, uint32_t index) {
   if ((type == xdp::MonitorType::memory) && (index < mAimList.size())) {
     return mAimList[index]->getName();
   }
@@ -317,7 +317,7 @@ std::string DeviceIntf::getMonitorName(xdp::MonitorType type, uint32_t index) {
 // Same as defined in vpl tcl
 // NOTE: This converts the property on the FIFO IP in debug_ip_layout to the
 // corresponding FIFO depth.
-uint64_t DeviceIntf::getFifoSize() {
+uint64_t PLDeviceIntf::getFifoSize() {
   if (mFifoRead)
     return xdp::IP::FIFO::properties::size.at(mFifoRead->getProperties());
 
@@ -329,7 +329,7 @@ uint64_t DeviceIntf::getFifoSize() {
 // ***************************************************************************
 
 // Start device counters performance monitoring
-size_t DeviceIntf::startCounters() {
+size_t PLDeviceIntf::startCounters() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
               << ", Start device counters..." << std::endl;
@@ -362,7 +362,7 @@ size_t DeviceIntf::startCounters() {
 }
 
 // Stop both profile and trace performance monitoring
-size_t DeviceIntf::stopCounters() {
+size_t PLDeviceIntf::stopCounters() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
               << ", Stop and reset device counters..." << std::endl;
@@ -396,7 +396,7 @@ size_t DeviceIntf::stopCounters() {
 }
 
 // Read AIM performance counters
-size_t DeviceIntf::readCounters(xdp::CounterResults &counterResults) {
+size_t PLDeviceIntf::readCounters(xdp::CounterResults &counterResults) {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
               << &counterResults << ", Read device counters..." << std::endl;
@@ -433,7 +433,7 @@ size_t DeviceIntf::readCounters(xdp::CounterResults &counterResults) {
 // ***************************************************************************
 
 // Start trace performance monitoring
-size_t DeviceIntf::startTrace(uint32_t startTrigger) {
+size_t PLDeviceIntf::startTrace(uint32_t startTrigger) {
   // StartTrigger Bits:
   // Bit 0: Trace Coarse/Fine     Bit 1: Transfer Trace Ctrl
   // Bit 2: CU Trace Ctrl         Bit 3: INT Trace Ctrl
@@ -491,7 +491,7 @@ size_t DeviceIntf::startTrace(uint32_t startTrigger) {
   return size;
 }
 
-void DeviceIntf::clockTraining(bool force) {
+void PLDeviceIntf::clockTraining(bool force) {
   if (mTraceFunnelList.empty())
     return;
 
@@ -504,7 +504,7 @@ void DeviceIntf::clockTraining(bool force) {
 }
 
 // Stop trace performance monitoring
-size_t DeviceIntf::stopTrace() {
+size_t PLDeviceIntf::stopTrace() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
               << ", Stop and reset device tracing..." << std::endl;
@@ -517,7 +517,7 @@ size_t DeviceIntf::stopTrace() {
 }
 
 // Get trace word count
-uint32_t DeviceIntf::getTraceCount() {
+uint32_t PLDeviceIntf::getTraceCount() {
   if (mVerbose) {
     std::cout << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
@@ -529,7 +529,7 @@ uint32_t DeviceIntf::getTraceCount() {
 }
 
 // Read all values from APM trace AXI stream FIFOs
-size_t DeviceIntf::readTrace(uint32_t *&traceData) {
+size_t PLDeviceIntf::readTrace(uint32_t *&traceData) {
   if (!mIsDeviceProfiling || !mFifoRead)
     return 0;
 
@@ -539,7 +539,7 @@ size_t DeviceIntf::readTrace(uint32_t *&traceData) {
   return size;
 }
 
-void DeviceIntf::readDebugIPlayout() {
+void PLDeviceIntf::readDebugIPlayout() {
   if (mIsDebugIPlayoutRead || !mDevice)
     return;
 
@@ -1024,7 +1024,7 @@ void DeviceIntf::readDebugIPlayout() {
   mIsDebugIPlayoutRead = true;
 }
 
-void DeviceIntf::configureDataflow(bool *ipConfig) {
+void PLDeviceIntf::configureDataflow(bool *ipConfig) {
   // this ipConfig only tells whether the corresponding CU has ap_control_chain
   // : could have been just a property on the monitor set at compile time (in
   // debug_ip_layout)
@@ -1038,7 +1038,7 @@ void DeviceIntf::configureDataflow(bool *ipConfig) {
   }
 }
 
-void DeviceIntf::configureFa(bool *ipConfig) {
+void PLDeviceIntf::configureFa(bool *ipConfig) {
   // this ipConfig only tells whether the corresponding CU uses Fast Adapter
   if (!ipConfig)
     return;
@@ -1050,7 +1050,7 @@ void DeviceIntf::configureFa(bool *ipConfig) {
   }
 }
 
-void DeviceIntf::configAmContext(const std::string &ctx_info) {
+void PLDeviceIntf::configAmContext(const std::string &ctx_info) {
   if (ctx_info.empty())
     return;
 
@@ -1059,7 +1059,7 @@ void DeviceIntf::configAmContext(const std::string &ctx_info) {
   }
 }
 
-size_t DeviceIntf::allocTraceBuf(uint64_t sz, uint8_t memIdx) {
+size_t PLDeviceIntf::allocTraceBuf(uint64_t sz, uint8_t memIdx) {
   std::lock_guard<std::mutex> lock(traceLock);
   auto bufId = mDevice->alloc(sz, memIdx);
 
@@ -1071,7 +1071,7 @@ size_t DeviceIntf::allocTraceBuf(uint64_t sz, uint8_t memIdx) {
   return bufId;
 }
 
-void DeviceIntf::freeTraceBuf(size_t id) {
+void PLDeviceIntf::freeTraceBuf(size_t id) {
   std::lock_guard<std::mutex> lock(traceLock);
   mDevice->free(id);
 }
@@ -1082,7 +1082,7 @@ void DeviceIntf::freeTraceBuf(size_t id) {
  * We can read the entire buffer in one go if we want to
  * or choose to read in chunks
  */
-void *DeviceIntf::syncTraceBuf(size_t id, uint64_t offset, uint64_t bytes) {
+void *PLDeviceIntf::syncTraceBuf(size_t id, uint64_t offset, uint64_t bytes) {
   std::lock_guard<std::mutex> lock(traceLock);
   auto addr = mDevice->map(id);
 
@@ -1094,17 +1094,17 @@ void *DeviceIntf::syncTraceBuf(size_t id, uint64_t offset, uint64_t bytes) {
   return static_cast<char *>(addr) + offset;
 }
 
-xclBufferExportHandle DeviceIntf::exportTraceBuf(size_t id) {
+xclBufferExportHandle PLDeviceIntf::exportTraceBuf(size_t id) {
   std::lock_guard<std::mutex> lock(traceLock);
   return mDevice->exportBuffer(id);
 }
 
-uint64_t DeviceIntf::getTraceBufDeviceAddr(size_t id) {
+uint64_t PLDeviceIntf::getTraceBufDeviceAddr(size_t id) {
   return mDevice->getBufferDeviceAddr(id);
 }
 
 // All buffers have to be 4k Aligned
-uint64_t DeviceIntf::getAlignedTraceBufSize(uint64_t total_bytes,
+uint64_t PLDeviceIntf::getAlignedTraceBufSize(uint64_t total_bytes,
                                             unsigned int num_chunks) {
   constexpr uint64_t TRACE_BUFFER_4K_MASK = 0xfffffffffffff000;
 
@@ -1129,7 +1129,7 @@ uint64_t DeviceIntf::getAlignedTraceBufSize(uint64_t total_bytes,
 }
 
 // Reset PL trace data movers
-void DeviceIntf::resetTS2MM(uint64_t index) {
+void PLDeviceIntf::resetTS2MM(uint64_t index) {
   if (index >= mPlTraceDmaList.size())
     return;
 
@@ -1137,7 +1137,7 @@ void DeviceIntf::resetTS2MM(uint64_t index) {
 }
 
 // Initialize PL trace data mover
-void DeviceIntf::initTS2MM(uint64_t index, uint64_t bufSz, uint64_t bufAddr,
+void PLDeviceIntf::initTS2MM(uint64_t index, uint64_t bufSz, uint64_t bufAddr,
                            bool circular) {
   if (index >= mPlTraceDmaList.size())
     return;
@@ -1146,7 +1146,7 @@ void DeviceIntf::initTS2MM(uint64_t index, uint64_t bufSz, uint64_t bufAddr,
 }
 
 // Get word count written by PL trace data mover
-uint64_t DeviceIntf::getWordCountTs2mm(uint64_t index, bool final) {
+uint64_t PLDeviceIntf::getWordCountTs2mm(uint64_t index, bool final) {
   if (index >= mPlTraceDmaList.size())
     return 0;
 
@@ -1154,7 +1154,7 @@ uint64_t DeviceIntf::getWordCountTs2mm(uint64_t index, bool final) {
 }
 
 // Get memory index of trace data mover
-uint8_t DeviceIntf::getTS2MmMemIndex(uint64_t index) {
+uint8_t PLDeviceIntf::getTS2MmMemIndex(uint64_t index) {
   if (index >= mPlTraceDmaList.size())
     return 0;
 
@@ -1162,7 +1162,7 @@ uint8_t DeviceIntf::getTS2MmMemIndex(uint64_t index) {
 }
 
 // Parse trace buffer data after reading from FIFO or DDR
-void DeviceIntf::parseTraceData(uint64_t index, void *traceData, uint64_t bytes,
+void PLDeviceIntf::parseTraceData(uint64_t index, void *traceData, uint64_t bytes,
                                 std::vector<xdp::TraceEvent> &traceVector) {
   if (index >= mPlTraceDmaList.size())
     return;
@@ -1171,7 +1171,7 @@ void DeviceIntf::parseTraceData(uint64_t index, void *traceData, uint64_t bytes,
 }
 
 // Reset AIE trace data movers
-void DeviceIntf::resetAIETs2mm(uint64_t index) {
+void PLDeviceIntf::resetAIETs2mm(uint64_t index) {
   if (index >= mAieTraceDmaList.size())
     return;
 
@@ -1179,7 +1179,7 @@ void DeviceIntf::resetAIETs2mm(uint64_t index) {
 }
 
 // Initialize an AIE trace data mover
-void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index,
+void PLDeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index,
                               bool circular) {
   if (index >= mAieTraceDmaList.size())
     return;
@@ -1188,7 +1188,7 @@ void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index,
 }
 
 // Get word count written by AIE trace data mover
-uint64_t DeviceIntf::getWordCountAIETs2mm(uint64_t index, bool final) {
+uint64_t PLDeviceIntf::getWordCountAIETs2mm(uint64_t index, bool final) {
   if (index >= mAieTraceDmaList.size())
     return 0;
 
@@ -1196,30 +1196,30 @@ uint64_t DeviceIntf::getWordCountAIETs2mm(uint64_t index, bool final) {
 }
 
 // Get memory index of AIE trace data mover
-uint8_t DeviceIntf::getAIETs2mmMemIndex(uint64_t index) {
+uint8_t PLDeviceIntf::getAIETs2mmMemIndex(uint64_t index) {
   if (index >= mAieTraceDmaList.size())
     return 0;
 
   return mAieTraceDmaList[index]->getMemIndex();
 }
 
-void DeviceIntf::setHostMaxBwRead() {
+void PLDeviceIntf::setHostMaxBwRead() {
   mHostMaxReadBW = mDevice->getHostMaxBwRead();
 }
 
-void DeviceIntf::setHostMaxBwWrite() {
+void PLDeviceIntf::setHostMaxBwWrite() {
   mHostMaxWriteBW = mDevice->getHostMaxBwWrite();
 }
 
-void DeviceIntf::setKernelMaxBwRead() {
+void PLDeviceIntf::setKernelMaxBwRead() {
   mKernelMaxReadBW = mDevice->getKernelMaxBwRead();
 }
 
-void DeviceIntf::setKernelMaxBwWrite() {
+void PLDeviceIntf::setKernelMaxBwWrite() {
   mKernelMaxWriteBW = mDevice->getKernelMaxBwWrite();
 }
 
-uint32_t DeviceIntf::getDeadlockStatus() {
+uint32_t PLDeviceIntf::getDeadlockStatus() {
   if (mDeadlockDetector)
     return mDeadlockDetector->getDeadlockStatus();
 
