@@ -40,7 +40,7 @@ REM -- Find the loader from the current directory. If it exists.
 set XRT_LOADER=%~dp0unwrapped\loader.bat
 
 REM -- Find loader from the PATH. If it exists.
-FOR /F "tokens=* USEBACKQ" %%F IN (`where xbutil`) DO (
+FOR /F "tokens=* USEBACKQ" %%F IN (`where xrt-smi`) DO (
 set XBUTIL_PATH=%%~dpF
 )
 
