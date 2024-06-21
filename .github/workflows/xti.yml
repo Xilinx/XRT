@@ -252,7 +252,8 @@ jobs:
           boardType: "pcie"  
           boardState: "gating"  
           boardMode: "hw"
-          workspace: ${{ github.workspace }}  
+          workspace: ${{ github.workspace }}
+          USER: ${{ secrets.USER }}  
           board: ${{ matrix.board_list }}      
           runnerName: ${{ runner.name }}
           accessToken: ${{ secrets.ACCESS_TOKEN }}  
