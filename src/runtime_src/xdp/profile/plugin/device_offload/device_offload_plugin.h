@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,13 +23,13 @@
 #include <tuple>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/device_trace_offload.h"
+#include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/device/pl_device_trace_offload.h"
 
 namespace xdp {
 
   // Forward declarations
-  class DeviceTraceLogger ;
+  class PLDeviceTraceLogger;
 
   // This plugin should be completely agnostic of what the host code profiling
   //  plugin is.  So, this should work with HAL profiling, OpenCL profiling, 
@@ -41,7 +41,7 @@ namespace xdp {
   // This is the base of all plugins that perform device offload.  It 
   //  handles common functionality for programs that come from HAL or
   //  OpenCL.
-  class DeviceOffloadPlugin : public XDPPlugin
+  class PLDeviceOffloadPlugin : public XDPPlugin
   {
   private:
     // These are the continuous offload configuration parameters as read
@@ -55,28 +55,28 @@ namespace xdp {
     // Each device offload plugin is responsible for offloading
     //  information from all devices.  This holds all the objects
     //  responsible for offloading data from all devices.
-    typedef std::tuple<DeviceTraceOffload*, 
-                       DeviceTraceLogger*,
-                       DeviceIntf*> DeviceData ;
+    typedef std::tuple<PLDeviceTraceOffload*,
+                       PLDeviceTraceLogger*,
+                       PLDeviceIntf*> DeviceData ;
 
     std::map<uint64_t, DeviceData> offloaders;
 
     void addDevice(const std::string& sysfsPath) ;
-    void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;
-    void configureFa(uint64_t deviceId, DeviceIntf* devInterface) ;
-    void configureCtx(uint64_t deviceId, DeviceIntf* devInterface) ;
-    void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
-    void configureTraceIP(DeviceIntf* devInterface) ;
+    void configureDataflow(uint64_t deviceId, PLDeviceIntf* devInterface) ;
+    void configureFa(uint64_t deviceId, PLDeviceIntf* devInterface) ;
+    void configureCtx(uint64_t deviceId, PLDeviceIntf* devInterface) ;
+    void addOffloader(uint64_t deviceId, PLDeviceIntf* devInterface) ;
+    void configureTraceIP(PLDeviceIntf* devInterface) ;
     void startContinuousThreads(uint64_t deviceId) ;
 
     void readCounters() ;
     virtual void readTrace() = 0 ;
-    void checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId) ;
-    bool flushTraceOffloader(DeviceTraceOffload* offloader);
+    void checkTraceBufferFullness(PLDeviceTraceOffload* offloader, uint64_t deviceId) ;
+    bool flushTraceOffloader(PLDeviceTraceOffload* offloader);
 
   public:
-    DeviceOffloadPlugin() ;
-    virtual ~DeviceOffloadPlugin() = default ;
+    PLDeviceOffloadPlugin() ;
+    virtual ~PLDeviceOffloadPlugin() = default ;
 
     virtual void writeAll(bool openNewFiles) ;
 

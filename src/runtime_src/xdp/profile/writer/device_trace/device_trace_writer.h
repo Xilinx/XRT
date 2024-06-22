@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,9 +20,9 @@
 
 #include <string>
 
-#include "xdp/profile/writer/vp_base/vp_trace_writer.h"
-#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 
 namespace xdp {
 

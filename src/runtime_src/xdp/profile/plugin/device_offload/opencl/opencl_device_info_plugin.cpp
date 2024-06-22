@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -66,7 +66,7 @@ namespace {
 namespace xdp {
 
   OpenCLDeviceInfoPlugin::OpenCLDeviceInfoPlugin()
-    : DeviceOffloadPlugin()
+    : PLDeviceOffloadPlugin()
   {
     // Software emulation currently has minimal device support for guidance
 
@@ -138,8 +138,9 @@ namespace xdp {
     }
 
     // Update the static database with all the information that will
-    //  be needed later.
-    (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
+    //  be needed later.  OpenCL device info does not require a connection
+    //  to the physical PL part of the device.
+    (db->getStaticInfo()).updateDevice(deviceId, nullptr, device->get_xcl_handle()) ;
     (db->getStaticInfo()).setDeviceName(deviceId, device->getName()) ;
   }
 
