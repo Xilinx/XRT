@@ -92,7 +92,7 @@ jobs:
           appConfig3: ${{ secrets.APP_CONFIG3 }} 
 
   windows-build:
-    runs-on: win10
+    runs-on: windows-working
     steps:
       - name: Checkout PR   
         uses: actions/checkout@v4 
