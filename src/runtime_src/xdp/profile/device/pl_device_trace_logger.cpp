@@ -18,7 +18,7 @@
 #define XDP_CORE_SOURCE
 
 #include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/pl_device_trace_logger.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
 
@@ -32,14 +32,14 @@
 
 namespace xdp {
 
-  DeviceTraceLogger::DeviceTraceLogger(uint64_t devId)
+  PLDeviceTraceLogger::PLDeviceTraceLogger(uint64_t devId)
     : deviceId(devId),
       db(VPDatabase::Instance()),
       clockTrainOffset(0),
       traceClockRateMHz(0),
       clockTrainSlope(0)
   {
-    //This trace logger function is for PL only
+    // This trace logger function is for PL only
 
     traceClockRateMHz = db->getStaticInfo().getPLMaxClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
@@ -61,14 +61,10 @@ namespace xdp {
     asmLastTrans.resize((db->getStaticInfo()).getNumUserASM(deviceId, xclbin));
   }
 
-  DeviceTraceLogger::~DeviceTraceLogger()
-  {
-  }
-
-  void DeviceTraceLogger::addCUEndEvent(double hostTimestamp,
-                                        uint64_t deviceTimestamp,
-                                        uint32_t s,
-                                        int32_t cuId)
+  void PLDeviceTraceLogger::addCUEndEvent(double hostTimestamp,
+                                          uint64_t deviceTimestamp,
+                                          uint32_t s,
+                                          int32_t cuId)
   {
     // In addition to creating the event, we must log statistics
 
@@ -96,11 +92,11 @@ namespace xdp {
                                              executionTime);
   }
 
-  void DeviceTraceLogger::addCUEvent(uint64_t trace,
-                                     double hostTimestamp,
-                                     uint32_t slot,
-                                     uint64_t monTraceId,
-                                     int32_t cuId)
+  void PLDeviceTraceLogger::addCUEvent(uint64_t trace,
+                                       double hostTimestamp,
+                                       uint32_t slot,
+                                       uint64_t monTraceId,
+                                       int32_t cuId)
   {
     KernelEvent* event = nullptr;
     uint64_t eventFlags = getEventFlags(trace);
@@ -139,13 +135,13 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addStallEvent(uint64_t trace,
-                                        double hostTimestamp,
-                                        uint32_t slot,
-                                        uint64_t monTraceId,
-                                        int32_t cuId,
-                                        VTFEventType type,
-                                        uint64_t mask)
+  void PLDeviceTraceLogger::addStallEvent(uint64_t trace,
+                                          double hostTimestamp,
+                                          uint32_t slot,
+                                          uint64_t monTraceId,
+                                          int32_t cuId,
+                                          VTFEventType type,
+                                          uint64_t mask)
   {
     uint64_t deviceTimestamp = getDeviceTimestamp(trace);
 
@@ -177,7 +173,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addAMEvent(uint64_t trace, double hostTimestamp)
+  void PLDeviceTraceLogger::addAMEvent(uint64_t trace, double hostTimestamp)
   {
     uint64_t traceID = getTraceId(trace);
     uint64_t deviceTimestamp = getDeviceTimestamp(trace);
@@ -225,7 +221,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addAIMEvent(uint64_t trace, double hostTimestamp)
+  void PLDeviceTraceLogger::addAIMEvent(uint64_t trace, double hostTimestamp)
   {
     uint64_t traceID = getTraceId(trace);
 
@@ -252,7 +248,7 @@ namespace xdp {
     addKernelDataTransferEvent(ty, trace, slot, cuId, hostTimestamp, memStrId);
   }
 
-  void DeviceTraceLogger::addASMEvent(uint64_t trace, double hostTimestamp)
+  void PLDeviceTraceLogger::addASMEvent(uint64_t trace, double hostTimestamp)
   {
     auto traceId = getTraceId(trace);
     auto eventFlags = getEventFlags(trace);
@@ -323,7 +319,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::
+  void PLDeviceTraceLogger::
   addKernelDataTransferEvent(VTFEventType ty,
                              uint64_t trace,
                              uint32_t slot,
@@ -418,7 +414,7 @@ namespace xdp {
     }
   }
 
- void DeviceTraceLogger::addApproximateCUEndEvents()
+ void PLDeviceTraceLogger::addApproximateCUEndEvents()
   {
     for(uint32_t amIndex = 0; amIndex < cuStarts.size(); ++amIndex) {
       if(cuStarts[amIndex].empty()) {
@@ -484,11 +480,11 @@ namespace xdp {
   }
 
   void
-  DeviceTraceLogger::addApproximateDataTransferEvent(VTFEventType type,
-                                                     uint64_t aimTraceID,
-                                                     int32_t amId,
-                                                     int32_t cuId,
-                                                     uint64_t memStrId)
+  PLDeviceTraceLogger::addApproximateDataTransferEvent(VTFEventType type,
+                                                       uint64_t aimTraceID,
+                                                       int32_t amId,
+                                                       int32_t cuId,
+                                                       uint64_t memStrId)
   {
     DeviceEventInfo startEvent =
       db->getDynamicInfo().matchingDeviceEventStart(deviceId, aimTraceID, type);
@@ -529,7 +525,7 @@ namespace xdp {
     db->getDynamicInfo().addEvent(endEvent);
   }
 
-  void DeviceTraceLogger::addApproximateDataTransferEndEvents()
+  void PLDeviceTraceLogger::addApproximateDataTransferEndEvents()
   {
     // Go through all of our AIMs that have trace enabled.  If any of them
     //  have any outstanding reads or writes, then finish them based off of
@@ -569,7 +565,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addApproximateDataTransferEndEvents(int32_t cuId)
+  void PLDeviceTraceLogger::addApproximateDataTransferEndEvents(int32_t cuId)
   {
     if (cuId == -1)
       return;
@@ -604,7 +600,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addApproximateStreamEndEvents()
+  void PLDeviceTraceLogger::addApproximateStreamEndEvents()
   {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
@@ -645,7 +641,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addApproximateStallEndEvents(uint64_t trace, double hostTimestamp, uint32_t s, uint64_t monTraceID, int32_t cuId)
+  void PLDeviceTraceLogger::addApproximateStallEndEvents(uint64_t trace, double hostTimestamp, uint32_t s, uint64_t monTraceID, int32_t cuId)
   {
     if (traceIDs[s] == 0)
       return;
@@ -666,7 +662,7 @@ namespace xdp {
     }
   }
 
-  void DeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
+  void PLDeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
                                                                  int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
                                                                  uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents)
   {
@@ -705,7 +701,7 @@ namespace xdp {
   // As the device progresses, we'll encounter additional training packets and
   // they may not be continuous, so this function uses static variables
   // to keep track of the last packet we've seen.
-  void DeviceTraceLogger::trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp)
+  void PLDeviceTraceLogger::trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp)
   {
     static double y1 = 0.0;
     static double y2 = 0.0;
@@ -732,12 +728,12 @@ namespace xdp {
   }
 
   // Convert device timestamp to host time domain (in msec)
-  double DeviceTraceLogger::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
+  double PLDeviceTraceLogger::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
   {
     return ((clockTrainSlope * (double)deviceTimestamp) + clockTrainOffset)/1e6;
   }
 
-  void DeviceTraceLogger::processTraceData(void* data, uint64_t numBytes)
+  void PLDeviceTraceLogger::processTraceData(void* data, uint64_t numBytes)
   {
     if (numBytes == 0)
       return;
@@ -834,14 +830,14 @@ namespace xdp {
 
   }
 
-  void DeviceTraceLogger::endProcessTraceData()
+  void PLDeviceTraceLogger::endProcessTraceData()
   {
     addApproximateCUEndEvents();
     addApproximateDataTransferEndEvents();
     addApproximateStreamEndEvents();
   }
 
-  void DeviceTraceLogger::addEventMarkers(bool isFIFOFull, bool isTS2MMFull)
+  void PLDeviceTraceLogger::addEventMarkers(bool isFIFOFull, bool isTS2MMFull)
   {
     // User event API takes ns as time
     std::chrono::nanoseconds mark_time(static_cast<uint64_t>(mLatestHostTimestampMs * 1e6));

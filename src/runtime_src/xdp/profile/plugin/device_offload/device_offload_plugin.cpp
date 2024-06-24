@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,7 +28,7 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
-#include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/pl_device_trace_logger.h"
 #include "xdp/profile/device/tracedefs.h"
 
 #include "core/common/config_reader.h"
@@ -86,7 +86,7 @@ namespace {
 
 namespace xdp {
 
-  DeviceOffloadPlugin::DeviceOffloadPlugin() :
+  PLDeviceOffloadPlugin::PLDeviceOffloadPlugin() :
     XDPPlugin(),
     device_trace(false), continuous_trace(false), trace_buffer_offload_interval_ms(10)
   {
@@ -120,7 +120,7 @@ namespace xdp {
     }
   }
 
-  void DeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
+  void PLDeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
   {
     uint64_t deviceId = db->addDevice(sysfsPath) ;
 
@@ -149,8 +149,8 @@ namespace xdp {
       XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
   }
 
-  void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
-                                              DeviceIntf* devInterface)
+  void PLDeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
+                                                PLDeviceIntf* devInterface)
   {
     uint32_t numAM = devInterface->getNumMonitors(xdp::MonitorType::accel) ;
     bool* dataflowConfig = new bool[numAM] ;
@@ -160,8 +160,8 @@ namespace xdp {
     delete [] dataflowConfig ;
   }
 
-  void DeviceOffloadPlugin::configureFa(uint64_t deviceId,
-                                        DeviceIntf* devInterface)
+  void PLDeviceOffloadPlugin::configureFa(uint64_t deviceId,
+                                          PLDeviceIntf* devInterface)
   {
     uint32_t numAM = devInterface->getNumMonitors(xdp::MonitorType::accel) ;
     bool* FaConfig = new bool[numAM] ;
@@ -171,8 +171,8 @@ namespace xdp {
     delete [] FaConfig ;
   }
 
-  void DeviceOffloadPlugin::configureCtx(uint64_t deviceId,
-                                        DeviceIntf* devInterface)
+  void PLDeviceOffloadPlugin::configureCtx(uint64_t deviceId,
+                                           PLDeviceIntf* devInterface)
   {
     auto ctxInfo = (db->getStaticInfo()).getCtxInfo(deviceId) ;
     devInterface->configAmContext(ctxInfo);
@@ -180,8 +180,8 @@ namespace xdp {
 
   // It is the responsibility of the child class to instantiate the appropriate
   //  device interface based on the level (OpenCL or HAL)
-  void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
-                                         DeviceIntf* devInterface)
+  void PLDeviceOffloadPlugin::addOffloader(uint64_t deviceId,
+                                           PLDeviceIntf* devInterface)
   {
     if (devInterface->hasHSDPforPL()) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
@@ -236,13 +236,13 @@ namespace xdp {
       }
     }
 
-    DeviceTraceLogger* logger = new DeviceTraceLogger(deviceId) ;
+    PLDeviceTraceLogger* logger = new PLDeviceTraceLogger(deviceId) ;
 
     // We start the thread manually because of race conditions
-    DeviceTraceOffload* offloader = 
-      new DeviceTraceOffload(devInterface, logger,
-                             trace_buffer_offload_interval_ms, // offload_sleep_ms
-                             trace_buffer_size);           // trace buffer size
+    PLDeviceTraceOffload* offloader = 
+      new PLDeviceTraceOffload(devInterface, logger,
+                               trace_buffer_offload_interval_ms, // offload_sleep_ms
+                               trace_buffer_size);           // trace buffer size
 
     // If trace is enabled, set up trace.  Otherwise just keep the offloader
     //  for reading the counters.
@@ -271,7 +271,7 @@ namespace xdp {
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
   }
 
-  void DeviceOffloadPlugin::startContinuousThreads(uint64_t deviceId)
+  void PLDeviceOffloadPlugin::startContinuousThreads(uint64_t deviceId)
   {
     if (offloaders.find(deviceId) == offloaders.end())
       return ;
@@ -322,7 +322,7 @@ namespace xdp {
     }
   }
   
-  void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
+  void PLDeviceOffloadPlugin::configureTraceIP(PLDeviceIntf* devInterface)
   {
     // Collect all the profiling options from xrt.ini
     std::string data_transfer_trace = xrt_core::config::get_device_trace() ;
@@ -358,7 +358,7 @@ namespace xdp {
     devInterface->startTrace(traceOption) ;
   }
 
-  void DeviceOffloadPlugin::readCounters()
+  void PLDeviceOffloadPlugin::readCounters()
   {
     for (const auto& o : offloaders)
     {
@@ -379,7 +379,7 @@ namespace xdp {
     }
   }
 
-  bool DeviceOffloadPlugin::flushTraceOffloader(DeviceTraceOffload* offloader)
+  bool PLDeviceOffloadPlugin::flushTraceOffloader(PLDeviceTraceOffload* offloader)
   {
     if (!offloader)
       return false;
@@ -405,7 +405,7 @@ namespace xdp {
     return true;
   }
 
-  void DeviceOffloadPlugin::writeAll(bool /*openNewFiles*/)
+  void PLDeviceOffloadPlugin::writeAll(bool /*openNewFiles*/)
   {
     // This function gets called if the database is destroyed before
     //  the plugin object.  At this time, the information in the database
@@ -423,7 +423,7 @@ namespace xdp {
     XDPPlugin::endWrite();
   }
 
-  void DeviceOffloadPlugin::checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId)
+  void PLDeviceOffloadPlugin::checkTraceBufferFullness(PLDeviceTraceOffload* offloader, uint64_t deviceId)
   {
     if (!(getFlowMode() == HW))
       return;
@@ -432,7 +432,7 @@ namespace xdp {
     }
   }
 
-  void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
+  void PLDeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
   {
     switch(msg)
     {
@@ -456,7 +456,7 @@ namespace xdp {
     }
   }
 
-  void DeviceOffloadPlugin::clearOffloader(uint64_t deviceId)
+  void PLDeviceOffloadPlugin::clearOffloader(uint64_t deviceId)
   {
     if(offloaders.find(deviceId) == offloaders.end()) {
       return;
@@ -471,7 +471,7 @@ namespace xdp {
     offloaders.erase(deviceId);
   }
 
-  void DeviceOffloadPlugin::clearOffloaders()
+  void PLDeviceOffloadPlugin::clearOffloaders()
   {
     for(const auto& entry : offloaders) {
       auto offloader = std::get<0>(entry.second);

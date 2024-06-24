@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,16 +17,16 @@
 
 #define XDP_CORE_SOURCE
 
-#include "xdp/profile/device/device_trace_offload.h"
-#include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/pl_device_trace_offload.h"
+#include "xdp/profile/device/pl_device_trace_logger.h"
 #include "experimental/xrt_profile.h"
 
 namespace xdp {
 
-DeviceTraceOffload::
-DeviceTraceOffload
-  ( DeviceIntf* dInt
-  , DeviceTraceLogger* dTraceLogger
+PLDeviceTraceOffload::
+PLDeviceTraceOffload
+  ( PLDeviceIntf* dInt
+  , PLDeviceTraceLogger* dTraceLogger
   , uint64_t sleep_interval_ms
   , uint64_t trbuf_sz
   )
@@ -39,17 +39,17 @@ DeviceTraceOffload
 {
   // Select appropriate reader
   if (has_fifo()) {
-    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_fifo, this, std::placeholders::_1);
+    m_read_trace = std::bind(&PLDeviceTraceOffload::read_trace_fifo, this, std::placeholders::_1);
   } else {
-    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this, std::placeholders::_1);
+    m_read_trace = std::bind(&PLDeviceTraceOffload::read_trace_s2mm, this, std::placeholders::_1);
   }
 
   ts2mm_info.num_ts2mm = dev_intf->getNumberTS2MM();
   ts2mm_info.full_buf_size = trbuf_sz;
 }
 
-DeviceTraceOffload::
-~DeviceTraceOffload()
+PLDeviceTraceOffload::
+~PLDeviceTraceOffload()
 {
   stop_offload();
   if (offload_thread.joinable()) {
@@ -60,7 +60,7 @@ DeviceTraceOffload::
   }
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 offload_device_continuous()
 {
   if (!m_initialized) {
@@ -90,7 +90,7 @@ offload_device_continuous()
   offload_finished();
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 train_clock_continuous()
 {
   while (should_continue()) {
@@ -101,7 +101,7 @@ train_clock_continuous()
   offload_finished();
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 process_trace_continuous()
 {
   if (!has_ts2mm())
@@ -119,7 +119,7 @@ process_trace_continuous()
   m_process_trace_done = true;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 process_trace()
 {
   if (!has_ts2mm())
@@ -156,14 +156,14 @@ process_trace()
   } while (!q_empty);
 }
 
-bool DeviceTraceOffload::
+bool PLDeviceTraceOffload::
 should_continue()
 {
   std::lock_guard<std::mutex> lock(status_lock);
   return status == OffloadThreadStatus::RUNNING;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 start_offload(OffloadThreadType type)
 {
   if (status == OffloadThreadStatus::RUNNING)
@@ -173,15 +173,15 @@ start_offload(OffloadThreadType type)
   status = OffloadThreadStatus::RUNNING;
 
   if (type == OffloadThreadType::TRACE) {
-    offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
-    process_thread = std::thread(&DeviceTraceOffload::process_trace_continuous, this);
+    offload_thread = std::thread(&PLDeviceTraceOffload::offload_device_continuous, this);
+    process_thread = std::thread(&PLDeviceTraceOffload::process_trace_continuous, this);
   } else if (type == OffloadThreadType::CLOCK_TRAIN) {
-    offload_thread = std::thread(&DeviceTraceOffload::train_clock_continuous, this);
+    offload_thread = std::thread(&PLDeviceTraceOffload::train_clock_continuous, this);
   }
 
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 stop_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
@@ -189,7 +189,7 @@ stop_offload()
   status = OffloadThreadStatus::STOPPING;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 offload_finished()
 {
   std::lock_guard<std::mutex> lock(status_lock);
@@ -197,7 +197,7 @@ offload_finished()
   status = OffloadThreadStatus::STOPPED;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 train_clock()
 {
   auto now = std::chrono::system_clock::now();
@@ -219,11 +219,11 @@ train_clock()
   m_force_clk_train = false;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 read_trace_fifo(bool)
 {
   debug_stream
-    << "DeviceTraceOffload::read_trace_fifo " << std::endl;
+    << "PLDeviceTraceOffload::read_trace_fifo " << std::endl;
 
   // Disable using fifo as circular buffer
   if (fifo_full)
@@ -254,7 +254,7 @@ read_trace_fifo(bool)
   }
 }
 
-bool DeviceTraceOffload::
+bool PLDeviceTraceOffload::
 read_trace_init(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 {
   if (has_ts2mm()) {
@@ -267,7 +267,7 @@ read_trace_init(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
   return m_initialized;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 read_trace_end()
 {
   // Trace logger will clear it's state and add approximations 
@@ -285,7 +285,7 @@ read_trace_end()
   }
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 read_trace_s2mm(bool force)
 {
   for (uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
@@ -369,7 +369,7 @@ read_trace_s2mm(bool force)
   }
 }
 
-bool DeviceTraceOffload::
+bool PLDeviceTraceOffload::
 sync_and_log(uint64_t index)
 {
   auto& bd = ts2mm_info.buffers[index];
@@ -413,7 +413,7 @@ sync_and_log(uint64_t index)
   return true;
 }
 
-bool DeviceTraceOffload::
+bool PLDeviceTraceOffload::
 init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 {
   /* If buffer is already allocated and still attempting to initialize again,
@@ -450,16 +450,16 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
     dev_intf->initTS2MM(i, bd.alloc_size, bd.address, ts2mm_info.use_circ_buf);
 
     debug_stream
-    << "DeviceTraceOffload::init_s2mm with each size : " << bd.alloc_size
+    << "PLDeviceTraceOffload::init_s2mm with each size : " << bd.alloc_size
     << " initiated " << i << " ts2mm " << std::endl;
   }
   return true;
 }
 
-void DeviceTraceOffload::
+void PLDeviceTraceOffload::
 reset_s2mm()
 {
-  debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
+  debug_stream << "PLDeviceTraceOffload::reset_s2mm" << std::endl;
   if (ts2mm_info.buffers.empty())
     return;
 
@@ -475,7 +475,7 @@ reset_s2mm()
   ts2mm_info.buffers.clear();
 }
 
-bool DeviceTraceOffload::
+bool PLDeviceTraceOffload::
 trace_buffer_full()
 {
   if (has_fifo()) {

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,24 +25,25 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 #include "xdp/profile/device/aie_trace/client/aie_trace_offload_client.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
-  AIETraceOffload::AIETraceOffload(void* handle, uint64_t id, DeviceIntf* dInt,
+  AIETraceOffload::AIETraceOffload(void* handle, uint64_t id, PLDeviceIntf* dInt,
                                    AIETraceLogger* logger, bool isPlio,
                                    uint64_t totalSize, uint64_t numStrm,
                                    xrt::hw_context context,
                                    std::shared_ptr<AieTraceMetadata>(metadata))
-    : deviceHandle(handle), deviceId(id), deviceIntf(dInt), traceLogger(logger),
+    : deviceHandle(handle), deviceId(id), plDeviceIntf(dInt), traceLogger(logger),
       isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
       traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
       offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
       mCircularBufOverwrite(false), context(context), metadata(metadata)
   {
-    bufAllocSz = deviceIntf->getAlignedTraceBufSize(
-                   totalSz, static_cast<unsigned int>(numStream));
+    bufAllocSz = getAlignedTraceBufSize(totalSz,
+                                        static_cast<unsigned int>(numStream));
     mReadTrace =
       std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
   }
