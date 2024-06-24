@@ -123,7 +123,7 @@ jobs:
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
           build-cmd: "build22.bat -opt -hip"
-          vs-version: "2012"
+          vs-version: "2022"
 
   # apu-package-build:
   #   # needs: authorize
