@@ -3,6 +3,14 @@ setlocal
 
 REM Working variables
 set XRT_PROG=xrt-smi
+echo ----------------------------------------------------------------------
+echo                               WARNING:
+echo                xbutil has been renamed to xrt-smi
+echo        Please migrate to using xrt-smi instead of xbutil.
+echo:
+echo    Commands, options, arguments and their descriptions can also be 
+echo                    reported via the --help option.
+echo ----------------------------------------------------------------------
 
 REM -- Examine the options
 set XRTWRAP_PROG_ARGS=
