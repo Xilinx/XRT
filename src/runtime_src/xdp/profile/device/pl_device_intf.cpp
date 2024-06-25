@@ -177,35 +177,27 @@ uint64_t GetTS2MMBufSize(bool isAIETrace) {
   return bytes;
 }
 
-// Destructor
-PLDeviceIntf::~PLDeviceIntf() {
-  for (auto mon : mAimList) {
+void PLDeviceIntf::releaseResources() {
+  for (auto mon : mAimList)
     delete mon;
-  }
 
-  for (auto mon : mAmList) {
+  for (auto mon : mAmList)
     delete mon;
-  }
 
-  for (auto mon : mAsmList) {
+  for (auto mon : mAsmList)
     delete mon;
-  }
 
-  for (auto mon : mTraceFunnelList) {
+  for (auto mon : mTraceFunnelList)
     delete mon;
-  }
 
-  for (auto mon : mPlTraceDmaList) {
+  for (auto mon : mPlTraceDmaList)
     delete mon;
-  }
 
-  for (auto aieTraceDma : mAieTraceDmaList) {
+  for (auto aieTraceDma : mAieTraceDmaList)
     delete aieTraceDma;
-  }
 
-  for (auto noc : nocList) {
+  for (auto noc : nocList)
     delete noc;
-  }
 
   mAimList.clear();
   mAmList.clear();
@@ -220,6 +212,11 @@ PLDeviceIntf::~PLDeviceIntf() {
   delete mDeadlockDetector;
 
   delete mDevice;
+}
+
+// Destructor
+PLDeviceIntf::~PLDeviceIntf() {
+  releaseResources();
 }
 
 void PLDeviceIntf::setDevice(xdp::Device *devHandle) {

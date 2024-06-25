@@ -47,7 +47,7 @@ namespace xdp {
   {
     XclbinInfo* requiredXclbinInfo = nullptr;
     if (loadedConfigInfos.empty()) {
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "loaded config is empty.");
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "Loaded config on device is empty.");
       return requiredXclbinInfo;
     }
 
@@ -55,7 +55,7 @@ namespace xdp {
     auto lastConfigType = loadedConfigInfos.back()->type;
     if (lastConfigType == CONFIG_AIE_PL || lastConfigType == CONFIG_AIE_PL_FORMED)
       xclbinAvailable = true;
-    
+
     if (!xclbinAvailable) {
       if (loadedConfigInfos.back()->containsXclbinType(xclbinQueryType))
         xclbinAvailable = true;
@@ -80,12 +80,6 @@ namespace xdp {
             // Perform deep copy of missing PL xclbin
             requiredXclbinInfo->pl = xclbin->pl;
             requiredXclbinInfo->aie.valid = false ;
-
-            // TODO : Update & delete deviceIntf from previous config
-            // requiredXclbinInfo->deviceIntf = new DeviceIntf();
-            // delete xclbin->deviceIntf;
-            // xclbin->deviceIntf = nullptr;
-
           }
           requiredXclbinInfo->uuid = xclbin->uuid ;
           requiredXclbinInfo->name = xclbin->name ;
@@ -177,43 +171,39 @@ namespace xdp {
 
   uint64_t DeviceInfo::getNumUserAMWithTrace(XclbinInfo* xclbin) const
   {
-    uint64_t num = 0 ;
     for (const auto& cfg : getLoadedConfigs()) {
       if (cfg->hasXclbin(xclbin))
-        num += cfg->getNumUserAMWithTrace(xclbin) ;
+        return cfg->getNumUserAMWithTrace(xclbin) ;
     }
-    return num ;
+    return 0 ;
   }
 
   uint64_t DeviceInfo::getNumAIM(XclbinInfo* xclbin) const
   {
-    uint64_t num = 0 ;
     for (const auto& cfg : getLoadedConfigs()) {
       if (cfg->hasXclbin(xclbin))
         return cfg->getNumAIM(xclbin) ;
     }
 
-    return num ;
+    return 0 ;
   }
 
   uint64_t DeviceInfo::getNumUserAIM(XclbinInfo* xclbin) const
   {
-    uint64_t num = 0 ;
     for (const auto& cfg : getLoadedConfigs()) {
       if (cfg->hasXclbin(xclbin))
-        num += cfg->getNumUserAIM(xclbin) ;
+        return cfg->getNumUserAIM(xclbin) ;
     }
-    return num ;
+    return 0 ;
   }
 
   uint64_t DeviceInfo::getNumUserAIMWithTrace(XclbinInfo* xclbin) const
   {
-    uint64_t num = 0 ;
     for (const auto& cfg : getLoadedConfigs()) {
       if (cfg->hasXclbin(xclbin))
-        num += cfg->getNumUserAIMWithTrace(xclbin) ;
+        return cfg->getNumUserAIMWithTrace(xclbin) ;
     }
-    return num ;
+    return 0 ;
   }
 
   uint64_t DeviceInfo::getNumASM(XclbinInfo* xclbin) const
@@ -227,22 +217,20 @@ namespace xdp {
 
   uint64_t DeviceInfo::getNumUserASM(XclbinInfo* xclbin) const
   {
-    uint64_t num = 0 ;
     for (const auto& cfg : getLoadedConfigs()) {
       if (cfg->hasXclbin(xclbin))
-        num += cfg->getNumUserASM(xclbin) ;
+        return cfg->getNumUserASM(xclbin) ;
     }
-    return num ;
+    return 0;
   }
 
   uint64_t DeviceInfo::getNumUserASMWithTrace(XclbinInfo* xclbin) const
   {
-    uint64_t num = 0 ;
     for (const auto& cfg : getLoadedConfigs()) {
       if (cfg->hasXclbin(xclbin))
-        num += cfg->getNumUserASMWithTrace(xclbin) ;
+        return cfg->getNumUserASMWithTrace(xclbin) ;
     }
-    return num ;
+    return 0 ;
   }
 
   uint64_t DeviceInfo::getNumNOC(XclbinInfo* xclbin) const
@@ -344,7 +332,6 @@ namespace xdp {
                                  const std::string& mod,
                                  const std::string& aieName)
   {
-    
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
@@ -360,7 +347,7 @@ namespace xdp {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
-   
+
     config->addAIECounterResources(numCounters, numTiles, moduleType) ;
   }
 
@@ -370,7 +357,7 @@ namespace xdp {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
-    
+
     config->addAIECoreEventResources(numEvents, numTiles) ;
   }
 
@@ -380,7 +367,7 @@ namespace xdp {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
-    
+
     config->addAIEMemoryEventResources(numEvents, numTiles) ;
   }
 
@@ -390,7 +377,7 @@ namespace xdp {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
-    
+
     config->addAIEShimEventResources(numEvents, numTiles) ;
   }
 
@@ -400,7 +387,7 @@ namespace xdp {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
-    
+
     config->addAIEMemTileEventResources(numEvents, numTiles) ;
   }
 
@@ -409,7 +396,7 @@ namespace xdp {
     ConfigInfo* config = currentConfig() ;
     if (!config || config->currentXclbins.empty())
       return ;
-    
+
     config->addAIECfgTile(std::move(tile)) ; 
   }
 
@@ -417,7 +404,7 @@ namespace xdp {
   {
     if (getLoadedConfigs().empty())
       return nullptr ;
-    
+
     return getLoadedConfigs().back().get() ;
   }
   

@@ -241,7 +241,7 @@ namespace xdp {
     // ************************************************
     // ***** Functions related to the run summary *****
     XDP_CORE_EXPORT
-    std::vector<std::pair<std::string, std::string>>& getOpenedFiles() ;
+    std::vector<std::pair<std::string, std::string>> getOpenedFiles() ;
     XDP_CORE_EXPORT
     void addOpenedFile(const std::string& name, const std::string& type) ;
     XDP_CORE_EXPORT std::string getSystemDiagram() ;
@@ -256,14 +256,13 @@ namespace xdp {
     //  then we output a table of stall information.
     XDP_CORE_EXPORT bool hasStallInfo() ;
     XDP_CORE_EXPORT ConfigInfo* getCurrentlyLoadedConfig(uint64_t deviceId) ;
-    XDP_CORE_EXPORT void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId) ;
     XDP_CORE_EXPORT bool isDeviceReady(uint64_t deviceId) ;
     XDP_CORE_EXPORT double getClockRateMHz(uint64_t deviceId, bool PL = true) ;
     XDP_CORE_EXPORT double getPLMaxClockRateMHz(uint64_t deviceId);
     XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ;
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_CORE_EXPORT PLDeviceIntf* getDeviceIntf(uint64_t deviceId) ;
-    XDP_CORE_EXPORT void createPLDeviceIntf(uint64_t deviceId, xdp::Device* xdpDevice);
+    XDP_CORE_EXPORT void createPLDeviceIntf(uint64_t deviceId, xdp::Device* xdpDevice, XclbinInfoType xclbinType);
     XDP_CORE_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_CORE_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_CORE_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;

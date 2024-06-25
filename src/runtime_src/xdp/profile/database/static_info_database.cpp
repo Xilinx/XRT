@@ -206,7 +206,7 @@ namespace xdp {
 
   // ************************************************
   // ***** Functions related to the run summary *****
-  std::vector<std::pair<std::string, std::string>>&
+  std::vector<std::pair<std::string, std::string>>
   VPStaticDatabase::getOpenedFiles()
   {
     std::lock_guard<std::mutex> lock(summaryLock) ;
@@ -304,27 +304,6 @@ namespace xdp {
     return deviceInfo[deviceId]->currentConfig() ;
   }
 
-  void VPStaticDatabase::deleteCurrentlyUsedDeviceInterface(uint64_t deviceId)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-
-    if (deviceInfo.find(deviceId) == deviceInfo.end())
-      return ;
-
-    ConfigInfo* config = deviceInfo[deviceId]->currentConfig() ;
-    if (!config)
-      return ;
-
-    XclbinInfo *xclbin = config->getPlXclbin();
-    if (!xclbin)
-      return;
-
-    if (xclbin->plDeviceIntf) {
-      delete xclbin->plDeviceIntf ;
-      xclbin->plDeviceIntf = nullptr ;
-    }
-  }
-
   bool VPStaticDatabase::isDeviceReady(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -416,17 +395,13 @@ namespace xdp {
     if (!config)
       return nullptr ;
 
-    XclbinInfo* xclbin = config->getPlXclbin();
-    if (!xclbin)
-      return nullptr;
-
-    return xclbin->plDeviceIntf ;
+    return config->plDeviceIntf ;
   }
 
   // This function will create a PL Device Interface if an xdp::Device is
   // passed in, and then associate it with the current xclbin loaded onto
   // the device corresponding to deviceId.
-  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, xdp::Device* dev)
+  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, xdp::Device* dev, XclbinInfoType newXclbinType)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -437,23 +412,35 @@ namespace xdp {
     ConfigInfo* config = deviceInfo[deviceId]->currentConfig();
     if (!config)
       return;
-    XclbinInfo* xclbin = config->getPlXclbin();
-    if (!xclbin)
-      return;
 
-    if (xclbin->plDeviceIntf != nullptr)
-      delete xclbin->plDeviceIntf; // It shouldn't be...
+    // Check if new xclbin has new PL metadata
+    if (newXclbinType == XCLBIN_AIE_PL || newXclbinType == XCLBIN_PL_ONLY)
+    {
+      if (config->plDeviceIntf != nullptr)
+          delete config->plDeviceIntf; // It shouldn't be...
 
-    xclbin->plDeviceIntf = new PLDeviceIntf();
-    xclbin->plDeviceIntf->setDevice(dev);
-    try {
-      xclbin->plDeviceIntf->readDebugIPlayout();
+      config->plDeviceIntf = new PLDeviceIntf();
+      config->plDeviceIntf->setDevice(dev);
+      try {
+        config->plDeviceIntf->readDebugIPlayout();
+      }
+      catch (std::exception& /* e */) {
+        // If reading the debug ip layout fails, we shouldn't have
+        // any device interface at all
+        delete config->plDeviceIntf;
+        config->plDeviceIntf = nullptr;
+      }
     }
-    catch (std::exception& /* e */) {
-      // If reading the debug ip layout fails, we shouldn't have
-      // any device interface at all
-      delete xclbin->plDeviceIntf;
-      xclbin->plDeviceIntf = nullptr;
+    else if (newXclbinType == XCLBIN_AIE_ONLY)
+    {
+      int totalConfigs = deviceInfo[deviceId]->loadedConfigInfos.size();
+      if (totalConfigs > 1)
+      {
+        config->plDeviceIntf = deviceInfo[deviceId]->loadedConfigInfos[totalConfigs-2]->plDeviceIntf;
+        deviceInfo[deviceId]->loadedConfigInfos[totalConfigs-2]->plDeviceIntf = nullptr;
+      }else {
+        // No previous PL device interface available
+      }
     }
   }
 
@@ -1488,6 +1475,8 @@ namespace xdp {
      * in the static data base. So, no need to read the xclbin information again.
      */
     if (!resetDeviceInfo(deviceId, new_xclbin_uuid)) {
+      if(!xdpDevice)
+        delete xdpDevice;
       return;
     }
 
@@ -2295,6 +2284,7 @@ namespace xdp {
 
   DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, xdp::Device* xdpDevice, bool clientBuild)
   {
+    XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it and remove the PL interface.  We'll
     //  create a new PL interface if necessary
@@ -2304,15 +2294,12 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "Marking the end of last config xclbin");
         db->getDynamicInfo().markXclbinEnd(deviceId) ;
 
-        // TODO_MERGE: delete interface via config.
-        // if (xclbin->plDeviceIntf != nullptr) {
-        //   delete xclbin->plDeviceIntf;
-        //   xclbin->plDeviceIntf = nullptr;
-        // }
+        // PL Device Interface deletion is delayed until new config is formed with new xclbin load.
+        // This is to confirm that previous PL xclbin can be re-used for cases
+        // like in PL and AIE mix xclbins workflow.
       }
     }
 
-    XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
     DeviceInfo* devInfo = nullptr ;
     auto itr = deviceInfo.find(deviceId);
     if (itr == deviceInfo.end()) {
@@ -2326,9 +2313,9 @@ namespace xdp {
       // This is a previously used device being reloaded with a new xclbin
       devInfo = itr->second.get();
 
-      // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run
-      // It is expected to have AIE type xclbin loaded after PL type
-      devInfo->cleanCurrentConfig(xclbinType) ;
+      // Do not clean config if new xclbin is AIE type as it could be for mix xclbins run.
+      // It is expected to have AIE type xclbin loaded after PL type.
+      devInfo->cleanCurrentConfig(xclbinType);
     }
 
     XclbinInfo* currentXclbin = new XclbinInfo(xclbinType) ;
@@ -2350,7 +2337,7 @@ namespace xdp {
         delete currentXclbin;
         if (xdpDevice != nullptr)
           delete xdpDevice;
-      return devInfo;
+        return devInfo;
       }
     }
 
@@ -2360,7 +2347,7 @@ namespace xdp {
     devInfo->isReady = true;
 
     if (xdpDevice != nullptr)
-      createPLDeviceIntf(deviceId, xdpDevice);
+      createPLDeviceIntf(deviceId, xdpDevice, xclbinType);
 
     return devInfo;
   }

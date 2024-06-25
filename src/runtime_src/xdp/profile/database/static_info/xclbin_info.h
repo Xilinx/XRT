@@ -175,11 +175,6 @@ namespace xdp {
     std::string name ;
     XclbinInfoType type {XCLBIN_AIE_PL} ;
 
-    // The interface with actually communicating with the device.  This
-    //  handles the abstractions necessary for communicating in emulation,
-    //  actual hardware, and through different mechanisms.
-    PLDeviceIntf* plDeviceIntf = nullptr ;
-
     // The configuration of the PL portion of the design
     PLInfo pl ;
 
@@ -187,16 +182,21 @@ namespace xdp {
     AIEInfo aie ;
 
     XclbinInfo(XclbinInfoType xclbinType) ;
-    ~XclbinInfo() ;
+    ~XclbinInfo() = default;
   } ;
 
   // The config struct stores multiple xclbins
   struct ConfigInfo {
-  // This defines what kind of xclbininfo is loaded on the device.
+    // This defines what kind of xclbininfo is loaded on the device.
     ConfigInfoType type {CONFIG_AIE_PL} ;
 
-  // The currently loaded XCLbinInfo for the device.
+    // The currently loaded XCLbinInfo for the device.
     std::vector<XclbinInfo*> currentXclbins ;
+
+    // The interface with actually communicating with the device.  This
+    //  handles the abstractions necessary for communicating in emulation,
+    //  actual hardware, and through different mechanisms.
+    PLDeviceIntf* plDeviceIntf = nullptr ;
 
     ConfigInfo() : type(CONFIG_AIE_PL) {};
     ConfigInfo(XclbinInfo* xclbin) ;
@@ -222,14 +222,14 @@ namespace xdp {
     bool hasFloatingASMWithTrace(XclbinInfo* xclbin);
 
     uint64_t getNumAM(XclbinInfo* xclbin) ;
-    uint8_t getNumUserAMWithTrace(XclbinInfo* xclbin) ;
+    uint64_t getNumUserAMWithTrace(XclbinInfo* xclbin) ;
     uint64_t getNumAIM(XclbinInfo* xclbin) ;
-    uint8_t getNumUserAIM(XclbinInfo* xclbin) ;
-    uint8_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
+    uint64_t getNumUserAIM(XclbinInfo* xclbin) ;
+    uint64_t getNumUserAIMWithTrace(XclbinInfo* xclbin) const ;
 
     uint64_t getNumASM(XclbinInfo* xclbin) const ;
-    uint8_t getNumUserASM(XclbinInfo* xclbin) const ;
-    uint8_t getNumUserASMWithTrace(XclbinInfo* xclbin) ;
+    uint64_t getNumUserASM(XclbinInfo* xclbin) const ;
+    uint64_t getNumUserASMWithTrace(XclbinInfo* xclbin) ;
 
     uint64_t getNumNOC(XclbinInfo* xclbin) ;
     Monitor* getAMonitor(XclbinInfo* xclbin, uint64_t slotId) ;
@@ -262,7 +262,6 @@ namespace xdp {
     void addAIECfgTile(std::unique_ptr<aie_cfg_tile>&& tile) ;
     void cleanCurrentXclbinInfos(XclbinInfoType xclbinType) ;
     bool hasAIMNamed(const std::string& name) ;
-    // void print(std::string callerLoc) const;
   } ;
 
 } // end namespace xdp

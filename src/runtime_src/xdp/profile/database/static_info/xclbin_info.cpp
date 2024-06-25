@@ -216,12 +216,6 @@ namespace xdp {
       }
   }
 
-  XclbinInfo::~XclbinInfo()
-  {
-    if (plDeviceIntf)
-      delete plDeviceIntf ;
-  }
-
   ConfigInfo::ConfigInfo(XclbinInfo* xclbin) : type(CONFIG_AIE_PL)
   {
     currentXclbins.push_back(xclbin);
@@ -229,10 +223,14 @@ namespace xdp {
 
   ConfigInfo::~ConfigInfo()
   {
-    for (auto xclbin : currentXclbins) {
+    for (auto xclbin : currentXclbins)
       delete xclbin;
-    }
     currentXclbins.clear();
+
+    if (plDeviceIntf) {
+      delete plDeviceIntf;
+      plDeviceIntf = nullptr;
+    }
   }
 
   xrt_core::uuid ConfigInfo::getConfigUuid()
@@ -361,17 +359,18 @@ namespace xdp {
       return 0;
     }
 
-    uint8_t ConfigInfo::getNumUserAMWithTrace(XclbinInfo* xclbin)
+    uint64_t ConfigInfo::getNumUserAMWithTrace(XclbinInfo* xclbin)
     {
+      uint64_t num = 0;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto am : bin->pl.ams) {
             if (am->traceEnabled)
-              return 1 ;
+              ++num ;
           }
         }
       }
-      return 0 ;
+      return num ;
     }
 
     uint64_t ConfigInfo::getNumAIM(XclbinInfo* xclbin)
@@ -384,31 +383,33 @@ namespace xdp {
       return 0 ;
     }
 
-    uint8_t ConfigInfo::getNumUserAIM(XclbinInfo* xclbin)
+    uint64_t ConfigInfo::getNumUserAIM(XclbinInfo* xclbin)
     {
+      uint64_t num = 0;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto aim : bin->pl.aims) {
             if (!aim->isShellMonitor())
-              return 1 ;
+              ++num ;
           }
         }
       }
-      return 0 ;
+      return num ;
     }
 
-    uint8_t ConfigInfo::getNumUserAIMWithTrace(XclbinInfo* xclbin) const
+    uint64_t ConfigInfo::getNumUserAIMWithTrace(XclbinInfo* xclbin) const
     {
+      uint64_t num = 0;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto aim : bin->pl.aims) {
             if (aim->traceEnabled && !aim->isShellMonitor())
-              return 1 ;
+              ++num ;
           }
         }
       }
 
-      return 0 ;
+      return num ;
     }
 
     uint64_t ConfigInfo::getNumASM(XclbinInfo* xclbin) const
@@ -420,30 +421,32 @@ namespace xdp {
       return 0 ;
     }
 
-    uint8_t ConfigInfo::getNumUserASM(XclbinInfo* xclbin) const
+    uint64_t ConfigInfo::getNumUserASM(XclbinInfo* xclbin) const
     {
+      uint64_t num = 0;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto mon : bin->pl.asms) {
             if (!mon->isShellMonitor())
-              return 1 ;
+              ++num;
           }
         }
       }
-      return 0 ;
+      return num ;
     }
 
-    uint8_t ConfigInfo::getNumUserASMWithTrace(XclbinInfo* xclbin)
+    uint64_t ConfigInfo::getNumUserASMWithTrace(XclbinInfo* xclbin)
     {
+      uint64_t num = 0;
       for (auto bin : currentXclbins) {
         if (bin == xclbin) {
           for (auto mon : bin->pl.asms) {
             if (mon->traceEnabled && !mon->isShellMonitor())
-              return 1 ;
+              ++num;
           }
         }
       }
-      return 0 ;
+      return num ;
     }
 
     uint64_t ConfigInfo::getNumNOC(XclbinInfo* xclbin)
@@ -685,21 +688,21 @@ namespace xdp {
     void ConfigInfo::cleanCurrentXclbinInfos(XclbinInfoType xclbinType)
     {
       if (xclbinType == XCLBIN_AIE_ONLY)   {
-        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", "Skipping the current config clean for new xclbin");
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                "Skipping the current config cleanup for new aie-only xclbin.");
         return;
       }
 
       for (auto xclbin : currentXclbins) {
+        // Clean up AIE xclbin
         if (xclbin->aie.valid) {
           
-          for (auto i : xclbin->aie.aieList) {
+          for (auto i : xclbin->aie.aieList)
             delete i ;
-          }
           xclbin->aie.aieList.clear() ;
           
-          for (auto i : xclbin->aie.gmioList) {
+          for (auto i : xclbin->aie.gmioList)
             delete i ;
-          }
           xclbin->aie.gmioList.clear() ;
           
           xclbin->aie.valid = false;
@@ -717,5 +720,4 @@ namespace xdp {
       }
       return false ;
     }
-
 } // end namespace xdp
