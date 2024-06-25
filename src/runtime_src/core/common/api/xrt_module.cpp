@@ -177,7 +177,7 @@ struct patcher
   void
   patch_ctrl48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    // This function is a copy&paste from IPU firmware
+    // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
@@ -191,7 +191,7 @@ struct patcher
 
   void patch_shim48(uint32_t* bd_data_ptr, uint64_t patch)
   {
-    // This function is a copy&paste from IPU firmware
+    // This patching scheme is originated from NPU firmware
     constexpr uint64_t ddr_aie_addr_offset = 0x80000000;
 
     uint64_t base_address =
@@ -775,9 +775,9 @@ class module_elf : public module_impl
       throw std::runtime_error("ELF os_abi Not supported");
 
     if (m_save_buf_exist && m_restore_buf_exist)
-      return ERT_START_IPU_PREEMPT;
+      return ERT_START_NPU_PREEMPT;
 
-    return ERT_START_IPU;
+    return ERT_START_NPU;
   }
 
 public:
@@ -1166,26 +1166,26 @@ class module_sram : public module_impl
   fill_ert_aie2p(uint32_t *payload) const
   {
      if (m_preempt_save_bo && m_preempt_restore_bo) {
-       // ipu preemption
-       auto ipu = reinterpret_cast<ert_ipu_preempt_data*>(payload);
-       ipu->instruction_buffer = m_instr_bo.address();
-       ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
-       ipu->save_buffer = m_preempt_save_bo.address();
-       ipu->save_buffer_size = static_cast<uint32_t>(m_preempt_save_bo.size());
-       ipu->restore_buffer = m_preempt_restore_bo.address();
-       ipu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
-       ipu->instruction_prop_count = 0; // Reserved for future use
-       payload += sizeof(ert_ipu_preempt_data) / sizeof(uint32_t);
+       // npu preemption
+       auto npu = reinterpret_cast<ert_npu_preempt_data*>(payload);
+       npu->instruction_buffer = m_instr_bo.address();
+       npu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+       npu->save_buffer = m_preempt_save_bo.address();
+       npu->save_buffer_size = static_cast<uint32_t>(m_preempt_save_bo.size());
+       npu->restore_buffer = m_preempt_restore_bo.address();
+       npu->restore_buffer_size = static_cast<uint32_t>(m_preempt_restore_bo.size());
+       npu->instruction_prop_count = 0; // Reserved for future use
+       payload += sizeof(ert_npu_preempt_data) / sizeof(uint32_t);
 
        return payload;
      }
 
-     // ipu non-preemption
-     auto ipu = reinterpret_cast<ert_ipu_data*>(payload);
-     ipu->instruction_buffer = m_instr_bo.address();
-     ipu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
-     ipu->instruction_prop_count = 0; // Reserved for future use
-     payload += sizeof(ert_ipu_data) / sizeof(uint32_t);
+     // npu non-preemption
+     auto npu = reinterpret_cast<ert_npu_data*>(payload);
+     npu->instruction_buffer = m_instr_bo.address();
+     npu->instruction_buffer_size = static_cast<uint32_t>(m_instr_bo.size());
+     npu->instruction_prop_count = 0; // Reserved for future use
+     payload += sizeof(ert_npu_data) / sizeof(uint32_t);
 
      return payload;
   }
