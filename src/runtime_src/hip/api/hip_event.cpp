@@ -51,7 +51,7 @@ static float hip_event_elapsed_time(hipEvent_t start, hipEvent_t stop)
   throw_invalid_value_if(!hip_ev_stop, "dynamic_pointer_cast failed");
   std::chrono::duration<double> elapsed_seconds = hip_ev_stop->get_time() - hip_ev_start->get_time();
   auto duration_in_micros = std::chrono::duration_cast<std::chrono::microseconds>(elapsed_seconds).count();
-  return static_cast<float>(duration_in_micros / 1000.0);
+  return static_cast<float>(duration_in_micros / 1000.0); // NOLINT magic number
 }
 
 static bool hip_event_query(hipEvent_t eve)

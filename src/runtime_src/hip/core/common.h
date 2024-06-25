@@ -24,6 +24,7 @@ struct ctx_info
 // thread local hip objects
 struct hip_tls_objs
 {
+  hip_tls_objs() noexcept {}
   device_handle dev_hdl{std::numeric_limits<uint32_t>::max()};
   std::stack<std::weak_ptr<context>> ctx_stack;
   ctx_info pri_ctx_info;
