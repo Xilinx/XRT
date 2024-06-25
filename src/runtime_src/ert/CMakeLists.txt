@@ -26,7 +26,7 @@ file(GLOB ERTFW_FILES
 message("-- ERT firmare files copied from ${ERTFW_FILES}")
 
 install(FILES
-  ${XRTFW_FILES}
+  ${ERTFW_FILES}
   DESTINATION ${ERT_INSTALL_PREFIX}
   )
 
