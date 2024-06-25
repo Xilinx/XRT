@@ -46,38 +46,38 @@ insert_in_map(map& m, value&& v)
 namespace {
 // common functions for throwing hip errors
 inline void
-throw_if(bool check, hipError_t err, const std::string& err_msg)
+throw_if(bool check, hipError_t err, const char* err_msg)
 {
   if (check)
     throw xrt_core::system_error(err, err_msg);
 }
 
 inline void
-throw_invalid_value_if(bool check, const std::string& err_msg)
+throw_invalid_value_if(bool check, const char* err_msg)
 {
   throw_if(check, hipErrorInvalidValue, err_msg);
 }
 
 inline void
-throw_invalid_handle_if(bool check, const std::string& err_msg)
+throw_invalid_handle_if(bool check, const char* err_msg)
 {
   throw_if(check, hipErrorInvalidHandle, err_msg);
 }
 
 inline void
-throw_invalid_device_if(bool check, const std::string& err_msg)
+throw_invalid_device_if(bool check, const char* err_msg)
 {
   throw_if(check, hipErrorInvalidDevice, err_msg);
 }
 
 inline void
-throw_invalid_resource_if(bool check, const std::string& err_msg)
+throw_invalid_resource_if(bool check, const char* err_msg)
 {
   throw_if(check, hipErrorInvalidResourceHandle, err_msg);
 }
 
 inline void
-throw_context_destroyed_if(bool check, const std::string& err_msg)
+throw_context_destroyed_if(bool check, const char* err_msg)
 {
   throw_if(check, hipErrorContextIsDestroyed, err_msg);
 }
