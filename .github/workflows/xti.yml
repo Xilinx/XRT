@@ -38,14 +38,14 @@ jobs:
         include:      
            - os: centos78      
              packageType: rpm      
-           - os: centos8      
-             packageType: rpm      
-           - os: rhel9      
-             packageType: rpm      
-           - os: ubuntu2004      
-             packageType: deb      
-           - os: ubuntu2204      
-             packageType: deb      
+           # - os: centos8      
+           #   packageType: rpm      
+           # - os: rhel9      
+           #   packageType: rpm      
+           # - os: ubuntu2004      
+           #   packageType: deb      
+           # - os: ubuntu2204      
+           #   packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     # runs-on: [apu]
@@ -153,7 +153,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
-          ref: main
+          ref: xti
        
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
