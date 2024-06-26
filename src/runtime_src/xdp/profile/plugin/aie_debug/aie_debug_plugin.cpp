@@ -252,15 +252,11 @@ namespace xdp {
     }
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-    // Profiling is 3rd custom OP
-    XAie_RequestCustomTxnOp(&aieDevInst);
-    XAie_RequestCustomTxnOp(&aieDevInst);
-    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
     if (!transactionHandler->initializeKernel("XDP_KERNEL"))
       return;
 
-    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
+    XAie_AddCustomTxnOp(&aieDevInst, XAIE_IO_CUSTOM_OP_READ_REGS, (void*)op, op_size);
     txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
 
     if (!transactionHandler->submitTransaction(txn_ptr))

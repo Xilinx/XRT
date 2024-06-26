@@ -323,13 +323,8 @@ namespace xdp {
     double timestamp = xrt_core::time_ns() / 1.0e6;
 
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
-    // Profiling is 3rd custom OP
-    XAie_RequestCustomTxnOp(&aieDevInst);
-    XAie_RequestCustomTxnOp(&aieDevInst);
-    
-    auto read_op_code_ = XAie_RequestCustomTxnOp(&aieDevInst);
 
-    XAie_AddCustomTxnOp(&aieDevInst, (uint8_t)read_op_code_, (void*)op, op_size);
+    XAie_AddCustomTxnOp(&aieDevInst, XAIE_IO_CUSTOM_OP_READ_REGS, (void*)op, op_size);
     uint8_t *txn_ptr = XAie_ExportSerializedTransaction(&aieDevInst, 1, 0);
 
     // If we haven't properly initialized the transaction handler, don't poll
