@@ -181,7 +181,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: main
+          ref: xti
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
