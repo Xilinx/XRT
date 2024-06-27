@@ -142,7 +142,8 @@ namespace xrt::core::hip
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  memory_database* memory_database::m_memory_database = nullptr;
+//we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
+  memory_database* memory_database::m_memory_database = nullptr; //NOLINT
 
   memory_database& memory_database::instance()
   {

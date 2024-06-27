@@ -34,6 +34,12 @@ namespace xdp {
   //  and any others.
   class VPWriter 
   {
+#ifdef _WIN32
+  static constexpr bool profDirDefault = false;
+#else
+  static constexpr bool profDirDefault = true;
+#endif
+
   private:
     // The base name of all files created by this writer
     std::string basename ;
@@ -64,7 +70,9 @@ namespace xdp {
     XDP_CORE_EXPORT virtual void refreshFile() ;
   public:
     XDP_CORE_EXPORT VPWriter(const char* filename) ;
-    XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst, bool useDir = true) ;
+    XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst,
+                             bool useDir = profDirDefault);
+
     XDP_CORE_EXPORT virtual ~VPWriter() ;
 
     XDP_CORE_EXPORT virtual std::string getcurrentFileName() ;

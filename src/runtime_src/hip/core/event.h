@@ -43,16 +43,20 @@ public:
   };
 
 protected:
-  std::shared_ptr<stream> cstream;
   type ctype = type::event;
+  std::shared_ptr<stream> cstream;
   std::chrono::time_point<std::chrono::system_clock> ctime;
   state cstate = state::init;
 
 public:
-    command() = default;
+  command() = default;
 
-  explicit command(std::shared_ptr<stream> s)
-    : cstream{std::move(s)}
+  explicit command(type copy_type)
+    : ctype(copy_type)
+  {}
+
+  explicit command(type copy_type, std::shared_ptr<stream> s)
+    : ctype(copy_type), cstream{std::move(s)}
   {}
 
   virtual ~command() = default;
@@ -124,20 +128,56 @@ public:
   bool wait() override;
 };
 
+// copy command for copying data from/to host buffer of type void*
 class copy_buffer : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset);
+  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* host_buf, size_t size, size_t offset)
+      : command(command::type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_buffer(host_buf), copy_size(size), dev_offset(offset)
+  {}
   bool submit() override;
   bool wait() override;
 
-private:
-  xclBOSyncDirection cdirection;
-  std::shared_ptr<memory> buffer;
-  void* host_ptr;
+protected:
+  xclBOSyncDirection cdirection; // copy direction
+  std::shared_ptr<memory> buffer; // device buffer
+  void* host_buffer; // host buffer copy source/destination
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
+};
+
+// copy command for copying data from a source only bost buffer of type std::vector<uint8|uint16|uint32>
+template<class T>
+class copy_from_host_buffer_command : public copy_buffer
+{
+public:
+  copy_from_host_buffer_command(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::vector<T>&& vec, size_t size, size_t offset)
+    : copy_buffer(s, direction, buf, nullptr, size, offset), host_vec(std::move(vec))
+  {
+  }
+
+  bool submit() override
+  {
+    switch (cdirection)
+    {
+    case XCL_BO_SYNC_BO_TO_DEVICE:
+      handle = std::async(std::launch::async, &memory::write, buffer, host_vec.data(), copy_size, 0, dev_offset);
+      break;
+
+    case XCL_BO_SYNC_BO_FROM_DEVICE:
+      throw std::runtime_error("host_buffer is an invalid destination");
+      break;
+
+    default:
+      break;
+    };
+
+    return true;
+  }
+
+private:
+  std::vector<T> host_vec; // host buffer (source only, not valid as destination)
 };
 
 // Global map of commands

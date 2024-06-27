@@ -22,6 +22,7 @@
 #include "scope_guard.h"
 
 #include <string>
+#include <sstream>
 #include <functional>
 #include <iostream>
 #include <vector>
@@ -44,6 +45,14 @@ ios_restore(std::ostream& ostr)
 {
   auto restore = [](std::ostream& ostr, std::ios_base::fmtflags f) { ostr.flags(f); };
   return {std::bind(restore, std::ref(ostr), ostr.flags())};
+}
+
+inline std::string
+to_hex(const void* addr)
+{
+  std::stringstream str;
+  str << std::hex << addr;
+  return str.str();
 }
 
 XRT_CORE_COMMON_EXPORT
