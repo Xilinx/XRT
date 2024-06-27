@@ -33,7 +33,7 @@ static ssize_t xclbinuuid_show(struct device *dev,
 		if (!xclbin_id)
 			continue;
 
-		cnt += sprintf(buf + cnt, "%pUb\n", xclbin_id ? xclbin_id : 0);
+		cnt += sprintf(buf + cnt, "%pUb\n", xclbin_id);
 
 		XOCL_PUT_XCLBIN_ID(xdev, i);
 		xclbin_id = NULL;
@@ -112,7 +112,7 @@ static ssize_t kdsstat_show(struct device *dev,
 			continue;
 
 		size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
-				xclbin_id ? xclbin_id : 0);
+				xclbin_id);
 		
 		XOCL_PUT_XCLBIN_ID(xdev, i);
 		xclbin_id = NULL;
