@@ -33,18 +33,6 @@ namespace {
   static std::string ProcessHwEmuDebugIpLayoutPath(void* handle)
   {
     std::string path = xdp::util::getDebugIpLayoutPath(handle);
-    if (path == "")
-      return path;
-
-    // Full paths to the hardware emulation debug_ip_layout for different
-    //  xclbins on the same device are different.  On disk, they are laid
-    //  out as follows:
-    // .run/<pid>/hw_em/device_0/binary_0/debug_ip_layout
-    // .run/<pid>/hw_em/device_0/binary_1/debug_ip_layout
-    //  Since both of these should refer to the same device, we only use
-    //  the path up to the device name.
-    path = path.substr(0, path.find_last_of("/") - 1) ;// remove debug_ip_layout
-    path = path.substr(0, path.find_last_of("/") - 1) ;// remove binary_x
     return path ;
   }
 
@@ -84,7 +72,7 @@ namespace xdp {
     std::string path = ProcessHwEmuDebugIpLayoutPath(handle) ;
     if (path == "")
       return ;
-    
+
     uint64_t deviceId = db->addDevice(path) ;
 
     if (offloaders.find(deviceId) != offloaders.end()) {
@@ -110,7 +98,7 @@ namespace xdp {
 
     // Clear out any previous interface we might have had for talking to this
     //  particular device.
-    clearOffloader(deviceId); 
+    clearOffloader(deviceId);
 
     if (!(db->getStaticInfo()).validXclbin(userHandle)) {
       std::string msg =
@@ -123,7 +111,7 @@ namespace xdp {
                               msg) ;
       return ;
     }
-    
+
     // Update the static database with all the information that
     //  will be needed later
     db->getStaticInfo().updateDevice(deviceId, new HalDevice(userHandle), userHandle) ;
@@ -134,7 +122,7 @@ namespace xdp {
       }
     }
 
-    // For the HAL level, we must create a device interface using 
+    // For the HAL level, we must create a device interface using
     //  the xdp::HalDevice to communicate with the physical device
     PLDeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
 
@@ -149,7 +137,7 @@ namespace xdp {
     startContinuousThreads(deviceId) ;
     devInterface->startCounters() ;
 
-    // Once the device has been set up, add additional information to 
+    // Once the device has been set up, add additional information to
     //  the static database
     (db->getStaticInfo()).setHostMaxReadBW(deviceId, devInterface->getHostMaxBwRead()) ;
     (db->getStaticInfo()).setHostMaxWriteBW(deviceId, devInterface->getHostMaxBwWrite());

@@ -22,6 +22,7 @@
 #include "core/common/query_requests.h"
 
 #include "xdp/profile/device/utility.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp { namespace util {
 
@@ -50,6 +51,19 @@ namespace xdp { namespace util {
       //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "Device query for Debug IP Layout not implemented");
     } catch (const std::exception &) {
       xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "Failed to retrieve Debug IP Layout path");
+    }
+    if (getFlowMode()==HW_EMU) {
+      if (path!="") {
+        // Full paths to the hardware emulation debug_ip_layout for different
+        //  xclbins on the same device are different.  On disk, they are laid
+        //  out as follows:
+        // .run/<pid>/hw_em/device_0/binary_0/debug_ip_layout
+        // .run/<pid>/hw_em/device_0/binary_1/debug_ip_layout
+        //  Since both of these should refer to the same device, we only use
+        //  the path up to the device name.
+        path = path.substr(0, path.find_last_of("/") - 1) ;// remove debug_ip_layout
+        path = path.substr(0, path.find_last_of("/") - 1) ;// remove binary_x
+      }
     }
     return path;
   }
