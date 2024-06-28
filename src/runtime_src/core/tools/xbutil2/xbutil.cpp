@@ -54,11 +54,11 @@ R"(
 },{
   "aie": [{
     "examine": [{
-      "report": ["electrical", "host", "platform", "aie", "aiemem", "aieshim", "aie-partitions"]
+      "report": ["host", "platform", "aie-partitions", "telemetry"]
     }]
   },{
     "configure": [{
-      "suboption": ["performance"]
+      "suboption": ["pmode"]
     }]
   },{
     "advanced":[{
@@ -66,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["latency", "throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
+      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
     }]
   }]
 }]
@@ -77,7 +77,7 @@ int main( int argc, char** argv )
 {
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
-  const std::string executable = "xbutil";
+  const std::string executable = "xrt-smi";
 
   boost::property_tree::ptree configTree;
   std::istringstream command_config_stream(command_config);

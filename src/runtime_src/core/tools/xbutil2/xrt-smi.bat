@@ -2,7 +2,7 @@
 setlocal
 
 REM Working variables
-set XRT_PROG=xbutil
+set XRT_PROG=xrt-smi
 
 REM -- Examine the options
 set XRTWRAP_PROG_ARGS=
