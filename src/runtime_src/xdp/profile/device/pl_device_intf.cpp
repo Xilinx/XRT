@@ -218,8 +218,6 @@ PLDeviceIntf::~PLDeviceIntf() {
   delete mFifoCtrl;
   delete mFifoRead;
   delete mDeadlockDetector;
-
-  //  delete mDevice;
 }
 
 void PLDeviceIntf::setDevice(std::unique_ptr<xdp::Device> devHandle) {
