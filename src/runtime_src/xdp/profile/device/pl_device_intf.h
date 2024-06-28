@@ -224,7 +224,6 @@ class PLDeviceIntf {
     std::mutex traceLock ;
 
     std::unique_ptr<xdp::Device> mDevice = nullptr;
-    //xdp::Device* mDevice = nullptr;
 
     std::vector<AIM*> mAimList;
     std::vector<AM*>  mAmList;
