@@ -58,8 +58,15 @@ namespace xdp {
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
+#ifdef XDP_CLIENT_BUILD
+    periodicOffloadClient = xrt_core::config::get_aie_trace_settings_periodic_offload_client();
+    continuousTrace = false;
+#else    
     continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();
-    if (continuousTrace)
+    periodicOffloadClient = false;
+#endif
+
+    if (continuousTrace || periodicOffloadClient)
       offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
 
     //Process the file dump interval

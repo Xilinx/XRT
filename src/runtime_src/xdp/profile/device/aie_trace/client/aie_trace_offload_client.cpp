@@ -38,7 +38,7 @@ namespace xdp {
                                    std::shared_ptr<AieTraceMetadata>(metadata))
     : deviceHandle(handle), deviceId(id), plDeviceIntf(dInt), traceLogger(logger),
       isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
-      traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
+      periodicOffloadClient(false), offloadIntervalUs(0), bufferInitialized(false),
       offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
       mCircularBufOverwrite(false), context(context), metadata(metadata)
   {
@@ -46,6 +46,13 @@ namespace xdp {
                                         static_cast<unsigned int>(numStream));
     mReadTrace =
       std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
+  }
+
+  AIETraceOffload::~AIETraceOffload() 
+  {
+    stopOffload();
+    if (offloadThread.joinable())
+      offloadThread.join();
   }
 
   bool AIETraceOffload::initReadTrace()
@@ -97,6 +104,12 @@ namespace xdp {
       xrt_bos.emplace_back(xrt::bo(context.get_device(), bufAllocSz,
                                    XRT_BO_FLAGS_HOST_ONLY, transactionHandler->getGroupID(0)));
       
+      buffers[i].bufId = xrt_bos.size();
+      if (!buffers[i].bufId) {
+        bufferInitialized = false;
+        return bufferInitialized;
+      }
+
       if (!xrt_bos.empty()) {
         auto bo_map = xrt_bos.back().map<uint8_t*>();
         memset(bo_map, 0, bufAllocSz);
@@ -143,43 +156,116 @@ namespace xdp {
     return bufferInitialized;
   }
 
-  void AIETraceOffload::readTraceGMIO(bool /*final*/)
+  void AIETraceOffload::readTraceGMIO(bool final)
   {
-    for (int index = 0; index < numStream; index++) {
-      syncAndLog(index);
+    // Keep it low to save bandwidth
+    constexpr uint64_t chunk_512k = 0x80000;
+
+    for (uint64_t index = 0; index < numStream; ++index) {
+      auto& bd = buffers[index];
+      if (bd.offloadDone)
+        continue;
+
+      // read one chunk or till the end of buffer
+      auto chunkEnd = bd.offset + chunk_512k;
+      if (final || chunkEnd > bufAllocSz)
+        chunkEnd = bufAllocSz;
+      bd.usedSz = chunkEnd;
+
+      bd.offset += syncAndLog(index);
     }
   }
 
   uint64_t AIETraceOffload::syncAndLog(uint64_t index)
   {
-    xrt_bos[index].sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-    auto in_bo_map = xrt_bos[index].map<uint32_t*>();
+    auto& bd = buffers[index];
+
+    if (bd.offset >= bd.usedSz)
+      return 0;
+
+    // Amount of newly written trace
+    uint64_t nBytes = bd.usedSz - bd.offset;
+
+    xrt_bos[index].sync(XCL_BO_SYNC_BO_FROM_DEVICE, nBytes, bd.offset);
+    auto in_bo_map = xrt_bos[index].map<uint32_t*>() + bd.offset;
 
     if (!in_bo_map)
       return 0;
 
-    uint64_t nBytes = searchWrittenBytes((void*)in_bo_map, bufAllocSz);
+    nBytes = searchWrittenBytes((void*)in_bo_map, bufAllocSz);
+
+    // check for full buffer
+    if (bd.offset + nBytes >= bufAllocSz) {
+      bd.isFull = true;
+      bd.offloadDone = true;
+    }
 
     // Log nBytes of trace
     traceLogger->addAIETraceData(index, (void*)in_bo_map, nBytes, true);
-    return xrt_bos[index].size();
+    return nBytes;
   }
 
-  /*
-   * Implement these later for continuous offload
-   */
+  void AIETraceOffload::startOffload() 
+  {
+    if (offloadStatus == AIEOffloadThreadStatus::RUNNING)
+      return;
 
-  AIETraceOffload::~AIETraceOffload() {}
+    std::lock_guard<std::mutex> lock(statusLock);
+    offloadStatus = AIEOffloadThreadStatus::RUNNING;
 
-  void AIETraceOffload::startOffload() {}
+    offloadThread = std::thread(&AIETraceOffload::continuousOffload, this);
+  }
 
-  bool AIETraceOffload::keepOffloading() { return false; }
+  void AIETraceOffload::continuousOffload()
+  {
+    if (!bufferInitialized && !initReadTrace()) {
+      offloadFinished();
+      return;
+    }
 
-  void AIETraceOffload::stopOffload() {}
+    while (keepOffloading()) {
+      mReadTrace(false);
+      std::this_thread::sleep_for(std::chrono::microseconds(offloadIntervalUs));
+    }
 
-  void AIETraceOffload::offloadFinished() {}
+    // Note: This will call flush and reset on datamover
+    mReadTrace(true);
+    endReadTrace();
+    offloadFinished();
+  }
 
-  void AIETraceOffload::endReadTrace() {}
+  bool AIETraceOffload::keepOffloading() 
+  { 
+    std::lock_guard<std::mutex> lock(statusLock);
+    return (AIEOffloadThreadStatus::RUNNING == offloadStatus); 
+  }
+
+  void AIETraceOffload::stopOffload() 
+  {
+    std::lock_guard<std::mutex> lock(statusLock);
+    if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
+      return;
+    offloadStatus = AIEOffloadThreadStatus::STOPPING;
+  }
+
+  void AIETraceOffload::offloadFinished() 
+  {
+    std::lock_guard<std::mutex> lock(statusLock);
+    if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
+      return;
+    offloadStatus = AIEOffloadThreadStatus::STOPPED;
+  }
+
+  void AIETraceOffload::endReadTrace() 
+  {
+    for (uint64_t i = 0; i < numStream ; ++i) {
+      if (!buffers[i].bufId)
+        continue;
+
+      buffers[i].bufId = 0;
+    }
+    bufferInitialized = false;
+  }
 
   uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
   {
