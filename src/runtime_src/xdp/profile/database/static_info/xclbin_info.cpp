@@ -363,7 +363,7 @@ namespace xdp {
     {
       uint64_t num = 0;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto am : bin->pl.ams) {
             if (am->traceEnabled)
               ++num ;
@@ -387,7 +387,7 @@ namespace xdp {
     {
       uint64_t num = 0;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto aim : bin->pl.aims) {
             if (!aim->isShellMonitor())
               ++num ;
@@ -401,7 +401,7 @@ namespace xdp {
     {
       uint64_t num = 0;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto aim : bin->pl.aims) {
             if (aim->traceEnabled && !aim->isShellMonitor())
               ++num ;
@@ -425,7 +425,7 @@ namespace xdp {
     {
       uint64_t num = 0;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto mon : bin->pl.asms) {
             if (!mon->isShellMonitor())
               ++num;
@@ -439,7 +439,7 @@ namespace xdp {
     {
       uint64_t num = 0;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto mon : bin->pl.asms) {
             if (mon->traceEnabled && !mon->isShellMonitor())
               ++num;
@@ -461,7 +461,7 @@ namespace xdp {
     Monitor* ConfigInfo::getAMonitor(XclbinInfo* xclbin, uint64_t slotId)
     {
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto am : bin->pl.ams) {
             if (am->slotIndex == slotId)
               return am ;
@@ -474,7 +474,7 @@ namespace xdp {
     Monitor* ConfigInfo::getAIMonitor(XclbinInfo* xclbin, uint64_t slotId)
     {
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto aim : bin->pl.aims) {
             if (aim->slotIndex == slotId)
               return aim ;
@@ -487,7 +487,7 @@ namespace xdp {
     Monitor* ConfigInfo::getASMonitor(XclbinInfo* xclbin, uint64_t slotId)
     {
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto streamMonitor : bin->pl.asms) {
             if (streamMonitor->slotIndex == slotId)
               return streamMonitor ;
@@ -500,7 +500,7 @@ namespace xdp {
     NoCNode* ConfigInfo::getNOC(XclbinInfo* xclbin, uint64_t idx)
     {
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->aie.valid) {
           if (bin->aie.nocList.size() <= idx)
             return nullptr;
           return bin->aie.nocList[idx] ;
@@ -531,7 +531,7 @@ namespace xdp {
     {
       std::vector<Monitor*> constructed ;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto aim : bin->pl.aims) {
             if (aim->traceEnabled && !aim->isShellMonitor())
               constructed.push_back(aim) ;
@@ -545,7 +545,7 @@ namespace xdp {
     {
       std::vector<Monitor*> constructed ;
       for (auto bin : currentXclbins) {
-        if (bin == xclbin) {
+        if (bin == xclbin && bin->pl.valid) {
           for (auto mon : bin->pl.asms) {
             if (mon->traceEnabled && !mon->isShellMonitor())
               constructed.push_back(mon) ;
