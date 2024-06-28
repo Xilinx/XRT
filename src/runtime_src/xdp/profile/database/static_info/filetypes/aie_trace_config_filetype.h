@@ -34,6 +34,12 @@ class AIETraceConfigFiletype : public AIEControlConfigFiletype {
         std::vector<std::string>
         getValidKernels() const override;
 
+        std::unordered_map<std::string, io_config>
+        getExternalBuffers() const;
+
+        std::unordered_map<std::string, io_config>
+        getGMIOs() const override;
+
         std::vector<tile_type>
         getMemoryTiles(const std::string& graphName,
                        const std::string& bufferName = "all") const override;
