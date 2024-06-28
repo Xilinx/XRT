@@ -206,8 +206,6 @@ class PLDeviceIntf {
     XDP_CORE_EXPORT
     uint32_t getDeadlockStatus();
 
-    //inline xdp::Device* getAbstractDevice() {return mDevice;}
-
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
