@@ -32,10 +32,6 @@ namespace xdp {
   {
   }
 
-  AIEProfilingWriter::~AIEProfilingWriter()
-  {    
-  }
-
   //  HEADER
   //  File Version,1.0
   //  Target device,edge
@@ -51,61 +47,57 @@ namespace xdp {
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
 
     fout << "HEADER"<<"\n";
-    fout << "File Version," <<fileVersion << "\n";
-    fout << "Target device," << mDeviceName << "\n";
-    fout << "Hardware generation," << static_cast<int>(aieGeneration) << "\n";
+    fout << "File Version: " <<fileVersion << "\n";
+    fout << "Target device: " << mDeviceName << "\n";
+    fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
 
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
-    fout << "Clock frequency (MHz)," << aieClockFreqMhz << "\n";
+    fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
     fout << "\n"; 
   }
 
   void AIEProfilingWriter::writeMetricSettings()
   {
-
     auto validConfig = (db->getStats()).getProfileConfig();
-    std::vector<std::string> aieTileCoreModMetrics, aieTileMemModMetrics, memTileMetrics, intfTileMetrics;
-    for(auto &cfg : validConfig.configMetrics) {
-      
-      for(auto &elm : cfg) {
-        auto type = aie::getModuleType(elm.first.row, (db->getStaticInfo()).getAIEmetadataReader()->getAIETileRowOffset());
-        if (type == module_type::core) {
-          aieTileCoreModMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
-        } 
-        if (type == module_type::dma) {
-          aieTileMemModMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
-        }
-        else if (type == module_type::mem_tile) {
-          memTileMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
-        } else if (type == module_type::shim) {
-          intfTileMetrics.push_back(std::to_string(elm.first.col) + "," + std::to_string(elm.first.row)+ "," + elm.second);
-        } else {
-          // Log a debug message
-        }
+    std::map<module_type, std::vector<std::string>> filteredConfig;
+    for(int i=0; i<module_type::num_types; i++)
+      filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
+
+    std::vector<std::map<tile_type, std::string>> configMetrics = validConfig.configMetrics;
+
+    for(int i=0; i<configMetrics.size(); i++)
+    {
+      std::vector<std::string> metrics;
+      std::map<tile_type, std::string> validMetrics = configMetrics[i];
+
+      for(auto &elm : validMetrics) {
+        metrics.push_back(std::to_string(+elm.first.col) + "," + std::to_string(+elm.first.row)+ "," + elm.second);
       }
+      filteredConfig[static_cast<module_type>(i)] = metrics;
     }
-    
+    const std::map<module_type, std::vector<std::string>>& constRefFilteredConfig = filteredConfig;
+
     fout << "METRIC_SETS" << "\n";
     fout << "# AIE tile core module metric sets:" << "\n";
-    for(auto &setting : aieTileCoreModMetrics)
+    for (const auto &setting : filteredConfig.at(module_type::core))
       fout << setting << "\n";
 
     fout << "# AIE tile memory module metric sets:" << "\n";
-    for(auto &setting : aieTileMemModMetrics)
+    for (const auto &setting : filteredConfig.at(module_type::dma))
       fout << setting << "\n";
 
     fout << "# Memory tile metric sets:" << "\n";
-    for(auto &setting : memTileMetrics)
+    for (const auto &setting : filteredConfig.at(module_type::mem_tile))
       fout << setting << "\n";
 
     fout << "# Interface tile metric sets:" << "\n";
-    for(auto &setting : intfTileMetrics)
+    for (const auto &setting : filteredConfig[module_type::shim])
       fout << setting << "\n";
 
-    fout << "n";
+    fout << "\n";
   }
 
   void AIEProfilingWriter::writerDataColumnHeader()
