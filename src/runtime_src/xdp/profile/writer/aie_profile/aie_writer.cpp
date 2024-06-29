@@ -66,19 +66,17 @@ namespace xdp {
     for(int i=0; i<module_type::num_types; i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
 
-    std::vector<std::map<tile_type, std::string>> configMetrics = validConfig.configMetrics;
-
+    const auto& configMetrics = validConfig.configMetrics;
     for(int i=0; i<configMetrics.size(); i++)
     {
       std::vector<std::string> metrics;
-      std::map<tile_type, std::string> validMetrics = configMetrics[i];
-
+      
+      const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
         metrics.push_back(std::to_string(+elm.first.col) + "," + std::to_string(+elm.first.row)+ "," + elm.second);
       }
       filteredConfig[static_cast<module_type>(i)] = metrics;
     }
-    const std::map<module_type, std::vector<std::string>>& constRefFilteredConfig = filteredConfig;
 
     fout << "METRIC_SETS" << "\n";
     fout << "# AIE tile core module metric sets:" << "\n";

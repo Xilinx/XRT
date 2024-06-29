@@ -51,7 +51,7 @@ namespace xdp::aie {
 namespace xdp {
 
 
-enum class module_type {
+enum module_type {
     core = 0,
     dma,
     shim,
