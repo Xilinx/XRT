@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "event.h"
 #include "memory.h"
@@ -197,6 +197,7 @@ bool copy_buffer::wait()
 }
 
 // Global map of commands
-xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
+//we should override clang-tidy warning by adding NOLINT since command_cache is non-const parameter
+xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache; //NOLINT
 
 } // xrt::core::hip

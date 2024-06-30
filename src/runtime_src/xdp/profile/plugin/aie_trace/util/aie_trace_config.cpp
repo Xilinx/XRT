@@ -159,7 +159,7 @@ namespace xdp::aie::trace {
 
     std::vector<XAie_Events> comboEvents;
 
-    if (type == module_type::core) {
+    if (mod == XAIE_CORE_MOD) {
       auto comboEvent = xaieTile.core().comboEvent(4);
       comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_2_CORE);
 

@@ -697,7 +697,7 @@ static int icap_xclbin_validate_clock_req(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	uint32_t slot_id = 0;
 	struct islot_info *islot = NULL;
-	int err;
+	int err = 0;
 
 	mutex_lock(&icap->icap_lock);
 	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
@@ -708,8 +708,10 @@ static int icap_xclbin_validate_clock_req(struct platform_device *pdev,
 		/* Clock frequence is only related to PL Slots */
 		if (islot->pl_slot) {
 			err = icap_xclbin_validate_clock_req_impl(pdev, freq_obj, slot_id);
-			if (err)
+			if (err) {
+				mutex_unlock(&icap->icap_lock);
 				return err;
+			}
 		}
 	}
 	mutex_unlock(&icap->icap_lock);
