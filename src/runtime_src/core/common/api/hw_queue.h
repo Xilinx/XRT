@@ -75,6 +75,18 @@ public:
   std::cv_status
   wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout) const;
 
+  // Poll for command state. A return value of 0 indicates the command
+  // is still running. Any other return value implies the command
+  // state must be checked.
+  int
+  poll(const xrt_core::command*) const;
+
+  // Poll raw command for its state. A return value of 0 indicates the
+  // command is still running. Any other return value implies the
+  // command state must be checked.
+  int
+  poll(xrt_core::buffer_handle*) const;
+
   // Enqueue a command dependency
   void
   submit_wait(const xrt::fence& fence);

@@ -757,6 +757,10 @@ public:
   ert_cmd_state
   get_state() const
   {
+    // For lazy state update the command must be polled. Polling
+    // is a no-op on platforms where command status is live.
+    m_hwqueue.poll(this);
+    
     auto state = get_state_raw();
     notify(state);  // update command state accordingly
     return state;
@@ -3029,6 +3033,22 @@ class runlist_impl
     return m_hwqueue.wait(cmd, timeout);
   }
 
+  // Poll the last command for completion.  If the last submitted
+  // command has comleted (error or not), then in-order execution
+  // guarantees that all prior command have completed (error or not).
+  //
+  // This funtion returns 0 to indicate that last command is still
+  // running.  Any other return value implies completion.
+  int
+  poll_last_cmd() const
+  {
+    if (m_submitted_cmds.empty())
+      return 1;
+
+    auto [cmd, pkt] = unpack(m_submitted_cmds.back());
+    return m_hwqueue.poll(cmd);
+  }
+
   // Wait for runlist to complete, then check each chained command
   // submitted to determine potential error within chunk.  Locate the
   // first failing command if any and mark all subsequent commands as
@@ -3218,6 +3238,22 @@ public:
     // On succesful wait, the runlist becomes idle
     m_state = state::idle;
     return std::cv_status::no_timeout;
+  }
+
+  // Wait for runlist completion.  Return 0 on busy, 1 on completion.
+  // Throws exception with first failing command if any.
+  int
+  poll_or_throw_on_error()
+  {
+    if (m_state != state::running)
+      return 1;
+
+    if (!poll_last_cmd())
+      return 0;
+
+    // All commands have completed.  Handle errors.
+    wait_throw_on_error(std::chrono::milliseconds(0));
+    return 1;
   }
 
   void
@@ -3915,6 +3951,13 @@ runlist::
 wait(const std::chrono::milliseconds& timeout) const
 {
   return handle->wait_throw_on_error(timeout);
+}
+
+int
+runlist::
+poll() const
+{
+  return handle->poll_or_throw_on_error();
 }
 
 void
