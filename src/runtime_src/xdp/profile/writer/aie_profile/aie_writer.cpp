@@ -32,12 +32,6 @@ namespace xdp {
   {
   }
 
-  //  HEADER
-  //  File Version,1.0
-  //  Target device,edge
-  //  Hardware generation,2
-  //  Clock frequency (MHz),1250
-  //
   void AIEProfilingWriter::writeHeader()
   {
    
@@ -92,7 +86,7 @@ namespace xdp {
       fout << setting << "\n";
 
     fout << "# Interface tile metric sets:" << "\n";
-    for (const auto &setting : filteredConfig[module_type::shim])
+    for (const auto &setting : filteredConfig.at(module_type::shim))
       fout << setting << "\n";
 
     fout << "\n";
