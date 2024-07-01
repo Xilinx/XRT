@@ -137,7 +137,7 @@ AIEControlConfigFiletype::getPLIOs() const
     for (auto& plio_node : pliosMetadata.get()) {
         io_config plio;
 
-        plio.type = 0;
+        plio.type = io_type::PLIO;
         plio.id = plio_node.second.get<uint32_t>("id");
         plio.name = plio_node.second.get<std::string>("name");
         plio.logicalName = plio_node.second.get<std::string>("logical_name");
@@ -190,7 +190,7 @@ AIEControlConfigFiletype::getChildGMIOs( const std::string& childStr) const
         auto slaveOrMaster = gmio_node.second.get<uint8_t>("type");
         auto channelNumber = gmio_node.second.get<uint8_t>("channel_number");
 
-        gmio.type = 1;
+        gmio.type = io_type::GMIO;
         gmio.id = gmio_node.second.get<uint32_t>("id");
         gmio.name = gmio_node.second.get<std::string>("name");
         gmio.logicalName = gmio_node.second.get<std::string>("logical_name");
@@ -252,7 +252,7 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
             continue;
         // Make sure channel number is same as specified (GMIO only)
-        if ((type == 1) && (channelId >= 0) && (channelId != io.second.channelNum)) {
+        if ((type == io_type::GMIO) && (channelId >= 0) && (channelId != io.second.channelNum)) {
             std::stringstream msg;
             msg << "Specified channel ID " << +channelId << "doesn't match for interface column "
                 << +shimCol <<" and stream ID " << +streamId;

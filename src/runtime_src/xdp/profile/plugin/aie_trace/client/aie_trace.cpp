@@ -244,12 +244,12 @@ namespace xdp {
   /****************************************************************************
    * Modify events in metric set based on type and channel
    ***************************************************************************/
-  void AieTrace_WinImpl::modifyEvents(module_type type, uint16_t subtype, 
+  void AieTrace_WinImpl::modifyEvents(module_type type, io_type subtype, 
                                       const std::string metricSet, uint8_t channel, 
                                       std::vector<XAie_Events>& events)
   {
     // Only needed for GMIO DMA channel 1
-    if ((type != module_type::shim) || (subtype == 0) || (channel == 0))
+    if ((type != module_type::shim) || (subtype == io_type::PLIO) || (channel == 0))
       return;
 
     // Check type to minimize replacements
@@ -924,7 +924,7 @@ namespace xdp {
       auto loc        = XAie_TileLoc(col, row);
 
       std::stringstream cmsg;
-      cmsg << "Configuring tile (" << +col << "," << +row << ") in module type: " << typeInt << ".";
+      cmsg << "Configuring tile (" << +col << "," << +row << ") in module type: " << getTileTypeStr(type) << ".";
       xrt_core::message::send(severity_level::info, "XRT", cmsg.str());
 
       // xaiefal::XAieMod core;
