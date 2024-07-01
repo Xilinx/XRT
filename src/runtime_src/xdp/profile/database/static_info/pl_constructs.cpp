@@ -129,6 +129,44 @@ namespace {
 } // end anonymous namespace
 
 namespace xdp {
+  void Port::releaseResources()
+  {
+    for(auto mem : memories)
+      delete mem;
+    memories.clear();
+    args.clear();
+
+    for(auto elem : argToMemory)
+      delete elem.second;
+    argToMemory.clear();
+
+    for(auto mem : memories)
+      delete mem;
+    memories.clear();
+  }
+
+  Port& Port::operator=(const Port& src)
+  {
+    // Check for self assignment
+    if (this == &src)
+      return *this;
+
+    // Release existing Port resources
+    releaseResources() ;
+
+    this->name = src.name;
+    this->bitWidth = src.bitWidth;
+
+    for(auto mem : src.memories)
+      this->memories.push_back(new Memory(*mem));
+
+    this->args = src.args;
+
+    for(auto &elem : src.argToMemory)
+      this->argToMemory[elem.first] = new Memory(*(elem.second));
+
+    return *this;
+  }
 
   void Port::addMemoryConnection(Memory* mem)
   {
@@ -161,6 +199,38 @@ namespace xdp {
     size_t pos = fullname.find(':') ;
     kernelName = fullname.substr(0, pos) ;
     name = fullname.substr(pos + 1) ;
+  }
+
+  ComputeUnitInstance::ComputeUnitInstance(const ComputeUnitInstance& src)
+  {
+    this->index = src.index;
+    this->fullname = src.fullname;
+    this->name = src.name;
+    this->kernelName = src.kernelName;
+
+    for (int i=0; i<3; i++)
+      this->dim[i] = src.dim[i];
+
+    this->stall = src.stall;
+    this->dataflow = src.dataflow;
+    this->hasFA = src.hasFA;
+
+    for(auto &con : connections)
+      this->connections[con.first] = con.second;
+
+    this->amId = src.amId;
+
+    for(auto port: masterPorts) {
+      this->masterPorts.push_back(Port(port.name, port.bitWidth));
+      this->masterPorts.back() = port;
+    }
+
+    this->clockFrequency = src.clockFrequency;
+
+    this->aimIds = src.aimIds;
+    this->asmIds = src.asmIds;
+    this->aimIdsWithTrace = src.aimIdsWithTrace;
+    this->asmIdsWithTrace = src.asmIdsWithTrace;
   }
 
   std::string ComputeUnitInstance::getDim()

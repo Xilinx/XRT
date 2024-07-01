@@ -46,6 +46,7 @@ namespace xdp {
     static bool live;
     struct AIEData {
       uint64_t deviceID;
+      bool valid;
       std::unique_ptr<AieProfileImpl> implementation;
       std::shared_ptr<AieProfileMetadata> metadata;
       std::atomic<bool> threadCtrlBool;

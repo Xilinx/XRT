@@ -20,6 +20,7 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/pl_device_trace_logger.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/database/static_info/xclbin_info.h"
 
 #include "core/common/message.h"
 #include "experimental/xrt_profile.h"
@@ -43,7 +44,10 @@ namespace xdp {
     traceClockRateMHz = db->getStaticInfo().getPLMaxClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
 
-    xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId);
+    ConfigInfo* config = (db->getStaticInfo()).getCurrentlyLoadedConfig(devId);
+    xclbin = config->getPlXclbin();
+    if (!xclbin)
+      return;
 
     // Use the total number of Accelerator Monitors for the size
     auto numAM = (db->getStaticInfo()).getNumAM(deviceId, xclbin);
