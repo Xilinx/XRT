@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,13 +27,19 @@
 namespace xdp {
 
   // Forward declarations
-  class VPDatabase ;
-  class DeviceIntf ;
+  class VPDatabase;
+  class PLDeviceIntf;
 
   // The base class for all writers, including summaries, traces, 
   //  and any others.
   class VPWriter 
   {
+#ifdef _WIN32
+  static constexpr bool profDirDefault = false;
+#else
+  static constexpr bool profDirDefault = true;
+#endif
+
   private:
     // The base name of all files created by this writer
     std::string basename ;
@@ -64,7 +70,9 @@ namespace xdp {
     XDP_CORE_EXPORT virtual void refreshFile() ;
   public:
     XDP_CORE_EXPORT VPWriter(const char* filename) ;
-    XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst, bool useDir = true) ;
+    XDP_CORE_EXPORT VPWriter(const char* filename, VPDatabase* inst,
+                             bool useDir = profDirDefault);
+
     XDP_CORE_EXPORT virtual ~VPWriter() ;
 
     XDP_CORE_EXPORT virtual std::string getcurrentFileName() ;
@@ -74,7 +82,7 @@ namespace xdp {
     virtual bool write(bool openNewFile = true) = 0 ;
     virtual bool write(bool /*openNewFile*/, void* /*handle*/) {return false;}
     virtual bool isDeviceWriter() { return false ; } 
-    virtual DeviceIntf* device() { return nullptr ; } 
+    virtual PLDeviceIntf* device() { return nullptr ; }
     virtual bool isSameDevice(void* /*handle*/) { return false ; }
 
     virtual std::string getDirectory() { return directory ; }

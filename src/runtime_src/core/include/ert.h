@@ -173,18 +173,18 @@ struct ert_dpu_data {
 };
 
 /**
- * struct ert_ipu_data - interpretation of data payload for ERT_START_IPU
+ * struct ert_npu_data - interpretation of data payload for ERT_START_NPU
  *
  * @instruction_buffer:       address of instruction buffer
  * @instruction_buffer_size:  size of instruction buffer in bytes
  * @instruction_prop_count:   WORD length of property name value pairs
  *
- * The ert_ipu_data is prepended to data payload of ert_start_kernel_cmd
+ * The ert_npu_data is prepended to data payload of ert_start_kernel_cmd
  * after any extra cu masks.  The payload count of the ert packet is
- * incremented with the size (words) of ert_ipu_data elements
+ * incremented with the size (words) of ert_npu_data elements
  * preprended to the data payload.
  *
- * The data payload for ERT_START_IPU is interpreted as instruction
+ * The data payload for ERT_START_NPU is interpreted as instruction
  * buffer address, instruction count along with instruction property,
  * followed by regular kernel arguments.
  *
@@ -193,14 +193,14 @@ struct ert_dpu_data {
  * fields. This count is reserved for future extension. One example
  * propertiy is the number of actual columns this instruction used.
  */
-struct ert_ipu_data {
+struct ert_npu_data {
   uint64_t instruction_buffer;       /* buffer address 2 words */
   uint32_t instruction_buffer_size;  /* size of buffer in bytes */
   uint32_t instruction_prop_count;   /* WORD length of following properties nv pairs */
 };
 
 /**
- * struct ert_ipu_preempt_data - interpretation of data payload for ERT_START_IPU_PREEMPT
+ * struct ert_npu_preempt_data - interpretation of data payload for ERT_START_NPU_PREEMPT
  *
  * @instruction_buffer:       address of instruction buffer
  * @save_buffer:              address of save instruction buffer
@@ -210,12 +210,12 @@ struct ert_ipu_data {
  * @restore_buffer_size:      size of restore instruction buffer in bytes
  * @instruction_prop_count:   number of property name value pairs
  *
- * The ert_ipu_preempt_data is prepended to data payload of ert_start_kernel_cmd
+ * The ert_npu_preempt_data is prepended to data payload of ert_start_kernel_cmd
  * after any extra cu masks.  The payload count of the ert packet is
- * incremented with the size (words) of ert_ipu_preempt_data elements
+ * incremented with the size (words) of ert_npu_preempt_data elements
  * preprended to the data payload.
  *
- * The data payload for ERT_START_IPU_PREEMPT is interpreted as instruction
+ * The data payload for ERT_START_NPU_PREEMPT is interpreted as instruction
  * buffer, save instruction buffer, restore instruction buffer and their
  * size, along with instruction property, followed by regular kernel arguments.
  *
@@ -224,7 +224,7 @@ struct ert_ipu_data {
  * fields. This count is reserved for future extension. One example
  * propertiy is the number of actual columns this instruction used.
  */
-struct ert_ipu_preempt_data {
+struct ert_npu_preempt_data {
   uint64_t instruction_buffer;       /* buffer address 2 words */
   uint64_t save_buffer;              /* buffer address 2 words */
   uint64_t restore_buffer;           /* buffer address 2 words */
@@ -622,8 +622,8 @@ struct cu_cmd_state_timestamps {
  * @ERT_START_KEY_VAL:     same as ERT_START_CU but with key-value pair flavor
  * @ERT_START_DPU:         instruction buffer command format
  * @ERT_CMD_CHAIN:         command chain
- * @ERT_START_IPU:         instruction buffer command format on IPU format
- * @ERT_START_IPU_PREEMPT: instruction buffer command with preemption format on IPU
+ * @ERT_START_NPU:         instruction buffer command format on NPU format
+ * @ERT_START_NPU_PREEMPT: instruction buffer command with preemption format on NPU
  */
 enum ert_cmd_opcode {
   ERT_START_CU          = 0,
@@ -646,8 +646,8 @@ enum ert_cmd_opcode {
   ERT_ACCESS_TEST       = 17,
   ERT_START_DPU         = 18,
   ERT_CMD_CHAIN         = 19,
-  ERT_START_IPU         = 20,
-  ERT_START_IPU_PREEMPT = 21,
+  ERT_START_NPU         = 20,
+  ERT_START_NPU_PREEMPT = 21,
 };
 
 /**
@@ -975,15 +975,15 @@ ert_valid_opcode(struct ert_packet *pkt)
     /* header count must match number of commands in payload */
     valid = (pkt->count == (ccdata->command_count * sizeof(uint64_t) + sizeof(struct ert_cmd_chain_data)) / sizeof(uint32_t));
     break;
-  case ERT_START_IPU:
+  case ERT_START_NPU:
     skcmd = to_start_krnl_pkg(pkt);
-    /* 1 mandatory cumask + extra_cu_masks + ert_ipu_data */
-    valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_ipu_data) / sizeof(uint32_t));
+    /* 1 mandatory cumask + extra_cu_masks + ert_npu_data */
+    valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_npu_data) / sizeof(uint32_t));
     break;
-   case ERT_START_IPU_PREEMPT:
+   case ERT_START_NPU_PREEMPT:
     skcmd = to_start_krnl_pkg(pkt);
-    /* 1 mandatory cumask + extra_cu_masks + ert_ipu_preempt_data */
-    valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_ipu_preempt_data) / sizeof(uint32_t));
+    /* 1 mandatory cumask + extra_cu_masks + ert_npu_preempt_data */
+    valid = (skcmd->count >= 1+ skcmd->extra_cu_masks + sizeof(struct ert_npu_preempt_data) / sizeof(uint32_t));
     break;
   case ERT_START_KEY_VAL:
     skcmd = to_start_krnl_pkg(pkt);
@@ -1074,24 +1074,24 @@ get_ert_cmd_chain_data(struct ert_packet* pkt)
   return (struct ert_cmd_chain_data*) pkt->data;
 }
 
-static inline struct ert_ipu_data*
-get_ert_ipu_data(struct ert_start_kernel_cmd* pkt)
+static inline struct ert_npu_data*
+get_ert_npu_data(struct ert_start_kernel_cmd* pkt)
 {
-  if (pkt->opcode != ERT_START_IPU)
+  if (pkt->opcode != ERT_START_NPU)
     return NULL;
 
   // past extra cu_masks embedded in the packet data
-  return (struct ert_ipu_data*) (pkt->data + pkt->extra_cu_masks);
+  return (struct ert_npu_data*) (pkt->data + pkt->extra_cu_masks);
 }
 
-static inline struct ert_ipu_preempt_data*
-get_ert_ipu_preempt_data(struct ert_start_kernel_cmd* pkt)
+static inline struct ert_npu_preempt_data*
+get_ert_npu_preempt_data(struct ert_start_kernel_cmd* pkt)
 {
-  if (pkt->opcode != ERT_START_IPU)
+  if (pkt->opcode != ERT_START_NPU)
     return NULL;
 
   // past extra cu_masks embedded in the packet data
-  return (struct ert_ipu_preempt_data*) (pkt->data + pkt->extra_cu_masks);
+  return (struct ert_npu_preempt_data*) (pkt->data + pkt->extra_cu_masks);
 }
 
 static inline uint32_t*
@@ -1102,15 +1102,15 @@ get_ert_regmap_begin(struct ert_start_kernel_cmd* pkt)
     return pkt->data + pkt->extra_cu_masks
       + (get_ert_dpu_data(pkt)->chained + 1) * sizeof(struct ert_dpu_data) / sizeof(uint32_t);
 
-  case ERT_START_IPU:
+  case ERT_START_NPU:
     return pkt->data + pkt->extra_cu_masks
-      + sizeof(struct ert_ipu_data) / sizeof(uint32_t)
-      + get_ert_ipu_data(pkt)->instruction_prop_count;
+      + sizeof(struct ert_npu_data) / sizeof(uint32_t)
+      + get_ert_npu_data(pkt)->instruction_prop_count;
 
-  case ERT_START_IPU_PREEMPT:
+  case ERT_START_NPU_PREEMPT:
     return pkt->data + pkt->extra_cu_masks
-      + sizeof(struct ert_ipu_preempt_data) / sizeof(uint32_t)
-      + get_ert_ipu_preempt_data(pkt)->instruction_prop_count;
+      + sizeof(struct ert_npu_preempt_data) / sizeof(uint32_t)
+      + get_ert_npu_preempt_data(pkt)->instruction_prop_count;
 
   default:
     // skip past embedded extra cu_masks

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,7 +22,7 @@
 #include <map>
 #include <vector>
 
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/database/database.h"
 #include "core/include/experimental/xrt-next.h"
 
@@ -31,20 +31,20 @@ namespace xdp {
   class HALAPIInterface
   {
   private:
-    std::map<xclDeviceHandle, DeviceIntf*> devices;
+    std::map<xclDeviceHandle, PLDeviceIntf*> devices;
     std::map<std::string, xdp::CounterResults> mFinalCounterResultsMap;
 
     static bool live;
 
   private:
-    void recordAMResult(ProfileResults* results, 
-			DeviceIntf* currDevice, 
+    void recordAMResult(ProfileResults* results,
+			PLDeviceIntf* currDevice,
 			const std::string& key);
-    void recordAIMResult(ProfileResults* results, 
-			 DeviceIntf* currDevice, 
+    void recordAIMResult(ProfileResults* results,
+			 PLDeviceIntf* currDevice,
 			 const std::string& key);
-    void recordASMResult(ProfileResults* results, 
-			 DeviceIntf* currDevice, 
+    void recordASMResult(ProfileResults* results,
+			 PLDeviceIntf* currDevice,
 			 const std::string& key);
 
   public:

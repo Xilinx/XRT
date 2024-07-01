@@ -53,13 +53,12 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
 # Merge the files into one collection
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 
-# Determine the name of the executable
+set(XBUTIL2_NAME "xrt-smi") 
+# Determine any helper scripts
 if(WIN32)
-  set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
-  set(XRT_HELPER_SCRIPTS "xbutil" "xbutil.bat")
+  set(XRT_HELPER_SCRIPTS "xbutil" "xbutil.bat" "xrt-smi" "xrt-smi.bat")
 else()
-  set(XBUTIL2_NAME "xbutil2")
-  set(XRT_HELPER_SCRIPTS "xbutil")
+  set(XRT_HELPER_SCRIPTS "xbutil" "xrt-smi")
 endif()
 
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})

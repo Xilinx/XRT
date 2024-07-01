@@ -246,6 +246,13 @@ get_ml_timeline()
   return value;
 }
 
+inline std::string
+get_ml_timeline_buffer_size()
+{
+  static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "128K");
+  return value;
+}
+
 inline bool
 get_profile_api()
 {

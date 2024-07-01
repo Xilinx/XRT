@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -142,7 +142,8 @@ namespace xrt::core::hip
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  memory_database* memory_database::m_memory_database = nullptr;
+//we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
+  memory_database* memory_database::m_memory_database = nullptr; //NOLINT
 
   memory_database& memory_database::instance()
   {

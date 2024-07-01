@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/pl_device_trace_logger.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 
 int main(int argc, char* argv[])
@@ -45,7 +45,6 @@ int main(int argc, char* argv[])
   // Add metadata to the database from the xclbin
   auto deviceId = db->addDevice("local");
 
-
   db->getStaticInfo().updateDevice(deviceId, xclbinFile);
 
   std::vector<uint64_t> traceData;
@@ -59,7 +58,7 @@ int main(int argc, char* argv[])
   fin.close();
 
   // Add all of the events to the database
-  xdp::DeviceTraceLogger logger(deviceId);
+  xdp::PLDeviceTraceLogger logger(deviceId);
   uint64_t numBytes = sizeof(uint64_t)*traceData.size();
   logger.processTraceData(traceData.data(), numBytes);
 

@@ -117,7 +117,7 @@ _xbutil_completion()
   _command_word_xbutil_completion "${options}"
 }
 
-complete -F _xbutil_completion xbutil
-echo Autocomplete enabled for the xbutil command
+complete -F _xbutil_completion xrt-smi
+echo Autocomplete enabled for the xrt-smi command
 
 # ex: filetype=sh

@@ -29,6 +29,7 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/utils.h"
 
 #include <iostream>
 #include <fstream>
@@ -43,21 +44,12 @@ namespace {
 
 static unsigned int uid_count = 0;
 
-static
-std::string
-to_hex(void* addr)
-{
-  std::stringstream str;
-  str << std::hex << addr;
-  return str.str();
-}
-
 static void
 unaligned_message(void* addr)
 {
   xrt_xocl::message::send(xrt_xocl::message::severity_level::warning,
                      "unaligned host pointer '"
-                     + to_hex(addr)
+                     + xrt_core::utils::to_hex(addr)
                      + "' detected, this leads to extra memcpy");
 }
 
@@ -66,7 +58,7 @@ userptr_bad_alloc_message(void* addr)
 {
   xrt_xocl::message::send(xrt_xocl::message::severity_level::info,
                      "might be noncontiguous host pointer '"
-                     + to_hex(addr)
+                     + xrt_core::utils::to_hex(addr)
                      + "' detected, check dmesg for more information."
                      + " This could lead to extra memcpy."
                      + " To avoid this, please try xclGetMemObjectFd() and xclGetMemObjectFromFd(),"

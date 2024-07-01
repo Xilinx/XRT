@@ -7,7 +7,7 @@ env:
 
 on:
   pull_request_target:
-    types: [opened, edited, synchronize]
+    types: [opened, synchronize]
 
 concurrency:  
   group: ${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
@@ -218,7 +218,8 @@ jobs:
 
   pcie-hw-tests:  
     needs: extract-platforms    
-    runs-on: [xrt, trx]
+    # runs-on: [xrt, trx]
+    runs-on: [self-hosted, Ubuntu-22.04]
     strategy:      
       matrix:      
         board_list: ${{ fromJson(needs.extract-platforms.outputs.board_list) }}  
@@ -243,7 +244,9 @@ jobs:
           pipeline: ${{ env.PIPELINE }} 
           boardType: "pcie"  
           boardState: "gating"  
-          boardMode: "hw"  
+          boardMode: "hw" 
+          workspace: ${{ github.workspace }}
+          USER: ${{ secrets.USER }}   
           board: ${{ matrix.board_list }}      
           runnerName: ${{ runner.name }}
           accessToken: ${{ secrets.ACCESS_TOKEN }}  

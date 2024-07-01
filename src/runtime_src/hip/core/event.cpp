@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "event.h"
 #include "memory.h"
 
 namespace xrt::core::hip {
 event::event()
+  : command(type::event)
 {
-  ctype = type::event;
 }
 
 void event::record(std::shared_ptr<stream> s)
@@ -97,10 +97,9 @@ void event::add_dependency(std::shared_ptr<command> cmd)
 }
 
 kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> f, void** args)
-  : command(std::move(s))
+  : command(type::kernel_start, std::move(s))
   , func{std::move(f)}
 {
-  ctype = type::kernel_start;
   auto k = func->get_kernel();
 
   // create run object and set args
@@ -117,10 +116,10 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::scalar :
         xrt_core::kernel_int::set_arg_at_index(r, arg->index, args[idx], arg->size);
         break;
-      case karg::argtype::global : {
+
+      case karg::argtype::global: {
         if (!args[idx])
           break;
-        
         auto hip_mem = memory_database::instance().get_hip_mem_from_addr(args[idx]).first;
         if (!hip_mem)
           throw std::runtime_error("failed to get memory from arg at index - " + std::to_string(idx));
@@ -135,7 +134,7 @@ kernel_start::kernel_start(std::shared_ptr<stream> s, std::shared_ptr<function> 
       case karg::argtype::local :
       case karg::argtype::stream :
       default :
-       throw std::runtime_error("function has unsupported arg type");
+        throw std::runtime_error("function has unsupported arg type");
     }
     idx++;
   }
@@ -171,22 +170,16 @@ bool kernel_start::wait()
   return false;
 }
 
-copy_buffer::copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* ptr, size_t size, size_t offset)
-  : command(std::move(s)), cdirection(direction), buffer(std::move(buf)), host_ptr(ptr), copy_size(size), dev_offset(offset)
-{
-  ctype = type::buffer_copy;
-}
-
 bool copy_buffer::submit()
 {
   switch(cdirection)
   {
     case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_ptr, copy_size, 0, dev_offset);
+      handle = std::async(std::launch::async, &memory::write, buffer, host_buffer, copy_size, 0, dev_offset);
       break;
 
     case XCL_BO_SYNC_BO_FROM_DEVICE:
-      handle = std::async(std::launch::async, &memory::read, buffer, host_ptr, copy_size, dev_offset, 0);
+      handle = std::async(std::launch::async, &memory::read, buffer, host_buffer, copy_size, dev_offset, 0);
       break;
 
     default:
@@ -204,6 +197,7 @@ bool copy_buffer::wait()
 }
 
 // Global map of commands
-xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
+//we should override clang-tidy warning by adding NOLINT since command_cache is non-const parameter
+xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache; //NOLINT
 
 } // xrt::core::hip

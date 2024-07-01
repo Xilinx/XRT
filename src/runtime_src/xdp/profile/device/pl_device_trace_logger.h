@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,14 +28,14 @@ namespace xdp {
 
   // The responsiblity of this class is to convert raw Device PL events
   //  into database events and log them into the database
-  class DeviceTraceLogger
+  class PLDeviceTraceLogger
   {
- private:
+   private:
     uint64_t deviceId = 0;
-    XclbinInfo* xclbin = nullptr ;
+    XclbinInfo* xclbin = nullptr;
     VPDatabase* db = nullptr;
 
-    std::vector<uint64_t>  traceIDs;
+    std::vector<uint64_t> traceIDs;
     // Keep track of the event ID and device timestamp of CU starts
     std::vector<std::list<std::pair<uint64_t, uint64_t>>> cuStarts;
 
@@ -110,10 +110,10 @@ namespace xdp {
 
   public:
 
-    XDP_CORE_EXPORT DeviceTraceLogger(uint64_t devId);
-    XDP_CORE_EXPORT ~DeviceTraceLogger();
+    XDP_CORE_EXPORT PLDeviceTraceLogger(uint64_t devId);
+    XDP_CORE_EXPORT ~PLDeviceTraceLogger() = default;
 
-    XDP_CORE_EXPORT void processTraceData(void* data, uint64_t numBytes) ;
+    XDP_CORE_EXPORT void processTraceData(void* data, uint64_t numBytes);
     XDP_CORE_EXPORT void endProcessTraceData();
     XDP_CORE_EXPORT void addEventMarkers(bool isFIFOFull, bool isTS2MMFull);
   } ;
