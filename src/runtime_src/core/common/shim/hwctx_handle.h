@@ -7,8 +7,10 @@
 #include "core/common/error.h"
 #include "core/common/shim/hwqueue_handle.h"
 #include "core/common/shim/shared_handle.h"
+#include "core/common/shim/graph_handle.h"
 
 #include "xrt/xrt_hw_context.h"
+#include "xrt/xrt_graph.h"
 
 #include <memory>
 
@@ -91,6 +93,12 @@ public:
   // hardware queues
   virtual void
   exec_buf(buffer_handle* cmd) = 0;
+
+  virtual std::unique_ptr<xrt_core::graph_handle>
+  open_graph_handle(const char*, xrt::graph::access_mode)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 };
 
 } // xrt_core

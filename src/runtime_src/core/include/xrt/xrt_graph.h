@@ -28,6 +28,7 @@
 # include <chrono>
 # include <string>
 # include <cstdint>
+# include "xrt/xrt_hw_context.h"
 #endif
 
 typedef void *xrtGraphHandle;
@@ -79,6 +80,19 @@ public:
    *  Open the graph with specified access (default primary)
    */
   graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
+        access_mode am = access_mode::primary);
+
+  /**
+   * graph() - Constructor from a hw context and graph name
+   *
+   * @param ctx
+   *  hw context on which the graph should execute
+   * @param name
+   *  Name of graph to construct
+   * @param am
+   *  Open the graph with specified access (default primary)
+   */
+  graph(const xrt::hw_context& ctx, const std::string& name,
         access_mode am = access_mode::primary);
 
   /**

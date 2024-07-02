@@ -9,6 +9,7 @@
 #include "core/common/debug_ip.h"
 #include "core/common/query_requests.h"
 #include "core/common/xrt_profiling.h"
+#include "shim.h"
 
 #include <map>
 #include <memory>
@@ -1128,6 +1129,14 @@ set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
 {
   if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
     throw xrt_core::error(ret, "failed to set cu read range");
+}
+
+std::unique_ptr<xrt_core::graph_handle>
+device_linux::
+open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am)
+{
+   return std::make_unique<ZYNQ::shim::graph_object>(
+                  static_cast<ZYNQ::shim*>(get_device_handle()), xclbin_id, name, am);
 }
 
 std::unique_ptr<buffer_handle>
