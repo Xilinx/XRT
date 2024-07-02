@@ -99,7 +99,7 @@ namespace xdp {
     };
 
     auto regValues = parseMetrics();
-    std::vector<profile_data_t> op_profile_data;
+    std::vector<register_data_t> op_profile_data;
 
     int counterId = 0;
     for (auto const& kv : moduleTypes) {
@@ -135,7 +135,7 @@ namespace xdp {
 
       for (auto &tile : tiles) {
         for (int i = 0; i < Regs.size(); i++) {
-          op_profile_data.emplace_back(profile_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20)});
+          op_profile_data.emplace_back(register_data_t{Regs[i] + (tile.col << 25) + (tile.row << 20)});
           counterId++;
         }
       }
@@ -147,14 +147,14 @@ namespace xdp {
       return;
     }
 
-    op_size = sizeof(aie_profile_op_t) + sizeof(profile_data_t) * (counterId - 1);
-    op = (aie_profile_op_t*)malloc(op_size);
+    op_size = sizeof(read_register_op_t) + sizeof(register_data_t) * (counterId - 1);
+    op = (read_register_op_t*)malloc(op_size);
     op->count = counterId;
     for (int i = 0; i < op_profile_data.size(); i++)
-      op->profile_data[i] = op_profile_data[i];
+      op->data[i] = op_profile_data[i];
 
   #if 0
-    /* For larger debug buffer support, only one Debug BO can be aliva at a time.
+    /* For larger debug buffer support, only one Debug BO can be alive at a time.
      * Need ML Timeline Buffer to be created at update device to capture all calls.
      * So, skip this poll
      */
@@ -270,9 +270,9 @@ namespace xdp {
 
     for (uint32_t i = 0; i < op->count; i++) {
       std::stringstream msg;
-      int col = (op->profile_data[i].perf_address >> 25) & 0x1F;
-      int row = (op->profile_data[i].perf_address >> 20) & 0x1F;
-      int reg = (op->profile_data[i].perf_address) & 0xFFFFF;
+      int col = (op->data[i].address >> 25) & 0x1F;
+      int row = (op->data[i].address >> 20) & 0x1F;
+      int reg = (op->data[i].address) & 0xFFFFF;
       
       msg << "Debug tile (" << col << ", " << row << ") "
           << "hex address/values: " << std::hex << reg << " : "
