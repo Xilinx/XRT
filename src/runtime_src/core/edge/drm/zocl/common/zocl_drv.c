@@ -1042,7 +1042,7 @@ static struct drm_driver zocl_driver = {
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
         .gem_prime_mmap            = drm_gem_prime_mmap,
 #endif
-	.gem_prime_import          = zocl_gem_import,
+	.gem_prime_import          = drm_gem_prime_import,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	.gem_prime_import_sg_table = drm_gem_dma_prime_import_sg_table,
 #else
