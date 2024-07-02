@@ -71,7 +71,7 @@ namespace xdp {
       std::map<std::string, std::vector<XAie_Events>> memTileEndEvents;
 
       std::unique_ptr<aie::ClientTransaction> transactionHandler;
-      aie_profile_op_t* op;
+      read_register_op_t* op;
       std::size_t op_size;
       XAie_DevInst aieDevInst = {0};
       std::vector<std::vector<uint64_t>> outputValues;
