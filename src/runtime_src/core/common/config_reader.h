@@ -958,6 +958,13 @@ get_aie_trace_settings_periodic_offload()
 }
 
 inline bool
+get_aie_trace_settings_periodic_offload_client()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.periodic_offload_client", false);
+  return value;
+}
+
+inline bool
 get_aie_trace_settings_reuse_buffer()
 {
   static bool value = detail::get_bool_value("AIE_trace_settings.reuse_buffer", false);
