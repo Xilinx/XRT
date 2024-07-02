@@ -21,9 +21,7 @@
 #include "client_transaction.h"
 #include "core/common/message.h"
 
-#include "transactions/op_types.h"
 #include "transactions/op_buf.hpp"
-#include "transactions/op_init.hpp"
 
 extern "C" {
 #include <xaiengine.h>
