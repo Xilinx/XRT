@@ -114,7 +114,8 @@ namespace xdp {
     boost::property_tree::ptree aieMetadata;
     std::unique_ptr<aie::BaseFiletypeImpl> metadataReader = nullptr;
 
-    bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
+    // When loading a new xclbin, should we reset our internal data structures?
+    bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device, xdp::Device* xdpDevice);
 
     // Functions that create the overall structure of the Xclbin's PL region
     void createComputeUnits(XclbinInfo*, const ip_layout*,const char*,size_t);
@@ -150,7 +151,7 @@ namespace xdp {
     // pointer to handle any connection to the PL side as necessary.
     // Some plugins do not require any PL control and will pass in nullptr
     DeviceInfo* updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin,
-                             xdp::Device* xdpDevice, bool clientBuild) ;
+                             std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild) ;
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -260,7 +261,7 @@ namespace xdp {
     XDP_CORE_EXPORT void setDeviceName(uint64_t deviceId, const std::string& name) ;
     XDP_CORE_EXPORT std::string getDeviceName(uint64_t deviceId) ;
     XDP_CORE_EXPORT PLDeviceIntf* getDeviceIntf(uint64_t deviceId) ;
-    XDP_CORE_EXPORT void createPLDeviceIntf(uint64_t deviceId, xdp::Device* xdpDevice);
+    XDP_CORE_EXPORT void createPLDeviceIntf(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice);
     XDP_CORE_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
     XDP_CORE_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
     XDP_CORE_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;
@@ -275,7 +276,7 @@ namespace xdp {
     XDP_CORE_EXPORT ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId) ;
     XDP_CORE_EXPORT Memory* getMemory(uint64_t deviceId, int32_t memId) ;
     // Reseting device information whenever a new xclbin is added
-    XDP_CORE_EXPORT void updateDevice(uint64_t deviceId, xdp::Device* xdpDevice, void* devHandle) ;
+    XDP_CORE_EXPORT void updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle) ;
     XDP_CORE_EXPORT void updateDeviceClient(uint64_t deviceId, std::shared_ptr<xrt_core::device> device);
 
     // *********************************************************

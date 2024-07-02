@@ -25,6 +25,7 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/utility.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/aie_status/aie_status_writer.h"

@@ -397,7 +397,7 @@ namespace xdp {
   // This function will create a PL Device Interface if an xdp::Device is
   // passed in, and then associate it with the current xclbin loaded onto
   // the device corresponding to deviceId.
-  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, xdp::Device* dev)
+  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, std::unique_ptr<xdp::Device> dev)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -412,7 +412,7 @@ namespace xdp {
       delete xclbin->plDeviceIntf; // It shouldn't be...
 
     xclbin->plDeviceIntf = new PLDeviceIntf();
-    xclbin->plDeviceIntf->setDevice(dev);
+    xclbin->plDeviceIntf->setDevice(std::move(dev));
     try {
       xclbin->plDeviceIntf->readDebugIPlayout();
     }
@@ -1308,7 +1308,7 @@ namespace xdp {
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, xdp::Device* xdpDevice, void* devHandle)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
   {
     std::shared_ptr<xrt_core::device> device =
       xrt_core::get_userpf_device(devHandle);
@@ -1318,11 +1318,11 @@ namespace xdp {
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
      * in the static data base. So, no need to read the xclbin information again.
      */
-    if (!resetDeviceInfo(deviceId, device))
+    if (!resetDeviceInfo(deviceId, device, xdpDevice.get()))
       return;
 
     xrt::xclbin xrtXclbin = device->get_xclbin(device->get_xclbin_uuid());
-    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, xdpDevice, false);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
   }
@@ -1336,7 +1336,7 @@ namespace xdp {
 
   // Return true if we should reset the device information.
   // Return false if we should not reset device information
-  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
+  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device, xdp::Device* xdpDevice)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -1346,6 +1346,11 @@ namespace xdp {
       // Are we attempting to load the same xclbin multiple times?
       XclbinInfo* xclbin = devInfo->currentXclbin() ;
       if (xclbin && device->get_xclbin_uuid() == xclbin->uuid) {
+        // Even if we're attempting to load the same xclbin, if we need to
+        // add a PL Device Interface, then we should reset the device info
+        if (xclbin->plDeviceIntf == nullptr && xdpDevice != nullptr)
+          return true;
+
         return false ;
       }
     }
@@ -2059,7 +2064,7 @@ namespace xdp {
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, xdp::Device* xdpDevice, bool clientBuild)
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild)
   {
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it and remove the PL interface.  We'll
@@ -2105,8 +2110,6 @@ namespace xdp {
 
     if (!initializeStructure(currentXclbin, xrtXclbin)) {
       delete currentXclbin;
-      if (xdpDevice != nullptr)
-        delete xdpDevice;
       return devInfo;
     }
 
@@ -2118,7 +2121,7 @@ namespace xdp {
     setAIEClockRateMHz(deviceId, xrtXclbin);
 
     if (xdpDevice != nullptr)
-      createPLDeviceIntf(deviceId, xdpDevice);
+      createPLDeviceIntf(deviceId, std::move(xdpDevice));
 
     return devInfo;
   }
