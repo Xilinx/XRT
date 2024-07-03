@@ -18,7 +18,8 @@ device_init();
 }
 
 namespace {
-thread_local std::once_flag device_init_flag;
+//we should override clang-tidy warning by adding NOLINT since device_init_flag is non-const parameter
+thread_local std::once_flag device_init_flag; //NOLINT  
 
 // Creates devices at library load
 // User may not explicitly call init or device create
