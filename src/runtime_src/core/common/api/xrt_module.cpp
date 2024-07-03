@@ -1268,11 +1268,11 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const x
 }
 
 void
-patch(const xrt::module& module, uint8_t *buf, size_t *sz, const std::vector< std::pair<std::string, uint64_t> > *args)
+patch(const xrt::module& module, uint8_t* ibuf, size_t* sz, const std::vector<std::pair<std::string, uint64_t>>* args)
 {
   auto hdl = module.get_handle();
   size_t orig_sz = *sz;
-  const struct buf *inst = nullptr;
+  const buf* inst = nullptr;
 
   if (hdl->get_os_abi() == Elf_Amd_Aie2p) {
     const auto& instr_buf = hdl->get_instr();
@@ -1290,12 +1290,13 @@ patch(const xrt::module& module, uint8_t *buf, size_t *sz, const std::vector< st
 
   if (orig_sz < *sz)
     throw std::runtime_error{"Control code buffer passed in is too small"}; // Need a bigger buffer.
-  std::memcpy(buf, inst->data(), *sz);
+  std::memcpy(ibuf, inst->data(), *sz);
 
-  for (size_t index = 0; index < args->size(); index++) {
-    auto& arg = (*args)[index];
-    if (!hdl->patch(buf, arg.first, index, arg.second, patcher::buf_type::ctrltext))
-      throw std::runtime_error{"Failed to patch " + arg.first};
+  size_t index = 0;
+  for (auto& [arg_name, arg_addr] : *args) {
+    if (!hdl->patch(ibuf, arg_name, index, arg_addr, patcher::buf_type::ctrltext))
+      throw std::runtime_error{"Failed to patch " + arg_name};
+    index++;
   }
 }
 

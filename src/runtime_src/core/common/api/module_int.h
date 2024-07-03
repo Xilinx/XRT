@@ -27,8 +27,11 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 // This API may be useful for developing unit test case at SHIM level where
 // you do not have access to device related "xrt::" objects, but still want
 // to obtain a patched control code buffer for device to run.
+// Note that if size passed in is 0, real buffer size required will be returned
+// without any patching. This is useful if caller wishes to discover the exact size
+// of the control code buffer.
 void
-patch(const xrt::module&, uint8_t *, size_t *, const std::vector< std::pair<std::string, uint64_t> > *);
+patch(const xrt::module&, uint8_t*, size_t*, const std::vector<std::pair<std::string, uint64_t>>*);
 
 // Patch scalar into control code at given argument
 void
