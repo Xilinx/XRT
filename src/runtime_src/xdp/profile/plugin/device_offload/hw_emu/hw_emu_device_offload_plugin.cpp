@@ -126,7 +126,7 @@ namespace xdp {
     
     // Update the static database with all the information that
     //  will be needed later
-    db->getStaticInfo().updateDevice(deviceId, new HalDevice(userHandle), userHandle) ;
+    db->getStaticInfo().updateDevice(deviceId, std::move(std::make_unique<HalDevice>(userHandle)), userHandle) ;
     {
       std::string deviceName = util::getDeviceName(userHandle);
       if (deviceName != "") {

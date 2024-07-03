@@ -401,7 +401,7 @@ namespace xdp {
   // This function will create a PL Device Interface if an xdp::Device is
   // passed in, and then associate it with the current xclbin loaded onto
   // the device corresponding to deviceId.
-  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, xdp::Device* dev, XclbinInfoType newXclbinType)
+  void VPStaticDatabase::createPLDeviceIntf(uint64_t deviceId, std::unique_ptr<xdp::Device> dev, XclbinInfoType newXclbinType)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -420,7 +420,7 @@ namespace xdp {
           delete config->plDeviceIntf; // It shouldn't be...
 
       config->plDeviceIntf = new PLDeviceIntf();
-      config->plDeviceIntf->setDevice(dev);
+      config->plDeviceIntf->setDevice(std::move(dev));
       try {
         config->plDeviceIntf->readDebugIPlayout();
       }
@@ -1459,7 +1459,7 @@ namespace xdp {
   // This function is called whenever a device is loaded with an
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, xdp::Device* xdpDevice, void* devHandle)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, std::unique_ptr<xdp::Device> xdpDevice, void* devHandle)
   {
     std::shared_ptr<xrt_core::device> device =
       xrt_core::get_userpf_device(devHandle);
@@ -1474,14 +1474,11 @@ namespace xdp {
     /* If multiple plugins are enabled for the current run, the first plugin has already updated device information
      * in the static data base. So, no need to read the xclbin information again.
      */
-    if (!resetDeviceInfo(deviceId, new_xclbin_uuid)) {
-      if(!xdpDevice)
-        delete xdpDevice;
+    if (!resetDeviceInfo(deviceId, device, xdpDevice.get(), new_xclbin_uuid))
       return;
-    }
 
     xrt::xclbin xrtXclbin = device->get_xclbin(new_xclbin_uuid);
-    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, xdpDevice, false);
+    DeviceInfo* devInfo   = updateDevice(deviceId, xrtXclbin, std::move(xdpDevice), false);
     if (device->is_nodma())
       devInfo->isNoDMADevice = true;
   }
@@ -1495,7 +1492,7 @@ namespace xdp {
 
   // Return true if we should reset the device information.
   // Return false if we should not reset device information
-  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, xrt_core::uuid new_xclbin_uuid)
+  bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device, xdp::Device* xdpDevice, xrt_core::uuid new_xclbin_uuid)
   {
     std::lock_guard<std::mutex> lock(deviceLock);
 
@@ -1505,6 +1502,11 @@ namespace xdp {
       ConfigInfo* config = devInfo->currentConfig() ;
 
       if (config->containsXclbin(new_xclbin_uuid)) {
+        // Even if we're attempting to load the same xclbin, if we need to
+        // add a PL Device Interface, then we should reset the device info
+        if (config->plDeviceIntf == nullptr && xdpDevice != nullptr)
+          return true;
+
         std::stringstream msg;
         msg << "Loaded xclbins on device already contains this new xclbin with UID: " << new_xclbin_uuid.to_string() <<"." ;
         msg << " Skipping update of the device.\n";
@@ -2282,7 +2284,7 @@ namespace xdp {
 
   // Methods using xrt::xclbin to retrive static information
 
-  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, xdp::Device* xdpDevice, bool clientBuild)
+  DeviceInfo* VPStaticDatabase::updateDevice(uint64_t deviceId, xrt::xclbin xrtXclbin, std::unique_ptr<xdp::Device> xdpDevice, bool clientBuild)
   {
     XclbinInfoType xclbinType = getXclbinType(xrtXclbin);
     // We need to update the device, but if we had an xclbin previously loaded
@@ -2335,8 +2337,6 @@ namespace xdp {
     if (!initializeStructure(currentXclbin, xrtXclbin)) {
       if (xclbinType != XCLBIN_AIE_ONLY) {
         delete currentXclbin;
-        if (xdpDevice != nullptr)
-          delete xdpDevice;
         return devInfo;
       }
     }
@@ -2347,7 +2347,7 @@ namespace xdp {
     devInfo->isReady = true;
 
     if (xdpDevice != nullptr)
-      createPLDeviceIntf(deviceId, xdpDevice, xclbinType);
+      createPLDeviceIntf(deviceId, std::move(xdpDevice), xclbinType);
 
     return devInfo;
   }

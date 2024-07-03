@@ -126,7 +126,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   (db->getStaticInfo()).setDeviceName(deviceID, "win_device");
 #else
   // Update the static database with information from xclbin
-  (db->getStaticInfo()).updateDevice(deviceID, new HalDevice(handle), handle);
+  (db->getStaticInfo()).updateDevice(deviceID, std::move(std::make_unique<HalDevice>(handle)), handle);
   std::string deviceName = util::getDeviceName(handle);
   if (deviceName != "")
     (db->getStaticInfo()).setDeviceName(deviceID, deviceName);
