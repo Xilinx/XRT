@@ -203,6 +203,7 @@ namespace xrt::core::hip
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
                                  std::make_shared<memcpy_command>(hip_stream, dst, src, size, kind));
@@ -239,6 +240,7 @@ namespace xrt::core::hip
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
    
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
                                  std::make_shared<memcpy_command>(hip_stream, dst, src, size, hipMemcpyHostToDevice));
@@ -266,6 +268,7 @@ namespace xrt::core::hip
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
                                  std::make_shared<copy_from_host_buffer_command<T>>(hip_stream, hip_mem_dst, std::move(host_vec), size, offset));
@@ -305,6 +308,7 @@ namespace xrt::core::hip
     auto mem_pool = memory_pool_db[dev->get_device_id()].front();
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
       std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, mem_pool, reinterpret_cast<uint64_t>(dev_ptr), size));
@@ -322,6 +326,7 @@ namespace xrt::core::hip
     auto mem_pool = memory_pool_db[dev->get_device_id()].front();
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
       std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::free, mem_pool, reinterpret_cast<uint64_t>(dev_ptr), 0));
@@ -368,6 +373,7 @@ namespace xrt::core::hip
     auto pool = mem_pool_cache.get_or_error(mem_pool);
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
       std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, pool, reinterpret_cast<uint64_t>(dev_ptr), size));
