@@ -7,6 +7,7 @@
 // core/include/experimental/xrt_graph.h -- end user APIs
 // core/include/xcl_graph.h -- shim level APIs
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_graph.h
+#define XRT_API_SOURCE         // in same dll as core_common
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_graph.h"
 #include "core/include/xrt/xrt_aie.h"
