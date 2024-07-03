@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Device, Inc. All rights reserved.
 
 #include "core/include/experimental/xrt_system.h"
 
 #include "hip/core/common.h"
 #include "hip/core/device.h"
+#include "hip/core/memory_pool.h"
 
 #include <cstring>
 #include <mutex>
@@ -17,13 +18,13 @@ device_init();
 }
 
 namespace {
-//we should override clang-tidy warning by adding NOLINT since device_init_flag is non-const parameter
-thread_local std::once_flag device_init_flag; //NOLINT
+thread_local std::once_flag device_init_flag;
 
 // Creates devices at library load
 // User may not explicitly call init or device create
 const struct X {
-  X() noexcept {
+  X()
+  {
     try {
       // needed if multi threaded
       // or else we can directly call enumerate_devices
@@ -48,6 +49,9 @@ device_init()
       continue;
     auto dev = std::make_shared<xrt::core::hip::device>(i);
     device_cache.add(i, std::move(dev));
+    auto mem_pool = std::make_shared<xrt::core::hip::memory_pool>(device_cache.get_or_error(i), MAX_MEMORY_POOL_SIZE_NPU, MEMORY_POOL_BLOCK_SIZE_NPU);
+    memory_pool_db[i].push_front(mem_pool);
+    insert_in_map(mem_pool_cache, mem_pool);
   }
   // make first device as default device
   if (dev_count > 0)
@@ -66,7 +70,7 @@ hip_init(unsigned int flags)
   std::call_once(device_init_flag, xrt::core::hip::device_init);
 }
 
-static size_t
+static int
 hip_get_device_count()
 {
   // Get device count
@@ -146,7 +150,7 @@ hipInit(unsigned int flags)
 }
 
 hipError_t
-hipGetDeviceCount(size_t* count)
+hipGetDeviceCount(int* count)
 {
   try {
     throw_invalid_value_if(!count, "arg passed is nullptr");

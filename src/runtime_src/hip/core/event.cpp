@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 
 #include "event.h"
 #include "memory.h"
@@ -170,34 +170,46 @@ bool kernel_start::wait()
   return false;
 }
 
-bool copy_buffer::submit()
+bool memcpy_command::submit()
 {
-  switch(cdirection)
-  {
-    case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_buffer, copy_size, 0, dev_offset);
-      break;
-
-    case XCL_BO_SYNC_BO_FROM_DEVICE:
-      handle = std::async(std::launch::async, &memory::read, buffer, host_buffer, copy_size, dev_offset, 0);
-      break;
-
-    default:
-      break;
-  };
-
+  m_handle = std::async(std::launch::async, &hipMemcpy, m_dst, m_src, m_size, m_kind);
   return true;
 }
 
-bool copy_buffer::wait()
+bool memcpy_command::wait()
 {
-  handle.wait();
+  m_handle.wait();
+  set_state(state::completed);
+  return true;
+}
+
+bool memory_pool_command::submit()
+{
+  switch (_type)
+  {
+  case alloc:
+    _handle = std::async(std::launch::async, &memory_pool::malloc, _mem_pool, reinterpret_cast<void**>(_ptr), _size);
+    break;
+  case free:
+    _handle = std::async(std::launch::async, &memory_pool::free, _mem_pool, reinterpret_cast<void*>(_ptr));
+    break;
+  
+  default:
+    throw std::runtime_error("Invalid memory pool operation type.");
+    break;
+  }
+  
+  return true;
+}
+
+bool memory_pool_command::wait()
+{
+  _handle.wait();
   set_state(state::completed);
   return true;
 }
 
 // Global map of commands
-//we should override clang-tidy warning by adding NOLINT since command_cache is non-const parameter
-xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache; //NOLINT
+xrt_core::handle_map<command_handle, std::shared_ptr<command>> command_cache;
 
 } // xrt::core::hip

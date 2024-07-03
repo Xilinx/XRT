@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
 
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
@@ -132,6 +132,13 @@ synchronize()
 
   // complete commands in this stream
   await_completion();
+
+  // stream synchronization requires mem pools associated with its device to release all unused memory back to the system. 
+  auto dev_id = get_device()->get_device_id();
+  for (auto& mem_pool : memory_pool_db[dev_id])
+  {
+    mem_pool->purge();
+  }
 }
 
 void
@@ -159,6 +166,5 @@ get_stream(hipStream_t stream)
 }
 
 // Global map of streams
-//we should override clang-tidy warning by adding NOLINT since stream_cache is non-const parameter
-xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache; //NOLINT
+xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
 }
