@@ -152,9 +152,12 @@ namespace xrt::core::hip
     uint64_t m_used_mem_high; // High watermark of the amount of memory from the pool that was in use
   }; 
 
+  // The pointer to a memory_pool object is shared between memory_pool_db and mem_pool_cache.
+  // each hip device have exactly one default mem pool and zero or more user created mem pools. 
+  // only user created mem pools need to be looked up via an opaque handle.
+  // default mem pool and user mem pool both need to be looked up by device id.
   // Global map of memory_pool associated with device id.
   extern std::map<int, std::list<std::shared_ptr<memory_pool>>> memory_pool_db;
-
   extern xrt_core::handle_map<mem_pool_handle, std::shared_ptr<memory_pool>> mem_pool_cache;
 
   std::shared_ptr<memory_pool>
