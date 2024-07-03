@@ -25,8 +25,8 @@ patch(const xrt::module&, const std::string& argnm, size_t index, const xrt::bo&
 
 // Extract control code buffer and patch it with addresses from all arguments.
 // This API may be useful for developing unit test case at SHIM level where
-// you do not have access to any "xrt::" objects, but still want to obtain a
-// patched control code buffer for device to run.
+// you do not have access to device related "xrt::" objects, but still want
+// to obtain a patched control code buffer for device to run.
 void
 patch(const xrt::module&, uint8_t *, size_t *, const std::vector< std::pair<std::string, uint64_t> > *);
 
