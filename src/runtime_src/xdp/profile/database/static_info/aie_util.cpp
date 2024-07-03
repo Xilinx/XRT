@@ -397,20 +397,4 @@ namespace xdp::aie {
     return startCols;
   }
 
-  std::string getTileTypeStr(const xdp::module_type& tile_type)
-  {
-    switch(tile_type) {
-      case module_type::core:
-        return "Core module";
-      case module_type::dma:
-        return "DMA module";
-      case module_type::mem_tile:
-        return "Memory tile";
-      case module_type::shim:
-        return "Interface tile";
-      default:
-        return "Unknown tile type";
-    }
-  }
-
 } // namespace xdp::aie

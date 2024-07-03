@@ -74,7 +74,7 @@ AIETraceConfigFiletype::getExternalBuffers() const
 
     for (auto& buf_node : bufferMetadata.get()) {
         io_config gmio;
-        gmio.type = 1;
+        gmio.type = io_type::GMIO;
         gmio.name = buf_node.second.get<std::string>("portName");
         auto direction = buf_node.second.get<std::string>("direction");
         gmio.slaveOrMaster = (direction == "s2mm") ? 1 : 0;

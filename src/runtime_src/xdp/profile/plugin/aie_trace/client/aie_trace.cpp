@@ -924,7 +924,7 @@ namespace xdp {
       auto loc        = XAie_TileLoc(col, row);
 
       std::stringstream cmsg;
-      cmsg << "Configuring tile (" << +col << "," << +row << ") in module type: " << getTileTypeStr(type) << ".";
+      cmsg << "Configuring tile (" << +col << "," << +row << ") in module type: " << getModuleName(type) << ".";
       xrt_core::message::send(severity_level::info, "XRT", cmsg.str());
 
       // xaiefal::XAieMod core;
