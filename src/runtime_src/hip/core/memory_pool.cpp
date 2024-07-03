@@ -234,9 +234,12 @@ namespace xrt::core::hip
       init();
     }
 
+    size_t page_size = xrt_core::getpagesize();
+    size_t aligned_size = ((size + page_size) / page_size) * page_size;
+
     std::lock_guard lock(m_mutex);
 
-    if (size > m_pool_size)
+    if (aligned_size > m_pool_size)
     {
       throw std::runtime_error("requested size is greater than memory pool block size.");
     }
@@ -251,7 +254,7 @@ namespace xrt::core::hip
       while (mp_itr != m_list.end())
       {
         mm = *mp_itr;
-        if (m_pool_size - mm->m_used < size)
+        if (m_pool_size - mm->m_used < aligned_size)
         {
           mp_itr++;
           continue;
@@ -262,13 +265,13 @@ namespace xrt::core::hip
 
         while (_free != nullptr)
         {
-          if (_free->m_size >= size)
+          if (_free->m_size >= aligned_size)
           {
-            if (_free->m_size > size)
+            if (_free->m_size > aligned_size)
             {
               _not_free = _free;
 
-              _free = std::make_shared<memory_pool_slot>(_not_free->start() + size, _not_free->m_size - size);
+              _free = std::make_shared<memory_pool_slot>(_not_free->start() + aligned_size, _not_free->m_size - aligned_size);
 
               // update free_list
               if (_free->m_prev == nullptr) {
@@ -282,7 +285,7 @@ namespace xrt::core::hip
               }
 
               _not_free->m_is_free = false;
-              _not_free->m_size = size;
+              _not_free->m_size = aligned_size;
             }
             else
             {
@@ -309,7 +312,7 @@ namespace xrt::core::hip
       
       if (m_auto_extend)
       {
-        if (m_pool_size + size > m_max_total_size) {
+        if (m_pool_size + aligned_size > m_max_total_size) {
           //throw std::runtime_error("No enough memory.");
           break;
         }
