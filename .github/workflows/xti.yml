@@ -122,8 +122,8 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
-          build-cmd: "build22.bat -opt -hip"
-          vs-version: "2022"
+          build-cmd: "build.bat -release"
+          vs-version: "2017"
 
   apu-package-build:
     # runs-on: apu
