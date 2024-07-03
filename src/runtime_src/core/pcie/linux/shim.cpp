@@ -1714,7 +1714,7 @@ xclLoadXclBin(const xclBin *buffer)
     }
     else if (ret == -EDEADLK) {
       xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
-      xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+      xrt_logmsg(XRT_ERROR, "Please reset device with 'xrt-smi reset'");
     }
     xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
     return ret;
@@ -2606,7 +2606,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
       }
       else if (ret == -EDEADLK) {
         xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
-        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+        xrt_logmsg(XRT_ERROR, "Please reset device with 'xrt-smi reset'");
       }
       xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
 
