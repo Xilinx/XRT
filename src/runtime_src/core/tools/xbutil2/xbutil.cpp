@@ -109,7 +109,7 @@ int main( int argc, char** argv )
   "The Xilinx (R) Run Time - System Management Interface (xrt-smi) is a standalone"
   " command line utility that is included with the Xilinx Run Time (XRT) installation"
   " package. It includes multiple commands to identify and validate the installed"
-  " card(s).\n\n This information can be used for both card administration and"
+  " card(s).\n\nThis information can be used for both card administration and"
   " application debugging.";
 
   // -- Ready to execute the code
