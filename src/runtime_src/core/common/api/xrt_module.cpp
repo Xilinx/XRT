@@ -366,17 +366,6 @@ public:
     throw std::runtime_error("Not supported");
   }
 
-  // Patch ctrlcode buffer address for global argument
-  //
-  // @param argname - argument name
-  // @param index - argument index
-  // @param address - global argument to patch into ctrlcode
-  virtual void
-  patch(const std::string&, size_t, uint64_t)
-  {
-    throw std::runtime_error("Not supported");
-  }
-
   // Patch ctrlcode buffer object for scalar argument
   //
   // @param symbol - symbol name
@@ -1125,12 +1114,6 @@ class module_sram : public module_impl
   }
 
   void
-  patch(const std::string& argnm, size_t index, uint64_t address) override
-  {
-    patch_value(argnm, index, address);
-  }
-
-  void
   patch(const std::string& argnm, size_t index, const void* value, size_t size) override
   {
     if (size > 8) // NOLINT
@@ -1285,9 +1268,35 @@ patch(const xrt::module& module, const std::string& argnm, size_t index, const x
 }
 
 void
-patch(const xrt::module& module, const std::string& argnm, size_t index, uint64_t address)
+patch(const xrt::module& module, uint8_t *buf, size_t *sz, const std::vector< std::pair<std::string, uint64_t> > *args)
 {
-  module.get_handle()->patch(argnm, index, address);
+  auto hdl = module.get_handle();
+  size_t orig_sz = *sz;
+  const struct buf *inst = nullptr;
+
+  if (hdl->get_os_abi() == Elf_Amd_Aie2p) {
+    const auto& instr_buf = hdl->get_instr();
+    inst = &instr_buf;
+  } else if(hdl->get_os_abi() == Elf_Amd_Aie2ps) {
+    const auto& instr_buf = hdl->get_data();
+    if (instr_buf.size() != 1)
+      throw std::runtime_error{"Only support patching single column"};
+    inst = &instr_buf[0];
+  }
+
+  *sz = inst->size();
+  if (orig_sz == 0)
+    return; // Caller is discovering real size of control code buffer.
+
+  if (orig_sz < *sz)
+    throw std::runtime_error{"Control code buffer passed in is too small"}; // Need a bigger buffer.
+  std::memcpy(buf, inst->data(), *sz);
+
+  for (size_t index = 0; index < args->size(); index++) {
+    auto& arg = (*args)[index];
+    if (!hdl->patch(buf, arg.first, index, arg.second, patcher::buf_type::ctrltext))
+      throw std::runtime_error{"Failed to patch " + arg.first};
+  }
 }
 
 void
