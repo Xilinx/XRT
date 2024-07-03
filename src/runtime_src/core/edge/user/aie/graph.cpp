@@ -48,10 +48,12 @@ zynqaie::Aie* getAieArray()
 
 namespace zynqaie {
 
-graph_type::
-graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t uuid, const std::string& graph_name, xrt::graph::access_mode am)
-  : device(std::move(dev)), name(graph_name)
+graph_instance::
+graph_instance(std::shared_ptr<xrt_core::device> dev, std::string graph_name,
+              xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx, const xrt_core::uuid uuid)
+  : device{std::move(dev)}, name{std::move(graph_name)}, m_hwctxHandle{hwctx}
 {
+    auto xclbin_uuid = m_hwctxHandle ? m_hwctxHandle->get_xclbin_uuid() : uuid;
 #ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
@@ -63,33 +65,33 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t uuid, const std::
 #endif
 
 #ifndef __AIESIM__
-    id = xrt_core::edge::aie::get_graph_id(device.get(), name);
+    id = xrt_core::edge::aie::get_graph_id(device.get(), name, m_hwctxHandle);
     if (id == xrt_core::edge::aie::NON_EXIST_ID)
         throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
 
-    int ret = drv->openGraphContext(uuid, id, am);
+    int ret = drv->openGraphContext(xclbin_uuid.get(), id, am);
     if (ret)
         throw xrt_core::error(ret, "Can not open Graph context");
 #endif
     access_mode = am;
 
     /* Initialize graph tile metadata */
-    graph_config = xrt_core::edge::aie::get_graph(device.get(), name);
+    graph_config = xrt_core::edge::aie::get_graph(device.get(), name, m_hwctxHandle);
 
     /* Initialize graph rtp metadata */
-    rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id);
+    rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, m_hwctxHandle);
 
     pAIEConfigAPI = std::make_shared<adf::graph_api>(&graph_config);
     pAIEConfigAPI->configure();
 
     state = graph_state::reset;
 #ifndef __AIESIM__
-    drv->getAied()->registerGraph(this);
+    drv->getAied()->register_graph(this);
 #endif
 }
 
-graph_type::
-~graph_type()
+graph_instance::
+~graph_instance()
 {
 #ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
@@ -100,26 +102,26 @@ graph_type::
 	return;
     }
     drv->closeGraphContext(id);
-    drv->getAied()->deregisterGraph(this);
+    drv->getAied()->deregister_graph(this);
 #endif
 }
 
 std::string
-graph_type::
+graph_instance::
 getname() const
 {
   return name;
 }
 
 unsigned short
-graph_type::
+graph_instance::
 getstatus() const
 {
   return static_cast<unsigned short>(state);
 }
 
 void
-graph_type::
+graph_instance::
 reset()
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -134,7 +136,7 @@ reset()
 }
 
 uint64_t
-graph_type::
+graph_instance::
 get_timestamp()
 {
     /* TODO just use the first tile to get the timestamp? */
@@ -149,7 +151,7 @@ get_timestamp()
 }
 
 void
-graph_type::
+graph_instance::
 run()
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -164,7 +166,7 @@ run()
 }
 
 void
-graph_type::
+graph_instance::
 run(int iterations)
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -179,7 +181,7 @@ run(int iterations)
 }
 
 void
-graph_type::
+graph_instance::
 wait_done(int timeout_ms)
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -233,7 +235,7 @@ wait_done(int timeout_ms)
 }
 
 void
-graph_type::
+graph_instance::
 wait()
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -251,7 +253,7 @@ wait()
 }
 
 void
-graph_type::
+graph_instance::
 wait(uint64_t cycle)
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -269,7 +271,7 @@ wait(uint64_t cycle)
 }
 
 void
-graph_type::
+graph_instance::
 suspend()
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -287,7 +289,7 @@ suspend()
 }
 
 void
-graph_type::
+graph_instance::
 resume()
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -302,7 +304,7 @@ resume()
 }
 
 void
-graph_type::
+graph_instance::
 end()
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -317,7 +319,7 @@ end()
 }
 
 void
-graph_type::
+graph_instance::
 end(uint64_t cycle)
 {
     if (access_mode == xrt::graph::access_mode::shared)
@@ -333,7 +335,7 @@ end(uint64_t cycle)
 
 
 void
-graph_type::
+graph_instance::
 update_rtp(const std::string& port, const char* buffer, size_t size)
 {
     auto it = rtps.find(port);
@@ -351,7 +353,7 @@ update_rtp(const std::string& port, const char* buffer, size_t size)
 }
 
 void
-graph_type::
+graph_instance::
 read_rtp(const std::string& port, char* buffer, size_t size)
 {
     auto it = rtps.find(port);
@@ -367,134 +369,16 @@ read_rtp(const std::string& port, char* buffer, size_t size)
 
 } // zynqaie
 
-namespace {
-
-using graph_type = zynqaie::graph_type;
-
-// Active graphs per xrtGraphOpen/Close.  This is a mapping from
-// xclGraphHandle to the corresponding graph object. xclGraphHandles
-// is the address of the graph object.  This is shared ownership, as
-// internals can use the graph object while applicaiton has closed the
-// correspoding handle. The map content is deleted when user closes
-// the handle, but underlying graph object may remain alive per
-// reference count.
-static std::map<xclGraphHandle, std::shared_ptr<graph_type>> graphs;
-
-static std::shared_ptr<graph_type>
-get_graph(xclGraphHandle ghdl)
-{
-  auto itr = graphs.find(ghdl);
-  if (itr == graphs.end())
-    throw std::runtime_error("Unknown graph handle");
-  return (*itr).second;
-}
-
-}
+using graph_instance = zynqaie::graph_instance;
 
 namespace api {
 
-using graph_type = zynqaie::graph_type;
+using graph_instance = zynqaie::graph_instance;
 
 static inline
 std::string value_or_empty(const char* s)
 {
   return s == nullptr ? "" : s;
-}
-
-xclGraphHandle
-xclGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name, xrt::graph::access_mode am)
-{
-  auto device = xrt_core::get_userpf_device(dhdl);
-  auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name, am);
-  auto handle = graph.get();
-  graphs.emplace(std::make_pair(handle,std::move(graph)));
-  return handle;
-}
-
-void
-xclGraphClose(xclGraphHandle ghdl)
-{
-  auto graph = get_graph(ghdl);
-  graphs.erase(graph.get());
-}
-
-void
-xclGraphReset(xclGraphHandle ghdl)
-{
-  auto graph = get_graph(ghdl);
-  graph->reset();
-}
-
-uint64_t
-xclGraphTimeStamp(xclGraphHandle ghdl)
-{
-  auto graph = get_graph(ghdl);
-  return graph->get_timestamp();
-}
-
-void
-xclGraphRun(xclGraphHandle ghdl, int iterations)
-{
-  auto graph = get_graph(ghdl);
-  if (iterations == 0)
-    graph->run();
-  else
-    graph->run(iterations);
-}
-
-void
-xclGraphWaitDone(xclGraphHandle ghdl, int timeout_ms)
-{
-  auto graph = get_graph(ghdl);
-  graph->wait_done(timeout_ms);
-}
-
-void
-xclGraphWait(xclGraphHandle ghdl, uint64_t cycle)
-{
-  auto graph = get_graph(ghdl);
-  if (cycle == 0)
-    graph->wait();
-  else
-    graph->wait(cycle);
-}
-
-void
-xclGraphSuspend(xclGraphHandle ghdl)
-{
-  auto graph = get_graph(ghdl);
-  graph->suspend();
-}
-
-void
-xclGraphResume(xclGraphHandle ghdl)
-{
-  auto graph = get_graph(ghdl);
-  graph->resume();
-}
-
-void
-xclGraphEnd(xclGraphHandle ghdl, uint64_t cycle)
-{
-  auto graph = get_graph(ghdl);
-  if (cycle == 0)
-    graph->end();
-  else
-    graph->end(cycle);
-}
-
-void
-xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
-{
-  auto graph = get_graph(ghdl);
-  graph->update_rtp(port, buffer, size);
-}
-
-void
-xclGraphReadRTP(xclGraphHandle ghdl, const char* port, char* buffer, size_t size)
-{
-  auto graph = get_graph(ghdl);
-  graph->read_rtp(port, buffer, size);
 }
 
 void
@@ -678,206 +562,6 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
 ////////////////////////////////////////////////////////////////
 // Shim level Graph API implementations (xcl_graph.h)
 ////////////////////////////////////////////////////////////////
-xclGraphHandle
-xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
-{
-  try {
-    return api::xclGraphOpen(handle, xclbin_uuid, graph, am);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return XRT_NULL_HANDLE;
-}
-
-void
-xclGraphClose(xclGraphHandle ghdl)
-{
-  try {
-    api::xclGraphClose(ghdl);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-}
-
-int
-xclGraphReset(xclGraphHandle ghdl)
-{
-  try {
-    api::xclGraphReset(ghdl);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-uint64_t
-xclGraphTimeStamp(xclGraphHandle ghdl)
-{
-  try {
-    return api::xclGraphTimeStamp(ghdl);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphRun(xclGraphHandle ghdl, int iterations)
-{
-  try {
-    api::xclGraphRun(ghdl, iterations);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphWaitDone(xclGraphHandle ghdl, int timeout_ms)
-{
-  try {
-    api::xclGraphWaitDone(ghdl, timeout_ms);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphWait(xclGraphHandle ghdl, uint64_t cycle)
-{
-  try {
-    api::xclGraphWait(ghdl, cycle);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphSuspend(xclGraphHandle ghdl)
-{
-  try {
-    api::xclGraphSuspend(ghdl);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphResume(xclGraphHandle ghdl)
-{
-  try {
-    api::xclGraphResume(ghdl);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphEnd(xclGraphHandle ghdl, uint64_t cycle)
-{
-  try {
-    api::xclGraphEnd(ghdl, cycle);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
-{
-  try {
-    api::xclGraphUpdateRTP(ghdl, port, buffer, size);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
-int
-xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
-{
-  try {
-    api::xclGraphReadRTP(ghdl, port, buffer, size);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  return -1;
-}
-
 int
 xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 {

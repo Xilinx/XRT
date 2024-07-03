@@ -30,14 +30,14 @@
 
 namespace zynqaie {
 
-Aied::Aied(xrt_core::device* device): mCoreDevice(device)
+aied::aied(xrt_core::device* device): m_device(device)
 {
   done = false;
-  pthread_create(&ptid, NULL, &Aied::pollAIE, this);
+  pthread_create(&ptid, NULL, &aied::poll_aie, this);
   pthread_setname_np(ptid, "Graph Status");
 }
 
-Aied::~Aied()
+aied::~aied()
 {
   done = true;
   pthread_kill(ptid, SIGUSR1);
@@ -45,16 +45,16 @@ Aied::~Aied()
 }
 
 /* Dummy signal handler for SIGTERM */
-static void signalHandler(int signum) {}
+static void signal_handler(int signum) {}
 
-void* 
-Aied::pollAIE(void* arg)
+void*
+aied::poll_aie(void* arg)
 {
-  Aied* ai = (Aied*)arg;
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(ai->mCoreDevice->get_device_handle());
+  aied* ai = (aied*)arg;
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(ai->m_device->get_device_handle());
   xclAIECmd cmd;
 
-  signal(SIGUSR1, signalHandler);
+  signal(SIGUSR1, signal_handler);
 
   if (!xrt_core::config::get_enable_aied())
     return NULL;
@@ -65,7 +65,7 @@ Aied::pollAIE(void* arg)
      * infinite for loop */
     sleep(1);
     /* Calling XRT interface to wait for commands */
-    if (ai->mGraphs.empty() || drv->xclAIEGetCmd(&cmd) != 0) {
+    if (ai->m_graphs.empty() || drv->xclAIEGetCmd(&cmd) != 0) {
       /* break if destructor called */
       if (ai->done)
         return NULL;
@@ -77,7 +77,7 @@ Aied::pollAIE(void* arg)
       boost::property_tree::ptree pt;
       boost::property_tree::ptree pt_status;
 
-      for (auto graph : ai->mGraphs) {
+      for (auto graph : ai->m_graphs) {
         pt.put(graph->getname(), graph->getstatus());
       }
 
@@ -98,14 +98,14 @@ Aied::pollAIE(void* arg)
 }
 
 void
-Aied::registerGraph(const graph_type *graph)
+aied::register_graph(const graph_instance *graph)
 {
-  mGraphs.push_back(graph);
+  m_graphs.push_back(graph);
 }
 
 void
-Aied::deregisterGraph(const graph_type *graph)
+aied::deregister_graph(const graph_instance *graph)
 {
-  mGraphs.erase(std::remove(mGraphs.begin(), mGraphs.end(), graph), mGraphs.end());
+  m_graphs.erase(std::remove(m_graphs.begin(), m_graphs.end(), graph), m_graphs.end());
 }
 }

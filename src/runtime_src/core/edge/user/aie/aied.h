@@ -32,19 +32,19 @@
  */
 namespace zynqaie {
 
-class Aied
+class aied
 {
 public:
-  Aied(xrt_core::device* device);
-  ~Aied();
-  void registerGraph(const graph_type *graph);
-  void deregisterGraph(const graph_type *graph);
+  aied(xrt_core::device* device);
+  ~aied();
+  void register_graph(const graph_instance *graph);
+  void deregister_graph(const graph_instance *graph);
 
 private:
   bool done;
-  static void* pollAIE(void *arg);
-  xrt_core::device *mCoreDevice;
-  std::vector<const graph_type*> mGraphs;
+  static void* poll_aie(void *arg);
+  xrt_core::device *m_device;
+  std::vector<const graph_instance*> m_graphs;
   pthread_t ptid;
 };
 } // end namespace
