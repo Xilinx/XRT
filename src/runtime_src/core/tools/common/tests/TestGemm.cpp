@@ -122,8 +122,18 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
-  xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
-  xrt::kernel kernel{hwctx, kernelName};
+
+  xrt::hw_context hwctx;
+  xrt::kernel kernel;
+  try {
+    hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+    kernel = xrt::kernel(hwctx, kernelName);
+  } 
+  catch (const std::exception& ex)
+  {
+    logger(ptree, "Error", ex.what());
+    ptree.put("status", test_token_failed);
+  }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::gemm_int8);
   auto dpu_instr = findPlatformFile(seq_name, ptree);

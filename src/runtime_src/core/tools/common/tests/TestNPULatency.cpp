@@ -66,8 +66,17 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
-  xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
-  xrt::kernel testker{hwctx, kernelName};
+
+  xrt::hw_context hwctx;
+  xrt::kernel testker;
+  try {
+    hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+    testker = xrt::kernel(hwctx, kernelName);
+  }
+  catch (const std::exception& ex){
+    logger(ptree, "Error", ex.what());
+    ptree.put("status", test_token_failed);
+  }
 
   //Create BOs, the values are not initialized as they are not really used by this special test running on the device
   int argno = 1;
@@ -86,7 +95,6 @@ TestNPULatency::run(std::shared_ptr<xrt_core::device> dev)
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_param.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
   //Log
   if(XBU::getVerbose()) {
     logger(ptree, "Details", boost::str(boost::format("Instruction size: '%f' bytes") % buffer_size));

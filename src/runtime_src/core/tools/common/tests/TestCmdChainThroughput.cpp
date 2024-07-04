@@ -67,8 +67,17 @@ TestCmdChainThroughput::run(std::shared_ptr<xrt_core::device> dev)
 
   auto working_dev = xrt::device(dev);
   working_dev.register_xclbin(xclbin);
-  xrt::hw_context hwctx{working_dev, xclbin.get_uuid()};
-  xrt::kernel testker{hwctx, kernelName};
+  xrt::hw_context hwctx;
+  xrt::kernel testker;
+  try {
+    hwctx = xrt::hw_context(working_dev, xclbin.get_uuid());
+    testker = xrt::kernel(hwctx, kernelName);
+  }
+  catch (const std::exception& ex)
+  {
+    logger(ptree, "Error", ex.what());
+    ptree.put("status", test_token_failed);
+  }
 
   // Find PS kernel instance as expected by KMD, but
   // construct the xrt::kernel from the CU base name
