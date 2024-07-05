@@ -133,7 +133,7 @@ jobs:
         run: |    
           echo "Setting environment variables..."      
           echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV    
-          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
+          # echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV     
     
       - name: Checkout PR   
         uses: actions/checkout@v3 
@@ -145,10 +145,6 @@ jobs:
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
           submodules: recursive
-      - name: setup node  
-        uses: actions/setup-node@v4 
-        with:
-          node-version: 18
 
 
       - name: Checkout private repository      
