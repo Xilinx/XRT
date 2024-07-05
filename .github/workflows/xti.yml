@@ -144,7 +144,12 @@ jobs:
           ref: "master"
           fetch-depth: 0
           path: ${{ github.workspace }}/${{ github.run_number }}  
-          submodules: recursive  
+          submodules: recursive
+      - name: setup node  
+        uses: actions/setup-node@v4 
+        with:
+          node-version: 18
+
 
       - name: Checkout private repository      
         uses: actions/checkout@v3   
