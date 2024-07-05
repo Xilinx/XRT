@@ -34,13 +34,13 @@ namespace xrt::core::hip
   public:
 
     // allocate device memory
-    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz);
+    memory(device* dev, size_t sz);
 
     // allocate host memory
-    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, unsigned int flags);
+    memory(device* dev, size_t sz, unsigned int flags);
 
     // allocate from user host buffer
-    memory(std::shared_ptr<xrt::core::hip::device> dev, size_t sz, void *host_mem, unsigned int flags);
+    memory(device* dev, size_t sz, void *host_mem, unsigned int flags);
     
     void*
     get_address();
@@ -83,7 +83,7 @@ namespace xrt::core::hip
     }
 
   private:
-    std::shared_ptr<device>  m_device;
+    device*  m_device;
     size_t m_size;
     memory_type m_type;
     unsigned int m_flags;

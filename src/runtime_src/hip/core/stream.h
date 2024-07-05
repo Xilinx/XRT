@@ -41,7 +41,7 @@ public:
     return m_flags;
   }
 
-  inline std::shared_ptr<device>
+  inline device*
   get_device() const
   {
     return m_ctx->get_device();

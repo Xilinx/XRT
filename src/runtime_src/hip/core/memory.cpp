@@ -17,8 +17,8 @@
 namespace xrt::core::hip
 {
 
-  memory::memory(std::shared_ptr<device> dev, size_t sz)
-      : m_device(std::move(dev)),
+  memory::memory(device* dev, size_t sz)
+      : m_device(dev),
 	m_size(sz),
 	m_type(memory_type::device),
 	m_flags(0)
@@ -29,11 +29,8 @@ namespace xrt::core::hip
     init_xrt_bo();
   }
 
-  memory::memory(std::shared_ptr<device> dev, size_t sz, void *host_mem, unsigned int flags)
-      : m_device(std::move(dev)),
-	m_size(sz),
-	m_type(memory_type::registered),
-	m_flags(flags)
+  memory::memory(device* dev, size_t sz, void *host_mem, unsigned int flags)
+      : m_device(dev), m_size(sz), m_type(memory_type::registered), m_flags(flags)
   {
     assert(m_device);
 
@@ -42,7 +39,7 @@ namespace xrt::core::hip
     m_bo = xrt::ext::bo(xrt_device, host_mem, m_size);
   }
 
-  memory::memory(std::shared_ptr<device> dev, size_t sz, unsigned int flags)
+  memory::memory(device* dev, size_t sz, unsigned int flags)
       : m_device(std::move(dev)),
 	m_size(sz),
 	m_type(memory_type::host),

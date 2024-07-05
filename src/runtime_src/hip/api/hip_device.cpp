@@ -47,7 +47,7 @@ device_init()
   for (uint32_t i = 0; i < dev_count; i++) {
     if (device_cache.count(static_cast<device_handle>(i)) > 0)
       continue;
-    auto dev = std::make_shared<xrt::core::hip::device>(i);
+    auto dev = std::make_unique<xrt::core::hip::device>(i);
     device_cache.add(i, std::move(dev));
     auto mem_pool = std::make_shared<xrt::core::hip::memory_pool>(device_cache.get_or_error(i), MAX_MEMORY_POOL_SIZE_NPU, MEMORY_POOL_BLOCK_SIZE_NPU);
     memory_pool_db[i].push_front(mem_pool);

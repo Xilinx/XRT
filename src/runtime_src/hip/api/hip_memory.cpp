@@ -368,7 +368,6 @@ namespace xrt::core::hip
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
-    auto dev = hip_stream->get_device();
     // each device has a default pool in the front
     auto pool = mem_pool_cache.get_or_error(mem_pool);
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");

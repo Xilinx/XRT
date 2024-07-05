@@ -76,7 +76,7 @@ namespace xrt::core::hip
   class memory_pool_node
   {
   public:
-    memory_pool_node(std::shared_ptr<device> device, size_t size, int id);
+    memory_pool_node(device* device, size_t size, int id);
 
     size_t
     get_size() const
@@ -101,7 +101,7 @@ namespace xrt::core::hip
   {
   public:
 
-    memory_pool(std::shared_ptr<device> device, size_t max_total_size, size_t pool_size);
+    memory_pool(device* device, size_t max_total_size, size_t pool_size);
 
     void
     init();
@@ -119,7 +119,7 @@ namespace xrt::core::hip
     void get_attribute(hipMemPoolAttr attr, void* value);
     void set_attribute(hipMemPoolAttr attr, void* value);
 
-    std::shared_ptr<device>
+    device*
     get_device()
     {
       return m_device;
@@ -133,7 +133,7 @@ namespace xrt::core::hip
     std::shared_ptr<memory_pool_node>
     find_memory_pool_node(void* ptr, uint64_t &start);
 
-    std::shared_ptr<device> m_device;
+    device* m_device;
     int m_last_id;
     bool m_auto_extend;
     size_t m_max_total_size;

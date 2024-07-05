@@ -53,7 +53,7 @@ namespace xrt::core::hip
   {
   }
 
-  memory_pool_node::memory_pool_node(std::shared_ptr<device> device, size_t size, int id)
+  memory_pool_node::memory_pool_node(device* device, size_t size, int id)
       : m_id(id), m_used(0), m_free_list(nullptr), m_alloc_list(nullptr)
   {
     m_memory = std::make_shared<memory>(device, size);
@@ -102,8 +102,8 @@ namespace xrt::core::hip
     return size_freed;
   }
 
-  memory_pool::memory_pool(std::shared_ptr<device> device, size_t max_total_size, size_t pool_size)
-      : m_device(std::move(device)), m_last_id(0), m_auto_extend(true), m_max_total_size(max_total_size), m_pool_size(pool_size), m_list(), m_mutex(),
+  memory_pool::memory_pool(device* device, size_t max_total_size, size_t pool_size)
+      : m_device(device), m_last_id(0), m_auto_extend(true), m_max_total_size(max_total_size), m_pool_size(pool_size), m_list(), m_mutex(),
         m_reuse_follow_event_dependencies(1), m_reuse_allow_opportunistic(1), m_reuse_allow_internal_dependencies(1),
         m_release_threshold(0), m_reserved_mem_current(0), m_reserved_mem_high(0), m_used_mem_current(0), m_used_mem_high(0)
   {

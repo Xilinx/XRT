@@ -153,6 +153,13 @@ public:
     std::lock_guard<std::mutex> lk(mutex);
     return handles.count(handle);
   }
+
+  size_t
+  size() const
+  {
+    std::lock_guard<std::mutex> lk(mutex);
+    return handles.size();
+  }
 };
 
 } // xrt_core
