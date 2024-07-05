@@ -126,8 +126,8 @@ jobs:
           vs-version: "2022"
 
   apu-package-build:
-    # runs-on: apu
-    runs-on: [self-hosted, Ubuntu-22.04]
+    runs-on: apu
+    # runs-on: [self-hosted, Ubuntu-22.04]
     steps:      
       - name: Set env variables    
         run: |    
