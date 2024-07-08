@@ -42,7 +42,7 @@ while [ $# -gt 0 ]; do
             ;;
 
         # Application tool
-        xbutil|xbmgmt )
+        xrt-smi|xbmgmt )
             xrt_app=$1
             shift
 
@@ -55,9 +55,9 @@ while [ $# -gt 0 ]; do
                         exit 1
                     ;;
 
-                    # Duplicate xbutil & xbmgmt options detected
-                    xbutil|xbmgmt)
-                         echo "Error: Mulitple xbutil and/or xbmgmt definitions detected."
+                    # Duplicate xrt-smi & xbmgmt options detected
+                    xrt-smi|xbmgmt)
+                         echo "Error: Mulitple xrt-smi and/or xbmgmt definitions detected."
                          exit 1
                     ;;
 
@@ -89,9 +89,9 @@ if [ "$help_arg" = "true" ]; then
     echo
     echo "DESCRIPTION: This script will discover the installed card(s) in the system,"
     echo "             optionally filter the cards of interest, and execute the given"
-    echo "             command options for either the 'xbutil' or 'xbmgmt' applications."
+    echo "             command options for either the 'xrt-smi' or 'xbmgmt' applications."
     echo 
-    echo "USAGE: xball [--help] [--device-filter arg] <xbutil | xbmgmt> <utility arguments>"
+    echo "USAGE: xball [--help] [--device-filter arg] <xrt-smi | xbmgmt> <utility arguments>"
     echo 
     echo "OPTIONS:"
     echo "  --help          - Help to use this script."
@@ -101,7 +101,7 @@ if [ "$help_arg" = "true" ]; then
     echo "                      '^xilinx_u250' - Shell names starting with xilnx_u250"
     echo 
     echo "Additionally, the 'utility arguments' are the arguments that will be sent to"
-    echo "the given XRT utility (e.g., xbutil or xbmgmt)"
+    echo "the given XRT utility (e.g., xrt-smi or xbmgmt)"
     echo
     exit
 fi
