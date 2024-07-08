@@ -27,7 +27,6 @@ namespace xdp {
   {
     protected :
       VPDatabase* db = nullptr;
-      xrt::hw_context mHwContext;
       uint32_t mBufSz;
 
     public:
@@ -39,13 +38,8 @@ namespace xdp {
 
       virtual ~MLTimelineImpl() {}
 
-      virtual void updateDevice(void*) = 0;
+      virtual void updateDevice(xrt::hw_context) = 0;
       virtual void finishflushDevice(void*) = 0;
-
-      void setHwContext(xrt::hw_context ctx)
-      {
-        mHwContext = std::move(ctx);
-      }
       
       void setBufSize(uint32_t sz)
       {

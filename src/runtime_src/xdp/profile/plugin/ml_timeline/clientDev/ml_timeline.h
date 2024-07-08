@@ -1,4 +1,4 @@
-/**
+//**
  * Copyright (C) 2023-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -17,6 +17,8 @@
 #ifndef XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 #define XDP_PLUGIN_ML_TIMELINE_CLIENTDEV_IMPL_H
 
+#include "core/include/xrt/xrt_hw_context.h"
+
 #include "xdp/config.h"
 #include "xdp/profile/plugin/ml_timeline/ml_timeline_impl.h"
 
@@ -31,7 +33,7 @@ namespace xdp {
 
       ~MLTimelineClientDevImpl() = default;
 
-      virtual void updateDevice(void* hwCtxImpl);
+      virtual void updateDevice(xrt::hw_context hwContext);
       virtual void finishflushDevice(void* hwCtxImpl);
   };
 

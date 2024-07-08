@@ -28,6 +28,7 @@
 #include "core/common/message.h"
 
 #include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/xrt_hw_context.h"
 #include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/profile/plugin/ml_timeline/clientDev/ml_timeline.h"
@@ -65,7 +66,7 @@ namespace xdp {
               "Created ML Timeline Plugin for Client Device.");
   }
 
-  void MLTimelineClientDevImpl::updateDevice(void* /*hwCtxImpl*/)
+  void MLTimelineClientDevImpl::updateDevice(xrt::hw_context hwContext)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "In MLTimelineClientDevImpl::updateDevice");
@@ -76,7 +77,7 @@ namespace xdp {
        * finishFlushDevice so that AIE Profile/Debug Plugins, if enabled,
        * can use their own Debug BO to capture their data.
        */
-      mResultBOHolder = new ResultBOContainer(mHwContext, mBufSz);
+      mResultBOHolder = new ResultBOContainer(hwContext, mBufSz);
 
     } catch (std::exception& e) {
       std::stringstream msg;
