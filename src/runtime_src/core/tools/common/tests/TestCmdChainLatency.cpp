@@ -77,6 +77,7 @@ TestCmdChainLatency::run(std::shared_ptr<xrt_core::device> dev)
   catch (const std::exception& ex){
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
+    return ptree;
   }
 
   // Find PS kernel instance as expected by KMD, but

@@ -126,6 +126,7 @@ TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
   {
     logger(ptree, "Error", ex.what());
     ptree.put("status", test_token_failed);
+    return ptree;
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::df_bandwidth);
