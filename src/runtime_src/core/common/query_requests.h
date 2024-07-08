@@ -324,6 +324,7 @@ enum class key_type
   kernel_max_bandwidth_mbps,
   sub_device_path,
   read_trace_data,
+  aie_skd_xclbin,
   noop
 };
 
@@ -3819,6 +3820,23 @@ struct read_trace_data : request
   virtual std::any
   get(const device*, const std::any&) const = 0;
 };
+
+struct aie_skd_xclbin : request
+{
+  using result_type = bool;
+  using ps_uuid_ptr_type = uint64_t;
+  using skd_axlf_ptr_type = uint64_t;
+
+  static const key_type key = key_type::aie_skd_xclbin;
+  struct args {
+    uint64_t  ps_uuid_ptr;
+    uint64_t  skd_axlf_ptr;
+  };
+
+  virtual std::any
+  get(const device*, const std::any& arg) const = 0;
+};
+
 } // query
 
 } // xrt_core

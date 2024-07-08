@@ -150,3 +150,11 @@ zocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 	ret = zocl_kds_set_cu_read_range(zdev, info->cu_index, info->start, info->size);
 	return ret;
 }
+
+int
+zocl_aie_skd_xclbin_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+
+	return zocl_aie_skd_xclbin(zdev, data);
+}

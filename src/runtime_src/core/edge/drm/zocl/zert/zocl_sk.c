@@ -64,12 +64,13 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 			mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
 			slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
 			if(slot_uuid) {
-				mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
 				if(uuid_equal(slot_uuid,(xuid_t *)cmd->sk_uuid)) {
 					slot_id = i;
+					mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
 					break;
 				}
 			}
+			mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
 		}
 
 		if (slot_id == MAX_PR_SLOT_NUM) {
@@ -130,9 +131,9 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		kdata->bohdl = bohdl;
 		kdata->meta_bohdl = meta_bohdl;
 		// Pass physical slot 0 UUID to SKD - Currently we only support 1 physical slot
-		mutex_lock(&zdev->pr_slot[0]->slot_xclbin_lock);
-		phy_slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[0]);
-		mutex_unlock(&zdev->pr_slot[0]->slot_xclbin_lock);
+		mutex_lock(&zdev->pr_slot[slot_id]->slot_xclbin_lock);
+		phy_slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[slot_id]);
+		mutex_unlock(&zdev->pr_slot[slot_id]->slot_xclbin_lock);
 		memcpy(kdata->uuid,phy_slot_uuid,sizeof(kdata->uuid));
 
 		snprintf(kdata->name, ZOCL_MAX_NAME_LENGTH, "%s",

@@ -10,6 +10,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/xrt_profiling.h"
 #include "shim.h"
+#include "core/include/xrt/xrt_uuid.h"
 
 #include <map>
 #include <memory>
@@ -841,6 +842,37 @@ struct read_trace_data
   }
 };
 
+struct aie_skd_xclbin
+{
+  using result_type = query::aie_skd_xclbin::result_type;
+
+  XAie_DevInst* devInst;         // AIE Device Instance
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& param)
+  {
+#if defined(XRT_ENABLE_AIE)
+    struct drm_zocl_aie_skd_xclbin aie_arg;
+    auto args = std::any_cast<xrt_core::query::aie_skd_xclbin::args>(param);
+
+    aie_arg.ps_uuid_ptr = std::any_cast<xrt_core::query::aie_skd_xclbin::ps_uuid_ptr_type>(args.ps_uuid_ptr);
+    aie_arg.skd_axlf_ptr = std::any_cast<xrt_core::query::aie_skd_xclbin::skd_axlf_ptr_type>(args.skd_axlf_ptr);
+
+    const std::string zocl_device = "/dev/dri/" + get_render_devname();
+    auto fd_obj = aie_get_drmfd(device, zocl_device);
+    if (fd_obj->fd < 0)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_SKD_XCLBIN, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Reading SKD XCLBIN for uuid (%s) failed") % aie_arg.ps_uuid_ptr));
+
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+    return true;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -1046,6 +1078,7 @@ initialize_query_table()
   emplace_func0_request<query::device_clock_freq_mhz,   device_clock_freq_mhz>();
   emplace_func4_request<query::trace_buffer_info,       trace_buffer_info>();
   emplace_func4_request<query::read_trace_data,         read_trace_data>();
+  emplace_func4_request<query::aie_skd_xclbin,          aie_skd_xclbin>();
   emplace_func4_request<query::host_max_bandwidth_mbps, host_max_bandwidth_mbps>();
   emplace_func4_request<query::kernel_max_bandwidth_mbps, kernel_max_bandwidth_mbps>();
 }

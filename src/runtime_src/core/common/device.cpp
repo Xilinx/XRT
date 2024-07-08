@@ -146,20 +146,44 @@ load_xclbin(const uuid& xclbin_id)
     throw error(ENODEV, "specified xclbin is not loaded");
 
 #ifdef XRT_ENABLE_AIE
+#ifdef XCLBIN_FULL_READ
   auto xclbin_full = xrt_core::device_query<xrt_core::query::xclbin_full>(this);
   if (xclbin_full.empty())
     throw error(ENODEV, "no cached xclbin data");
 
-  const axlf* top = reinterpret_cast<axlf *>(xclbin_full.data());
+  const axlf* skd_axlf_ptr = reinterpret_cast<axlf *>(xclbin_full.data());
+#else
+  uint64_t ps_uuid_ptr = reinterpret_cast<uint64_t>(xclbin_id.get());
+  const axlf* skd_axlf_ptr;
+  char* buf = new char[MAX_AXLF_BUF_SIZE];
+
+  if (!buf)
+    throw error(ENOMEM, "Cannot allocate axlf buffer");
+
+  skd_axlf_ptr = reinterpret_cast<axlf*> (buf);
+  xrt_core::query::aie_skd_xclbin::args arg = {reinterpret_cast<uint64_t>(ps_uuid_ptr), reinterpret_cast<uint64_t>(skd_axlf_ptr)};
+
+  try {
+      xrt_core::device_query<xrt_core::query::aie_skd_xclbin>(this, arg);
+  }
+  catch (const std::exception &e) {
+    std::cerr << boost::format("ERROR: Failed to get xclbin for uuid (%lx)\n %s\n") % uuid_loaded.get() % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+#endif
   try {
     // set before register_axlf is called via load_axlf_meta
-    m_xclbin = xrt::xclbin{top};
+    m_xclbin = xrt::xclbin{skd_axlf_ptr};
     load_axlf_meta(m_xclbin.get_axlf());
   }
   catch (const std::exception&) {
     m_xclbin = {};
     throw;
   }
+#ifndef XCLBIN_FULL_READ
+  delete skd_axlf_ptr;
+  skd_axlf_ptr = NULL;
+#endif
 #else
   throw error(ENOTSUP, "load xclbin by uuid is not supported");
 #endif

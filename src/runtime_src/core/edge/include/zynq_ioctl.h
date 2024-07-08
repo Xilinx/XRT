@@ -124,7 +124,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_AIE_FREQSCALE,
 	/* Set CU read-only range */
 	DRM_ZOCL_SET_CU_READONLY_RANGE,
-	DRM_ZOCL_NUM_IOCTLS
+	DRM_ZOCL_NUM_IOCTLS,
+	DRM_ZOCL_AIE_SKD_XCLBIN
 };
 
 enum drm_zocl_sync_bo_dir {
@@ -548,6 +549,11 @@ struct drm_zocl_error_inject {
 	uint16_t		err_class;
 };
 
+struct drm_zocl_aie_skd_xclbin {
+	uint64_t		skd_axlf_ptr;
+	uint64_t		ps_uuid_ptr;
+};
+
 #define DRM_IOCTL_ZOCL_CREATE_BO       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CREATE_BO,     \
                                        struct drm_zocl_create_bo)
@@ -596,4 +602,6 @@ struct drm_zocl_error_inject {
 				       DRM_ZOCL_AIE_FREQSCALE, struct drm_zocl_aie_freq_scale)
 #define DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE   DRM_IOWR(DRM_COMMAND_BASE + \
 					       DRM_ZOCL_SET_CU_READONLY_RANGE, struct drm_zocl_set_cu_range)
+#define DRM_IOCTL_ZOCL_AIE_SKD_XCLBIN   DRM_IOWR(DRM_COMMAND_BASE + \
+					       DRM_ZOCL_AIE_SKD_XCLBIN, struct drm_zocl_aie_skd_xclbin)
 #endif

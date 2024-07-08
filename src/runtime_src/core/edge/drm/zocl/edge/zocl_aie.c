@@ -17,6 +17,7 @@
 #include "zocl_aie.h"
 #include "xrt_xclbin.h"
 #include "xclbin.h"
+#include "zocl_xclbin.h"
 
 #ifndef __NONE_PETALINUX__
 #include <linux/xlnx-ai-engine.h>
@@ -550,6 +551,53 @@ int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
 		return ret;
 
 	}
+}
+
+int zocl_aie_skd_xclbin(struct drm_zocl_dev *zdev, void *data)
+{
+	struct drm_zocl_aie_skd_xclbin *args = data;
+	struct drm_zocl_slot *zocl_slot = NULL;
+	uuid_t *slot_uuid = NULL;
+	uuid_t *skd_uuid = NULL;
+	int i, slot_id = MAX_PR_SLOT_NUM, ret = 0;
+	void *uuid_ptr = (void *)(uintptr_t)args->ps_uuid_ptr;
+
+	skd_uuid = vmalloc(sizeof(uuid_t));
+	if (!skd_uuid)
+		return -ENOMEM;
+
+    ret = copy_from_user(skd_uuid, uuid_ptr, sizeof(uuid_t));
+	if (ret) {
+		vfree(skd_uuid);
+		return ret;
+	}
+	mutex_lock(&zdev->aie_lock);
+
+	for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
+		struct drm_zocl_slot *slot = NULL;
+		slot = zdev->pr_slot[i];
+		mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
+		slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
+		if(slot_uuid) {
+			if(uuid_equal(slot_uuid, skd_uuid)) {
+				slot_id = i;
+				mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
+				break;
+			}
+		}
+		mutex_unlock(&zdev->pr_slot[i]->slot_xclbin_lock);
+	}
+	zocl_slot = zdev->pr_slot[slot_id];
+	// add validation to check if axlf_size is greater than 4k
+	ret = copy_to_user(args->skd_axlf_ptr, (char *)zocl_slot->axlf, zocl_slot->axlf_size);
+	if (ret) {
+		vfree(skd_uuid);
+		mutex_unlock(&zdev->aie_lock);
+		return ret;
+	}
+	mutex_unlock(&zdev->aie_lock);
+	vfree(skd_uuid);
+	return 0;
 }
 
 int
