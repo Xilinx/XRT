@@ -92,11 +92,6 @@ namespace xdp {
 
   void DeviceInfo::createConfig(XclbinInfo* xclbin)
   {
-    // Check if loaded history has same UUID.
-    if (!loadedConfigInfos.empty() && loadedConfigInfos.back()->containsXclbin(xclbin->uuid)) {
-      return;
-    }
-
     // Create a new config
     std::unique_ptr<ConfigInfo> config = std::make_unique<ConfigInfo>();
     config->addXclbin(xclbin);
