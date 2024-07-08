@@ -6,7 +6,7 @@
 """:" # Hide bash from python
 # Generate the output JSON file. Ignore both error and standard output
 temp_json_file=$(mktemp -u --suffix=.nagios.json)
-/opt/xilinx/xrt/bin/xbutil examine $@ -o $temp_json_file &> /dev/null
+/opt/xilinx/xrt/bin/xrt-smi examine $@ -o $temp_json_file &> /dev/null
 # Depending on command status return OK or FAILURE
 EXIT_CODE=0
 case $? in

@@ -88,7 +88,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       XBUtilities::throw_cancel(boost::format("Could not program device %s : %s") % bdf % e.what());
     }
 
-    std::cout << "INFO: xbutil program succeeded on " << bdf << std::endl;
+    std::cout << "INFO: xrt-smi program succeeded on " << bdf << std::endl;
     return;
   }
 

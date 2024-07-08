@@ -465,7 +465,7 @@ get_ps_kernels(const xrt_core::device* device)
       return ps_kernels;
     const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
     if(map->pkn_count == 0)
-      throw xrt_core::error("'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.");
+      throw xrt_core::error("'ps_kernel' invalid. Has the PS kernel been loaded? See 'xrt-smi program'.");
 
     for (unsigned int i = 0; i < map->pkn_count; i++)
       ps_kernels.emplace_back(map->pkn_data[i]);
