@@ -387,15 +387,12 @@ namespace xrt::aie {
 // of that partition. Get patition info using the context id passed and
 // convert relative column index to absolute using this info
 static uint16_t
-get_abs_col(const xrt_core::device* device, int32_t pid, uint16_t context_id, uint16_t col)
+get_abs_col(const xrt_core::device* device, pid_t pid, uint16_t context_id, uint16_t col)
 {
   auto data = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device, {});
   for (const auto& entry : data) {
-    // if PID info is present compare PID's else skip
-    if (entry.pid != -1 && (entry.pid != pid))
-      continue;
-
-    if (std::stoi(entry.metadata.id) != context_id)
+    // compare PID and context id
+    if (entry.pid != pid || std::stoi(entry.metadata.id) != context_id)
       continue;
 
     auto abs_col = col + entry.start_col;
@@ -431,7 +428,7 @@ open_context(xrt::aie::device::access_mode am)
 
 std::vector<char>
 device::
-read_aie_mem(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const
+read_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, uint32_t size) const
 {
   return xdp::native::profiling_wrapper("xrt::aie::device::read_aie_mem",
     [this, &col, row, offset, size, context_id, pid] {
@@ -449,7 +446,7 @@ read_aie_mem(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint3
 
 size_t
 device::
-write_aie_mem(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, const std::vector<char>& data)
+write_aie_mem(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t offset, const std::vector<char>& data)
 {
   return xdp::native::profiling_wrapper("xrt::aie::device::write_aie_mem",
     [this, &col, row, offset, &data, context_id, pid] {
@@ -466,7 +463,7 @@ write_aie_mem(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint
 }
 uint32_t
 device::
-read_aie_reg(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const
+read_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr) const
 {
   return xdp::native::profiling_wrapper("xrt::device::read_aie_reg",
     [this, &col, row, reg_addr, context_id, pid] {
@@ -484,7 +481,7 @@ read_aie_reg(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint3
 
 bool
 device::
-write_aie_reg(int32_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val)
+write_aie_reg(pid_t pid, uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr, uint32_t reg_val)
 {
   return xdp::native::profiling_wrapper("xrt::device::write_aie_reg",
     [this, &col, row, reg_addr, &reg_val, context_id, pid] {
