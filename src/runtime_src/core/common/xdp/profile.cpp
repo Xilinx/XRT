@@ -396,8 +396,16 @@ finish_flush_device(void* handle)
 void flush_old_stored()
 {
 #ifdef XDP_CLIENT_BUILD
-  if (xrt_core::config::get_ml_timeline())
+  if (xrt_core::config::get_ml_timeline()) {
+    try {
+      xrt_core::xdp::core::load_core();
+      xrt_core::xdp::ml_timeline::load();
+    } catch (...) {
+      return;
+    }
     xrt_core::xdp::ml_timeline::flush_old_stored();
+  }
+
 #endif
 }
 
