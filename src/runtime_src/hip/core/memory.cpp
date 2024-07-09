@@ -108,9 +108,8 @@ namespace xrt::core::hip
       throw_invalid_handle_if(!hip_mem_src, "Invalid source handle.");
       throw_invalid_value_if(src_offset + size > hip_mem_src->get_size(), "Src out of bound.");
       auto src_bo = hip_mem_src->get_xrt_bo();
-      if (m_bo && src_bo) {
+      if (m_bo && src_bo)
         m_bo.copy(src_bo, size, src_offset, offset);
-      }
     }
     else {
       // host memory
