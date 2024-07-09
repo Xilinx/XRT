@@ -140,7 +140,7 @@ namespace xdp {
   AIEStatusWriter::~AIEStatusWriter()
   {
     if (!mWroteValidData) {
-      std::string msg("No valid data found for AIE status. Please run xbutil.");
+      std::string msg("No valid data found for AIE status. Please run xrt-smi.");
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
   }
