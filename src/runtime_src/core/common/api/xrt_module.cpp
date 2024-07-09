@@ -1277,12 +1277,14 @@ patch(const xrt::module& module, uint8_t* ibuf, size_t* sz, const std::vector<st
   if (hdl->get_os_abi() == Elf_Amd_Aie2p) {
     const auto& instr_buf = hdl->get_instr();
     inst = &instr_buf;
-  } else if(hdl->get_os_abi() == Elf_Amd_Aie2ps) {
+  }
+  else if(hdl->get_os_abi() == Elf_Amd_Aie2ps) {
     const auto& instr_buf = hdl->get_data();
     if (instr_buf.size() != 1)
       throw std::runtime_error{"Patch failed: only support patching single column"};
     inst = &instr_buf[0];
-  } else {
+  }
+  else {
     throw std::runtime_error{"Patch failed: unsupported ELF ABI"};
   }
 
