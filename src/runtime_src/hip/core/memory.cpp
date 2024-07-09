@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #endif
 
+#include "common.h"
 #include "core/common/unistd.h"
 #include "device.h"
 #include "hip/config.h"
@@ -99,12 +100,26 @@ namespace xrt::core::hip
         // pinned hip mem
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
     }
-
-    auto src_ptr = reinterpret_cast<const unsigned char *>(src);
-    src_ptr += src_offset;
-    if (m_bo) {
-      m_bo.write(src_ptr, size, offset);
-      m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    else if (src_hip_mem && src_hip_mem->get_type() == memory_type::device) {
+      // normal hip mem
+      auto src_hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
+      auto hip_mem_src = src_hip_mem_info.first;
+      src_offset += src_hip_mem_info.second;
+      throw_invalid_handle_if(!hip_mem_src, "Invalid source handle.");
+      throw_invalid_value_if(src_offset + size > hip_mem_src->get_size(), "Src out of bound.");
+      auto src_bo = hip_mem_src->get_xrt_bo();
+      if (m_bo && src_bo) {
+        m_bo.copy(src_bo, size, src_offset, offset);
+      }
+    }
+    else {
+      // host memory
+      auto src_ptr = reinterpret_cast<const unsigned char*>(src);
+      src_ptr += src_offset;
+      if (m_bo) {
+        m_bo.write(src_ptr, size, offset);
+        m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+      }
     }
   }
 

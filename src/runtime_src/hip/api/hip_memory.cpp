@@ -159,13 +159,13 @@ namespace xrt::core::hip
   static void
   hip_memcpy_device2device(void* dst, const void* src, size_t size)
   {
-    auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
-    auto hip_mem_dst = hip_mem_info.first;
-    auto offset = hip_mem_info.second;
+    auto dst_hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
+    auto hip_mem_dst = dst_hip_mem_info.first;
+    auto dst_offset = dst_hip_mem_info.second;
     throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle.");
-    throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
+    throw_invalid_value_if(dst_offset + size > hip_mem_dst->get_size(), "dst out of bound.");
 
-    hip_mem_dst->write(src, size, 0, offset);
+    hip_mem_dst->write(src, size, 0, dst_offset);
   }
 
   static void

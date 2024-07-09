@@ -221,18 +221,16 @@ namespace xrt::core::hip
   bool
   memory_pool::extend_memory_pool(size_t aligned_size)
   {
-    if (m_pool_size + aligned_size > m_max_total_size) {
-      // No enough memory.
+    if (m_pool_size + aligned_size > m_max_total_size)
       return false;
-    }
+
     size_t add_mem_sz = m_max_total_size - m_pool_size;
     add_mem_sz = add_mem_sz >= m_pool_size ? m_pool_size : add_mem_sz;
+
     // add additional block
-    if (!extend_memory_list(add_mem_sz)) {
-      // No enough memory.
+    if (!extend_memory_list(add_mem_sz))
       return false;
-    }
-    
+
     m_reserved_mem_current += add_mem_sz;
     m_reserved_mem_high = m_reserved_mem_current;
     return true;
