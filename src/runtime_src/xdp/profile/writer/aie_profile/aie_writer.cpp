@@ -55,7 +55,7 @@ namespace xdp {
 
   void AIEProfilingWriter::writeMetricSettings()
   {
-    auto validConfig = (db->getStats()).getProfileConfig();
+    auto validConfig = (db->getStaticInfo()).getProfileConfig();
     std::map<module_type, std::vector<std::string>> filteredConfig;
     for(int i=0; i<module_type::num_types; i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();

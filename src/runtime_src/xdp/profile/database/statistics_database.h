@@ -31,7 +31,6 @@
 #include "core/include/xdp/counters.h"
 
 #include "xdp/config.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp {
 
@@ -238,9 +237,6 @@ namespace xdp {
     double firstKernelStartTime ;
     double lastKernelEndTime ;
 
-    // Information tracks valid tiles type and and it's metric settings
-    AIEProfileFinalConfig aieProfileConfig;
-
     // Since the host code can be multithreaded, we must protect 
     //  the data
     std::mutex readsLock ;
@@ -389,9 +385,6 @@ namespace xdp {
     // Helper functions for printing out summary information temporarily
     XDP_CORE_EXPORT void dumpCallCount(std::ofstream& fout) ;
     XDP_CORE_EXPORT void dumpHALMemory(std::ofstream& fout) ; 
-    
-    XDP_CORE_EXPORT void saveProfileConfig(const AIEProfileFinalConfig& cfg);
-    XDP_CORE_EXPORT const AIEProfileFinalConfig& getProfileConfig();
   } ;
 }
 

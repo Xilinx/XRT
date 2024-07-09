@@ -163,7 +163,7 @@ namespace xdp {
       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
     }
 
-    (db->getStats()).saveProfileConfig(AIEData.metadata->getAIEProfileConfig());
+    (db->getStaticInfo()).saveProfileConfig(AIEData.metadata->getAIEProfileConfig());
 
 
 // Open the writer for this device

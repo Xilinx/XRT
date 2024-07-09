@@ -508,14 +508,4 @@ namespace xdp {
     }
   }
 
-  void VPStatisticsDatabase::saveProfileConfig(const AIEProfileFinalConfig& cfg)
-  { 
-    aieProfileConfig=cfg;
-  }
-  
-  const AIEProfileFinalConfig& VPStatisticsDatabase::getProfileConfig()
-  { 
-    return aieProfileConfig;
-  }
-
 } // end namespace xdp
