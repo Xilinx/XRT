@@ -21,6 +21,9 @@ update_device(void* handle);
 void 
 finish_flush_device(void* handle);
 
+void
+flush_old_stored();
+
 } // end namespace xrt_core::xdp
 
 #endif

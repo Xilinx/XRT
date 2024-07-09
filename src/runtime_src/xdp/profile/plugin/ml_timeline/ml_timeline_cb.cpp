@@ -35,7 +35,14 @@ namespace xdp {
     if (MLTimelinePlugin::alive()) {
       mlTimelinePluginInstance.finishflushDevice(hwCtxImpl);
     } 
-  } 
+  }
+
+  static void flushOldStoredMLTmln()
+  {
+    if (MLTimelinePlugin::alive())
+      mlTimelinePluginInstance.flushOldStored();
+  }
+
 
 } // end namespace xdp
 
@@ -49,5 +56,11 @@ extern "C"
 void finishflushDeviceMLTmln(void* hwCtxImpl)
 {
   xdp::finishflushDeviceMLTmln(hwCtxImpl);
+}
+
+extern "C"
+void flushOldStoredMLTmln()
+{
+  xdp::flushOldStoredMLTmln();
 }
 

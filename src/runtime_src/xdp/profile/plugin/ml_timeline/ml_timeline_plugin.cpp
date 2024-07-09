@@ -94,11 +94,23 @@ namespace xdp {
     return MLTimelinePlugin::live;
   }
 
+  // If there is any information that we've stored, we need to flush it out
+  // here.
+  void MLTimelinePlugin::flushOldStored()
+  {
+    if (!mHwCtxImpl) // We don't have a connection to any hardware context
+      return;
+
+    writeAll(true);
+    delete mHwCtxImpl;
+    mHwCtxImpl = nullptr;
+  }
+
   void MLTimelinePlugin::updateDevice(void* hwCtxImpl)
   {
 #ifdef XDP_CLIENT_BUILD
     if (mHwCtxImpl) {
-      // For client device flow, only 1 device and xclbin is supported now.
+      // With flush_old_stored, we shouldn't reach here
       return;
     }
     mHwCtxImpl = hwCtxImpl;

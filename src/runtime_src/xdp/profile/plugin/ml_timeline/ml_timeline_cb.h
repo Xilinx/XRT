@@ -23,6 +23,7 @@ extern "C" {
 
   XDP_PLUGIN_EXPORT void updateDeviceMLTmln(void* hwCtxImpl);
   XDP_PLUGIN_EXPORT void finishflushDeviceMLTmln(void* hwCtxImpl);
+  XDP_PLUGIN_EXPORT void flushOldStoredMLTmln();
 
 }
 #endif

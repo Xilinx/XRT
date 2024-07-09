@@ -177,6 +177,7 @@ static std::shared_ptr<hw_context_impl>
 alloc_hwctx_from_cfg(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::cfg_param_type& cfg_param)
 {
   XRT_TRACE_POINT_SCOPE(xrt_hw_context);
+  xrt_core::xdp::flush_old_stored();
   auto handle = std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, cfg_param);
 
   // Update device is called with a raw pointer to dyanamically

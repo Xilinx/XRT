@@ -136,15 +136,18 @@ namespace xrt_core::xdp::ml_timeline {
 
 std::function<void (void*)> update_device_cb;
 std::function<void (void*)> finish_flush_device_cb;
+std::function<void ()>  flush_old_stored_cb;
 
 void
 register_callbacks(void* handle)
 { 
   #ifdef XDP_CLIENT_BUILD
     using ftype = void (*)(void*);
+    using vtype = void (*)();
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateDeviceMLTmln"));
     finish_flush_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "finishflushDeviceMLTmln"));
+    flush_old_stored_cb = reinterpret_cast<vtype>(xrt_core::dlsym(handle, "flushOldStoredMLTmln");
   #else
     (void)handle;
   #endif
@@ -177,6 +180,13 @@ finish_flush_device(void* handle)
 {
   if (finish_flush_device_cb)
     finish_flush_device_cb(handle);
+}
+
+void
+flush_old_stored()
+{
+  if (flush_old_stored_cb)
+    flush_old_stored();
 }
 
 } // end namespace xrt_core::xdp::ml_timeline
