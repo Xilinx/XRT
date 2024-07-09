@@ -186,7 +186,7 @@ void
 flush_old_stored()
 {
   if (flush_old_stored_cb)
-    flush_old_stored();
+    flush_old_stored_cb();
 }
 
 } // end namespace xrt_core::xdp::ml_timeline
