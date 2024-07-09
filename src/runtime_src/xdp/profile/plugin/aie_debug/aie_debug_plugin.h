@@ -50,7 +50,7 @@ namespace xdp {
     uint8_t* txn_ptr;
     XAie_DevInst aieDevInst = {0};
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
-    aie_profile_op_t* op;
+    read_register_op_t* op;
     std::size_t op_size;
 
     static bool live;

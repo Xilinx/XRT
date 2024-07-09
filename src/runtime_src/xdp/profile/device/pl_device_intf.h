@@ -71,7 +71,7 @@ class PLDeviceIntf {
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
     XDP_CORE_EXPORT
-    void setDevice(xdp::Device* );
+    void setDevice(std::unique_ptr<xdp::Device>);
 
     // Debug IP layout
     XDP_CORE_EXPORT
@@ -206,8 +206,6 @@ class PLDeviceIntf {
     XDP_CORE_EXPORT
     uint32_t getDeadlockStatus();
 
-    inline xdp::Device* getAbstractDevice() {return mDevice;}
-
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
     bool hasHSDPforPL() { return mHSDPforPL; }
@@ -225,8 +223,7 @@ class PLDeviceIntf {
 
     std::mutex traceLock ;
 
-    // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt_xocl::device handle or HAL handle
-    xdp::Device* mDevice = nullptr;
+    std::unique_ptr<xdp::Device> mDevice = nullptr;
 
     std::vector<AIM*> mAimList;
     std::vector<AM*>  mAmList;

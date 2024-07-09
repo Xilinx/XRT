@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -314,16 +314,6 @@ enum module_type {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
-  // Used by client profiling/debug
-  typedef struct {
-    uint64_t perf_address;
-  } profile_data_t;
-
-  typedef struct {
-    uint32_t count;
-    profile_data_t profile_data[1];
-  } aie_profile_op_t;
-
   struct AIEProfileFinalConfig
   {
     using tile_vec = std::vector<std::map<tile_type, std::string>>;
@@ -339,7 +329,6 @@ enum module_type {
     {
     }
   };
-
 
 } // end namespace xdp
 

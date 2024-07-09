@@ -380,6 +380,14 @@ public:
   virtual std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) = 0;
 
+  // Poll for command completion
+  virtual int
+  poll(const xrt_core::command* cmd) const = 0;
+
+  // Poll for command completion
+  virtual int
+  poll(xrt_core::buffer_handle* cmd) const = 0;
+
   // Enqueue a command dependency
   virtual void
   submit_wait(const xrt::fence& fence) = 0;
@@ -470,6 +478,22 @@ public:
     return m_qhdl->wait_command(cmd, static_cast<uint32_t>(timeout_ms))
       ? std::cv_status::no_timeout
       : std::cv_status::timeout;
+  }
+
+  // Poll for command completion. Return value different from 0 indicates
+  // that the command state should be checked to determine completion.
+  int
+  poll(const xrt_core::command* cmd) const override
+  {
+    return m_qhdl->poll_command(cmd->get_exec_bo());
+  }
+
+  // Poll for command completion. Return value different from 0 indicates
+  // that the command state should be checked to determine completion.
+  int
+  poll(xrt_core::buffer_handle* cmd) const override
+  {
+    return m_qhdl->poll_command(cmd);
   }
 
   void
@@ -662,6 +686,28 @@ public:
     throw std::runtime_error("kds_device::wait(buffer_handle) not implemented");
   }
 
+  // Poll for command completion
+  //
+  // Only qds device has poll implementation.  For legacy kds polling
+  // is not needed as command state is live.  Instead return 1 to indicate
+  // that the command state must be checked.
+  int
+  poll(const xrt_core::command*) const override
+  {
+    return 1;
+  }
+
+  // Poll for command completion
+  //
+  // Only qds device has poll implementation.  For legacy kds polling
+  // is not needed as command state is live.  Instead return 1 to indicate
+  // that the command state must be checked.
+  int
+  poll(xrt_core::buffer_handle*) const override
+  {
+    return 1;
+  }
+
   void
   submit_wait(const xrt::fence&) override
   {
@@ -844,6 +890,20 @@ hw_queue::
 wait(const xrt_core::command* cmd) const
 {
   get_handle()->wait(cmd, 0);
+}
+
+int
+hw_queue::
+poll(const xrt_core::command* cmd) const
+{
+  return get_handle()->poll(cmd);
+}
+
+int
+hw_queue::
+poll(xrt_core::buffer_handle* cmd) const
+{
+  return get_handle()->poll(cmd);
 }
 
 void
