@@ -373,7 +373,7 @@ def xclLogMsg(handle, level, tag, form, *args):
 
     :param handle: (xclDeviceHandle) device handle
     :param level: (xrtLogMsgLevel) Severity level of the msg
-    :param tag: (const char*) Tag supplied by the client, like "OCL", "XMA", etc.
+    :param tag: (const char*) Tag supplied by the client, like "OCL" etc.
     :param format: (const char *) Format of Msg string to write to log file
     :param ...: All other arguments as per the format
     :return: 0 on success or appropriate error number
