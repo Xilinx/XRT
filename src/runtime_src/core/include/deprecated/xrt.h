@@ -411,7 +411,7 @@ xclVersion();
  *
  * @handle:        Device handle
  * @level:         Severity level of the msg
- * @tag:           Tag supplied by the client, like "OCL", "XMA", etc.
+ * @tag:           Tag supplied by the client, like "OCL" etc.
  * @format:        Format of Msg string to write to log file
  * @...:           All other arguments as per the format
  *

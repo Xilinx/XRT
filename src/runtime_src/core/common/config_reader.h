@@ -413,37 +413,6 @@ get_platform_repo()
   return value;
 }
 
-/**
- * Enable xma mode. 1 = default (1 cu cmd at a time); 2 = (upto 2 cu cmds at a time);
- *     3 = (upto 8 cu cmds at a time);  4 = (upto 64 cu cmds at a time); Max cu cmds at a time per session
- */
-inline unsigned int
-get_xma_exec_mode()
-{
-  static unsigned int value = detail::get_uint_value("Runtime.xma_exec_mode",0x1);
-  return value;
-}
-
-/**
- * Enable xma cpu mode. 1 = default (low cpu load + high perf); 2 = high perf; 3 = low cpu load
- */
-inline unsigned int
-get_xma_cpu_mode()
-{
-  static unsigned int value = detail::get_uint_value("Runtime.xma_cpu_mode",0x1);
-  return value;
-}
-
-/**
- * Use XMA with old KDS; Default for XMA is to assume KDS2.0
- */
-inline bool
-get_xma_kds_old()
-{
-  static bool value = detail::get_bool_value("Runtime.xma_kds_old",false);
-  return value;
-}
-
 inline bool
 get_enable_flat()
 {
