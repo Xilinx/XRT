@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "common.h"
 #include "context.h"
@@ -13,10 +13,12 @@ context(std::shared_ptr<device> device)
 {}
 
 // Global map of contexts
-xrt_core::handle_map<context_handle, std::shared_ptr<context>> context_cache;
+//we should override clang-tidy warning by adding NOLINT since context_cache is non-const parameter
+xrt_core::handle_map<context_handle, std::shared_ptr<context>> context_cache; //NOLINT
 
 // thread local hip objects
-thread_local hip_tls_objs tls_objs;
+//we should override clang-tidy warning by adding NOLINT since tls_objs is non-const parameter
+thread_local hip_tls_objs tls_objs; //NOLINT
 
 // returns current context
 // if primary context is active it is current

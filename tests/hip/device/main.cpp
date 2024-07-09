@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 // TODO: set up CMake
 // % g++ -g -std=c++17 -I${XILINX_XRT}/include -L${XILINX_XRT}/lib \

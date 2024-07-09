@@ -2057,7 +2057,7 @@ class run_impl
     auto kcmd = pkt->get_ert_cmd<ert_start_kernel_cmd*>();
     auto payload = kernel->initialize_command(pkt);
 
-    if (kcmd->opcode == ERT_START_DPU || kcmd->opcode == ERT_START_IPU || kcmd->opcode == ERT_START_IPU_PREEMPT) {
+    if (kcmd->opcode == ERT_START_DPU || kcmd->opcode == ERT_START_NPU || kcmd->opcode == ERT_START_NPU_PREEMPT) {
       auto payload_past_dpu = initialize_dpu(payload);
 
       // adjust count to include the prepended ert_dpu_data structures

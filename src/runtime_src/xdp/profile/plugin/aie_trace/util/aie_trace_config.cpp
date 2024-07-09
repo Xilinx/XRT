@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,7 +29,7 @@
 
 #include "core/common/message.h"
 #include "core/include/xrt/xrt_kernel.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -159,7 +159,7 @@ namespace xdp::aie::trace {
 
     std::vector<XAie_Events> comboEvents;
 
-    if (type == module_type::core) {
+    if (mod == XAIE_CORE_MOD) {
       auto comboEvent = xaieTile.core().comboEvent(4);
       comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_2_CORE);
 

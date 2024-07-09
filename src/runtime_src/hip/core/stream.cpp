@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2024 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
@@ -159,5 +159,6 @@ get_stream(hipStream_t stream)
 }
 
 // Global map of streams
-xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
+//we should override clang-tidy warning by adding NOLINT since stream_cache is non-const parameter
+xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache; //NOLINT
 }

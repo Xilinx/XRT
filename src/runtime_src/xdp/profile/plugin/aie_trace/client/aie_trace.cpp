@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +26,7 @@
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/pl_device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
@@ -694,7 +694,7 @@ namespace xdp {
 
     std::vector<XAie_Events> comboEvents;
 
-    if (type == module_type::core) {
+    if (mod == XAIE_CORE_MOD) {
       //auto comboEvent = xaieTile.core().comboEvent(4);
       comboEvents.push_back(XAIE_EVENT_COMBO_EVENT_2_CORE);
 
@@ -1115,7 +1115,7 @@ namespace xdp {
           aieConfig = cfgTile->memory_tile_trace_config;
 
         // Configure combo events for metric sets that include DMA events        
-        auto comboEvents = configComboEvents(loc, XAIE_CORE_MOD, module_type::dma, metricSet, aieConfig);
+        auto comboEvents = configComboEvents(loc, mod, type, metricSet, aieConfig);
         if (comboEvents.size() == 2) {
           traceStartEvent = comboEvents.at(0);
           traceEndEvent = comboEvents.at(1);

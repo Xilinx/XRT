@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2023-2024 Advanced Micro Device, Inc. All rights reserved.
+// Copyright (C) 2023-2024 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "hip/core/common.h"
 #include "hip/core/event.h"
@@ -65,7 +65,8 @@ static void
 hip_stream_destroy(hipStream_t stream)
 {
   throw_invalid_handle_if(!stream, "stream is nullptr");
-  throw_invalid_resource_if(stream == hipStreamPerThread, "Stream per thread can't be destroyed");
+  ///we should override clang-tidy warning by adding NOLINT since hipStreamPerThread coming from hip, we dont have control
+  throw_invalid_resource_if(stream == hipStreamPerThread, "Stream per thread can't be destroyed"); //NOLINT
 
   stream_cache.remove(stream);
 }
