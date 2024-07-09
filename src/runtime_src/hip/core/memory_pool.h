@@ -130,6 +130,10 @@ namespace xrt::core::hip
     bool
     extend_memory_list(size_t size);
 
+    // add one block to the memory pool
+    bool
+    memory_pool::extend_memory_pool(size_t aligned_size);
+
     std::shared_ptr<memory_pool_node>
     find_memory_pool_node(void* ptr, uint64_t &start);
 

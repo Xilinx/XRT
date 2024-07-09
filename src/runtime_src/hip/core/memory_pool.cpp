@@ -28,12 +28,13 @@ namespace xrt::core::hip
   {
     if (node->m_prev == nullptr) {
       head = node->m_next;
-      if (node->m_next != nullptr) node->m_next->m_prev = nullptr;
-    } else {
+      if (node->m_next != nullptr)
+        node->m_next->m_prev = nullptr;
+    } 
+    else {
       node->m_prev->m_next = node->m_next;
-      if (node->m_next!= nullptr) {
+      if (node->m_next!= nullptr)
         node->m_next->m_prev = node->m_prev;
-      }
     }
   }
 
@@ -42,9 +43,8 @@ namespace xrt::core::hip
   {    
     node->m_prev = nullptr;
     node->m_next = head;
-    if (head != nullptr) {
+    if (head != nullptr)
       head->m_prev = node;
-    }
     head = node;
   }
 
@@ -60,6 +60,7 @@ namespace xrt::core::hip
     m_free_list = std::make_shared<memory_pool_slot>(0, size);
   }
 
+  // merge adjacent free slots as one slot
   void
   memory_pool_node::merge_free_slots(std::shared_ptr<memory_pool_slot> new_free_slot)
   {
@@ -68,7 +69,8 @@ namespace xrt::core::hip
 
     while (p0->is_free()) {
       p1 = p0;
-      if (p0->start() == 0) break;
+      if (p0->start() == 0)
+        break;
       p0 = p0->prev();
     }
 
@@ -84,11 +86,9 @@ namespace xrt::core::hip
   memory_pool_node::free(size_t start)
   {
     size_t size_freed = 0;
-    auto used_slot  = m_alloc_list;
-    while (used_slot != nullptr)
-    {
-      if (used_slot->m_start == start )
-      {
+    auto used_slot = m_alloc_list;
+    while (used_slot) {
+      if (used_slot->m_start == start ) {
         size_freed = used_slot->get_size();
         m_used -= size_freed;
         dlinkedlist_delete(m_alloc_list, used_slot);
@@ -98,7 +98,7 @@ namespace xrt::core::hip
         break;
       }
       used_slot = used_slot->m_next;
-    };
+    }
     return size_freed;
   }
 
@@ -118,13 +118,9 @@ namespace xrt::core::hip
     m_reserved_mem_current = m_pool_size;
 
     if (m_pool_size > m_max_total_size)
-    {
       throw std::runtime_error("mem poolsize is too big.");
-    }
     else if (m_pool_size == m_max_total_size)
-    {
       m_auto_extend = false;
-    }
 
     m_list.emplace(m_list.end(), std::make_shared<memory_pool_node>(m_device, m_pool_size, m_last_id++));
   }
@@ -132,9 +128,8 @@ namespace xrt::core::hip
   void
   memory_pool::get_attribute(hipMemPoolAttr attr, void* value)
   {
-    if (m_list.size() == 0) {
+    if (m_list.size() == 0)
       init();
-    }
 
     switch (attr)
     {
@@ -222,27 +217,47 @@ namespace xrt::core::hip
     return true;
   }
 
+  // add one block to the memory pool
+  bool
+  memory_pool::extend_memory_pool(size_t aligned_size)
+  {
+    if (m_pool_size + aligned_size > m_max_total_size) {
+      // No enough memory.
+      return false;
+    }
+    size_t add_mem_sz = m_max_total_size - m_pool_size;
+    add_mem_sz = add_mem_sz >= m_pool_size ? m_pool_size : add_mem_sz;
+    // add additional block
+    if (!extend_memory_list(add_mem_sz)) {
+      // No enough memory.
+      return false;
+    }
+    
+    m_reserved_mem_current += add_mem_sz;
+    m_reserved_mem_high = m_reserved_mem_current;
+    return true;
+  }
+
   void memory_pool::malloc(void**ptr, size_t size)
   {
     *ptr = alloc(size);
   }
 
+  // create allocation from a free slot in the memory pool
   void*
   memory_pool::alloc(size_t size)
   {
-    if (m_list.size() == 0) {
+    if (m_list.size() == 0)
       init();
-    }
 
+    // every allocation from pool has page size alignment
     size_t page_size = xrt_core::getpagesize();
     size_t aligned_size = ((size + page_size) / page_size) * page_size;
 
     std::lock_guard lock(m_mutex);
 
     if (aligned_size > m_pool_size)
-    {
       throw std::runtime_error("requested size is greater than memory pool block size.");
-    }
 
     std::shared_ptr<memory_pool_node> mm;
 
@@ -251,87 +266,89 @@ namespace xrt::core::hip
     while (num_tries <= 2) {
       ++ num_tries;
       auto mp_itr = m_list.begin();
-      while (mp_itr != m_list.end())
-      {
+      while (mp_itr != m_list.end()){
         mm = *mp_itr;
-        if (m_pool_size - mm->m_used < aligned_size)
-        {
+        // skip blocks with too liitle memory left to fit the required aligned_size
+        if (m_pool_size - mm->m_used < aligned_size) {
           mp_itr++;
           continue;
         }
 
-        auto _free = mm->m_free_list;
-        auto _not_free = _free;
+        auto free_slot = mm->m_free_list;
+        auto alloc_slot = free_slot;
 
-        while (_free != nullptr)
-        {
-          if (_free->m_size >= aligned_size)
-          {
-            if (_free->m_size > aligned_size)
-            {
-              _not_free = _free;
+        // find the free slot large enough from the free list (m_free_list), mark it as "not free"
+        // and move it to m_alloc_list
+        while (free_slot != nullptr) {
+          if (free_slot->m_size >= aligned_size) {
+            // found a slot that is large enough
+            if (free_slot->m_size > aligned_size) {
+              // if the slot found is large than require aligned_size, divide it into two slots:
+              // use the first one (alloc_slot) for the current requested allocation
+              // save the other one (free_slot) for future use
+              alloc_slot = free_slot;
+              free_slot = std::make_shared<memory_pool_slot>(alloc_slot->start() + aligned_size, alloc_slot->m_size - aligned_size);
 
-              _free = std::make_shared<memory_pool_slot>(_not_free->start() + aligned_size, _not_free->m_size - aligned_size);
-
-              // update free_list
-              if (_free->m_prev == nullptr) {
-                mm->m_free_list = _free;
+              // update m_free_list,remove alloc_slot from double linked m_free_list
+              if (free_slot->m_prev == nullptr) {
+                mm->m_free_list = free_slot;
               }
               else {
-                _free->m_prev->m_next = _free;
+                free_slot->m_prev->m_next = free_slot;
               }
-              if (_free->m_next) {
-                _free->m_next->m_prev = _free;
+              if (free_slot->m_next) {
+                free_slot->m_next->m_prev = free_slot;
               }
 
-              _not_free->m_is_free = false;
-              _not_free->m_size = aligned_size;
+              alloc_slot->m_is_free = false;
+              alloc_slot->m_size = aligned_size;
             }
-            else
-            {
-              _not_free = _free;
-              dlinkedlist_delete(mm->m_free_list, _not_free);
-              _not_free->m_is_free = false;
+            else {
+              // if the free slot found has exactly the same size as required aligned_size
+              // there is no need to divide the slot, just remove the slot from m_free_list
+              alloc_slot = free_slot;
+              dlinkedlist_delete(mm->m_free_list, alloc_slot);
+              alloc_slot->m_is_free = false;
             }
-            dlinkedlist_insert(mm->m_alloc_list, _not_free);
 
-            mm->m_used += _not_free->m_size;
-            m_used_mem_current += _not_free->m_size;
+            // move the newly found slot to m_alloc_list
+            dlinkedlist_insert(mm->m_alloc_list, alloc_slot);
+
+            // keep track of the total allocated size
+            mm->m_used += alloc_slot->m_size;
+            m_used_mem_current += alloc_slot->m_size;
             m_used_mem_high = m_used_mem_current;
 
-            size_t new_mem_start = reinterpret_cast<uint64_t>(mm->m_memory->get_address()) + _not_free->m_start;
+            // newly allocated hip mem address = pool mem block address + slot offset
+            size_t new_mem_start = reinterpret_cast<uint64_t>(mm->m_memory->get_address()) + alloc_slot->m_start;
             return reinterpret_cast<void*>(new_mem_start);
           }
-          _free = _free->m_next;
+          free_slot = free_slot->m_next;
         }
+
         mp_itr++;
         mm = *mp_itr;
       }
       
-      if (num_tries == 2) break;
+      // we have already tried enlarging the pool and still no free slot is found
+      if (num_tries == 2)
+        break;
       
-      if (m_auto_extend)
-      {
-        if (m_pool_size + aligned_size > m_max_total_size) {
-          //throw std::runtime_error("No enough memory.");
+      if (m_auto_extend) {
+        // no free slot has been found, add one additional block to the pool and try one more time
+        if (extend_memory_pool(aligned_size) == false) {
+          // enlarging pool failed
           break;
         }
-        size_t add_mem_sz = m_max_total_size - m_pool_size;
-        add_mem_sz = add_mem_sz >= m_pool_size ? m_pool_size : add_mem_sz;
-        // add additional block
-        if (!extend_memory_list(add_mem_sz)) {
-          //throw std::runtime_error("No enough memory.");
-          break;
-        }
-        m_reserved_mem_current += add_mem_sz;
-        m_reserved_mem_high = m_reserved_mem_current;
       }
     };
 
+    // allocation failed
     throw std::runtime_error("No enough memory.");
     return nullptr;
   }
 
+  // lookup the memory pool node from address (ptr)
   std::shared_ptr<memory_pool_node>
   memory_pool::find_memory_pool_node(void* ptr, uint64_t &start)
   {
@@ -349,10 +366,12 @@ namespace xrt::core::hip
     return nullptr;
   }
 
+  // free a previous allocation
   void
   memory_pool::free(void* ptr)
   {
-    if (ptr == nullptr || m_list.size() == 0) return;
+    if (ptr == nullptr || m_list.size() == 0)
+      return;
 
     std::lock_guard lock(m_mutex);
 
@@ -366,10 +385,13 @@ namespace xrt::core::hip
     }
   }
 
+  // trim memory pool by releasing unused blocks back to system until
+  // either total size < min_bytes_to_hold or there is no more blocks to free
   void
   memory_pool::trim_to(size_t min_bytes_to_hold)
   {
-    if (m_reserved_mem_current < min_bytes_to_hold) return;
+    if (m_reserved_mem_current < min_bytes_to_hold)
+      return;
 
     std::lock_guard lock(m_mutex);
 
@@ -391,12 +413,15 @@ namespace xrt::core::hip
     } while (node_deleted && m_reserved_mem_current >= min_bytes_to_hold);
   }
 
+  // trim memory pool by releasing unused blocks back to system until
+  // either total size < m_release_threshold (set by user) or there is no more blocks to free
   void
   memory_pool::purge()
   {
     trim_to(m_release_threshold);
   }
 
+  // lookup memory pool by opaque handle
   std::shared_ptr <memory_pool>
   get_mem_pool(hipMemPool_t mem_pool)
   {

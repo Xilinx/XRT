@@ -203,7 +203,8 @@ namespace xrt::core::hip
     auto hip_stream = get_stream(stream);
     throw_invalid_value_if(!hip_stream, "Invalid stream handle.");
 
-    // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
+    // ptr to a xrt::core::hip::command object could be shared between global command_cache
+    // and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
                                  std::make_shared<memcpy_command>(hip_stream, dst, src, size, kind));
