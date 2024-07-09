@@ -393,5 +393,13 @@ finish_flush_device(void* handle)
 #endif
 }
 
+void flush_old_stored()
+{
+#ifdef XDP_CLIENT_BUILD
+  if (xrt_core::config::get_ml_timeline())
+    xrt_core::xdp::ml_timeline::flush_old_stored();
+#endif
+}
+
 } // end namespace xrt_core::xdp
 
