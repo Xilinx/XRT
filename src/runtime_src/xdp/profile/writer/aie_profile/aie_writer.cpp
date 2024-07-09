@@ -36,7 +36,7 @@ namespace xdp {
   {
     // Updated offsets for AIE mem, shim and mem_tile to 1000, 2000, 3000 respectively.
     float fileVersion = 1.1;
-    
+
     // Report HW generation to inform analysis how to interpret event IDs
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
 
@@ -57,14 +57,14 @@ namespace xdp {
   {
     auto validConfig = (db->getStaticInfo()).getProfileConfig();
     std::map<module_type, std::vector<std::string>> filteredConfig;
-    for(int i=0; i<module_type::num_types; i++)
+    for(size_t i=0; i<module_type::num_types; i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
 
     const auto& configMetrics = validConfig.configMetrics;
-    for(int i=0; i<configMetrics.size(); i++)
+    for(size_t i=0; i<configMetrics.size(); i++)
     {
       std::vector<std::string> metrics;
-      
+
       const auto& validMetrics = configMetrics[i];
       for(auto &elm : validMetrics) {
         metrics.push_back(std::to_string(+elm.first.col) + "," + std::to_string(+elm.first.row)+ "," + elm.second);
@@ -115,7 +115,7 @@ namespace xdp {
       this->writerDataColumnHeader();
       this->mHeaderWritten = true;
     }
-    
+
     // Write all data elements
     std::vector<counters::Sample> samples =
       db->getDynamicInfo().moveAIESamples(mDeviceIndex);
