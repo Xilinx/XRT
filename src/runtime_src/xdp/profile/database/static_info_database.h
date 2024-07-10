@@ -242,7 +242,7 @@ namespace xdp {
     // ************************************************
     // ***** Functions related to the run summary *****
     XDP_CORE_EXPORT
-    std::vector<std::pair<std::string, std::string>> getOpenedFiles() ;
+    std::vector<std::pair<std::string, std::string>>& getOpenedFiles() ;
     XDP_CORE_EXPORT
     void addOpenedFile(const std::string& name, const std::string& type) ;
     XDP_CORE_EXPORT std::string getSystemDiagram() ;

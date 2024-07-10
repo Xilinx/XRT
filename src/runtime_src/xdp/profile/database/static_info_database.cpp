@@ -206,7 +206,7 @@ namespace xdp {
 
   // ************************************************
   // ***** Functions related to the run summary *****
-  std::vector<std::pair<std::string, std::string>>
+  std::vector<std::pair<std::string, std::string>>&
   VPStaticDatabase::getOpenedFiles()
   {
     std::lock_guard<std::mutex> lock(summaryLock) ;
@@ -433,6 +433,10 @@ namespace xdp {
     }
     else if (newXclbinType == XCLBIN_AIE_ONLY)
     {
+      // By the time of PLDeviceIntf creation, corresponding config is already stored in loaded configs.
+      // currently loaded config  = totalConfigs-1
+      // previously loaded config = totalConfigs-2
+      // Hence, required missing PLDeviceIntf is fetched from (totalConfigs-2) index.
       int totalConfigs = deviceInfo[deviceId]->loadedConfigInfos.size();
       if (totalConfigs > 1)
       {
