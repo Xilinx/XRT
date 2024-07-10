@@ -314,7 +314,8 @@ namespace xrt::core::hip
     auto mem_pool = memory_pool_db[dev->get_device_id()].front();
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
-    *dev_ptr = memory_database::instance().insert_sub_mem(std::make_shared<sub_memory>(size));
+    auto h = memory_database::instance().insert_sub_mem(std::make_shared<sub_memory>(size));
+    *dev_ptr = reinterpret_cast<void*>(h);
  
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
@@ -380,7 +381,8 @@ namespace xrt::core::hip
     auto pool = mem_pool_cache.get_or_error(mem_pool);
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
-    *dev_ptr = memory_database::instance().insert_sub_mem(std::make_shared<sub_memory>(size));
+    auto h = memory_database::instance().insert_sub_mem(std::make_shared<sub_memory>(size));
+    *dev_ptr = reinterpret_cast<void*>(h);
 
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();

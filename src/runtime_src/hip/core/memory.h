@@ -4,6 +4,7 @@
 #define xrthip_memory_h
 
 #include "core/common/device.h"
+#include "core/common/unistd.h"
 #include "device.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_ext.h"
@@ -14,7 +15,7 @@
 namespace xrt::core::hip
 {
   // memory_handle - opaque memory handle
-  using memory_handle = void*;
+  using memory_handle = uint64_t;
 
   enum class memory_type : int
   {
@@ -165,7 +166,7 @@ namespace xrt::core::hip
   private:
     addr_map m_addr_map; // address lookup for regular xrt::bo
     addr_map m_sub_addr_map; // address lookup for sub buffer xrt::bo
-    xrt_core::handle_map<memory_handle, std::shared_ptr<sub_memory>> m_sub_mem_cache; // sub_memory lookup via handle
+    std::map<memory_handle, std::shared_ptr<sub_memory>> m_sub_mem_cache; // sub_memory lookup via handle
     std::mutex m_mutex;
 
   protected:
@@ -186,23 +187,13 @@ namespace xrt::core::hip
     remove(uint64_t addr);
 
     memory_handle
-    insert_sub_mem(std::shared_ptr<sub_memory> sub_mem)
-    {
-      return insert_in_map(m_sub_mem_cache, sub_mem);
-    }
+    insert_sub_mem(std::shared_ptr<sub_memory> sub_mem);
 
-    std::shared_ptr<xrt::core::hip::sub_memory>
-    memory_database::get_sub_mem_from_handle(memory_handle h)
-    {
-      return m_sub_mem_cache.get(h);
-    }
+    std::shared_ptr<sub_memory>
+    memory_database::get_sub_mem_from_handle(memory_handle h);
 
     void
-    insert_sub_mem_addr(uint64_t addr, size_t size, std::shared_ptr<sub_memory> sub_mem)
-    {
-      std::lock_guard lock(m_mutex);
-      m_sub_addr_map.insert({ address_range_key(addr, size), sub_mem });
-    }
+    insert_sub_mem_addr(uint64_t addr, size_t size, std::shared_ptr<sub_memory> sub_mem);
 
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);
@@ -210,7 +201,16 @@ namespace xrt::core::hip
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(const void* addr);
   };
-  
+
+  // helper function to get page aligned size;
+  inline size_t
+  get_page_aligned_size(size_t sz)
+  {
+    size_t page_size = xrt_core::getpagesize();
+    size_t aligned_size = ((sz + page_size) / page_size) * page_size;
+    return aligned_size;
+  }
+
 } // xrt::core::hip
 
 #endif

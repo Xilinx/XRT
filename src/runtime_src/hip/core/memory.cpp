@@ -9,7 +9,6 @@
 #endif
 
 #include "common.h"
-#include "core/common/unistd.h"
 #include "device.h"
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
@@ -184,9 +183,44 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
+    m_sub_mem_cache.erase(addr);
     m_sub_addr_map.erase(address_range_key(addr, 0));
     m_addr_map.erase(address_range_key(addr, 0));
   }
+
+  memory_handle
+  memory_database::insert_sub_mem(std::shared_ptr<sub_memory> sub_mem)
+  {
+    std::lock_guard lock(m_mutex);
+
+    static auto curr_start = get_page_aligned_size(0x10000);
+    size_t aligned_size = get_page_aligned_size(sub_mem->get_size());
+    memory_handle h = curr_start;
+    m_sub_mem_cache.insert({h, sub_mem});
+    curr_start += aligned_size;
+    return h;
+  }
+
+  std::shared_ptr<sub_memory>
+  memory_database::get_sub_mem_from_handle(memory_handle h)
+  {
+    std::lock_guard lock(m_mutex);
+
+    auto itr = m_sub_mem_cache.find(h);
+    if (itr != m_sub_mem_cache.end())
+      return itr->second;
+    else
+      return nullptr;
+  }
+
+  void
+  memory_database::insert_sub_mem_addr(uint64_t addr, size_t size, std::shared_ptr<sub_memory> sub_mem)
+  {
+    std::lock_guard lock(m_mutex);
+
+    m_sub_addr_map.insert({ address_range_key(addr, size), sub_mem });
+  }
+
 
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)

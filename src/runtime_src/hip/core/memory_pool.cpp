@@ -252,8 +252,7 @@ namespace xrt::core::hip
     }
 
     // every allocation from pool has page size alignment
-    size_t page_size = xrt_core::getpagesize();
-    size_t aligned_size = ((size + page_size) / page_size) * page_size;
+    size_t aligned_size = get_page_aligned_size(size);
 
     std::lock_guard lock(m_mutex);
 
@@ -320,9 +319,9 @@ namespace xrt::core::hip
             m_used_mem_current += alloc_slot->m_size;
             m_used_mem_high = m_used_mem_current;
 
-            // return pool_mem
+            // init the sub_mem with bo/offset fro the newly found slot
             sub_mem->init(mm->m_memory, size, alloc_slot->m_start);
-            memory_database::instance().insert_sub_mem_addr(reinterpret_cast<uint64_t>(sub_mem->get_address()),
+            memory_database::instance().insert_sub_mem_addr(reinterpret_cast<uint64_t>(ptr),
                                                             sub_mem->get_size(), sub_mem);
             return;
           }
