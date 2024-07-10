@@ -112,9 +112,8 @@ namespace xrt::core::hip
 
     void trim_to(size_t min_bytes_to_hold);
 
-    void malloc(void**ptr, size_t size);
-    void* alloc(size_t size);
-    void free(void *ptr);
+    void malloc(void* ptr, size_t size);
+    void free(void* ptr);
 
     void get_attribute(hipMemPoolAttr attr, void* value);
     void set_attribute(hipMemPoolAttr attr, void* value);

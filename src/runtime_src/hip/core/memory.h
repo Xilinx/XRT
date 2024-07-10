@@ -57,6 +57,8 @@ namespace xrt::core::hip
     void
     sync(xclBOSyncDirection);
 
+    void
+    copy(const memory& src, size_t sz, size_t src_offset = 0, size_t dst_offset = 0);
 
     const xrt::bo&
     get_xrt_bo() const
@@ -120,14 +122,76 @@ namespace xrt::core::hip
     }
   };
   
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  // memory with actual allocation from memory pool for async allocation
+  class pool_memory
+  {
+  public:
+
+    pool_memory(size_t size = 0)
+      : m_mem(nullptr), m_size(size), m_offset(0)
+    {
+    }
+
+    void
+    set_memory(std::shared_ptr<memory> hip_mem)
+    {
+      m_mem = std::move(hip_mem);
+    }
+
+    std::shared_ptr<memory>
+    get_memory()
+    {
+      return m_mem;
+    }
+
+    void
+    set_size(size_t sz)
+    {
+      m_size = sz;
+    }
+
+    size_t
+    get_size() const
+    {
+      return m_size;
+    }
+
+    void 
+    set_offset(size_t offset)
+    {
+      m_offset = offset;
+    }
+
+    size_t
+    get_offset() const
+    {
+      return m_offset;
+    }
+
+  protected:
+    std::shared_ptr<memory> m_mem; // shared ptr to a memory block from memory pool
+    size_t m_size; // initial allocation size when memory_pool::malloc() is called
+    size_t m_offset; // start offset from the address of backing memory block
+  };
+
+  // pool_mem_handle - opaque pool_memory handle
+  using pool_mem_handle = void*;
+
+  extern xrt_core::handle_map<pool_mem_handle, std::shared_ptr<pool_memory>> pool_mem_cache;
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
   using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz_key_compare>;
+  using pool_mem_addr_map = std::map<address_range_key, std::shared_ptr<pool_memory>, address_sz_key_compare>;
   
   class memory_database
   {
   private:
     addr_map m_addr_map;
+    pool_mem_addr_map m_pool_mem_addr_map;
     std::mutex m_mutex;
-  
+
   protected:
     memory_database();
   
@@ -141,10 +205,16 @@ namespace xrt::core::hip
   
     void
     insert(uint64_t addr, size_t size, std::shared_ptr<memory> hip_mem);
-  
+
     void
     remove(uint64_t addr);
-  
+
+    pool_mem_handle
+    insert_pool_mem(std::shared_ptr<pool_memory> pool_mem);
+
+    std::shared_ptr<xrt::core::hip::pool_memory>
+    memory_database::get_pool_mem_from_addr(void* addr);
+
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);
   

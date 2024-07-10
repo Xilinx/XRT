@@ -49,3 +49,17 @@ EXPORTS
   hipStreamDestroy
   hipStreamSynchronize
   hipStreamWaitEvent
+  hipMemsetAsync
+  hipMemsetD32Async
+  hipMemsetD16Async
+  hipMemsetD8Async
+  hipMallocAsync
+  hipFreeAsync
+  hipMemcpyAsync
+  hipMemPoolCreate
+  hipMemPoolDestroy
+  hipMemPoolGetAttribute
+  hipMemPoolSetAttribute
+  hipMemPrefetchAsync
+  hipMallocFromPoolAsync
+  hipMemPoolTrimTo

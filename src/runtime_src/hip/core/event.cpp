@@ -185,13 +185,13 @@ bool memcpy_command::wait()
 
 bool memory_pool_command::submit()
 {
-  switch (_type)
+  switch (m_type)
   {
   case alloc:
-    _handle = std::async(std::launch::async, &memory_pool::malloc, _mem_pool, reinterpret_cast<void**>(_ptr), _size);
+    m_mem_pool->malloc(m_ptr, m_size);
     break;
   case free:
-    _handle = std::async(std::launch::async, &memory_pool::free, _mem_pool, reinterpret_cast<void*>(_ptr));
+    m_mem_pool->free(m_ptr);
     break;
   
   default:
@@ -204,8 +204,7 @@ bool memory_pool_command::submit()
 
 bool memory_pool_command::wait()
 {
-  _handle.wait();
-  set_state(state::completed);
+  // no-op
   return true;
 }
 

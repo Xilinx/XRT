@@ -165,7 +165,13 @@ namespace xrt::core::hip
     throw_invalid_handle_if(!hip_mem_dst, "Invalid destination handle.");
     throw_invalid_value_if(dst_offset + size > hip_mem_dst->get_size(), "dst out of bound.");
 
-    hip_mem_dst->write(src, size, 0, dst_offset);
+    auto src_hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
+    auto hip_mem_src = src_hip_mem_info.first;
+    auto src_offset = src_hip_mem_info.second;
+    throw_invalid_handle_if(!hip_mem_src, "Invalid source handle.");
+    throw_invalid_value_if(src_offset + size > hip_mem_src->get_size(), "src out of bound.");
+
+    hip_mem_dst->copy(*(hip_mem_src.get()), size, src_offset, dst_offset);
   }
 
   static void
@@ -255,7 +261,6 @@ namespace xrt::core::hip
     auto hip_mem_info = memory_database::instance().get_hip_mem_from_addr(dst);
     auto hip_mem_dst = hip_mem_info.first;
     auto offset = hip_mem_info.second;
-    assert(hip_mem_dst->get_type() != xrt::core::hip::memory_type::invalid);
     throw_invalid_value_if(offset + size > hip_mem_dst->get_size(), "dst out of bound.");
 
     auto element_size = sizeof(T);
@@ -309,10 +314,12 @@ namespace xrt::core::hip
     auto mem_pool = memory_pool_db[dev->get_device_id()].front();
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
+    *dev_ptr = memory_database::instance().insert_pool_mem(std::make_shared<pool_memory>(size));
+ 
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, mem_pool, reinterpret_cast<uint64_t>(dev_ptr), size));
+      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, mem_pool, *dev_ptr, size));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -330,7 +337,7 @@ namespace xrt::core::hip
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::free, mem_pool, reinterpret_cast<uint64_t>(dev_ptr), 0));
+      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::free, mem_pool, dev_ptr, 0));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -373,10 +380,12 @@ namespace xrt::core::hip
     auto pool = mem_pool_cache.get_or_error(mem_pool);
     throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
 
+    *dev_ptr = memory_database::instance().insert_pool_mem(std::make_shared<pool_memory>(size));
+
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, pool, reinterpret_cast<uint64_t>(dev_ptr), size));
+      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, pool, *dev_ptr, size));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 } // xrt::core::hip

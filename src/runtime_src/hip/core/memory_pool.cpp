@@ -67,7 +67,7 @@ namespace xrt::core::hip
     std::shared_ptr<memory_pool_slot> p0 = new_free_slot;
     std::shared_ptr<memory_pool_slot> p1 = new_free_slot;
 
-    while (p0->is_free()) {
+    while (p0 && p0->is_free()) {
       p1 = p0;
       if (p0->start() == 0)
         break;
@@ -75,7 +75,7 @@ namespace xrt::core::hip
     }
 
     p0 = p1->next();
-    while (p0 != nullptr && p0->start() < m_memory->get_size() && p0->is_free()) {
+    while (p0 && p0->start() < m_memory->get_size() && p0->is_free()) {
       dlinkedlist_delete(m_free_list, p0);
       p1->set_size(p1->get_size() + p0->get_size());
       p0 = p0->next();
@@ -236,17 +236,15 @@ namespace xrt::core::hip
     return true;
   }
 
-  void memory_pool::malloc(void**ptr, size_t size)
-  {
-    *ptr = alloc(size);
-  }
-
   // create allocation from a free slot in the memory pool
-  void*
-  memory_pool::alloc(size_t size)
+  void
+  memory_pool::malloc(void* ptr, size_t size)
   {
     if (m_list.size() == 0)
       init();
+
+    assert(ptr);
+    auto pool_mem = reinterpret_cast<pool_memory*>(ptr);
 
     // every allocation from pool has page size alignment
     size_t page_size = xrt_core::getpagesize();
@@ -317,9 +315,11 @@ namespace xrt::core::hip
             m_used_mem_current += alloc_slot->m_size;
             m_used_mem_high = m_used_mem_current;
 
-            // newly allocated hip mem address = pool mem block address + slot offset
-            size_t new_mem_start = reinterpret_cast<uint64_t>(mm->m_memory->get_address()) + alloc_slot->m_start;
-            return reinterpret_cast<void*>(new_mem_start);
+            // return pool_mem
+            pool_mem->set_memory(mm->m_memory);
+            pool_mem->set_offset(alloc_slot->m_start);
+            pool_mem->set_size(aligned_size);
+            return;
           }
           free_slot = free_slot->m_next;
         }
@@ -342,8 +342,11 @@ namespace xrt::core::hip
     };
 
     // allocation failed
+    pool_mem->set_memory(nullptr);
+    pool_mem->set_offset(0);
+    pool_mem->set_size(0);
     throw std::runtime_error("No enough memory.");
-    return nullptr;
+    return;
   }
 
   // lookup the memory pool node from address (ptr)
@@ -368,19 +371,21 @@ namespace xrt::core::hip
   void
   memory_pool::free(void* ptr)
   {
-    if (ptr == nullptr || m_list.size() == 0)
+    if (!ptr || m_list.size() == 0)
       return;
 
     std::lock_guard lock(m_mutex);
 
     uint64_t start = 0;
-    auto mm = find_memory_pool_node(ptr, start);
+    auto mm = find_memory_pool_node(reinterpret_cast<void*>(ptr), start);
     if (mm != nullptr)
     {
       // return the slot to free_list and merge it with ajacent free slot
       auto size_freed = mm->free(start);
       m_used_mem_current -= size_freed;
     }
+
+    memory_database::instance().remove(reinterpret_cast<uint64_t>(ptr));
   }
 
   // trim memory pool by releasing unused blocks back to system until

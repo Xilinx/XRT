@@ -100,26 +100,11 @@ namespace xrt::core::hip
         // pinned hip mem
         assert(src_hip_mem->get_flags() == hipHostMallocDefault || src_hip_mem->get_flags() == hipHostMallocPortable);
     }
-    else if (src_hip_mem && src_hip_mem->get_type() == memory_type::device) {
-      // normal hip mem
-      auto src_hip_mem_info = memory_database::instance().get_hip_mem_from_addr(src);
-      auto hip_mem_src = src_hip_mem_info.first;
-      src_offset += src_hip_mem_info.second;
-      throw_invalid_handle_if(!hip_mem_src, "Invalid source handle.");
-      throw_invalid_value_if(src_offset + size > hip_mem_src->get_size(), "Src out of bound.");
-      auto src_bo = hip_mem_src->get_xrt_bo();
-      if (m_bo && src_bo)
-        m_bo.copy(src_bo, size, src_offset, offset);
-    }
-    else {
-      // host memory
-      auto src_ptr = reinterpret_cast<const unsigned char*>(src);
-      src_ptr += src_offset;
-      if (m_bo) {
-        m_bo.write(src_ptr, size, offset);
-        m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-      }
-    }
+    // host memory
+    auto src_ptr = reinterpret_cast<const unsigned char*>(src);
+    src_ptr += src_offset;
+    m_bo.write(src_ptr, size, offset);
+    m_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   }
 
   void
@@ -146,6 +131,12 @@ namespace xrt::core::hip
   }
 
   void
+  memory::copy(const memory& src, size_t sz, size_t src_offset, size_t dst_offset)
+  {
+    m_bo.copy(src.get_xrt_bo(), sz, src_offset, dst_offset);
+  }
+
+  void
   memory::init_xrt_bo()
   {
     auto xrt_device = m_device->get_xrt_device();
@@ -155,6 +146,8 @@ namespace xrt::core::hip
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
   memory_database* memory_database::m_memory_database = nullptr; //NOLINT
+  // TODO: replace pool_mem_cache with something else in order to support offseted address look up
+  xrt_core::handle_map<pool_mem_handle, std::shared_ptr<pool_memory>> pool_mem_cache; //NOLINT
 
   memory_database& memory_database::instance()
   {
@@ -191,13 +184,46 @@ namespace xrt::core::hip
   memory_database::remove(uint64_t addr)
   {
     std::lock_guard lock(m_mutex);
+
+    auto pool_mem_itr = m_pool_mem_addr_map.find(address_range_key(addr, 0));
+    if (pool_mem_itr != m_pool_mem_addr_map.end()) {
+      m_pool_mem_addr_map.erase(address_range_key(addr, 0));
+      return;
+    }
+
     m_addr_map.erase(address_range_key(addr, 0));
+  }
+
+  pool_mem_handle
+  memory_database::insert_pool_mem(std::shared_ptr<pool_memory> pool_mem)
+  {
+    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
+    std::lock_guard lock(m_mutex);
+    return insert_in_map(pool_mem_cache, pool_mem);
+  }
+
+  std::shared_ptr<xrt::core::hip::pool_memory>
+  memory_database::get_pool_mem_from_addr(void* addr)
+  {
+    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
+    std::lock_guard lock(m_mutex);
+    auto pool_mem = pool_mem_cache.get_or_error(reinterpret_cast<pool_mem_handle>(addr));
+    return pool_mem;
   }
 
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
     std::lock_guard lock(m_mutex);
+
+    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
+    auto pool_mem = pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
+    if (pool_mem) {
+      auto hip_mem = pool_mem->get_memory();
+      auto offset = pool_mem->get_offset();
+      return std::pair(hip_mem, offset);
+    }
+
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
@@ -212,6 +238,15 @@ namespace xrt::core::hip
   memory_database::get_hip_mem_from_addr(const void *addr)
   {
     std::lock_guard lock(m_mutex);
+
+    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
+    auto pool_mem = pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(const_cast<void*>(addr)));
+    if (pool_mem) {
+      auto hip_mem = pool_mem->get_memory();
+      auto offset = pool_mem->get_offset();
+      return std::pair(hip_mem, offset);
+    }
+
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);

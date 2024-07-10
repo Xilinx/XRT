@@ -190,8 +190,8 @@ public:
     free
   };
 
-  memory_pool_command(std::shared_ptr<stream> s, memory_pool_command_type type, std::shared_ptr<memory_pool> pool, uint64_t ptr, size_t size)
-    : command(command::type::mem_pool_op, std::move(s)), _type(type), _mem_pool(std::move(pool)), _ptr(ptr), _size(size)
+  memory_pool_command(std::shared_ptr<stream> s, memory_pool_command_type type, std::shared_ptr<memory_pool> pool, void* ptr, size_t size)
+    : command(command::type::mem_pool_op, std::move(s)), m_type(type), m_mem_pool(std::move(pool)), m_ptr(ptr), m_size(size)
   {
   }
 
@@ -199,11 +199,11 @@ public:
   bool wait() override;
 
 private:
-  memory_pool_command_type _type;
-  std::shared_ptr<memory_pool> _mem_pool;
-  uint64_t _ptr;
-  size_t _size;
-  std::future<void> _handle;
+  memory_pool_command_type m_type;
+  std::shared_ptr<memory_pool> m_mem_pool;
+  void* m_ptr;
+  size_t m_size;
+  std::future<void> m_handle;
 };
 
 // Global map of commands
