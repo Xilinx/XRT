@@ -135,6 +135,7 @@ class AIETraceOffload
 
   private:
     void readTraceGMIO(bool final);
+    void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
     uint64_t syncAndLog(uint64_t index);
