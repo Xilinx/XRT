@@ -85,7 +85,6 @@ class AieTraceMetadata {
     uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
     uint64_t getContinuousTrace() {return continuousTrace;}
-    uint64_t getPeriodicOffloadClient() {return periodicOffloadClient;}
     void resetContinuousTrace() {continuousTrace = false;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
     uint64_t getDeviceID() {return deviceID;}
@@ -122,7 +121,6 @@ class AieTraceMetadata {
     bool isValidMetrics = true;   
     bool runtimeMetrics;
     bool continuousTrace;
-    bool periodicOffloadClient;
     bool invalidXclbinMetadata;
 
     uint32_t pollingInterval;

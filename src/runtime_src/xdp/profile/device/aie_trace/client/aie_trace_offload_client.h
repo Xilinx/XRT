@@ -87,8 +87,8 @@ class AIETraceOffload
     void stopOffload();
 
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
-    inline void setPeriodicOffloadClient() { periodicOffloadClient = true; }
-    inline bool getPeriodicOffloadClient()    { return periodicOffloadClient; }
+    inline void setContinuousTrace() { traceContinuous = true; }
+    inline bool continuousTrace()    { return traceContinuous; }
     inline void setOffloadIntervalUs(uint64_t v) { offloadIntervalUs = v; }
 
     inline AIEOffloadThreadStatus getOffloadStatus() {
@@ -122,7 +122,7 @@ class AIETraceOffload
     xrt::hw_context context;
 
     // Continuous Trace Offload (For PLIO)
-    bool periodicOffloadClient;
+    bool traceContinuous;
     uint64_t offloadIntervalUs;
     bool bufferInitialized;
     std::mutex statusLock;

@@ -38,7 +38,7 @@ namespace xdp {
                                    std::shared_ptr<AieTraceMetadata>(metadata))
     : deviceHandle(handle), deviceId(id), plDeviceIntf(dInt), traceLogger(logger),
       isPLIO(isPlio), totalSz(totalSize), numStream(numStrm),
-      periodicOffloadClient(false), offloadIntervalUs(0), bufferInitialized(false),
+      traceContinuous(false), offloadIntervalUs(0), bufferInitialized(false),
       offloadStatus(AIEOffloadThreadStatus::IDLE), mEnCircularBuf(false),
       mCircularBufOverwrite(false), context(context), metadata(metadata)
   {

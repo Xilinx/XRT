@@ -138,9 +138,6 @@ namespace xdp {
     addParameter("AIE_trace_settings.periodic_offload",
                  xrt_core::config::get_aie_trace_settings_periodic_offload(),
                  "Periodic offloading of AI Engine trace from memory to host");
-    addParameter("AIE_trace_settings.periodic_offload_client",
-                 xrt_core::config::get_aie_trace_settings_periodic_offload_client(),
-                 "Periodic offloading of AI Engine trace from memory to host for client devices");
     addParameter("AIE_trace_settings.reuse_buffer",
                  xrt_core::config::get_aie_trace_settings_reuse_buffer(),
                  "Enable use of circular buffer for AI Engine trace");
