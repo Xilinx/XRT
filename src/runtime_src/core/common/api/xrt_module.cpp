@@ -309,6 +309,12 @@ public:
       throw std::runtime_error("Not supported");
   }
 
+  [[nodiscard]] virtual size_t
+      get_scratch_pad_mem_size() const
+  {
+      throw std::runtime_error("Not supported");
+  }
+
   [[nodiscard]] virtual const control_packet&
   get_ctrlpkt() const
   {
@@ -316,7 +322,7 @@ public:
   }
 
   [[nodiscard]] virtual xrt::bo&
-  get_scratchmem()
+  get_scratch_pad_mem()
   {
     throw std::runtime_error("Not supported");
   }
@@ -447,6 +453,7 @@ class module_elf : public module_impl
   bool m_save_buf_exist = false;
   buf m_restore_buf;
   bool m_restore_buf_exist = false;
+  size_t m_scratch_pad_mem_size = 0;
 
   // The ELF sections embed column and page information in their
   // names.  Extract the column and page information from the
@@ -647,6 +654,10 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid symbol name offset " + std::to_string(dynstr_offset));
         auto symname = dynstr->get_data() + dynstr_offset;
 
+        if (!m_scratch_pad_mem_size && (strcmp(symname, Scratch_Pad_Mem_Symbol) == 0)) {
+            m_scratch_pad_mem_size = static_cast<size_t>(sym->st_size);
+        }
+
         // Get control code section referenced by the symbol, col, and page
         auto section = elf.sections[sym->st_shndx];
         if (!section)
@@ -793,10 +804,11 @@ public:
     else if (m_os_abi == Elf_Amd_Aie2p) {
       m_instr_buf = initialize_instr_buf(xrt_core::elf_int::get_elfio(m_elf));
       m_ctrl_packet_exist = initialize_ctrl_packet(xrt_core::elf_int::get_elfio(m_elf), m_ctrl_packet);
+
       m_save_buf_exist = initialize_save_buf(xrt_core::elf_int::get_elfio(m_elf), m_save_buf);
       m_restore_buf_exist = initialize_restore_buf(xrt_core::elf_int::get_elfio(m_elf), m_restore_buf);
       if (m_save_buf_exist != m_restore_buf_exist)
-          throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
+        throw std::runtime_error{ "Invalid elf because preempt save and restore is not paired" };
 
       m_arg2patcher = initialize_arg_patchers(xrt_core::elf_int::get_elfio(m_elf));
     }
@@ -824,6 +836,12 @@ public:
       get_preempt_restore() const override
   {
       return m_restore_buf;
+  }
+
+  [[nodiscard]] virtual size_t
+      get_scratch_pad_mem_size() const override
+  {
+      return m_scratch_pad_mem_size;
   }
 
   [[nodiscard]] const control_packet&
@@ -895,16 +913,13 @@ class module_sram : public module_impl
   std::shared_ptr<module_impl> m_parent;
   xrt::hw_context m_hwctx;
 
-  //TODO get scratch-pad-mem size from elf
-  static constexpr size_t m_scratchmem_size = 512 * 1024;
-
   // The instruction buffer object contains the ctrlcodes for each
   // column.  The ctrlcodes are concatenated into a single buffer
   // padded at page size specific to hardware.
   xrt::bo m_buffer;
   xrt::bo m_instr_bo;
   xrt::bo m_ctrlpkt_bo;
-  xrt::bo m_scratchmem;
+  xrt::bo m_scratch_pad_mem;
   xrt::bo m_preempt_save_bo;
   xrt::bo m_preempt_restore_bo;
 
@@ -1006,9 +1021,10 @@ class module_sram : public module_impl
     }
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
-      m_scratchmem = xrt::ext::bo{ m_hwctx, m_scratchmem_size };
-      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratchmem, patcher::buf_type::preempt_save);
-      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratchmem, patcher::buf_type::preempt_restore);
+      XRT_DEBUGF("module_sram::create_instr_buf create scratch_pad_mem of size %d for preemption\n", m_parent->get_scratch_pad_mem_size());
+      m_scratch_pad_mem = xrt::ext::bo{ m_hwctx, m_parent->get_scratch_pad_mem_size() };
+      patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem, patcher::buf_type::preempt_save);
+      patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem, patcher::buf_type::preempt_restore);
     }
 
     if (m_ctrlpkt_bo) {
@@ -1242,9 +1258,9 @@ public:
   }
 
   [[nodiscard]] virtual xrt::bo&
-      get_scratchmem() override
+      get_scratch_pad_mem() override
   {
-      return m_scratchmem;
+      return m_scratch_pad_mem;
   }
 };
 
