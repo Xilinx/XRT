@@ -179,18 +179,16 @@ namespace xrt::core::hip
   // pool_mem_handle - opaque pool_memory handle
   using pool_mem_handle = void*;
 
-  extern xrt_core::handle_map<pool_mem_handle, std::shared_ptr<pool_memory>> pool_mem_cache;
-
   ////////////////////////////////////////////////////////////////////////////////////////////////
   using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz_key_compare>;
-  using pool_mem_addr_map = std::map<address_range_key, std::shared_ptr<pool_memory>, address_sz_key_compare>;
   
   class memory_database
   {
   private:
     addr_map m_addr_map;
-    pool_mem_addr_map m_pool_mem_addr_map;
     std::mutex m_mutex;
+    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
+    xrt_core::handle_map<pool_mem_handle, std::shared_ptr<pool_memory>> m_pool_mem_cache;
 
   protected:
     memory_database();

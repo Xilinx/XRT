@@ -146,8 +146,6 @@ namespace xrt::core::hip
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
   memory_database* memory_database::m_memory_database = nullptr; //NOLINT
-  // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-  xrt_core::handle_map<pool_mem_handle, std::shared_ptr<pool_memory>> pool_mem_cache; //NOLINT
 
   memory_database& memory_database::instance()
   {
@@ -158,7 +156,7 @@ namespace xrt::core::hip
   }
 
   memory_database::memory_database()
-      : m_addr_map()
+      : m_addr_map(), m_mutex(), m_pool_mem_cache()
   {
     if (m_memory_database) {
       throw std::runtime_error
@@ -185,9 +183,9 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
-    auto pool_mem_itr = m_pool_mem_addr_map.find(address_range_key(addr, 0));
-    if (pool_mem_itr != m_pool_mem_addr_map.end()) {
-      m_pool_mem_addr_map.erase(address_range_key(addr, 0));
+    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
+    if (pool_mem) {
+      m_pool_mem_cache.remove(reinterpret_cast<pool_mem_handle>(addr));
       return;
     }
 
@@ -199,7 +197,7 @@ namespace xrt::core::hip
   {
     // TODO: replace pool_mem_cache with something else in order to support offseted address look up
     std::lock_guard lock(m_mutex);
-    return insert_in_map(pool_mem_cache, pool_mem);
+    return insert_in_map(m_pool_mem_cache, pool_mem);
   }
 
   std::shared_ptr<xrt::core::hip::pool_memory>
@@ -207,7 +205,7 @@ namespace xrt::core::hip
   {
     // TODO: replace pool_mem_cache with something else in order to support offseted address look up
     std::lock_guard lock(m_mutex);
-    auto pool_mem = pool_mem_cache.get_or_error(reinterpret_cast<pool_mem_handle>(addr));
+    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
     return pool_mem;
   }
 
@@ -217,7 +215,7 @@ namespace xrt::core::hip
     std::lock_guard lock(m_mutex);
 
     // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    auto pool_mem = pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
+    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
     if (pool_mem) {
       auto hip_mem = pool_mem->get_memory();
       auto offset = pool_mem->get_offset();
@@ -240,7 +238,7 @@ namespace xrt::core::hip
     std::lock_guard lock(m_mutex);
 
     // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    auto pool_mem = pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(const_cast<void*>(addr)));
+    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(const_cast<void*>(addr)));
     if (pool_mem) {
       auto hip_mem = pool_mem->get_memory();
       auto offset = pool_mem->get_offset();

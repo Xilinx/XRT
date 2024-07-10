@@ -244,7 +244,8 @@ namespace xrt::core::hip
       init();
 
     assert(ptr);
-    auto pool_mem = reinterpret_cast<pool_memory*>(ptr);
+    //auto pool_mem = reinterpret_cast<pool_memory*>(ptr);
+    auto pool_mem = memory_database::instance().get_pool_mem_from_addr(reinterpret_cast<pool_mem_handle>(ptr));
 
     // every allocation from pool has page size alignment
     size_t page_size = xrt_core::getpagesize();
@@ -318,7 +319,6 @@ namespace xrt::core::hip
             // return pool_mem
             pool_mem->set_memory(mm->m_memory);
             pool_mem->set_offset(alloc_slot->m_start);
-            pool_mem->set_size(aligned_size);
             return;
           }
           free_slot = free_slot->m_next;
