@@ -245,7 +245,11 @@ namespace xrt::core::hip
 
     assert(ptr);
     //auto pool_mem = reinterpret_cast<pool_memory*>(ptr);
-    auto pool_mem = memory_database::instance().get_pool_mem_from_addr(reinterpret_cast<pool_mem_handle>(ptr));
+    auto sub_mem = memory_database::instance().get_sub_mem_from_handle(reinterpret_cast<memory_handle>(ptr));
+    if (!sub_mem) {
+      throw std::runtime_error("Invlid sub_memory handle");
+      return;
+    }
 
     // every allocation from pool has page size alignment
     size_t page_size = xrt_core::getpagesize();
@@ -317,8 +321,9 @@ namespace xrt::core::hip
             m_used_mem_high = m_used_mem_current;
 
             // return pool_mem
-            pool_mem->set_memory(mm->m_memory);
-            pool_mem->set_offset(alloc_slot->m_start);
+            sub_mem->init(mm->m_memory, size, alloc_slot->m_start);
+            memory_database::instance().insert_sub_mem_addr(reinterpret_cast<uint64_t>(sub_mem->get_address()),
+                                                            sub_mem->get_size(), sub_mem);
             return;
           }
           free_slot = free_slot->m_next;
@@ -342,10 +347,7 @@ namespace xrt::core::hip
     };
 
     // allocation failed
-    pool_mem->set_memory(nullptr);
-    pool_mem->set_offset(0);
-    pool_mem->set_size(0);
-    throw std::runtime_error("No enough memory.");
+    //throw std::runtime_error("No enough memory.");
     return;
   }
 

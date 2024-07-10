@@ -13,12 +13,16 @@
 
 namespace xrt::core::hip
 {
+  // memory_handle - opaque memory handle
+  using memory_handle = void*;
+
   enum class memory_type : int
   {
     host = 0,
     device,
     managed,
     registered,
+    sub,
     invalid
   };
 
@@ -32,6 +36,12 @@ namespace xrt::core::hip
   {
 
   public:
+
+    // Constructor for dummy memory
+    memory(memory_type type, size_t sz=0)
+      : m_bo(), m_device(nullptr), m_size(sz), m_type(type), m_flags(0)
+    {
+    }
 
     // allocate device memory
     memory(device* dev, size_t sz);
@@ -84,17 +94,42 @@ namespace xrt::core::hip
       return m_size;
     }
 
+  protected:
+    xrt::bo m_bo;
+
   private:
     device*  m_device;
     size_t m_size;
     memory_type m_type;
     unsigned int m_flags;
-    xrt::bo m_bo;
 
     void
     init_xrt_bo();
   };
 
+  // sub_memory
+  class sub_memory : public memory
+  {
+  public:
+
+    // constructor for dummy sub_memory
+    sub_memory(size_t sz = 0)
+      : memory(memory_type::sub, sz)
+    {
+    }
+
+    void
+    init(std::shared_ptr<memory> parent, size_t size, size_t offset)
+    {
+      m_parent = parent;
+      m_bo = xrt::bo(parent->get_xrt_bo(), size, offset);
+    }
+
+  private:
+    std::shared_ptr<memory> m_parent;
+  };
+
+  // address_range_key is used for look up hip memory objects via an offseted address
   class address_range_key
   {
   public:
@@ -123,72 +158,15 @@ namespace xrt::core::hip
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  
-  // memory with actual allocation from memory pool for async allocation
-  class pool_memory
-  {
-  public:
-
-    pool_memory(size_t size = 0)
-      : m_mem(nullptr), m_size(size), m_offset(0)
-    {
-    }
-
-    void
-    set_memory(std::shared_ptr<memory> hip_mem)
-    {
-      m_mem = std::move(hip_mem);
-    }
-
-    std::shared_ptr<memory>
-    get_memory()
-    {
-      return m_mem;
-    }
-
-    void
-    set_size(size_t sz)
-    {
-      m_size = sz;
-    }
-
-    size_t
-    get_size() const
-    {
-      return m_size;
-    }
-
-    void 
-    set_offset(size_t offset)
-    {
-      m_offset = offset;
-    }
-
-    size_t
-    get_offset() const
-    {
-      return m_offset;
-    }
-
-  protected:
-    std::shared_ptr<memory> m_mem; // shared ptr to a memory block from memory pool
-    size_t m_size; // initial allocation size when memory_pool::malloc() is called
-    size_t m_offset; // start offset from the address of backing memory block
-  };
-
-  // pool_mem_handle - opaque pool_memory handle
-  using pool_mem_handle = void*;
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
   using addr_map = std::map<address_range_key, std::shared_ptr<memory>, address_sz_key_compare>;
   
   class memory_database
   {
   private:
-    addr_map m_addr_map;
+    addr_map m_addr_map; // address lookup for regular xrt::bo
+    addr_map m_sub_addr_map; // address lookup for sub buffer xrt::bo
+    xrt_core::handle_map<memory_handle, std::shared_ptr<sub_memory>> m_sub_mem_cache; // sub_memory lookup via handle
     std::mutex m_mutex;
-    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    xrt_core::handle_map<pool_mem_handle, std::shared_ptr<pool_memory>> m_pool_mem_cache;
 
   protected:
     memory_database();
@@ -207,11 +185,24 @@ namespace xrt::core::hip
     void
     remove(uint64_t addr);
 
-    pool_mem_handle
-    insert_pool_mem(std::shared_ptr<pool_memory> pool_mem);
+    memory_handle
+    insert_sub_mem(std::shared_ptr<sub_memory> sub_mem)
+    {
+      return insert_in_map(m_sub_mem_cache, sub_mem);
+    }
 
-    std::shared_ptr<xrt::core::hip::pool_memory>
-    memory_database::get_pool_mem_from_addr(void* addr);
+    std::shared_ptr<xrt::core::hip::sub_memory>
+    memory_database::get_sub_mem_from_handle(memory_handle h)
+    {
+      return m_sub_mem_cache.get(h);
+    }
+
+    void
+    insert_sub_mem_addr(uint64_t addr, size_t size, std::shared_ptr<sub_memory> sub_mem)
+    {
+      std::lock_guard lock(m_mutex);
+      m_sub_addr_map.insert({ address_range_key(addr, size), sub_mem });
+    }
 
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);

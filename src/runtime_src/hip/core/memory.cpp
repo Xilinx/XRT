@@ -75,7 +75,7 @@ namespace xrt::core::hip
     if (!m_bo)
       return nullptr;
 
-    if (get_type() == memory_type::device)
+    if (get_type() == memory_type::device || get_type() == memory_type::sub)
       return reinterpret_cast<void *>(m_bo.address());
     else if (get_type() == memory_type::host || get_type() == memory_type::registered)
       return m_bo.map();
@@ -156,7 +156,7 @@ namespace xrt::core::hip
   }
 
   memory_database::memory_database()
-      : m_addr_map(), m_mutex(), m_pool_mem_cache()
+      : m_addr_map(), m_sub_addr_map(), m_sub_mem_cache(), m_mutex()
   {
     if (m_memory_database) {
       throw std::runtime_error
@@ -169,6 +169,7 @@ namespace xrt::core::hip
   memory_database::~memory_database()
   {
     m_addr_map.clear();
+    m_sub_addr_map.clear();
   }
 
   void
@@ -183,30 +184,8 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
-    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
-    if (pool_mem) {
-      m_pool_mem_cache.remove(reinterpret_cast<pool_mem_handle>(addr));
-      return;
-    }
-
+    m_sub_addr_map.erase(address_range_key(addr, 0));
     m_addr_map.erase(address_range_key(addr, 0));
-  }
-
-  pool_mem_handle
-  memory_database::insert_pool_mem(std::shared_ptr<pool_memory> pool_mem)
-  {
-    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    std::lock_guard lock(m_mutex);
-    return insert_in_map(m_pool_mem_cache, pool_mem);
-  }
-
-  std::shared_ptr<xrt::core::hip::pool_memory>
-  memory_database::get_pool_mem_from_addr(void* addr)
-  {
-    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    std::lock_guard lock(m_mutex);
-    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
-    return pool_mem;
   }
 
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
@@ -214,14 +193,14 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
-    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(addr));
-    if (pool_mem) {
-      auto hip_mem = pool_mem->get_memory();
-      auto offset = pool_mem->get_offset();
-      return std::pair(hip_mem, offset);
+    auto sub_itr = m_sub_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
+    if (sub_itr != m_sub_addr_map.end()) {
+      // sub_mem from memory pool
+      auto offset = reinterpret_cast<uint64_t>(addr) - sub_itr->first.address;
+      return std::pair(sub_itr->second, offset);
     }
 
+    // regular hip::memory object lookup
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
@@ -237,14 +216,14 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
-    // TODO: replace pool_mem_cache with something else in order to support offseted address look up
-    auto pool_mem = m_pool_mem_cache.get(reinterpret_cast<pool_mem_handle>(const_cast<void*>(addr)));
-    if (pool_mem) {
-      auto hip_mem = pool_mem->get_memory();
-      auto offset = pool_mem->get_offset();
-      return std::pair(hip_mem, offset);
+    auto sub_itr = m_sub_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
+    if (sub_itr != m_sub_addr_map.end()) {
+      // sub_mem from memory pool
+      auto offset = reinterpret_cast<uint64_t>(addr) - sub_itr->first.address;
+      return std::pair(sub_itr->second, offset);
     }
 
+    // regular hip::memory object lookup
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
