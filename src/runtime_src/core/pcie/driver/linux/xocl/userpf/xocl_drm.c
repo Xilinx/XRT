@@ -546,7 +546,7 @@ static struct drm_driver mm_drm_driver = {
 	.fops				= &xocl_driver_fops,
 
 	.gem_prime_import_sg_table	= xocl_gem_prime_import_sg_table,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && !defined(RHEL_9_4_GE)
 	.gem_prime_mmap			= xocl_gem_prime_mmap,
 #endif
 
