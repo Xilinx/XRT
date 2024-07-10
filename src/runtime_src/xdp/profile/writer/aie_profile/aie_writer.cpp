@@ -57,7 +57,7 @@ namespace xdp {
   {
     auto validConfig = (db->getStaticInfo()).getProfileConfig();
     std::map<module_type, std::vector<std::string>> filteredConfig;
-    for(size_t i=0; i<module_type::num_types; i++)
+    for(uint8_t i=0; i<static_cast<uint8_t>(module_type::num_types); i++)
       filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
 
     const auto& configMetrics = validConfig.configMetrics;
