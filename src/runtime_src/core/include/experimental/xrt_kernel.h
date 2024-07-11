@@ -74,6 +74,13 @@ public:
 
 public:
   /**
+   * runlist() - Construct empty runlist object
+   *
+   * Can be used as lvalue in assignment.
+   */
+  runlist() = default;
+
+  /**
    * runlist - Constructor
    *
    * A runlist is associated with a specific hwctx. All run objects
@@ -180,6 +187,22 @@ public:
   {
     wait(std::chrono::milliseconds(0));
   }
+
+  /**
+   * Poll the runlist for completion.
+   *
+   * @return 0 if command list is still running, any other value
+   *  indicates completion.
+   *
+   * Completion of a runlist execution means that all run objects have
+   * completed succesfully.  If any run object in the list fails to
+   * complete successfully, the function throws
+   * `xrt::runlist::command_error` with the failed run object and
+   * state.
+   */
+  XRT_API_EXPORT
+  int
+  poll() const;
   
   /**
    * reset() - Reset the runlist

@@ -153,7 +153,7 @@ static void populateSubCommandsFromJSONHelper(SubCmdsCollection &subCmds, const 
         pt::read_json(jsonPath,jtree);
 
 	pt::ptree exetree;
-	// check exsistence of tree node for execuatble passed(eg: xbutil)
+	// check exsistence of tree node for execuatble passed(eg: xrt-smi)
 	try {
             exetree = jtree.get_child(exeName);
 	} catch (std::exception &e) {

@@ -54,6 +54,9 @@ class BaseFiletypeImpl {
         virtual std::unordered_map<std::string, io_config>
         getTraceGMIOs() const = 0;
 
+        virtual std::unordered_map<std::string, io_config>
+        getGMIOs() const = 0;
+
         virtual 
         std::vector<tile_type>
         getInterfaceTiles(const std::string& graphName,

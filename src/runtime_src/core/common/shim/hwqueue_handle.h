@@ -28,6 +28,21 @@ public:
   virtual void
   submit_command(buffer_handle* cmd) = 0;
 
+  // Poll for command completion
+  //
+  // @cmd    Handle to command to poll for
+  // @return 0 indicates pending, anything else may indicate completion
+  //
+  // Note that a return value different from 0 does not guarantee that
+  // the command has completed.  The command state still has to be checked
+  // in order to determine completion. For shim implementations where
+  // command state is live, this function does not have to be implemented.
+  virtual int
+  poll_command(buffer_handle*) const
+  {
+    return 1;
+  }
+
   // Wait for command completion.
   //
   // @cmd        Handle to command to wait for

@@ -62,7 +62,7 @@ class AIEControlConfigFiletype : public xdp::aie::BaseFiletypeImpl {
         getChildGMIOs(const std::string& childStr) const;
         
         std::unordered_map<std::string, io_config>
-        getGMIOs() const;
+        getGMIOs() const override;
 
         std::vector<tile_type>
         getInterfaceTiles(const std::string& graphName,

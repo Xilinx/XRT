@@ -100,7 +100,14 @@ namespace xdp {
         std::string deadlockInfo = deviceName + " :\n";
         std::string allCUDiagnosis;
 
-        XclbinInfo* currXclbin = db->getStaticInfo().getCurrentlyLoadedXclbin(deviceId);
+        ConfigInfo* currConfig = db->getStaticInfo().getCurrentlyLoadedConfig(deviceId);
+        if (!currConfig)
+          return;
+        
+        XclbinInfo* currXclbin = currConfig->getPlXclbin();
+        if (!currXclbin)
+          return;
+
         for (const auto& cu : currXclbin->pl.cus) {
           std::string cuInstFullName = cu.second->getFullname();
           std::string kernelName = cuInstFullName.substr(0, cuInstFullName.find(':'));
@@ -192,7 +199,7 @@ namespace xdp {
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId, new HalDevice(handle), handle);
+      (db->getStaticInfo()).updateDevice(deviceId,std::move(std::make_unique<HalDevice>(handle)), handle);
       {
         std::string deviceName = util::getDeviceName(handle);
         if(deviceName != "") {

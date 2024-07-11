@@ -648,7 +648,7 @@ namespace xdp {
 
         // Configure combo events for metric sets that include DMA events        
         auto comboEvents = aie::trace::configComboEvents(aieDevInst, xaieTile, loc, 
-            XAIE_CORE_MOD, module_type::dma, metricSet, aieConfig);
+            XAIE_MEM_MOD, type, metricSet, aieConfig);
         if (comboEvents.size() == 2) {
           traceStartEvent = comboEvents.at(0);
           traceEndEvent = comboEvents.at(1);

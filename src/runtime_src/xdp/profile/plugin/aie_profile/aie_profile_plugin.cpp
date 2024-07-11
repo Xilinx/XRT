@@ -32,6 +32,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/device/utility.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
@@ -63,7 +64,7 @@ namespace xdp {
   {
     xrt_core::message::send(severity_level::info, "XRT", "Destroying AIE Profiling Plugin.");
     // Stop the polling thread
-    
+
     AieProfilePlugin::live = false;
     endPoll();
 
@@ -142,6 +143,13 @@ namespace xdp {
 
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
+    if(AIEData.metadata->aieMetadataEmpty())
+    {
+      AIEData.valid = false;
+      xrt_core::message::send(severity_level::debug, "XRT", "AIE Profile : no AIE metadata available for this xclbin update, skipping updateAIEDevice()");
+      return;
+    }
+    AIEData.valid = true;
 
 #ifdef XDP_CLIENT_BUILD
     AIEData.metadata->setHwContext(context);
@@ -234,13 +242,16 @@ auto time = std::time(nullptr);
       return;
 
     auto& AIEData = handleToAIEData[handle];
+    if(!AIEData.valid) {
+      return;
+    }
 
     // Ask thread to stop
     AIEData.threadCtrlBool = false;
 
     if (AIEData.thread.joinable())
       AIEData.thread.join();
-    
+
     #ifdef XDP_CLIENT_BUILD
       AIEData.implementation->poll(0, handle);
     #endif
@@ -253,7 +264,7 @@ auto time = std::time(nullptr);
   void AieProfilePlugin::endPoll()
   {
     xrt_core::message::send(severity_level::info, "XRT", "Calling AIE Profile endPoll.");
-    
+
     #ifdef XDP_CLIENT_BUILD
       auto& AIEData = handleToAIEData.begin()->second;
       AIEData.implementation->poll(0, nullptr);

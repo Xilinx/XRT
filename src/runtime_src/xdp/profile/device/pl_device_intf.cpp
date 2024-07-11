@@ -177,35 +177,27 @@ uint64_t GetTS2MMBufSize(bool isAIETrace) {
   return bytes;
 }
 
-// Destructor
-PLDeviceIntf::~PLDeviceIntf() {
-  for (auto mon : mAimList) {
+void PLDeviceIntf::releaseResources() {
+  for (auto mon : mAimList)
     delete mon;
-  }
 
-  for (auto mon : mAmList) {
+  for (auto mon : mAmList)
     delete mon;
-  }
 
-  for (auto mon : mAsmList) {
+  for (auto mon : mAsmList)
     delete mon;
-  }
 
-  for (auto mon : mTraceFunnelList) {
+  for (auto mon : mTraceFunnelList)
     delete mon;
-  }
 
-  for (auto mon : mPlTraceDmaList) {
+  for (auto mon : mPlTraceDmaList)
     delete mon;
-  }
 
-  for (auto aieTraceDma : mAieTraceDmaList) {
+  for (auto aieTraceDma : mAieTraceDmaList)
     delete aieTraceDma;
-  }
 
-  for (auto noc : nocList) {
+  for (auto noc : nocList)
     delete noc;
-  }
 
   mAimList.clear();
   mAmList.clear();
@@ -218,18 +210,21 @@ PLDeviceIntf::~PLDeviceIntf() {
   delete mFifoCtrl;
   delete mFifoRead;
   delete mDeadlockDetector;
-
-  delete mDevice;
 }
 
-void PLDeviceIntf::setDevice(xdp::Device *devHandle) {
+// Destructor
+PLDeviceIntf::~PLDeviceIntf() {
+  releaseResources();
+}
+
+void PLDeviceIntf::setDevice(std::unique_ptr<xdp::Device> devHandle) {
   if (mDevice && mDevice != devHandle) {
     // ERROR : trying to set device when it is already populated with some other
     // device
     return;
   }
 
-  mDevice = devHandle;
+  mDevice = std::move(devHandle);
 
   // Once the device is connected, update the bandwidth numbers
   setHostMaxBwRead();
@@ -604,28 +599,28 @@ void PLDeviceIntf::readDebugIPlayout() {
       for (uint64_t i = 0; i < map->m_count; i++) {
         switch (map->m_debug_ip_data[i].m_type) {
         case AXI_MM_MONITOR:
-          mAimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
+          mAimList.push_back(new AIM(mDevice.get(), i, &(map->m_debug_ip_data[i])));
           break;
 
         case ACCEL_MONITOR:
-          mAmList.push_back(new AM(mDevice, i, &(map->m_debug_ip_data[i])));
+          mAmList.push_back(new AM(mDevice.get(), i, &(map->m_debug_ip_data[i])));
           break;
 
         case AXI_STREAM_MONITOR:
-          mAsmList.push_back(new ASM(mDevice, i, &(map->m_debug_ip_data[i])));
+          mAsmList.push_back(new ASM(mDevice.get(), i, &(map->m_debug_ip_data[i])));
           break;
 
         case AXI_MONITOR_FIFO_LITE:
-          mFifoCtrl = new TraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+          mFifoCtrl = new TraceFifoLite(mDevice.get(), i, &(map->m_debug_ip_data[i]));
           break;
 
         case AXI_MONITOR_FIFO_FULL:
-          mFifoRead = new TraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+          mFifoRead = new TraceFifoFull(mDevice.get(), i, &(map->m_debug_ip_data[i]));
           break;
 
         case AXI_TRACE_FUNNEL:
           mTraceFunnelList.push_back(
-              new TraceFunnel(mDevice, i, &(map->m_debug_ip_data[i])));
+				     new TraceFunnel(mDevice.get(), i, &(map->m_debug_ip_data[i])));
           break;
 
         case TRACE_S2MM:
@@ -634,20 +629,20 @@ void PLDeviceIntf::readDebugIPlayout() {
           // requirements)
           if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK)
             mAieTraceDmaList.push_back(
-                new AIETraceS2MM(mDevice, i, &(map->m_debug_ip_data[i])));
+				       new AIETraceS2MM(mDevice.get(), i, &(map->m_debug_ip_data[i])));
           else
             mPlTraceDmaList.push_back(
-                new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i])));
+				      new TraceS2MM(mDevice.get(), i, &(map->m_debug_ip_data[i])));
 
           break;
 
         case AXI_NOC:
-          nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
+          nocList.push_back(new NOC(mDevice.get(), i, &(map->m_debug_ip_data[i])));
           break;
 
         case ACCEL_DEADLOCK_DETECTOR:
           mDeadlockDetector =
-              new DeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
+	    new DeadlockDetector(mDevice.get(), i, &(map->m_debug_ip_data[i]));
           break;
 
         case HSDP_TRACE: {
@@ -675,7 +670,7 @@ void PLDeviceIntf::readDebugIPlayout() {
       for (uint64_t i = 0; i < map->m_count; i++) {
         switch (map->m_debug_ip_data[i].m_type) {
         case AXI_MM_MONITOR: {
-          MMappedAIM *pMon = new MMappedAIM(mDevice, i, mAimList.size(),
+          MMappedAIM *pMon = new MMappedAIM(mDevice.get(), i, mAimList.size(),
                                             &(map->m_debug_ip_data[i]));
 
           if (pMon->isMMapped()) {
@@ -689,7 +684,7 @@ void PLDeviceIntf::readDebugIPlayout() {
         }
 
         case ACCEL_MONITOR: {
-          MMappedAM *pMon = new MMappedAM(mDevice, i, mAmList.size(),
+          MMappedAM *pMon = new MMappedAM(mDevice.get(), i, mAmList.size(),
                                           &(map->m_debug_ip_data[i]));
 
           if (pMon->isMMapped()) {
@@ -703,7 +698,7 @@ void PLDeviceIntf::readDebugIPlayout() {
         }
 
         case AXI_STREAM_MONITOR: {
-          MMappedASM *pMon = new MMappedASM(mDevice, i, mAsmList.size(),
+          MMappedASM *pMon = new MMappedASM(mDevice.get(), i, mAsmList.size(),
                                             &(map->m_debug_ip_data[i]));
 
           if (pMon->isMMapped()) {
@@ -718,7 +713,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case AXI_MONITOR_FIFO_LITE: {
           mFifoCtrl =
-              new MMappedTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+	    new MMappedTraceFifoLite(mDevice.get(), i, &(map->m_debug_ip_data[i]));
 
           if (!mFifoCtrl->isMMapped()) {
             delete mFifoCtrl;
@@ -730,7 +725,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case AXI_MONITOR_FIFO_FULL: {
           mFifoRead =
-              new MMappedTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+	    new MMappedTraceFifoFull(mDevice.get(), i, &(map->m_debug_ip_data[i]));
 
           if (!mFifoRead->isMMapped()) {
             delete mFifoRead;
@@ -742,7 +737,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case AXI_TRACE_FUNNEL: {
           MMappedTraceFunnel *pMon = new MMappedTraceFunnel(
-              mDevice, i, mTraceFunnelList.size(), &(map->m_debug_ip_data[i]));
+							    mDevice.get(), i, mTraceFunnelList.size(), &(map->m_debug_ip_data[i]));
 
           if (pMon->isMMapped()) {
             mTraceFunnelList.push_back(pMon);
@@ -759,7 +754,7 @@ void PLDeviceIntf::readDebugIPlayout() {
           // requirements)
           if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK) {
             TraceS2MM *aieTraceDma =
-                new MMappedAIETraceS2MM(mDevice, i, mAieTraceDmaList.size(),
+	      new MMappedAIETraceS2MM(mDevice.get(), i, mAieTraceDmaList.size(),
                                         &(map->m_debug_ip_data[i]));
 
             if (aieTraceDma->isMMapped()) {
@@ -769,7 +764,7 @@ void PLDeviceIntf::readDebugIPlayout() {
             }
           } else {
             TraceS2MM *plTraceDma = new MMappedTraceS2MM(
-                mDevice, i, mPlTraceDmaList.size(), &(map->m_debug_ip_data[i]));
+							 mDevice.get(), i, mPlTraceDmaList.size(), &(map->m_debug_ip_data[i]));
 
             if (plTraceDma->isMMapped()) {
               mPlTraceDmaList.push_back(plTraceDma);
@@ -783,7 +778,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         // case AXI_NOC :
         //{
-        // MMappedNOC* pNoc = new MMappedNOC(mDevice, i, nocList.size(),
+        // MMappedNOC* pNoc = new MMappedNOC(mDevice.get(), i, nocList.size(),
         // &(map->m_debug_ip_data[i])); if(pNoc->isMMapped()) {
         // nocList.push_back(pNoc);
         // } else {
@@ -794,7 +789,7 @@ void PLDeviceIntf::readDebugIPlayout() {
         //}
         case ACCEL_DEADLOCK_DETECTOR: {
           mDeadlockDetector = new MMappedDeadlockDetector(
-              mDevice, i, &(map->m_debug_ip_data[i]));
+							  mDevice.get(), i, &(map->m_debug_ip_data[i]));
 
           if (!mDeadlockDetector->isMMapped()) {
             delete mDeadlockDetector;
@@ -828,7 +823,7 @@ void PLDeviceIntf::readDebugIPlayout() {
       for (uint64_t i = 0; i < map->m_count; i++) {
         switch (map->m_debug_ip_data[i].m_type) {
         case AXI_MM_MONITOR: {
-          IOCtlAIM *pMon = new IOCtlAIM(mDevice, i, mAimList.size(),
+          IOCtlAIM *pMon = new IOCtlAIM(mDevice.get(), i, mAimList.size(),
                                         &(map->m_debug_ip_data[i]));
 
           if (pMon->isOpened()) {
@@ -842,7 +837,7 @@ void PLDeviceIntf::readDebugIPlayout() {
         }
 
         case ACCEL_MONITOR: {
-          IOCtlAM *pMon = new IOCtlAM(mDevice, i, mAmList.size(),
+          IOCtlAM *pMon = new IOCtlAM(mDevice.get(), i, mAmList.size(),
                                       &(map->m_debug_ip_data[i]));
 
           if (pMon->isOpened()) {
@@ -856,7 +851,7 @@ void PLDeviceIntf::readDebugIPlayout() {
         }
 
         case AXI_STREAM_MONITOR: {
-          IOCtlASM *pMon = new IOCtlASM(mDevice, i, mAsmList.size(),
+          IOCtlASM *pMon = new IOCtlASM(mDevice.get(), i, mAsmList.size(),
                                         &(map->m_debug_ip_data[i]));
 
           if (pMon->isOpened()) {
@@ -871,7 +866,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case AXI_MONITOR_FIFO_LITE: {
           mFifoCtrl =
-              new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+	    new IOCtlTraceFifoLite(mDevice.get(), i, &(map->m_debug_ip_data[i]));
 
           if (!mFifoCtrl->isOpened()) {
             delete mFifoCtrl;
@@ -883,7 +878,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case AXI_MONITOR_FIFO_FULL: {
           mFifoRead =
-              new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+	    new IOCtlTraceFifoFull(mDevice.get(), i, &(map->m_debug_ip_data[i]));
 
           if (!mFifoRead->isOpened()) {
             delete mFifoRead;
@@ -895,7 +890,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case AXI_TRACE_FUNNEL: {
           IOCtlTraceFunnel *pMon = new IOCtlTraceFunnel(
-              mDevice, i, mTraceFunnelList.size(), &(map->m_debug_ip_data[i]));
+							mDevice.get(), i, mTraceFunnelList.size(), &(map->m_debug_ip_data[i]));
 
           if (pMon->isOpened()) {
             mTraceFunnelList.push_back(pMon);
@@ -912,7 +907,7 @@ void PLDeviceIntf::readDebugIPlayout() {
           // requirements)
           if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK) {
             TraceS2MM *aieTraceDma =
-                new IOCtlAIETraceS2MM(mDevice, i, mAieTraceDmaList.size(),
+	      new IOCtlAIETraceS2MM(mDevice.get(), i, mAieTraceDmaList.size(),
                                       &(map->m_debug_ip_data[i]));
 
             if (aieTraceDma->isOpened()) {
@@ -922,7 +917,7 @@ void PLDeviceIntf::readDebugIPlayout() {
             }
           } else {
             TraceS2MM *plTraceDma = new IOCtlTraceS2MM(
-                mDevice, i, mPlTraceDmaList.size(), &(map->m_debug_ip_data[i]));
+						       mDevice.get(), i, mPlTraceDmaList.size(), &(map->m_debug_ip_data[i]));
 
             if (plTraceDma->isOpened()) {
               mPlTraceDmaList.push_back(plTraceDma);
@@ -936,7 +931,7 @@ void PLDeviceIntf::readDebugIPlayout() {
 
         case ACCEL_DEADLOCK_DETECTOR: {
           mDeadlockDetector =
-              new IOCtlDeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
+	    new IOCtlDeadlockDetector(mDevice.get(), i, &(map->m_debug_ip_data[i]));
 
           if (!mDeadlockDetector->isOpened()) {
             delete mDeadlockDetector;

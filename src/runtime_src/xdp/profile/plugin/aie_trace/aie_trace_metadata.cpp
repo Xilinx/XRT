@@ -55,10 +55,24 @@ namespace xdp {
     counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
     // Get polling interval (in usec)
     pollingInterval = xrt_core::config::get_aie_trace_settings_poll_timers_interval_us();
-
+    
     // Check whether continuous trace is enabled in xrt.ini
-    // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();
+    // AIE trace is now supported for HW only
+#ifdef XDP_CLIENT_BUILD
+    // Default return is flipped on client
+    bool isPeriodicOffloadPresent = false;
+    auto tree1 = xrt_core::config::detail::get_ptree_value("AIE_trace_settings");
+    for (pt::ptree::iterator pos = tree1.begin(); pos != tree1.end(); pos++) {
+      if (pos->first == "periodic_offload") {
+        isPeriodicOffloadPresent = true;
+        break;
+      }
+    }
+    if( !isPeriodicOffloadPresent)
+      continuousTrace = false;
+#endif
+
     if (continuousTrace)
       offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
 
