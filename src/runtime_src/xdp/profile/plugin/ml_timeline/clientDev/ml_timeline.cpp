@@ -94,6 +94,13 @@ namespace xdp {
 
   void MLTimelineClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
   {
+    static bool inUse = false;
+
+    if (inUse)
+      return;
+
+    inUse = true;
+
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
               "Using Allocated buffer In MLTimelineClientDevImpl::finishflushDevice");
               
@@ -173,7 +180,10 @@ namespace xdp {
      * can use their own Debug BO to capture their data.
      */
     delete mResultBOHolder;
+    // This delete can also cause the whole hw_context_implementation to be destroyed, causing a call to finish_flush_device while
+    // we are in finish_flush_device...
     mResultBOHolder = nullptr;
+    inUse = false;
   }
 }
 
