@@ -71,7 +71,7 @@ namespace xdp {
       devices[handle] = dev;
     }
     
-    dev->setDevice(new xdp::HalDevice(handle));
+    dev->setDevice(std::make_unique<xdp::HalDevice>(handle));
     dev->readDebugIPlayout();
     
     dev->startCounters();

@@ -1,6 +1,5 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
+/**
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,14 +13,26 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_LIMITS_H
-#define _XMA_LIMITS_H
 
-#define MAX_FRAME_W_H            0x4000 //16384; Max Frame wdith or height
-#define MAX_SCALER_OUTPUTS       8
-#define MAX_FILTER_OUTPUTS      MAX_SCALER_OUTPUTS
-#define MAX_PLUGIN_NAME         256
-#define MAX_VENDOR_NAME         256
-#define XMA_MAX_PLANES           3
-#define MAX_CONNECTION_ENTRIES  64
+#ifndef XCLBIN_TYPES_H
+#define XCLBIN_TYPES_H
+#include "xdp/config.h"
+
+namespace xdp {
+
+  enum XclbinInfoType {
+      XCLBIN_PL_ONLY,
+      XCLBIN_AIE_ONLY,
+      XCLBIN_AIE_PL,
+  } ;
+
+  enum ConfigInfoType {
+    CONFIG_PL_ONLY,
+    CONFIG_AIE_ONLY,
+    CONFIG_AIE_PL,
+    CONFIG_AIE_PL_FORMED
+  } ;
+
+} // end namespace xdp
+
 #endif

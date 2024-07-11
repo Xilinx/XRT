@@ -146,10 +146,11 @@ void  main_(int argc, char** argv,
   }
 
   if (!subCommand) {
-    if (!bHelp)
+    if (!bHelp && !sCmd.empty())
       std::cerr << "ERROR: " << "Unknown command: '" << sCmd << "'" << std::endl;
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, parsedSubCmds);
-    throw xrt_core::error(std::errc::operation_canceled);
+    if (!bHelp && !sCmd.empty())
+      throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // -- Prepare the data

@@ -1051,7 +1051,7 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {
       auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
-                               "(see xbutil configure --host-mem)") % ex.what();
+                               "(see xrt-smi configure --host-mem)") % ex.what();
       send_exception_message(fmt.str());
     }
     throw;

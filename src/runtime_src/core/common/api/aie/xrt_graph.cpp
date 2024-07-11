@@ -7,6 +7,7 @@
 // core/include/experimental/xrt_graph.h -- end user APIs
 // core/include/xcl_graph.h -- shim level APIs
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_graph.h
+#define XRT_API_SOURCE         // in same dll as core_common
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_graph.h"
 #include "core/include/xrt/xrt_aie.h"
@@ -20,6 +21,7 @@
 #include "core/common/error.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/common/shim/graph_handle.h"
 
 #include <limits>
 #include <memory>
@@ -30,17 +32,22 @@ class graph_impl
 {
 private:
   std::shared_ptr<xrt_core::device> device;
-  xclGraphHandle handle;
+  xrt::hw_context hw_ctx;
+  std::unique_ptr<xrt_core::graph_handle> m_graphHandle;
 
 public:
-  graph_impl(std::shared_ptr<xrt_core::device> dev, xclGraphHandle ghdl)
-    : device(std::move(dev))
-    , handle(ghdl)
+  graph_impl(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xclbin_id,
+                const std::string& name, graph::access_mode am)
+    : device{std::move(dev)},
+      m_graphHandle{device->open_graph_handle(xclbin_id, name.c_str(), am)}
   {}
 
-  ~graph_impl()
+  graph_impl(xrt::hw_context hwctx, const std::string& name, graph::access_mode am)
+      : device{hwctx.get_device().get_handle()}
+      , hw_ctx{std::move(hwctx)}
   {
-    device->close_graph(handle);
+    auto hwctx_handle{static_cast<xrt_core::hwctx_handle*>(hw_ctx)};
+    m_graphHandle = hwctx_handle->open_graph_handle(name.c_str(),am);
   }
 
   graph_impl() = delete;
@@ -49,70 +56,64 @@ public:
   graph_impl& operator=(const graph_impl&) = delete;
   graph_impl& operator=(graph_impl&&) = delete;
 
-  [[nodiscard]] xclGraphHandle
-  get_handle() const
-  {
-    return handle;
-  }
-
   void
   reset()
   {
-    device->reset_graph(handle);
+    m_graphHandle->reset_graph();
   }
 
   uint64_t
   get_timestamp()
   {
-    return (device->get_timestamp(handle));
+    return (m_graphHandle->get_timestamp());
   }
 
   void
   run(int iterations)
   {
-    device->run_graph(handle, iterations);
+    m_graphHandle->run_graph(iterations);
   }
 
   int
   wait(int timeout)
   {
-    return (device->wait_graph_done(handle, timeout));
+    return (m_graphHandle->wait_graph_done(timeout));
   }
 
   void
   wait(uint64_t cycle)
   {
-    device->wait_graph(handle, cycle);
+    m_graphHandle->wait_graph(cycle);
   }
 
   void
   suspend()
   {
-    device->suspend_graph(handle);
+    m_graphHandle->suspend_graph();
   }
 
   void
   resume()
   {
-    device->resume_graph(handle);
+    m_graphHandle->resume_graph();
   }
 
   void
   end(uint64_t cycle)
   {
-    device->end_graph(handle, cycle);
+    m_graphHandle->end_graph(cycle);
   }
 
   void
   update_rtp(const char* port, const char* buffer, size_t size)
   {
-    device->update_graph_rtp(handle, port, buffer, size);
+    m_graphHandle->update_graph_rtp(port, buffer, size);
   }
 
   void
   read_rtp(const char* port, char* buffer, size_t size)
   {
-    device->read_graph_rtp(handle, port, buffer, size);
+    m_graphHandle->read_graph_rtp(port, buffer, size);
   }
 };
 
@@ -194,17 +195,9 @@ static std::shared_ptr<xrt::graph_impl>
 open_graph(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
 {
   auto core_device = xrt_core::device_int::get_core_device(dhdl);
-  auto handle = core_device->open_graph(xclbin_uuid, graph_name, am);
-  auto ghdl = std::make_shared<xrt::graph_impl>(core_device, handle);
-  return ghdl;
-}
-
-static std::shared_ptr<xrt::graph_impl>
-open_graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, xrt::graph::access_mode am)
-{
-  auto core_device = device.get_handle();
-  auto handle = core_device->open_graph(xclbin_id.get(), name.c_str(), am);
-  auto ghdl = std::make_shared<xrt::graph_impl>(core_device, handle);
+  xrt::uuid xclbin_id{xclbin_uuid};
+  std::string name{graph_name};
+  auto ghdl = std::make_shared<xrt::graph_impl>(core_device, xclbin_id, name, am);
   return ghdl;
 }
 
@@ -295,7 +288,12 @@ namespace xrt {
 
 graph::
 graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, graph::access_mode am)
-  : handle(open_graph(device, xclbin_id, name, am))
+  : handle{std::make_shared<xrt::graph_impl>(device.get_handle(), xclbin_id, name, am)}
+{}
+
+graph::
+graph(const xrt::hw_context& hwctx, const std::string& name, graph::access_mode am)
+    : handle{std::make_shared<xrt::graph_impl>(hwctx, name, am)}
 {}
 
 void

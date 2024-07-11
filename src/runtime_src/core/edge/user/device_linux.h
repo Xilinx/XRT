@@ -10,6 +10,7 @@
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/shared_handle.h"
 #include "core/edge/common/device_edge.h"
+#include "core/common/shim/graph_handle.h"
 
 namespace xrt_core {
 
@@ -34,6 +35,9 @@ public:
   ////////////////////////////////////////////////////////////////
   void
   set_cu_read_range(cuidx_type ip_index, uint32_t start, uint32_t size) override;
+
+  std::unique_ptr<xrt_core::graph_handle>
+  open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am) override;
 
   void
   get_device_info(xclDeviceInfo2 *info) override;
