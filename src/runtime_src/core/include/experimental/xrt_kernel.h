@@ -74,6 +74,13 @@ public:
 
 public:
   /**
+   * runlist() - Construct empty runlist object
+   *
+   * Can be used as lvalue in assignment.
+   */
+  runlist() = default;
+
+  /**
    * runlist - Constructor
    *
    * A runlist is associated with a specific hwctx. All run objects

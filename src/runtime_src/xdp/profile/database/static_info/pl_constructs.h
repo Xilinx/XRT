@@ -72,8 +72,11 @@ namespace xdp {
     Port() = delete;
     explicit Port(const std::string& n, uint32_t w) : name(n), bitWidth(w) {};
     ~Port() = default;
+    Port& operator=(const Port& src);
     void addMemoryConnection(Memory* mem);
     std::string constructArgumentList(const std::string& memoryName);
+  private:
+    void releaseResources();
   };
 
   // The Monitor struct collects the information on a single
@@ -169,6 +172,40 @@ namespace xdp {
                      (name.find("Memory to Memory") != std::string::npos) ;
     }
 
+    Monitor& operator=(const Monitor& src)
+    {
+      if(this != &src)
+        return *this;
+
+      releaseResources();
+
+      this->type  = src.type;
+      this->index = src.index;
+      this->traceEnabled = src.traceEnabled;
+      this->cuIndex = src.cuIndex;
+      this->memIndex = src.memIndex;
+      this->name = src.name;
+
+      // Deep copy of Port
+      if(src.cuPort) {
+        this->cuPort = new Port(src.cuPort->name, src.cuPort->bitWidth);
+        *(this->cuPort) = *(src.cuPort);
+      }
+
+      this->isStreamRead = src.isStreamRead;
+      this->slotIndex = src.slotIndex;
+      this->shellMonitor = src.shellMonitor;
+      this->clockFrequency = src.clockFrequency;
+    }
+
+  private:
+    void releaseResources()
+    {
+      if(cuPort) {
+        delete cuPort;
+        cuPort = nullptr;
+      }
+    }
   } ;
 
   // The ComputeUnitInstance class collects all of the information on
@@ -286,6 +323,7 @@ namespace xdp {
 
     XDP_CORE_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
     XDP_CORE_EXPORT ~ComputeUnitInstance() = default ;
+    XDP_CORE_EXPORT ComputeUnitInstance(const ComputeUnitInstance& src) ;
   } ;
 
   // The Memory struct collects all of the information on a single
