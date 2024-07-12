@@ -1,0 +1,13 @@
+diff a/src/runtime_src/core/edge/user/device_linux.cpp b/src/runtime_src/core/edge/user/device_linux.cpp	(rejected hunks)
+@@ -5,10 +5,10 @@
+ #include "xrt.h"
+ #include "zynq_dev.h"
+ #include "aie_sys_parser.h"
+-
+ #include "core/common/debug_ip.h"
+ #include "core/common/query_requests.h"
+ #include "core/common/xrt_profiling.h"
++#include "core/include/xrt/xrt_uuid.h"
+ 
+ #include <map>
+ #include <memory>

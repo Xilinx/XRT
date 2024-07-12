@@ -873,6 +873,34 @@ struct aie_skd_xclbin
   }
 };
 
+struct skd_axlf_size
+{
+  using result_type = query::skd_axlf_size::result_type;
+
+  XAie_DevInst* devInst;         // AIE Device Instance
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const std::any& skd_uuid_ptr)
+  {
+#if defined(XRT_ENABLE_AIE)
+    struct drm_zocl_skd_axlf_size aie_arg;
+    aie_arg.ps_uuid_ptr = std::any_cast<xrt_core::query::skd_axlf_size::ps_uuid_ptr_type>(skd_uuid_ptr);
+
+    const std::string zocl_device = "/dev/dri/" + get_render_devname();
+    auto fd_obj = aie_get_drmfd(device, zocl_device);
+    if (fd_obj->fd < 0)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_SKD_AXLF_SIZE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Reading SKD XCLBIN for uuid (%s) failed") % aie_arg.ps_uuid_ptr));
+
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+    return aie_arg.axlf_size;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -1079,6 +1107,7 @@ initialize_query_table()
   emplace_func4_request<query::trace_buffer_info,       trace_buffer_info>();
   emplace_func4_request<query::read_trace_data,         read_trace_data>();
   emplace_func4_request<query::aie_skd_xclbin,          aie_skd_xclbin>();
+  emplace_func4_request<query::skd_axlf_size,           skd_axlf_size>();
   emplace_func4_request<query::host_max_bandwidth_mbps, host_max_bandwidth_mbps>();
   emplace_func4_request<query::kernel_max_bandwidth_mbps, kernel_max_bandwidth_mbps>();
 }

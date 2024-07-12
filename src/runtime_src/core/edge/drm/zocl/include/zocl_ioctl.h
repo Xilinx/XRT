@@ -63,4 +63,6 @@ int zocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int
 zocl_aie_skd_xclbin_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int
+zocl_skd_axlf_size_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
 #endif

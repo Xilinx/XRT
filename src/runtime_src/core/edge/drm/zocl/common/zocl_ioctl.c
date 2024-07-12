@@ -158,3 +158,11 @@ zocl_aie_skd_xclbin_ioctl(struct drm_device *dev, void *data, struct drm_file *f
 
 	return zocl_aie_skd_xclbin(zdev, data);
 }
+
+int
+zocl_skd_axlf_size_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+
+	return zocl_skd_axlf_size(zdev, data);
+}

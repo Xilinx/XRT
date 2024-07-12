@@ -325,6 +325,7 @@ enum class key_type
   sub_device_path,
   read_trace_data,
   aie_skd_xclbin,
+  skd_axlf_size,
   noop
 };
 
@@ -3821,6 +3822,7 @@ struct read_trace_data : request
   get(const device*, const std::any&) const = 0;
 };
 
+/* SKD Request to load xclbin for a specific UUID */
 struct aie_skd_xclbin : request
 {
   using result_type = bool;
@@ -3835,6 +3837,17 @@ struct aie_skd_xclbin : request
 
   virtual std::any
   get(const device*, const std::any& arg) const = 0;
+};
+
+struct skd_axlf_size : request
+{
+  using ps_uuid_ptr_type = uint64_t;
+  using result_type = uint32_t;
+
+  static const key_type key = key_type::skd_axlf_size;
+
+  virtual std::any
+  get(const device*, const std::any& ps_uuid_ptr) const = 0;
 };
 
 } // query

@@ -125,7 +125,8 @@ enum drm_zocl_ops {
 	/* Set CU read-only range */
 	DRM_ZOCL_SET_CU_READONLY_RANGE,
 	DRM_ZOCL_NUM_IOCTLS,
-	DRM_ZOCL_AIE_SKD_XCLBIN
+	DRM_ZOCL_AIE_SKD_XCLBIN,
+	DRM_ZOCL_SKD_AXLF_SIZE
 };
 
 enum drm_zocl_sync_bo_dir {
@@ -554,6 +555,11 @@ struct drm_zocl_aie_skd_xclbin {
 	uint64_t		ps_uuid_ptr;
 };
 
+struct drm_zocl_skd_axlf_size {
+	uint64_t		ps_uuid_ptr;
+	uint32_t		axlf_size;
+};
+
 #define DRM_IOCTL_ZOCL_CREATE_BO       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CREATE_BO,     \
                                        struct drm_zocl_create_bo)
@@ -604,4 +610,6 @@ struct drm_zocl_aie_skd_xclbin {
 					       DRM_ZOCL_SET_CU_READONLY_RANGE, struct drm_zocl_set_cu_range)
 #define DRM_IOCTL_ZOCL_AIE_SKD_XCLBIN   DRM_IOWR(DRM_COMMAND_BASE + \
 					       DRM_ZOCL_AIE_SKD_XCLBIN, struct drm_zocl_aie_skd_xclbin)
+#define DRM_IOCTL_ZOCL_SKD_AXLF_SIZE			DRM_IOWR(DRM_COMMAND_BASE + \
+					       DRM_ZOCL_SKD_AXLF_SIZE, struct drm_zocl_skd_axlf_size)
 #endif
