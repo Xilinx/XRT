@@ -60,7 +60,7 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		cmd = scmd->skc_packet;
 
 		/* Look for slot_id corresponding to UUID */
-		for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
+		for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 			mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
 			slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
 			if(slot_uuid) {

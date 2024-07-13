@@ -573,7 +573,7 @@ int zocl_aie_skd_xclbin(struct drm_zocl_dev *zdev, void *data)
 	}
 	mutex_lock(&zdev->aie_lock);
 
-	for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		struct drm_zocl_slot *slot = NULL;
 		slot = zdev->pr_slot[i];
 		mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
@@ -619,7 +619,7 @@ int zocl_skd_axlf_size(struct drm_zocl_dev *zdev, void *data)
 	}
 	mutex_lock(&zdev->aie_lock);
 
-	for (i = 0;i < MAX_PR_SLOT_NUM;i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		struct drm_zocl_slot *slot = NULL;
 		slot = zdev->pr_slot[i];
 		mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
@@ -636,6 +636,7 @@ int zocl_skd_axlf_size(struct drm_zocl_dev *zdev, void *data)
 	if(i == MAX_PR_SLOT_NUM)
 	{
 		DRM_ERROR(" %s: UUID not found \n",__func__);
+		mutex_unlock(&zdev->aie_lock);
 		return -ENODEV;
 	}
 	zocl_slot = zdev->pr_slot[slot_id];
