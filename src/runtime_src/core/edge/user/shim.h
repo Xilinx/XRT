@@ -154,179 +154,6 @@ public:
     }
   }; // buffer_object
 
-
-  // Shim handle for hardware context Even as hw_emu does not
-  // support hardware context, it still must implement a shim
-  // hardware context handle representing the default slot
-  class hwcontext : public xrt_core::hwctx_handle
-  {
-    shim* m_shim;
-    xrt::uuid m_uuid;
-    slot_id m_slotidx;
-    xrt::hw_context::access_mode m_mode;
-
-  public:
-    hwcontext(shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode)
-      : m_shim(shim)
-      , m_uuid(std::move(uuid))
-      , m_slotidx(slotidx)
-      , m_mode(mode)
-    {}
-
-    void
-    update_access_mode(access_mode mode) override
-    {
-      m_mode = mode;
-    }
-
-    slot_id
-    get_slotidx() const override
-    {
-      return m_slotidx;
-    }
-
-    xrt::hw_context::access_mode
-    get_mode() const
-    {
-      return m_mode;
-    }
-
-    xrt::uuid
-    get_xclbin_uuid() const
-    {
-      return m_uuid;
-    }
-
-    xrt_core::hwqueue_handle*
-    get_hw_queue() override
-    {
-      return nullptr;
-    }
-
-    std::unique_ptr<xrt_core::buffer_handle>
-    alloc_bo(void* userptr, size_t size, uint64_t flags) override
-    {
-      // The hwctx is embedded in the flags, use regular shim path
-      return m_shim->xclAllocUserPtrBO(userptr, size, xcl_bo_flags{flags}.flags);
-    }
-
-    std::unique_ptr<xrt_core::buffer_handle>
-    alloc_bo(size_t size, uint64_t flags) override
-    {
-      // The hwctx is embedded in the flags, use regular shim path
-      return m_shim->xclAllocBO(size, xcl_bo_flags{flags}.flags);
-    }
-
-    xrt_core::cuidx_type
-    open_cu_context(const std::string& cuname) override
-    {
-      return m_shim->open_cu_context(this, cuname);
-    }
-
-    void
-    close_cu_context(xrt_core::cuidx_type cuidx) override
-    {
-      m_shim->close_cu_context(this, cuidx);
-    }
-
-    void
-    exec_buf(xrt_core::buffer_handle* cmd) override
-    {
-      m_shim->xclExecBuf(cmd->get_xcl_handle());
-    }
-    std::unique_ptr<xrt_core::graph_handle>
-    open_graph_handle(const char* name, xrt::graph::access_mode am) override
-    {
-      return std::make_unique<graph_object>(m_shim, m_uuid, name, am);
-    }
-  }; // class hwcontext
-
-  // Shim handle for graph object
-  class graph_object : public xrt_core::graph_handle
-  {
-    shim* m_shim;
-    xclGraphHandle m_xclGraphHandle;
-
-  public:
-    graph_object(shim* shim, const xrt::uuid& uuid , const char* name, xrt::graph::access_mode am)
-      : m_shim{shim},
-        m_xclGraphHandle{xclGraphOpen(m_shim, uuid.get(), name, am)}
-    {}
-
-    ~graph_object()
-    {
-       xclGraphClose(m_xclGraphHandle);
-    }
-
-    void
-    reset_graph() override
-    {
-      if (auto ret = xclGraphReset(m_xclGraphHandle))
-        throw xrt_core::system_error(ret, "fail to reset graph");
-    }
-
-    uint64_t
-    get_timestamp() override
-    {
-      return xclGraphTimeStamp(m_xclGraphHandle);
-    }
-
-    void
-    run_graph(int iterations) override
-    {
-      if (auto ret = xclGraphRun(m_xclGraphHandle, iterations))
-        throw xrt_core::system_error(ret, "fail to run graph");
-    }
-
-    int
-    wait_graph_done(int timeout) override
-    {
-      return xclGraphWaitDone(m_xclGraphHandle, timeout);
-    }
-
-    void
-    wait_graph(uint64_t cycle) override
-    {
-      if (auto ret = xclGraphWait(m_xclGraphHandle, cycle))
-        throw xrt_core::system_error(ret, "fail to wait graph");
-    }
-
-    void
-    suspend_graph() override
-    {
-      if (auto ret = xclGraphSuspend(m_xclGraphHandle))
-        throw xrt_core::system_error(ret, "fail to suspend graph");
-    }
-
-    void
-    resume_graph() override
-    {
-      if (auto ret = xclGraphResume(m_xclGraphHandle))
-        throw xrt_core::system_error(ret, "fail to resume graph");
-    }
-
-    void
-    end_graph(uint64_t cycle) override
-    {
-      if (auto ret = xclGraphEnd(m_xclGraphHandle, cycle))
-        throw xrt_core::system_error(ret, "fail to end graph");
-    }
-
-    void
-    update_graph_rtp(const char* port, const char* buffer, size_t size) override
-    {
-      if (auto ret = xclGraphUpdateRTP(m_xclGraphHandle, port, buffer, size))
-        throw xrt_core::system_error(ret, "fail to update graph rtp");
-    }
-
-    void
-    read_graph_rtp(const char* port, char* buffer, size_t size) override
-    {
-      if (auto ret = xclGraphReadRTP(m_xclGraphHandle, port, buffer, size))
-        throw xrt_core::system_error(ret, "fail to read graph rtp");
-    }
-  }; // graph_object
-
   ~shim();
   shim(unsigned index);
 
@@ -443,7 +270,7 @@ public:
 
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie* getAieArray();
-  zynqaie::Aied* getAied();
+  zynqaie::aied* getAied();
   int getBOInfo(drm_zocl_info_bo &info);
   void registerAieArray();
   bool isAieRegistered();
@@ -478,7 +305,7 @@ private:
 
 #ifdef XRT_ENABLE_AIE
   std::unique_ptr<zynqaie::Aie> aieArray;
-  std::unique_ptr<zynqaie::Aied> aied;
+  std::unique_ptr<zynqaie::aied> aied;
   xrt::aie::access_mode access_mode = xrt::aie::access_mode::none;
 #endif
 };
