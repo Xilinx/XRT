@@ -116,4 +116,12 @@ get_device_info(xclDeviceInfo2 *info)
     throw system_error(ret, "failed to get device info");
 }
 
+std::unique_ptr<xrt_core::graph_handle>
+device::
+open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am)
+{
+   return std::make_unique<xclswemuhal2::SwEmuShim::graph_object>(
+                  static_cast<xclswemuhal2::SwEmuShim*>(get_device_handle()), xclbin_id, name, am);
+}
+
 }} // swemu,xrt_core
