@@ -423,6 +423,8 @@ public:
   static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
   int xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size);
+  int xclgetAIESkdAxlfSize(uint64_t skd_uuid_ptr);
+  int xclgetAIESkdXclbin(uint64_t skd_uuid_ptr, uint64_t skd_axlf_ptr);
 
   // Application debug path functionality for xbutil
   size_t xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults);

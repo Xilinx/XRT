@@ -52,7 +52,6 @@ namespace xrt {
       m_parent_bo_handle(xrt::shim_int::get_buffer_handle(xrtDeviceToXclDevice(handle), parent_mem_bo_in)),
       m_mem_start_paddr(mem_start_paddr_in),
       m_mem_size(mem_size_in)
-
   {
   }
 

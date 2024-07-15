@@ -136,41 +136,41 @@ load_xclbin(const xrt::xclbin& xclbin)
   }
 }
 
+/* This function reads the axlf buffer
+ * for the specific uuid passed.
+ */
 void
 device::
 load_xclbin(const uuid& xclbin_id)
 {
-  auto uuid_loaded = get_xclbin_uuid();
-  if (uuid_compare(uuid_loaded.get(), xclbin_id.get()))
-    throw error(ENODEV, "specified xclbin is not loaded");
+  /* UUID comparision happens at low level where the 
+   * the query for axlf buffer sent for this specific uuid.
+   */
 
 #ifdef XRT_ENABLE_AIE
-  uint64_t ps_uuid_ptr = reinterpret_cast<uint64_t>(xclbin_id.get());
+  uint64_t skd_uuid_ptr = reinterpret_cast<uint64_t>(xclbin_id.get());
   const axlf* skd_axlf_ptr;
   uint32_t axlf_size;
 
   /* Query for axlf buffer size Ioctl for this UUID parameter */
   try {
-      axlf_size = xrt_core::device_query<xrt_core::query::skd_axlf_size>(this, ps_uuid_ptr);
+      axlf_size = xrt_core::device_query<xrt_core::query::skd_axlf_size>(this, skd_uuid_ptr);
   }
   catch (const std::exception &e) {
-    std::cerr << boost::format("ERROR: Failed to get axlf size (%lx)\n %s\n") % uuid_loaded.get() % e.what();
+    std::cerr << boost::format("ERROR: Failed to get axlf size (%lx)\n %s\n") % xclbin_id.get() % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
   if(axlf_size == 0)
   {
-    std::cerr << boost::format("ERROR: UUID not found (%lx)\n %s\n") % uuid_loaded.get();
+    std::cerr << boost::format("ERROR: UUID not found (%lx)\n %s\n") % xclbin_id.get();
     throw xrt_core::error(std::errc::operation_canceled);
   }
   /* Initialize the axlf buffer and query axlf for the specified UUID */
   std::vector<char> buf(axlf_size, 0);
 
-  xrt_core::query::aie_skd_xclbin::args arg = {reinterpret_cast<uint64_t>(ps_uuid_ptr), reinterpret_cast<uint64_t>(buf.data())};
-  try {
-      xrt_core::device_query<xrt_core::query::aie_skd_xclbin>(this, arg);
-  }
-  catch (const std::exception &e) {
-    std::cerr << boost::format("ERROR: Failed to get xclbin for uuid (%lx)\n %s\n") % uuid_loaded.get() % e.what();
+  if (auto ret = xrt_core::device_query<xrt_core::query::aie_skd_xclbin>(this, skd_uuid_ptr, reinterpret_cast<uint64_t>(buf.data())))
+  {
+    std::cerr << boost::format("ERROR: Failed to get xclbin for uuid (%lx)\n %s\n") % xclbin_id.get();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

@@ -130,7 +130,7 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		kdata->cu_nums = cmd->num_cus;
 		kdata->bohdl = bohdl;
 		kdata->meta_bohdl = meta_bohdl;
-		// Pass physical slot 0 UUID to SKD - Currently we only support 1 physical slot
+		// Pass physical slot_id UUID to SKD - Currently we only support 1 physical slot
 		mutex_lock(&zdev->pr_slot[slot_id]->slot_xclbin_lock);
 		phy_slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[slot_id]);
 		mutex_unlock(&zdev->pr_slot[slot_id]->slot_xclbin_lock);

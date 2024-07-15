@@ -124,9 +124,11 @@ enum drm_zocl_ops {
 	DRM_ZOCL_AIE_FREQSCALE,
 	/* Set CU read-only range */
 	DRM_ZOCL_SET_CU_READONLY_RANGE,
-	DRM_ZOCL_NUM_IOCTLS,
+	/* Read xclbin for a specific uuid */
 	DRM_ZOCL_AIE_SKD_XCLBIN,
-	DRM_ZOCL_SKD_AXLF_SIZE
+	/* Read Axlf size */
+	DRM_ZOCL_SKD_AXLF_SIZE,
+	DRM_ZOCL_NUM_IOCTLS
 };
 
 enum drm_zocl_sync_bo_dir {
@@ -552,11 +554,11 @@ struct drm_zocl_error_inject {
 
 struct drm_zocl_aie_skd_xclbin {
 	uint64_t		skd_axlf_ptr;
-	uint64_t		ps_uuid_ptr;
+	uint64_t		skd_uuid_ptr;
 };
 
 struct drm_zocl_skd_axlf_size {
-	uint64_t		ps_uuid_ptr;
+	uint64_t		skd_uuid_ptr;
 	uint32_t		axlf_size;
 };
 

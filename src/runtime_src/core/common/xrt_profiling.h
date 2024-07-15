@@ -56,6 +56,11 @@ XCL_DRIVER_DLLESPEC int xclReadTraceData(xclDeviceHandle handle, void* traceBuf,
 
 XCL_DRIVER_DLLESPEC int xclGetSubdevPath(xclDeviceHandle handle, const char* subdev, uint32_t idx, char* path, size_t size);
 
+XCL_DRIVER_DLLESPEC int xclgetAIESkdXclbin(xclDeviceHandle handle, uint64_t skd_uuid_ptr, uint64_t skd_axlf_ptr);
+
+XCL_DRIVER_DLLESPEC int xclgetAIESkdAxlfSize(xclDeviceHandle handle, uint64_t skd_uuid_ptr);
+
+
 #ifdef __cplusplus
 }
 #endif

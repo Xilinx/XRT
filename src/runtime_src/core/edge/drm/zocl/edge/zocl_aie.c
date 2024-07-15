@@ -560,7 +560,7 @@ int zocl_aie_skd_xclbin(struct drm_zocl_dev *zdev, void *data)
 	uuid_t *slot_uuid = NULL;
 	uuid_t *skd_uuid = NULL;
 	int i, slot_id = MAX_PR_SLOT_NUM, ret = 0;
-	void *uuid_ptr = (void *)(uintptr_t)args->ps_uuid_ptr;
+	void *uuid_ptr = (void *)(uintptr_t)args->skd_uuid_ptr;
 
 	skd_uuid = vmalloc(sizeof(uuid_t));
 	if (!skd_uuid)
@@ -606,7 +606,7 @@ int zocl_skd_axlf_size(struct drm_zocl_dev *zdev, void *data)
 	uuid_t *slot_uuid = NULL;
 	uuid_t *skd_uuid = NULL;
 	int i, slot_id = MAX_PR_SLOT_NUM, ret = 0;
-	void *uuid_ptr = (void *)(uintptr_t)args->ps_uuid_ptr;
+	void *uuid_ptr = (void *)(uintptr_t)args->skd_uuid_ptr;
 
 	skd_uuid = vmalloc(sizeof(uuid_t));
 	if (!skd_uuid)

@@ -1862,6 +1862,35 @@ setAIEAccessMode(xrt::aie::access_mode am)
   access_mode = am;
 }
 
+int
+shim::
+xclgetAIESkdAxlfSize(uint64_t skd_uuid_ptr)
+{
+    int ret = 0;
+    struct drm_zocl_skd_axlf_size aie_arg = {skd_uuid_ptr, 0};
+
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SKD_AXLF_SIZE, &aie_arg);
+    if (ret)
+    {
+      xclLog(XRT_ERROR, "%s:ioctl return %d", __func__, ret);
+      return -errno;
+    }
+    return aie_arg.axlf_size;
+}
+
+int
+shim::
+xclgetAIESkdXclbin(uint64_t skd_uuid_ptr, uint64_t skd_axlf_ptr)
+{
+    int ret = 0;
+    struct drm_zocl_aie_skd_xclbin aie_arg;
+
+    aie_arg.skd_uuid_ptr = skd_uuid_ptr;
+    aie_arg.skd_axlf_ptr = skd_axlf_ptr;
+
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_SKD_XCLBIN, &aie_arg);
+    return ret ? -errno : ret;
+}
 #endif
 
 } // end namespace ZYNQ
@@ -2827,3 +2856,18 @@ xclErrorClear(xclDeviceHandle handle)
 
   return drv->xclErrorClear();
 }
+
+int
+xclgetAIESkdXclbin(xclDeviceHandle handle, uint64_t skd_uuid_ptr, uint64_t skd_axlf_ptr)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return (drv) ? drv->xclgetAIESkdXclbin(skd_uuid_ptr, skd_axlf_ptr) : -EINVAL;
+}
+
+int
+xclgetAIESkdAxlfSize(xclDeviceHandle handle, uint64_t skd_uuid_ptr)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return (drv) ? drv->xclgetAIESkdAxlfSize(skd_uuid_ptr) : -EINVAL;
+}
+

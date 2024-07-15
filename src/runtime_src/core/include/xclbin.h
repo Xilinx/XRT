@@ -108,8 +108,6 @@ typedef GUID xuid_t;
 #define SIZE_OF_STRUCT(s) \
    char (*__fail)[sizeof(struct s)] = 1
 
-#define MAX_AXLF_BUF_SIZE       (4096*1024)
-
 #ifdef __cplusplus
 extern "C" {
 #endif

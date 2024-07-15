@@ -3825,29 +3825,30 @@ struct read_trace_data : request
 /* SKD Request to load xclbin for a specific UUID */
 struct aie_skd_xclbin : request
 {
-  using result_type = bool;
-  using ps_uuid_ptr_type = uint64_t;
+  using result_type = uint32_t;
+  using skd_uuid_ptr_type = uint64_t;
   using skd_axlf_ptr_type = uint64_t;
 
   static const key_type key = key_type::aie_skd_xclbin;
   struct args {
-    uint64_t  ps_uuid_ptr;
+    uint64_t  skd_uuid_ptr;
     uint64_t  skd_axlf_ptr;
   };
 
   virtual std::any
-  get(const device*, const std::any& arg) const = 0;
+  get(const device*, const std::any& skd_uuid_ptr, const std::any& skd_axlf_ptr) const = 0;
 };
 
+/* SKD Request to read the axlf size for a specific uuid */
 struct skd_axlf_size : request
 {
-  using ps_uuid_ptr_type = uint64_t;
+  using skd_uuid_ptr_type = uint64_t;
   using result_type = uint32_t;
 
   static const key_type key = key_type::skd_axlf_size;
 
   virtual std::any
-  get(const device*, const std::any& ps_uuid_ptr) const = 0;
+  get(const device*, const std::any& skd_uuid_ptr) const = 0;
 };
 
 } // query
