@@ -24,7 +24,7 @@
 #include <thread>
 #include <pthread.h> 
 #include "core/common/device.h"
-#include "core/edge/user/aie/graph.h"
+#include "graph_object.h"
 
 /*
  * It receives commands from zocl and dispatches back the output.
@@ -37,14 +37,14 @@ class aied
 public:
   aied(xrt_core::device* device);
   ~aied();
-  void register_graph(const graph_instance *graph);
-  void deregister_graph(const graph_instance *graph);
+  void register_graph(const graph_object *graph);
+  void deregister_graph(const graph_object *graph);
 
 private:
   bool done;
   static void* poll_aie(void *arg);
   xrt_core::device *m_device;
-  std::vector<const graph_instance*> m_graphs;
+  std::vector<const graph_object*> m_graphs;
   pthread_t ptid;
 };
 } // end namespace

@@ -98,13 +98,13 @@ aied::poll_aie(void* arg)
 }
 
 void
-aied::register_graph(const graph_instance *graph)
+aied::register_graph(const graph_object *graph)
 {
   m_graphs.push_back(graph);
 }
 
 void
-aied::deregister_graph(const graph_instance *graph)
+aied::deregister_graph(const graph_object *graph)
 {
   m_graphs.erase(std::remove(m_graphs.begin(), m_graphs.end(), graph), m_graphs.end());
 }

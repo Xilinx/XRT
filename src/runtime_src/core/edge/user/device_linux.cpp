@@ -10,8 +10,9 @@
 #include "core/common/query_requests.h"
 #include "core/common/xrt_profiling.h"
 #include "shim.h"
-#include "graph_object.h"
-
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/user/aie/graph_object.h"
+#endif
 #include <map>
 #include <memory>
 #include <string>
@@ -24,18 +25,17 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#ifdef XRT_ENABLE_AIE
 #include "core/edge/include/zynq_ioctl.h"
 #include "aie/aiereg.h"
 #include <fcntl.h>
+#ifdef XRT_ENABLE_AIE 
 extern "C" {
 #include <xaiengine.h>
 }
-#ifndef __AIESIM__
 #include "xaiengine/xlnx-ai-engine.h"
+#endif
 #include <sys/ioctl.h>
-#endif
-#endif
+
 
 
 namespace {
@@ -1136,8 +1136,12 @@ std::unique_ptr<xrt_core::graph_handle>
 device_linux::
 open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am)
 {
+#ifdef XRT_ENABLE_AIE   
    return std::make_unique<zynqaie::graph_object>(
                   static_cast<ZYNQ::shim*>(get_device_handle()), xclbin_id, name, am);
+#else
+   return nullptr;
+#endif   
 }
 
 std::unique_ptr<buffer_handle>
@@ -1171,6 +1175,78 @@ get_sysfs_path(const std::string& subdev, const std::string& entry)
   return path_buf;
 }
 
+#ifdef XRT_ENABLE_AIE
+ 
+void
+device_linux::
+open_aie_context(xrt::aie::access_mode am)
+{
+ if (auto ret = xclAIEOpenContext(get_device_handle(), am))
+   throw error(ret, "fail to open aie context");
+}
+
+void
+device_linux::
+sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  if (auto ret = xclSyncBOAIE(get_device_handle(), bo, gmioName, dir, size, offset))
+    throw system_error(ret, "fail to sync aie bo");
+}
+
+void
+device_linux::
+reset_aie()
+{
+  if (auto ret = xclResetAIEArray(get_device_handle()))
+    throw system_error(ret, "fail to reset aie");
+}
+
+void
+device_linux::
+sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  if (auto ret = xclSyncBOAIENB(get_device_handle(), bo, gmioName, dir, size, offset))
+    throw system_error(ret, "fail to sync aie non-blocking bo");
+}
+
+void
+device_linux::
+wait_gmio(const char *gmioName)
+{
+  if (auto ret = xclGMIOWait(get_device_handle(), gmioName))
+    throw system_error(ret, "fail to wait gmio");
+}
+
+int
+device_linux::
+start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
+{
+  return xclStartProfiling(get_device_handle(), option, port1Name, port2Name, value);
+}
+
+uint64_t
+device_linux::
+read_profiling(int phdl)
+{
+  return xclReadProfiling(get_device_handle(), phdl);
+}
+
+void
+device_linux::
+stop_profiling(int phdl)
+{
+  if (auto ret = xclStopProfiling(get_device_handle(), phdl))
+    throw system_error(ret, "failed to stop profiling");
+}
+
+void
+device_linux::
+load_axlf_meta(const axlf* buffer)
+{
+  if (auto ret = xclLoadXclBinMeta(get_device_handle(), buffer))
+    throw system_error(ret, "failed to load xclbin");
+}
+#endif
 ////////////////////////////////////////////////////////////////
 // Custom IP interrupt handling
 ////////////////////////////////////////////////////////////////
