@@ -175,7 +175,7 @@ namespace xdp::aie::trace {
    * @param channel   Channel number
    * @param events    Vector of events in metric set (modified if needed)
    */
-  void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
+  void modifyEvents(module_type type, io_type subtype, const std::string metricSet,
                     uint8_t channel, std::vector<XAie_Events>& events);
 
 }  // namespace xdp::aie::trace

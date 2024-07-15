@@ -1511,10 +1511,6 @@ namespace xdp {
         if (config->plDeviceIntf == nullptr && xdpDevice != nullptr)
           return true;
 
-        std::stringstream msg;
-        msg << "Loaded xclbins on device already contains this new xclbin with UID: " << new_xclbin_uuid.to_string() <<"." ;
-        msg << " Skipping update of the device.\n";
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
         return false;
       }
     }

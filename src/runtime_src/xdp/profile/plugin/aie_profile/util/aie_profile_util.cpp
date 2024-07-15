@@ -205,7 +205,7 @@ namespace xdp::aie::profile {
   /****************************************************************************
   * Modify configured events based on the channel and hardware generation
   ***************************************************************************/
-  void modifyEvents(const module_type type, const uint16_t subtype, const uint8_t channel,
+  void modifyEvents(const module_type type, const io_type subtype, const uint8_t channel,
                                         std::vector<XAie_Events>& events, const int hwGen)
   {
     if ((type != module_type::dma) && (type != module_type::shim))
@@ -230,7 +230,7 @@ namespace xdp::aie::profile {
 
     // Calculate throughput differently for PLIO or AIE1 devices
     // since DMA-related events are not defined in those cases
-    if ((subtype == 0) || (hwGen == 1)) {
+    if ((subtype == io_type::PLIO) || (hwGen == 1)) {
       std::replace(events.begin(), events.end(), 
         XAIE_EVENT_GROUP_DMA_ACTIVITY_PL,              XAIE_EVENT_PORT_STALLED_0_PL);
       std::replace(events.begin(), events.end(), 
