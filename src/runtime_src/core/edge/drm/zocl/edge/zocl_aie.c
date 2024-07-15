@@ -576,6 +576,8 @@ int zocl_aie_skd_xclbin(struct drm_zocl_dev *zdev, void *data)
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		struct drm_zocl_slot *slot = NULL;
 		slot = zdev->pr_slot[i];
+		if (!slot)
+			continue;
 		mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
 		slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
 		if(slot_uuid) {
@@ -622,6 +624,8 @@ int zocl_skd_axlf_size(struct drm_zocl_dev *zdev, void *data)
 	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		struct drm_zocl_slot *slot = NULL;
 		slot = zdev->pr_slot[i];
+		if (!slot)
+			continue;
 		mutex_lock(&zdev->pr_slot[i]->slot_xclbin_lock);
 		slot_uuid = zocl_xclbin_get_uuid(zdev->pr_slot[i]);
 		if(slot_uuid) {
