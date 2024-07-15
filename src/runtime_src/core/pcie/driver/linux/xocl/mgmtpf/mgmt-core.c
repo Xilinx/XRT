@@ -1777,7 +1777,7 @@ static int __init xclmgmt_init(void)
 
 	pr_info(DRV_NAME " init()\n");
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0) && !defined(RHEL_9_4_GE)
 	xrt_class = class_create(THIS_MODULE, "xrt_mgmt");
 #else
 	xrt_class = class_create("xrt_mgmt");
