@@ -47,8 +47,8 @@
  * Functions each plugin needs to provide
  */
 extern "C" {
-int init(mpd_plugin_callbacks *cbs);
-void fini(void *mpc_cookie);
+int xrt_init(mpd_plugin_callbacks *cbs);
+void xrt_fini(void *mpc_cookie);
 }
 
 /*
@@ -67,7 +67,7 @@ static std::vector<std::string> fpga_serial_number;
  * Init function of the plugin that is used to hook the required functions.
  * The cookie is used by fini (see below). Can be NULL if not required.
  */
-int init(mpd_plugin_callbacks *cbs)
+int xrt_init(mpd_plugin_callbacks *cbs)
 {
     int ret = 1;
     auto total = pcidev::get_dev_total();
@@ -100,7 +100,7 @@ int init(mpd_plugin_callbacks *cbs)
 /*
  * Fini function of the plugin
  */
-void fini(void *mpc_cookie)
+void xrt_fini(void *mpc_cookie)
 {
      syslog(LOG_INFO, "azure mpd plugin fini called\n");
 }

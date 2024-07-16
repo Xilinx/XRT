@@ -29,8 +29,8 @@ struct msd_plugin_callbacks {
     retrieve_xclbin_fn retrieve_xclbin; 
 };
 
-#define INIT_FN_NAME    "init"
-#define FINI_FN_NAME    "fini"
+#define INIT_FN_NAME    "xrt_init"
+#define FINI_FN_NAME    "xrt_fini"
 typedef int (*init_fn)(struct msd_plugin_callbacks *cbs);
 typedef void (*fini_fn)(void *mpc_cookie);
 

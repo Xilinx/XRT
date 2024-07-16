@@ -94,8 +94,8 @@ struct mpd_plugin_callbacks {
     } mb_req;
 };
 
-#define INIT_FN_NAME    "init"
-#define FINI_FN_NAME    "fini"
+#define INIT_FN_NAME    "xrt_init"
+#define FINI_FN_NAME    "xrt_fini"
 /*
  * These 2 functions are mandatory for all mpd plugins.
  * init_fn is used to hook all functions the plugin implements.

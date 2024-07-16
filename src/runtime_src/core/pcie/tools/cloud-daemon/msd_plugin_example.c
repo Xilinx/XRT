@@ -45,8 +45,8 @@
 /*
  * Functions each plguin must provide
  */
-int init(struct msd_plugin_callbacks *cbs);
-void fini(void *mpc_cookie);
+int xrt_init(struct msd_plugin_callbacks *cbs);
+void xrt_fini(void *mpc_cookie);
 void retrieve_xclbin_cb(void *arg, char *xclbin, size_t len);
 int retrieve_xclbin(char *orig_xclbin, size_t orig_xclbin_len,
     char **xclbin, size_t *xclbin_len, retrieve_xclbin_fini_fn *cb, void **arg);
@@ -98,7 +98,7 @@ struct xclbin_repo repo[2] = {
  * So far there is only one hook function required to get real xclbin from the fake one.
  * The cookie is used by fini (see below). Can be NULL if not required.
  */ 
-int init(struct msd_plugin_callbacks *cbs)
+int xrt_init(struct msd_plugin_callbacks *cbs)
 {
     int ret = 1;
     if (cbs) {
@@ -114,7 +114,7 @@ int init(struct msd_plugin_callbacks *cbs)
 /*
  * Fini function of the plugin
  */ 
-void fini(void *mpc_cookie)
+void xrt_fini(void *mpc_cookie)
 {
      syslog(LOG_INFO, "plugin fini called\n");
 }
