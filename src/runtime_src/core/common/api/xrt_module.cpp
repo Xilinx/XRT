@@ -138,6 +138,7 @@ struct patcher
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
+  uint32_t m_mask = 0; // This field is valid only when patching scheme is scalar_32bit_kind
 
   struct patch_info {
     uint64_t offset_to_patch_buffer;
@@ -152,12 +153,24 @@ struct patcher
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
+  patcher(uint32_t mask, std::vector<patch_info> ctrlcode_offset, buf_type t)
+    : m_buf_type(t)
+    , m_symbol_type(symbol_type::scalar_32bit_kind)
+    , m_mask(mask)
+    , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
+  {}
+
+// replace certain bits of bd_data_ptr[0] with register_value
+// which bits to be replaced is specified by mask
   void
-  patch32(uint32_t* bd_data_ptr, uint64_t patch)
+  patch32(uint32_t* bd_data_ptr, uint64_t register_value, uint32_t mask)
   {
-    uint64_t base_address = bd_data_ptr[0];
-    base_address += patch;
-    bd_data_ptr[0] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
+    auto new_value = bd_data_ptr[0];
+    mask == 0 ? 0xFFFFFFFF : mask;
+    uint32_t clear_mask = ~mask;
+    new_value &= clear_mask;
+    new_value |= static_cast<uint32_t>(register_value);
+    bd_data_ptr[0] = new_value;
   }
 
   void
@@ -204,22 +217,26 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t bo_addr)
+  patch(uint8_t* base, uint64_t new_value)
   {
     for (auto item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
-        patch32(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a register value
+        patch32(bd_data_ptr, new_value, m_mask);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
-        patch57(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a bo address
+        patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
-        patch_ctrl48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a bo address
+        patch_ctrl48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::shim_dma_48:
-        patch_shim48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a bo address
+        patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -678,9 +695,10 @@ class module_elf : public module_impl
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
         else {
-          uint32_t patch_scheme = rela->r_addend & schema_mask;
-          auto symbol_type = static_cast<patcher::symbol_type>(patch_scheme);
-          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {pi}, buf_type});
+          auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+          patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
+                          arg2patchers.emplace(std::move(key_string), patcher{ static_cast<uint32_t>(sym->st_value), {pi}, buf_type}) :
+                          arg2patchers.emplace(std::move(key_string), patcher{ patch_scheme, {pi}, buf_type});
         }
       }
     }
