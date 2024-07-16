@@ -102,7 +102,6 @@ namespace xdp {
       return;
 
     writeAll(true);
-    delete mHwCtxImpl;
     mHwCtxImpl = nullptr;
   }
 
