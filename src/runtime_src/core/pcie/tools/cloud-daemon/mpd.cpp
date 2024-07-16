@@ -278,7 +278,7 @@ void Mpd::start()
         plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
         plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
         if (plugin_init == nullptr || plugin_fini == nullptr) {
-            syslog(LOG_ERR, "failed to find init/fini symbols in mpd plugin");
+            syslog(LOG_ERR, "failed to find xrt_init/xrt_fini symbols in mpd plugin");
             return;
         }
         int ret = (*plugin_init)(&plugin_cbs);
