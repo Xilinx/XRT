@@ -494,9 +494,10 @@ get_trace_gmio(const pt::ptree& aie_meta)
 namespace xrt_core { namespace edge { namespace aie {
 
 adf::driver_config
-get_driver_config(const xrt_core::device* device)
+get_driver_config(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -506,9 +507,10 @@ get_driver_config(const xrt_core::device* device)
 }
 
 adf::aiecompiler_options
-get_aiecompiler_options(const xrt_core::device* device)
+get_aiecompiler_options(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -518,9 +520,10 @@ get_aiecompiler_options(const xrt_core::device* device)
 }
 
 adf::graph_config
-get_graph(const xrt_core::device* device, const std::string& graph_name)
+get_graph(const xrt_core::device* device, const std::string& graph_name, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -530,9 +533,10 @@ get_graph(const xrt_core::device* device, const std::string& graph_name)
 }
 
 int
-get_graph_id(const xrt_core::device* device, const std::string& graph_name)
+get_graph_id(const xrt_core::device* device, const std::string& graph_name, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return -1;
 
@@ -542,9 +546,10 @@ get_graph_id(const xrt_core::device* device, const std::string& graph_name)
 }
 
 std::vector<std::string>
-get_graphs(const xrt_core::device* device)
+get_graphs(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -554,9 +559,10 @@ get_graphs(const xrt_core::device* device)
 }
 
 std::vector<tile_type>
-get_tiles(const xrt_core::device* device, const std::string& graph_name)
+get_tiles(const xrt_core::device* device, const std::string& graph_name, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -567,9 +573,10 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
 
 std::vector<tile_type>
 get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
-                module_type type)
+                    module_type type, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -579,9 +586,10 @@ get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
 }
 
 std::unordered_map<std::string, adf::rtp_config>
-get_rtp(const xrt_core::device* device, int graph_id)
+get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -591,9 +599,10 @@ get_rtp(const xrt_core::device* device, int graph_id)
 }
 
 std::unordered_map<std::string, adf::gmio_config>
-get_gmios(const xrt_core::device* device)
+get_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -603,9 +612,10 @@ get_gmios(const xrt_core::device* device)
 }
 
 std::unordered_map<std::string, adf::plio_config>
-get_plios(const xrt_core::device* device)
+get_plios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -615,9 +625,10 @@ get_plios(const xrt_core::device* device)
 }
 
 double
-get_clock_freq_mhz(const xrt_core::device* device)
+get_clock_freq_mhz(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return 1000.0;  // magic
 
@@ -627,9 +638,10 @@ get_clock_freq_mhz(const xrt_core::device* device)
 }
 
 std::vector<counter_type>
-get_profile_counters(const xrt_core::device* device)
+get_profile_counters(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -639,9 +651,10 @@ get_profile_counters(const xrt_core::device* device)
 }
 
 std::vector<gmio_type>
-get_trace_gmios(const xrt_core::device* device)
+get_trace_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return {};
 
@@ -651,9 +664,10 @@ get_trace_gmios(const xrt_core::device* device)
 }
 /* hw_gen represents aie version 1.aie, 2.aie-ml etc */
 uint8_t
-get_hw_gen(const xrt_core::device* device)
+get_hw_gen(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return 1; // default is aie-1
 
@@ -663,9 +677,10 @@ get_hw_gen(const xrt_core::device* device)
 }
 
 uint32_t
-get_partition_id(const xrt_core::device* device)
+get_partition_id(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx)
 {
-  auto data = device->get_axlf_section(AIE_METADATA);
+  auto xclbin_uuid = hwctx ? hwctx->get_xclbin_uuid() : uuid();
+  auto data = device->get_axlf_section(AIE_METADATA, xclbin_uuid);
   if (!data.first || !data.second)
     return 1; 
 

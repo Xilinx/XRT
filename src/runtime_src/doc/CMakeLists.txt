@@ -21,13 +21,6 @@ file(GLOB XRT_UUID_H       ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h)
 file(GLOB XRT_XCLBIN_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h)
 file(GLOB XRT_INI_H        ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/ert.h)
-file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
-file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
-file(GLOB XRT_XMA_ENCODER_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/app/xmaencoder.h)
-file(GLOB XRT_XMA_DECODER_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/app/xmadecoder.h)
-file(GLOB XRT_XMA_FILTER_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/app/xmafilter.h)
-file(GLOB XRT_XMA_SCALER_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/app/xmascaler.h)
-file(GLOB XRT_XMA_KERNEL_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/app/xmakernel.h)
 file(GLOB XRT_MAILBOX_PROTO_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mailbox_proto.h)
 file(GLOB XRT_MAILBOX_C    ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/xocl/subdev/mailbox.c)
 
@@ -165,48 +158,6 @@ else ()
     VERBATIM
     )
 
-  add_custom_command(OUTPUT core/xma.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_H} > core/xma.rst
-    DEPENDS ${XRT_XMA_H}
-    VERBATIM
-    )
-
-  add_custom_command(OUTPUT core/xmaplugin.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_PLUGIN_H} > core/xmaplugin.rst
-    DEPENDS ${XRT_XMA_PLUGIN_H}
-    VERBATIM
-    )
-
-  add_custom_command(OUTPUT core/xmaencoder.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_ENCODER_H} > core/xmaencoder.rst
-    DEPENDS ${XRT_XMA_ENCODER_H}
-    VERBATIM
-    )
-
-  add_custom_command(OUTPUT core/xmadecoder.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_DECODER_H} > core/xmadecoder.rst
-    DEPENDS ${XRT_XMA_DECODER_H}
-    VERBATIM
-    )
-
-  add_custom_command(OUTPUT core/xmascaler.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_SCALER_H} > core/xmascaler.rst
-    DEPENDS ${XRT_XMA_SCALER_H}
-    VERBATIM
-    )
-
-  add_custom_command(OUTPUT core/xmakernel.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_KERNEL_H} > core/xmakernel.rst
-    DEPENDS ${XRT_XMA_KERNEL_H}
-    VERBATIM
-    )
-
-  add_custom_command(OUTPUT core/xmafilter.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_FILTER_H} > core/xmafilter.rst
-    DEPENDS ${XRT_XMA_FILTER_H}
-    VERBATIM
-    )
-
   add_custom_command(OUTPUT core/mailbox_proto.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MAILBOX_PROTO_H} > core/mailbox_proto.rst
     DEPENDS ${XRT_MAILBOX_PROTO_H}
@@ -237,13 +188,6 @@ else ()
     core/xrt_uuid.rst
     core/xrt_xclbin.rst
     core/ert.rst
-    core/xma.rst
-    core/xmaplugin.rst
-    core/xmaencoder.rst
-    core/xmadecoder.rst
-    core/xmascaler.rst
-    core/xmafilter.rst
-    core/xmakernel.rst
     core/mailbox_proto.rst
     core/mailbox.rst
     COMMENT "Generating documentation with Sphinx"

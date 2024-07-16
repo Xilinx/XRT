@@ -22,6 +22,7 @@
 #include "aie.h"
 #include "xrt.h"
 #include "core/edge/common/aie_parser.h"
+#include "core/edge/user/hwctx_object.h"
 #include "core/common/device.h"
 #include "experimental/xrt_graph.h"
 #include "common_layer/adf_api_config.h"
@@ -34,11 +35,12 @@ typedef xclDeviceHandle xrtDeviceHandle;
 
 namespace zynqaie {
 
-class graph_type
+class graph_instance
 {
 public:
-    graph_type(std::shared_ptr<xrt_core::device> device, const uuid_t xclbin_uuid, const std::string& name, xrt::graph::access_mode);
-    ~graph_type();
+    graph_instance(std::shared_ptr<xrt_core::device> device, std::string name,
+                    xrt::graph::access_mode, const zynqaie::hwctx_object* hwctx = nullptr, const xrt_core::uuid uuid=xrt_core::uuid());
+    ~graph_instance();
 
     void
     reset();
@@ -93,6 +95,7 @@ private:
     // has been loaded with an xclbin from which meta data can
     // be extracted
     std::shared_ptr<xrt_core::device> device;
+    const zynqaie::hwctx_object* m_hwctxHandle;
 
     enum class graph_state : unsigned short
     {

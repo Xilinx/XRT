@@ -80,13 +80,18 @@ namespace xdp {
   void DeviceTraceWriter::writeLoadedXclbinsStructure()
   {
     uint32_t rowCount = 0;
-    std::vector<XclbinInfo*> xclbins =
-      (db->getStaticInfo()).getLoadedXclbins(deviceId);
-
-    for (auto xclbin : xclbins) {
-      fout << "Group_Start," << xclbin->name << "\n";
-      writeSingleXclbinStructure(xclbin, rowCount);
-      fout << "Group_End," << xclbin->name << "\n";
+    //std::vector<ConfigInfo*> configs =
+    auto& configs =
+      (db->getStaticInfo()).getLoadedConfigs(deviceId);
+    
+    for (const auto& config : configs) {
+        std::string configXclbinNames = config->getXclbinNames();
+        fout << "Group_Start," << configXclbinNames << "\n";
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+        writeSingleXclbinStructure(xclbin, rowCount);
+        fout << "Group_End," << configXclbinNames << "\n";
     }
   }
 
@@ -319,13 +324,17 @@ namespace xdp {
     fout << "EVENTS\n";
     auto DeviceEvents = db->getDynamicInfo().moveDeviceEvents(deviceId);
 
-    std::vector<XclbinInfo*> loadedXclbins =
-      (db->getStaticInfo()).getLoadedXclbins(deviceId);
-    if (loadedXclbins.size() <= 0) {
+    auto& loadedConfigs =
+      (db->getStaticInfo()).getLoadedConfigs(deviceId);
+    if (loadedConfigs.size() <= 0) {
       return;
     }
-    int xclbinIndex = 0;
-    XclbinInfo* xclbin = loadedXclbins[xclbinIndex];
+
+    int configIndex = 0;
+    ConfigInfo* config = loadedConfigs[configIndex].get();
+    XclbinInfo* xclbin = config->getPlXclbin();
+    if (!xclbin)
+      return;
 
     for(auto& e : DeviceEvents) {
       VTFDeviceEvent* deviceEvent = dynamic_cast<VTFDeviceEvent*>(e.get());
@@ -336,7 +345,13 @@ namespace xdp {
       VTFEventType eventType = deviceEvent->getEventType();
       if (XCLBIN_END == eventType) {
         // If we hit the end of an xclbin's execution, then increment xclbins
-        xclbin = loadedXclbins[++xclbinIndex];
+        configIndex++;
+        if(configIndex < static_cast<int>(loadedConfigs.size())) {
+          config = loadedConfigs[configIndex].get();
+          xclbin = config->getPlXclbin();
+        }
+        // TODO: Check if expect invalid PL xclbin here?
+
       } else if (KERNEL == eventType) {
         KernelEvent* kernelEvent = dynamic_cast<KernelEvent*>(deviceEvent);
         if (kernelEvent == nullptr)
@@ -425,10 +440,14 @@ namespace xdp {
 
   void DeviceTraceWriter::initialize()
   {
-    std::vector<XclbinInfo*> loadedXclbins =
-      (db->getStaticInfo()).getLoadedXclbins(deviceId);
+    auto& loadedConfigs =
+      (db->getStaticInfo()).getLoadedConfigs(deviceId);
 
-    for (auto xclbin : loadedXclbins) {
+    for (const auto& config : loadedConfigs) {
+      XclbinInfo* xclbin = config->getPlXclbin();
+      if (!xclbin)
+        continue;
+
       for (const auto& iter : xclbin->pl.cus) {
         ComputeUnitInstance* cu = iter.second;
         db->getDynamicInfo().addString(cu->getKernelName());

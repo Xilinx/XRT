@@ -9,6 +9,7 @@
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
 #include "core/common/shim/shared_handle.h"
+#include "core/common/shim/graph_handle.h"
 
 #include "core/pcie/common/device_pcie.h"
 
@@ -46,6 +47,9 @@ public:
 
   void
   get_device_info(xclDeviceInfo2 *info) override;
+
+  std::unique_ptr<xrt_core::graph_handle>
+  open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am) override;
 
 private:
   // Private look up function for concrete query::request
