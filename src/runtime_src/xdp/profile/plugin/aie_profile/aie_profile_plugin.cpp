@@ -52,7 +52,6 @@ namespace xdp {
 
   AieProfilePlugin::AieProfilePlugin() : XDPPlugin()
   {
-    xrt_core::message::send(severity_level::info, "XRT", "Instantiating AIE Profiling Plugin.");
     AieProfilePlugin::live = true;
 
     db->registerPlugin(this);
