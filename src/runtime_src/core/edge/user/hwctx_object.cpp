@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "hwctx_object.h"
-#include "graph_object.h"
-#include "shim.h"
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/user/aie/graph_object.h"
+#endif
+#include "core/edge/user/shim.h"
 
 namespace zynqaie {
   // Shim handle for hardware context Even as hw_emu does not
@@ -52,6 +54,10 @@ namespace zynqaie {
   std::unique_ptr<xrt_core::graph_handle>
   hwctx_object::open_graph_handle(const char* name, xrt::graph::access_mode am)
   {
+#ifdef XRT_ENABLE_AIE    
     return std::make_unique<graph_object>(m_shim, m_uuid, name, am, this);
+#else
+    return nullptr;
+#endif
   }
 }
