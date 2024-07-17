@@ -677,16 +677,21 @@ public:
   void
   submit(xrt_core::buffer_handle* cmd) override
   {
-    m_device->exec_buf(cmd);
+    auto prop = cmd->get_properties();
+    if (prop.flags & XCL_BO_FLAGS_EXECBUF)
+      m_device->exec_buf(cmd);
   }
 
   std::cv_status
   wait(xrt_core::buffer_handle* cmd, size_t timeout_ms) const override
   {
-    if (const_cast<kds_device *>(this)->exec_wait(timeout_ms) == std::cv_status::timeout)
-      return std::cv_status::timeout;
+    auto prop = cmd->get_properties();
+    if (prop.flags & XCL_BO_FLAGS_EXECBUF) {
+      if (const_cast<kds_device *>(this)->exec_wait(timeout_ms) != std::cv_status::timeout)
+        return std::cv_status::no_timeout;
+    }
 
-    return std::cv_status::no_timeout;
+    return std::cv_status::timeout;
   }
 
   // Poll for command completion
