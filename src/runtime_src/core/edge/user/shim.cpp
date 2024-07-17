@@ -57,6 +57,9 @@ extern "C" {
 }
 #endif
 
+static int
+xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta);
+
 namespace {
 
 template <typename ...Args>
@@ -1147,11 +1150,33 @@ close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type c
 
 std::unique_ptr<xrt_core::hwctx_handle>
 shim::
-create_hw_context(const xrt::uuid& xclbin_uuid,
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::cfg_param_type&,
                   xrt::hw_context::access_mode mode)
 {
+  auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
+  auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+
+  if (auto ret = xclLoadXclBinImpl(handle, buffer, false)) {
+    if (ret == -EOPNOTSUPP) {
+      xclLog(XRT_ERROR, "XCLBIN does not match shell on the card.");
+      #if 0
+      //more error logs
+      #endif
+    }
+    xclLog(XRT_ERROR, "See dmesg log for details. err = %d", ret);
+    throw xrt_core::error("Failed to create hardware context");
+  }
+  //success
+  mCoreDevice->register_axlf(buffer);
   return std::make_unique<zynqaie::hwctx_object>(this, 0, xclbin_uuid, mode);
+}
+
+void
+shim::
+register_xclbin(const xrt::xclbin&){
+  xclLog(XRT_ERROR, "++ %s: %d, xclbin successfully registered for this device without loading the xclbin", __func__, __LINE__);
 }
 
 int
@@ -1873,7 +1898,14 @@ create_hw_context(xclDeviceHandle handle,
                   xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, cfg_param, mode);
+  return shim->create_hw_context(handle, xclbin_uuid, cfg_param, mode);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
 }
 
 std::unique_ptr<xrt_core::buffer_handle>
