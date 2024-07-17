@@ -28,6 +28,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <sstream>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
 # define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
@@ -260,10 +261,17 @@ struct patcher
   }
 
   XRT_CORE_UNUSED std::string
-  generate_key_string(const std::string& argument_name, patcher::buf_type type)
+  generate_key_string(const std::string& argument_name, patcher::buf_type type, uint32_t mask = 0)
   {
     std::string buf_string = std::to_string(static_cast<int>(type));
-    return argument_name + buf_string;
+    if (mask) {
+      std::stringstream ss;
+      ss << std::hex << mask;
+      return argument_name + buf_string + ss.str();
+    }
+    else {
+      return argument_name + buf_string;
+    }
   }
 
 } // namespace
@@ -690,14 +698,17 @@ class module_elf : public module_impl
         patcher::patch_info pi = { offset, add_end_higher_28bit };
 
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
-        std::string key_string = generate_key_string(argnm, buf_type);
+        auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+        auto mask = static_cast<uint32_t>(sym->st_value);
+        std::string key_string = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
+                                 generate_key_string(argnm, buf_type, mask) :
+                                 generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
         else {
-          auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
           patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
-                          arg2patchers.emplace(std::move(key_string), patcher{ static_cast<uint32_t>(sym->st_value), {pi}, buf_type}) :
+                          arg2patchers.emplace(std::move(key_string), patcher{ mask, {pi}, buf_type}) :
                           arg2patchers.emplace(std::move(key_string), patcher{ patch_scheme, {pi}, buf_type});
         }
       }
