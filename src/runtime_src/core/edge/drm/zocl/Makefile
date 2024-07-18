@@ -63,7 +63,8 @@ zocl_edge-y := $(zocl_edge_dir)/zocl_dma.o \
 	$(zocl_edge_dir)/zocl_edge_xclbin.o \
 	$(zocl_edge_dir)/zocl_edge_kds.o \
 	$(zocl_edge_dir)/zocl_error.o \
-	$(zocl_edge_dir)/zocl_aie.o
+	$(zocl_edge_dir)/zocl_aie.o \
+	$(zocl_edge_dir)/zocl_hwctx.o
 
 zocl_zert_dir := $(make_dir)/zert
 zocl_zert-y := $(zocl_zert_dir)/zocl_ert.o \

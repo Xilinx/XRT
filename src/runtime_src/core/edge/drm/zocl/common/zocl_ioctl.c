@@ -17,6 +17,8 @@
 #include "zocl_drv.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
+#include "zocl_hwctx.h"
+#include <linux/kernel.h>
 
 /*
  * read_axlf and ctx should be protected by slot_xclbin_lock exclusively.
@@ -29,6 +31,28 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	struct kds_client *client = filp->driver_priv;
 
 	return zocl_xclbin_read_axlf(zdev, axlf_obj, client);
+}
+
+/*
+ * IOCTL to create hw contex on a slot on device for a xclbin.
+ */
+int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_create_hw_ctx *drm_hw_ctx = (struct drm_zocl_create_hw_ctx *)data;
+	printk("+++ %s: %d calling zocl_create_hw_ctx", __func__, __LINE__);
+	return zocl_create_hw_ctx(zdev, drm_hw_ctx);
+}
+
+/*
+ * IOCTL to destroy hw context on a slot on device
+ */
+int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
+	printk("+++ %s: %d calling zocl_destroy_hw_ctx", __func__, __LINE__);
+	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx);
 }
 
 /*
