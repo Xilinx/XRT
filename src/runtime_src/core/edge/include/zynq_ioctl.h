@@ -59,6 +59,10 @@
  *      (experimental)
  * 15   Get Information about Compute Unit     DRM_IOCTL_ZOCL_INFO_CU         drm_zocl_info_cu
  *      (experimental)
+ * 16   Create a hw context on a slot for      DRM_IOCTL_ZOCL_CREATE_HW_CTX   drm_zocl_create_hw_ctx
+ *      a xclbin on the device
+ * 17   Destroy a hw context on a slot on      DRM_IOCTL_ZOCL_DESTROY_HW_CTX  drm_zocl_destroy_hw_ctx
+ *      a device
  *
  * ==== ====================================== ============================== ==================================
  */
@@ -100,6 +104,10 @@ enum drm_zocl_ops {
 	DRM_ZOCL_EXECBUF,
 	/* Read the xclbin and map CUs */
 	DRM_ZOCL_READ_AXLF,
+	/* Create a hw context for a xlbin on the device */
+	DRM_ZOCL_CREATE_HW_CTX,
+	/* Destroy a hw context */
+	DRM_ZOCL_DESTROY_HW_CTX,
 	/* Get the soft kernel command */
 	DRM_ZOCL_SK_GETCMD,
 	/* Create the soft kernel */
@@ -453,6 +461,31 @@ struct drm_zocl_axlf {
 	uint32_t		partition_id;
 };
 
+/**
+* struct drm_zocl_create_hw_ctx - Create a hw context on a slot on device
+* used with DRM_IOCTL_ZOCL_CREATE_HW_CTX ioctl
+*
+* @axlf_ptr:	axlf pointer which need to be downloaded
+* @qos:			QOS information
+* @hw_context:	Returns context handle
+*/
+struct drm_zocl_create_hw_ctx {
+	struct drm_zocl_axlf	*axlf_ptr;
+	uint32_t				qos;
+	//context id
+	uint32_t				hw_context;
+};
+
+/**
+* struct drm_zocl_destroy_hw_ctx - Destroy a hw context on a slot on device
+* used with DRM_IOCTL_ZOCL_DESTROY_HW_CTX ioctl
+*
+* @hw_context:	Context handle that needs to be closed
+*/
+struct drm_zocl_destroy_hw_ctx {
+	uint32_t				hw_context;
+};
+
 #define	ZOCL_MAX_NAME_LENGTH		32
 #define	ZOCL_MAX_PATH_LENGTH		255
 #define AIE_INFO_SIZE			4096
@@ -573,6 +606,10 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_EXECBUF, struct drm_zocl_execbuf)
 #define DRM_IOCTL_ZOCL_READ_AXLF       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_READ_AXLF, struct drm_zocl_axlf)
+#define DRM_IOCTL_ZOCL_CREATE_HW_CTX   DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_CREATE_HW_CTX, struct drm_zocl_create_hw_ctx)
+#define DRM_IOCTL_ZOCL_DESTROY_HW_CTX  DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_DESTROY_HW_CTX, struct drm_zocl_destroy_hw_ctx)
 #define DRM_IOCTL_ZOCL_SK_GETCMD       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_SK_GETCMD, struct drm_zocl_sk_getcmd)
 #define DRM_IOCTL_ZOCL_SK_CREATE       DRM_IOWR(DRM_COMMAND_BASE + \

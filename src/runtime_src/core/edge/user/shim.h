@@ -265,6 +265,9 @@ public:
 
   std::unique_ptr<xrt_core::hwctx_handle>
   create_hw_context(xclDeviceHandle handle, const xrt::uuid&, const xrt::hw_context::cfg_param_type&, xrt::hw_context::access_mode);
+
+  void
+  destroy_hw_context(xrt_core::hwctx_handle::slot_id slotidx);
 ////////////////////////////////////////////////////////////////
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);

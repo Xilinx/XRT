@@ -1157,6 +1157,8 @@ create_hw_context(xclDeviceHandle handle,
 {
   auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
   auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+  int rcode = 0;
+  drm_zocl_create_hw_ctx hw_ctx = {};
 
   if (auto ret = xclLoadXclBinImpl(handle, buffer, false)) {
     if (ret == -EOPNOTSUPP) {
@@ -1170,7 +1172,22 @@ create_hw_context(xclDeviceHandle handle,
   }
   //success
   mCoreDevice->register_axlf(buffer);
+  xclLog(XRT_ERROR, "++ %s: %d, calling ioctl to create hw ctx", __func__, __LINE__);
+  rcode = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_HW_CTX, &hw_ctx);
+  xclLog(XRT_ERROR, "++ %s: %d, returned from the ioctl call", __func__, __LINE__);
   return std::make_unique<zynqaie::hwctx_object>(this, 0, xclbin_uuid, mode);
+}
+
+void
+shim::
+destroy_hw_context(xrt_core::hwctx_handle::slot_id slot)
+{
+  drm_zocl_destroy_hw_ctx hw_ctx = {};
+  hw_ctx.hw_context = slot;
+
+  auto ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_DESTROY_HW_CTX, &hw_ctx);
+  if (ret)
+    throw xrt_core::system_error(errno, "Destroying hw context failed");
 }
 
 void

@@ -36,6 +36,16 @@ namespace zynqaie {
   }
 #endif
 
+  hwctx_object::~hwctx_object()
+  {
+    try {
+      m_shim->destroy_hw_context(m_slotidx);
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+    }
+  }
+
   std::unique_ptr<xrt_core::buffer_handle>
   hwctx_object::alloc_bo(void* userptr, size_t size, uint64_t flags)
   {

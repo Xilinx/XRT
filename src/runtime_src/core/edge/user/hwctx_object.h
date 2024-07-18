@@ -31,6 +31,8 @@ namespace zynqaie {
   public:
     hwctx_object(ZYNQ::shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode);
 
+    ~hwctx_object();
+
     void
     update_access_mode(access_mode mode) override
     {
