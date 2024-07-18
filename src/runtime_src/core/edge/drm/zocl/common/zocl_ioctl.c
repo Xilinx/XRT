@@ -39,9 +39,30 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
-	struct drm_zocl_create_hw_ctx *drm_hw_ctx = (struct drm_zocl_create_hw_ctx *)data;
-	printk("+++ %s: %d calling zocl_create_hw_ctx", __func__, __LINE__);
-	return zocl_create_hw_ctx(zdev, drm_hw_ctx);
+	struct drm_zocl_create_hw_ctx *drm_hw_ctx = data;
+	struct kds_client *client = filp->driver_priv;
+	struct drm_zocl_axlf axlf_obj = {};
+	struct drm_zocl_slot *slot= NULL;
+	int ret = 0;
+
+	if (copy_from_user(&axlf_obj, drm_hw_ctx->axlf_ptr, sizeof(struct drm_zocl_axlf))) {
+		DRM_WARN("copy_from_user failed for axlf_ptr");
+		return -EFAULT;
+	}
+	struct axlf axlf_head;
+	if (copy_from_user(&axlf_head, axlf_obj.za_xclbin_ptr, sizeof(struct axlf))) {
+		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
+		return -EFAULT;
+	}
+
+	ret = zocl_xclbin_read_axlf(zdev, &axlf_obj, client);
+	if (ret) {
+		DRM_WARN("xclbin download FAILED.");
+		return ret;
+	}
+	slot = zdev->pr_slot[0]; //hard coding it for now
+
+	return zocl_create_hw_ctx(zdev, drm_hw_ctx, client);
 }
 
 /*
@@ -51,8 +72,10 @@ int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fil
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
+	struct kds_client *client = filp->driver_priv;
 	printk("+++ %s: %d calling zocl_destroy_hw_ctx", __func__, __LINE__);
-	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx);
+
+	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, client);
 }
 
 /*
