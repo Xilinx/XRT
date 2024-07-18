@@ -139,11 +139,11 @@ struct patcher
 
   buf_type m_buf_type = buf_type::ctrltext;
   symbol_type m_symbol_type = symbol_type::shim_dma_48;
-  uint32_t m_mask = 0; // This field is valid only when patching scheme is scalar_32bit_kind
 
   struct patch_info {
     uint64_t offset_to_patch_buffer;
     uint32_t offset_to_base_bo_addr;
+    uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
@@ -151,13 +151,6 @@ struct patcher
   patcher(symbol_type type, std::vector<patch_info> ctrlcode_offset, buf_type t)
     : m_buf_type(t)
     , m_symbol_type(type)
-    , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
-  {}
-
-  patcher(uint32_t mask, std::vector<patch_info> ctrlcode_offset, buf_type t)
-    : m_buf_type(t)
-    , m_symbol_type(symbol_type::scalar_32bit_kind)
-    , m_mask(mask)
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
@@ -225,7 +218,7 @@ struct patcher
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
-        patch32(bd_data_ptr, new_value, m_mask);
+        patch32(bd_data_ptr, new_value, item.mask);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
         // new_value is a bo address
@@ -261,17 +254,10 @@ struct patcher
   }
 
   XRT_CORE_UNUSED std::string
-  generate_key_string(const std::string& argument_name, patcher::buf_type type, uint32_t mask = 0)
+  generate_key_string(const std::string& argument_name, patcher::buf_type type)
   {
     std::string buf_string = std::to_string(static_cast<int>(type));
-    if (mask) {
-      std::stringstream ss;
-      ss << std::hex << mask;
-      return argument_name + buf_string + ss.str();
-    }
-    else {
-      return argument_name + buf_string;
-    }
+    return argument_name + buf_string;
   }
 
 } // namespace
@@ -695,21 +681,20 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_shift;
-        patcher::patch_info pi = { offset, add_end_higher_28bit };
-
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+
         auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
         auto mask = static_cast<uint32_t>(sym->st_value);
-        std::string key_string = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
-                                 generate_key_string(argnm, buf_type, mask) :
-                                 generate_key_string(argnm, buf_type);
+        patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
+                                 patcher::patch_info{ offset, add_end_higher_28bit, mask } :
+                                 patcher::patch_info{ offset, add_end_higher_28bit, 0 };
+
+        std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
         else {
-          patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
-                          arg2patchers.emplace(std::move(key_string), patcher{ mask, {pi}, buf_type}) :
-                          arg2patchers.emplace(std::move(key_string), patcher{ patch_scheme, {pi}, buf_type});
+          arg2patchers.emplace(std::move(key_string), patcher{ patch_scheme, {pi}, buf_type});
         }
       }
     }
