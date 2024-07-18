@@ -127,8 +127,8 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
           % lib.get<std::string>("version", "N/A");
     }
     _output << boost::format("  %-20s : %s\n") % "Model" % _pt.get<std::string>("host.os.model");
-    _output << boost::format("  %-20s : %s\n") % "BIOS vendor" % _pt.get<std::string>("host.os.bios_vendor");
-    _output << boost::format("  %-20s : %s\n") % "BIOS version" % _pt.get<std::string>("host.os.bios_version");
+    _output << boost::format("  %-20s : %s\n") % "BIOS Vendor" % _pt.get<std::string>("host.os.bios_vendor");
+    _output << boost::format("  %-20s : %s\n") % "BIOS Version" % _pt.get<std::string>("host.os.bios_version");
     _output << std::endl;
     _output << "XRT\n";
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");
@@ -169,7 +169,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     //no device available
   }
 
-  _output << std::endl << "Devices present\n";
+  _output << std::endl << "Device(s) Present\n";
   if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
 
