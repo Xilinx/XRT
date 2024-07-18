@@ -2015,6 +2015,14 @@ closeGraphContext(unsigned int graphId)
 
 int
 shim::
+open_graph_hw_context(){};
+
+int
+shim::
+close_graph_hw_context(){};
+
+int
+shim::
 openAIEContext(xrt::aie::access_mode am)
 {
   unsigned int flags;

@@ -43,15 +43,11 @@ int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file
 	struct kds_client *client = filp->driver_priv;
 	struct drm_zocl_axlf axlf_obj = {};
 	struct drm_zocl_slot *slot= NULL;
+	int slot_id = 0;
 	int ret = 0;
 
 	if (copy_from_user(&axlf_obj, drm_hw_ctx->axlf_ptr, sizeof(struct drm_zocl_axlf))) {
 		DRM_WARN("copy_from_user failed for axlf_ptr");
-		return -EFAULT;
-	}
-	struct axlf axlf_head;
-	if (copy_from_user(&axlf_head, axlf_obj.za_xclbin_ptr, sizeof(struct axlf))) {
-		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
 		return -EFAULT;
 	}
 
