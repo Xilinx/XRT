@@ -160,7 +160,7 @@ struct patcher
   patch32(uint32_t* bd_data_ptr, uint64_t register_value, uint32_t mask)
   {
     auto new_value = bd_data_ptr[0];
-    mask == 0 ? 0xFFFFFFFF : mask;
+    mask = mask == 0 ? 0xFFFFFFFF : mask;
     uint32_t clear_mask = ~mask;
     new_value &= clear_mask;
     new_value |= static_cast<uint32_t>(register_value);
