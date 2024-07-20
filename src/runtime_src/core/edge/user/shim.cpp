@@ -116,7 +116,7 @@ shim(unsigned index)
   : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
   , mBoardNumber(index)
   , mKernelClockFreq(100)
-  , mCuMaps(128, nullptr)
+  , mCuMaps(128, {nullptr, 0})
 {
   xclLog(XRT_INFO, "%s", __func__);
 
@@ -146,8 +146,8 @@ shim::
   }
 
   for (auto p : mCuMaps) {
-    if (p)
-      (void) munmap(p, mCuMapSize);
+    if (p.first)
+      (void) munmap(p.first, p.second);
   }
 }
 
@@ -1164,10 +1164,10 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 
   if (ipIndex < mCuMaps.size()) {
     // Make sure no MMIO register space access when CU is released.
-    uint32_t *p = mCuMaps[ipIndex];
+    uint32_t *p = mCuMaps[ipIndex].first;
     if (p) {
-      (void) munmap(p, mCuMapSize);
-      mCuMaps[ipIndex] = nullptr;
+      (void) munmap(p, mCuMaps[ipIndex].second);
+      mCuMaps[ipIndex] = {nullptr, 0};
     }
   }
 
@@ -1196,16 +1196,17 @@ xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if (mCuMaps[ipIndex] == nullptr) {
+  if (mCuMaps[ipIndex].first == nullptr) {
     drm_zocl_info_cu info = {0, -1, (int)ipIndex};
     int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
     void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
                    mKernelFD, info.apt_idx * getpagesize());
     if (p != MAP_FAILED)
-      mCuMaps[ipIndex] = (uint32_t *)p;
+      mCuMaps[ipIndex].first = (uint32_t *)p;
+      mCuMaps[ipIndex].second = mCuMapSize;
   }
 
-  uint32_t *cumap = mCuMaps[ipIndex];
+  uint32_t *cumap = mCuMaps[ipIndex].first;
   if (cumap == nullptr) {
     xclLog(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
     return -EINVAL;
