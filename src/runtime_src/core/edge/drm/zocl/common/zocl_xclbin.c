@@ -303,6 +303,9 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	int total = 0;
 	int apt_idx = 0;
 	int i = 0;
+        char kname[64] = {0};
+        char *kname_p = NULL;
+      	struct kernel_info *krnl_info = NULL;
 
 	/* Update aperture should only happen when loading xclbin */
 	if (slot->ip)
@@ -336,8 +339,18 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			apt = &zdev->cu_subdev.apertures[apt_idx];
 
 			apt->addr = ip->m_base_address;
-			apt->size = CU_SIZE;
-			apt->prop = ip->properties;
+                        
+                        strncpy(kname, ip->m_name, sizeof(kname));
+		        kname[sizeof(kname)-1] = '\0';
+		        kname_p = &kname[0];
+		        strncpy(kname, strsep(&kname_p, ":"), sizeof(kname));
+		        kname[sizeof(kname)-1] = '\0';
+                        krnl_info = zocl_query_kernel(slot, kname);
+		        if (krnl_info && krnl_info->range >= CU_SIZE)
+                                apt->size = krnl_info->range;
+                        else
+			        apt->size = CU_SIZE;
+                        apt->prop = ip->properties;
 			apt->cu_idx = -1;
 			apt->slot_idx = slot->slot_idx;
 		}

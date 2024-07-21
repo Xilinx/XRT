@@ -373,10 +373,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (ret)
 		goto out0;
 
-	ret = zocl_update_apertures(zdev, slot);
-	if (ret)
-		goto out0;
-
 	/* Kernels are slot specific. */
 	if (slot->kernels != NULL) {
 		vfree(slot->kernels);
@@ -398,6 +394,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		slot->ksize = axlf_obj->za_ksize;
 		slot->kernels = kernels;
 	}
+
+        ret = zocl_update_apertures(zdev, slot);
+        if (ret)
+                goto out0;
 
 	zocl_clear_mem_slot(zdev, slot->slot_idx);
 	/* Initialize the memory for the new xclbin */
