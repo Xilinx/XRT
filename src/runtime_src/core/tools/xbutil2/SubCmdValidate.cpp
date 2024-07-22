@@ -521,8 +521,25 @@ void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   // Parse sub-command ...
-  po::variables_map vm;
-  process_arguments(vm, _options);
+  try{
+    po::variables_map vm;
+    const auto unrecognized_options = process_arguments(vm, _options, false);
+
+    if (!unrecognized_options.empty())
+    {
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (const auto& option : unrecognized_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      throw boost::program_options::error(error_str);
+    }
+  }
+  catch (boost::program_options::error& e)
+  {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    print_help_internal();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   // Check to see if help was requested or no command was found
   if (m_help) {
