@@ -286,7 +286,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
   const std::string& perf_mode = ptTree.get("performance_mode", "");
   if (!perf_mode.empty())
-    oStream << boost::format("    %-22s: %s\n") % "Performance Mode" % perf_mode;
+    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % perf_mode;
   const std::string& power = ptTree.get("power", "");
   if (!boost::starts_with(power, ""))
     oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
@@ -449,7 +449,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
 
   m_commonOptions.add(common_options);
   m_commonOptions.add_options()
-    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
   ;
 }
 
@@ -512,7 +512,7 @@ SubCmdValidate::print_help_internal() const
   static const std::string testOptionValues = XBU::create_suboption_list_map(deviceClass, jsonOptions, help_tests);
   std::vector<std::string> tempVec;
   common_options.add_options()
-    ("report,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + testOptionValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + testOptionValues).c_str() )
   ;
   printHelp(common_options, m_hiddenOptions, deviceClass, false, extendedKeysOptions());
 }
@@ -521,8 +521,25 @@ void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   // Parse sub-command ...
-  po::variables_map vm;
-  process_arguments(vm, _options);
+  try{
+    po::variables_map vm;
+    const auto unrecognized_options = process_arguments(vm, _options, false);
+
+    if (!unrecognized_options.empty())
+    {
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (const auto& option : unrecognized_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      throw boost::program_options::error(error_str);
+    }
+  }
+  catch (boost::program_options::error& e)
+  {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    print_help_internal();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   // Check to see if help was requested or no command was found
   if (m_help) {

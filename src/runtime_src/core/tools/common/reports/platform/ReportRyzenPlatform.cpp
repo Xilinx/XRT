@@ -50,7 +50,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     _output << boost::format("  %-23s: %s \n") % "Name" % pt_static_region.get<std::string>("name");
 
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
-    _output << boost::format("  %-23s: %s \n") % "Performance Mode" % pt_status.get<std::string>("performance_mode");
+    _output << boost::format("  %-23s: %s \n") % "Power Mode" % pt_status.get<std::string>("performance_mode");
 
     const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
     if (!clocks.empty()) {
@@ -63,7 +63,7 @@ ReportRyzenPlatform::writeReport(const xrt_core::device* /*_pDevice*/,
     }
 
     auto watts = pt_platform.get<std::string>("electrical.power_consumption_watts", "N/A");
-    _output << std::endl << boost::format("%-23s: %s Watts\n") % "Power" % watts;
+    _output << std::endl << boost::format("%-23s  : %s Watts\n") % "Power" % watts;
   }
 
   _output << std::endl;

@@ -45,11 +45,16 @@ namespace {
       return false;
 
     for (auto device : infos) {
-      for (auto xclbin : device->getLoadedXclbins()) {
-        for (auto aim : xclbin->pl.aims) {
-          // A CU index of -1 is a floating AIM not attached to a compute unit
-          if (aim->cuIndex != -1)
-            return true;
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& cfg : loadedConfigs) {
+        for (auto xclbin : cfg->currentXclbins) {
+          if (!xclbin->pl.valid)
+            continue;
+          for (auto aim : xclbin->pl.aims) {
+            // A CU index of -1 is a floating AIM not attached to a compute unit
+            if (aim->cuIndex != -1)
+              return true;
+          }
         }
       }
     }
@@ -531,21 +536,29 @@ namespace xdp {
     for (auto device : infos) {
       uint64_t deviceId = device->deviceId;
 
-      for (auto xclbin : device->loadedXclbins) {
-	xdp::CounterResults values =
-          db->getDynamicInfo().getCounterResults(deviceId, xclbin->uuid);
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& cfg : loadedConfigs) {
 
-        for (const auto& cuInfo : xclbin->pl.cus) {
-          auto cu = cuInfo.second;
-          uint64_t amSlotID =
-            static_cast<uint64_t>(cu->getAccelMon());
+	      xdp::CounterResults values =
+          db->getDynamicInfo().getCounterResults(deviceId, cfg->getConfigUuid());
 
-          // Stats don't make sense if runtime or executions = 0
-          if ((values.CuBusyCycles[amSlotID] != 0) ||
-              (values.CuExecCount[amSlotID] != 0)) {
-            outputTable = true;
-            break;
+        for (auto xclbin : cfg->currentXclbins) {
+          if (!xclbin->pl.valid)
+            continue;
+          for (const auto& cuInfo : xclbin->pl.cus) {
+            auto cu = cuInfo.second;
+            uint64_t amSlotID =
+              static_cast<uint64_t>(cu->getAccelMon());
+
+            // Stats don't make sense if runtime or executions = 0
+            if ((values.CuBusyCycles[amSlotID] != 0) ||
+                (values.CuExecCount[amSlotID] != 0)) {
+              outputTable = true;
+              break;
+            }
           }
+          if (outputTable)
+            break;
         }
         if (outputTable)
           break;
@@ -590,9 +603,14 @@ namespace xdp {
       uint64_t deviceId = device->deviceId;
 
       // For every xclbin that was loaded on this device
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         xdp::CounterResults values =
-          db->getDynamicInfo().getCounterResults(deviceId, xclbin->uuid);
+          db->getDynamicInfo().getCounterResults(deviceId, config->getConfigUuid());
 
         // For every compute unit in the xclbin
         for (const auto& cuInfo : xclbin->pl.cus) {
@@ -676,21 +694,27 @@ namespace xdp {
 
     for (auto device : infos)
     {
-      for (auto xclbin : device->loadedXclbins)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& cfg : loadedConfigs)
       {
-        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
-        uint64_t j = 0 ;
-        for (const auto& cu : (xclbin->pl.cus))
-        {
-          double deviceCyclesMsec = static_cast<double>(((cu.second)->getClockFrequency()) * one_thousand);
+        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, cfg->getConfigUuid()) ;
+        
+        for (auto xclbin : cfg->currentXclbins) {
+          if (!xclbin->pl.valid)
+            continue;
+          uint64_t j = 0 ;      
+          for (const auto& cu : (xclbin->pl.cus))
+          {
+            double deviceCyclesMsec = static_cast<double>(((cu.second)->getClockFrequency()) * one_thousand);
 
-          fout << (cu.second)->getName()     << ","
-               << values.CuExecCount[j]      << ","
-               << (values.CuExecCycles[j] / deviceCyclesMsec)     << ","
-               << (values.CuStallIntCycles[j] / deviceCyclesMsec) << ","
-               << (values.CuStallExtCycles[j] / deviceCyclesMsec) << ","
-               << (values.CuStallStrCycles[j] / deviceCyclesMsec) << "\n" ;
-          ++j ;
+            fout << (cu.second)->getName()     << "," 
+                << values.CuExecCount[j]      << ","
+                << (values.CuExecCycles[j] / deviceCyclesMsec)     << ","
+                << (values.CuStallIntCycles[j] / deviceCyclesMsec) << ","
+                << (values.CuStallExtCycles[j] / deviceCyclesMsec) << ","
+                << (values.CuStallStrCycles[j] / deviceCyclesMsec) << std::endl ;
+            ++j ;
+          }
         }
       }
     }
@@ -933,10 +957,17 @@ namespace xdp {
 
     bool printTable = false ;
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId,
-                                                 xclbin->uuid) ;
+                                                 config->getConfigUuid()) ;
+        // TODO: iterate on each xclbin of the config & consider only Valid PLInfo.
         for (const auto& cu : xclbin->pl.cus) {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
 
@@ -973,9 +1004,16 @@ namespace xdp {
 
     for (auto device : infos)
     {
-      for (auto xclbin : device->loadedXclbins)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs)
       {
-        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
+        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, config->getConfigUuid()) ;
+
+        //TODO: iterate only on valid PL xclbins.
         for (const auto& cu : xclbin->pl.cus)
         {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
@@ -1071,15 +1109,21 @@ namespace xdp {
 
     for (auto device : infos)
     {
-      for (auto xclbin : device->loadedXclbins)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs)
       {
+      
+      XclbinInfo* xclbin = config->getPlXclbin();
+      if (!xclbin)
+        continue;
+
       for (auto monitor : xclbin->pl.aims)
       {
         if (monitor->name.find("Host to Device") != std::string::npos)
         {
           // This is the monitor we are looking for
           xdp::CounterResults values =
-            (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+            (db->getDynamicInfo()).getCounterResults(device->deviceId, config->getConfigUuid()) ;
 
           if (values.WriteTranx[monitor->slotIndex] > 0)
           {
@@ -1187,14 +1231,23 @@ namespace xdp {
 
     printTable = false ;
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
 
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Peer to Peer") != std::string::npos) {
+            
+            //TODO: get the config UUID instead.
+
             // This is the monitor we're looking for
             xdp::CounterResults values =
               db->getDynamicInfo().getCounterResults(device->deviceId,
-                                                     xclbin->uuid) ;
+                                                     config->getConfigUuid()) ;
             if (values.WriteTranx[monitor->slotIndex] > 0 ||
                 values.ReadTranx[monitor->slotIndex] > 0) {
               printTable = true ;
@@ -1224,13 +1277,18 @@ namespace xdp {
          << "\n" ;
 
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Peer to Peer") != std::string::npos) {
             // This is the monitor we are looking for
             xdp::CounterResults values =
               db->getDynamicInfo().getCounterResults(device->deviceId,
-                                                     xclbin->uuid) ;
+                                                     config->getConfigUuid()) ;
             if (values.WriteTranx[monitor->slotIndex] > 0) {
               uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitor->slotIndex] ;
               double totalWriteTime =
@@ -1309,7 +1367,13 @@ namespace xdp {
 
     bool hasMemoryMonitors = false ;
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         hasMemoryMonitors |= xclbin->pl.hasMemoryAIM ;
         if (hasMemoryMonitors) break ;
       }
@@ -1337,10 +1401,15 @@ namespace xdp {
          << "Average latency in ns of each transaction\n" ;
 
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId,
-                                                 xclbin->uuid) ;
+                                                 config->getConfigUuid()) ;
         for (auto aim : xclbin->pl.aims) {
           auto loc = aim->name.find("memory_subsystem") ;
           if (loc != std::string::npos) {
@@ -1394,12 +1463,17 @@ namespace xdp {
     if (infos.size() == 0) return ;
     bool printTable = false ;
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Memory to Memory") != std::string::npos) {
             xdp::CounterResults values =
               (db->getDynamicInfo()).getCounterResults(device->deviceId,
-                                                       xclbin->uuid) ;
+                                                       config->getConfigUuid()) ;
             if (values.WriteTranx[monitor->slotIndex] > 0 ||
                 values.ReadTranx[monitor->slotIndex] > 0) {
               printTable = true ;
@@ -1429,13 +1503,18 @@ namespace xdp {
          << "\n" ;
 
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Memory to Memory") != std::string::npos) {
             // This is the monitor we are looking for
             xdp::CounterResults values =
               (db->getDynamicInfo()).getCounterResults(device->deviceId,
-                                                       xclbin->uuid) ;
+                                                       config->getConfigUuid()) ;
             if (values.WriteTranx[monitor->slotIndex] > 0) {
               uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitor->slotIndex] ;
               double totalWriteTime =
@@ -1577,10 +1656,16 @@ namespace xdp {
 
     std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos();
     for (auto device : infos) {
-      for (auto xclbin : device->loadedXclbins) {
+      // TODO: Iterate on each config instead.
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs) {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
         xdp::CounterResults values =
-          db->getDynamicInfo().getCounterResults(device->deviceId,xclbin->uuid);
+          db->getDynamicInfo().getCounterResults(device->deviceId, config->getConfigUuid());
 
+        // TODO: Iterate on valid PLInfo only
         for (auto monitor : xclbin->pl.aims) {
           // Is this AIM is either a shell or floating?
           if (monitor->cuIndex == -1 || monitor->cuPort == nullptr)
@@ -1681,10 +1766,15 @@ namespace xdp {
     {
       uint64_t deviceId = device->deviceId ;
 
-      for (auto xclbin : device->loadedXclbins)
+      auto& loadedConfigs = device->getLoadedConfigs();
+      for (const auto& config : loadedConfigs)
       {
+        XclbinInfo* xclbin = config->getPlXclbin();
+        if (!xclbin)
+          continue;
+        
         xdp::CounterResults values =
-          (db->getDynamicInfo()).getCounterResults(deviceId, xclbin->uuid) ;
+          (db->getDynamicInfo()).getCounterResults(deviceId, config->getConfigUuid()) ;
 
         for (const auto& cu : xclbin->pl.cus)
         {

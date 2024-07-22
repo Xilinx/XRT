@@ -27,6 +27,7 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/shim/buffer_handle.h"
 #include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/graph_handle.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
 #include <fcntl.h>
@@ -254,6 +255,91 @@ namespace xclswemuhal2
       }
     }; // class hwcontext
 
+      // Shim handle for graph object
+    class graph_object : public xrt_core::graph_handle
+    {
+      SwEmuShim* m_shim;
+      xclGraphHandle m_xclGraphHandle;
+
+    public:
+      graph_object(SwEmuShim* shim, const xrt::uuid& uuid , const char* name, xrt::graph::access_mode am)
+        : m_shim{shim},
+          m_xclGraphHandle{xclGraphOpen(m_shim, uuid.get(), name, am)}
+      {}
+
+      ~graph_object()
+      {
+         xclGraphClose(m_xclGraphHandle);
+      }
+
+      void
+      reset_graph() override
+      {
+        if (auto ret = xclGraphReset(m_xclGraphHandle))
+          throw xrt_core::system_error(ret, "fail to reset graph");
+      }
+
+      uint64_t
+      get_timestamp() override
+      {
+        return xclGraphTimeStamp(m_xclGraphHandle);
+      }
+
+      void
+      run_graph(int iterations) override
+      {
+        if (auto ret = xclGraphRun(m_xclGraphHandle, iterations))
+          throw xrt_core::system_error(ret, "fail to run graph");
+      }
+
+      int
+      wait_graph_done(int timeout) override
+      {
+        return xclGraphWaitDone(m_xclGraphHandle, timeout);
+      }
+
+      void
+      wait_graph(uint64_t cycle) override
+      {
+        if (auto ret = xclGraphWait(m_xclGraphHandle, cycle))
+          throw xrt_core::system_error(ret, "fail to wait graph");
+      }
+
+      void
+      suspend_graph() override
+      {
+        if (auto ret = xclGraphSuspend(m_xclGraphHandle))
+          throw xrt_core::system_error(ret, "fail to suspend graph");
+      }
+
+      void
+      resume_graph() override
+      {
+        if (auto ret = xclGraphResume(m_xclGraphHandle))
+          throw xrt_core::system_error(ret, "fail to resume graph");
+      }
+
+      void
+      end_graph(uint64_t cycle) override
+      {
+        if (auto ret = xclGraphEnd(m_xclGraphHandle, cycle))
+          throw xrt_core::system_error(ret, "fail to end graph");
+      }
+
+      void
+      update_graph_rtp(const char* port, const char* buffer, size_t size) override
+      {
+        if (auto ret = xclGraphUpdateRTP(m_xclGraphHandle, port, buffer, size))
+          throw xrt_core::system_error(ret, "fail to update graph rtp");
+      }
+
+      void
+      read_graph_rtp(const char* port, char* buffer, size_t size) override
+      {
+        if (auto ret = xclGraphReadRTP(m_xclGraphHandle, port, buffer, size))
+          throw xrt_core::system_error(ret, "fail to read graph rtp");
+      }
+    }; // graph_object
   public:
     static const unsigned TAG;
     static const unsigned CONTROL_AP_START;

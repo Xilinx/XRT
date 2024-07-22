@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+
 #ifndef XRT_CORE_GRAPH_HANDLE_H
 #define XRT_CORE_GRAPH_HANDLE_H
 

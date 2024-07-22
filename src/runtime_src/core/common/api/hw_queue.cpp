@@ -675,15 +675,23 @@ public:
   }
 
   void
-  submit(xrt_core::buffer_handle*) override
+  submit(xrt_core::buffer_handle* cmd) override
   {
-    throw std::runtime_error("kds_device::submit(buffer_handle) not implemented");
+    auto prop = cmd->get_properties();
+    if (prop.flags & XCL_BO_FLAGS_EXECBUF)
+      m_device->exec_buf(cmd);
   }
 
   std::cv_status
-  wait(xrt_core::buffer_handle*, size_t) const override
+  wait(xrt_core::buffer_handle* cmd, size_t timeout_ms) const override
   {
-    throw std::runtime_error("kds_device::wait(buffer_handle) not implemented");
+    auto prop = cmd->get_properties();
+    if (prop.flags & XCL_BO_FLAGS_EXECBUF) {
+      if (const_cast<kds_device *>(this)->exec_wait(timeout_ms) != std::cv_status::timeout)
+        return std::cv_status::no_timeout;
+    }
+
+    return std::cv_status::timeout;
   }
 
   // Poll for command completion

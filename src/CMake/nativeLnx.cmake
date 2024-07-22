@@ -171,14 +171,6 @@ include (CMake/lint.cmake)
 
 xrt_add_subdirectory(runtime_src)
 
-#XMA settings START
-set(XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(XMA_INSTALL_DIR "${XRT_INSTALL_DIR}")
-set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
-set(XMA_SOVERSION ${XRT_SOVERSION})
-xrt_add_subdirectory(xma)
-#XMA settings END
-
 # --- Python bindings ---
 xrt_add_subdirectory(python)
 

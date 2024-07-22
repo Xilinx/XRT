@@ -135,12 +135,19 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
 
   // Metadata depends on static information from the database
   AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
+  if(AIEData.metadata->aieMetadataEmpty())
+  {
+    AIEData.valid = false;
+    xrt_core::message::send(severity_level::warning, "XRT", "AIE Metadata is empty for AIE Trace");
+    return;
+  }
   if (AIEData.metadata->configMetricsEmpty()) {
     AIEData.valid = false;
     xrt_core::message::send(severity_level::warning, "XRT",
                             AIE_TRACE_TILES_UNAVAILABLE);
     return;
   }
+  AIEData.valid = true; // initialize struct
 
 #ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);
@@ -217,17 +224,9 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
   bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceID) ? true : false;
 
-#ifdef XDP_CLIENT_BUILD
-  if (AIEData.metadata->getContinuousTrace()) {
-    xrt_core::message::send(severity_level::debug, "XRT", 
-                            "Periodic offload is not supported on this platform.");
-    AIEData.metadata->resetContinuousTrace();
-  }
-#else
   if (AIEData.metadata->getContinuousTrace())
     XDPPlugin::startWriteThread(AIEData.metadata->getFileDumpIntS(),
                                 "AIE_EVENT_TRACE", false);
-#endif
 
   // First, check against memory bank size
   // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
@@ -280,6 +279,7 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
       ,
       AIEData.metadata->getNumStreams());
 #endif
+
   auto &offloader = AIEData.offloader;
 
   // Can't call init without setting important details in offloader
@@ -338,7 +338,6 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
   // Continuous Trace Offload is supported only for PLIO flow
   if (AIEData.metadata->getContinuousTrace())
     offloader->startOffload();
-
   xrt_core::message::send(severity_level::info, "XRT",
                           "Finished AIE Trace updateAIEDevice.");
 }

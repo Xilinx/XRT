@@ -20,7 +20,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "../user/aie/common_layer/adf_api_config.h"
+#include "core/edge/user/aie/common_layer/adf_api_config.h"
+#include "core/edge/user/hwctx_object.h"
 
 namespace xrt_core {
 
@@ -59,7 +60,7 @@ const int NON_EXIST_ID = -1;
  * @device: device with loaded meta data
  */
 adf::driver_config
-get_driver_config(const xrt_core::device* device);
+get_driver_config(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_aiecompiler_options() - get compiler options from xclbin AIE metadata
@@ -67,7 +68,7 @@ get_driver_config(const xrt_core::device* device);
  * @device: device with loaded meta data
  */
 adf::aiecompiler_options
-get_aiecompiler_options(const xrt_core::device* device);
+get_aiecompiler_options(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_graph() - get tile data from xclbin AIE metadata
@@ -77,7 +78,7 @@ get_aiecompiler_options(const xrt_core::device* device);
  * Return: Graph config of given graph name
  */
 adf::graph_config
-get_graph(const xrt_core::device* device, const std::string& graph_name);
+get_graph(const xrt_core::device* device, const std::string& graph_name, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_graph_id() - get graph id from xclbin AIE metadata
@@ -87,7 +88,7 @@ get_graph(const xrt_core::device* device, const std::string& graph_name);
  * Return: Integer graph id or NON_EXIST_ID if given name is not found
  */
 int
-get_graph_id(const xrt_core::device* device, const std::string& graph_name);
+get_graph_id(const xrt_core::device* device, const std::string& graph_name, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_graphs() - get graph names from xclbin AIE metadata
@@ -95,7 +96,7 @@ get_graph_id(const xrt_core::device* device, const std::string& graph_name);
  * @device: device with loaded meta data
  */
 std::vector<std::string>
-get_graphs(const xrt_core::device* device);
+get_graphs(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_tiles() - get tile data from xclbin AIE metadata
@@ -105,7 +106,7 @@ get_graphs(const xrt_core::device* device);
  * Return: vector of used tiles in given graph name 
  */
 std::vector<tile_type>
-get_tiles(const xrt_core::device* device, const std::string& graph_name);
+get_tiles(const xrt_core::device* device, const std::string& graph_name, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_event_tiles() - get tiles with active events from xclbin AIE metadata
@@ -117,7 +118,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name);
  */
 std::vector<tile_type>
 get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
-                module_type type);
+                module_type type, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_rtp() - get rtp data from xclbin AIE metadata
@@ -125,7 +126,7 @@ get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
  * @device: device with loaded meta data
  */
 std::unordered_map<std::string, adf::rtp_config>
-get_rtp(const xrt_core::device* device, int graph_id);
+get_rtp(const xrt_core::device* device, int graph_id, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_gmios() - get gmio data from xclbin AIE metadata
@@ -133,7 +134,7 @@ get_rtp(const xrt_core::device* device, int graph_id);
  * @device: device with loaded meta data
  */
 std::unordered_map<std::string, adf::gmio_config>
-get_gmios(const xrt_core::device* device);
+get_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_plios() - get plio data from xclbin AIE metadata
@@ -141,7 +142,7 @@ get_gmios(const xrt_core::device* device);
  * @device: device with loaded meta data
  */
 std::unordered_map<std::string, adf::plio_config>
-get_plios(const xrt_core::device* device);
+get_plios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 struct counter_type
 {
@@ -163,7 +164,7 @@ struct counter_type
  * @device: device with loaded meta data
  */
 double
-get_clock_freq_mhz(const xrt_core::device* device);
+get_clock_freq_mhz(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_profile_counters() - get counter data from xclbin AIE metadata
@@ -171,7 +172,7 @@ get_clock_freq_mhz(const xrt_core::device* device);
  * @device: device with loaded meta data
  */
 std::vector<counter_type>
-get_profile_counters(const xrt_core::device* device);
+get_profile_counters(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 struct gmio_type
 {
@@ -191,7 +192,7 @@ struct gmio_type
  * @device: device with loaded meta data
  */
 uint8_t
-get_hw_gen(const xrt_core::device* device);
+get_hw_gen(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_partition_id - calculate aie_partition_id from xclbin AIE metadata
@@ -199,7 +200,7 @@ get_hw_gen(const xrt_core::device* device);
  * @device: device with loaded meta data
  */
 uint32_t
-get_partition_id(const xrt_core::device* device);
+get_partition_id(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 /**
  * get_trace_gmios() - get trace gmio data from xclbin AIE metadata
@@ -207,7 +208,7 @@ get_partition_id(const xrt_core::device* device);
  * @device: device with loaded meta data
  */
 std::vector<gmio_type>
-get_trace_gmios(const xrt_core::device* device);
+get_trace_gmios(const xrt_core::device* device, const zynqaie::hwctx_object* hwctx = nullptr);
 
 }}} // aie, edge, xrt_core
 
