@@ -534,7 +534,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw boost::program_options::error(error_str);
     }
   }
-  catch (boost::program_options::error& e)
+  catch (const boost::program_options::error& e)
   {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     print_help_internal();
