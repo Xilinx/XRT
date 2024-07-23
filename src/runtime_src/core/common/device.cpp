@@ -145,7 +145,6 @@ load_xclbin(const uuid& xclbin_id)
   if (uuid_compare(uuid_loaded.get(), xclbin_id.get()))
     throw error(ENODEV, "specified xclbin is not loaded");
 
-#ifdef XRT_ENABLE_AIE
   auto xclbin_full = xrt_core::device_query<xrt_core::query::xclbin_full>(this);
   if (xclbin_full.empty())
     throw error(ENODEV, "no cached xclbin data");
@@ -160,9 +159,6 @@ load_xclbin(const uuid& xclbin_id)
     m_xclbin = {};
     throw;
   }
-#else
-  throw error(ENOTSUP, "load xclbin by uuid is not supported");
-#endif
 }
 
 xrt::xclbin

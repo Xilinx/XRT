@@ -124,8 +124,6 @@ open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::acce
                   static_cast<xclswemuhal2::SwEmuShim*>(get_device_handle()), xclbin_id, name, am);
 }
 
-#ifdef XRT_ENABLE_AIE
- 
 void
 device::
 open_aie_context(xrt::aie::access_mode am)
@@ -195,7 +193,5 @@ load_axlf_meta(const axlf* buffer)
   if (auto ret = xclLoadXclBinMeta(get_device_handle(), buffer))
     throw system_error(ret, "failed to load xclbin");
 }
-
-#endif
 
 }} // swemu,xrt_core

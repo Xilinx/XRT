@@ -20,14 +20,8 @@ add_library(core_common_api_library_objects OBJECT
   xrt_system.cpp
   xrt_version.cpp
   xrt_xclbin.cpp
+  aie/xrt_graph.cpp
   )
-
-if (DEFINED XRT_AIE_BUILD)
-  message("-- enabling api aie build")
-  target_sources(core_common_api_library_objects
-    PRIVATE
-    aie/xrt_graph.cpp)
-endif()
 
 target_include_directories(core_common_api_library_objects
   PRIVATE

@@ -51,8 +51,6 @@ public:
   std::unique_ptr<xrt_core::graph_handle>
   open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am) override;
 
-#ifdef XRT_ENABLE_AIE
-  
   void
   open_aie_context(xrt::aie::access_mode am) override;
 
@@ -79,8 +77,6 @@ public:
 
   void
   load_axlf_meta(const axlf* buffer) override;
-
-#endif  
 
 private:
   // Private look up function for concrete query::request
