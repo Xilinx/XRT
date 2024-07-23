@@ -206,7 +206,6 @@ struct ishim
   }
   ////////////////////////////////////////////////////////////////
 
-#ifdef XRT_ENABLE_AIE
   virtual void
   open_aie_context(xrt::aie::access_mode)
   { throw not_supported_error{__func__}; }
@@ -258,7 +257,6 @@ struct ishim
   virtual bool
   write_aie_reg(uint16_t /*col*/, uint16_t /*row*/, uint32_t /*reg_addr*/, uint32_t /*reg_val*/)
   { throw not_supported_error{__func__}; }
-#endif
 };
 
 template <typename DeviceType>
@@ -533,63 +531,6 @@ struct noshim : public DeviceType
   {
     throw ishim::not_supported_error(__func__);
   }
-
-#ifdef XRT_ENABLE_AIE
-
-  void
-  open_aie_context(xrt::aie::access_mode) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  sync_aie_bo(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  reset_aie() override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  sync_aie_bo_nb(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  wait_gmio(const char*) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  int
-  start_profiling(int, const char*, const char*, uint32_t) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  uint64_t
-  read_profiling(int) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  stop_profiling(int) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  load_axlf_meta(const axlf*) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-#endif
 };
 
 } // xrt_core
