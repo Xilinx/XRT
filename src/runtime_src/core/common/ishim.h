@@ -212,7 +212,7 @@ struct ishim
   { throw not_supported_error{__func__}; }
 
   virtual void
-  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  sync_aie_bo(xrt::bo&, const char*, xclBOSyncDirection, size_t , size_t )
   { throw not_supported_error{__func__}; }
 
   virtual void
@@ -220,23 +220,23 @@ struct ishim
   { throw not_supported_error{__func__}; }
 
   virtual void
-  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  sync_aie_bo_nb(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t)
   { throw not_supported_error{__func__}; }
 
   virtual void
-  wait_gmio(const char *gmioName)
+  wait_gmio(const char*)
   { throw not_supported_error{__func__}; }
 
   virtual int
-  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
+  start_profiling(int, const char*, const char*, uint32_t)
   { throw not_supported_error{__func__}; }
 
   virtual uint64_t
-  read_profiling(int phdl)
+  read_profiling(int)
   { throw not_supported_error{__func__}; }
 
   virtual void
-  stop_profiling(int phdl)
+  stop_profiling(int)
   { throw not_supported_error{__func__}; }
 
   virtual void
