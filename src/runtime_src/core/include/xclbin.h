@@ -185,6 +185,7 @@ extern "C" {
         AIE_PARTITION          = 32,
         IP_METADATA            = 33,
 	AIE_RESOURCES_BIN      = 34,
+	AIE_TRACE_METADATA     = 35,
     };
 
     enum MEM_TYPE {
