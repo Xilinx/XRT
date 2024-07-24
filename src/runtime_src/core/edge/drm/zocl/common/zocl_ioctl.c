@@ -18,7 +18,6 @@
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 #include "zocl_hwctx.h"
-#include <linux/kernel.h>
 
 /*
  * read_axlf and ctx should be protected by slot_xclbin_lock exclusively.
@@ -34,7 +33,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 }
 
 /*
- * IOCTL to create hw contex on a slot on device for a xclbin.
+ * IOCTL to create hw context on a slot on device for a xclbin.
  */
 int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
