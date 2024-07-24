@@ -1969,7 +1969,7 @@ openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access
 {
   unsigned int flags;
   int ret;
-
+  xclLog(XRT_ERROR, "++ %s", __func__);
   switch (am) {
 
   case xrt::graph::access_mode::exclusive:
@@ -2015,11 +2015,17 @@ closeGraphContext(unsigned int graphId)
 
 int
 shim::
-open_graph_hw_context(){};
+open_graph_context(unsigned int graphId, xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx){
+  xclLog(XRT_ERROR, "++ %s: ", __func__);
+  return openGraphContext(hwctx->get_xclbin_uuid().get(), graphId, am);
+};
 
 int
 shim::
-close_graph_hw_context(){};
+close_graph_context(unsigned int graphId){
+  xclLog(XRT_ERROR, "++ %s: ", __func__);
+  return closeGraphContext(graphId);
+};
 
 int
 shim::
