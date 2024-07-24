@@ -40,12 +40,12 @@ jobs:
              packageType: rpm      
            - os: centos8      
              packageType: rpm      
-           # - os: rhel9      
-           #   packageType: rpm      
-           # - os: ubuntu2004      
-           #   packageType: deb      
-           # - os: ubuntu2204      
-           #   packageType: deb      
+           - os: rhel9      
+             packageType: rpm      
+           - os: ubuntu2004      
+             packageType: deb      
+           - os: ubuntu2204      
+             packageType: deb      
         
     runs-on: [self-hosted, Ubuntu-22.04]
     # runs-on: [apu]
