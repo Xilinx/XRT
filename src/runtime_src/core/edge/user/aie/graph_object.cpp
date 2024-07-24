@@ -25,7 +25,7 @@ namespace zynqaie {
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
         throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
 
-      int ret = hwctx ? drv->open_graph_context(id, am, hwctx) : drv->openGraphContext(uuid.get(), id, am);
+      int ret = hwctx ? drv->open_graph_context(hwctx, id, am) : drv->openGraphContext(uuid.get(), id, am);
       if (ret)
         throw xrt_core::error(ret, "Can not open Graph context");
 
