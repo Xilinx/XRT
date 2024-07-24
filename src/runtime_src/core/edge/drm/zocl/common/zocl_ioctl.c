@@ -69,7 +69,6 @@ int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fil
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
 	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
 	struct kds_client *client = filp->driver_priv;
-	printk("+++ %s: %d calling zocl_destroy_hw_ctx", __func__, __LINE__);
 
 	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, client);
 }

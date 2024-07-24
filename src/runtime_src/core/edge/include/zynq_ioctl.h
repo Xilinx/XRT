@@ -470,7 +470,7 @@ struct drm_zocl_axlf {
 * @hw_context:	Returns context handle
 */
 struct drm_zocl_create_hw_ctx {
-	struct drm_zocl_axlf	*axlf_ptr;
+	struct drm_zocl_axlf			*axlf_ptr;
 	uint32_t				qos;
 	//context id
 	uint32_t				hw_context;

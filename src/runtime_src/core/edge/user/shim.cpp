@@ -1151,7 +1151,6 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
   int off = 0;
   std::string dtbo_path("");
-  xclLog(XRT_ERROR, "+++ %s: buffer=%s", __func__, buffer);
 
 #ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
@@ -1191,25 +1190,25 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
       return -EPERM;
     }
   }
-#endif
+#endif //XRT_ENABLE_LIBDFX
 
-#endif
+#endif //__HWEM__
 
-    /* Get the AIE_METADATA and get the hw_gen information */
-    uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
-    uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
+/* Get the AIE_METADATA and get the hw_gen information */
+  uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
+  uint32_t partition_id = xrt_core::edge::aie::get_partition_id(mCoreDevice.get());
 
-      axlf_obj->za_xclbin_ptr = const_cast<axlf *>(buffer),
-      axlf_obj->za_flags = flags,
-      axlf_obj->za_ksize = 0,
-      axlf_obj->za_kernels = NULL,
-      axlf_obj->za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
-      axlf_obj->za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
-      axlf_obj->za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
-      axlf_obj->hw_gen = hw_gen,
-      axlf_obj->partition_id = partition_id,
-
+  axlf_obj->za_xclbin_ptr = const_cast<axlf *>(buffer),
+  axlf_obj->za_flags = flags,
+  axlf_obj->za_ksize = 0,
+  axlf_obj->za_kernels = NULL,
+  axlf_obj->za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
+  axlf_obj->za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
+  axlf_obj->za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
+  axlf_obj->hw_gen = hw_gen,
+  axlf_obj->partition_id = partition_id,
   axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
+
   std::vector<char> krnl_binary;
   if (!xrt_core::xclbin::is_pdi_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
@@ -1255,19 +1254,17 @@ int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)
     }
   }
 
-  #ifdef __HWEM__
-    if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
-      return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
-    }
-  #endif
+#ifdef __HWEM__
+  if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
+    return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
+  }
+#endif //__HWEM__
 
-  xclLog(XRT_ERROR, "%s: Preparing the zocl_drm_axlf obj is done", __func__);
   return 0;
 }
 
 int shim::load_hw_axlf(xclDeviceHandle handle, const xclBin *buffer, drm_zocl_create_hw_ctx *hw_ctx)
 {
-  xclLog(XRT_ERROR, "++ %s: %d buffer:%s", __func__, __LINE__, buffer);
   drm_zocl_axlf axlf_obj = {};
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = prepare_hw_axlf(top, &axlf_obj);
@@ -1321,16 +1318,12 @@ create_hw_context(xclDeviceHandle handle,
   hw_ctx.qos = qos_val;
   auto shim = get_shim_object(handle);
 
-  xclLog(XRT_ERROR, "++ %s, buffer: %s", __func__, buffer);
   if(auto ret = shim->load_hw_axlf(handle, buffer, &hw_ctx)) {
     if (ret) {
       if (ret == -EOPNOTSUPP) {
         xclLog(XRT_ERROR, "XCLBIN does not match shell on the card.");
-        #if 0
-        //more error logs
-        #endif
       }
-      xclLog(XRT_ERROR, "See dmesg log for de/tails. err = %d", ret);
+      xclLog(XRT_ERROR, "See dmesg log for details. Err = %d", ret);
       throw xrt_core::error("Failed to create hardware context");
     }
   }
@@ -1348,13 +1341,13 @@ destroy_hw_context(xrt_core::hwctx_handle::slot_id slot)
 
   auto ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_DESTROY_HW_CTX, &hw_ctx);
   if (ret)
-    throw xrt_core::system_error(errno, "Destroying hw context failed");
+    throw xrt_core::system_error(errno, "Failed to destroy hardware context");
 }
 
 void
 shim::
 register_xclbin(const xrt::xclbin&){
-  xclLog(XRT_ERROR, "++ %s: %d, xclbin successfully registered for this device without loading the xclbin", __func__, __LINE__);
+  xclLog(XRT_INFO, "%s: xclbin successfully registered for this device without loading the xclbin", __func__);
 }
 
 int
@@ -1969,7 +1962,7 @@ openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access
 {
   unsigned int flags;
   int ret;
-  xclLog(XRT_ERROR, "++ %s", __func__);
+
   switch (am) {
 
   case xrt::graph::access_mode::exclusive:
@@ -2015,15 +2008,13 @@ closeGraphContext(unsigned int graphId)
 
 int
 shim::
-open_graph_context(unsigned int graphId, xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx){
-  xclLog(XRT_ERROR, "++ %s: ", __func__);
+open_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graphId, xrt::graph::access_mode am){
   return openGraphContext(hwctx->get_xclbin_uuid().get(), graphId, am);
 };
 
 int
 shim::
 close_graph_context(unsigned int graphId){
-  xclLog(XRT_ERROR, "++ %s: ", __func__);
   return closeGraphContext(graphId);
 };
 

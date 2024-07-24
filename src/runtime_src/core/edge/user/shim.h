@@ -343,7 +343,7 @@ public:
   int resetAIEArray(drm_zocl_aie_reset &reset);
   int openGraphContext(const uuid_t xclbinId, unsigned int graphId, xrt::graph::access_mode am);
   int closeGraphContext(unsigned int graphId);
-  int open_graph_context(unsigned int graphId, xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx);
+  int open_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graphId, xrt::graph::access_mode am);
   int close_graph_context(unsigned int graphId);
   int openAIEContext(xrt::aie::access_mode am);
   xrt::aie::access_mode getAIEAccessMode();
