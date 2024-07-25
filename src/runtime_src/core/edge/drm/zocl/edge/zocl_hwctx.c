@@ -6,11 +6,11 @@
 #include "zocl_hwctx.h"
 #include <drm/drm_print.h>
 
-int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx *drm_hw_ctx, struct kds_client *client)
+int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx *drm_hw_ctx, struct kds_client *client, int slot_id)
 {
     struct kds_client_hw_ctx *kds_hw_ctx = NULL;
     struct drm_zocl_slot *slot = NULL;
-    slot = zdev->pr_slot[0]; //hardcoding the slot for now
+    slot = zdev->pr_slot[slot_id];
     int ret = 0;
 
     if (!client)
@@ -53,7 +53,7 @@ int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ct
         return -EINVAL;
     }
 
-    slot = zdev->pr_slot[0];
+    slot = zdev->pr_slot[kds_hw_ctx->slot_idx];
     ret = zocl_unlock_bitstream(slot, slot->slot_xclbin->zx_uuid);
     if (ret) {
         DRM_ERROR("%s: Unlocking the bistream failed", __func__);

@@ -200,7 +200,7 @@ done:
  */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
-	struct kds_client *client)
+	struct kds_client *client, int *slot_idx)
 {
 	struct axlf axlf_head;
 	struct axlf *axlf = NULL;
@@ -266,6 +266,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		goto out0;
 	}
 
+	*slot_idx = slot_id;
 	slot = zdev->pr_slot[slot_id];
 	mutex_lock(&slot->slot_xclbin_lock);
 	/*
