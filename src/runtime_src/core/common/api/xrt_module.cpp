@@ -154,17 +154,28 @@ struct patcher
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
-// replace certain bits of bd_data_ptr[0] with register_value
-// which bits to be replaced is specified by mask
+// Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
+// For example,   *data_to_patch is 0xbb11aaaa, register_value = 0x55, mask is 0x00ff0000
+// After patching *data_to_patch is 0xbb55aaaa
   void
-  patch32(uint32_t* bd_data_ptr, uint64_t register_value, uint32_t mask)
+  patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask)
   {
-    auto new_value = bd_data_ptr[0];
+    if ((reinterpret_cast<uintptr_t>(data_to_patch) & 0x3) != 0)
+      throw std::runtime_error("address is not 4 byte aligned for patch32");
+
+    auto new_value = *data_to_patch;
     mask = mask == 0 ? 0xFFFFFFFF : mask;
     uint32_t clear_mask = ~mask;
+    int shift_count = 0;
+
+    while ((mask & 1) == 0) {
+      mask >>= 1;
+      shift_count++;
+    }
+
     new_value &= clear_mask;
-    new_value |= static_cast<uint32_t>(register_value);
-    bd_data_ptr[0] = new_value;
+    new_value |= static_cast<uint32_t>(register_value << shift_count);
+    *data_to_patch = new_value;
   }
 
   void
