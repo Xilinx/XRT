@@ -684,9 +684,11 @@ class module_elf : public module_impl
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
 
         auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
-        auto mask = static_cast<uint32_t>(sym->st_value);
+
         patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
-                                 patcher::patch_info{ offset, add_end_higher_28bit, mask } :
+                                 // st_size is is encoded using register value mask for scaler_32
+                                 // for other pacthing scheme it is encoded using size of dma
+                                 patcher::patch_info{ offset, add_end_higher_28bit, static_cast<uint32_t>(sym->st_size) } :
                                  patcher::patch_info{ offset, add_end_higher_28bit, 0 };
 
         std::string key_string = generate_key_string(argnm, buf_type);
