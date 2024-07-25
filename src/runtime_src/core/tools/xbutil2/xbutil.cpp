@@ -66,7 +66,7 @@ R"(
     }]
   },{
     "validate": [{
-      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm"]
+      "test": ["latency", "throughput", "cmd-chain-latency", "cmd-chain-throughput", "df-bw", "tct-one-col", "tct-all-col", "gemm", "aro"]
     }]
   }]
 }]
