@@ -28,7 +28,6 @@
 #include <map>
 #include <set>
 #include <string>
-#include <sstream>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
 # define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
