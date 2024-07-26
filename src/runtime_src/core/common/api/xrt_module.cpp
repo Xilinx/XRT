@@ -164,7 +164,6 @@ struct patcher
       throw std::runtime_error("address is not 4 byte aligned for patch32");
 
     auto new_value = *data_to_patch;
-    mask = mask == 0 ? 0xFFFFFFFF : mask;
     new_value = (new_value & ~mask) | (register_value & mask);
     *data_to_patch = new_value;
   }
@@ -220,7 +219,8 @@ struct patcher
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
-        patch32(bd_data_ptr, new_value, item.mask);
+        if (!item.mask)
+          patch32(bd_data_ptr, new_value, item.mask);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
         // new_value is a bo address
