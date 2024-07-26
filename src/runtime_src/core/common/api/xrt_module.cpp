@@ -218,7 +218,7 @@ struct patcher
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
         // new_value is a register value
-        if (!item.mask)
+        if (item.mask)
           patch32(bd_data_ptr, new_value, item.mask);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
