@@ -155,8 +155,8 @@ struct patcher
   {}
 
 // Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
-// For example,   *data_to_patch is 0xbb11aaaa, register_value = 0x55, mask is 0x00ff0000
-// After patching *data_to_patch is 0xbb55aaaa
+// For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
+// To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
   void
   patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask)
   {
@@ -165,16 +165,7 @@ struct patcher
 
     auto new_value = *data_to_patch;
     mask = mask == 0 ? 0xFFFFFFFF : mask;
-    uint32_t clear_mask = ~mask;
-    int shift_count = 0;
-
-    while ((mask & 1) == 0) {
-      mask >>= 1;
-      shift_count++;
-    }
-
-    new_value &= clear_mask;
-    new_value |= static_cast<uint32_t>(register_value << shift_count);
+    new_value = (new_value & ~mask) | (register_value & mask);
     *data_to_patch = new_value;
   }
 
