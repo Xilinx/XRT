@@ -45,6 +45,34 @@ public:
   std::string
   get_sysfs_path(const std::string& subdev, const std::string& entry) override;
 
+#ifdef XRT_ENABLE_AIE
+  void
+  open_aie_context(xrt::aie::access_mode am) override;
+
+  void
+  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override;
+
+  void
+  reset_aie() override;
+
+  void
+  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override;
+
+  void
+  wait_gmio(const char *gmioName) override;
+
+  int
+  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) override;
+
+  uint64_t
+  read_profiling(int phdl) override;
+
+  void
+  stop_profiling(int phdl) override;
+
+  void
+  load_axlf_meta(const axlf* buffer) override;
+#endif
   ////////////////////////////////////////////////////////////////
   // Custom ip interrupt handling
   // Redefined from xrt_core::ishim

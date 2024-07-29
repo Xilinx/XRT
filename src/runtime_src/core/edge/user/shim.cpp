@@ -3,6 +3,7 @@
 // Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
+#include "hwctx_object.h"
 
 #include "core/include/shim_int.h"
 #include "core/include/xdp/aim.h"
@@ -1127,7 +1128,7 @@ open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuna
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
   auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
   auto cuidx = mCoreDevice->get_cuidx(hwctx->get_slotidx(), cuname);
   xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
@@ -1140,7 +1141,7 @@ shim::
 close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
   // To-be-implemented
-  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
   if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
     throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
@@ -1151,7 +1152,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::cfg_param_type&,
                   xrt::hw_context::access_mode mode)
 {
-  return std::make_unique<hwcontext>(this, 0, xclbin_uuid, mode);
+  return std::make_unique<zynqaie::hwctx_object>(this, 0, xclbin_uuid, mode);
 }
 
 int
@@ -1722,7 +1723,7 @@ getAieArray()
   return aieArray.get();
 }
 
-zynqaie::Aied*
+zynqaie::aied*
 shim::
 getAied()
 {
@@ -1735,7 +1736,7 @@ registerAieArray()
 {
   delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
-  aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
+  aied = std::make_unique<zynqaie::aied>(mCoreDevice.get());
 }
 
 bool

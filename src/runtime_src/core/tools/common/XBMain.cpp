@@ -151,6 +151,7 @@ void  main_(int argc, char** argv,
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, parsedSubCmds);
     if (!bHelp && !sCmd.empty())
       throw xrt_core::error(std::errc::operation_canceled);
+    return;
   }
 
   // -- Prepare the data

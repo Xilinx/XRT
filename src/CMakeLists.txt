@@ -58,8 +58,6 @@ endif()
 
 if (DEFINED ENV{XRT_CLANGTIDY_REVIEW})
   set(XRT_CLANGTIDY_REVIEW "yes")
-  set(XRT_AIE_BUILD "yes")
-  add_compile_options("-DXRT_ENABLE_AIE")
 endif()
 
 if (DISABLE_ABI_CHECK)
@@ -69,15 +67,6 @@ endif()
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
 endif (NOT CMAKE_BUILD_TYPE)
-
-# Enable AIE even on x86.  This is POC, once
-# complete we will remove the need for these
-# macros and defines.
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  set(XRT_AIE_BUILD "yes")
-  set(XRT_ENABLE_AIE "yes")
-  add_definitions (-DXRT_ENABLE_AIE -DXRT_AIE_BUILD)
-endif()
 
 # Default component name for any install() command without the COMPONENT argument
 # The default component is the xrt run-time component, if XRT_DEV_COMPONENT is

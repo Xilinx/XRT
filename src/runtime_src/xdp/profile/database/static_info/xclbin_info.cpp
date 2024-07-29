@@ -605,13 +605,13 @@ namespace xdp {
 
       switch (moduleType)
       {
-        case 0:
+        case module_type::core:
           xclbin->aie.aieCoreCountersMap[numCounters] = numTiles ;
           break ;
-        case 1:
+        case module_type::dma:
           xclbin->aie.aieMemoryCountersMap[numCounters] = numTiles ;
           break ;
-        case 2:
+        case module_type::shim:
           xclbin->aie.aieShimCountersMap[numCounters] = numTiles ;
           break ;
         default:
