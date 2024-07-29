@@ -35,7 +35,7 @@ namespace xdp {
   void AIEProfilingWriter::writeHeader()
   {
     // Updated offsets for AIE mem, shim and mem_tile to 1000, 2000, 3000 respectively.
-    float fileVersion = 1.1;
+    float fileVersion = 1.1f;
 
     // Report HW generation to inform analysis how to interpret event IDs
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
