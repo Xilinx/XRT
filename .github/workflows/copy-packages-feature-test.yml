@@ -177,14 +177,15 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: cleanup-fix
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
         with:    
           runNumber: ${{ github.run_number }}    
           pipeline: ${{ env.PIPELINE }}    
-          env: ${{ env.ENV }}  
+          env: ${{ env.ENV }}
+          release_branch: ${{ env.RELEASE }}
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
@@ -233,7 +234,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}      
           path: composite-workflows   
-          ref: main
+          ref: cleanup-fix
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/pcie-hw  
@@ -308,7 +309,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows   
-          ref: main
+          ref: cleanup-fix
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
@@ -383,7 +384,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
-          ref: main
+          ref: cleanup-fix
        
       - name: Use composite action for pcie-hw       
         uses: ./composite-workflows/emulation
