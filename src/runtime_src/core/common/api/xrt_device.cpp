@@ -378,7 +378,6 @@ device::
 
 } // xrt
 
-#ifdef XRT_ENABLE_AIE
 ////////////////////////////////////////////////////////////////
 // xrt_aie_device C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
@@ -497,7 +496,6 @@ write_aie_reg(uint16_t context_id, uint16_t col, uint16_t row, uint32_t reg_addr
     });
 }
 } // xrt::aie
-#endif
 
 ////////////////////////////////////////////////////////////////
 // xrt_device API implmentations (xrt_device.h)

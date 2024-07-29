@@ -588,11 +588,11 @@ namespace xdp::aie::trace {
   /****************************************************************************
    * Modify events in metric set based on type and channel
    ***************************************************************************/
-  void modifyEvents(module_type type, uint16_t subtype, const std::string metricSet,
+  void modifyEvents(module_type type, io_type subtype, const std::string metricSet,
                     uint8_t channel, std::vector<XAie_Events>& events)
   {
     // Only needed for GMIO DMA channel 1
-    if ((type != module_type::shim) || (subtype == 0) || (channel == 0))
+    if ((type != module_type::shim) || (subtype == io_type::PLIO) || (channel == 0))
       return;
 
     // Check type to minimize replacements

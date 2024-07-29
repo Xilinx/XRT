@@ -24,7 +24,7 @@
 #include <thread>
 #include <pthread.h> 
 #include "core/common/device.h"
-#include "core/edge/user/aie/graph.h"
+#include "graph_object.h"
 
 /*
  * It receives commands from zocl and dispatches back the output.
@@ -32,19 +32,19 @@
  */
 namespace zynqaie {
 
-class Aied
+class aied
 {
 public:
-  Aied(xrt_core::device* device);
-  ~Aied();
-  void registerGraph(const graph_type *graph);
-  void deregisterGraph(const graph_type *graph);
+  aied(xrt_core::device* device);
+  ~aied();
+  void register_graph(const graph_object *graph);
+  void deregister_graph(const graph_object *graph);
 
 private:
   bool done;
-  static void* pollAIE(void *arg);
-  xrt_core::device *mCoreDevice;
-  std::vector<const graph_type*> mGraphs;
+  static void* poll_aie(void *arg);
+  xrt_core::device *m_device;
+  std::vector<const graph_object*> m_graphs;
   pthread_t ptid;
 };
 } // end namespace

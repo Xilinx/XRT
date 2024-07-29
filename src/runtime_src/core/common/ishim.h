@@ -206,33 +206,41 @@ struct ishim
   }
   ////////////////////////////////////////////////////////////////
 
-#ifdef XRT_ENABLE_AIE
   virtual void
-  open_aie_context(xrt::aie::access_mode) = 0;
+  open_aie_context(xrt::aie::access_mode)
+  { throw not_supported_error{__func__}; }
 
   virtual void
-  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+  sync_aie_bo(xrt::bo&, const char*, xclBOSyncDirection, size_t , size_t )
+  { throw not_supported_error{__func__}; }
 
   virtual void
-  reset_aie() = 0;
+  reset_aie()
+  { throw not_supported_error{__func__}; }
 
   virtual void
-  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+  sync_aie_bo_nb(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t)
+  { throw not_supported_error{__func__}; }
 
   virtual void
-  wait_gmio(const char *gmioName) = 0;
+  wait_gmio(const char*)
+  { throw not_supported_error{__func__}; }
 
   virtual int
-  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) = 0;
+  start_profiling(int, const char*, const char*, uint32_t)
+  { throw not_supported_error{__func__}; }
 
   virtual uint64_t
-  read_profiling(int phdl) = 0;
+  read_profiling(int)
+  { throw not_supported_error{__func__}; }
 
   virtual void
-  stop_profiling(int phdl) = 0;
+  stop_profiling(int)
+  { throw not_supported_error{__func__}; }
 
   virtual void
-  load_axlf_meta(const axlf*) = 0;
+  load_axlf_meta(const axlf*)
+  { throw not_supported_error{__func__}; }
 
   virtual std::vector<char>
   read_aie_mem(uint16_t /*col*/, uint16_t /*row*/, uint32_t /*offset*/, uint32_t /*size*/)
@@ -249,7 +257,6 @@ struct ishim
   virtual bool
   write_aie_reg(uint16_t /*col*/, uint16_t /*row*/, uint32_t /*reg_addr*/, uint32_t /*reg_val*/)
   { throw not_supported_error{__func__}; }
-#endif
 };
 
 template <typename DeviceType>
@@ -404,70 +411,6 @@ struct shim : public DeviceType
     if (auto ret = xclInternalResetDevice(DeviceType::get_device_handle(), kind))
       throw error(ret, "failed to reset device");
   }
-
-#ifdef XRT_ENABLE_AIE
-
-  void
-  open_aie_context(xrt::aie::access_mode am) override
-  {
-    if (auto ret = xclAIEOpenContext(DeviceType::get_device_handle(), am))
-      throw error(ret, "fail to open aie context");
-  }
-
-  void
-  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override
-  {
-    if (auto ret = xclSyncBOAIE(DeviceType::get_device_handle(), bo, gmioName, dir, size, offset))
-      throw system_error(ret, "fail to sync aie bo");
-  }
-
-  void
-  reset_aie() override
-  {
-    if (auto ret = xclResetAIEArray(DeviceType::get_device_handle()))
-      throw system_error(ret, "fail to reset aie");
-  }
-
-  void
-  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override
-  {
-    if (auto ret = xclSyncBOAIENB(DeviceType::get_device_handle(), bo, gmioName, dir, size, offset))
-      throw system_error(ret, "fail to sync aie non-blocking bo");
-  }
-
-  void
-  wait_gmio(const char *gmioName) override
-  {
-    if (auto ret = xclGMIOWait(DeviceType::get_device_handle(), gmioName))
-      throw system_error(ret, "fail to wait gmio");
-  }
-
-  int
-  start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value) override
-  {
-    return xclStartProfiling(DeviceType::get_device_handle(), option, port1Name, port2Name, value);
-  }
-
-  uint64_t
-  read_profiling(int phdl) override
-  {
-    return xclReadProfiling(DeviceType::get_device_handle(), phdl);
-  }
-
-  void
-  stop_profiling(int phdl) override
-  {
-    if (auto ret = xclStopProfiling(DeviceType::get_device_handle(), phdl))
-      throw system_error(ret, "failed to stop profiling");
-  }
-
-  void
-  load_axlf_meta(const axlf* buffer) override
-  {
-    if (auto ret = xclLoadXclBinMeta(DeviceType::get_device_handle(), buffer))
-      throw system_error(ret, "failed to load xclbin");
-  }
-#endif
 };
 
 // Stub out all xrt_core::ishim functions to throw not supported. A
@@ -588,63 +531,6 @@ struct noshim : public DeviceType
   {
     throw ishim::not_supported_error(__func__);
   }
-
-#ifdef XRT_ENABLE_AIE
-
-  void
-  open_aie_context(xrt::aie::access_mode) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  sync_aie_bo(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  reset_aie() override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  sync_aie_bo_nb(xrt::bo&, const char*, xclBOSyncDirection, size_t, size_t) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  wait_gmio(const char*) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  int
-  start_profiling(int, const char*, const char*, uint32_t) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  uint64_t
-  read_profiling(int) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  stop_profiling(int) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-
-  void
-  load_axlf_meta(const axlf*) override
-  {
-    throw ishim::not_supported_error(__func__);
-  }
-#endif
 };
 
 } // xrt_core
