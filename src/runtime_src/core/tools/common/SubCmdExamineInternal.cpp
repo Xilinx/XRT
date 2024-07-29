@@ -139,6 +139,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   // When json is specified, make sure an accompanying output file is also specified
   if (!m_format.empty() && m_output.empty()) {
     std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
+    print_help_internal();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
