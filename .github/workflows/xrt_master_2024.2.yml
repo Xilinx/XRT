@@ -56,7 +56,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
        
       - name: XRT build     
         uses: ./composite-workflows/build
@@ -104,7 +104,7 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}      
           token: ${{ secrets.ACCESS_TOKEN }}      
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
        
       - name: XRT windows build     
         uses: ./composite-workflows/windows-build
@@ -149,7 +149,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}       
           path: composite-workflows  
-          ref: copy-packages-feature
+          ref: main
        
       - name: Apu package build for XRT     
         uses: ./composite-workflows/apu-package
@@ -184,14 +184,15 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
     
       - name: Use composite action package download     
         uses: ./composite-workflows/package-download   
         with:    
           runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
-          env: ${{ env.ENV }}  
+          env: ${{ env.ENV }}
+          release_branch: ${{ env.RELEASE }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
@@ -425,7 +426,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
     
       - name: Use composite action package download     
         uses: ./composite-workflows/setenv   
@@ -468,7 +469,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
     
       - name: Use composite action release-all-sites download     
         uses: ./composite-workflows/release-all-sites   
@@ -510,7 +511,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
     
       - name: Use composite action release-all-sites download     
         uses: ./composite-workflows/release-all-sites   
@@ -545,7 +546,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
 
       - name: Use composite action artifactory upload     
         uses: ./composite-workflows/artifactory-upload   
@@ -587,7 +588,7 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           github-server-url: ${{ secrets.SERVER_URL }}    
           path: composite-workflows 
-          ref: copy-packages-feature
+          ref: main
     
       - name: Use composite action package download     
         uses: ./composite-workflows/gradle-artifactory-upload   
