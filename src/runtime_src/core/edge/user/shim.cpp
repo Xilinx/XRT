@@ -2008,18 +2008,6 @@ closeGraphContext(unsigned int graphId)
 
 int
 shim::
-open_graph_context(const zynqaie::hwctx_object* hwctx, unsigned int graphId, xrt::graph::access_mode am){
-  return openGraphContext(hwctx->get_xclbin_uuid().get(), graphId, am);
-};
-
-int
-shim::
-close_graph_context(unsigned int graphId){
-  return closeGraphContext(graphId);
-};
-
-int
-shim::
 openAIEContext(xrt::aie::access_mode am)
 {
   unsigned int flags;
