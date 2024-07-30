@@ -546,7 +546,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	struct axlf *axlf = NULL;
 	struct axlf bin_obj;
 	size_t size = 0;
-	uint32_t slot_id;
+	uint32_t slot_id = 0;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;

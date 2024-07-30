@@ -115,8 +115,8 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
         char kname[CU_NAME_MAX_LEN];
         int i = 0;
 
-        strcpy(kname, strsep(&kname_p, ":"));
-        strcpy(iname, strsep(&kname_p, ":"));
+        strlcpy(kname, strsep(&kname_p, ":"), sizeof(kname);
+        strlcpy(iname, strsep(&kname_p, ":"), sizeof(iname);
 
         /* Retrieve the CU index from the given slot */
         for (i = 0; i < MAX_CUS; i++) {
