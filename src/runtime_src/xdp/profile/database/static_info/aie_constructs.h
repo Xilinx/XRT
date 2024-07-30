@@ -91,6 +91,26 @@ namespace xdp {
     }
   };
 
+  struct compareTileByLoc {
+    tile_type target_tile;
+    compareTileByLoc(const tile_type& t) : target_tile(t) {}
+
+    bool operator()(const tile_type& src_tile) const {
+      return src_tile.col == target_tile.col && src_tile.row == target_tile.row;
+    }
+  };
+  struct compareTileByLocAndActiveType {
+    tile_type target_tile;
+    compareTileByLocAndActiveType(const tile_type& t) : target_tile(t) {}
+
+    bool operator()(const tile_type& src_tile) const {
+      return src_tile.col == target_tile.col &&
+             src_tile.row == target_tile.row &&
+             src_tile.active_core == target_tile.active_core &&
+             src_tile.active_memory == target_tile.active_memory;
+    }
+  };
+
   struct io_config
   {
     // Object id

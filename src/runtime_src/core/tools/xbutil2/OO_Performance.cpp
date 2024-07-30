@@ -6,6 +6,7 @@
 #include "OO_Performance.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/XBHelpMenusCore.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -15,19 +16,22 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Performance::OO_Performance( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Change power mode of the device")
+    : OptionOptions(_longName, _isHidden, "Modes: default, powersaver, balanced, performance")
     , m_device("")
     , m_action("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: DEFAULT, POWERSAVER, BALANCED, PERFORMANCE")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
+  m_optionsHidden.add_options()
+    ("mode", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: default, powersaver, balanced, performance")
+  ;
+
   m_positionalOptions.
-    add("action", 1 /* max_count */)
+    add("mode", 1 /* max_count */)
   ;
 }
 
@@ -48,20 +52,24 @@ OO_Performance::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options);
 
-  if(m_help) {
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  // Exit if neither action or device specified
-  if(m_action.empty()) {
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  if(m_device.empty()) {
-    std::cerr << boost::format("ERROR: A device needs to be specified.\n");
-    throw xrt_core::error(std::errc::operation_canceled);
+  try {
+    po::options_description all_options("All Options");
+    all_options.add(m_optionsDescription);
+    all_options.add(m_optionsHidden);
+    po::command_line_parser parser(_options);
+    XBUtilities::process_arguments(vm, parser, all_options, m_positionalOptions, true);
+  } catch(boost::program_options::error&) {
+      if(m_help) {
+        printHelp();
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
+      // Exit if neither action or device specified
+      if(m_action.empty()) {
+        std::cerr << boost::format("ERROR: the required argument for option '--pmode' is missing\n");
+        printHelp();
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
   }
 
   // Find device of interest
@@ -89,18 +97,13 @@ OO_Performance::execute(const SubCmdOptions& _options) const
       xrt_core::device_update<xrt_core::query::performance_mode>(device.get(), xrt_core::query::performance_mode::power_type::high);
     }
     else {
-      std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
-      printHelp();
-      throw xrt_core::error(std::errc::operation_canceled);
+      throw xrt_core::error(boost::str(boost::format("Invalid pmode value: '%s'\n") % m_action));
     }
     std::cout << boost::format("\nPower mode is set to %s \n") % (boost::algorithm::to_lower_copy(m_action));
   }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  catch (const std::runtime_error& e) {
-    std::cerr << boost::format("\nERROR: %s\n") % e.what();
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 }
