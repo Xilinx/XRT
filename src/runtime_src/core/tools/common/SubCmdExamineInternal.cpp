@@ -66,13 +66,14 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   common_options.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output)->implicit_value("<console>"), "Direct the output to the given file")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_commonOptions.add(common_options);
   m_commonOptions.add_options()
-    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken()->implicit_value(std::vector<std::string>{std::string("all")}, std::string("all")),
+      (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
   ;
   
   if (m_isUserDomain)
@@ -219,7 +220,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   }
 
   // -- Write output file ----------------------------------------------
-  if (!m_output.empty()) {
+  if (!m_output.empty() && m_output != "<console>") {
     std::ofstream fOutput;
     fOutput.open(m_output, std::ios::out | std::ios::binary);
     if (!fOutput.is_open()) {
