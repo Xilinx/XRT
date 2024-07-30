@@ -185,7 +185,7 @@ jobs:
           runNumber: ${{ github.run_number }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
-          release_branch: ${{ env.RELEASE }}
+          release: ${{ env.RELEASE }}
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
