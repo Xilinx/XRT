@@ -438,7 +438,7 @@ jobs:
           echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY
 
   cleanup-build:    
-    needs: test-summary    
+    needs: pcie-hw-tests    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
       - name: Checkout private repository    
