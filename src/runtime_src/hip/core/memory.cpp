@@ -193,6 +193,10 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
+    // TODO: hip memory allocated from memory pool need to return a valid pointer before
+    //       actual allocation is done and user application may add an offset to this pointer,
+    //       hence the need for returning a fake handle for hipMemory objects look up
+    //       a more robust handle/pointer creation scheme for this pointer might be neccessary 
     static auto curr_start = get_page_aligned_size(0x10000);
     size_t aligned_size = get_page_aligned_size(sub_mem->get_size());
     memory_handle h = curr_start;
@@ -213,28 +217,11 @@ namespace xrt::core::hip
       return nullptr;
   }
 
-  void
-  memory_database::insert_sub_mem_addr(uint64_t addr, size_t size, std::shared_ptr<sub_memory> sub_mem)
-  {
-    std::lock_guard lock(m_mutex);
-
-    m_sub_addr_map.insert({ address_range_key(addr, size), sub_mem });
-  }
-
-
   std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
   memory_database::get_hip_mem_from_addr(void *addr)
   {
     std::lock_guard lock(m_mutex);
 
-    auto sub_itr = m_sub_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
-    if (sub_itr != m_sub_addr_map.end()) {
-      // sub_mem from memory pool
-      auto offset = reinterpret_cast<uint64_t>(addr) - sub_itr->first.address;
-      return std::pair(sub_itr->second, offset);
-    }
-
-    // regular hip::memory object lookup
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);
@@ -250,14 +237,6 @@ namespace xrt::core::hip
   {
     std::lock_guard lock(m_mutex);
 
-    auto sub_itr = m_sub_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
-    if (sub_itr != m_sub_addr_map.end()) {
-      // sub_mem from memory pool
-      auto offset = reinterpret_cast<uint64_t>(addr) - sub_itr->first.address;
-      return std::pair(sub_itr->second, offset);
-    }
-
-    // regular hip::memory object lookup
     auto itr = m_addr_map.find(address_range_key(reinterpret_cast<uint64_t>(addr), 0));
     if (itr == m_addr_map.end()) {
       return std::pair(nullptr, 0);

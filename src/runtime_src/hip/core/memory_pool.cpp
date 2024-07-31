@@ -321,7 +321,7 @@ namespace xrt::core::hip
 
             // init the sub_mem with bo/offset fro the newly found slot
             sub_mem->init(mm->m_memory, size, alloc_slot->m_start);
-            memory_database::instance().insert_sub_mem_addr(reinterpret_cast<uint64_t>(ptr),
+            memory_database::instance().insert(reinterpret_cast<uint64_t>(ptr),
                                                             sub_mem->get_size(), sub_mem);
             return;
           }
