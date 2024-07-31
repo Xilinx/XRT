@@ -440,16 +440,16 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
 
   common_options.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format)->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output)->implicit_value(""), "Direct the output to the given file")
     ("param", boost::program_options::value<decltype(m_param)>(&m_param), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
-    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
+    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location)->implicit_value(""), "Path to the directory containing validate xclbins")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_commonOptions.add(common_options);
   m_commonOptions.add_options()
-    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken()->zero_tokens(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
   ;
 }
 
@@ -521,8 +521,8 @@ void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   // Parse sub-command ...
+  po::variables_map vm;
   try{
-    po::variables_map vm;
     const auto unrecognized_options = process_arguments(vm, _options, false);
 
     if (!unrecognized_options.empty())
@@ -560,11 +560,17 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
+    if (vm.count("output") && m_output.empty())
+      throw xrt_core::error("Output file not specified");
+
+    if (vm.count("path") && m_xclbin_location.empty())
+      throw xrt_core::error("xclbin path not specified");
+
     if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
     if (m_tests_to_run.empty())
-      throw std::runtime_error("No test given to validate against.");
+      throw xrt_core::error("No test given to validate against.");
 
     // Validate the user test requests
     for (auto &userTestName : m_tests_to_run) {
