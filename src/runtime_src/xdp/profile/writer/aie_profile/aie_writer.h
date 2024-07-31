@@ -27,9 +27,11 @@ namespace xdp {
   public:
     AIEProfilingWriter(const char* fileName, const char* deviceName, 
                        uint64_t deviceIndex);
-    ~AIEProfilingWriter();
+    ~AIEProfilingWriter() = default;
 
-    virtual void writeHeader();
+    virtual void writerDataColumnHeader();
+    void writeHeader();
+    void writeMetricSettings();
     virtual bool write(bool openNewFile = true);
     
   private:
