@@ -252,8 +252,22 @@ get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
 {
   ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
   const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  ptTree.put("performance_mode", xrt_core::query::performance_mode::parse_status(mode));
-  ptTree.put("power", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query_default<xrt_core::query::power_microwatts>(device, 0)));
+  const std::string pmode = xrt_core::query::performance_mode::parse_status(mode);
+  if (boost::iequals(pmode, "DEFAULT")) {
+    ptTree.put("power_mode", "Default");
+  }
+  else if (boost::iequals(pmode, "LOW")) {
+    ptTree.put("power_mode", "Powersaver");
+  }
+  else if (boost::iequals(pmode, "MEDIUM")) {
+    ptTree.put("power_mode", "Balanced");
+  }
+  else if (boost::iequals(pmode, "HIGH")) {
+    ptTree.put("power_mode", "Performance");
+  }
+  else {
+    ptTree.put("power_mode", "N/A");
+  }
 }
 
 static void
@@ -284,9 +298,9 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   const std::string& plat_id = ptTree.get("platform_id", "");
   if (!plat_id.empty())
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
-  const std::string& perf_mode = ptTree.get("performance_mode", "");
-  if (!perf_mode.empty())
-    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % perf_mode;
+  const std::string& power_mode = ptTree.get("power_mode", "");
+  if (!power_mode.empty())
+    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % power_mode;
   const std::string& power = ptTree.get("power", "");
   if (!boost::starts_with(power, ""))
     oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
