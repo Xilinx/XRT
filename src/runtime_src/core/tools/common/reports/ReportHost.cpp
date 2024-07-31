@@ -139,9 +139,6 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
     for(auto& drv : available_drivers) {
       const boost::property_tree::ptree& driver = drv.second;
       std::string drv_name = driver.get<std::string>("name", "N/A");
-      // This check depends on the assumption that ipukmddrv is the name given to NPU drivers.
-      if (boost::iequals(drv_name, "ipukmddrv")) 
-        drv_name = "NPU Driver";
       std::string drv_hash = driver.get<std::string>("hash", "N/A");
       if (!boost::iequals(drv_hash, "N/A")) {
         _output << boost::format("  %-20s : %s, %s\n") % drv_name
