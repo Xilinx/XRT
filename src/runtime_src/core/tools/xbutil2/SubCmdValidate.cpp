@@ -371,6 +371,47 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
   return has_failures;
 }
 
+/*
+ * Extended keys helper struct
+ */
+struct ExtendedKeysStruct {
+  std::string test_name;
+  std::string param_name;
+  std::string description;
+};
+
+static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
+  {"dma", "block-size", "Memory transfer size (bytes)"}
+};
+
+std::string
+extendedKeysOptions()
+{
+  static unsigned int m_maxColumnWidth = 100;
+  std::stringstream fmt_output;
+  // Formatting color parameters
+  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
+  const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
+  const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
+  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor::reset();
+
+  // Report option group name (if defined)
+  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
+  fmt_output << fmtHeader % "EXTENDED KEYS";
+
+  // Report the options
+  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
+  unsigned int optionDescTab = 23;
+
+  for (auto& param : extendedKeysCollection) {
+    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
+    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    fmt_output << fmtOption % param.test_name % formattedString;
+  }
+
+  return fmt_output.str();
+}
+
 }
 //end anonymous namespace
 
@@ -442,9 +483,12 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
-    ("param", boost::program_options::value<decltype(m_param)>(&m_param), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
-    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  m_hiddenOptions.add_options()
+    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
+    ("param", boost::program_options::value<decltype(m_param)>(&m_param), (std::string("Extended parameter for a given test. Format: <test-name>:<key>:<value>\n") + extendedKeysOptions()).c_str())
   ;
 
   m_commonOptions.add(common_options);
@@ -453,52 +497,11 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   ;
 }
 
-/*
- * Extended keys helper struct
- */
-struct ExtendedKeysStruct {
-  std::string test_name;
-  std::string param_name;
-  std::string description;
-};
-
-static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
-  {"dma", "block-size", "Memory transfer size (bytes)"}
-};
-
-std::string
-extendedKeysOptions()
-{
-  static unsigned int m_maxColumnWidth = 100;
-  std::stringstream fmt_output;
-  // Formatting color parameters
-  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
-  const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
-  const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
-  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor::reset();
-
-  // Report option group name (if defined)
-  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
-  fmt_output << fmtHeader % "EXTENDED KEYS";
-
-  // Report the options
-  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
-  unsigned int optionDescTab = 23;
-
-  for (auto& param : extendedKeysCollection) {
-    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
-    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
-    fmt_output << fmtOption % param.test_name % formattedString;
-  }
-
-  return fmt_output.str();
-}
-
 void
 SubCmdValidate::print_help_internal() const
 {
   if (m_device.empty()) {
-    printHelp(false, extendedKeysOptions());
+    printHelp(false);
     return;
   }
 
@@ -514,7 +517,7 @@ SubCmdValidate::print_help_internal() const
   common_options.add_options()
     ("run,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + testOptionValues).c_str() )
   ;
-  printHelp(common_options, m_hiddenOptions, deviceClass, false, extendedKeysOptions());
+  printHelp(common_options, m_hiddenOptions, deviceClass, false);
 }
 
 void
