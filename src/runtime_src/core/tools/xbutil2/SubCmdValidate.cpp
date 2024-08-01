@@ -252,8 +252,22 @@ get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
 {
   ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
   const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  ptTree.put("performance_mode", xrt_core::query::performance_mode::parse_status(mode));
-  ptTree.put("power", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query_default<xrt_core::query::power_microwatts>(device, 0)));
+  const std::string pmode = xrt_core::query::performance_mode::parse_status(mode);
+  if (boost::iequals(pmode, "DEFAULT")) {
+    ptTree.put("power_mode", "Default");
+  }
+  else if (boost::iequals(pmode, "LOW")) {
+    ptTree.put("power_mode", "Powersaver");
+  }
+  else if (boost::iequals(pmode, "MEDIUM")) {
+    ptTree.put("power_mode", "Balanced");
+  }
+  else if (boost::iequals(pmode, "HIGH")) {
+    ptTree.put("power_mode", "Performance");
+  }
+  else {
+    ptTree.put("power_mode", "N/A");
+  }
 }
 
 static void
@@ -284,9 +298,9 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   const std::string& plat_id = ptTree.get("platform_id", "");
   if (!plat_id.empty())
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
-  const std::string& perf_mode = ptTree.get("performance_mode", "");
-  if (!perf_mode.empty())
-    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % perf_mode;
+  const std::string& power_mode = ptTree.get("power_mode", "");
+  if (!power_mode.empty())
+    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % power_mode;
   const std::string& power = ptTree.get("power", "");
   if (!boost::starts_with(power, ""))
     oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
@@ -487,13 +501,13 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
   ;
 
   m_hiddenOptions.add_options()
-    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
+    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location)->implicit_value(""), "Path to the directory containing validate xclbins")
     ("param", boost::program_options::value<decltype(m_param)>(&m_param), (std::string("Extended parameter for a given test. Format: <test-name>:<key>:<value>\n") + extendedKeysOptions()).c_str())
   ;
 
   m_commonOptions.add(common_options);
   m_commonOptions.add_options()
-    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken()->zero_tokens(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
   ;
 }
 
@@ -524,8 +538,8 @@ void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   // Parse sub-command ...
+  po::variables_map vm;
   try{
-    po::variables_map vm;
     const auto unrecognized_options = process_arguments(vm, _options, false);
 
     if (!unrecognized_options.empty())
@@ -563,11 +577,17 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
+    if (vm.count("output") && m_output.empty())
+      throw xrt_core::error("Output file not specified");
+
+    if (vm.count("path") && m_xclbin_location.empty())
+      throw xrt_core::error("xclbin path not specified");
+
     if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
     if (m_tests_to_run.empty())
-      throw std::runtime_error("No test given to validate against.");
+      throw xrt_core::error("No test given to validate against.");
 
     // Validate the user test requests
     for (auto &userTestName : m_tests_to_run) {
