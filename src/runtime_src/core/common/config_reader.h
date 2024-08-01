@@ -863,6 +863,13 @@ get_aie_trace_settings_start_iteration()
   return value;
 }
 
+inline unsigned int
+get_aie_trace_settings_start_layer()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_layer", UINT_MAX);
+  return value;
+}
+
 inline std::string
 get_aie_trace_settings_graph_based_aie_tile_metrics()
 {
