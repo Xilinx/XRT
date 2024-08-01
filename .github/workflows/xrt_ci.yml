@@ -120,6 +120,8 @@ jobs:
           accessToken: ${{ secrets.ACCESS_TOKEN }} 
           workspaceg: ${{ github.workspace }}
           github-server-url: ${{ secrets.SERVER_URL }}
+          build-cmd: "build22.bat -opt -hip"
+          vs-version: "2022"
 
   apu-package-build:
     needs: authorize
@@ -183,7 +185,8 @@ jobs:
         with:    
           runNumber: ${{ github.run_number }}    
           pipeline: ${{ env.PIPELINE }}    
-          env: ${{ env.ENV }}  
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
@@ -355,4 +358,30 @@ jobs:
       - name: Print test summary URL 
         run: |    
           # echo "test summary URL: ${{ steps.summary.outputs.url }}" >> $GITHUB_STEP_SUMMARY    
-          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY      
+          echo '### [tests logs summary](${{ steps.summary.outputs.url }})' >> $GITHUB_STEP_SUMMARY 
+
+  cleanup-build:    
+    needs: test-summary    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:    
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
+    
+      - name: Use composite action package download     
+        uses: ./composite-workflows/cleanup   
+        with:    
+          runNumber: ${{ github.run_number }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}      
