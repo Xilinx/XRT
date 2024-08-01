@@ -32,6 +32,7 @@ boost::property_tree::ptree
 TestDF_bandwidth::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
+  ptree.erase("xclbin");
 
   const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);

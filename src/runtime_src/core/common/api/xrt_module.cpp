@@ -142,6 +142,7 @@ struct patcher
   struct patch_info {
     uint64_t offset_to_patch_buffer;
     uint32_t offset_to_base_bo_addr;
+    uint32_t mask; // This field is valid only when patching scheme is scalar_32bit_kind
   };
 
   std::vector<patch_info> m_ctrlcode_patchinfo;
@@ -152,12 +153,18 @@ struct patcher
     , m_ctrlcode_patchinfo(std::move(ctrlcode_offset))
   {}
 
+// Replace certain bits of *data_to_patch with register_value. Which bits to be replaced is specified by mask
+// For     *data_to_patch be 0xbb11aaaa and mask be 0x00ff0000
+// To make *data_to_patch be 0xbb55aaaa, register_value must be 0x00550000
   void
-  patch32(uint32_t* bd_data_ptr, uint64_t patch)
+  patch32(uint32_t* data_to_patch, uint64_t register_value, uint32_t mask)
   {
-    uint64_t base_address = bd_data_ptr[0];
-    base_address += patch;
-    bd_data_ptr[0] = (uint32_t)(base_address & 0xFFFFFFFF);                           // NOLINT
+    if ((reinterpret_cast<uintptr_t>(data_to_patch) & 0x3) != 0)
+      throw std::runtime_error("address is not 4 byte aligned for patch32");
+
+    auto new_value = *data_to_patch;
+    new_value = (new_value & ~mask) | (register_value & mask);
+    *data_to_patch = new_value;
   }
 
   void
@@ -204,22 +211,27 @@ struct patcher
   }
 
   void
-  patch(uint8_t* base, uint64_t bo_addr)
+  patch(uint8_t* base, uint64_t new_value)
   {
     for (auto item : m_ctrlcode_patchinfo) {
       auto bd_data_ptr = reinterpret_cast<uint32_t*>(base + item.offset_to_patch_buffer);
       switch (m_symbol_type) {
       case symbol_type::scalar_32bit_kind:
-        patch32(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a register value
+        if (item.mask)
+          patch32(bd_data_ptr, new_value, item.mask);
         break;
       case symbol_type::shim_dma_base_addr_symbol_kind:
-        patch57(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a bo address
+        patch57(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::control_packet_48:
-        patch_ctrl48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a bo address
+        patch_ctrl48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       case symbol_type::shim_dma_48:
-        patch_shim48(bd_data_ptr, bo_addr + item.offset_to_base_bo_addr);
+        // new_value is a bo address
+        patch_shim48(bd_data_ptr, new_value + item.offset_to_base_bo_addr);
         break;
       default:
         throw std::runtime_error("Unsupported symbol type");
@@ -670,17 +682,22 @@ class module_elf : public module_impl
           throw std::runtime_error("Invalid offset " + std::to_string(offset));
 
         uint32_t add_end_higher_28bit = (rela->r_addend & addend_mask) >> addend_shift;
-        patcher::patch_info pi = { offset, add_end_higher_28bit };
-
         std::string argnm{ symname, symname + std::min(strlen(symname), dynstr->get_size()) };
+
+        auto patch_scheme = static_cast<patcher::symbol_type>(rela->r_addend & schema_mask);
+
+        patcher::patch_info pi = patch_scheme == patcher::symbol_type::scalar_32bit_kind ?
+                                 // st_size is is encoded using register value mask for scaler_32
+                                 // for other pacthing scheme it is encoded using size of dma
+                                 patcher::patch_info{ offset, add_end_higher_28bit, static_cast<uint32_t>(sym->st_size) } :
+                                 patcher::patch_info{ offset, add_end_higher_28bit, 0 };
+
         std::string key_string = generate_key_string(argnm, buf_type);
 
         if (auto search = arg2patchers.find(key_string); search != arg2patchers.end())
           search->second.m_ctrlcode_patchinfo.emplace_back(pi);
         else {
-          uint32_t patch_scheme = rela->r_addend & schema_mask;
-          auto symbol_type = static_cast<patcher::symbol_type>(patch_scheme);
-          arg2patchers.emplace(std::move(key_string), patcher{ symbol_type, {pi}, buf_type});
+          arg2patchers.emplace(std::move(key_string), patcher{ patch_scheme, {pi}, buf_type});
         }
       }
     }

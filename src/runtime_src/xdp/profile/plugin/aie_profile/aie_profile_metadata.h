@@ -132,7 +132,9 @@ class AieProfileMetadata {
     void setHwContext(xrt::hw_context c) {
       hwContext = std::move(c);
     }
+
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
+    const AIEProfileFinalConfig& getAIEProfileConfig() const ;
 };
 
 } // end XDP namespace
