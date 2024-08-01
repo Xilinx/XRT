@@ -435,6 +435,7 @@ jobs:
           runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}
           workspace: ${{ github.workspace }}  
           buildNumber: ${{ env.XRT_VERSION_PATCH }}
           github_sha: ${{ github.sha }}
