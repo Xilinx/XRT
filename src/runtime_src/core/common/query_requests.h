@@ -531,8 +531,7 @@ struct xclbin_name : request
 {
   enum class type {
     validate,
-    gemm,
-    aro
+    gemm
   };
 
   static std::string
@@ -543,8 +542,6 @@ struct xclbin_name : request
         return "validate";
       case type::gemm:
         return "gemm";
-      case type::aro:
-        return "aro";
     }
     return "unknown";
   }
@@ -570,7 +567,7 @@ struct sequence_name : request
     tct_one_column,
     tct_all_column,
     gemm_int8,
-    aro
+    aie_config_latency 
   };
 
   static std::string
@@ -585,8 +582,8 @@ struct sequence_name : request
         return "tct_all_column";
       case type::gemm_int8:
         return "gemm_int8";
-      case type::aro:
-        return "aro";
+      case type::aie_config_latency:
+        return "aie_config_latency";
     }
     return "unknown";
   }

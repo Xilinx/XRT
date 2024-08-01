@@ -1,7 +1,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 
-#include "TestArrayReconfOverhead.h"
+#include "TestAIEConfigLatency.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -18,20 +18,20 @@ static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 G
 static constexpr size_t word_count = buffer_size/4;
 static constexpr int itr_count = 500;
 
-TestArrayReconfOverhead::TestArrayReconfOverhead()
-  : TestRunner("aro", "Run end-to-end array reconfiguration overhead test")
+TestAIEConfigLatency::TestAIEConfigLatency()
+  : TestRunner("aie-config-latency", "Run end-to-end array reconfiguration overhead through shim DMA")
 {}
 
 boost::property_tree::ptree
-TestArrayReconfOverhead::run(std::shared_ptr<xrt_core::device> dev)
+TestAIEConfigLatency::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string xclbin_name;
   try{
-    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::aro);
+    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   }
   catch (const xrt_core::query::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
+    xrt_core::error(ex.what());
     exit(EXIT_FAILURE);
   }
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
@@ -87,7 +87,8 @@ TestArrayReconfOverhead::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aro);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_config_latency);
+  logger(ptree, "Debug", boost::str(boost::format("DPU sequence path: '%s'") % seq_name));
   auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
@@ -113,8 +114,8 @@ TestArrayReconfOverhead::run(std::shared_ptr<xrt_core::device> dev)
 
   // map input buffer
   auto ifm_mapped = bo_ifm.map<int*>();
-	for (size_t i = 0; i < word_count; i++)
-		ifm_mapped[i] = rand() % 4096;
+  for (size_t i = 0; i < word_count; i++)
+    ifm_mapped[i] = rand() % 4096;
 
   //Sync BOs
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
@@ -157,8 +158,10 @@ TestArrayReconfOverhead::run(std::shared_ptr<xrt_core::device> dev)
   end = std::chrono::high_resolution_clock::now();
   float elapsedSecsAverage = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   elapsedSecsAverage /= itr_count;
-  logger(ptree, "Debug", boost::str(boost::format("ElapsedSec: '%.1f' us") % (elapsedSecs * 1000000)));
-  logger(ptree, "Debug", boost::str(boost::format("ElapsedSecAverage: '%.1f' us") % (elapsedSecsAverage * 1000000)));
+  if(XBUtilities::getVerbose()){
+    logger(ptree, "Details", boost::str(boost::format("ElapsedSec: '%.1f' us") % (elapsedSecs * 1000000)));
+    logger(ptree, "Details", boost::str(boost::format("ElapsedSecAverage: '%.1f' us") % (elapsedSecsAverage * 1000000)));
+  }
   float overhead = elapsedSecs - elapsedSecsAverage; 
   logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' us") % (overhead * 1000000)));
 
