@@ -29,6 +29,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "xdp/profile/database/static_info/aie_util.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_types.h"
 #include "xdp/profile/database/static_info/filetypes/base_filetype_impl.h"
 
@@ -98,6 +99,9 @@ namespace xdp {
     std::map<std::string, uint64_t> softwareEmulationCUCounts ;
     std::map<std::string, bool> softwareEmulationMemUsage ;
     std::vector<std::string> softwareEmulationPortBitWidths ;
+
+    // Information tracks valid tiles type and and it's metric settings
+    AIEProfileFinalConfig aieProfileConfig;
 
     // Device Specific Information mapped to the Unique Device Id
     std::map<uint64_t, std::unique_ptr<DeviceInfo>> deviceInfo;
@@ -410,6 +414,10 @@ namespace xdp {
     XDP_CORE_EXPORT
     void getFaConfiguration(uint64_t deviceId, bool* config, size_t size) ;
     XDP_CORE_EXPORT std::string getCtxInfo(uint64_t deviceId) ;
+
+    // Functions to save current valid profile config
+    XDP_CORE_EXPORT inline void saveProfileConfig(const AIEProfileFinalConfig& cfg) { aieProfileConfig=cfg; }
+    XDP_CORE_EXPORT inline const AIEProfileFinalConfig& getProfileConfig() { return aieProfileConfig; }
   } ;
 
 }

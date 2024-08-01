@@ -408,7 +408,8 @@ TestRunner::findPlatformFile(const std::string& file_path,
     return xrt_core::environment::platform_path(file_path).string();
   }
   catch (const std::exception&) {
-    logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % file_path));
+    logger(ptTest, "Details", boost::str(boost::format("%s not available") % file_path));
+    logger(ptTest, "Details", "The test is not supported on this device.");
     ptTest.put("status", test_token_skipped);
     return "";
   }

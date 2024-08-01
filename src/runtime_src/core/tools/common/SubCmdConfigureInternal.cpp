@@ -322,7 +322,7 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: configure");
   po::variables_map vm;
   // Used for the suboption arguments.
-  process_arguments(vm, _options, false);
+  const auto unrecognized_options = process_arguments(vm, _options, false);
   // Find the subOption
   auto optionOption = checkForSubOption(vm, XBU::get_device_class(m_device, m_isUserDomain));
 
@@ -334,7 +334,16 @@ SubCmdConfigureInternal::execute(const SubCmdOptions& _options) const
     }
     // If help was not requested and additional options dont match we must throw to prevent
     // invalid positional arguments from passing through without warnings
-    std::cerr << "ERROR: Suboption missing" << std::endl;
+    if (!unrecognized_options.empty()){
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (const auto& option : unrecognized_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      std::cerr << error_str <<std::endl;
+    }
+    else {
+      std::cerr << "ERROR: Suboption missing" << std::endl;
+    }
     printHelp(false, "", XBU::get_device_class(m_device, m_isUserDomain));
     throw xrt_core::error(std::errc::operation_canceled);
   }
