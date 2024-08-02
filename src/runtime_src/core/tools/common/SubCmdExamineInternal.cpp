@@ -65,14 +65,14 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
   common_options.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format)->implicit_value(""), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output)->implicit_value(""), "Direct the output to the given file")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_commonOptions.add(common_options);
   m_commonOptions.add_options()
-    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken()->zero_tokens(),(std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
   ;
   
   if (m_isUserDomain)
@@ -103,8 +103,8 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: examine");
 
   // Parse sub-command ...
+  po::variables_map vm;
   try{
-    po::variables_map vm;
     const auto unrecognized_options = process_arguments(vm, _options, false);
 
     if (!unrecognized_options.empty())
@@ -128,35 +128,38 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
     print_help_internal();
     return;
   }
-  
-  // Determine report level
-  std::vector<std::string> reportsToRun(m_reportNames);
-  if (reportsToRun.empty()) {
-    reportsToRun.push_back("host");
-  }
-
-  // DRC check
-  // When json is specified, make sure an accompanying output file is also specified
-  if (!m_format.empty() && m_output.empty()) {
-    std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
 
   const auto validated_format = m_format.empty() ? "json" : m_format;
-
-  // DRC: Examine the output format
   Report::SchemaVersion schemaVersion = Report::getSchemaDescription(validated_format).schemaVersion;
-  if (schemaVersion == Report::SchemaVersion::unknown) {
-    std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % validated_format << std::endl
-              << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
+  try{
+    if (vm.count("output") && m_output.empty())
+      throw xrt_core::error("Output file not specified");
+
+    if (vm.count("report") && m_reportNames.empty())
+      throw xrt_core::error("No report given to be produced");
+
+    // DRC check
+    // When json is specified, make sure an accompanying output file is also specified
+    if (!m_format.empty() && m_output.empty())
+      throw xrt_core::error("Please specify an output file to redirect the json to");
+
+    if (schemaVersion == Report::SchemaVersion::unknown) 
+      throw xrt_core::error((boost::format("ERROR: Unsupported --format option value '%s'. Supported values can be found in --format's help section below.") % validated_format).str());
+
+    if (!m_output.empty() && std::filesystem::exists(m_output) && !XBU::getForce())
+      throw xrt_core::error((boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % m_output).str());
+
+  } catch (const xrt_core::error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     print_help_internal();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // DRC: Output file
-  if (!m_output.empty() && std::filesystem::exists(m_output) && !XBU::getForce()) {
-    std::cerr << boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % m_output << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
+  // Determine report level
+  std::vector<std::string> reportsToRun(m_reportNames);
+  if (reportsToRun.empty()) {
+    reportsToRun.push_back("host");
   }
 
   // -- Process the options --------------------------------------------
@@ -167,7 +170,13 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   ReportCollection runnableReports = validateConfigurables<Report>(deviceClass, std::string("report"), fullReportCollection);
 
   // Collect the reports to be processed
-  XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
+  try {
+    XBU::collect_and_validate_reports(runnableReports, reportsToRun, reportsToProcess);
+  } catch (const xrt_core::error& e) {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    print_help_internal();
+    return;
+  }
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;

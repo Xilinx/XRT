@@ -533,7 +533,9 @@ namespace xdp {
           tile.active_memory = true;
 
           // Make sure tile is used
-          if (allValidTiles.find(tile) == allValidTiles.end()) {
+          auto it = std::find_if(allValidTiles.begin(), allValidTiles.end(),
+                                 compareTileByLocAndActiveType(tile));
+          if (it == allValidTiles.end()) {
             std::stringstream msg;
             msg << "Specified Tile {" << std::to_string(tile.col) << ","
                 << std::to_string(tile.row) << "} is not active. Hence skipped.";
@@ -584,7 +586,9 @@ namespace xdp {
       tile.active_memory = true;
 
       // Make sure tile is used
-      if (allValidTiles.find(tile) == allValidTiles.end()) {
+      auto it = std::find_if(allValidTiles.begin(), allValidTiles.end(),
+                             compareTileByLocAndActiveType(tile));
+      if (it == allValidTiles.end()) {
         std::stringstream msg;
         msg << "Specified Tile {" << std::to_string(tile.col) << ","
             << std::to_string(tile.row) << "} is not active. Hence skipped.";

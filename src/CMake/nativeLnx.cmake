@@ -23,7 +23,7 @@ ENDIF(DRM_FOUND)
 
 
 # --- OpenCL header files ---
-pkg_check_modules(OPENCL REQUIRED OpenCL)
+find_package(OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
   INCLUDE_DIRECTORIES(${OPENCL_INCLUDEDIR})
