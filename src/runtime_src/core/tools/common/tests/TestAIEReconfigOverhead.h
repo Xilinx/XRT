@@ -7,10 +7,10 @@
 #include "tools/common/TestRunner.h"
 #include "xrt/xrt_device.h"
 
-class TestAIEConfigLatency : public TestRunner {
+class TestAIEReconfigOverhead : public TestRunner {
   public :
     boost::property_tree::ptree run(std::shared_ptr<xrt_core::device> dev);
 
-    TestAIEConfigLatency();
+    TestAIEReconfigOverhead();
 };
 #endif

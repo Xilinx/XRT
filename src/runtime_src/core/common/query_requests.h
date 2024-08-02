@@ -567,7 +567,7 @@ struct sequence_name : request
     tct_one_column,
     tct_all_column,
     gemm_int8,
-    aie_config_latency 
+    aie_reconfig_overhead
   };
 
   static std::string
@@ -582,8 +582,8 @@ struct sequence_name : request
         return "tct_all_column";
       case type::gemm_int8:
         return "gemm_int8";
-      case type::aie_config_latency:
-        return "aie_config_latency";
+      case type::aie_reconfig_overhead:
+        return "aie_reconfig_overhead";
     }
     return "unknown";
   }

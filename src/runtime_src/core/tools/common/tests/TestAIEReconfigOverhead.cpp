@@ -1,7 +1,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 
-#include "TestAIEConfigLatency.h"
+#include "TestAIEReconfigOverhead.h"
 #include "tools/common/XBUtilities.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
@@ -18,12 +18,12 @@ static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 G
 static constexpr size_t word_count = buffer_size/4;
 static constexpr int itr_count = 500;
 
-TestAIEConfigLatency::TestAIEConfigLatency()
-  : TestRunner("aie-config-latency", "Run end-to-end array reconfiguration overhead through shim DMA")
+TestAIEReconfigOverhead::TestAIEReconfigOverhead()
+  : TestRunner("aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA")
 {}
 
 boost::property_tree::ptree
-TestAIEConfigLatency::run(std::shared_ptr<xrt_core::device> dev)
+TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
   std::string xclbin_name;
@@ -87,7 +87,7 @@ TestAIEConfigLatency::run(std::shared_ptr<xrt_core::device> dev)
     return ptree;
   }
 
-  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_config_latency);
+  const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_reconfig_overhead);
   logger(ptree, "Debug", boost::str(boost::format("DPU sequence path: '%s'") % seq_name));
   auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
