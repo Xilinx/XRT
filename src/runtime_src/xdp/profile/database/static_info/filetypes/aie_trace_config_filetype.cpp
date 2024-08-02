@@ -42,7 +42,6 @@ AIETraceConfigFiletype::getValidKernels() const
         xrt_core::message::send(severity_level::info, "XRT", getMessage("TileMapping.AIEKernelToTileMapping"));
         return {};
     }
-    xrt_core::message::send(severity_level::info, "XRT", "metadataReader found key: TileMapping.AIEKernelToTileMapping");
 
     for (auto const &mapping : kernelToTileMapping.get()) {
         std::string functionStr = mapping.second.get<std::string>("function");

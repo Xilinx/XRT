@@ -91,6 +91,26 @@ namespace xdp {
     }
   };
 
+  struct compareTileByLoc {
+    tile_type target_tile;
+    compareTileByLoc(const tile_type& t) : target_tile(t) {}
+
+    bool operator()(const tile_type& src_tile) const {
+      return src_tile.col == target_tile.col && src_tile.row == target_tile.row;
+    }
+  };
+  struct compareTileByLocAndActiveType {
+    tile_type target_tile;
+    compareTileByLocAndActiveType(const tile_type& t) : target_tile(t) {}
+
+    bool operator()(const tile_type& src_tile) const {
+      return src_tile.col == target_tile.col &&
+             src_tile.row == target_tile.row &&
+             src_tile.active_core == target_tile.active_core &&
+             src_tile.active_memory == target_tile.active_memory;
+    }
+  };
+
   struct io_config
   {
     // Object id
@@ -316,6 +336,22 @@ namespace xdp {
     aie_cfg_memory_tile memory_tile_trace_config;
     aie_cfg_interface_tile interface_tile_trace_config;
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
+  };
+
+  struct AIEProfileFinalConfig
+  {
+    using tile_vec = std::vector<std::map<tile_type, std::string>>;
+    using tile_channel =  std::map<tile_type, uint8_t>;
+
+    std::vector<std::map<tile_type, std::string>> configMetrics;
+    std::map<tile_type, uint8_t> configChannel0;
+    std::map<tile_type, uint8_t> configChannel1;
+
+    AIEProfileFinalConfig() {}
+    AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0, const tile_channel& cc1) :
+                          configMetrics(otherTileVec), configChannel0(cc0), configChannel1(cc1) 
+    {
+    }
   };
 
 } // end namespace xdp

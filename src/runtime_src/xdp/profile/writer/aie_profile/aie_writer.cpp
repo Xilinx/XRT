@@ -19,6 +19,7 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/database/static_info/aie_util.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 namespace xdp {
@@ -31,25 +32,70 @@ namespace xdp {
   {
   }
 
-  AIEProfilingWriter::~AIEProfilingWriter()
-  {    
-  }
-
-
   void AIEProfilingWriter::writeHeader()
   {
+    // Updated offsets for AIE mem, shim and mem_tile to 1000, 2000, 3000 respectively.
+    float fileVersion = 1.1f;
+
     // Report HW generation to inform analysis how to interpret event IDs
     auto aieGeneration = (db->getStaticInfo()).getAIEGeneration(mDeviceIndex);
+
+    fout << "HEADER"<<"\n";
+    fout << "File Version: " <<fileVersion << "\n";
+    fout << "Target device: " << mDeviceName << "\n";
+    fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
 
     // Grab AIE clock freq from first counter in metadata
     // NOTE: Assumed the same for all tiles
     auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
     double aieClockFreqMhz = (aie != nullptr) ?  aie->clockFreqMhz : 1200.0;
-
-    // Write header
-    fout << "Target device: " << mDeviceName << "\n";
-    fout << "Hardware generation: " << static_cast<int>(aieGeneration) << "\n";
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << "\n";
+    fout << "\n"; 
+  }
+
+  void AIEProfilingWriter::writeMetricSettings()
+  {
+    auto validConfig = (db->getStaticInfo()).getProfileConfig();
+    std::map<module_type, std::vector<std::string>> filteredConfig;
+    for(uint8_t i=0; i<static_cast<uint8_t>(module_type::num_types); i++)
+      filteredConfig[static_cast<module_type>(i)] = std::vector<std::string>();
+
+    const auto& configMetrics = validConfig.configMetrics;
+    for(size_t i=0; i<configMetrics.size(); i++)
+    {
+      std::vector<std::string> metrics;
+
+      const auto& validMetrics = configMetrics[i];
+      for(auto &elm : validMetrics) {
+        metrics.push_back(std::to_string(+elm.first.col) + "," + std::to_string(+elm.first.row)+ "," + elm.second);
+      }
+      filteredConfig[static_cast<module_type>(i)] = metrics;
+    }
+
+    fout << "METRIC_SETS" << "\n";
+    fout << "# AIE tile core module metric sets:" << "\n";
+    for (const auto &setting : filteredConfig.at(module_type::core))
+      fout << setting << "\n";
+
+    fout << "# AIE tile memory module metric sets:" << "\n";
+    for (const auto &setting : filteredConfig.at(module_type::dma))
+      fout << setting << "\n";
+
+    fout << "# Memory tile metric sets:" << "\n";
+    for (const auto &setting : filteredConfig.at(module_type::mem_tile))
+      fout << setting << "\n";
+
+    fout << "# Interface tile metric sets:" << "\n";
+    for (const auto &setting : filteredConfig.at(module_type::shim))
+      fout << setting << "\n";
+
+    fout << "\n";
+  }
+
+  void AIEProfilingWriter::writerDataColumnHeader()
+  {
+    // Write data columns header
+    fout << "METRIC_DATA" << "\n";
     fout << "timestamp"    << ","
          << "column"       << ","
          << "row"          << ","
@@ -65,9 +111,11 @@ namespace xdp {
   {
     if(!mHeaderWritten) {
       this->writeHeader();
+      this->writeMetricSettings();
+      this->writerDataColumnHeader();
       this->mHeaderWritten = true;
     }
-    
+
     // Write all data elements
     std::vector<counters::Sample> samples =
       db->getDynamicInfo().moveAIESamples(mDeviceIndex);

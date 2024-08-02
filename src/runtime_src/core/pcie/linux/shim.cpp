@@ -2352,7 +2352,7 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
   if (cumap.addr == nullptr) {
     auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
     auto size = xrt_core::device_query<xq::cu_size>(mCoreDevice, xq::request::modifier::subdev, cu_subdev);
-    if (size <= 0 || size > 0x10000) {
+    if (size <= 0) {
       xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
       return -EINVAL;
     }

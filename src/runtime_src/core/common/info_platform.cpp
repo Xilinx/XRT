@@ -153,10 +153,25 @@ add_performance_info(const xrt_core::device* device, ptree_type& pt)
 {
   try {
     const auto mode = xrt_core::device_query<xq::performance_mode>(device);
-    pt.add("performance_mode", xq::performance_mode::parse_status(mode));
+    const std::string pmode = xq::performance_mode::parse_status(mode);
+    if (boost::iequals(pmode, "DEFAULT")) {
+      pt.add("power_mode", "Default");
+    }
+    else if (boost::iequals(pmode, "LOW")) {
+      pt.add("power_mode", "Powersaver");
+    }
+    else if (boost::iequals(pmode, "MEDIUM")) {
+      pt.add("power_mode", "Balanced");
+    }
+    else if (boost::iequals(pmode, "HIGH")) {
+      pt.add("power_mode", "Performance");
+    }
+    else {
+      pt.add("power_mode", "N/A");
+    }
   } 
   catch (xrt_core::query::no_such_key&) {
-    pt.add("performance_mode", "not supported");
+    pt.add("power_mode", "not supported");
   }
 }
 
@@ -356,7 +371,12 @@ void
 add_electrical_info(const xrt_core::device* device, ptree_type& pt)
 {
   try {
-    pt.put_child("electrical", xrt_core::sensor::read_electrical(device));
+    ptree_type electrical = xrt_core::sensor::read_electrical(device);
+    // Remove the invalid ptree fields for RyzenAI
+    electrical.erase("power_rails");
+    electrical.erase("power_consumption_max_watts");
+    electrical.erase("power_consumption_warning");
+    pt.put_child("electrical", electrical);
   }
   catch (const xq::exception&) {
     // ignoring if not available: Edge Case
