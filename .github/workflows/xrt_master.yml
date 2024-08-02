@@ -610,6 +610,14 @@ jobs:
     needs: [Release_to_all_sites, gradle-artifactory-upload]    
     runs-on: [self-hosted, Ubuntu-22.04]    
     steps:    
+
+      - name: Set env variables    
+        run: |    
+          echo "Setting environment variables..."      
+          # echo "XRT_VERSION_PATCH=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "XRT_VERSION_PATCH=$(($GITHUB_RUN_NUMBER+210))" >> $GITHUB_ENV    
+          echo "PATH=/usr/bin:$PATH" >> $GITHUB_ENV 
+
       - name: Checkout private repository    
         uses: actions/checkout@v3 
         with:    
@@ -622,7 +630,7 @@ jobs:
       - name: Use composite action package download     
         uses: ./composite-workflows/cleanup   
         with:    
-          runNumber: ${{ github.run_number }}    
+          runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
           release: ${{ env.RELEASE }}  
