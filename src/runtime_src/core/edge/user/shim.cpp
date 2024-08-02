@@ -23,6 +23,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
+#include "core/edge/user/hwctx_object.h"
 
 #include <cassert>
 #include <cerrno>
@@ -284,7 +285,7 @@ xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 
 std::unique_ptr<xrt_core::buffer_handle>
 shim::
-xclAllocBO(size_t size, unsigned flags)
+xclAllocBO(size_t size, unsigned flags, xrt_core::hwctx_handle* hwctx_hdl)
 {
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
@@ -295,12 +296,12 @@ xclAllocBO(size_t size, unsigned flags)
   xclLog(XRT_DEBUG, "%s: size %ld, flags 0x%x", __func__, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
-  return std::make_unique<buffer_object>(this, info.handle);
+  return std::make_unique<buffer_object>(this, info.handle, hwctx_hdl);
 }
 
 std::unique_ptr<xrt_core::buffer_handle>
 shim::
-xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags, xrt_core::hwctx_handle* hwctx_hdl)
 {
   flags |= DRM_ZOCL_BO_FLAGS_USERPTR;
   drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, flags};
@@ -312,7 +313,7 @@ xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
   xclLog(XRT_DEBUG, "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, flags);
   xclLog(XRT_INFO, "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
 
-  return std::make_unique<buffer_object>(this, info.handle);
+  return std::make_unique<buffer_object>(this, info.handle, hwctx_hdl);
 }
 
 unsigned int

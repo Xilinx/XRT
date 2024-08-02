@@ -19,6 +19,7 @@
 #include "core/include/xdp/app_debug.h"
 #include "core/common/shim/graph_handle.h"
 #include "core/common/error.h"
+#include "core/edge/user/aie/graph_api.h"
 
 #include <cstdint>
 #include <fstream>
@@ -74,11 +75,13 @@ public:
   {
     shim* m_shim;
     xclBufferHandle m_hdl;
+    xrt_core::hwctx_handle* m_hwctx_hdl;
 
   public:
-    buffer_object(shim* shim, xclBufferHandle hdl)
-      : m_shim(shim)
-      , m_hdl(hdl)
+    buffer_object(shim* shim, xclBufferHandle hdl, xrt_core::hwctx_handle* hwctx_hdl = nullptr)
+      : m_shim{shim}
+      , m_hdl{hdl}
+      , m_hwctx_hdl{hwctx_hdl}
     {}
 
     ~buffer_object()
@@ -152,6 +155,53 @@ public:
     {
       return m_hdl;
     }
+
+#ifdef XRT_ENABLE_AIE
+
+    void
+    sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override
+    {
+      try {
+
+        if((nullptr != m_hwctx_hdl) && (m_hwctx_hdl->is_aie_registered())) { // hwctx specific
+          auto aie_array = m_hwctx_hdl->get_aie_array_from_hwctx();
+          graph_api::sync_bo_aie(m_shim, bo, gmioName, dir, size, offset, aie_array);
+        }
+        else { //device specific
+          auto device{xrt_core::get_userpf_device(m_shim)};
+          device->sync_aie_bo(bo, gmioName, dir, size, offset);
+        }
+      }
+      catch (const std::exception& ex) {
+        xrt_core::send_exception_message(ex.what());
+      }
+      catch (...) {
+        xrt_core::send_exception_message("unknown exeception in SYNC AIE BO");
+      }
+    }
+
+    void
+    sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override
+    {
+      try {
+        if((nullptr != m_hwctx_hdl) && (m_hwctx_hdl->is_aie_registered())) { // hwctx specific
+          auto aie_array = m_hwctx_hdl->get_aie_array_from_hwctx();
+          graph_api::sync_bo_aie_nb(m_shim, bo, gmioName, dir, size, offset, aie_array);
+        }
+        else { //device specific
+          auto device{xrt_core::get_userpf_device(m_shim)};
+          device->sync_aie_bo_nb(bo, gmioName, dir, size, offset);
+        }
+      }
+      catch (const std::exception& ex) {
+        xrt_core::send_exception_message(ex.what());
+      }
+      catch (...) {
+        xrt_core::send_exception_message("unknown exeception in SYNC AIE BO NB");
+      }
+    }
+
+#endif
   }; // buffer_object
 
   ~shim();
@@ -170,10 +220,10 @@ public:
   int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
   std::unique_ptr<xrt_core::buffer_handle>
-  xclAllocBO(size_t size, unsigned flags);
+  xclAllocBO(size_t size, unsigned flags, xrt_core::hwctx_handle* hwctx_hdl = nullptr);
 
   std::unique_ptr<xrt_core::buffer_handle>
-  xclAllocUserPtrBO(void *userptr, size_t size, unsigned int flags);
+  xclAllocUserPtrBO(void *userptr, size_t size, unsigned int flags, xrt_core::hwctx_handle* hwctx_hdl = nullptr);
 
   std::unique_ptr<xrt_core::shared_handle>
   xclExportBO(unsigned int boHandle);

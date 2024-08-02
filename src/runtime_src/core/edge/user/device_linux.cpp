@@ -12,6 +12,7 @@
 #include "shim.h"
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
+#include "core/edge/user/aie/graph_api.h"
 #endif
 #include <map>
 #include <memory>
@@ -455,7 +456,6 @@ struct aie_reg_read
     const auto v = std::any_cast<query::aie_reg_read::reg_type>(reg);
 
 #ifdef XRT_ENABLE_AIE
-#ifndef __AIESIM__
   const static std::string aie_tag = "aie_metadata";
   const std::string zocl_device = "/dev/dri/" + get_render_devname();
   const uint32_t major = 1;
@@ -550,7 +550,6 @@ struct aie_reg_read
     throw xrt_core::error(-EINVAL, boost::str(boost::format("Error reading register '%s' (0x%8x) for AIE[%u:%u]")
                                                             % v.c_str() % it->second % col % (row-1)));
 
-#endif
 #endif
     return val;
   }
@@ -1181,62 +1180,164 @@ void
 device_linux::
 open_aie_context(xrt::aie::access_mode am)
 {
- if (auto ret = xclAIEOpenContext(get_device_handle(), am))
-   throw error(ret, "fail to open aie context");
+ try {
+   graph_api::aie_open_context(get_device_handle(), am);
+ }
+ catch (const std::exception& ex) {
+   xrt_core::send_exception_message(ex.what());
+ }
+ catch (...) {
+   xrt_core::send_exception_message("unknown exeception in OPEN AIE CONTEXT");
+ }
 }
 
 void
 device_linux::
 sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  if (auto ret = xclSyncBOAIE(get_device_handle(), bo, gmioName, dir, size, offset))
-    throw system_error(ret, "fail to sync aie bo");
-}
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
 
-void
-device_linux::
-reset_aie()
-{
-  if (auto ret = xclResetAIEArray(get_device_handle()))
-    throw system_error(ret, "fail to reset aie");
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    graph_api::sync_bo_aie(get_device_handle(), bo, gmioName, dir, size, offset, aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in SYNC AIE BO");
+  }
 }
 
 void
 device_linux::
 sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  if (auto ret = xclSyncBOAIENB(get_device_handle(), bo, gmioName, dir, size, offset))
-    throw system_error(ret, "fail to sync aie non-blocking bo");
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    graph_api::sync_bo_aie_nb(get_device_handle(), bo, gmioName, dir, size, offset, aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in SYNC AIE BO NB");
+  }
+}
+
+void
+device_linux::
+reset_aie()
+{
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    graph_api::reset_aie_array(get_device_handle(), aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in RESET AIE");
+  }
 }
 
 void
 device_linux::
 wait_gmio(const char *gmioName)
 {
-  if (auto ret = xclGMIOWait(get_device_handle(), gmioName))
-    throw system_error(ret, "fail to wait gmio");
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    graph_api::gmio_wait(get_device_handle(), gmioName, aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in WAIT GMIO");
+  }
 }
 
 int
 device_linux::
 start_profiling(int option, const char* port1Name, const char* port2Name, uint32_t value)
 {
-  return xclStartProfiling(get_device_handle(), option, port1Name, port2Name, value);
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    return graph_api::start_profiling(get_device_handle(), option, port1Name, port2Name, value, aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in START PROFILING");
+  }
+  return -1;
 }
 
 uint64_t
 device_linux::
 read_profiling(int phdl)
 {
-  return xclReadProfiling(get_device_handle(), phdl);
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    return graph_api::read_profiling(get_device_handle(), phdl, aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in READ PROFILING");
+  }
+  return -1;
 }
 
 void
 device_linux::
 stop_profiling(int phdl)
 {
-  if (auto ret = xclStopProfiling(get_device_handle(), phdl))
-    throw system_error(ret, "failed to stop profiling");
+  try {
+    auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+    if (not drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+
+    auto aie_array = drv->getAieArray();
+    graph_api::stop_profiling(get_device_handle(), phdl, aie_array);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (...) {
+    xrt_core::send_exception_message("unknown exeception in STOP PROFILING");
+  }
 }
 
 void

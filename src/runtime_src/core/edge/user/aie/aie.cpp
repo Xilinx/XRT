@@ -19,19 +19,17 @@
 #include "aie.h"
 #include "core/common/error.h"
 #include "common_layer/fal_util.h"
-#ifndef __AIESIM__
 #include "core/common/message.h"
 #include "core/edge/user/shim.h"
 #include "xaiengine/xlnx-ai-engine.h"
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#endif
-
 #include <cerrno>
 #include <iostream>
 
 namespace zynqaie {
 
+//Aie constructor with Device
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
     DevInst = {0};
@@ -51,7 +49,6 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
         driver_config.aie_tile_row_start,
         driver_config.aie_tile_num_rows);
 
-#ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
     /* TODO get partition id and uid from XCLBIN or PDI */
@@ -66,7 +63,6 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     access_mode = drv->getAIEAccessMode();
 
     ConfigPtr.PartProp.Handle = fd;
-#endif
 
     AieRC rc;
     if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
@@ -91,12 +87,68 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
     }
 }
 
+//Aie constructor with both Device and HW ctx
+Aie::Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx)
+{
+    DevInst = {0};
+    devInst = nullptr;
+    adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
+
+    XAie_SetupConfig(ConfigPtr,
+        driver_config.hw_gen,
+        driver_config.base_address,
+        driver_config.column_shift,
+        driver_config.row_shift,
+        driver_config.num_columns,
+        driver_config.num_rows,
+        driver_config.shim_row,
+        driver_config.mem_row_start,
+        driver_config.mem_num_rows,
+        driver_config.aie_tile_row_start,
+        driver_config.aie_tile_num_rows);
+
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    /* getting partition id and uid from XCLBIN or PDI */
+    //auto partition_id = xrt_core::edge::aie::get_partition_id(device.get(), hwctx);
+    uint32_t partition_id = 1;
+    uint32_t uid = 0;
+    drm_zocl_aie_fd aiefd = { partition_id, uid, 0 };
+
+    int ret = drv->getPartitionFd(aiefd);
+    if (ret)
+        throw xrt_core::error(ret, "Create AIE failed. Can not get AIE fd");
+
+    fd = aiefd.fd;
+    access_mode = drv->getAIEAccessMode();
+    ConfigPtr.PartProp.Handle = fd;
+
+    AieRC rc;
+    if ((rc = XAie_CfgInitialize(&DevInst, &ConfigPtr)) != XAIE_OK)
+        throw xrt_core::error(-EINVAL, "Failed to initialize AIE configuration: " + std::to_string(rc));
+
+    devInst = &DevInst;
+    adf::aiecompiler_options aiecompiler_options = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    adf::config_manager::initialize(devInst, driver_config.mem_num_rows, aiecompiler_options.broadcast_enable_core);
+    fal_util::initialize(devInst); //resource manager initialization
+
+    /* Initialize PLIO metadata */
+    plio_configs = xrt_core::edge::aie::get_plios(device.get());
+
+    /* Initialize gmio api instances */
+    gmio_configs = xrt_core::edge::aie::get_gmios(device.get());
+    for (auto config_itr = gmio_configs.begin(); config_itr != gmio_configs.end(); config_itr++)
+    {
+        auto p_gmio_api = std::make_shared<adf::gmio_api>(&config_itr->second);
+        p_gmio_api->configure();
+        gmio_apis[config_itr->first] = p_gmio_api;
+    }
+}
+
 Aie::~Aie()
 {
-#ifndef __AIESIM__
   if (devInst)
     XAie_Finish(devInst);
-#endif
 }
 
 XAie_DevInst* Aie::getDevInst()
@@ -111,7 +163,6 @@ void
 Aie::
 open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 {
-#ifndef __AIESIM__
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
   auto current_am = drv->getAIEAccessMode();
@@ -124,7 +175,6 @@ open_context(const xrt_core::device* device, xrt::aie::access_mode am)
 
   drv->setAIEAccessMode(am);
   access_mode = am;
-#endif
 }
 
 bool
@@ -215,11 +265,7 @@ submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
   BD bd;
   prepare_bd(bd, bo);
-#ifndef __AIESIM__
   gmio_api->enqueueBD(&bd.memInst, offset, size);
-#else
-  gmio_api->enqueueBD((uint64_t)bo.address() + offset, size);
-#endif
   clear_bd(bd);
 }
 
@@ -227,7 +273,6 @@ void
 Aie::
 prepare_bd(BD& bd, xrt::bo& bo)
 {
-#ifndef __AIESIM__
   auto buf_fd = bo.export_buffer();
   if (buf_fd == XRT_NULL_BO_EXPORT)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to export BO.");
@@ -237,26 +282,22 @@ prepare_bd(BD& bd, xrt::bo& bo)
 
   XAie_MemCacheProp prop = XAIE_MEM_NONCACHEABLE;
   XAie_MemAttach(devInst, &bd.memInst, 0, 0, bosize, prop, buf_fd);
-#endif
 }
 
 void
 Aie::
 clear_bd(BD& bd)
 {
-#ifndef __AIESIM__
   XAie_MemDetach(&bd.memInst);
   /* we shouldnt close the buffer handle here. file handle gets closed in bo
    * destructor */
   //close(bd.buf_fd);
-#endif
 }
 
 void
 Aie::
 reset(const xrt_core::device* device)
 {
-#ifndef __AIESIM__
   if (!devInst)
     throw xrt_core::error(-EINVAL, "Can't Reset AIE: AIE is not initialized");
 
@@ -275,7 +316,6 @@ reset(const xrt_core::device* device)
   int ret = drv->resetAIEArray(reset);
   if (ret)
     throw xrt_core::error(ret, "Fail to reset AIE Array");
-#endif
 }
 
 int

@@ -21,6 +21,9 @@ namespace zynqaie {
     xrt::uuid m_uuid;
     slot_id m_slotidx;
     xrt::hw_context::access_mode m_mode;
+#ifdef XRT_ENABLE_AIE
+    std::unique_ptr<zynqaie::Aie> m_aie_array;
+#endif
 
   public:
     hwctx_object(ZYNQ::shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode);
@@ -72,6 +75,27 @@ namespace zynqaie {
 
     std::unique_ptr<xrt_core::graph_handle>
     open_graph_handle(const char* name, xrt::graph::access_mode am) override;
+
+#ifdef XRT_ENABLE_AIE
+
+    zynqaie::Aie*
+    get_aie_array_from_hwctx() override;
+
+    bool
+    is_aie_registered() override;
+
+    int
+    start_profiling(int option, const char* port1Name, const char* port2Name,
+                      uint32_t value) override;
+
+    uint64_t
+    read_profiling(int phdl) override;
+
+    void
+    stop_profiling(int phdl) override;
+
+#endif
+
   }; // class hwctx_object
 }
 #endif

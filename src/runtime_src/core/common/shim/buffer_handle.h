@@ -5,6 +5,8 @@
 
 #include "core/common/shim/shared_handle.h"
 #include "xrt.h"
+#include "xrt/xrt_bo.h"
+#include "core/common/error.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -19,6 +21,14 @@ namespace xrt_core {
 // platform specific
 class buffer_handle
 {
+  class not_supported_error : public xrt_core::error
+  {
+  public:
+    not_supported_error(const std::string& msg)
+      : xrt_core::error{std::errc::not_supported, msg}
+    {}
+  };
+
 public:
   // map_type - determines how a buffer is mapped
   enum class map_type { read, write };
@@ -87,6 +97,19 @@ public:
   bind_at(size_t /*pos*/, const buffer_handle* /*bh*/, size_t /*offset*/, size_t /*size*/)
   {
   }
+
+  virtual void
+  sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    throw not_supported_error{__func__};
+  }
+
+  virtual void
+  sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    throw not_supported_error{__func__};
+  }
+
 };
 
 } // xrt_core

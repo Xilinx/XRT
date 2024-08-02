@@ -7,8 +7,10 @@
 #include "core/edge/user/shim.h"
 
 namespace zynqaie {
+
+  //Constructor without Hwctx Object
   graph_object::graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char* gname,
-                  xrt::graph::access_mode am, const zynqaie::hwctx_object* hwctx)
+                  xrt::graph::access_mode am)
     : m_shim{shim},
       name{gname},
       access_mode{am}
@@ -16,12 +18,12 @@ namespace zynqaie {
       auto device{xrt_core::get_userpf_device(m_shim)};
       auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
 
-      if (!drv->isAieRegistered())
+      if (not drv->isAieRegistered())
         throw xrt_core::error(-EINVAL, "No AIE presented");
 
       aieArray = drv->getAieArray();
 
-      id = xrt_core::edge::aie::get_graph_id(device.get(), name, hwctx);
+      id = xrt_core::edge::aie::get_graph_id(device.get(), name);
       if (id == xrt_core::edge::aie::NON_EXIST_ID)
         throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
 
@@ -30,14 +32,51 @@ namespace zynqaie {
         throw xrt_core::error(ret, "Can not open Graph context");
 
       /* Initialize graph tile metadata */
-      graph_config = xrt_core::edge::aie::get_graph(device.get(), name, hwctx);
+      graph_config = xrt_core::edge::aie::get_graph(device.get(), name);
 
       /* Initialize graph rtp metadata */
-      rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, hwctx);
+      rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id);
       aie_config_api = std::make_shared<adf::graph_api>(&graph_config);
       aie_config_api->configure();
       state = graph_state::reset;
       drv->getAied()->register_graph(this);
+  }
+
+  //Constructor with HwCtx Object
+  graph_object::graph_object(ZYNQ::shim* shim, const xrt::uuid& uuid , const char* gname,
+                  xrt::graph::access_mode am, zynqaie::hwctx_object* hwctx)
+    : m_shim{shim},
+      name{gname},
+      access_mode{am},
+      m_hwctxObj{hwctx}
+  {
+
+      // we can remove uuid here
+    // create a function for common lines
+      auto device{xrt_core::get_userpf_device(m_shim)};
+      auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+      if (not m_hwctxObj->is_aie_registered())
+        throw xrt_core::error(-EINVAL, "No AIE presented");
+
+      aieArray = m_hwctxObj->get_aie_array_from_hwctx();
+
+      id = xrt_core::edge::aie::get_graph_id(device.get(), name, m_hwctxObj);
+      if (id == xrt_core::edge::aie::NON_EXIST_ID)
+        throw xrt_core::error(-EINVAL, "Can not get id for Graph '" + name + "'");
+
+      int ret = drv->openGraphContext(uuid.get(), id, am);
+      if (ret)
+        throw xrt_core::error(ret, "Can not open Graph context");
+
+      /* Initialize graph tile metadata */
+      graph_config = xrt_core::edge::aie::get_graph(device.get(), name, m_hwctxObj);
+
+      /* Initialize graph rtp metadata */
+      rtps = xrt_core::edge::aie::get_rtp(device.get(), graph_config.id, m_hwctxObj);
+      aie_config_api = std::make_shared<adf::graph_api>(&graph_config);
+      aie_config_api->configure();
+      state = graph_state::reset;
   }
 
   graph_object::~graph_object()

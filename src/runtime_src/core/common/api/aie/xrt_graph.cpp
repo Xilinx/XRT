@@ -124,7 +124,8 @@ namespace xrt::aie {
 class profiling_impl
 {
 private:
-  std::shared_ptr<xrt_core::device> device;
+  std::shared_ptr<xrt_core::device> device; //profiling can be triggered from device
+  xrt_core::hwctx_handle* m_hwctx_handle{nullptr}; //profiling can be triggered from hwctx
   int profiling_hdl;
 
 public:
@@ -136,11 +137,23 @@ public:
       profiling_hdl(invalid_handle)
   {}
 
+  explicit profiling_impl(const xrt::hw_context& hwctx)
+    : profiling_hdl(invalid_handle)
+  {
+    m_hwctx_handle = static_cast<xrt_core::hwctx_handle*>(hwctx);
+  }
+
   ~profiling_impl()
   {
     try {
-      if (profiling_hdl != invalid_handle)
-        device->stop_profiling(profiling_hdl);
+      if (profiling_hdl != invalid_handle) {
+        if(nullptr != device)
+          device->stop_profiling(profiling_hdl);
+        else if(nullptr != m_hwctx_handle)
+          m_hwctx_handle->stop_profiling(profiling_hdl);
+        else
+          throw xrt_core::error(-EINVAL, "issue with CLEAN-UP PROFILING");
+      }
     }
     catch(...) {
       // do nothing
@@ -157,7 +170,13 @@ public:
   handle
   start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
   {
-    profiling_hdl = device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
+    if(nullptr != device)
+      profiling_hdl = device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
+    else if(nullptr != m_hwctx_handle)
+      profiling_hdl = m_hwctx_handle->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
+    else
+      throw xrt_core::error(-EINVAL, "issue with START PROFILING");
+
     return profiling_hdl;
   }
 
@@ -167,8 +186,12 @@ public:
     if (profiling_hdl == invalid_handle)
       throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
 
-    return device->read_profiling(profiling_hdl);
-
+    if(nullptr != device)
+      return device->read_profiling(profiling_hdl);
+    else if(nullptr != m_hwctx_handle)
+      return m_hwctx_handle->read_profiling(profiling_hdl);
+    else
+      throw xrt_core::error(-EINVAL, "issue with READ PROFILING");
   }
 
   void
@@ -177,7 +200,13 @@ public:
     if (profiling_hdl == invalid_handle)
       throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
 
-    device->stop_profiling(profiling_hdl);
+    if(nullptr != device)
+      return device->stop_profiling(profiling_hdl);
+    else if(nullptr != m_hwctx_handle)
+      return m_hwctx_handle->stop_profiling(profiling_hdl);
+    else
+      throw xrt_core::error(-EINVAL, "issue with STOP PROFILING");
+
     profiling_hdl = invalid_handle;
   }
 
@@ -270,6 +299,13 @@ create_profiling_event(const xrt::device& device)
 {
   auto core_device = device.get_handle();
   auto phdl = std::make_shared<xrt::aie::profiling_impl>(core_device);
+  return phdl;
+}
+
+static std::shared_ptr<xrt::aie::profiling_impl>
+create_profiling_event(const xrt::hw_context& hwctx)
+{
+  auto phdl = std::make_shared<xrt::aie::profiling_impl>(hwctx);
   return phdl;
 }
 
@@ -397,6 +433,11 @@ namespace xrt::aie {
 profiling::
 profiling(const xrt::device& device)
   : detail::pimpl<profiling_impl>(create_profiling_event(device))
+{}
+
+profiling::
+profiling(const xrt::hw_context& hwctx)
+  : detail::pimpl<profiling_impl>(create_profiling_event(hwctx))
 {}
 
 int

@@ -30,6 +30,8 @@
 #include "common_layer/adf_api_config.h"
 #include "common_layer/adf_runtime_api.h"
 #include "common_layer/adf_profiling_api.h"
+#include "core/edge/user/hwctx_object.h"
+
 extern "C" {
 #include <xaiengine.h>
 }
@@ -52,12 +54,7 @@ namespace zynqaie {
 struct BD {
     uint16_t bd_num;
     int      buf_fd;
-#ifdef __AIESIM__
-    char     *vaddr;
-    size_t   size;
-#else
     XAie_MemInst memInst;
-#endif
 };
 
 struct DMAChannel {
@@ -81,6 +78,7 @@ class Aie {
 public:
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
+    Aie(const std::shared_ptr<xrt_core::device>& device, const zynqaie::hwctx_object* hwctx);
 
     std::vector<ShimDMA> shim_dma;   // shim DMA // not used anymore, should be cleanedup
 

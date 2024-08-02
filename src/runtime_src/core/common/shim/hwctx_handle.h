@@ -14,6 +14,10 @@
 
 #include <memory>
 
+namespace zynqaie {
+  class Aie;
+}
+
 namespace xrt_core {
 
 // class hwctx_handle - shim base class for hardware context
@@ -99,6 +103,38 @@ public:
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
+
+  virtual zynqaie::Aie*
+  get_aie_array_from_hwctx()
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual bool
+  is_aie_registered()
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual int
+  start_profiling(int option, const char* port1Name, const char* port2Name,
+                    uint32_t value)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual uint64_t
+  read_profiling(int phdl)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual void
+  stop_profiling(int phdl)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
 };
 
 } // xrt_core
