@@ -4,7 +4,6 @@
 #define xrthip_memory_POOL_h
 
 #include <cstdint>
-#include <vector>
 #include <list>
 #include <map>
 #include <mutex>
@@ -110,13 +109,20 @@ namespace xrt::core::hip
     void
     purge();
 
-    void trim_to(size_t min_bytes_to_hold);
+    void
+    trim_to(size_t min_bytes_to_hold);
 
-    void malloc(void* ptr, size_t size);
-    void free(void* ptr);
+    void
+    malloc(void* ptr, size_t size);
+    
+    void
+    free(void* ptr);
 
-    void get_attribute(hipMemPoolAttr attr, void* value);
-    void set_attribute(hipMemPoolAttr attr, void* value);
+    void
+    get_attribute(hipMemPoolAttr attr, void* value);
+    
+    void
+    set_attribute(hipMemPoolAttr attr, void* value);
 
     device*
     get_device()
@@ -141,7 +147,6 @@ namespace xrt::core::hip
     bool m_auto_extend;
     size_t m_max_total_size;
     size_t m_pool_size;
-    //size_t m_size;
     std::list<std::shared_ptr<memory_pool_node>> m_list;
     std::mutex m_mutex;
 

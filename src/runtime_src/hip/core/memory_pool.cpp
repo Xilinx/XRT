@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <Memoryapi.h>
-#else
-#include <sys/mman.h>
-#endif
-
 #include "core/common/unistd.h"
 #include "hip/config.h"
 #include "hip/hip_runtime_api.h"
@@ -244,7 +237,6 @@ namespace xrt::core::hip
       init();
 
     assert(ptr);
-    //auto pool_mem = reinterpret_cast<pool_memory*>(ptr);
     auto sub_mem = memory_database::instance().get_sub_mem_from_handle(reinterpret_cast<memory_handle>(ptr));
     if (!sub_mem) {
       throw std::runtime_error("Invlid sub_memory handle");
@@ -346,7 +338,6 @@ namespace xrt::core::hip
     };
 
     // allocation failed
-    //throw std::runtime_error("No enough memory.");
     return;
   }
 
@@ -426,7 +417,7 @@ namespace xrt::core::hip
   }
 
   // lookup memory pool by opaque handle
-  std::shared_ptr <memory_pool>
+  std::shared_ptr<memory_pool>
   get_mem_pool(hipMemPool_t mem_pool)
   {
     throw_invalid_handle_if(!mem_pool, "Invalid mem_pool handle.");

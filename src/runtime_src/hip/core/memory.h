@@ -165,7 +165,6 @@ namespace xrt::core::hip
   {
   private:
     addr_map m_addr_map; // address lookup for regular xrt::bo
-    addr_map m_sub_addr_map; // address lookup for sub buffer xrt::bo
     std::map<memory_handle, std::shared_ptr<sub_memory>> m_sub_mem_cache; // sub_memory lookup via handle
     std::mutex m_mutex;
 

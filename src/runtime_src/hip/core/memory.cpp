@@ -143,7 +143,7 @@ namespace xrt::core::hip
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
+  //we should override clang-tidy warning by adding NOLINT since m_memory_database is non-const parameter
   memory_database* memory_database::m_memory_database = nullptr; //NOLINT
 
   memory_database& memory_database::instance()
@@ -155,7 +155,7 @@ namespace xrt::core::hip
   }
 
   memory_database::memory_database()
-      : m_addr_map(), m_sub_addr_map(), m_sub_mem_cache(), m_mutex()
+      : m_addr_map(), m_sub_mem_cache(), m_mutex()
   {
     if (m_memory_database) {
       throw std::runtime_error
@@ -168,7 +168,6 @@ namespace xrt::core::hip
   memory_database::~memory_database()
   {
     m_addr_map.clear();
-    m_sub_addr_map.clear();
   }
 
   void
@@ -184,7 +183,6 @@ namespace xrt::core::hip
     std::lock_guard lock(m_mutex);
 
     m_sub_mem_cache.erase(addr);
-    m_sub_addr_map.erase(address_range_key(addr, 0));
     m_addr_map.erase(address_range_key(addr, 0));
   }
 
@@ -195,8 +193,8 @@ namespace xrt::core::hip
 
     // TODO: hip memory allocated from memory pool need to return a valid pointer before
     //       actual allocation is done and user application may add an offset to this pointer,
-    //       hence the need for returning a fake handle for hipMemory objects look up
-    //       a more robust handle/pointer creation scheme for this pointer might be neccessary 
+    //       hence the need for returning a handles/addresses which does not overlap
+    //       a more robust handle/pointer creation scheme might be neccessary 
     static auto curr_start = get_page_aligned_size(0x10000);
     size_t aligned_size = get_page_aligned_size(sub_mem->get_size());
     memory_handle h = curr_start;
