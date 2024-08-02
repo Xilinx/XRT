@@ -236,17 +236,22 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             && (portName.compare(logicalName) != 0))
             continue;
         if ((graphName.compare("all") != 0)
-            && (graphName.compare(currGraph) != 0))
+            && (graphName.compare(currGraph) != 0)
+            && !useColumn)
             continue;
 
         // Make sure it's desired polarity
         // NOTE: input = slave (data flowing from PLIO)
         //       output = master (data flowing to PLIO)
-        if ((isMaster && (metricStr.find("output") == std::string::npos)
-                && (metricStr.find("s2mm") == std::string::npos))
-            || (!isMaster && (metricStr.find("input") == std::string::npos)
-                && (metricStr.find("mm2s") == std::string::npos)))
-            continue;
+        if (!((metricStr.find("input_output") == std::string::npos) ||
+               (metricStr.find("mm2s_s2mm") == std::string::npos)
+              )) {
+          if ((isMaster && (metricStr.find("output") == std::string::npos)
+                  && (metricStr.find("s2mm") == std::string::npos))
+              || (!isMaster && (metricStr.find("input") == std::string::npos)
+                  && (metricStr.find("mm2s") == std::string::npos)))
+              continue;
+        }
 
         // Make sure column is within specified range (if specified)
         if (useColumn && !((minCol <= shimCol) && (shimCol <= maxCol)))
@@ -276,7 +281,6 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
                         + ". Please specify a valid channel ID.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
-
     return tiles;
 }
 
