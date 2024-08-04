@@ -595,7 +595,8 @@ jobs:
         uses: ./composite-workflows/gradle-artifactory-upload   
         with:    
           runNumber: ${{ env.XRT_VERSION_PATCH }}    
-          pipeline: ${{ env.PIPELINE }}    
+          pipeline: ${{ env.PIPELINE }}
+          release: ${{ env.RELEASE }}    
           env: ${{ env.ENV }}
           workspace: ${{ github.workspace }}  
           buildNumber: ${{ env.XRT_VERSION_PATCH }} 
