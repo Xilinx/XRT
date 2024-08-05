@@ -291,6 +291,7 @@ struct drm_zocl_info_cu {
 	uint64_t paddr;
 	int apt_idx;
 	int cu_idx;
+        uint64_t cu_size;
 };
 
 enum drm_zocl_ctx_code {
