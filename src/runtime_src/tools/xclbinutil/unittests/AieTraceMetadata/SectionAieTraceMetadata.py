@@ -2,6 +2,7 @@ from argparse import RawDescriptionHelpFormatter
 import argparse
 import os
 import subprocess
+import json
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------
@@ -34,15 +35,56 @@ def main():
   step = "1) Read in the AIE TRACE METADATA section"
 
   inputJSON = os.path.join(args.resource_dir, "aie_trace_config.json")
+  outputXCLBIN = "output.xclbin"
 
-  cmd = [xclbinutil, "--add-section", "AIE_TRACE_METADATA:JSON:" + inputJSON]
+  cmd = [xclbinutil, "--add-section", "AIE_TRACE_METADATA:JSON:" + inputJSON, "--output", outputXCLBIN, "--force"]
   execCmd(step, cmd)
 
+  # ---------------------------------------------------------------------------
+  
+  step = "2) Validate the AIE_TRACE_METADATA section"
+
+  expectedJSON = os.path.join(args.resource_dir, "expected_aie_trace_config.json") 
+  actualJSON = "actual_aie_trace_config.json" 
+
+  cmd = [xclbinutil, "--input", outputXCLBIN, "--dump-section", "AIE_TRACE_METADATA:JSON:" + actualJSON, "--force"]
+  execCmd(step, cmd)
+  jsonFileCompare(actualJSON, expectedJSON)
+
+  
   # ---------------------------------------------------------------------------
 
   # If the code gets this far, all is good.
   return False
 
+def jsonFileCompare(file1, file2):
+  
+  if not os.path.isfile(file1):
+    raise Exception("Error: The following json file does not exist: '" + file1 +"'")
+
+  with open(file1) as f:
+    data1 = json.dumps(json.load(f), indent=2)
+  
+  if not os.path.isfile(file2):
+    raise Exception("Error: The following json file does not exist: '" + file2 +"'")
+
+  with open(file2) as f:
+    data2 = json.dumps(json.load(f), indent=2)
+  
+  if data1 != data2:
+    # Print out the contents of file 1
+    print ("\nFile1 : "+ file1)
+    print ("vvvvv")
+    print (data1)
+    print ("^^^^^")
+
+    # Print out the contents of file 1
+    print ("\nFile2 : "+ file2)
+    print ("vvvvv")
+    print (data2)
+    print ("^^^^^")
+
+    raise Exception("Error: The given files are not the same")
 
 def testDivider():
   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")

@@ -34,7 +34,7 @@ SectionAIETraceMetadata::init::init()
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
   sectionInfo->supportedDumpFormats.push_back(FormatType::json);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -61,7 +61,7 @@ SectionAIETraceMetadata::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree pt;
     boost::property_tree::read_json(ss, pt);
     boost::property_tree::ptree& buildMetaData = pt.get_child("aie_metadata");
-    _ptree.add_child("aie_metadata", buildMetaData);
+    _ptree.add_child("aie_trace_metadata", buildMetaData);
   } catch (const std::exception& e) {
     std::string msg("ERROR: Bad JSON format detected while marshaling AIE trace metadata (");
     msg += e.what();
