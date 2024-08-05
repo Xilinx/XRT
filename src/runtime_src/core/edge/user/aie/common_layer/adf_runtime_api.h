@@ -78,11 +78,7 @@ public:
     virtual ~gmio_api() {}
 
     err_code configure();
-#ifndef __AIESIM__
     err_code enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size);
-#else
-    err_code enqueueBD(uint64_t address, size_t size);
-#endif
     err_code wait();
     err_code enqueueTask(std::vector<dma_api::buffer_descriptor> bdParams, uint32_t repeatCount, bool enableTaskCompleteToken);
 private:
