@@ -1,58 +1,59 @@
 {
-	"aie_partition": {
-        "operations_per_cycle": "135",
-        "inference_fingerprint": "23423",
-        "pre_post_fingerprint": "12345",
-		"partition": {
-			"column_width": 1,
-			"start_columns": [1, 2, 3, 4]
-		},
-		"PDIs": [{
-				"uuid": "00000000-0000-0000-0000-000000001110",
-				"file_name": "./1110.txt",
-				"cdo_groups": [{
-						"name": "DPU",
-						"type": "PRIMARY",
-						"pdi_id": "0xF0",
-						"dpu_kernel_ids": ["0x100"],
-						"pre_cdo_groups": ["0xC0"]
-					},
-					{
-						"name": "PP0",
-						"type": "LITE",
-						"pdi_id": "0xF1",
-						"dpu_kernel_ids": ["0x101"],
-						"pre_cdo_groups": ["0xC0"]
+  "aie_partition": {
+    "operations_per_cycle": "135",
+    "inference_fingerprint": "23423",
+    "pre_post_fingerprint": "12345",
+    "kernel_commit_id": "0123456789abcdef",
+    "partition": {
+      "column_width": 1,
+      "start_columns": [1, 2, 3, 4]
+    },
+    "PDIs": [{
+        "uuid": "00000000-0000-0000-0000-000000001110",
+        "file_name": "./1110.txt",
+        "cdo_groups": [{
+            "name": "DPU",
+            "type": "PRIMARY",
+            "pdi_id": "0xF0",
+            "dpu_kernel_ids": ["0x100"],
+            "pre_cdo_groups": ["0xC0"]
+          },
+          {
+            "name": "PP0",
+            "type": "LITE",
+            "pdi_id": "0xF1",
+            "dpu_kernel_ids": ["0x101"],
+            "pre_cdo_groups": ["0xC0"]
 
-					},
-					{
-						"name": "PP1",
-						"type": "LITE",
-						"pdi_id": "0xF2",
-						"dpu_kernel_ids": ["0x102"],
-						"pre_cdo_groups": ["0xC0"]
-					},
-					{
-						"name": "shared",
-						"pdi_id": "0xC0",
-						"pre_cdo_groups": ["0xC1"]
-					},
-					{
-						"name": "routing",
-						"pdi_id": "0xC1"
-					}
-				]
-			},
-			{
-				"uuid": "00000000-0000-0000-0000-000000001111",
-				"file_name": "./1111.txt",
-				"cdo_groups": [{
-					"name": "PP3",
-					"type": "LITE",
-					"pdi_id": "0xF1",
-					"dpu_kernel_ids": ["0x104", "0x105"]
-				}]
-			}
-		]
-	}
+          },
+          {
+            "name": "PP1",
+            "type": "LITE",
+            "pdi_id": "0xF2",
+            "dpu_kernel_ids": ["0x102"],
+            "pre_cdo_groups": ["0xC0"]
+          },
+          {
+            "name": "shared",
+            "pdi_id": "0xC0",
+            "pre_cdo_groups": ["0xC1"]
+          },
+          {
+            "name": "routing",
+            "pdi_id": "0xC1"
+          }
+        ]
+      },
+      {
+        "uuid": "00000000-0000-0000-0000-000000001111",
+        "file_name": "./1111.txt",
+        "cdo_groups": [{
+          "name": "PP3",
+          "type": "LITE",
+          "pdi_id": "0xF1",
+          "dpu_kernel_ids": ["0x104", "0x105"]
+        }]
+      }
+    ]
+  }
 }

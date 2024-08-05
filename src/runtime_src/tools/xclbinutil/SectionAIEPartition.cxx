@@ -376,6 +376,9 @@ process_partition_info(const boost::property_tree::ptree& ptAIEPartition,
 
   // Write out the 16-bit array.
   partitionInfo.start_columns.offset = static_cast<decltype(partitionInfo.start_columns.offset)>(heap.getNextBufferOffset());
+// #if 0
+  XUtil::TRACE(boost::str(boost::format("  start_column (0x%lx)") % partitionInfo.start_columns.offset));
+// #endif
   for (const auto element : startColumns)
     heap.write(reinterpret_cast<const char*>(&element), sizeof(uint16_t), false /*align*/);
 
@@ -414,6 +417,14 @@ createAIEPartitionImage(const std::string& sectionIndexName,
   aie_partitionHdr.operations_per_cycle = ptAIEPartition.get<uint32_t>("operations_per_cycle", 0);
   aie_partitionHdr.inference_fingerprint = ptAIEPartition.get<uint64_t>("inference_fingerprint", 0);
   aie_partitionHdr.pre_post_fingerprint = ptAIEPartition.get<uint64_t>("pre_post_fingerprint", 0);
+// #if 0
+  // kernel_commit_id (modeled after mpo_name)
+  aie_partitionHdr.kernel_commit_id = static_cast<decltype(aie_partitionHdr.kernel_commit_id)>(heap.getNextBufferOffset());
+  auto sKernelCommitId = ptAIEPartition.get<std::string>("kernel_commit_id", "");
+  XUtil::TRACE(boost::str(boost::format("  kernel_commit_id (0x%lx): '%s'") % aie_partitionHdr.kernel_commit_id % sKernelCommitId));
+  heap.write(sKernelCommitId.c_str(), sKernelCommitId.size() + 1 /*Null char*/);
+// #endif
+
 
   //  Process the nodes
   process_partition_info(ptAIEPartition, aie_partitionHdr.info, heap);
@@ -528,7 +539,10 @@ populate_cdo_groups(const char* pBase,
     boost::property_tree::ptree ptElement;
 
     // Name
-    ptElement.put("name", reinterpret_cast<const char*>(pBase + element.mpo_name));
+    auto sName = reinterpret_cast<const char*>(pBase + element.mpo_name); 
+    // ptElement.put("name", reinterpret_cast<const char*>(pBase + element.mpo_name));
+    ptElement.put("name", sName);
+    XUtil::TRACE("Populating CDO group: " + std::string(sName));
 
     // Type
     if ((CDO_Type)element.cdo_type != CT_UNKNOWN)
@@ -641,6 +655,19 @@ writeAIEPartitionImage(const char* pBuffer,
   ptAiePartition.put("operations_per_cycle", (boost::format("%d") % pHdr->operations_per_cycle).str());
   ptAiePartition.put("inference_fingerprint", (boost::format("%d") % pHdr->inference_fingerprint).str());
   ptAiePartition.put("pre_post_fingerprint", (boost::format("%d") % pHdr->pre_post_fingerprint).str());
+
+// #if 0
+  // kernel_commit_id (modeled after mpo_name)
+  // in order to be backward compatible with old xclbin which doesn't have
+  // kernel_commit_id, we should make sure the offset is NOT 0
+  auto sKernelCommitId = "";
+  if (pHdr->kernel_commit_id != 0) {
+    sKernelCommitId = reinterpret_cast<const char*>(pBuffer + pHdr->kernel_commit_id); 
+  } else {
+    XUtil::TRACE(boost::format("Open an existing xclbin: kernel_commit_id is 0x%lx") % pHdr->kernel_commit_id);
+  }
+  ptAiePartition.put("kernel_commit_id", sKernelCommitId);
+// #endif
 
   // Partition info
   populate_partition_info(pBuffer, pHdr->info, ptAiePartition);
