@@ -26,19 +26,12 @@ boost::property_tree::ptree
 TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
 {
   boost::property_tree::ptree ptree = get_test_header();
-  std::string xclbin_name;
-  try{
-    xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
-  }
-  catch (const xrt_core::query::exception& ex) {
-    xrt_core::error(ex.what());
-    exit(EXIT_FAILURE);
-  }
+  ptree.erase("xclbin");
+
+  const auto xclbin_name = xrt_core::device_query<xrt_core::query::xclbin_name>(dev, xrt_core::query::xclbin_name::type::validate);
   auto xclbin_path = findPlatformFile(xclbin_name, ptree);
   if (!std::filesystem::exists(xclbin_path))
-  {
-    throw std::runtime_error(boost::str(boost::format("Invalid xclbin file path %s") % xclbin_path));
-  }
+    return ptree;
 
   logger(ptree, "Xclbin", xclbin_path);
 
