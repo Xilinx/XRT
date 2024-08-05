@@ -17,6 +17,7 @@
 #include "zocl_drv.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
+#include "zocl_hwctx.h"
 
 /*
  * read_axlf and ctx should be protected by slot_xclbin_lock exclusively.
@@ -27,8 +28,47 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
 	struct kds_client *client = filp->driver_priv;
+	int slot_id = -1;
 
-	return zocl_xclbin_read_axlf(zdev, axlf_obj, client);
+	return zocl_xclbin_read_axlf(zdev, axlf_obj, client, &slot_id);
+}
+
+/*
+ * IOCTL to create hw context on a slot on device for a xclbin.
+ */
+int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_create_hw_ctx *drm_hw_ctx = data;
+	struct kds_client *client = filp->driver_priv;
+	struct drm_zocl_axlf axlf_obj = {};
+	int slot_id = -1;
+	int ret = 0;
+
+	if (copy_from_user(&axlf_obj, drm_hw_ctx->axlf_ptr, sizeof(struct drm_zocl_axlf))) {
+		DRM_WARN("copy_from_user failed for axlf_ptr");
+		return -EFAULT;
+	}
+
+	ret = zocl_xclbin_read_axlf(zdev, &axlf_obj, client, &slot_id);
+	if (ret) {
+		DRM_WARN("xclbin download FAILED.");
+		return ret;
+	}
+
+	return zocl_create_hw_ctx(zdev, drm_hw_ctx, client, slot_id);
+}
+
+/*
+ * IOCTL to destroy hw context on a slot on device
+ */
+int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_destroy_hw_ctx *drm_hw_ctx = (struct drm_zocl_destroy_hw_ctx *)data;
+	struct kds_client *client = filp->driver_priv;
+
+	return zocl_destroy_hw_ctx(zdev, drm_hw_ctx, client);
 }
 
 /*
