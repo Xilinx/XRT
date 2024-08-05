@@ -8,6 +8,7 @@
 #include "core/common/config.h"
 #include <string>
 #include <iosfwd>
+#include <climits>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
