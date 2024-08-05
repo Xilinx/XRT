@@ -165,6 +165,11 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin")
   xrt_add_test("AieResourcesBin" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin/SectionAieResourcesBin.py ${TEST_OPTIONS}")
 
+  # -- AIE TRACE METADATA Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieTraceMetadata")
+  xrt_add_test("AieTraceMetadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieTraceMetadata/SectionAieTraceMetadata.py ${TEST_OPTIONS}")
+
+
 endif()
 
 

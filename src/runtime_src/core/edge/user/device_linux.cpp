@@ -455,7 +455,6 @@ struct aie_reg_read
     const auto v = std::any_cast<query::aie_reg_read::reg_type>(reg);
 
 #ifdef XRT_ENABLE_AIE
-#ifndef __AIESIM__
   const static std::string aie_tag = "aie_metadata";
   const std::string zocl_device = "/dev/dri/" + get_render_devname();
   const uint32_t major = 1;
@@ -550,7 +549,6 @@ struct aie_reg_read
     throw xrt_core::error(-EINVAL, boost::str(boost::format("Error reading register '%s' (0x%8x) for AIE[%u:%u]")
                                                             % v.c_str() % it->second % col % (row-1)));
 
-#endif
 #endif
     return val;
   }

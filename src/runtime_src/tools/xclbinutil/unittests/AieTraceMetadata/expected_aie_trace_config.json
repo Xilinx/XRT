@@ -1,0 +1,247 @@
+{
+    "aie_trace_metadata": {
+        "driver_config": {
+            "hw_gen": "2",
+            "base_address": "2199023255552",
+            "npi_address": "4140892160",
+            "column_shift": "25",
+            "row_shift": "20",
+            "num_rows": "11",
+            "num_columns": "38",
+            "shim_row": "0",
+            "mem_tile_row_start": "1",
+            "mem_tile_num_rows": "2",
+            "aie_tile_row_start": "3",
+            "aie_tile_num_rows": "8"
+        },
+        "aiecompiler_options": {
+            "broadcast_enable_core": "true",
+            "graph_iterator_event": "false",
+            "event_trace": "runtime"
+        },
+        "TileMapping": {
+            "AIEKernelToTileMapping": [
+                {
+                    "graph": "mygraph",
+                    "tile": "aie",
+                    "column": "19",
+                    "row": "0",
+                    "schedule": "0",
+                    "function": "simple.first"
+                },
+                {
+                    "graph": "mygraph",
+                    "tile": "aie",
+                    "column": "18",
+                    "row": "0",
+                    "schedule": "0",
+                    "function": "simple.second"
+                }
+            ],
+            "SharedBufferToTileMapping": ""
+        },
+        "RTPs": "",
+        "ExternalBuffer": "",
+        "GMIOs": "",
+        "PLIOs": {
+            "plio0": {
+                "id": "0",
+                "name": "mygraph.in",
+                "logical_name": "TestcaseLogicalIn",
+                "shim_column": "19",
+                "slaveOrMaster": "0",
+                "stream_id": "0"
+            },
+            "plio1": {
+                "id": "1",
+                "name": "mygraph.out",
+                "logical_name": "TestcaseLogicalOut",
+                "shim_column": "18",
+                "slaveOrMaster": "1",
+                "stream_id": "4"
+            }
+        },
+        "EventGraphs": {
+            "graph0": {
+                "id": "0",
+                "name": "mygraph",
+                "core_columns": [
+                    "18",
+                    "19"
+                ],
+                "core_rows": [
+                    "0",
+                    "0"
+                ],
+                "dma_columns": "",
+                "dma_rows": ""
+            }
+        },
+        "DeviceData": {
+            "AIEBaseAddress": "0x20000000000",
+            "AIEFrequency": "1150"
+        },
+        "TraceGMIOs": {
+            "gmio0": {
+                "id": "0",
+                "name": "traceGraph.event_trace0",
+                "logical_name": "event_trace0",
+                "type": "1",
+                "shim_column": "7",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio1": {
+                "id": "1",
+                "name": "traceGraph.event_trace1",
+                "logical_name": "event_trace1",
+                "type": "1",
+                "shim_column": "23",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio2": {
+                "id": "2",
+                "name": "traceGraph.event_trace2",
+                "logical_name": "event_trace2",
+                "type": "1",
+                "shim_column": "15",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio3": {
+                "id": "3",
+                "name": "traceGraph.event_trace3",
+                "logical_name": "event_trace3",
+                "type": "1",
+                "shim_column": "14",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio4": {
+                "id": "4",
+                "name": "traceGraph.event_trace4",
+                "logical_name": "event_trace4",
+                "type": "1",
+                "shim_column": "6",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio5": {
+                "id": "5",
+                "name": "traceGraph.event_trace5",
+                "logical_name": "event_trace5",
+                "type": "1",
+                "shim_column": "6",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio6": {
+                "id": "6",
+                "name": "traceGraph.event_trace6",
+                "logical_name": "event_trace6",
+                "type": "1",
+                "shim_column": "30",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio7": {
+                "id": "7",
+                "name": "traceGraph.event_trace7",
+                "logical_name": "event_trace7",
+                "type": "1",
+                "shim_column": "23",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio8": {
+                "id": "8",
+                "name": "traceGraph.event_trace8",
+                "logical_name": "event_trace8",
+                "type": "1",
+                "shim_column": "15",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio9": {
+                "id": "9",
+                "name": "traceGraph.event_trace9",
+                "logical_name": "event_trace9",
+                "type": "1",
+                "shim_column": "14",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio10": {
+                "id": "10",
+                "name": "traceGraph.event_trace10",
+                "logical_name": "event_trace10",
+                "type": "1",
+                "shim_column": "31",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio11": {
+                "id": "11",
+                "name": "traceGraph.event_trace11",
+                "logical_name": "event_trace11",
+                "type": "1",
+                "shim_column": "30",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio12": {
+                "id": "12",
+                "name": "traceGraph.event_trace12",
+                "logical_name": "event_trace12",
+                "type": "1",
+                "shim_column": "31",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio13": {
+                "id": "13",
+                "name": "traceGraph.event_trace13",
+                "logical_name": "event_trace13",
+                "type": "1",
+                "shim_column": "22",
+                "channel_number": "0",
+                "stream_id": "2",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio14": {
+                "id": "14",
+                "name": "traceGraph.event_trace14",
+                "logical_name": "event_trace14",
+                "type": "1",
+                "shim_column": "22",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            },
+            "gmio15": {
+                "id": "15",
+                "name": "traceGraph.event_trace15",
+                "logical_name": "event_trace15",
+                "type": "1",
+                "shim_column": "7",
+                "channel_number": "1",
+                "stream_id": "3",
+                "burst_length_in_16byte": "4"
+            }
+        }
+    }
+}

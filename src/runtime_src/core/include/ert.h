@@ -1087,7 +1087,7 @@ get_ert_npu_data(struct ert_start_kernel_cmd* pkt)
 static inline struct ert_npu_preempt_data*
 get_ert_npu_preempt_data(struct ert_start_kernel_cmd* pkt)
 {
-  if (pkt->opcode != ERT_START_NPU)
+  if (pkt->opcode != ERT_START_NPU_PREEMPT)
     return NULL;
 
   // past extra cu_masks embedded in the packet data

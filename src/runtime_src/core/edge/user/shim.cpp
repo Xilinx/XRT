@@ -116,7 +116,7 @@ shim(unsigned index)
   : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
   , mBoardNumber(index)
   , mKernelClockFreq(100)
-  , mCuMaps(128, nullptr)
+  , mCuMaps(128, {nullptr, 0})
 {
   xclLog(XRT_INFO, "%s", __func__);
 
@@ -146,8 +146,8 @@ shim::
   }
 
   for (auto p : mCuMaps) {
-    if (p)
-      (void) munmap(p, mCuMapSize);
+    if (p.first)
+      (void) munmap(p.first, p.second);
   }
 }
 
@@ -172,16 +172,16 @@ mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets)
     if ((offset_it->first & (~0xFF)) != (-1UL & ~0xFF)) {
       auto it = mKernelControl.find(offset_it->first);
       if (it == mKernelControl.end()) {
-        drm_zocl_info_cu info = {offset_it->first, -1, -1};
+        drm_zocl_info_cu info = {offset_it->first, -1, -1, 0};
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
           xclLog(XRT_ERROR, "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
           return -errno;
         }
         size_t psize = getpagesize();
-        ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
+        ptr = mmap(0, info.cu_size, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
         if (ptr == MAP_FAILED) {
-          xclLog(XRT_ERROR, "%s: Map failed for aperture 0x%lx, size 0x%lx", __func__, offset_it->first, offset_it->second);
+          xclLog(XRT_ERROR, "%s: Map failed for aperture 0x%lx, size 0x%lx", __func__, offset_it->first, info.cu_size);
           return -1;
         }
         mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
@@ -761,7 +761,6 @@ xclLoadAxlf(const axlf *buffer)
       krnl->name[sizeof(krnl->name)-1] = '\0';
       krnl->range = kernel.range;
       krnl->anums = kernel.args.size();
-
       krnl->features = 0;
       if (kernel.sw_reset)
         krnl->features |= KRNL_SW_RESET;
@@ -1164,10 +1163,10 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 
   if (ipIndex < mCuMaps.size()) {
     // Make sure no MMIO register space access when CU is released.
-    uint32_t *p = mCuMaps[ipIndex];
+    uint32_t *p = mCuMaps[ipIndex].first;
     if (p) {
-      (void) munmap(p, mCuMapSize);
-      mCuMaps[ipIndex] = nullptr;
+      (void) munmap(p, mCuMaps[ipIndex].second);
+      mCuMaps[ipIndex] = {nullptr, 0};
     }
   }
 
@@ -1191,21 +1190,22 @@ xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     xclLog(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
     return -EINVAL;
   }
-  if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
+  if (offset <= 0  || (offset & (sizeof(uint32_t) - 1)) != 0) {
     xclLog(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
 
-  if (mCuMaps[ipIndex] == nullptr) {
-    drm_zocl_info_cu info = {0, -1, (int)ipIndex};
+  if (mCuMaps[ipIndex].first == nullptr) {
+    drm_zocl_info_cu info = {0, -1, (int)ipIndex, 0};
     int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
-    void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
+    void *p = mmap(0, info.cu_size, PROT_READ | PROT_WRITE, MAP_SHARED,
                    mKernelFD, info.apt_idx * getpagesize());
     if (p != MAP_FAILED)
-      mCuMaps[ipIndex] = (uint32_t *)p;
+      mCuMaps[ipIndex].first = (uint32_t *)p;
+      mCuMaps[ipIndex].second = info.cu_size;
   }
 
-  uint32_t *cumap = mCuMaps[ipIndex];
+  uint32_t *cumap = mCuMaps[ipIndex].first;
   if (cumap == nullptr) {
     xclLog(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
     return -EINVAL;
