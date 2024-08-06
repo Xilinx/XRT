@@ -32,6 +32,7 @@ namespace xdp {
 
     void updateDevice(void* hwCtxImpl);
     void finishflushDevice(void* hwCtxImpl);
+    void flushOldStored();
     void writeAll(bool openNewFiles);
 
     virtual void broadcast(VPDatabase::MessageType, void*);
