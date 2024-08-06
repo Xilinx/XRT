@@ -397,7 +397,7 @@ namespace xdp::aie {
     return startCols;
   }
 
-  std::vector<uint8_t> getPartitionNumColumsClient(void* handle)
+  std::vector<uint8_t> getPartitionNumColumnsClient(void* handle)
   {
     std::vector<uint8_t> numCols;
 

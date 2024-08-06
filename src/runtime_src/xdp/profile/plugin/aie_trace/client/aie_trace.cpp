@@ -225,7 +225,7 @@ namespace xdp {
 
     auto partitionCols = xdp::aie::getPartitionStartColumnsClient(handle);
     uint8_t startCol = partitionCols[0];
-    auto numColsVec = xdp::aie::getPartitionNumColumsClient(handle);
+    auto numColsVec = xdp::aie::getPartitionNumColumnsClient(handle);
     uint8_t numCols = numColsVec[0];
 
     std::vector<uint8_t> maxRowAtCol(startCol + numCols, 0);
