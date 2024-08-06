@@ -8,6 +8,7 @@
 #include "core/common/config.h"
 #include <string>
 #include <iosfwd>
+#include <climits>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -860,6 +861,13 @@ inline unsigned int
 get_aie_trace_settings_start_iteration()
 {
   static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_iteration", 1);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_start_layer()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_layer", UINT_MAX);
   return value;
 }
 

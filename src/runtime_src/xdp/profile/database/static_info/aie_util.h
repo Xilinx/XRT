@@ -97,6 +97,9 @@ namespace xdp::aie {
   XDP_CORE_EXPORT
   std::vector<uint8_t> getPartitionStartColumnsClient(void* handle);
 
+  XDP_CORE_EXPORT
+  std::vector<uint8_t> getPartitionNumColumnsClient(void* handle);
+
 } // namespace xdp::aie
 
 #endif
