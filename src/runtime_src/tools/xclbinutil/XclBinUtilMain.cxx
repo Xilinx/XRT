@@ -141,6 +141,7 @@ int main_(int argc, const char** argv) {
   bool bValidateSignature = false;
   bool bVerbose = false;
   bool bVersion = false;
+  bool fileCheck = false;
   std::string sCertificate;
   std::string sDigestAlgorithm = "sha512";
   std::string sInfoFile;
@@ -191,6 +192,7 @@ int main_(int argc, const char** argv) {
       ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
+      ("file-check", boost::program_options::bool_switch(&fileCheck), "Check for Linux file command utility compliance")
  ;
 
   // hidden options
@@ -584,7 +586,22 @@ int main_(int argc, const char** argv) {
       oInfoFile.close();
     }
   }
+  
+  if(fileCheck){
+    std::string fileCheckText = "";
 
+    if(!xclBin.checkForPlatformVbnv()){
+         fileCheckText += "platformVBNV information";
+    }
+    if(!xclBin.checkForValidSection()){
+      if (!fileCheckText.empty())
+        fileCheckText += " and ";
+      fileCheckText += "at least one section";
+    }
+    if (!fileCheckText.empty()) {
+      throw std::runtime_error("ERROR: The xclbin is missing " + fileCheckText + " required by the 'file' command to identify its file type and display file characteristics");
+    }
+  }
   XUtil::QUIET("Leaving xclbinutil.");
 
   return RC_SUCCESS;
