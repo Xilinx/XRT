@@ -621,9 +621,7 @@ extern "C" {
         uint8_t padding[4];
         uint64_t inference_fingerprint;     // The unique hash value of the inference function
         uint64_t pre_post_fingerprint;      // The unique hash value of pre post 
-        // 88
         struct aie_partition_info info;     // Partition information
-        // 8
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         //   kernel_commit_id is modeled after mpo_name
         //     This variable represents a zero terminated string
@@ -632,8 +630,6 @@ extern "C" {
         //     The pointer to access the string is initialized as follows:
         //     char * pCharString = (address_of_section) + (mpo value)
         uint32_t kernel_commit_id;          //  
-        // uint8_t reserved[56];            // Reserved
-        // 56 - 4 = 52
         uint8_t reserved[52];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 184 bytes in size");
