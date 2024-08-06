@@ -243,9 +243,6 @@ struct patcher
   XRT_CORE_UNUSED void
   dump_bo(xrt::bo& bo, const std::string& filename)
   {
-    if (!xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature))
-      return;
-
     std::ofstream ofs(filename, std::ios::out | std::ios::binary);
     if (!ofs.is_open())
       throw std::runtime_error("Failure opening file " + filename + " for writing!");
@@ -1019,22 +1016,26 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_bo_with_data(m_instr_bo, data);
 
-#ifdef _DEBUG
-    dump_bo(m_instr_bo, "instrBo.bin");
-#endif
+    if (m_hwctx.get_device().is_dump_control_codes())
+      dump_bo(m_instr_bo, "ctl_codes_pre_patch.bin");
 
     const auto& preempt_save_data = parent->get_preempt_save();
     auto preempt_save_data_size = preempt_save_data.size();
-    if (preempt_save_data_size > 0) {
-      m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
-      fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
-    }
 
     const auto& preempt_restore_data = parent->get_preempt_restore();
     auto preempt_restore_data_size = preempt_restore_data.size();
-    if (preempt_restore_data_size > 0) {
+
+    if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
+      m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+      fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
+
       m_preempt_restore_bo = xrt::bo{ m_hwctx, preempt_restore_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
       fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
+
+      if (m_hwctx.get_device().is_dump_preemption_codes()) {
+        dump_bo(m_preempt_save_bo, "preemption_save_pre_patch.bin");
+        dump_bo(m_preempt_restore_bo, "preemption_restore_pre_patch.bin");
+      }
     }
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
@@ -1068,9 +1069,8 @@ class module_sram : public module_impl
       // copy instruction into bo
       fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
 
-#ifdef _DEBUG
-      dump_bo(m_ctrlpkt_bo, "ctrlpktBo.bin");
-#endif
+      if (m_hwctx.get_device().is_dump_control_packet())
+          dump_bo(m_ctrlpkt_bo, "ctrl_packet_pre_patch.bin");
 
       XRT_DEBUGF("<- module_sram::create_ctrlpkt_buffer()\n");
     }
@@ -1175,21 +1175,26 @@ class module_sram : public module_impl
     }
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-#ifdef _DEBUG
-      dump_bo(m_instr_bo, "instrBoPatched.bin");
-#endif
+
+      if (m_hwctx.get_device().is_dump_control_codes())
+        dump_bo(m_instr_bo, "ctrl_codes_post_patch.bin");
+
       if (m_ctrlpkt_bo) {
         m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-#ifdef _DEBUG
-        dump_bo(m_ctrlpkt_bo, "ctrlpktBoPatched.bin");
-#endif
-        }
 
-      if (m_preempt_save_bo)
+        if (m_hwctx.get_device().is_dump_control_packet())
+          dump_bo(m_ctrlpkt_bo, "ctrl_packet_post_patch.bin");
+      }
+
+      if (m_preempt_save_bo && m_preempt_restore_bo) {
         m_preempt_save_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
-      if (m_preempt_restore_bo)
         m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+        if (m_hwctx.get_device().is_dump_preemption_codes()) {
+          dump_bo(m_preempt_save_bo, "preemption_save_post_patch.bin");
+          dump_bo(m_preempt_restore_bo, "preemption_restore_post_patch.bin");
+        }
+      }
     }
 
     m_dirty = false;

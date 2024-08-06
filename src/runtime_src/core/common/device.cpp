@@ -40,6 +40,10 @@ device(id_type device_id)
   : m_device_id(device_id)
 {
   XRT_DEBUGF("xrt_core::device::device(0x%x) idx(%d)\n", this, device_id);
+  m_debug_mode.all = 0;
+  m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
+  m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
+  m_debug_mode.debug_flags.dump_preemption_codes = xrt_core::config::get_feature_toggle("Debug.dump_preemption_codes");
 }
 
 device::

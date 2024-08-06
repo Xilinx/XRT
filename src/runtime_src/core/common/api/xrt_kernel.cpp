@@ -1957,12 +1957,12 @@ class run_impl
     switch (kernel->get_kernel_type()) {
     case kernel_type::pl :
       if (kernel->get_ip_control_protocol() == control_type::fa)
-        return std::make_unique<fa_arg_setter>(data);
-      return std::make_unique<hs_arg_setter>(data);
+        return std::make_unique<fa_arg_setter>(m_data);
+      return std::make_unique<hs_arg_setter>(m_data);
     case kernel_type::ps :
-      return std::make_unique<ps_arg_setter>(data);
+      return std::make_unique<ps_arg_setter>(m_data);
     case kernel_type::dpu :
-      return std::make_unique<hs_arg_setter>(data);
+      return std::make_unique<hs_arg_setter>(m_data);
     case kernel_type::none :
       throw std::runtime_error("Internal error: unknown kernel type");
     }
@@ -2037,7 +2037,7 @@ class run_impl
     pkt->header = rhs_pkt->header;
     pkt->state = ERT_CMD_STATE_NEW;
     std::copy_n(rhs_pkt->data, rhs_pkt->count, pkt->data);
-    return pkt->data + (rhs->data - rhs_pkt->data);
+    return pkt->data + (rhs->m_data - rhs_pkt->data);
   }
 
   // For DPU kernels, initialize the instruction buffer(s) in the
@@ -2080,7 +2080,7 @@ class run_impl
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
-  uint32_t* data;                         // command argument data payload @0x0
+  uint32_t* m_data;                       // command argument data payload @0x0
   uint32_t m_header;                      // cached intialized command header
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
@@ -2131,7 +2131,7 @@ public:
     , cumask(kernel->get_cumask())
     , core_device(kernel->get_core_device())
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
-    , data(initialize_command(cmd.get()))
+    , m_data(initialize_command(cmd.get()))
     , m_header(0)
     , uid(create_uid())
   {
@@ -2149,7 +2149,7 @@ public:
     , cumask(rhs->cumask)
     , core_device(rhs->core_device)
     , cmd(std::make_shared<kernel_command>(kernel->get_device(), m_hwqueue, kernel->get_hw_context()))
-    , data(clone_command_data(rhs))
+    , m_data(clone_command_data(rhs))
     , m_header(rhs->m_header)
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
@@ -2385,6 +2385,10 @@ public:
     // constructing args in place
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
+
+    if (core_device->no_exec_cmd_buf())
+      return;
+
     cmd->run();
   }
 
@@ -2465,6 +2469,9 @@ public:
   [[nodiscard]] ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
+    if (core_device->no_exec_cmd_buf())
+      return ERT_CMD_STATE_COMPLETED;
+
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
@@ -2490,6 +2497,9 @@ public:
   [[nodiscard]] std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
+    if (core_device->no_exec_cmd_buf())
+      return std::cv_status::no_timeout;
+
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
@@ -2764,7 +2774,7 @@ public:
       if (kernel->get_ip_control_protocol() == control_type::fa)
         throw xrt_core::error("Mailbox not supported with FAST_ADAPTER");
 
-      return std::make_unique<hs_arg_setter>(data, this); // data is run_impl::data
+      return std::make_unique<hs_arg_setter>(m_data, this); // data is run_impl::data
     }
 
     throw xrt_core::error("Mailbox not supported for non pl kernel types");
@@ -3706,6 +3716,7 @@ run::
 wait2(const std::chrono::milliseconds& timeout_ms) const
 {
   XRT_TRACE_POINT_SCOPE(xrt_run_wait2);
+ // if (core_device
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
       return handle->wait_throw_on_error(timeout_ms);

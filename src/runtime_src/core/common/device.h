@@ -201,6 +201,27 @@ public:
   lookup_query(query::key_type query_key) const = 0;
 
 public:
+
+  bool
+  inline no_exec_cmd_buf() const {
+    return m_debug_mode.all != 0;
+  }
+
+  bool
+  inline is_dump_control_codes() const {
+    return m_debug_mode.debug_flags.dump_control_codes != 0;
+  }
+
+  bool
+  inline is_dump_control_packet() const {
+    return m_debug_mode.debug_flags.dump_control_packet != 0;
+  }
+
+  bool
+  inline is_dump_preemption_codes() {
+    return m_debug_mode.debug_flags.dump_preemption_codes != 0;
+  }
+
   /**
    * query() - Query the device for specific property
    *
@@ -485,6 +506,15 @@ public:
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
   mutable std::mutex m_mutex;
   std::shared_ptr<usage_metrics::base_logger> m_usage_logger = usage_metrics::get_usage_metrics_logger();
+  union debug_flag_union {
+    struct debug_mode_struct {
+      uint32_t dump_control_codes     : 1;
+      uint32_t dump_control_packet    : 1;
+      uint32_t dump_preemption_codes  : 1;
+      uint32_t reserved : 29;
+    } debug_flags;
+    uint32_t all;
+  }m_debug_mode;
 };
 
 /**
