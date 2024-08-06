@@ -4,6 +4,12 @@
 add_subdirectory(api)
 add_subdirectory(xdp)
 
+if(CMAKE_VERSION VERSION_LESS "3.18.0")
+  message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
+else()
+  add_subdirectory(aiebu)
+endif()
+
 add_library(core_common_library_objects OBJECT
   config_reader.cpp
   debug.cpp
