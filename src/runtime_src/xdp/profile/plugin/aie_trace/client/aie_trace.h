@@ -45,6 +45,8 @@ namespace xdp {
                         const std::string metricSet, uint8_t channel, 
                         std::vector<XAie_Events>& events);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
+      bool configureWindowedEventTrace(void* handle);
+      void build2ChannelBroadcastNetwork(void *handle, uint8_t broadcastId1, uint8_t broadcastId2, XAie_Events event);
       module_type getTileType(uint8_t row);
       uint16_t getRelativeRow(uint16_t absRow);
       uint32_t bcIdToEvent(int bcId);

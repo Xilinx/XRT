@@ -4,6 +4,7 @@
 #define XRT_CORE_FENCE_HANDLE_H
 
 #include "core/common/shim/shared_handle.h"
+#include "core/common/error.h"
 
 #include "experimental/xrt_fence.h"
 
@@ -46,6 +47,13 @@ public:
   // This is a blocking call
   virtual void
   wait(uint32_t timeout_ms) const = 0;
+
+  // Signal a fence from host side
+  virtual void
+  signal() const
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
 
   // Return the next state of the fence.  The next state is the value
   // that will be used when the fence is signaled or waited on.  The

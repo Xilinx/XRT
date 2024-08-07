@@ -36,9 +36,9 @@ if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
-# Use GCC 9 on CentOS 8 and RHEL 8 for std::filesystem
+# Use GCC 9 on CentOS 8, RHEL 8, AlmaLinux 8 for std::filesystem
 # The dependency is installed by xrtdeps.sh
-if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" ]] && [[ $MAJOR == 8 ]]; then
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" || $OSDIST == "almalinux" ]] && [[ $MAJOR == 8 ]]; then
     source /opt/rh/gcc-toolset-9/enable
 fi
 
