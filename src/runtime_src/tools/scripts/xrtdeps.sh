@@ -624,6 +624,16 @@ prep_sles()
     fi
 }
 
+prep_alma8()
+{
+    echo "Enabling EPEL repository..."
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+    yum check-update
+
+    echo "Enabling PowerTools repo for AlmaLinux8..."
+    dnf config-manager --set-enabled powertools
+}
+
 prep_alma9()
 {
     echo "Enabling EPEL repository..."
@@ -638,6 +648,8 @@ prep_alma()
 {
     if [ $MAJOR -ge 9 ]; then
         prep_alma9
+    elif [ $MAJOR == 8 ]; then
+        prep_alma8
     fi
 }
 
@@ -735,7 +747,7 @@ install()
         fi
     fi
 
-    if [[ $FLAVOR == "centos" || $FLAVOR == "rhel" ]] && [ $MAJOR -eq "8" ]; then
+    if [[ $FLAVOR == "centos" || $FLAVOR == "rhel" || $FLAVOR == "almalinux" ]] && [ $MAJOR -eq "8" ]; then
         yum install -y gcc-toolset-9-toolchain
     fi
 
