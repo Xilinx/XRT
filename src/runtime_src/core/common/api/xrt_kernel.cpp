@@ -2386,9 +2386,6 @@ public:
     // sending state as ERT_CMD_STATE_NEW for kernel start
     m_usage_logger->log_kernel_run_info(kernel.get(), this, ERT_CMD_STATE_NEW);
 
-    if (core_device->no_exec_cmd_buf())
-      return;
-
     cmd->run();
   }
 
@@ -2469,9 +2466,6 @@ public:
   [[nodiscard]] ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-    if (core_device->no_exec_cmd_buf())
-      return ERT_CMD_STATE_COMPLETED;
-
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
@@ -2497,9 +2491,6 @@ public:
   [[nodiscard]] std::cv_status
   wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
-    if (core_device->no_exec_cmd_buf())
-      return std::cv_status::no_timeout;
-
     ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);

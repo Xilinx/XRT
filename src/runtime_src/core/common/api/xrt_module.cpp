@@ -43,8 +43,6 @@ static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
-// When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
-static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 static const char* Control_Packet_Symbol = "control-packet";
 

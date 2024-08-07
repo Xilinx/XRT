@@ -203,11 +203,6 @@ public:
 public:
 
   bool
-  inline no_exec_cmd_buf() const {
-    return m_debug_mode.all != 0;
-  }
-
-  bool
   inline is_dump_control_codes() const {
     return m_debug_mode.debug_flags.dump_control_codes != 0;
   }
