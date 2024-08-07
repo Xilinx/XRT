@@ -75,11 +75,33 @@ public:
     shim* m_shim;
     xclBufferHandle m_hdl;
 
+#ifdef XRT_ENABLE_AIE    
+    zynqaie::Aie* m_aie_array{nullptr};
+#endif    
+
   public:
-    buffer_object(shim* shim, xclBufferHandle hdl)
-      : m_shim(shim)
-      , m_hdl(hdl)
-    {}
+    buffer_object(shim* shim, xclBufferHandle hdl, xrt_core::hwctx_handle* hwctx_hdl = nullptr)
+      : m_shim{shim}
+      , m_hdl{hdl}
+    {
+#ifdef XRT_ENABLE_AIE       
+      if (nullptr != hwctx_hdl) { // hwctx specific
+        auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
+        if (nullptr != hwctx_obj) {
+          if (!hwctx_obj->is_aie_registered())
+            throw xrt_core::error(-EINVAL, "No AIE presented");
+          m_aie_array = hwctx_obj->get_aie_array_from_hwctx();
+        }
+      }
+      else {
+        auto device = xrt_core::get_userpf_device(m_shim);
+        auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+        if (!drv->isAieRegistered())
+          throw xrt_core::error(-EINVAL, "No AIE presented");
+        m_aie_array = drv->getAieArray();
+      }
+#endif
+    }
 
     ~buffer_object()
     {
@@ -152,6 +174,43 @@ public:
     {
       return m_hdl;
     }
+
+    void
+    sync_aie_bo(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override
+    {
+#ifdef XRT_ENABLE_AIE       
+      if (!m_aie_array->is_context_set()) {
+        auto device = xrt_core::get_userpf_device(m_shim);
+        m_aie_array->open_context(device.get(), xrt::aie::access_mode::primary);
+      }
+
+      auto bosize = bo.size();
+
+      if (offset + size > bosize)
+        throw xrt_core::error(-EINVAL, "Sync AIE BO fails: exceed BO boundary.");
+
+      m_aie_array->sync_bo(bo, gmioName, dir, size, offset);
+#endif      
+    }
+
+    void
+    sync_aie_bo_nb(xrt::bo& bo, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) override
+    {
+#ifdef XRT_ENABLE_AIE       
+      if (!m_aie_array->is_context_set()) {
+        auto device = xrt_core::get_userpf_device(m_shim);
+        m_aie_array->open_context(device.get(), xrt::aie::access_mode::primary);
+      }
+
+      auto bosize = bo.size();
+
+      if (offset + size > bosize)
+        throw xrt_core::error(-EINVAL, "Sync AIE NBO fails: exceed BO boundary.");
+
+      m_aie_array->sync_bo_nb(bo, gmioName, dir, size, offset);
+#endif      
+    }
+
   }; // buffer_object
 
   ~shim();
@@ -170,10 +229,10 @@ public:
   int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
   std::unique_ptr<xrt_core::buffer_handle>
-  xclAllocBO(size_t size, unsigned flags);
+  xclAllocBO(size_t size, unsigned flags, xrt_core::hwctx_handle* hwctx_hdl = nullptr);
 
   std::unique_ptr<xrt_core::buffer_handle>
-  xclAllocUserPtrBO(void *userptr, size_t size, unsigned int flags);
+  xclAllocUserPtrBO(void *userptr, size_t size, unsigned int flags, xrt_core::hwctx_handle* hwctx_hdl = nullptr);
 
   std::unique_ptr<xrt_core::shared_handle>
   xclExportBO(unsigned int boHandle);

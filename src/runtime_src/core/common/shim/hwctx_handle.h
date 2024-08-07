@@ -8,6 +8,7 @@
 #include "core/common/shim/hwqueue_handle.h"
 #include "core/common/shim/shared_handle.h"
 #include "core/common/shim/graph_handle.h"
+#include "profile_handle.h"
 
 #include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_graph.h"
@@ -96,6 +97,12 @@ public:
 
   virtual std::unique_ptr<xrt_core::graph_handle>
   open_graph_handle(const char*, xrt::graph::access_mode)
+  {
+    throw xrt_core::error(std::errc::not_supported, __func__);
+  }
+
+  virtual std::unique_ptr<xrt_core::profile_handle>
+  open_profile_handle()
   {
     throw xrt_core::error(std::errc::not_supported, __func__);
   }
