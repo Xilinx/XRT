@@ -17,6 +17,7 @@ namespace XBU = XBUtilities;
 #include <boost/property_tree/json_parser.hpp>
 
 // System - Include Files
+#include <fstream>
 #include <iostream>
 #include <regex>
 #include <thread>
@@ -359,6 +360,45 @@ TestRunner::validate_binary_file(const std::string& binaryfile)
     return EXIT_SUCCESS;
 }
 
+// Copy values from text files into buff, expecting values are ascii encoded hex
+void 
+TestRunner::init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file) {
+  std::ifstream dpu_stream(dpu_file);
+  if (!dpu_stream.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % dpu_file));
+  }
+
+  auto instr = bo_instr.map<int*>();
+  std::string line;
+  while (std::getline(dpu_stream, line)) {
+    if (line.at(0) == '#') {
+      continue;
+    }
+    std::stringstream ss(line);
+    unsigned int word = 0;
+    ss >> std::hex >> word;
+    *(instr++) = word;
+  }
+}
+
+size_t 
+TestRunner::get_instr_size(const std::string& dpu_file) {
+  std::ifstream file(dpu_file);
+  if (!file.is_open()) {
+    throw std::runtime_error(boost::str(boost::format("Failed to open %s for reading") % dpu_file));
+  }
+  size_t size = 0;
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.at(0) != '#') {
+      size++;
+    }
+  }
+  if (size == 0) {
+    throw std::runtime_error("Invalid DPU instruction length");
+  }
+  return size;
+}
 bool
 TestRunner::search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::property_tree::ptree& ptTest)
 {
