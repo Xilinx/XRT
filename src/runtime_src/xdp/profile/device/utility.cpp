@@ -52,7 +52,7 @@ namespace xdp { namespace util {
     } catch (const std::exception &) {
       xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", "Failed to retrieve Debug IP Layout path");
     }
-    if (getFlowMode()==HW_EMU) {
+    if (getFlowMode()==HW_EMU && !isEdge()) {
       if (path!="") {
         // Full paths to the hardware emulation debug_ip_layout for different
         //  xclbins on the same device are different.  On disk, they are laid
