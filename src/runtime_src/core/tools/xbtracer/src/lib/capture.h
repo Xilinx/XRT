@@ -22,3 +22,13 @@ class xrt_ftbl
 };
 
 } // namespace xrt::tools::xbtracer
+
+#ifdef _WIN32
+#ifdef __cplusplus
+extern "C" {
+#endif
+  __declspec(dllexport) void idt_fixup( void *dummy );
+#ifdef __cplusplus
+}
+#endif
+#endif /* #ifdef _WIN32 */
