@@ -33,9 +33,10 @@ def main():
 
   step = "1) Use the file check on a valid xclbin that has platformVBNV information and atleast one section"
 
-  inputXCLBIN = os.path.join(args.resource_dir, "valid.xclbin")
+  inputJSON = os.path.join(args.resource_dir, "debug_ip_layout.rtd")
+  outputXCLBIN = "output.xclbin"
 
-  cmd = [xclbinutil, "--file-check", "-i", inputXCLBIN]
+  cmd = [xclbinutil, "--file-check", "--add-section", "DEBUG_IP_LAYOUT:JSON:" + inputJSON, "--key-value", "SYS:PlatformVBNV:xilinx.com_xd_xilinx_vck190_base_202410_1_202410_1", "--output", outputXCLBIN, "--force"]
   execCmd(step, cmd)
 
   
