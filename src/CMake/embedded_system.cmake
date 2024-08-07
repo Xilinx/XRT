@@ -41,48 +41,14 @@ endif(GIT_FOUND)
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
-# Support building XRT with local build of Boost libraries. In
-# particular the script runtime_src/tools/script/boost.sh downloads
-# and builds static Boost libraries compiled with fPIC so that they
-# can be used to resolve symbols in XRT dynamic libraries.
-if (DEFINED ENV{XRT_BOOST_INSTALL})
-  set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
-  set(Boost_USE_STATIC_LIBS ON)
-  find_package(Boost
-    HINTS $ENV{XRT_BOOST_INSTALL}
-    REQUIRED COMPONENTS system filesystem program_options)
-
-  # A bug in FindBoost maybe?  Doesn't set Boost_LIBRARY_DIRS when
-  # Boost install has only static libraries. For static tool linking
-  # this variable is needed in order for linker to locate the static
-  # libraries.  Another bug in FindBoost fails to find static
-  # libraries when shared ones are present too.
-  if (Boost_FOUND AND "${Boost_LIBRARY_DIRS}" STREQUAL "")
-    set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
-  endif()
-
-else()
-  find_package(Boost
-    REQUIRED COMPONENTS system filesystem program_options)
-endif()
-set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-
-# Some later versions of boost spews warnings form property_tree
-# Default embedded boost is 1.74.0 which does spew warnings so
-# making this defined global
-add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
-
-# Boost_VERSION_STRING is not working properly, use our own macro
-set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
+# --- Boost Libraries ---
+include (CMake/boostUtil.cmake)
 
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
-set (XRT_INSTALL_DIR           "/usr")
-set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
-set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
-set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include/xrt")
-set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
+# --- XRT Variables ---
+include (CMake/xrtVariables.cmake)
 
 #Setting RPATH variable for cross compilation
 if (DEFINED CROSS_COMPILE)
