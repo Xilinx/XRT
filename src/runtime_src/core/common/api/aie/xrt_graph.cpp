@@ -22,6 +22,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/shim/graph_handle.h"
+#include "core/common/shim/profile_handle.h"
 
 #include <limits>
 #include <memory>
@@ -124,27 +125,24 @@ namespace xrt::aie {
 class profiling_impl
 {
 private:
-  std::shared_ptr<xrt_core::device> device;
-  int profiling_hdl;
+  std::unique_ptr<xrt_core::profile_handle> m_profile_handle{nullptr};
 
 public:
-  using handle = int;
-  static constexpr handle invalid_handle = -1;
+  static constexpr int invalid_handle = -1;
 
-  explicit profiling_impl(std::shared_ptr<xrt_core::device> dev)
-    : device(std::move(dev)),
-      profiling_hdl(invalid_handle)
+  profiling_impl(std::shared_ptr<xrt_core::device> device)
+    : m_profile_handle{device->open_profile_handle()}
   {}
+
+  profiling_impl(const xrt::hw_context& hwctx)
+  {
+    auto hwctx_handle = static_cast<xrt_core::hwctx_handle*>(hwctx);
+    m_profile_handle = hwctx_handle->open_profile_handle();
+  }
 
   ~profiling_impl()
   {
-    try {
-      if (profiling_hdl != invalid_handle)
-        device->stop_profiling(profiling_hdl);
-    }
-    catch(...) {
-      // do nothing
-    }
+    stop();
   }
 
   profiling_impl() = delete;
@@ -152,35 +150,24 @@ public:
   profiling_impl(profiling_impl&&) = delete;
   profiling_impl& operator=(const profiling_impl&) = delete;
   profiling_impl& operator=(profiling_impl&&) = delete;
-  
 
-  handle
-  start_profiling(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
+  int
+  start(int option, const std::string& port1_name, const std::string& port2_name, uint32_t value)
   {
-    profiling_hdl = device->start_profiling(option, port1_name.c_str(), port2_name.c_str(), value);
-    return profiling_hdl;
+    return m_profile_handle->start(option, port1_name.c_str(), port2_name.c_str(), value);
   }
 
   uint64_t
-  read_profiling()
+  read()
   {
-    if (profiling_hdl == invalid_handle)
-      throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
-
-    return device->read_profiling(profiling_hdl);
-
+    return m_profile_handle->read();
   }
 
   void
-  stop_profiling()
+  stop()
   {
-    if (profiling_hdl == invalid_handle)
-      throw xrt_core::error(-EINVAL, "Not a valid profiling handle");
-
-    device->stop_profiling(profiling_hdl);
-    profiling_hdl = invalid_handle;
+    return m_profile_handle->stop();
   }
-
 };
 
 } // xrt::aie
@@ -399,13 +386,18 @@ profiling(const xrt::device& device)
   : detail::pimpl<profiling_impl>(create_profiling_event(device))
 {}
 
+profiling::
+profiling(const xrt::hw_context& hwctx)
+  : detail::pimpl<profiling_impl>(std::make_shared<xrt::aie::profiling_impl>(hwctx))
+{}
+
 int
 profiling::
 start(xrt::aie::profiling::profiling_option option, const std::string& port1_name, const std::string& port2_name, uint32_t value) const
 {
   int opt = static_cast<int>(option);
   return xdp::native::profiling_wrapper("xrt::aie::profiling::start", [this, opt, &port1_name, &port2_name, value] {
-    return get_handle()->start_profiling(opt, port1_name, port2_name, value);
+    return get_handle()->start(opt, port1_name, port2_name, value);
   });
 }
 
@@ -414,7 +406,7 @@ profiling::
 read() const
 {
   return xdp::native::profiling_wrapper("xrt::aie::profiling::read", [this] {
-    return get_handle()->read_profiling();
+    return get_handle()->read();
   });
 }
 
@@ -423,7 +415,7 @@ profiling::
 stop() const
 {
   xdp::native::profiling_wrapper("xrt::aie::profiling::stop", [this] {
-    return get_handle()->stop_profiling();
+    return get_handle()->stop();
   });
 }
 
@@ -868,7 +860,7 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
       throw xrt_core::error(-EINVAL, "Not a valid profiling option");
     const std::string port1 = port1Name ? port1Name : "";
     const std::string port2 = port2Name ? port2Name : "";
-    auto hdl = event->start_profiling(option, port1, port2, value);
+    auto hdl = event->start(option, port1, port2, value);
     if (hdl != xrt::aie::profiling_impl::invalid_handle) {
       profiling_cache[hdl] = event;
       return hdl;
@@ -901,7 +893,7 @@ xrtAIEReadProfiling(xrtDeviceHandle /*handle*/, int pHandle)
   try {
     auto it = profiling_cache.find(pHandle);
     if (it != profiling_cache.end())
-      return it->second->read_profiling();
+      return it->second->read();
     else
       throw xrt_core::error(-EINVAL, "No such profiling handle");
   }
@@ -931,7 +923,7 @@ xrtAIEStopProfiling(xrtDeviceHandle /*handle*/, int pHandle)
   try {
     auto it = profiling_cache.find(pHandle);
     if (it != profiling_cache.end()) {
-      it->second->stop_profiling();
+      it->second->stop();
       profiling_cache.erase(pHandle);
     }
     else

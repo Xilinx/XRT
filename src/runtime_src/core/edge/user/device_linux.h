@@ -11,6 +11,7 @@
 #include "core/common/shim/shared_handle.h"
 #include "core/edge/common/device_edge.h"
 #include "core/common/shim/graph_handle.h"
+#include "core/common/shim/profile_handle.h"
 
 namespace xrt_core {
 
@@ -38,6 +39,9 @@ public:
 
   std::unique_ptr<xrt_core::graph_handle>
   open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::access_mode am) override;
+
+  std::unique_ptr<xrt_core::profile_handle>
+  open_profile_handle() override;
 
   void
   get_device_info(xclDeviceInfo2 *info) override;
