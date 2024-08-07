@@ -303,6 +303,48 @@ namespace xrt::core::hip
     mem_pool_cache.remove(mem_pool);
   }
 
+  static device*
+  get_device_by_id(int device_id)
+  {
+    for (auto& item : device_cache.get_map())
+    {
+      if (item.second->get_device_id() == static_cast<uint32_t>(device_id))
+        return item.second.get();
+    }
+    return nullptr;
+  }
+
+  // Returns the default memory pool of the specified device.
+  static void
+  hip_device_get_default_mempool(hipMemPool_t* mem_pool, int device)
+  {
+    assert(get_device_by_id(device));
+    assert(mem_pool);
+
+    auto default_mem_pool = memory_pool_db[device].front();
+    *mem_pool = get_mem_pool_handle(default_mem_pool);
+  }
+
+  // Gets the current memory pool for the specified device.
+  static void
+  hip_device_get_mempool(hipMemPool_t* mem_pool, int device)
+  {
+    assert(get_device_by_id(device));
+    assert(mem_pool);
+
+    auto curr_mem_pool = current_memory_pool_db[device];
+    *mem_pool = get_mem_pool_handle(curr_mem_pool);
+  }
+
+  static void
+  hip_device_set_mempool(int 	device, hipMemPool_t mem_pool)
+  {
+    assert(get_device_by_id(device));
+    assert(mem_pool);
+
+    current_memory_pool_db[device] = get_mem_pool(mem_pool);
+  }
+
   static void
   hip_malloc_async(void** dev_ptr, size_t size, hipStream_t stream)
   {
@@ -311,8 +353,8 @@ namespace xrt::core::hip
 
     auto dev = hip_stream->get_device();
     // each device has a default pool in the front
-    auto mem_pool = memory_pool_db[dev->get_device_id()].front();
-    throw_invalid_value_if(!mem_pool, "Invalid memory pool.");
+    auto curr_mem_pool = current_memory_pool_db[dev->get_device_id()];
+    throw_invalid_value_if(!curr_mem_pool, "Invalid memory pool.");
 
     auto h = memory_database::instance().insert_sub_mem(std::make_shared<sub_memory>(size));
     *dev_ptr = reinterpret_cast<void*>(h);
@@ -320,7 +362,7 @@ namespace xrt::core::hip
     // ptr to a xrt::core::hip::command object could be shared between global command_cache and stream::m_top_event::m_chain_of_commands of a stream object
     auto s_hdl = hip_stream.get();
     auto cmd_hdl = insert_in_map(command_cache,
-      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, mem_pool, *dev_ptr, size));
+      std::make_shared<memory_pool_command>(hip_stream, memory_pool_command::memory_pool_command_type::alloc, curr_mem_pool, *dev_ptr, size));
     s_hdl->enqueue(command_cache.get(cmd_hdl));
   }
 
@@ -585,4 +627,25 @@ hipError_t
 hipMallocFromPoolAsync(void** dev_ptr, size_t size, hipMemPool_t mem_pool, hipStream_t stream)
 {
   return handle_hip_memory_error([&] { xrt::core::hip::hip_malloc_from_pool_async(dev_ptr, size, mem_pool, stream); });
+}
+
+// Returns the default memory pool of the specified device.
+hipError_t
+hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_device_get_default_mempool(mem_pool, device); });
+}
+
+// Gets the current memory pool for the specified device.
+hipError_t
+hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_device_get_mempool(mem_pool, device); });
+}
+
+// Sets the current memory pool of a device.
+hipError_t
+hipDeviceSetMemPool(int device, hipMemPool_t mem_pool)
+{
+  return handle_hip_memory_error([&] { xrt::core::hip::hip_device_set_mempool(device, mem_pool); });
 }

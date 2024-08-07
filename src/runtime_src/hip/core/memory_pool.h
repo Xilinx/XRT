@@ -166,10 +166,14 @@ namespace xrt::core::hip
   // default mem pool and user mem pool both need to be looked up by device id.
   // Global map of memory_pool associated with device id.
   extern std::map<int, std::list<std::shared_ptr<memory_pool>>> memory_pool_db;
+  extern std::map<int, std::shared_ptr<memory_pool>> current_memory_pool_db;
   extern xrt_core::handle_map<mem_pool_handle, std::shared_ptr<memory_pool>> mem_pool_cache;
 
   std::shared_ptr<memory_pool>
   get_mem_pool(hipMemPool_t mem_pool);
+
+  hipMemPool_t
+  get_mem_pool_handle(std::shared_ptr<memory_pool> mem_pool);
 
 } // xrt::core::hip
 

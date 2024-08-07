@@ -12,6 +12,7 @@ namespace xrt::core::hip
 {
   // Global map of memory_pool associated with device id.
   std::map<int, std::list<std::shared_ptr<memory_pool>>> memory_pool_db;
+  std::map<int, std::shared_ptr<memory_pool>> current_memory_pool_db;
   
   // Global map of memory_pool associated with its handle.
   xrt_core::handle_map<mem_pool_handle, std::shared_ptr<memory_pool>> mem_pool_cache;
@@ -423,5 +424,19 @@ namespace xrt::core::hip
     throw_invalid_handle_if(!mem_pool, "Invalid mem_pool handle.");
 
     return mem_pool_cache.get(mem_pool);
+  }
+
+  // lookup memory pool handle by memory_pool pointer
+  hipMemPool_t
+  get_mem_pool_handle(std::shared_ptr<memory_pool> mem_pool)
+  {
+    throw_invalid_handle_if(!mem_pool, "Invalid mem_pool handle.");
+
+    for (auto& item : mem_pool_cache.get_map())
+    {
+      if (item.second == mem_pool)
+        return reinterpret_cast<hipMemPool_t>(item.first);
+    }
+    return 0;
   }
 } // namespace xrt::core::hip
