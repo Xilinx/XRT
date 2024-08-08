@@ -137,7 +137,8 @@ synchronize()
   auto dev_id = get_device()->get_device_id();
   for (auto& mem_pool : memory_pool_db[dev_id])
   {
-    mem_pool->purge();
+    if (mem_pool)
+      mem_pool->purge();
   }
 }
 

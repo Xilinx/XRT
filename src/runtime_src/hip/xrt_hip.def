@@ -63,3 +63,6 @@ EXPORTS
   hipMemPrefetchAsync
   hipMallocFromPoolAsync
   hipMemPoolTrimTo
+  hipDeviceGetDefaultMemPool
+  hipDeviceGetMemPool
+  hipDeviceSetMemPool
