@@ -629,7 +629,7 @@ extern "C" {
         //
         //     The pointer to access the string is initialized as follows:
         //     char * pCharString = (address_of_section) + (mpo value)
-        uint32_t kernel_commit_id;          //  
+        uint32_t kernel_commit_id;          // The git repo commit id for DPU_PHX_KERNEL 
         uint8_t reserved[52];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 184 bytes in size");
