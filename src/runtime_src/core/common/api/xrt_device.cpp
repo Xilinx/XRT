@@ -10,7 +10,6 @@
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_aie.h"
 
-#include "core/common/config_reader.h"
 #include "core/common/device.h"
 #include "core/common/info_aie.h"
 #include "core/common/info_memory.h"
@@ -328,24 +327,6 @@ get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
     [this, section, &uuid]{
       return handle->get_axlf_section_or_error(section, uuid);
     });
-}
-
-bool
-device::
-is_dump_control_codes() const {
-  return handle->is_dump_control_codes();
-}
-
-bool
-device::
-is_dump_control_packet() const {
-  return handle->is_dump_control_packet();
-}
-
-bool
-device::
-is_dump_preemption_codes() const {
-  return handle->is_dump_preemption_codes();
 }
 
 // Deprecated but referenced in binaries using xrt-2.11.x and earlier

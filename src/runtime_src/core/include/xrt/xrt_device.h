@@ -385,18 +385,6 @@ public:
   }
 
   XCL_DRIVER_DLLESPEC
-  bool
-  is_dump_control_codes() const;
-
-  XCL_DRIVER_DLLESPEC
-  bool
-  is_dump_control_packet() const;
-
-  XCL_DRIVER_DLLESPEC
-  bool
-  is_dump_preemption_codes() const;
-
-  XCL_DRIVER_DLLESPEC
   void
   reset();
 

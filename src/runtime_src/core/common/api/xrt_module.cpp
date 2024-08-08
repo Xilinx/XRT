@@ -265,7 +265,6 @@ namespace xrt
 class module_impl
 {
   xrt::uuid m_cfg_uuid;   // matching hw configuration id
-
 public:
   explicit module_impl(xrt::uuid cfg_uuid)
     : m_cfg_uuid(std::move(cfg_uuid))
@@ -950,6 +949,36 @@ class module_sram : public module_impl
   // buffer sync to device.
   bool m_dirty{ false };
 
+  union debug_flag_union {
+    struct debug_mode_struct {
+      uint32_t dump_control_codes     : 1;
+      uint32_t dump_control_packet    : 1;
+      uint32_t dump_preemption_codes  : 1;
+      uint32_t reserved : 29;
+    } debug_flags;
+    uint32_t all;
+  }m_debug_mode = {};
+  static uint32_t s_id; //TODO: it needs come from the elf file
+
+  bool
+  inline is_dump_control_codes() const {
+    return m_debug_mode.debug_flags.dump_control_codes != 0;
+  }
+
+  bool
+  inline is_dump_control_packet() const {
+    return m_debug_mode.debug_flags.dump_control_packet != 0;
+  }
+
+  bool
+  inline is_dump_preemption_codes() {
+    return m_debug_mode.debug_flags.dump_preemption_codes != 0;
+  }
+
+  uint32_t get_id() const {
+    return s_id;
+  }
+
   // For separated multi-column control code, compute the ctrlcode
   // buffer object address of each column (used in ert_dpu_data).
   void
@@ -1014,8 +1043,10 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_bo_with_data(m_instr_bo, data);
 
-    if (m_hwctx.get_device().is_dump_control_codes())
-      dump_bo(m_instr_bo, "ctl_codes_pre_patch.bin");
+    if (is_dump_control_codes()) {
+      std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
+      dump_bo(m_instr_bo, dump_file_name);
+    }
 
     const auto& preempt_save_data = parent->get_preempt_save();
     auto preempt_save_data_size = preempt_save_data.size();
@@ -1030,9 +1061,11 @@ class module_sram : public module_impl
       m_preempt_restore_bo = xrt::bo{ m_hwctx, preempt_restore_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
       fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
 
-      if (m_hwctx.get_device().is_dump_preemption_codes()) {
-        dump_bo(m_preempt_save_bo, "preemption_save_pre_patch.bin");
-        dump_bo(m_preempt_restore_bo, "preemption_restore_pre_patch.bin");
+      if (is_dump_preemption_codes()) {
+        std::string dump_file_name = "preemption_save_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_preempt_save_bo, dump_file_name);
+        dump_file_name = "preemption_restore_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_preempt_restore_bo, dump_file_name);
       }
     }
 
@@ -1067,8 +1100,10 @@ class module_sram : public module_impl
       // copy instruction into bo
       fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
 
-      if (m_hwctx.get_device().is_dump_control_packet())
-          dump_bo(m_ctrlpkt_bo, "ctrl_packet_pre_patch.bin");
+      if (is_dump_control_packet()) {
+          std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_ctrlpkt_bo, dump_file_name);
+      }
 
       XRT_DEBUGF("<- module_sram::create_ctrlpkt_buffer()\n");
     }
@@ -1174,23 +1209,29 @@ class module_sram : public module_impl
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-      if (m_hwctx.get_device().is_dump_control_codes())
-        dump_bo(m_instr_bo, "ctrl_codes_post_patch.bin");
+      if (is_dump_control_codes()) {
+        std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_instr_bo, dump_file_name);
+      }
 
       if (m_ctrlpkt_bo) {
         m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-        if (m_hwctx.get_device().is_dump_control_packet())
-          dump_bo(m_ctrlpkt_bo, "ctrl_packet_post_patch.bin");
+        if (is_dump_control_packet()) {
+          std::string dump_file_name = "ctr_packet_post_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_ctrlpkt_bo, dump_file_name);
+        }
       }
 
       if (m_preempt_save_bo && m_preempt_restore_bo) {
         m_preempt_save_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
         m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-        if (m_hwctx.get_device().is_dump_preemption_codes()) {
-          dump_bo(m_preempt_save_bo, "preemption_save_post_patch.bin");
-          dump_bo(m_preempt_restore_bo, "preemption_restore_post_patch.bin");
+        if (is_dump_preemption_codes()) {
+          std::string dump_file_name = "preemption_save_post_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_preempt_save_bo, dump_file_name);
+          dump_file_name = "preemption_restore_post_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_preempt_restore_bo, dump_file_name);
         }
       }
     }
@@ -1251,6 +1292,11 @@ public:
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
   {
+    m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
+    m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
+    m_debug_mode.debug_flags.dump_preemption_codes = xrt_core::config::get_feature_toggle("Debug.dump_preemption_codes");
+    s_id++;
+
     auto os_abi = m_parent.get()->get_os_abi();
 
     if (os_abi == Elf_Amd_Aie2p) {
@@ -1283,6 +1329,7 @@ public:
       return m_scratch_pad_mem;
   }
 };
+uint32_t module_sram::s_id = 0;
 
 } // namespace xrt
 
