@@ -48,7 +48,7 @@ namespace {
     if (path == "")
       return path ;
 
-    if (xdp::getFlowMode() == xdp::HW_EMU) {
+    if (xdp::getFlowMode() == xdp::HW_EMU && !xdp::isEdge()) {
       // Full paths to the hardware emulation debug_ip_layout for different
       //  xclbins on the same device are different.  On disk, they are laid
       //  out as follows:
