@@ -6,6 +6,8 @@ add_subdirectory(xdp)
 
 if(CMAKE_VERSION VERSION_LESS "3.18.0")
   message(WARNING "CMake version is less than 3.18.0, build of submodule aiebu disabled")
+elseif(DEFINED XRT_AIE_BUILD)
+  message(WARNING "Edge Versal device, build of submodule aiebu disabled")
 else()
   add_subdirectory(aiebu)
 endif()
