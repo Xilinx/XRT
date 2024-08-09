@@ -4,6 +4,7 @@
         "operations_per_cycle": "135",
         "inference_fingerprint": "23423",
         "pre_post_fingerprint": "12345",
+        "kernel_commit_id": "0123456789abcdef",
         "partition": {
             "column_width": "1",
             "start_columns": [
