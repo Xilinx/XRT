@@ -8,8 +8,8 @@
 
 namespace xrt::core::hip {
 context::
-context(std::shared_ptr<device> device)
-  : m_device{std::move(device)}
+context(device* device)
+  : m_device{ device }
 {}
 
 // Global map of contexts
@@ -65,7 +65,7 @@ get_null_stream()
   return m_null_stream.lock();
 }
 
-std::shared_ptr<device>
+device*
 get_current_device()
 {
   auto ctx = get_current_context();

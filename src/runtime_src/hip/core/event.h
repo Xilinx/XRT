@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "memory.h"
+#include "memory_pool.h"
 #include "module.h"
 #include "stream.h"
 #include "xrt/xrt_kernel.h"
@@ -38,8 +39,9 @@ public:
   enum class type : uint8_t
   {
     event,
-    buffer_copy,
-    kernel_start
+    kernel_start,
+    mem_cpy,
+    mem_pool_op
   };
 
 protected:
@@ -128,56 +130,80 @@ public:
   bool wait() override;
 };
 
-// copy command for copying data from/to host buffer of type void*
-class copy_buffer : public command
+// memcpy command for hipMemcpyAsync
+class memcpy_command : public command
 {
 public:
-  copy_buffer(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, void* host_buf, size_t size, size_t offset)
-      : command(command::type::buffer_copy, std::move(s)), cdirection(direction), buffer(std::move(buf)), host_buffer(host_buf), copy_size(size), dev_offset(offset)
+  memcpy_command(std::shared_ptr<stream> s, void* dst, const void* src, size_t size, hipMemcpyKind kind)
+    : command(command::type::mem_cpy, std::move(s)), m_dst(dst), m_src(src), m_size(size), m_kind(kind)
   {}
   bool submit() override;
   bool wait() override;
 
 protected:
-  xclBOSyncDirection cdirection; // copy direction
+  void* m_dst; 
+  const void* m_src; 
+  size_t m_size;
+  hipMemcpyKind m_kind;
+  std::future<hipError_t> m_handle;
+};
+
+// copy command for copying data from a source only host buffer of type std::vector<uint8|uint16|uint32>
+template<class T>
+class copy_from_host_buffer_command : public command
+{
+public:
+  copy_from_host_buffer_command(std::shared_ptr<stream> s, std::shared_ptr<memory> buf, std::vector<T>&& vec, size_t size, size_t offset)
+    : command(command::type::mem_cpy, std::move(s)), buffer(std::move(buf)), host_vec(std::move(vec)), copy_size(size), dev_offset(offset)
+  {
+  }
+
+  bool
+  submit() override
+  {
+    handle = std::async(std::launch::async, &memory::write, buffer, host_vec.data(), copy_size, 0, dev_offset);
+    return true;
+  }
+
+  bool
+  wait() override
+  {
+    handle.wait();
+    set_state(state::completed);
+    return true;
+  }
+
+private:
   std::shared_ptr<memory> buffer; // device buffer
-  void* host_buffer; // host buffer copy source/destination
+  std::vector<T> host_vec; // host buffer (source only, not valid as destination)
   size_t copy_size;
   size_t dev_offset; // offset for device memory
   std::future<void> handle;
 };
 
-// copy command for copying data from a source only bost buffer of type std::vector<uint8|uint16|uint32>
-template<class T>
-class copy_from_host_buffer_command : public copy_buffer
+class memory_pool_command : public command
 {
 public:
-  copy_from_host_buffer_command(std::shared_ptr<stream> s, xclBOSyncDirection direction, std::shared_ptr<memory> buf, std::vector<T>&& vec, size_t size, size_t offset)
-    : copy_buffer(s, direction, buf, nullptr, size, offset), host_vec(std::move(vec))
+  enum memory_pool_command_type : int32_t
+  {
+    alloc = 0,
+    free
+  };
+
+  memory_pool_command(std::shared_ptr<stream> s, memory_pool_command_type type, std::shared_ptr<memory_pool> pool, void* ptr, size_t size)
+    : command(command::type::mem_pool_op, std::move(s)), m_type(type), m_mem_pool(std::move(pool)), m_ptr(ptr), m_size(size)
   {
   }
 
-  bool submit() override
-  {
-    switch (cdirection)
-    {
-    case XCL_BO_SYNC_BO_TO_DEVICE:
-      handle = std::async(std::launch::async, &memory::write, buffer, host_vec.data(), copy_size, 0, dev_offset);
-      break;
-
-    case XCL_BO_SYNC_BO_FROM_DEVICE:
-      throw std::runtime_error("host_buffer is an invalid destination");
-      break;
-
-    default:
-      break;
-    };
-
-    return true;
-  }
+  bool submit() override;
+  bool wait() override;
 
 private:
-  std::vector<T> host_vec; // host buffer (source only, not valid as destination)
+  memory_pool_command_type m_type;
+  std::shared_ptr<memory_pool> m_mem_pool;
+  void* m_ptr;
+  size_t m_size;
+  std::future<void> m_handle;
 };
 
 // Global map of commands

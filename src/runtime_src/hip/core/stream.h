@@ -41,6 +41,12 @@ public:
     return m_flags;
   }
 
+  inline device*
+  get_device() const
+  {
+    return m_ctx->get_device();
+  }
+
   void
   enqueue(std::shared_ptr<command> cmd);
 

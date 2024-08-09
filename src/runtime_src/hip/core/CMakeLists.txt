@@ -8,6 +8,7 @@ add_library(hip_core_library_objects OBJECT
   module.cpp
   stream.cpp
   error.cpp
+  memory_pool.cpp
 )
 
 target_include_directories(hip_core_library_objects

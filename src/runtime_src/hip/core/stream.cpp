@@ -132,6 +132,14 @@ synchronize()
 
   // complete commands in this stream
   await_completion();
+
+  // stream synchronization requires mem pools associated with its device to release all unused memory back to the system. 
+  auto dev_id = get_device()->get_device_id();
+  for (auto& mem_pool : memory_pool_db[dev_id])
+  {
+    if (mem_pool)
+      mem_pool->purge();
+  }
 }
 
 void
@@ -159,6 +167,5 @@ get_stream(hipStream_t stream)
 }
 
 // Global map of streams
-//we should override clang-tidy warning by adding NOLINT since stream_cache is non-const parameter
-xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache; //NOLINT
+xrt_core::handle_map<stream_handle, std::shared_ptr<stream>> stream_cache;
 }
