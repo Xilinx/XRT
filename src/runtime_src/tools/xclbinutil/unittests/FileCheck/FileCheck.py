@@ -31,7 +31,7 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Create a valid xclbin that has platformVBNV information and atleast one section"
+  step = "1) Create a valid xclbin that has platformVBNV information and at least one section"
 
   inputJSON = os.path.join(args.resource_dir, "debug_ip_layout.rtd")
   outputXCLBIN = "valid.xclbin"
@@ -60,7 +60,7 @@ def main():
 
   step = "4) Run file-check option on the invalid xclbin and validate the error message"
 
-  expectedMsg = "ERROR: The xclbin is missing atleast one section required by the 'file' command to identify its file type and display file characteristics.\n"
+  expectedMsg = "ERROR: The xclbin is missing at least one section required by the 'file' command to identify its file type and display file characteristics.\n"
 
   cmd = [xclbinutil, "--file-check", "-i", outputXCLBIN]
   compErrorMsg(step, cmd, expectedMsg)

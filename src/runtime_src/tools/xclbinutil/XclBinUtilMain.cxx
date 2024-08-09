@@ -587,15 +587,15 @@ int main_(int argc, const char** argv) {
     }
   }
   
-  if (fileCheck){
+  if (fileCheck) {
     if (!xclBin.checkForValidSection() && !xclBin.checkForPlatformVbnv())
-      throw std::runtime_error("ERROR: The xclbin is missing platformVBNV information and atleast one section required by the 'file' command to identify its file type and display file characteristics.");
+      throw std::runtime_error("ERROR: The xclbin is missing platformVBNV information and at least one section required by the 'file' command to identify its file type and display file characteristics.");
     
     else if (!xclBin.checkForPlatformVbnv())
       throw std::runtime_error("ERROR: The xclbin is missing platformVBNV information required by the 'file' command to identify its file type and display file characteristics.");
    
     else if (!xclBin.checkForValidSection())
-      throw std::runtime_error("ERROR: The xclbin is missing atleast one section required by the 'file' command to identify its file type and display file characteristics.");
+      throw std::runtime_error("ERROR: The xclbin is missing at least one section required by the 'file' command to identify its file type and display file characteristics.");
   }
   XUtil::QUIET("Leaving xclbinutil.");
 
