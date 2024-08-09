@@ -200,21 +200,23 @@ XclBin::readXclBinBinary(const std::string& _binaryFileName,
 }
 
 bool
-XclBin::checkForValidSection(){
-  if(FormattedOutput::getXclBinUuidAsString(m_xclBinHeader) != "" && 
+XclBin::checkForValidSection()
+{
+  if (FormattedOutput::getXclBinUuidAsString(m_xclBinHeader) != "" && 
      FormattedOutput::getTimeStampAsString(m_xclBinHeader) != "" && 
      m_xclBinHeader.m_header.m_length != 0 && 
-     m_xclBinHeader.m_header.m_numSections != 0){
-       return true;
-  }
+     m_xclBinHeader.m_header.m_numSections != 0)
+    return true;
+  
   return false;
 }
 
 bool
-XclBin::checkForPlatformVbnv(){
-  if(FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader) != ""){
+XclBin::checkForPlatformVbnv()
+{
+  if (FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader) != "")
     return true;
-  }
+ 
   return false;
 }
 

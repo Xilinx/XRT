@@ -31,17 +31,59 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Use the file check on a valid xclbin that has platformVBNV information and atleast one section"
+  step = "1) Create a valid xclbin that has platformVBNV information and atleast one section"
 
   inputJSON = os.path.join(args.resource_dir, "debug_ip_layout.rtd")
-  outputXCLBIN = "output.xclbin"
+  outputXCLBIN = "valid.xclbin"
 
-  cmd = [xclbinutil, "--file-check", "--add-section", "DEBUG_IP_LAYOUT:JSON:" + inputJSON, "--key-value", "SYS:PlatformVBNV:xilinx.com_xd_xilinx_vck190_base_202410_1_202410_1", "--output", outputXCLBIN, "--force"]
+  cmd = [xclbinutil, "--add-section", "DEBUG_IP_LAYOUT:JSON:" + inputJSON, "--key-value", "SYS:PlatformVBNV:xilinx.com_xd_xilinx_vck190_base_202410_1_202410_1", "--output", outputXCLBIN, "--force"]
   execCmd(step, cmd)
 
   
   # ---------------------------------------------------------------------------
 
+  step = "2) Run file-check option on the valid xclbin"
+
+  cmd = [xclbinutil, "--file-check", "-i", outputXCLBIN] 
+  execCmd(step, cmd)
+
+  # ---------------------------------------------------------------------------
+
+  step = "1) Create an invalid xclbin that has only platformVBNV information"
+
+  outputXCLBIN = "invalid.xclbin"
+
+  cmd = [xclbinutil, "--key-value", "SYS:PlatformVBNV:xilinx.com_xd_xilinx_vck190_base_202410_1_202410_1", "--output", outputXCLBIN, "--force"]
+  execCmd(step, cmd)
+
+  # ---------------------------------------------------------------------------
+
+  step = "2) Run file-check option on the invalid xclbin and validate the error message"
+
+  expectedMsg = "ERROR: The xclbin is missing atleast one section required by the 'file' command to identify its file type and display file characteristics.\n"
+
+  cmd = [xclbinutil, "--file-check", "-i", outputXCLBIN]
+  compErrorMsg(step, cmd, expectedMsg)
+
+  # ----------------------------------------------------------------------------
+
+  step = "1) Create an invalid xclbin with one section and no platformVBNV information"
+
+  outputXCLBIN = "invalid.xclbin"
+
+  cmd = [xclbinutil, "--add-section", "DEBUG_IP_LAYOUT:JSON:" + inputJSON, "--output", outputXCLBIN, "--force"]
+  execCmd(step, cmd)
+
+  # ----------------------------------------------------------------------------
+
+  step = "2) Run file-check on the invalid xclbin and validate the error message"
+
+  expectedMsg = "ERROR: The xclbin is missing platformVBNV information required by the 'file' command to identify its file type and display file characteristics.\n"
+
+  cmd = [xclbinutil, "--file-check", "-i", outputXCLBIN]
+  compErrorMsg(step, cmd, expectedMsg)
+
+  # ----------------------------------------------------------------------------
   # If the code gets this far, all is good.
   return False
 
@@ -49,6 +91,19 @@ def main():
 def testDivider():
   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
+
+def compErrorMsg(pretty_name, cmd, expectedMsg):
+  testDivider()
+  print(pretty_name)
+  testDivider()
+  cmdLine = ' '.join(cmd)
+  print(cmdLine)
+  proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  o, e = proc.communicate()
+  print(o.decode('ascii'))
+  print(e.decode('ascii'))
+  if(e.decode('ascii') != expectedMsg):
+      raise Exception("The error message for file-check on invalid xclbin does not match " + str(expectedMsg))
 
 def execCmd(pretty_name, cmd):
   testDivider()
