@@ -189,7 +189,7 @@ namespace xrt::core::hip
     insert_sub_mem(std::shared_ptr<sub_memory> sub_mem);
 
     std::shared_ptr<sub_memory>
-    memory_database::get_sub_mem_from_handle(memory_handle h);
+    get_sub_mem_from_handle(memory_handle h);
 
     std::pair<std::shared_ptr<xrt::core::hip::memory>, size_t>
     get_hip_mem_from_addr(void* addr);
