@@ -433,7 +433,8 @@ public:
   void
   sync(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
   {
-    device->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
+    //call sync & async functions with "Buffer handle" instead of with device, so that it could be handled with both device & hwctx
+    handle->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
   }
 
   xrt::bo::async_handle
@@ -611,7 +612,9 @@ xrt::bo::async_handle
 bo_impl::
 async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 {
-  device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
+  //call sync & async functions with "Buffer handle" instead of with device, so that it could be handled with both device & hwctx
+  handle->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
+
   auto a_bo_impl = std::make_shared<xrt::aie::bo::async_handle_impl>(bo, 0, port);
 
   return xrt::bo::async_handle{a_bo_impl};

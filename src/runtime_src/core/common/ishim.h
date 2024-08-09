@@ -12,6 +12,7 @@
 #include "core/include/shim_int.h"
 #include "core/include/xdp/counters.h"
 #include "core/common/shim/graph_handle.h"
+#include "core/common/shim/profile_handle.h"
 
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
@@ -204,6 +205,12 @@ struct ishim
   {
     throw not_supported_error{__func__};
   }
+
+  virtual std::unique_ptr<profile_handle>
+  open_profile_handle()
+  {
+    throw not_supported_error{__func__};
+  }  
   ////////////////////////////////////////////////////////////////
 
   virtual void

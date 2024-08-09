@@ -13,6 +13,7 @@
 #ifdef XRT_ENABLE_AIE
 #include "core/edge/user/aie/graph_object.h"
 #endif
+#include "core/edge/user/aie/profile_object.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -1137,6 +1138,26 @@ open_graph_handle(const xrt::uuid& xclbin_id, const char* name, xrt::graph::acce
 #ifdef XRT_ENABLE_AIE   
    return std::make_unique<zynqaie::graph_object>(
                   static_cast<ZYNQ::shim*>(get_device_handle()), xclbin_id, name, am);
+#else
+   return nullptr;
+#endif   
+}
+
+std::unique_ptr<xrt_core::profile_handle>
+device_linux::
+open_profile_handle()
+{
+#ifdef XRT_ENABLE_AIE
+
+  auto drv = ZYNQ::shim::handleCheck(get_device_handle());
+
+  if (not drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+
+  auto aie_array = drv->getAieArray();
+
+  return std::make_unique<zynqaie::profile_object>(static_cast<ZYNQ::shim*>(get_device_handle()), aie_array);
+
 #else
    return nullptr;
 #endif   
