@@ -67,7 +67,7 @@ def main():
 
   # ----------------------------------------------------------------------------
 
-  step = "1) Create an invalid xclbin with one section and no platformVBNV information"
+  step = "3) Create an invalid xclbin with one section and no platformVBNV information"
 
   outputXCLBIN = "invalid.xclbin"
 
@@ -76,7 +76,7 @@ def main():
 
   # ----------------------------------------------------------------------------
 
-  step = "2) Run file-check on the invalid xclbin and validate the error message"
+  step = "4) Run file-check on the invalid xclbin and validate the error message"
 
   expectedMsg = "ERROR: The xclbin is missing platformVBNV information required by the 'file' command to identify its file type and display file characteristics.\n"
 
