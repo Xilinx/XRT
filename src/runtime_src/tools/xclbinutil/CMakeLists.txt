@@ -111,7 +111,13 @@ if(NOT WIN32)
 
   # -- Test Signing of the xclbin image using a DER formatted certificate
   xrt_add_test("signing-xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
-
+ 
+  # The xclbin image must contain atleast one section and platformVBNV information to meet
+  # the expectations of Linux file command utility
+  # -- Test --file-check option on valid and invalid xclbin images for Linux file command 
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/FileCheck")
+  xrt_add_test("file-check" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/FileCheck/FileCheck.py ${TEST_OPTIONS}")
+  
   # -- Test SmartNic
   # Test: SmartNic Syntax
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")

@@ -199,6 +199,27 @@ XclBin::readXclBinBinary(const std::string& _binaryFileName,
   ifXclBin.close();
 }
 
+bool
+XclBin::checkForValidSection()
+{
+  if (FormattedOutput::getXclBinUuidAsString(m_xclBinHeader) != "" && 
+     FormattedOutput::getTimeStampAsString(m_xclBinHeader) != "" && 
+     m_xclBinHeader.m_header.m_length != 0 && 
+     m_xclBinHeader.m_header.m_numSections != 0)
+    return true;
+  
+  return false;
+}
+
+bool
+XclBin::checkForPlatformVbnv()
+{
+  if (FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader) != "")
+    return true;
+ 
+  return false;
+}
+
 void
 XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header)
 {
