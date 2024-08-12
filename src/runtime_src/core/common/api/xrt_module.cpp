@@ -4,6 +4,7 @@
 #define XRT_API_SOURCE         // exporting xrt_module.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "experimental/xrt_module.h"
 #include "experimental/xrt_elf.h"
 #include "experimental/xrt_ext.h"
@@ -28,6 +29,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <sstream>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
 # define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
@@ -778,6 +780,18 @@ class module_elf : public module_impl
     }
 
     it->second.patch(base, patch);
+    if (xrt_core::config::get_xrt_debug()) {
+      if (not_found_use_argument_name) {
+        std::stringstream ss;
+        ss << "Patched " << patcher::section_name_to_string(type) << " use argument index " << index << " with value " << std::hex << patch;
+        xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+      else {
+        std::stringstream ss;
+        ss << "Patched " << patcher::section_name_to_string(type) << "use argument name " << argnm << " with value " << std::hex << patch;
+        xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+    }
     return true;
   }
 
@@ -1046,6 +1060,10 @@ class module_sram : public module_impl
     if (is_dump_control_codes()) {
       std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
       dump_bo(m_instr_bo, dump_file_name);
+
+      std::stringstream ss;
+      ss << "dumped file " << dump_file_name << " ctr_codes size: " << std::to_string(sz);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
 
     const auto& preempt_save_data = parent->get_preempt_save();
@@ -1064,16 +1082,30 @@ class module_sram : public module_impl
       if (is_dump_preemption_codes()) {
         std::string dump_file_name = "preemption_save_pre_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(m_preempt_save_bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+
         dump_file_name = "preemption_restore_pre_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(m_preempt_restore_bo, dump_file_name);
+
+        ss.clear();
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
-      XRT_DEBUGF("module_sram::create_instr_buf create scratch_pad_mem of size %d for preemption\n", m_parent->get_scratch_pad_mem_size());
       m_scratch_pad_mem = xrt::ext::bo{ m_hwctx, m_parent->get_scratch_pad_mem_size() };
       patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem, patcher::buf_type::preempt_save);
       patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem, patcher::buf_type::preempt_restore);
+
+      if (is_dump_preemption_codes()) {
+        std::stringstream ss;
+        ss << "patched preemption-codes using scratch_pad_mem at address " << std::hex << m_scratch_pad_mem.address() << " size " << std::hex << m_parent->get_scratch_pad_mem_size();
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
     }
 
     if (m_ctrlpkt_bo) {
@@ -1085,27 +1117,25 @@ class module_sram : public module_impl
   void
   create_ctrlpkt_buf(const module_impl* parent)
   {
-    XRT_DEBUGF("-> module_sram::create_ctrlpkt_buf()\n");
     const auto& data = parent->get_ctrlpkt();
     size_t sz = data.size();
 
     if (sz == 0) {
-      XRT_DEBUGF("ctrlpkt buf is empty\n");
+      XRT_DEBUGF("ctrpkt buf is empty\n");
+      return;
     }
-    else {
-      // create bo combined size of all ctrlcodes
-      // m_ctrlpkt_buf = xrt::bo{m_hwctx, sz, xrt::bo::flags::host_only, 0};
-      m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
 
-      // copy instruction into bo
-      fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
+    m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
 
-      if (is_dump_control_packet()) {
-          std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
-          dump_bo(m_ctrlpkt_bo, dump_file_name);
-      }
+    fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
 
-      XRT_DEBUGF("<- module_sram::create_ctrlpkt_buffer()\n");
+    if (is_dump_control_packet()) {
+        std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_ctrlpkt_bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
   }
 
@@ -1114,7 +1144,6 @@ class module_sram : public module_impl
   void
   create_instruction_buffer(const module_impl* parent)
   {
-    XRT_DEBUGF("-> module_sram::create_instruction_buffer()\n");
     const auto& data = parent->get_data();
 
     // create bo combined size of all ctrlcodes
@@ -1122,16 +1151,13 @@ class module_sram : public module_impl
       return acc + ctrlcode.size();
       });
     if (sz == 0) {
-      std::cout << "instruction buf is empty" << std::endl;
+      XRT_DEBUGF("ctrcode buf is empty\n");
       return;
     }
 
     m_buffer = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
-    // copy ctrlcodes into bo
     fill_instruction_buffer(m_buffer, data);
-
-    XRT_DEBUGF("<- module_sram::create_instruction_buffer()\n");
   }
 
   virtual void
@@ -1212,6 +1238,10 @@ class module_sram : public module_impl
       if (is_dump_control_codes()) {
         std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
         dump_bo(m_instr_bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
 
       if (m_ctrlpkt_bo) {
@@ -1220,6 +1250,10 @@ class module_sram : public module_impl
         if (is_dump_control_packet()) {
           std::string dump_file_name = "ctr_packet_post_patch" + std::to_string(get_id()) + ".bin";
           dump_bo(m_ctrlpkt_bo, dump_file_name);
+
+          std::stringstream ss;
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
         }
       }
 
@@ -1230,8 +1264,17 @@ class module_sram : public module_impl
         if (is_dump_preemption_codes()) {
           std::string dump_file_name = "preemption_save_post_patch" + std::to_string(get_id()) + ".bin";
           dump_bo(m_preempt_save_bo, dump_file_name);
+
+          std::stringstream ss;
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+
           dump_file_name = "preemption_restore_post_patch" + std::to_string(get_id()) + ".bin";
           dump_bo(m_preempt_restore_bo, dump_file_name);
+
+          ss.clear();
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
         }
       }
     }
@@ -1292,10 +1335,12 @@ public:
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
   {
-    m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
-    m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
-    m_debug_mode.debug_flags.dump_preemption_codes = xrt_core::config::get_feature_toggle("Debug.dump_preemption_codes");
-    s_id++;
+    if (xrt_core::config::get_xrt_debug()) {
+      m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
+      m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
+      m_debug_mode.debug_flags.dump_preemption_codes = xrt_core::config::get_feature_toggle("Debug.dump_preemption_codes");
+      s_id++;
+    }
 
     auto os_abi = m_parent.get()->get_os_abi();
 
