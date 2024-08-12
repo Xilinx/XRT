@@ -172,6 +172,7 @@ zocl_resolver(struct drm_zocl_dev *zdev, struct axlf *axlf, xuid_t *xclbin_id,
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
 		} else {
+			*slot_id = s_id;
 			DRM_INFO("Exists xclbin %pUb to slot %d",
 							xclbin_id, s_id);
 			mutex_unlock(&slot->slot_xclbin_lock);
@@ -257,6 +258,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	ret = zocl_resolver(zdev, axlf, &axlf_head.m_header.uuid, qos, &slot_id);
 	if (ret) {
 		if (ret == -EEXIST) {
+			DRM_INFO("xclbin already downloaded to slot=%d", slot_id);
+			*slot_idx = slot_id;
 			vfree(axlf);
 			return 0;
 		}

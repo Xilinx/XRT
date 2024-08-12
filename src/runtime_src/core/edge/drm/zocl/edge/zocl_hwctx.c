@@ -10,11 +10,16 @@ int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx 
 {
     struct kds_client_hw_ctx *kds_hw_ctx = NULL;
     struct drm_zocl_slot *slot = NULL;
-    slot = zdev->pr_slot[slot_id];
     int ret = 0;
 
     if (!client)
         return -EINVAL;
+
+    if (slot_id < 0) {
+        DRM_ERROR("%s: Invalid slot id =%d", __func__, slot_id);
+        return -EINVAL;
+    }
+    slot = zdev->pr_slot[slot_id];
 
     mutex_lock(&client->lock);
     kds_hw_ctx = kds_alloc_hw_ctx(client, slot->slot_xclbin->zx_uuid, slot->slot_idx);
