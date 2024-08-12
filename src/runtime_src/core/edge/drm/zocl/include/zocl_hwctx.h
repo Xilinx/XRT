@@ -12,4 +12,8 @@ int zocl_create_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_create_hw_ctx 
 
 int zocl_destroy_hw_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_destroy_hw_ctx *drm_hw_ctx, struct kds_client *client);
 
+int zocl_open_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_open_cu_ctx *drm_cu_ctx, struct kds_client *client);
+
+int zocl_close_cu_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_close_cu_ctx *drm_cu_ctx, struct kds_client *client);
+
 #endif

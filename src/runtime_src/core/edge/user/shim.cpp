@@ -1124,25 +1124,45 @@ xrt_core::cuidx_type
 shim::
 open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname)
 {
-  // Edge does not yet support multiple xclbins.  Call
-  // regular flow.  Default access mode to shared unless explicitly
-  // exclusive.
   auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
   auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto cuidx = mCoreDevice->get_cuidx(hwctx->get_slotidx(), cuname);
-  xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
+  if (false) { //TODO
+    auto cuidx = mCoreDevice->get_cuidx(0, cuname);
+    xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
+    return cuidx;
+  }
+  else {
+    /*This is for multi slot case.*/
+    unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
+    drm_zocl_open_cu_ctx  cu_ctx = {};
+    cu_ctx.flags = flags;
+    cu_ctx.hw_context = hwctx_hdl->get_slotidx();
+    std:strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
+    cu_ctx.cu_name[sizeof(cu_ctx.cu_name) - 1] = 0;
+    if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_OPEN_CU_CTX, &cu_ctx))
+      throw xrt_core::error("Failed to open cu context");
 
-  return cuidx;
+    return xrt_core::cuidx_type{cu_ctx.cu_index};
+  }
 }
 
 void
 shim::
 close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
-  // To-be-implemented
   auto hwctx = static_cast<const zynqaie::hwctx_object*>(hwctx_hdl);
-  if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
-    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  if (false) { //TODO
+    if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
+      throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  }
+  else {
+    /*This is for multi slot case.*/
+    drm_zocl_close_cu_ctx cu_ctx = {};
+    cu_ctx.hw_context = hwctx_hdl->get_slotidx();
+    cu_ctx.cu_index = cuidx.index;
+    if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_CLOSE_CU_CTX, &cu_ctx))
+      throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  }
 }
 
 int shim::prepare_hw_axlf(const axlf *buffer, struct drm_zocl_axlf *axlf_obj)

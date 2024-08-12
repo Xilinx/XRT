@@ -63,12 +63,16 @@
  *      a xclbin on the device
  * 17   Destroy a hw context on a slot on      DRM_IOCTL_ZOCL_DESTROY_HW_CTX  drm_zocl_destroy_hw_ctx
  *      a device
+ * 18   Open cu context                        DRM_IOCTL_ZOCL_OPEN_CU_CTX     drm_zocl_open_cu_ctx
+ * 19   Close cu context                       DRM_IOCTL_ZOCL_CLOSE_CU_CTX    drm_zocl_close_cu_ctx
  *
  * ==== ====================================== ============================== ==================================
  */
 
 #ifndef __ZYNQ_IOCTL_H__
 #define __ZYNQ_IOCTL_H__
+
+#define CU_NAME_MAX_LEN	64
 
 #ifndef __KERNEL__
 #include <stdint.h>
@@ -108,6 +112,10 @@ enum drm_zocl_ops {
 	DRM_ZOCL_CREATE_HW_CTX,
 	/* Destroy a hw context */
 	DRM_ZOCL_DESTROY_HW_CTX,
+	/* Open CU context */
+	DRM_ZOCL_OPEN_CU_CTX,
+	/* Close CU context */
+	DRM_ZOCL_CLOSE_CU_CTX,
 	/* Get the soft kernel command */
 	DRM_ZOCL_SK_GETCMD,
 	/* Create the soft kernel */
@@ -462,13 +470,13 @@ struct drm_zocl_axlf {
 };
 
 /**
-* struct drm_zocl_create_hw_ctx - Create a hw context on a slot on device
-* used with DRM_IOCTL_ZOCL_CREATE_HW_CTX ioctl
-*
-* @axlf_ptr:	axlf pointer which need to be downloaded
-* @qos:			QOS information
-* @hw_context:	Returns context handle
-*/
+ * struct drm_zocl_create_hw_ctx - Create a hw context on a slot on device
+ * used with DRM_IOCTL_ZOCL_CREATE_HW_CTX ioctl
+ *
+ * @axlf_ptr:	axlf pointer which need to be downloaded
+ * @qos:			QOS information
+ * @hw_context:	Returns context handle
+ */
 struct drm_zocl_create_hw_ctx {
 	struct drm_zocl_axlf			*axlf_ptr;
 	uint32_t				qos;
@@ -476,13 +484,41 @@ struct drm_zocl_create_hw_ctx {
 };
 
 /**
-* struct drm_zocl_destroy_hw_ctx - Destroy a hw context on a slot on device
-* used with DRM_IOCTL_ZOCL_DESTROY_HW_CTX ioctl
-*
-* @hw_context:	Context handle that needs to be closed
-*/
+ * struct drm_zocl_destroy_hw_ctx - Destroy a hw context on a slot on device
+ * used with DRM_IOCTL_ZOCL_DESTROY_HW_CTX ioctl
+ *
+ * @hw_context:	Context handle that needs to be closed
+ */
 struct drm_zocl_destroy_hw_ctx {
 	uint32_t				hw_context;
+};
+
+/**
+ * struct drm_zocl_open_cu_ctx - Opens a cu context under a hw context on the device
+ * used with DRM_IOCTL_ZOCL_OPEN_CU_CTX
+ *
+ * @hw_context:	Open a cu context under this hw context handle
+ * @cu_name:	Name of the cu on the device image for which the open context is being made
+ * @flags:	Shared or Exclusive context (ZOCL_CTX_SHARED/ZOCL_CTX_EXCLUSIVE)
+ * @cu_index:	Reture the acquired cu index. This will be required for closing
+ */
+struct drm_zocl_open_cu_ctx {
+	uint32_t	hw_context;
+	char		cu_name[CU_NAME_MAX_LEN];
+	uint32_t	flags;
+	uint32_t	cu_index;
+};
+
+/**
+ * struct drm_zocl_close_cu_ctx - Closes a cu context opened under a hw context on device
+ * used with DRM_IOCTL_ZOCL_CLOSE_CU_CTX
+ *
+ * @hw_context:	close cu context under this hw context handle
+ * @cu_index:	Index of the cu on the device image for which the close request is being made
+ */
+struct drm_zocl_close_cu_ctx {
+	uint32_t	hw_context;
+	uint32_t	cu_index;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32
@@ -609,6 +645,10 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_CREATE_HW_CTX, struct drm_zocl_create_hw_ctx)
 #define DRM_IOCTL_ZOCL_DESTROY_HW_CTX  DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_DESTROY_HW_CTX, struct drm_zocl_destroy_hw_ctx)
+#define DRM_IOCTL_ZOCL_OPEN_CU_CTX     DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_OPEN_CU_CTX, struct drm_zocl_open_cu_ctx)
+#define DRM_IOCTL_ZOCL_CLOSE_CU_CTX    DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_CLOSE_CU_CTX, struct drm_zocl_close_cu_ctx)
 #define DRM_IOCTL_ZOCL_SK_GETCMD       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_SK_GETCMD, struct drm_zocl_sk_getcmd)
 #define DRM_IOCTL_ZOCL_SK_CREATE       DRM_IOWR(DRM_COMMAND_BASE + \

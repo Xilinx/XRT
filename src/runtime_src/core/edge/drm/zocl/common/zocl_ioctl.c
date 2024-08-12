@@ -72,6 +72,28 @@ int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data, struct drm_fil
 }
 
 /*
+ * IOCTL to open a cu context under the given hw context
+ */
+int zocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_open_cu_ctx *drm_cu_ctx = (struct drm_zocl_open_cu_ctx *)data;
+	struct kds_client *client = filp->driver_priv;
+	return zocl_open_cu_ctx(zdev, drm_cu_ctx, client);
+}
+
+/*
+ * IOCTL to close a opened cu context under the given hw context
+ */
+int zocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	struct drm_zocl_close_cu_ctx *drm_cu_ctx = (struct drm_zocl_close_cu_ctx *)data;
+	struct kds_client *client = filp->driver_priv;
+	return zocl_close_cu_ctx(zdev, drm_cu_ctx, client);
+}
+
+/*
  * Block comment for context switch.
  * The read_axlf_ioctl can happen without calling open context, we need to use mutex
  * lock to exclude access between read_axlf_ioctl and zocl_ctx_ioctl. At one

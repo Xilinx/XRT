@@ -41,6 +41,10 @@ int zocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
 int zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_sk_create_ioctl(struct drm_device *dev, void *data,
