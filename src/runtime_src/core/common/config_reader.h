@@ -255,6 +255,13 @@ get_ml_timeline_buffer_size()
 }
 
 inline bool
+get_aie_halt()
+{
+  static bool value = detail::get_bool_value("Debug.aie_halt", false);
+  return value;
+}
+
+inline bool
 get_profile_api()
 {
   static bool value = detail::get_bool_value("Debug.profile_api", false);
