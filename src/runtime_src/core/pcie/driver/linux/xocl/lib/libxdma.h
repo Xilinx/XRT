@@ -574,7 +574,7 @@ struct xdma_dev {
 	int irq_line;		/* flag if irq allocated successfully */
 	int msi_enabled;	/* flag if msi was enabled for the device */
 	int msix_enabled;	/* flag if msi-x was enabled for the device */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	struct msix_entry entry[32];	/* msi-x vector/entry table */
 #endif
 	struct xdma_user_irq user_irq[16];	/* user IRQ management */

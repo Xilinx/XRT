@@ -21,7 +21,7 @@
  * kernels do not support FPGA Mgr yet.
  */
 #include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0) && defined(ENABLE_FPGA_MGR_SUPPORT)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0) && defined(ENABLE_FPGA_MGR_SUPPORT)
 #define FPGA_MGR_SUPPORT
 #include <linux/fpga/fpga-mgr.h>
 #endif
@@ -167,7 +167,7 @@ static int fmgr_probe(struct platform_device *pdev)
 	 */
 #if defined(FPGA_MGR_SUPPORT)
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 	{
 	struct fpga_manager *mgr = fpga_mgr_create(&pdev->dev,
 						   obj->name,
@@ -205,7 +205,7 @@ static int fmgr_remove(struct platform_device *pdev)
 	/* TODO: Remove old fpga_mgr_unregister as soon as Linux < 4.18 is no
 	 * longer supported.
 	 */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 	fpga_mgr_unregister(mgr);
 #else
 	fpga_mgr_unregister(&pdev->dev);

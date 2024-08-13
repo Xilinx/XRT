@@ -405,7 +405,12 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * and set the vm_pgoff (used as a fake buffer offset by DRM)
 	 * to 0 as we want to map the whole buffer.
 	 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags &= ~VM_PFNMAP;
+#else
+	vm_flags_clear(vma, VM_PFNMAP);
+#endif
+
 	vma->vm_pgoff = 0;
 
 	gem_obj = vma->vm_private_data;
@@ -483,8 +488,13 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		rc = zocl_iommu_map_bo(dev, bo);
 		if (rc)
 			return rc;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 		vma->vm_flags &= ~VM_PFNMAP;
 		vma->vm_flags |= VM_MIXEDMAP;
+#else
+		vm_flags_clear(vma, VM_PFNMAP);
+		vm_flags_set(vma, VM_MIXEDMAP);
+#endif
 		/* Reset the fake offset used to identify the BO */
 		vma->vm_pgoff = 0;
 		return 0;
@@ -522,8 +532,12 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EINVAL;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
 
 	vma->vm_ops = &reg_physical_vm_ops;
 	rc = io_remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,

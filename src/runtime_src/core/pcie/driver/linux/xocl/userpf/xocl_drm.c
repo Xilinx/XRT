@@ -80,6 +80,8 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 		return -EINVAL;
 	}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 	 * we have "struct page" for all backing pages for bo
 	 */
@@ -90,6 +92,11 @@ static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags &= ~VM_IO;
 	vma->vm_flags |= VM_MIXEDMAP;
 	vma->vm_flags |= mm->def_flags;
+#else
+	vm_flags_clear(vma, VM_PFNMAP | VM_IO);
+	vm_flags_set(vma, VM_MIXEDMAP | mm->def_flags);
+#endif
+
 	vma->vm_pgoff = 0;
 
 	/* Override pgprot_writecombine() mapping setup by
@@ -155,8 +162,13 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
+#else
+	vm_flags_set(vma, VM_IO | VM_RESERVED);
+#endif
 
 	ret = io_remap_pfn_range(vma, vma->vm_start,
 				 res_start >> PAGE_SHIFT,

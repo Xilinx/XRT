@@ -487,7 +487,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	chan = &qdma->chans[write][channel];
 
 	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
-	nents = pci_map_sg(XDEV(xdev)->pdev, sgt->sgl, sgt->orig_nents, dir);
+	nents = dma_map_sg(&(XDEV(xdev)->pdev->dev), sgt->sgl, sgt->orig_nents, dir);
         if (!nents) {
 		xocl_err(&pdev->dev, "map sgl failed, sgt 0x%p.\n", sgt);
 		return -EIO;
@@ -513,7 +513,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 		dump_sgtable(&pdev->dev, sgt);
 	}
 
-	pci_unmap_sg(XDEV(xdev)->pdev, sgt->sgl, nents, dir);
+	dma_unmap_sg(&(XDEV(xdev)->pdev->dev), sgt->sgl, nents, dir);
 
 	return len;
 }
@@ -866,7 +866,9 @@ static void queue_req_free(struct qdma_stream_queue *queue,
 static void inline cmpl_aio(struct kiocb *kiocb, unsigned int done_bytes,
 		int error)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
+	kiocb->ki_complete(kiocb, done_bytes);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)
 	kiocb->ki_complete(kiocb, done_bytes, error);
 #else
 	struct qdma_stream_iocb *iocb;
@@ -898,7 +900,7 @@ static void queue_req_release_resource(struct qdma_stream_queue *queue,
 	if (reqcb->is_unmgd) {
 		xdev_handle_t xdev = xocl_get_xdev(queue->qdma->pdev);
 
-		pci_unmap_sg(XDEV(xdev)->pdev, reqcb->unmgd.sgt->sgl,
+		dma_unmap_sg(&(XDEV(xdev)->pdev->dev), reqcb->unmgd.sgt->sgl,
 			     reqcb->nsg, queue->qconf.c2h ?  DMA_FROM_DEVICE :
 			    				     DMA_TO_DEVICE);
 		xocl_finish_unmgd(&reqcb->unmgd);
@@ -1091,7 +1093,7 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 			goto error_out;
 		}
 
-		nents = pci_map_sg(XDEV(xdev)->pdev, unmgd.sgt->sgl,
+		nents = dma_map_sg(&(XDEV(xdev)->pdev->dev), unmgd.sgt->sgl,
 			unmgd.sgt->orig_nents, dir);
 		if (!nents) {
 			xocl_err(&qdma->pdev->dev, "map sgl failed");
@@ -1236,7 +1238,7 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 	return queue_rw(qdma, queue, true, iov, nr, kiocb);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)
 static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
 	struct qdma_stream_queue *queue;
@@ -1253,10 +1255,18 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 	}
 
 	if (!is_sync_kiocb(kiocb)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+		return queue_aio_write(kiocb, io->__iov, nr, io->iov_offset);
+#else
 		return queue_aio_write(kiocb, io->iov, nr, io->iov_offset);
+#endif
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+	return queue_rw(qdma, queue, true, io->__iov, nr, NULL);
+#else
 	return queue_rw(qdma, queue, true, io->iov, nr, NULL);
+#endif
 }
 
 static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
@@ -1275,9 +1285,17 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 	}
 
 	if (!is_sync_kiocb(kiocb)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+		return queue_aio_read(kiocb, io->__iov, nr, io->iov_offset);
+#else
 		return queue_aio_read(kiocb, io->iov, nr, io->iov_offset);
+#endif
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+	return queue_rw(qdma, queue, false, io->__iov, nr, NULL);
+#else
 	return queue_rw(qdma, queue, false, io->iov, nr, NULL);
+#endif
 }
 #endif
 
@@ -1391,7 +1409,7 @@ static int queue_close(struct inode *inode, struct file *file)
 
 static struct file_operations queue_fops = {
 		.owner = THIS_MODULE,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)
 		.write_iter = queue_write_iter,
 		.read_iter = queue_read_iter,
 #else
@@ -1613,8 +1631,8 @@ static long qdma_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 		goto failed;
 	}
 
-	xobj->dma_nsg = pci_map_sg(XDEV(xdev)->pdev, xobj->sgt->sgl,
-	xobj->sgt->orig_nents, PCI_DMA_BIDIRECTIONAL);
+	xobj->dma_nsg = dma_map_sg(&(XDEV(xdev)->pdev->dev), xobj->sgt->sgl,
+	xobj->sgt->orig_nents, DMA_BIDIRECTIONAL);
 	if (!xobj->dma_nsg) {
 		xocl_err(&qdma->pdev->dev, "map sgl failed, sgt");
 		ret = -EIO;
