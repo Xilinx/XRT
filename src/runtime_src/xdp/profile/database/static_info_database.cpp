@@ -2405,9 +2405,12 @@ namespace xdp {
       return;
     }
 
-    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+    auto data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_TRACE_METADATA);
     if (!data.first || !data.second) {
-      return;
+      std::cout << "!!! Couldn't find AIE_TRACE_METADATA section in xclbin" << std::endl;
+      data = xrt_core::xclbin_int::get_axlf_section(xrtXclbin, AIE_METADATA);
+      if (!data.first || !data.second)
+        return;
     }
 
     metadataReader = aie::readAIEMetadata(data.first, data.second, aieMetadata);
