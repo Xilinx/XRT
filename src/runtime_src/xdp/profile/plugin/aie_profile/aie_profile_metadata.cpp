@@ -474,7 +474,7 @@ namespace xdp {
 
           // Make sure tile is used
           auto it = std::find_if(allValidTiles.begin(), allValidTiles.end(),
-            compareTileByLocAndActiveType(tile));
+            compareTileByLoc(tile));
           if (it == allValidTiles.end()) {
             std::stringstream msg;
             msg << "Specified Tile (" << std::to_string(tile.col) << "," 
@@ -529,7 +529,7 @@ namespace xdp {
 
       // Make sure tile is used
       auto it = std::find_if(allValidTiles.begin(), allValidTiles.end(),
-                             compareTileByLocAndActiveType(tile));
+                             compareTileByLoc(tile));
       if (it == allValidTiles.end()) {
         std::stringstream msg;
         msg << "Specified Tile (" << std::to_string(tile.col) << "," 
