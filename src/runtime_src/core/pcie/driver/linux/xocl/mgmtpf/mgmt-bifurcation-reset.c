@@ -157,7 +157,7 @@ done:
 static long xclmgmt_hot_reset_post(struct xclmgmt_dev *lro, bool force)
 {
 	long err = 0;
-	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
+	uint32_t legacy_slot_id = DEFAULT_PL_PS_SLOT;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
 

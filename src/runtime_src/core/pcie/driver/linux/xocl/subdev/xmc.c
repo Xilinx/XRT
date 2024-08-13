@@ -2649,7 +2649,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	uint32_t *temp = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 	struct xocl_drm *drm = XDEV(xdev)->drm;
-	uint32_t slot_id = DEFAULT_PL_SLOT;
+	uint32_t slot_id = DEFAULT_PL_PS_SLOT;
 
         if (!drm)
                 return 0;

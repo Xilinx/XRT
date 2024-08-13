@@ -147,7 +147,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	struct drm_xocl_mm_stat stat;
 	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
 	const char *bo_types[XOCL_BO_USAGE_TOTAL];
-	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
+	uint32_t legacy_slot_id = DEFAULT_PL_PS_SLOT;
 
 	mutex_lock(&xdev->dev_lock);
 

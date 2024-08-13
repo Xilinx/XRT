@@ -207,7 +207,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
-	uint32_t slot_id = DEFAULT_PL_SLOT;
+	uint32_t slot_id = DEFAULT_PL_PS_SLOT;
 	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
