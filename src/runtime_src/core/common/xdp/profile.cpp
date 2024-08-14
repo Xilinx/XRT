@@ -279,6 +279,50 @@ end_trace(void* handle)
 
 } // end namespace xrt_core::xdp::aie::trace
 
+namespace xrt_core::xdp::aie::halt {
+
+std::function<void (void*)> update_device_cb;
+std::function<void (void*)> finish_flush_device_cb;
+
+void
+register_callbacks(void* handle)
+{
+  #ifdef XDP_CLIENT_BUILD
+    update_device_cb = reinterpret_cast<void (*)(void*)>(xrt_core::dlsym(handle, "updateDeviceAIEHalt"));
+    finish_flush_device_cb = reinterpret_cast<void (*)(void*)>(xrt_core::dlsym(handle, "finishFlushDeviceAIEHalt"));
+  #else
+    (void)handle;
+  #endif
+}
+
+void
+warning_callbacks()
+{}
+
+void
+load()
+{
+  static xrt_core::module_loader xdp_aie_halt_loader("xdp_aie_halt_plugin",
+                                                     register_callbacks,
+                                                     warning_callbacks);
+}
+
+void
+update_device(void* handle)
+{
+  if (update_device_cb)
+    update_device_cb(handle);
+}
+
+void
+finish_flush_device(void* handle)
+{
+  if (finish_flush_device_cb)
+    finish_flush_device_cb(handle);
+}
+
+} // end namespace xrt_core::xdp::aie::halt
+
 namespace xrt_core::xdp {
 
 void 
@@ -293,7 +337,8 @@ update_device(void* handle)
   if (xrt_core::config::get_ml_timeline()
       || xrt_core::config::get_aie_profile()
       || xrt_core::config::get_aie_trace()
-      || xrt_core::config::get_aie_debug()) {
+      || xrt_core::config::get_aie_debug()
+      || xrt_core::config::get_aie_halt()) {
     /* All the above plugins are dependent on xdp_core library. So,
      * explicitly load it to avoid library search issue in implicit loading.
      */
@@ -302,6 +347,16 @@ update_device(void* handle)
     } catch (...) {
       return;
     }
+  }
+
+  if (xrt_core::config::get_aie_halt()) {
+    try {
+      xrt_core::xdp::aie::halt::load();
+    }
+    catch (...) {
+      return;
+    }
+    xrt_core::xdp::aie::halt::update_device(handle);
   }
 
   if (xrt_core::config::get_aie_profile()) {
@@ -365,6 +420,9 @@ finish_flush_device(void* handle)
 {
 
 #ifdef XDP_CLIENT_BUILD
+
+  if (xrt_core::config::get_aie_halt())
+    xrt_core::xdp::aie::halt::finish_flush_device(handle);
   if (xrt_core::config::get_aie_profile())
     xrt_core::xdp::aie::profile::end_poll(handle);
   if (xrt_core::config::get_aie_trace())
