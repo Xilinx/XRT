@@ -221,8 +221,8 @@ extern "C" {
     };
 
     enum ACTION_MASK {
-      AM_LOAD_AIE = 0x1                     /* Indicates to the driver to load the AIE PID section */
-      AM_LOAD_PDI = 0x2                     /* Indicates to the driver to program the PDI */   	      
+      AM_LOAD_AIE = 0x1,                     /* Indicates to the driver to load the AIE PID section */
+      AM_LOAD_PDI = 0x2,                     /* Indicates to the driver to program the PDI */   	      
     };
 
     struct axlf_section_header {
