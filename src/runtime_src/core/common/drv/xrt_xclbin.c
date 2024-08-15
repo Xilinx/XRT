@@ -193,7 +193,7 @@ xrt_xclbin_kind_to_string(enum axlf_section_kind kind)
 	case SMARTNIC:			return "SMARTNIC";
 	case AIE_RESOURCES:		return "AIE_RESOURCES";
 	case IP_METADATA:		return "IP_METADATA";
-	case AIE_TRACE_METADATA:		return "AIE_TRACE_METADATA";
+	case AIE_TRACE_METADATA:	return "AIE_TRACE_METADATA";
 	default: 			return "UNKNOWN";
 	}
 }
