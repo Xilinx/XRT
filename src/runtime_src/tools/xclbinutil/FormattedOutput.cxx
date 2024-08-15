@@ -343,7 +343,8 @@ reportXclbinInfo(std::ostream& _ostream,
       _ostream << boost::format("   %-23s ") % "Action Mask(s):";
       if (_xclBinHeader.m_header.m_actionMask & AM_LOAD_AIE) 
         _ostream << "LOAD_AIE ";
-
+      if (_xclBinHeader.m_header.m_actionMask & AM_LOAD_PDI)
+	_ostream << "LOAD_PDI ";      
       _ostream << std::endl;
     }
   }

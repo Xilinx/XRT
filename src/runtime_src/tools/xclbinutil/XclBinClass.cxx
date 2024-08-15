@@ -1554,7 +1554,11 @@ XclBin::setKeyValue(const std::string& _keyValue)
       for (const auto& mask : masks) {
         if (mask == "LOAD_AIE") {
           m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_AIE;
-        } else {
+        }
+	else if (mask == "LOAD_PDI") {
+	  m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_PDI; 	
+	}
+	else {
           auto errMsg = boost::format("ERROR: Unknown bit mask '%s' for the key '%s'. Key-value pair: '%s'.") % mask % sKey % _keyValue;
           throw std::runtime_error(errMsg.str());
         }
