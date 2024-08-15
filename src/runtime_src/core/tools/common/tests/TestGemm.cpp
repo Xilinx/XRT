@@ -169,12 +169,11 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
 
   //set to performance mode
   xrt_core::device_update<xrt_core::query::performance_mode>(dev.get(), xrt_core::query::performance_mode::power_type::high);
-  // 5 second delay gives the clocks time to reach the targeted frequency
-  // remove this when VITIS-11934 is fixed
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
+  // wait until clock reaches the targeted frequency
+  auto const target_h_clock_freq = 1810;
   int ipu_hclock = 0;
-  try {
+  while (ipu_hclock < target_h_clock_freq) {
     //get h-clock
     auto raw = xrt_core::device_query<xrt_core::query::clock_freq_topology_raw>(dev);
     auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
@@ -182,7 +181,10 @@ TestGemm::run(std::shared_ptr<xrt_core::device> dev)
       if(boost::iequals(clock_topology->m_clock_freq[c].m_name, "H CLock"))
         ipu_hclock = clock_topology->m_clock_freq[c].m_freq_Mhz;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
 
+  try {
     //run kernel
     auto run = kernel(host_app, NULL, NULL, NULL, NULL, bo_instr, instr_size, NULL);
     // Wait for kernel to be done
