@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2024 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,9 @@
 #include "core/common/query_requests.h"
 #include "filetypes/aie_control_config_filetype.h"
 #include "filetypes/aie_trace_config_filetype.h"
+
+#include "core/common/api/xclbin_int.h"
+#include "core/include/xclbin.h"
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -166,6 +169,7 @@ namespace xdp::aie {
       // For older xclbins, it is not an error if we don't find the
       // mem_tile entries, so just catch the exception and ignore it.
     }
+
     if (!found) {
       config.mem_row_start =
         meta_config.get_child("reserved_row_start").get_value<uint8_t>();
@@ -253,7 +257,6 @@ namespace xdp::aie {
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       return nullptr;
     }
-   
 
     return determineFileType(aie_project);
   }
@@ -362,7 +365,7 @@ namespace xdp::aie {
 
   /****************************************************************************
    * Get AIE partition information
-   ***************************************************************************/
+   ****************************************************************************/
   std::vector<uint8_t>
   getPartitionStartColumnsClient(void* handle)
   {
@@ -429,6 +432,29 @@ namespace xdp::aie {
     }
 
     return numCols;
+  }
+
+  boost::property_tree::ptree
+  getAIEPartitionInfoClient(void* hwCtxImpl)
+  {
+    boost::property_tree::ptree infoPt;
+    try {
+      xrt::hw_context context = xrt_core::hw_context_int::create_hw_context_from_implementation(hwCtxImpl);
+      auto device = xrt_core::hw_context_int::get_core_device(context);
+
+      auto info = xrt_core::device_query_default<xrt_core::query::aie_partition_info>(device.get(), {});
+      for(const auto& e : info) {
+        boost::property_tree::ptree pt;
+        pt.put("start_col", e.start_col);
+        pt.put("num_cols", e.num_cols);
+        infoPt.push_back(std::make_pair("", pt));
+      }
+    }
+    catch(...) {
+      xrt_core::message::send(severity_level::info, "XRT", "Could not retrieve AIE Partition Info.");
+      return infoPt;
+    }
+    return infoPt;
   }
 
 } // namespace xdp::aie
