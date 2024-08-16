@@ -557,7 +557,7 @@ namespace xdp {
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Check if already processed or invalid format
-      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 3))
+      if ((processed.find(i) != processed.end()) || (metrics[i].size() < 2))
         continue;
 
       uint8_t col = 0;
