@@ -252,8 +252,22 @@ get_ryzen_platform_info(const std::shared_ptr<xrt_core::device>& device,
 {
   ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
   const auto mode = xrt_core::device_query_default<xrt_core::query::performance_mode>(device, 0);
-  ptTree.put("performance_mode", xrt_core::query::performance_mode::parse_status(mode));
-  ptTree.put("power", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query_default<xrt_core::query::power_microwatts>(device, 0)));
+  const std::string pmode = xrt_core::query::performance_mode::parse_status(mode);
+  if (boost::iequals(pmode, "DEFAULT")) {
+    ptTree.put("power_mode", "Default");
+  }
+  else if (boost::iequals(pmode, "LOW")) {
+    ptTree.put("power_mode", "Powersaver");
+  }
+  else if (boost::iequals(pmode, "MEDIUM")) {
+    ptTree.put("power_mode", "Balanced");
+  }
+  else if (boost::iequals(pmode, "HIGH")) {
+    ptTree.put("power_mode", "Performance");
+  }
+  else {
+    ptTree.put("power_mode", "N/A");
+  }
 }
 
 static void
@@ -284,9 +298,9 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   const std::string& plat_id = ptTree.get("platform_id", "");
   if (!plat_id.empty())
     oStream << boost::format("    %-22s: %s\n") % "Platform ID" % plat_id;
-  const std::string& perf_mode = ptTree.get("performance_mode", "");
-  if (!perf_mode.empty())
-    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % perf_mode;
+  const std::string& power_mode = ptTree.get("power_mode", "");
+  if (!power_mode.empty())
+    oStream << boost::format("    %-22s: %s\n") % "Power Mode" % power_mode;
   const std::string& power = ptTree.get("power", "");
   if (!boost::starts_with(power, ""))
     oStream << boost::format("    %-22s: %s Watts\n") % "Power" % power;
@@ -371,6 +385,47 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
   return has_failures;
 }
 
+/*
+ * Extended keys helper struct
+ */
+struct ExtendedKeysStruct {
+  std::string test_name;
+  std::string param_name;
+  std::string description;
+};
+
+static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
+  {"dma", "block-size", "Memory transfer size (bytes)"}
+};
+
+std::string
+extendedKeysOptions()
+{
+  static unsigned int m_maxColumnWidth = 100;
+  std::stringstream fmt_output;
+  // Formatting color parameters
+  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
+  const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
+  const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
+  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor::reset();
+
+  // Report option group name (if defined)
+  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
+  fmt_output << fmtHeader % "EXTENDED KEYS";
+
+  // Report the options
+  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
+  unsigned int optionDescTab = 23;
+
+  for (auto& param : extendedKeysCollection) {
+    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
+    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    fmt_output << fmtOption % param.test_name % formattedString;
+  }
+
+  return fmt_output.str();
+}
+
 }
 //end anonymous namespace
 
@@ -442,63 +497,25 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
-    ("param", boost::program_options::value<decltype(m_param)>(&m_param), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
-    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  m_hiddenOptions.add_options()
+    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location)->implicit_value(""), "Path to the directory containing validate xclbins")
+    ("param", boost::program_options::value<decltype(m_param)>(&m_param), (std::string("Extended parameter for a given test. Format: <test-name>:<key>:<value>\n") + extendedKeysOptions()).c_str())
   ;
 
   m_commonOptions.add(common_options);
   m_commonOptions.add_options()
-    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken()->zero_tokens(), (std::string("Run a subset of the test suite. Valid options are:\n") + formatRunValues).c_str() )
   ;
-}
-
-/*
- * Extended keys helper struct
- */
-struct ExtendedKeysStruct {
-  std::string test_name;
-  std::string param_name;
-  std::string description;
-};
-
-static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
-  {"dma", "block-size", "Memory transfer size (bytes)"}
-};
-
-std::string
-extendedKeysOptions()
-{
-  static unsigned int m_maxColumnWidth = 100;
-  std::stringstream fmt_output;
-  // Formatting color parameters
-  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
-  const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
-  const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
-  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor::reset();
-
-  // Report option group name (if defined)
-  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
-  fmt_output << fmtHeader % "EXTENDED KEYS";
-
-  // Report the options
-  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
-  unsigned int optionDescTab = 23;
-
-  for (auto& param : extendedKeysCollection) {
-    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
-    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
-    fmt_output << fmtOption % param.test_name % formattedString;
-  }
-
-  return fmt_output.str();
 }
 
 void
 SubCmdValidate::print_help_internal() const
 {
   if (m_device.empty()) {
-    printHelp(false, extendedKeysOptions());
+    printHelp(false);
     return;
   }
 
@@ -514,15 +531,15 @@ SubCmdValidate::print_help_internal() const
   common_options.add_options()
     ("run,r", boost::program_options::value<decltype(tempVec)>(&tempVec)->multitoken(), (std::string("Run a subset of the test suite. Valid options are:\n") + testOptionValues).c_str() )
   ;
-  printHelp(common_options, m_hiddenOptions, deviceClass, false, extendedKeysOptions());
+  printHelp(common_options, m_hiddenOptions, deviceClass, false);
 }
 
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   // Parse sub-command ...
+  po::variables_map vm;
   try{
-    po::variables_map vm;
     const auto unrecognized_options = process_arguments(vm, _options, false);
 
     if (!unrecognized_options.empty())
@@ -560,11 +577,17 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
+    if (vm.count("output") && m_output.empty())
+      throw xrt_core::error("Output file not specified");
+
+    if (vm.count("path") && m_xclbin_location.empty())
+      throw xrt_core::error("xclbin path not specified");
+
     if (!m_output.empty() && !XBU::getForce() && std::filesystem::exists(m_output))
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
     if (m_tests_to_run.empty())
-      throw std::runtime_error("No test given to validate against.");
+      throw xrt_core::error("No test given to validate against.");
 
     // Validate the user test requests
     for (auto &userTestName : m_tests_to_run) {

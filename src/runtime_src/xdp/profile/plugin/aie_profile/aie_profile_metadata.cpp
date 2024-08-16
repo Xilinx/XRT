@@ -931,4 +931,10 @@ namespace xdp {
     }
   }
 
+  const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
+  {
+    static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
+    return config;
+  }
+
 }  // namespace xdp

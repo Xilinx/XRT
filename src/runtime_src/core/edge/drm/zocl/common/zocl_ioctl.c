@@ -86,6 +86,8 @@ out:
 	args->paddr = addr;
 	args->apt_idx = apt_idx;
 	args->cu_idx = cu_idx;
+        //update cu size based on the apt_index
+        args->cu_size = apts[apt_idx].size;
 	return 0;
 }
 

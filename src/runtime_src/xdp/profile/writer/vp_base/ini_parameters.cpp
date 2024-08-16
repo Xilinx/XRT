@@ -114,6 +114,9 @@ namespace xdp {
     addParameter("AIE_trace_settings.start_iteration",
                  xrt_core::config::get_aie_trace_settings_start_iteration(),
                  "Iteration count when graph type delay is used in AI Engine Trace");
+    addParameter("AIE_trace_settings.start_layer",
+                 xrt_core::config::get_aie_trace_settings_start_layer(),
+                 "layer wise windowed AI Engine Trace");
     addParameter("AIE_trace_settings.graph_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per graph");

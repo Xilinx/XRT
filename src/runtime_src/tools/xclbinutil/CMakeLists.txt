@@ -3,6 +3,22 @@
 #
 # Signing xclbin images are currently only support on Linux
 
+cmake_minimum_required(VERSION 3.5.0)
+project(XCLBINUTIL)
+
+
+# This cmake project depends on some other cmake util files
+# which can be found in folder ${XRT_SOURCE_DIR}/CMake.
+if ("${XRT_SOURCE_DIR}" STREQUAL "")
+  message(FATAL_ERROR, "XRT_SOURCE_DIR is not set, 
+          if building xclbinutil only please set it to point <XRT>/src folder")
+endif()
+
+# --- Helper CMake files includes ---
+include (${XRT_SOURCE_DIR}/CMake/settings.cmake)
+include (${XRT_SOURCE_DIR}/CMake/utilities.cmake)
+include (${XRT_SOURCE_DIR}/CMake/boostUtil.cmake)
+
 # cmake 3.19 and after emits warning about this policy not being set
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
   cmake_policy(SET CMP0110 NEW)
@@ -32,9 +48,31 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# -----------------------------------------------------------------------------
-# Include the generated header files (e.g., version.h)
-include_directories(${XRT_BINARY_DIR}/gen)
+# --- Git ---
+find_package(Git)
+
+IF(GIT_FOUND)
+  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
+ELSE(GIT_FOUND)
+  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
+endif(GIT_FOUND)
+
+# --- XRT Variables ---
+include (${XRT_SOURCE_DIR}/CMake/xrtVariables.cmake)
+include (${XRT_SOURCE_DIR}/CMake/version.cmake)
+
+include_directories(
+  ${XRT_SOURCE_DIR}/runtime_src/core/include
+  ${PROJECT_BINARY_DIR}/gen
+  )
+
+if (${XRT_NATIVE_BUILD} STREQUAL "yes") 
+  add_subdirectory(
+    ${XRT_SOURCE_DIR}/runtime_src/tools/scripts 
+    ${PROJECT_BINARY_DIR}/runtime_src/tools/scripts
+    )
+  enable_testing()
+endif()
 
 # ==-- x c l b i n u t i l --==================================================
 
@@ -104,6 +142,8 @@ install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 # ==-- x c l b i n t e s t --==================================================
 SET(TEST_SUITE_NAME "xclbinutil")
 
+include (${XRT_SOURCE_DIR}/CMake/unitTestSupport.cmake)
+
 # OpenSSL encryption is only supported on linux
 if(NOT WIN32)
   # -- Test Signing of the xclbin image using a CER formatted certificate
@@ -111,7 +151,13 @@ if(NOT WIN32)
 
   # -- Test Signing of the xclbin image using a DER formatted certificate
   xrt_add_test("signing-xclbin_DER" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/signXclbinDER.py")
-
+ 
+  # The xclbin image must contain atleast one section and platformVBNV information to meet
+  # the expectations of Linux file command utility
+  # -- Test --file-check option on valid and invalid xclbin images for Linux file command 
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/FileCheck")
+  xrt_add_test("file-check" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/FileCheck/FileCheck.py ${TEST_OPTIONS}")
+  
   # -- Test SmartNic
   # Test: SmartNic Syntax
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SmartNic")
@@ -164,6 +210,11 @@ if(NOT WIN32)
   # -- AIE RESOURCES BIN Section
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin")
   xrt_add_test("AieResourcesBin" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieResourcesBin/SectionAieResourcesBin.py ${TEST_OPTIONS}")
+
+  # -- AIE TRACE METADATA Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieTraceMetadata")
+  xrt_add_test("AieTraceMetadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AieTraceMetadata/SectionAieTraceMetadata.py ${TEST_OPTIONS}")
+
 
 endif()
 

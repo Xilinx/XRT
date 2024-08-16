@@ -20,14 +20,20 @@
  *  limitations under the License.
  *
  *  GPL license Verbiage:
+ *
  *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by the Free Software Foundation;
- *  either version 2 of the License, or (at your option) any later version.
- *  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU General Public License for more details.
- *  You should have received a copy of the GNU General Public License along with this program;
- *  if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, write to the Free Software Foundation,
+ *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _XCLBIN_H_
@@ -184,7 +190,8 @@ extern "C" {
         VENDER_METADATA        = 31,
         AIE_PARTITION          = 32,
         IP_METADATA            = 33,
-	AIE_RESOURCES_BIN      = 34,
+        AIE_RESOURCES_BIN      = 34,
+        AIE_TRACE_METADATA     = 35,
     };
 
     enum MEM_TYPE {
@@ -236,10 +243,10 @@ extern "C" {
         uint16_t m_actionMask;              /* Bit Mask */
         unsigned char m_interface_uuid[16];     /* Interface uuid of this xclbin */
         unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
-	union {
-	    char m_next_axlf[16];           /* Name of next xclbin file in the daisy chain */
-	    xuid_t uuid;                    /* uuid of this xclbin*/
-	};
+        union {
+            char m_next_axlf[16];           /* Name of next xclbin file in the daisy chain */
+            xuid_t uuid;                    /* uuid of this xclbin*/
+        };
         char m_debug_bin[16];               /* Name of binary with debug information */
         uint32_t m_numSections;             /* Number of section headers */
     };
@@ -502,22 +509,22 @@ extern "C" {
     struct aie_resources_bin {                   /* aie_resources_bin data section  */
         // Prefix Syntax:
         //   mpo - member, pointer, offset
-	//     This variable represents a zero terminated string
-	//     that is offseted from the beginning of the section.
-	//
-	//     The pointer to access the string is initialized as follows:
-	//     char * pCharString = (address_of_section) + (mpo value)
-	uint32_t mpo_name;         // Name of the aie_resources_bin section
-	uint32_t m_image_offset;   // Image offset
-	uint32_t m_image_size;     // Image size
-	uint32_t mpo_version;      // Version
-	uint32_t m_start_column;   // Start column
-	uint32_t m_num_columns;    // Number of columns
-	uint8_t padding[36];       // Reserved for future use
-	uint8_t reservedExt[16];   // Reserved for future extended data
+        //     This variable represents a zero terminated string
+        //     that is offseted from the beginning of the section.
+        //
+        //     The pointer to access the string is initialized as follows:
+        //     char * pCharString = (address_of_section) + (mpo value)
+        uint32_t mpo_name;         // Name of the aie_resources_bin section
+        uint32_t m_image_offset;   // Image offset
+        uint32_t m_image_size;     // Image size
+        uint32_t mpo_version;      // Version
+        uint32_t m_start_column;   // Start column
+        uint32_t m_num_columns;    // Number of columns
+        uint8_t padding[36];       // Reserved for future use
+        uint8_t reservedExt[16];   // Reserved for future extended data
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_resources_bin) == 76, "aie_resources_bin structure no longer is 76 bytes in size");
-		
+
     enum FLASH_TYPE
     {
         FLT_UNKNOWN = 0,
@@ -584,7 +591,7 @@ extern "C" {
     struct cdo_group {
         uint32_t mpo_name;                  // Name of the CDO group (Null terminated string)
         uint8_t cdo_type;                   // CDO group type (CDO_Type)
-        uint8_t padding[3];             
+        uint8_t padding[3];
         uint64_t pdi_id;                    // PDI ID
         struct array_offset dpu_kernel_ids; // Array of dpu_kernel_ids (uint64_t)
         struct array_offset pre_cdo_groups; // Array of Pre CDO Group IDs (uint32_t)
@@ -623,7 +630,14 @@ extern "C" {
         uint64_t pre_post_fingerprint;      // The unique hash value of pre post 
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
-        uint8_t reserved[54];               // Reserved
+        //   kernel_commit_id is modeled after mpo_name
+        //     This variable represents a zero terminated string
+        //     that is offseted from the beginning of the section.
+        //
+        //     The pointer to access the string is initialized as follows:
+        //     char * pCharString = (address_of_section) + (mpo value)
+        uint32_t kernel_commit_id;          // The git repo commit id for DPU_PHX_KERNEL 
+        uint8_t reserved[52];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 184 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) % sizeof(uint64_t) == 0, "aie_partition structure needs to be 64-bit word aligned");

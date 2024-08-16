@@ -8,6 +8,7 @@
 #include "core/common/config.h"
 #include <string>
 #include <iosfwd>
+#include <climits>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -250,6 +251,13 @@ inline std::string
 get_ml_timeline_buffer_size()
 {
   static std::string value = detail::get_string_value("Debug.ml_timeline_buffer_size", "128K");
+  return value;
+}
+
+inline bool
+get_aie_halt()
+{
+  static bool value = detail::get_bool_value("Debug.aie_halt", false);
   return value;
 }
 
@@ -860,6 +868,13 @@ inline unsigned int
 get_aie_trace_settings_start_iteration()
 {
   static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_iteration", 1);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_start_layer()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_layer", UINT_MAX);
   return value;
 }
 

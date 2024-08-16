@@ -52,6 +52,7 @@ bool event::synchronize()
   }
   //then the event is considered as completed
   set_state(state::completed);
+  ctime = std::chrono::system_clock::now();
 
   //all commands depend on the event start running
   std::lock_guard ch_lock(m_mutex_chain_coms);
@@ -63,7 +64,6 @@ bool event::synchronize()
 
 bool event::wait()
 {
-  ctime = std::chrono::system_clock::now();
   state event_state = get_state();
   if (event_state < state::completed)
   {

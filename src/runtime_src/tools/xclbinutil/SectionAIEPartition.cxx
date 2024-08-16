@@ -24,6 +24,7 @@
 #include <iostream>
 
 namespace XUtil = XclBinUtilities;
+namespace fs = std::filesystem;
 
 // -------------------------------------------------------------------------
 
@@ -159,11 +160,11 @@ process_PDI_uuid(const boost::property_tree::ptree& ptPDI,
 
 static void
 read_file_into_buffer(const std::string& fileName,
-                      const std::filesystem::path& fromRelativeDir,
+                      const fs::path& fromRelativeDir,
                       std::vector<char>& buffer)
 {
   // Build the path to our file of interest
-  std::filesystem::path filePath = fileName;
+  fs::path filePath = fileName;
 
   if (filePath.is_relative()) {
     filePath = fromRelativeDir;
@@ -195,7 +196,7 @@ read_file_into_buffer(const std::string& fileName,
 
 static void
 process_PDI_file(const boost::property_tree::ptree& ptAIEPartitionPDI,
-                 const std::filesystem::path& relativeFromDir,
+                 const fs::path& relativeFromDir,
                  aie_pdi& aiePartitionPDI,
                  SectionHeap& heap)
 {
@@ -314,7 +315,7 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
 
 static void
 process_PDIs(const boost::property_tree::ptree& ptAIEPartition,
-             const std::filesystem::path& relativeFromDir,
+             const fs::path& relativeFromDir,
              aie_partition& aiePartitionHdr,
              SectionHeap& heap)
 {
@@ -376,6 +377,7 @@ process_partition_info(const boost::property_tree::ptree& ptAIEPartition,
 
   // Write out the 16-bit array.
   partitionInfo.start_columns.offset = static_cast<decltype(partitionInfo.start_columns.offset)>(heap.getNextBufferOffset());
+  // XUtil::TRACE(boost::str(boost::format("  start_column (0x%lx)") % partitionInfo.start_columns.offset));
   for (const auto element : startColumns)
     heap.write(reinterpret_cast<const char*>(&element), sizeof(uint16_t), false /*align*/);
 
@@ -387,7 +389,7 @@ process_partition_info(const boost::property_tree::ptree& ptAIEPartition,
 
 static void
 createAIEPartitionImage(const std::string& sectionIndexName,
-                        const std::filesystem::path& relativeFromDir,
+                        const fs::path& relativeFromDir,
                         std::istream& iStream,
                         std::ostringstream& osBuffer)
 {
@@ -414,6 +416,12 @@ createAIEPartitionImage(const std::string& sectionIndexName,
   aie_partitionHdr.operations_per_cycle = ptAIEPartition.get<uint32_t>("operations_per_cycle", 0);
   aie_partitionHdr.inference_fingerprint = ptAIEPartition.get<uint64_t>("inference_fingerprint", 0);
   aie_partitionHdr.pre_post_fingerprint = ptAIEPartition.get<uint64_t>("pre_post_fingerprint", 0);
+
+  // kernel_commit_id (modeled after mpo_name)
+  aie_partitionHdr.kernel_commit_id = static_cast<decltype(aie_partitionHdr.kernel_commit_id)>(heap.getNextBufferOffset());
+  auto sKernelCommitId = ptAIEPartition.get<std::string>("kernel_commit_id", "");
+  // XUtil::TRACE(boost::str(boost::format("  kernel_commit_id (0x%lx): '%s'") % aie_partitionHdr.kernel_commit_id % sKernelCommitId));
+  heap.write(sKernelCommitId.c_str(), sKernelCommitId.size() + 1 /*Null char*/);
 
   //  Process the nodes
   process_partition_info(ptAIEPartition, aie_partitionHdr.info, heap);
@@ -454,7 +462,7 @@ SectionAIEPartition::readSubPayload(const char* pOrigDataSection,
 
   // Get the JSON's file parent directory.  This is used later to any
   // relative PDI images that might need need to be read in.
-  std::filesystem::path p(getPathAndName());
+  fs::path p(getPathAndName());
   const auto relativeFromDir = p.parent_path();
 
   createAIEPartitionImage(getSectionIndexName(), relativeFromDir, iStream, buffer);
@@ -528,7 +536,9 @@ populate_cdo_groups(const char* pBase,
     boost::property_tree::ptree ptElement;
 
     // Name
-    ptElement.put("name", reinterpret_cast<const char*>(pBase + element.mpo_name));
+    auto sName = reinterpret_cast<const char*>(pBase + element.mpo_name); 
+    ptElement.put("name", sName);
+    XUtil::TRACE("Populating CDO group: " + std::string(sName));
 
     // Type
     if ((CDO_Type)element.cdo_type != CT_UNKNOWN)
@@ -565,9 +575,9 @@ static void
 write_pdi_image(const char* pBase,
                 const aie_pdi& aiePDI,
                 const std::string& fileName,
-                const std::filesystem::path& relativeToDir)
+                const fs::path& relativeToDir)
 {
-  std::filesystem::path filePath = relativeToDir;
+  fs::path filePath = relativeToDir;
   filePath /= fileName;
 
   XUtil::TRACE(boost::format("Creating PDI Image: %s") % filePath.string());
@@ -585,7 +595,7 @@ write_pdi_image(const char* pBase,
 // -------------------------------------------------------------------------
 static void
 populate_PDIs(const char* pBase,
-              const std::filesystem::path& relativeToDir,
+              const fs::path& relativeToDir,
               const aie_partition& aiePartition,
               boost::property_tree::ptree& ptAiePartition)
 {
@@ -620,7 +630,7 @@ populate_PDIs(const char* pBase,
 static void
 writeAIEPartitionImage(const char* pBuffer,
                        unsigned int bufferSize,
-                       const std::filesystem::path& relativeToDir,
+                       const fs::path& relativeToDir,
                        std::ostream& oStream)
 {
   XUtil::TRACE("AIE_PARTITION : Creating JSON IMAGE");
@@ -641,6 +651,17 @@ writeAIEPartitionImage(const char* pBuffer,
   ptAiePartition.put("operations_per_cycle", (boost::format("%d") % pHdr->operations_per_cycle).str());
   ptAiePartition.put("inference_fingerprint", (boost::format("%d") % pHdr->inference_fingerprint).str());
   ptAiePartition.put("pre_post_fingerprint", (boost::format("%d") % pHdr->pre_post_fingerprint).str());
+
+  // kernel_commit_id (modeled after mpo_name)
+  // in order to be backward compatible with old xclbin which doesn't have
+  // kernel_commit_id, we should make sure the offset is NOT 0
+  auto sKernelCommitId = "";
+  if (pHdr->kernel_commit_id != 0) {
+    sKernelCommitId = reinterpret_cast<const char*>(pBuffer + pHdr->kernel_commit_id); 
+  } else {
+    XUtil::TRACE(boost::format("Open an existing xclbin: kernel_commit_id is 0x%lx") % pHdr->kernel_commit_id);
+  }
+  ptAiePartition.put("kernel_commit_id", sKernelCommitId);
 
   // Partition info
   populate_partition_info(pBuffer, pHdr->info, ptAiePartition);
@@ -681,7 +702,7 @@ SectionAIEPartition::writeSubPayload(const std::string& sSubSectionName,
     throw std::runtime_error(errMsg);
   }
 
-  std::filesystem::path p(getPathAndName());
+  fs::path p(getPathAndName());
   const auto relativeToDir = p.parent_path();
 
   writeAIEPartitionImage(m_pBuffer, m_bufferSize, relativeToDir, oStream);

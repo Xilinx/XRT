@@ -23,7 +23,7 @@ ENDIF(DRM_FOUND)
 
 
 # --- OpenCL header files ---
-pkg_check_modules(OPENCL REQUIRED OpenCL)
+find_package(OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
   INCLUDE_DIRECTORIES(${OPENCL_INCLUDEDIR})
@@ -88,37 +88,8 @@ endif()
 # --- Boost ---
 #set(Boost_DEBUG 1)
 
-# Support building XRT with local build of Boost libraries. In
-# particular the script runtime_src/tools/script/boost.sh downloads
-# and builds static Boost libraries compiled with fPIC so that they
-# can be used to resolve symbols in XRT dynamic libraries.
-if (DEFINED ENV{XRT_BOOST_INSTALL})
-  set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
-  set(Boost_USE_STATIC_LIBS ON)
-  find_package(Boost
-    HINTS $ENV{XRT_BOOST_INSTALL}
-    REQUIRED COMPONENTS system filesystem program_options)
-
-  # A bug in FindBoost maybe?  Doesn't set Boost_LIBRARY_DIRS when
-  # Boost install has only static libraries. For static tool linking
-  # this variable is needed in order for linker to locate the static
-  # libraries.  Another bug in FindBoost fails to find static
-  # libraries when shared ones are present too.
-  if (Boost_FOUND AND "${Boost_LIBRARY_DIRS}" STREQUAL "")
-    set (Boost_LIBRARY_DIRS $ENV{XRT_BOOST_INSTALL}/lib)
-  endif()
-
-else()
-  find_package(Boost
-    REQUIRED COMPONENTS system filesystem program_options)
-endif()
-set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-
-# Some later versions of boost spew warnings from property_tree
-add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
-
-# Boost_VERSION_STRING is not working properly, use our own macro
-set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
+# --- Boost Libraries ---
+include (CMake/boostUtil.cmake)
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
@@ -128,16 +99,7 @@ INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
 # --- XRT Variables ---
-set (XRT_INSTALL_DIR           "xrt")
-set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
-set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
-set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
-set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
-set (XRT_INSTALL_PYTHON_DIR    "${XRT_INSTALL_DIR}/python")
-set (XRT_BUILD_INSTALL_DIR     "${CMAKE_BINARY_DIR}${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_DIR}")
-set (XRT_VALIDATE_DIR          "${XRT_INSTALL_DIR}/test")
-set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
-set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
+include (CMake/xrtVariables.cmake)
 
 # Define RPATH for embedding in libraries and executables.  This allows
 # package creation to automatically determine dependencies.

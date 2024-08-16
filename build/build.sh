@@ -36,9 +36,9 @@ if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     fi
 fi
 
-# Use GCC 9 on CentOS 8 and RHEL 8 for std::filesystem
+# Use GCC 9 on CentOS 8, RHEL 8, AlmaLinux 8 for std::filesystem
 # The dependency is installed by xrtdeps.sh
-if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" ]] && [[ $MAJOR == 8 ]]; then
+if [[ $CPU == "x86_64" ]] && [[ $OSDIST == "centos" || $OSDIST == "rhel" || $OSDIST == "almalinux" ]] && [[ $MAJOR == 8 ]]; then
     source /opt/rh/gcc-toolset-9/enable
 fi
 
@@ -68,6 +68,7 @@ usage()
     echo "[-ccache]                   Build using RDI's compile cache"
     echo "[-toolchain <file>]         Extra toolchain file to configure CMake"
     echo "[-driver]                   Include building driver code"
+    echo "[-xclbinutil]               Build xclbinutil only"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
     echo "[-install_prefix <path>]    set CMAKE_INSTALL_PREFIX to path"
@@ -109,6 +110,7 @@ ertbsp=""
 ertfw=""
 werror=1
 alveo=1
+xclbinutil=0
 xrt_install_prefix="/opt/xilinx"
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
@@ -219,6 +221,10 @@ while [ $# -gt 0 ]; do
             ;;
         -pskernel)
             cmake_flags+=" -DXRT_PSKERNEL_BUILD=ON"
+            shift
+            ;;
+        -xclbinutil)
+            xclbinutil=1
             shift
             ;;
         -verbose)
@@ -338,8 +344,16 @@ if [[ $dbg == 1 ]]; then
   cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
 
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE $cmake_flags ../../src"
-	time $CMAKE $cmake_flags ../../src
+    if [[ $xclbinutil == 1 ]]; then
+      # xclbinutil only build
+      cmake_flags+=" -DXRT_SOURCE_DIR=$BUILDDIR/../src"
+      echo "$CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil"
+      time $CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil
+    else
+      # Full build
+      echo "$CMAKE $cmake_flags ../../src"
+      time $CMAKE $cmake_flags ../../src
+    fi
   fi
 
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
@@ -358,8 +372,16 @@ if [[ $opt == 1 ]]; then
   cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
 
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE $cmake_flags ../../src"
-	time $CMAKE $cmake_flags ../../src
+    if [[ $xclbinutil == 1 ]]; then
+      # xclbinutil only build
+      cmake_flags+=" -DXRT_SOURCE_DIR=$BUILDDIR/../src"
+      echo "$CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil"
+      time $CMAKE $cmake_flags ../../src/runtime_src/tools/xclbinutil
+    else
+      # Full build
+      echo "$CMAKE $cmake_flags ../../src"
+      time $CMAKE $cmake_flags ../../src
+    fi
   fi
 
   if [[ $nobuild == 0 ]]; then

@@ -192,7 +192,7 @@ jobs:
           runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
-          release_branch: ${{ env.RELEASE }}  
+          release: ${{ env.RELEASE }}  
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
           accessToken: ${{ secrets.ACCESS_TOKEN }}
           NPATH: ${{ secrets.NPATH }}
@@ -434,6 +434,7 @@ jobs:
           runNumber: ${{ env.XRT_VERSION_PATCH }}    
           pipeline: ${{ env.PIPELINE }}    
           env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}
           workspace: ${{ github.workspace }}  
           buildNumber: ${{ env.XRT_VERSION_PATCH }}
           github_sha: ${{ github.sha }}
@@ -594,7 +595,8 @@ jobs:
         uses: ./composite-workflows/gradle-artifactory-upload   
         with:    
           runNumber: ${{ env.XRT_VERSION_PATCH }}    
-          pipeline: ${{ env.PIPELINE }}    
+          pipeline: ${{ env.PIPELINE }}
+          release: ${{ env.RELEASE }}    
           env: ${{ env.ENV }}
           workspace: ${{ github.workspace }}  
           buildNumber: ${{ env.XRT_VERSION_PATCH }} 
@@ -603,6 +605,32 @@ jobs:
           github-server-url: ${{ secrets.SERVER_URL }}
           sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}
           runnerName: ${{ runner.name }}
+
+  cleanup-build:    
+    needs: [Release_to_all_sites, gradle-artifactory-upload]    
+    runs-on: [self-hosted, Ubuntu-22.04]    
+    steps:    
+      - name: Checkout private repository    
+        uses: actions/checkout@v3 
+        with:    
+          repository: actions-int/composite-workflows    
+          token: ${{ secrets.ACCESS_TOKEN }}
+          github-server-url: ${{ secrets.SERVER_URL }}    
+          path: composite-workflows 
+          ref: main
+    
+      - name: Use composite action package download     
+        uses: ./composite-workflows/cleanup   
+        with:    
+          runNumber: ${{ github.run_number }}    
+          pipeline: ${{ env.PIPELINE }}    
+          env: ${{ env.ENV }}
+          release: ${{ env.RELEASE }}  
+          sshKey: ${{ secrets.CI_PRIVATE_SSH_KEY }}    
+          accessToken: ${{ secrets.ACCESS_TOKEN }}
+          NPATH: ${{ secrets.NPATH }}
+          USER: ${{ secrets.USER }}
+          github-server-url: ${{ secrets.SERVER_URL }}
 
   notify-slack:  
     needs: [Release_to_all_sites, gradle-artifactory-upload]  

@@ -384,7 +384,7 @@ namespace xdp {
 
     // Helper functions for printing out summary information temporarily
     XDP_CORE_EXPORT void dumpCallCount(std::ofstream& fout) ;
-    XDP_CORE_EXPORT void dumpHALMemory(std::ofstream& fout) ;    
+    XDP_CORE_EXPORT void dumpHALMemory(std::ofstream& fout) ; 
   } ;
 }
 

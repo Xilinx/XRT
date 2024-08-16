@@ -338,6 +338,22 @@ namespace xdp {
     aie_cfg_tile(uint32_t c, uint32_t r, module_type t) : column(c), row(r), type(t) {}
   };
 
+  struct AIEProfileFinalConfig
+  {
+    using tile_vec = std::vector<std::map<tile_type, std::string>>;
+    using tile_channel =  std::map<tile_type, uint8_t>;
+
+    std::vector<std::map<tile_type, std::string>> configMetrics;
+    std::map<tile_type, uint8_t> configChannel0;
+    std::map<tile_type, uint8_t> configChannel1;
+
+    AIEProfileFinalConfig() {}
+    AIEProfileFinalConfig(const tile_vec& otherTileVec,  const tile_channel& cc0, const tile_channel& cc1) :
+                          configMetrics(otherTileVec), configChannel0(cc0), configChannel1(cc1) 
+    {
+    }
+  };
+
 } // end namespace xdp
 
 #endif
