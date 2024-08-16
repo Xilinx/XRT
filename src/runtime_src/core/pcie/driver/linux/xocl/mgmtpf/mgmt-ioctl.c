@@ -99,7 +99,7 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 	}
 
 	/* Currently we are hard coding it to 0 */
-	ret = xocl_xclbin_download(lro, copy_buffer, DEFAULT_PL_SLOT);
+	ret = xocl_xclbin_download(lro, copy_buffer, DEFAULT_PL_PS_SLOT);
 	if (ret) {
 		vfree(copy_buffer);
 		return ret;

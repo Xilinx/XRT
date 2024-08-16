@@ -356,7 +356,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
 #define MULTISLOT_VERSION	    0x80 // 128 Slots Support
-#define DEFAULT_PL_SLOT	    	    0
+#define DEFAULT_PL_PS_SLOT		0
 
 #define XOCL_VSEC_UUID_ROM          0x50
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
@@ -1568,13 +1568,13 @@ static inline int xocl_get_pl_slot(xdev_handle_t xdev_hdl, uint32_t *slot_id)
 	uuid_t *xclbin_id = NULL;
 	int ret = 0;
 
-	/* Check if DEFAULT_PL_SLOT has a xclbin loaded */
-	ret = XOCL_GET_XCLBIN_ID(xdev_hdl, xclbin_id, DEFAULT_PL_SLOT);
+	/* Check if DEFAULT_PL_PS_SLOT has a xclbin loaded */
+	ret = XOCL_GET_XCLBIN_ID(xdev_hdl, xclbin_id, DEFAULT_PL_PS_SLOT);
 	if (ret)
 		return ret;
 
-	/* As of now we have single PL slot and hard coded to slot 0 */
-	*slot_id = DEFAULT_PL_SLOT;
+	/* As of now we have single PL/PS slot and hard coded to slot 0 */
+	*slot_id = DEFAULT_PL_PS_SLOT;
 
 	return 0;
 }
