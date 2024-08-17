@@ -235,7 +235,8 @@ AIEControlConfigFiletype::getInterfaceTiles(const std::string& graphName,
             && (portName.compare(logicalName) != 0))
             continue;
         if ((graphName.compare("all") != 0)
-            && (graphName.compare(currGraph) != 0))
+            && (graphName.compare(currGraph) != 0)
+            && !useColumn)
             continue;
 
         // Make sure it's desired polarity
