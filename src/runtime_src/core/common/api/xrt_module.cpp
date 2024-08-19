@@ -23,6 +23,7 @@
 #include <elfio/elfio.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
