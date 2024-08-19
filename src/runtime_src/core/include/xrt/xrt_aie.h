@@ -298,6 +298,9 @@ public:
   explicit
   profiling(const xrt::device& device);
 
+  explicit
+  profiling(const xrt::hw_context& hwctx);
+
   /**
    * start() - Start AIE performance profiling
    *
