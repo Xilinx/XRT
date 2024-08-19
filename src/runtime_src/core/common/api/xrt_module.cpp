@@ -783,12 +783,12 @@ class module_elf : public module_impl
     if (xrt_core::config::get_xrt_debug()) {
       if (not_found_use_argument_name) {
         std::stringstream ss;
-        ss << "Patched " << patcher::section_name_to_string(type) << " use argument index " << index << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::section_name_to_string(type) << " using argument index " << index << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
       else {
         std::stringstream ss;
-        ss << "Patched " << patcher::section_name_to_string(type) << "use argument name " << argnm << " with value " << std::hex << patch;
+        ss << "Patched " << patcher::section_name_to_string(type) << " using argument name " << argnm << " with value " << std::hex << patch;
         xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
       }
     }
@@ -972,7 +972,7 @@ class module_sram : public module_impl
     } debug_flags;
     uint32_t all;
   }m_debug_mode = {};
-  static uint32_t s_id; //TODO: it needs come from the elf file
+  uint32_t m_id {0}; //TODO: it needs come from the elf file
 
   bool
   inline is_dump_control_codes() const {
@@ -990,7 +990,7 @@ class module_sram : public module_impl
   }
 
   uint32_t get_id() const {
-    return s_id;
+    return m_id;
   }
 
   // For separated multi-column control code, compute the ctrlcode
@@ -1339,7 +1339,8 @@ public:
       m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
       m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
       m_debug_mode.debug_flags.dump_preemption_codes = xrt_core::config::get_feature_toggle("Debug.dump_preemption_codes");
-      s_id++;
+      static std::atomic<uint32_t> s_id {0};
+      m_id = s_id++;
     }
 
     auto os_abi = m_parent.get()->get_os_abi();
@@ -1374,7 +1375,6 @@ public:
       return m_scratch_pad_mem;
   }
 };
-uint32_t module_sram::s_id = 0;
 
 } // namespace xrt
 
