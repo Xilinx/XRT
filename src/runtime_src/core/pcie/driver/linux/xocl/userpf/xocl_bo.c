@@ -1541,7 +1541,7 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	int	i;
 
 	/* Use default slot id for DMA information */
-	args->mm_channel_count = XOCL_DDR_COUNT(xdev, DEFAULT_PL_SLOT);
+	args->mm_channel_count = XOCL_DDR_COUNT(xdev, DEFAULT_PL_PS_SLOT);
 	if (args->mm_channel_count > 8)
 		args->mm_channel_count = 8;
 	for (i = 0; i < args->mm_channel_count; i++)

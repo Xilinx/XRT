@@ -891,7 +891,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	int ret = 0;
-	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
+	uint32_t legacy_slot_id = DEFAULT_PL_PS_SLOT;
 	uint64_t ch_switch = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;

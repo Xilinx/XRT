@@ -19,7 +19,7 @@ int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
         struct kds_client *client = filp->driver_priv;
 
 		if (xdev->is_legacy_ctx)
-			return DEFAULT_PL_SLOT;
+			return DEFAULT_PL_PS_SLOT;
 
         mutex_lock(&client->lock);
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_id);
