@@ -175,7 +175,7 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   float elapsedSecsAverage = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   elapsedSecsAverage /= itr_count;
   float overhead = elapsedSecsAverage - elapsedSecsNoOpAverage; 
-  logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: '%.7f's") % (overhead)));
+  logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: '%.1f'ms") % (overhead * 1000)));
 
   ptree.put("status", test_token_passed);
   return ptree;
