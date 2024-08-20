@@ -13,10 +13,12 @@
 #include <filesystem>
 #include <thread>
 #include <iostream>
-static constexpr size_t buffer_size_gb = 1;
-static constexpr size_t buffer_size = buffer_size_gb * 1024 * 1024 * 1024; //1 GB
-static constexpr size_t word_count = buffer_size/4;
-static constexpr int itr_count = 500;
+static constexpr size_t buffer_size_mb = 128;
+static constexpr size_t buffer_size = buffer_size_mb * 1024 * 1024; //128 MB
+static constexpr size_t word_count = buffer_size/16;
+static constexpr int itr_count = 1000;
+static constexpr size_t inter_size = 1024 * 1024;
+static constexpr unsigned int StartAddr = 32 * 1024 * 1024;
 
 TestAIEReconfigOverhead::TestAIEReconfigOverhead()
   : TestRunner("aie-reconfig-overhead", "Run end-to-end array reconfiguration overhead through shim DMA")
@@ -81,7 +83,6 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   const auto seq_name = xrt_core::device_query<xrt_core::query::sequence_name>(dev, xrt_core::query::sequence_name::type::aie_reconfig_overhead);
-  logger(ptree, "Debug", boost::str(boost::format("DPU sequence path: '%s'") % seq_name));
   auto dpu_instr = findPlatformFile(seq_name, ptree);
   if (!std::filesystem::exists(dpu_instr))
     return ptree;
@@ -99,46 +100,41 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
   }
 
   //Create BOs
-  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(1));
-  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(3));
-  xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(5));
+  int argno = 1;
+  xrt::bo bo_ifm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+  argno++;
+  xrt::bo bo_ofm(working_dev, buffer_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+  xrt::bo bo_inter(working_dev, inter_size, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
+  xrt::bo bo_instr(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(argno));
+  xrt::bo bo_instr_no_op(working_dev, instr_size*sizeof(int), XCL_BO_FLAGS_CACHEABLE, kernel.group_id(argno++));
+  argno++;
+  xrt::bo bo_mc(working_dev, 16, XRT_BO_FLAGS_HOST_ONLY, kernel.group_id(argno++));
 
   init_instr_buf(bo_instr, dpu_instr);
+  //Create ctrlcode with NOPs
+  std::memset(bo_instr_no_op.map<char*>(), 0, instr_size);
 
   // map input buffer
+  // Incremental byte pattern
   auto ifm_mapped = bo_ifm.map<int*>();
   for (size_t i = 0; i < word_count; i++)
-    ifm_mapped[i] = rand() % 4096;
+    ifm_mapped[i] = (int)(i % word_count);
 
   //Sync BOs
   bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+  bo_mc.sync(XCL_BO_SYNC_BO_TO_DEVICE);
   bo_ifm.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   //Log
   if(XBUtilities::getVerbose()) { 
-    logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'GB") % buffer_size_gb));
+    logger(ptree, "Details", boost::str(boost::format("Buffer size: '%f'MB") % buffer_size_mb));
     logger(ptree, "Details", boost::str(boost::format("No. of iterations: '%f'") % itr_count));
   }
 
   auto start = std::chrono::high_resolution_clock::now();
-  try{
-    auto run = kernel(1, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
-    run.wait2();
-  }
-  catch (const std::exception& ex)
-  {
-    logger(ptree, "Error", ex.what());
-    ptree.put("status", test_token_failed);
-    return ptree;
-  }
-  auto end = std::chrono::high_resolution_clock::now();
-  float elapsedSecs = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-
-  start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i< itr_count; i++)
-  {
+  for (int i = 0 ;i < itr_count ; i++){
     try{
-      auto run = kernel(1, bo_ifm, NULL, bo_ofm, NULL, bo_instr, instr_size, NULL);
+      auto run = kernel(1, bo_ifm, NULL, bo_ofm, bo_inter, bo_instr_no_op, instr_size, bo_mc);
       run.wait2();
     }
     catch (const std::exception& ex)
@@ -147,16 +143,39 @@ TestAIEReconfigOverhead::run(std::shared_ptr<xrt_core::device> dev)
       ptree.put("status", test_token_failed);
       return ptree;
     }
+    bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  float elapsedSecsNoOpAverage = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+  elapsedSecsNoOpAverage /= itr_count;
+
+  start = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i< itr_count; i++)
+  {
+    try{
+      auto run = kernel(1, bo_ifm, NULL, bo_ofm, bo_inter, bo_instr, instr_size, bo_mc);
+      run.wait2();
+    }
+    catch (const std::exception& ex)
+    {
+      logger(ptree, "Error", ex.what());
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
+    bo_ofm.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    auto *ofm_mapped = bo_ofm.map<int8_t*>();
+    if(std::memcmp(ifm_mapped, ofm_mapped + StartAddr, word_count)){
+      logger(ptree, "Error", "Value read back does not match reference for array reconfiguration instruction buffer");
+      ptree.put("status", test_token_failed);
+      return ptree;
+    }
+  }
+
   end = std::chrono::high_resolution_clock::now();
   float elapsedSecsAverage = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
   elapsedSecsAverage /= itr_count;
-  if(XBUtilities::getVerbose()){
-    logger(ptree, "Details", boost::str(boost::format("ElapsedSec: '%.1f' us") % (elapsedSecs * 1000000)));
-    logger(ptree, "Details", boost::str(boost::format("ElapsedSecAverage: '%.1f' us") % (elapsedSecsAverage * 1000000)));
-  }
-  float overhead = elapsedSecs - elapsedSecsAverage; 
-  logger(ptree, "Details", boost::str(boost::format("Overhead: '%.1f' us") % (overhead * 1000000)));
+  float overhead = elapsedSecsAverage - elapsedSecsNoOpAverage; 
+  logger(ptree, "Details", boost::str(boost::format("Array reconfiguration overhead: '%.7f's") % (overhead)));
 
   ptree.put("status", test_token_passed);
   return ptree;
