@@ -449,4 +449,4 @@ namespace xdp::aie::trace {
     return true;
   }
 
-  }  // namespace xdp
+}  // namespace xdp

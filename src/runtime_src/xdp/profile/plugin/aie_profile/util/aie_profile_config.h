@@ -106,28 +106,6 @@ namespace xdp::aie::profile {
                       const module_type xdpModType, const std::string metricSet,
                       uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
 
-/*
-void configInterfaceTilesRunningOrStalledCount(xaiefal::XAieMod& mod, 
-                             XAie_ModuleType& startMod, XAie_Events& startEvent,
-                             XAie_ModuleType& stopMod, XAie_Events& stopEvent,
-                             XAie_ModuleType& resetMod, XAie_Events& resetEvent,
-                             uint32_t iteration);
-
-void configInterfaceTilesLatencyTrigger(XAie_DevInst* aieDevInst,
-                                        const XAie_LocType tileloc,
-                                        const module_type modType,
-                                        const std::string metricSet,
-                                        const XAie_Events& userEventTrigger);
- 
-
-std::vector<XAie_Events>
-configComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieTile& xaieTile, 
-                  const XAie_LocType loc, const XAie_ModuleType mod,
-                  const module_type type, const std::string metricSet,
-                  aie_cfg_base& config)
-
-*/
-
 }  // namespace xdp::aie::profile
 
 #endif

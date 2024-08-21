@@ -24,7 +24,6 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
-// #include <set>
 #include "core/common/message.h"
 
 
@@ -140,14 +139,9 @@ namespace xdp::aie::profile {
         "Configuring AIE profile to start on iteration " + std::to_string(iteration));
 
     pc->changeThreshold(iteration);
-    
+
     XAie_Events counterEvent;
     pc->getCounterEvent(mod, counterEvent);
-
-    // // Reset when done counting
-    // pc->changeRstEvent(mod, counterEvent);
-    // if (pc->start() != XAIE_OK)
-    //   return false;
 
     // performance counter event to use it later for broadcasting
     retCounterEvent = counterEvent;
@@ -173,7 +167,7 @@ namespace xdp::aie::profile {
     // later channel Ids considering other channel IDs being used.
     // Use by default brodcastId 11 for interface_tile_latency start trigger
     uint8_t brodcastId = 11;
-    
+
     int driverStatus   = AieRC::XAIE_OK;
     driverStatus |= XAie_EventBroadcast(aieDevInst, loc, XAIE_CORE_MOD, brodcastId, bcEvent);
     if (driverStatus!= XAIE_OK) {
