@@ -8,6 +8,7 @@
 #include "core/common/query_requests.h"
 #include "JSONConfigurable.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_bo.h"
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/ptree.hpp>
@@ -45,6 +46,8 @@ class TestRunner : public JSONConfigurable {
     std::vector<std::string> findDependencies( const std::string& test_path,
                       const std::string& ps_kernel_name);
     int validate_binary_file(const std::string& binaryfile);
+    void init_instr_buf(xrt::bo &bo_instr, const std::string& dpu_file);
+    size_t get_instr_size(const std::string& dpu_file);
 
     const std::string test_token_skipped = "SKIPPED";
     const std::string test_token_failed = "FAILED";
