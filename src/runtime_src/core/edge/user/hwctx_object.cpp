@@ -22,7 +22,9 @@ namespace zynqaie {
   {
 #ifdef XRT_ENABLE_AIE
     auto device{xrt_core::get_userpf_device(m_shim)};
-    m_aie_array = std::make_unique<Aie>(device);
+    auto data = device->get_axlf_section(AIE_METADATA, m_uuid);
+    if (data.first && data.second)
+      m_aie_array = std::make_unique<Aie>(device);
 #endif
   }
 

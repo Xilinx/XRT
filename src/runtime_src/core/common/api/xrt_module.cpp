@@ -4,6 +4,7 @@
 #define XRT_API_SOURCE         // exporting xrt_module.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "experimental/xrt_module.h"
 #include "experimental/xrt_elf.h"
 #include "experimental/xrt_ext.h"
@@ -22,12 +23,14 @@
 #include <elfio/elfio.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
 #include <map>
 #include <set>
 #include <string>
+#include <sstream>
 
 #ifndef AIE_COLUMN_PAGE_SIZE
 # define AIE_COLUMN_PAGE_SIZE 8192  // NOLINT
@@ -43,8 +46,6 @@ static constexpr size_t column_page_size = AIE_COLUMN_PAGE_SIZE;
 static constexpr uint8_t Elf_Amd_Aie2p  = 69;
 static constexpr uint8_t Elf_Amd_Aie2ps = 64;
 
-// When Debug.dump_bo_from_elf is true in xrt.ini, instruction bo(s) from elf will be dumped
-static const char* Debug_Bo_From_Elf_Feature = "Debug.dump_bo_from_elf";
 static const char* Scratch_Pad_Mem_Symbol = "scratch-pad-mem";
 static const char* Control_Packet_Symbol = "control-packet";
 
@@ -243,9 +244,6 @@ struct patcher
   XRT_CORE_UNUSED void
   dump_bo(xrt::bo& bo, const std::string& filename)
   {
-    if (!xrt_core::config::get_feature_toggle(Debug_Bo_From_Elf_Feature))
-      return;
-
     std::ofstream ofs(filename, std::ios::out | std::ios::binary);
     if (!ofs.is_open())
       throw std::runtime_error("Failure opening file " + filename + " for writing!");
@@ -270,7 +268,6 @@ namespace xrt
 class module_impl
 {
   xrt::uuid m_cfg_uuid;   // matching hw configuration id
-
 public:
   explicit module_impl(xrt::uuid cfg_uuid)
     : m_cfg_uuid(std::move(cfg_uuid))
@@ -784,6 +781,18 @@ class module_elf : public module_impl
     }
 
     it->second.patch(base, patch);
+    if (xrt_core::config::get_xrt_debug()) {
+      if (not_found_use_argument_name) {
+        std::stringstream ss;
+        ss << "Patched " << patcher::section_name_to_string(type) << " using argument index " << index << " with value " << std::hex << patch;
+        xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+      else {
+        std::stringstream ss;
+        ss << "Patched " << patcher::section_name_to_string(type) << " using argument name " << argnm << " with value " << std::hex << patch;
+        xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+    }
     return true;
   }
 
@@ -955,6 +964,36 @@ class module_sram : public module_impl
   // buffer sync to device.
   bool m_dirty{ false };
 
+  union debug_flag_union {
+    struct debug_mode_struct {
+      uint32_t dump_control_codes     : 1;
+      uint32_t dump_control_packet    : 1;
+      uint32_t dump_preemption_codes  : 1;
+      uint32_t reserved : 29;
+    } debug_flags;
+    uint32_t all;
+  }m_debug_mode = {};
+  uint32_t m_id {0}; //TODO: it needs come from the elf file
+
+  bool
+  inline is_dump_control_codes() const {
+    return m_debug_mode.debug_flags.dump_control_codes != 0;
+  }
+
+  bool
+  inline is_dump_control_packet() const {
+    return m_debug_mode.debug_flags.dump_control_packet != 0;
+  }
+
+  bool
+  inline is_dump_preemption_codes() {
+    return m_debug_mode.debug_flags.dump_preemption_codes != 0;
+  }
+
+  uint32_t get_id() const {
+    return m_id;
+  }
+
   // For separated multi-column control code, compute the ctrlcode
   // buffer object address of each column (used in ert_dpu_data).
   void
@@ -1019,29 +1058,55 @@ class module_sram : public module_impl
     // copy instruction into bo
     fill_bo_with_data(m_instr_bo, data);
 
-#ifdef _DEBUG
-    dump_bo(m_instr_bo, "instrBo.bin");
-#endif
+    if (is_dump_control_codes()) {
+      std::string dump_file_name = "ctr_codes_pre_patch" + std::to_string(get_id()) + ".bin";
+      dump_bo(m_instr_bo, dump_file_name);
+
+      std::stringstream ss;
+      ss << "dumped file " << dump_file_name << " ctr_codes size: " << std::to_string(sz);
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+    }
 
     const auto& preempt_save_data = parent->get_preempt_save();
     auto preempt_save_data_size = preempt_save_data.size();
-    if (preempt_save_data_size > 0) {
-      m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
-      fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
-    }
 
     const auto& preempt_restore_data = parent->get_preempt_restore();
     auto preempt_restore_data_size = preempt_restore_data.size();
-    if (preempt_restore_data_size > 0) {
+
+    if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
+      m_preempt_save_bo = xrt::bo{ m_hwctx, preempt_save_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
+      fill_bo_with_data(m_preempt_save_bo, preempt_save_data);
+
       m_preempt_restore_bo = xrt::bo{ m_hwctx, preempt_restore_data_size, xrt::bo::flags::cacheable, 1 /* fix me */ };
       fill_bo_with_data(m_preempt_restore_bo, preempt_restore_data);
+
+      if (is_dump_preemption_codes()) {
+        std::string dump_file_name = "preemption_save_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_preempt_save_bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+
+        dump_file_name = "preemption_restore_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_preempt_restore_bo, dump_file_name);
+
+        ss.clear();
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
     }
 
     if ((preempt_save_data_size > 0) && (preempt_restore_data_size > 0)) {
-      XRT_DEBUGF("module_sram::create_instr_buf create scratch_pad_mem of size %d for preemption\n", m_parent->get_scratch_pad_mem_size());
       m_scratch_pad_mem = xrt::ext::bo{ m_hwctx, m_parent->get_scratch_pad_mem_size() };
       patch_instr(m_preempt_save_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem, patcher::buf_type::preempt_save);
       patch_instr(m_preempt_restore_bo, Scratch_Pad_Mem_Symbol, 0, m_scratch_pad_mem, patcher::buf_type::preempt_restore);
+
+      if (is_dump_preemption_codes()) {
+        std::stringstream ss;
+        ss << "patched preemption-codes using scratch_pad_mem at address " << std::hex << m_scratch_pad_mem.address() << " size " << std::hex << m_parent->get_scratch_pad_mem_size();
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
     }
 
     if (m_ctrlpkt_bo) {
@@ -1053,26 +1118,25 @@ class module_sram : public module_impl
   void
   create_ctrlpkt_buf(const module_impl* parent)
   {
-    XRT_DEBUGF("-> module_sram::create_ctrlpkt_buf()\n");
     const auto& data = parent->get_ctrlpkt();
     size_t sz = data.size();
 
     if (sz == 0) {
-      XRT_DEBUGF("ctrlpkt buf is empty\n");
+      XRT_DEBUGF("ctrpkt buf is empty\n");
+      return;
     }
-    else {
-      // create bo combined size of all ctrlcodes
-      // m_ctrlpkt_buf = xrt::bo{m_hwctx, sz, xrt::bo::flags::host_only, 0};
-      m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
 
-      // copy instruction into bo
-      fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
+    m_ctrlpkt_bo = xrt::ext::bo{ m_hwctx, sz };
 
-#ifdef _DEBUG
-      dump_bo(m_ctrlpkt_bo, "ctrlpktBo.bin");
-#endif
+    fill_ctrlpkt_buf(m_ctrlpkt_bo, data);
 
-      XRT_DEBUGF("<- module_sram::create_ctrlpkt_buffer()\n");
+    if (is_dump_control_packet()) {
+        std::string dump_file_name = "ctr_packet_pre_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_ctrlpkt_bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
     }
   }
 
@@ -1081,7 +1145,6 @@ class module_sram : public module_impl
   void
   create_instruction_buffer(const module_impl* parent)
   {
-    XRT_DEBUGF("-> module_sram::create_instruction_buffer()\n");
     const auto& data = parent->get_data();
 
     // create bo combined size of all ctrlcodes
@@ -1089,16 +1152,13 @@ class module_sram : public module_impl
       return acc + ctrlcode.size();
       });
     if (sz == 0) {
-      std::cout << "instruction buf is empty" << std::endl;
+      XRT_DEBUGF("ctrcode buf is empty\n");
       return;
     }
 
     m_buffer = xrt::bo{ m_hwctx, sz, xrt::bo::flags::cacheable, 1 /* fix me */ };
 
-    // copy ctrlcodes into bo
     fill_instruction_buffer(m_buffer, data);
-
-    XRT_DEBUGF("<- module_sram::create_instruction_buffer()\n");
   }
 
   virtual void
@@ -1175,21 +1235,49 @@ class module_sram : public module_impl
     }
     else if (os_abi == Elf_Amd_Aie2p) {
       m_instr_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-#ifdef _DEBUG
-      dump_bo(m_instr_bo, "instrBoPatched.bin");
-#endif
+
+      if (is_dump_control_codes()) {
+        std::string dump_file_name = "ctr_codes_post_patch" + std::to_string(get_id()) + ".bin";
+        dump_bo(m_instr_bo, dump_file_name);
+
+        std::stringstream ss;
+        ss << "dumped file " << dump_file_name;
+        xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+      }
+
       if (m_ctrlpkt_bo) {
         m_ctrlpkt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-#ifdef _DEBUG
-        dump_bo(m_ctrlpkt_bo, "ctrlpktBoPatched.bin");
-#endif
+
+        if (is_dump_control_packet()) {
+          std::string dump_file_name = "ctr_packet_post_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_ctrlpkt_bo, dump_file_name);
+
+          std::stringstream ss;
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
         }
+      }
 
-      if (m_preempt_save_bo)
+      if (m_preempt_save_bo && m_preempt_restore_bo) {
         m_preempt_save_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
-      if (m_preempt_restore_bo)
         m_preempt_restore_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+        if (is_dump_preemption_codes()) {
+          std::string dump_file_name = "preemption_save_post_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_preempt_save_bo, dump_file_name);
+
+          std::stringstream ss;
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+
+          dump_file_name = "preemption_restore_post_patch" + std::to_string(get_id()) + ".bin";
+          dump_bo(m_preempt_restore_bo, dump_file_name);
+
+          ss.clear();
+          ss << "dumped file " << dump_file_name;
+          xrt_core::message::send(xrt_core::message::severity_level::debug, "xrt_module", ss.str());
+        }
+      }
     }
 
     m_dirty = false;
@@ -1248,6 +1336,14 @@ public:
     , m_parent{ std::move(parent) }
     , m_hwctx{ std::move(hwctx) }
   {
+    if (xrt_core::config::get_xrt_debug()) {
+      m_debug_mode.debug_flags.dump_control_codes = xrt_core::config::get_feature_toggle("Debug.dump_control_codes");
+      m_debug_mode.debug_flags.dump_control_packet = xrt_core::config::get_feature_toggle("Debug.dump_control_packet");
+      m_debug_mode.debug_flags.dump_preemption_codes = xrt_core::config::get_feature_toggle("Debug.dump_preemption_codes");
+      static std::atomic<uint32_t> s_id {0};
+      m_id = s_id++;
+    }
+
     auto os_abi = m_parent.get()->get_os_abi();
 
     if (os_abi == Elf_Amd_Aie2p) {
