@@ -72,7 +72,8 @@ class membuf
   friend std::ofstream& operator<<(std::ofstream& ofs, const membuf& mb)
   {
     ofs.write("mem\0", 4);
-    ofs.write((const char*)&mb.m_sz, sizeof(mb.m_sz));
+    uint32_t fixed_sz = static_cast<uint32_t>(mb.m_sz);
+    ofs.write(reinterpret_cast<const char*>(&fixed_sz), sizeof(fixed_sz));
     ofs.write((const char*)mb.m_ptr, mb.m_sz);
     return ofs;
   }
@@ -247,7 +248,14 @@ std::string concat_args(const Args&... args)
 {
   std::ostringstream oss;
   bool first = true;
-  ((oss << (first ? "" : ", ") << stringify_args(args), first = false), ...);
+
+  // Folding expression with type check for membuf
+  ((oss << (first ? "" : ", ") 
+    << (std::is_same_v<membuf, std::decay_t<Args>> 
+    ? mb_stringify(args) 
+    : stringify_args(args)), 
+    first = false), ...);
+
   return oss.str();
 }
 
@@ -343,7 +351,7 @@ namespace xtx = xrt::tools::xbtracer;
 #define XRT_TOOLS_XBT_FUNC_ENTRY(f, ...)                                       \
   do                                                                           \
   {                                                                            \
-    if ((nullptr == this) || (nullptr == this->get_handle()))                  \
+    if (nullptr == this->get_handle())                  \
     {                                                                          \
       XRT_TOOLS_XBT_LOG_ERROR("Handle");                                       \
       break;                                                                   \
@@ -362,7 +370,7 @@ namespace xtx = xrt::tools::xbtracer;
 #define XRT_TOOLS_XBT_FUNC_EXIT(f, ...)                                        \
   do                                                                           \
   {                                                                            \
-    if ((nullptr == this) || (nullptr == this->get_handle().get()))            \
+    if (nullptr == this->get_handle().get())            \
     {                                                                          \
       XRT_TOOLS_XBT_LOG_ERROR("Handle");                                       \
       break;                                                                   \
@@ -381,7 +389,7 @@ namespace xtx = xrt::tools::xbtracer;
 #define XRT_TOOLS_XBT_FUNC_EXIT_RET(f, r, ...)                                 \
   do                                                                           \
   {                                                                            \
-    if ((nullptr == this) || (nullptr == this->get_handle()))                  \
+    if (nullptr == this->get_handle())                  \
     {                                                                          \
       XRT_TOOLS_XBT_LOG_ERROR("Handle");                                       \
       break;                                                                   \

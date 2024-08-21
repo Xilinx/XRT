@@ -146,6 +146,7 @@ bool set_env(const char* key, const char* value)
   errno_t err = _putenv_s(key, value);
   return err == 0;
 #else
+  // NOLINTNEXTLINE(concurrency-mt-unsafe) - protected by a mutex
   int ret = setenv(key, value, 1);
   return ret == 0;
 #endif
@@ -169,6 +170,7 @@ std::string get_env(const std::string& key)
 
   return result;
 #else
+  // NOLINTNEXTLINE(concurrency-mt-unsafe) - protected by a mutex
   const char* val = std::getenv(key.c_str());
   return val == nullptr ? std::string() : std::string(val);
 #endif
@@ -178,6 +180,7 @@ std::string get_env(const std::string& key)
  * Searches for a shared library in the directories specified by
  * LD_LIBRARY_PATH.
  */
+// NOLINTNEXTLINE (bugprone-easily-swappable-parameters)
 std::string find_file(const std::string& path, const std::string& file)
 {
   std::istringstream path_stream(path);

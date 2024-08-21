@@ -72,6 +72,7 @@ std::string ns_to_date_time_fmt(std::chrono::nanoseconds ns)
 logger::logger()
 : synth_dtor_trace_thread(&logger::synth_dtor_trace_fn, this)
 {
+  // NOLINTNEXTLINE(cppcoreguidelines-prefer-member-initializer)
   m_pid = get_current_procces_id();
 
   std::lock_guard<std::mutex> lock(env_mutex);
@@ -96,7 +97,8 @@ logger::logger()
               << std::endl;
 
   std::chrono::nanoseconds ns;
-  char *end;
+  char *end = nullptr;
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
   intmax_t time = strtoimax(time_str.c_str(), &end, 10);
   ns = std::chrono::nanoseconds(time);
 
@@ -175,7 +177,7 @@ void logger::synth_dtor_trace_fn()
 
     if (m_is_destructing == false)
 	run = true;
-
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     //sleep_ms(20);
   }

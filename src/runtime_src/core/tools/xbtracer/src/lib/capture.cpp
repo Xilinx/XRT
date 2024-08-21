@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <string>
 #include <utility>
 
@@ -29,7 +30,7 @@ xrt_ftbl& xrt_ftbl::get_instance()
  */
 // NOLINTNEXTLINE(cert-err58-cpp)
 const static xrt_ftbl& dtbl = xrt_ftbl::get_instance();
-
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::unordered_map <void*, std::string> fptr2fname_map;
 
 /* This will create association between function name
@@ -50,18 +51,279 @@ const static std::unordered_map < std::string, void **> fname2fptr_map = {
   // NOLINTBEGIN(cppcoreguidelines-pro-type-cstyle-cast)
   /* device class maps */
   {"xrt::device::device(unsigned int)", (void **) &dtbl.device.ctor},
+  {"xrt::device::device(std::string const&)", (void **) &dtbl.device.ctor_bdf},
+  {"xrt::device::device(void*)", (void **) &dtbl.device.ctor_dhdl},
+  {"xrt::device::register_xclbin(xrt::xclbin const&)", (void **) &dtbl.device.register_xclbin},
+  {"xrt::device::load_xclbin(axlf const*)", (void **) &dtbl.device.load_xclbin_axlf},
   {"xrt::device::load_xclbin(std::string const&)", (void **) &dtbl.device.load_xclbin_fnm},
+  {"xrt::device::load_xclbin(xrt::xclbin const&)", (void **) &dtbl.device.load_xclbin_obj},
+  {"xrt::device::get_xclbin_uuid() const", (void **) &dtbl.device.get_xclbin_uuid},
+  {"xrt::device::reset()", (void **) &dtbl.device.reset},
+
+  /* bo class maps */
+  {"xrt::bo::bo(xrt::device const&, void*, unsigned long, xrt::bo::flags, unsigned int)",  (void **) &dtbl.bo.ctor_dev_up_s_f_g},
+  {"xrt::bo::bo(xrt::device const&, void*, unsigned long, unsigned int)",  (void **) &dtbl.bo.ctor_dev_up_s_g},
+  {"xrt::bo::bo(xrt::device const&, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_dev_s_f_g},
+  {"xrt::bo::bo(xrt::device const&, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_dev_s_g},
+  {"xrt::bo::bo(xrt::hw_context const&, void*, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_cxt_up_s_f_g},
+  {"xrt::bo::bo(xrt::hw_context const&, void*, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_cxt_up_s_g},
+  {"xrt::bo::bo(xrt::hw_context const&, unsigned long, xrt::bo::flags, unsigned int)", (void **) &dtbl.bo.ctor_cxt_s_f_g},
+  {"xrt::bo::bo(xrt::hw_context const&, unsigned long, unsigned int)", (void **) &dtbl.bo.ctor_cxt_s_g},
+  {"xrt::bo::bo(void*, int)", (void **) &dtbl.bo.ctor_exp_bo},
+  {"xrt::bo::bo(void*, xrt::pid_type, int)", (void **) &dtbl.bo.ctor_exp_bo_pid},
+  {"xrt::bo::bo(xrt::bo const&, unsigned long, unsigned long)", (void **) &dtbl.bo.ctor_bo_s_o},
+  {"xrt::bo::bo(void*, xcl_buffer_handle)", (void **) &dtbl.bo.ctor_xcl_bh},
+  {"xrt::bo::size() const", (void **) &dtbl.bo.size},
+  {"xrt::bo::address() const", (void **) &dtbl.bo.address},
+  {"xrt::bo::get_memory_group() const", (void **) &dtbl.bo.get_memory_group},
+  {"xrt::bo::get_flags() const", (void **) &dtbl.bo.get_flags},
+  {"xrt::bo::export_buffer()", (void **) &dtbl.bo.export_buffer},
+  {"xrt::bo::async(xclBOSyncDirection, unsigned long, unsigned long)", (void **) &dtbl.bo.async},
+  {"xrt::bo::sync(xclBOSyncDirection, unsigned long, unsigned long)",  (void **) &dtbl.bo.sync},
+  {"xrt::bo::map()",  (void **) &dtbl.bo.map},
+  {"xrt::bo::write(void const*, unsigned long, unsigned long)", (void **) &dtbl.bo.write},
+  {"xrt::bo::read(void*, unsigned long, unsigned long)", (void **) &dtbl.bo.read},
+  {"xrt::bo::copy(xrt::bo const&, unsigned long, unsigned long, unsigned long)", (void **) &dtbl.bo.copy},
+  {"xrt::bo::bo(void*)", (void **) &dtbl.bo.ctor_xcl_bh},
+  {"xrt::ext::bo::bo(xrt::hw_context const&, unsigned long, xrt::ext::bo::access_mode)", (void **) &dtbl.ext.bo_ctor_cxt_s_a},
+
+  /* run class maps */
+  {"xrt::run::run(xrt::kernel const&)", (void **)  &dtbl.run.ctor},
+  {"xrt::run::start()", (void **) &dtbl.run.start},
+  {"xrt::run::start(xrt::autostart const&)", (void **) &dtbl.run.start_itr},
+  {"xrt::run::stop()", (void **) &dtbl.run.stop},
+  {"xrt::run::abort()", (void **) &dtbl.run.abort},
+  {"xrt::run::wait(std::chrono::duration<long, std::ratio<1l, 1000l> > const&) const", (void **) &dtbl.run.wait},
+  {"xrt::run::wait2(std::chrono::duration<long, std::ratio<1l, 1000l> > const&) const", (void **) &dtbl.run.wait2},
+  {"xrt::run::state() const", (void **) &dtbl.run.state},
+  {"xrt::run::return_code() const", (void **) &dtbl.run.return_code},
+  {"xrt::run::add_callback(ert_cmd_state, std::function<void (void const*, ert_cmd_state, void*)>, void*)", (void **) &dtbl.run.add_callback},
+  {"xrt::run::submit_wait(xrt::fence const&)", (void **) &dtbl.run.submit_wait},
+  {"xrt::run::submit_signal(xrt::fence const&)", (void **) &dtbl.run.submit_signal},
+  {"xrt::run::get_ert_packet() const", (void **) &dtbl.run.get_ert_packet},
+  {"xrt::run::set_arg_at_index(int, void const*, unsigned long)", (void **) &dtbl.run.set_arg3},
+  {"xrt::run::set_arg_at_index(int, xrt::bo const&)", (void **) &dtbl.run.set_arg2},
+  {"xrt::run::update_arg_at_index(int, void const*, unsigned long)", (void **) &dtbl.run.update_arg3},
+  {"xrt::run::update_arg_at_index(int, xrt::bo const&)", (void **) &dtbl.run.update_arg2},
+
+  /* kernel class maps */
+  {"xrt::kernel::kernel(xrt::device const&, xrt::uuid const&, std::string const&, xrt::kernel::cu_access_mode)", (void **) &dtbl.kernel.ctor},
+  {"xrt::kernel::kernel(xrt::hw_context const&, std::string const&)",  (void **) &dtbl.kernel.ctor2},
+  {"xrt::kernel::group_id(int) const",  (void **) &dtbl.kernel.group_id},
+  {"xrt::kernel::offset(int) const",  (void **) &dtbl.kernel.offset},
+  {"xrt::kernel::write_register(unsigned int, unsigned int)",  (void **) &dtbl.kernel.write_register},
+  {"xrt::kernel::read_register(unsigned int) const",  (void **) &dtbl.kernel.read_register},
+  {"xrt::kernel::get_name() const",  (void **) &dtbl.kernel.get_name},
+  {"xrt::kernel::get_xclbin() const",  (void **) &dtbl.kernel.get_xclbin},
+
+  /* xclbin class maps */
+  {"xrt::xclbin::xclbin(std::string const&)", (void **) &dtbl.xclbin.ctor_fnm },
+  {"xrt::xclbin::xclbin(axlf const*)", (void **) &dtbl.xclbin.ctor_axlf },
+  {"xrt::xclbin::xclbin(std::vector<char, std::allocator<char> > const&)", (void **) &dtbl.xclbin.ctor_raw},
+
+  /*hw_context class maps*/
+  {"xrt::hw_context::hw_context(xrt::device const&, xrt::uuid const&, xrt::hw_context::cfg_param_type const&)", (void **) &dtbl.hw_context.ctor_frm_cfg},
+  {"xrt::hw_context::hw_context(xrt::device const&, xrt::uuid const&, xrt::hw_context::access_mode)", (void **) &dtbl.hw_context.ctor_frm_mode},
+  {"xrt::hw_context::update_qos(xrt::hw_context::cfg_param_type const&)", (void **) &dtbl.hw_context.update_qos},
   // NOLINTEND(cppcoreguidelines-pro-type-cstyle-cast)
 };
 
 } //namespace xrt::tools::xbtracer
 
+#ifdef __linux__
+#include <cxxabi.h>
+#include <dlfcn.h>
+#include <elf.h>
+#include <unistd.h>
 
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+
+namespace xrt::tools::xbtracer {
+
+constexpr const char* lib_name = "libxrt_coreutil.so";
+
+// mutex to serialize dlerror and getenv
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+std::mutex dlerror_mutex;
+extern std::mutex env_mutex;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
+
+/**
+ * This class will perform following operations.
+ * 1. Read mangled symbols from .so file.
+ * 2. perform demangling operation.
+ * 3. update xrt_dtable which will be used to invoke original API's
+ */
+class router
+{
+  private:
+  void* handle = nullptr;
+  /* library Path */
+  std::string m_path;
+  /*
+   * This will create association between function name (key)
+   * and mangled function name (value).
+   */
+  std::unordered_map<std::string, std::string> func_mangled;
+
+  public:
+  router(const router&);
+  router& operator = (const router&);
+  router(router && other) noexcept;
+  router& operator = (router&& other) noexcept;
+  void load_func_addr();
+  void load_symbols();
+
+  static std::shared_ptr<router> get_instance()
+  {
+    static auto ptr = std::make_shared<router>();
+    return ptr;
+  }
+
+  router()
+  : m_path("")
+  {
+    load_symbols();
+    load_func_addr();
+  }
+
+  ~router()
+  {
+    if (handle)
+      dlclose(handle);
+  }
+};
+
+/* Warning: initialization of 'dptr' with static storage duration may throw
+ * an exception that cannot be caught
+ * The singleton pattern implemented with a static local variable in
+ * get_instance ensures safe, one-time initialization.
+ */
+// NOLINTNEXTLINE(cert-err58-cpp)
+const auto dptr = router::get_instance();
+
+/**
+ * This function demangles the input mangled function.
+ */
+static std::string demangle(const char* mangled_name)
+{
+  int status = 0;
+  char* demangled_name =
+      abi::__cxa_demangle(mangled_name, nullptr, nullptr, &status);
+  if (status == 0)
+  {
+    // Use std::unique_ptr with a custom deleter to manage demangled_name
+    std::unique_ptr<char, decltype(&std::free)> demangled_ptr(demangled_name,
+                                                              std::free);
+
+    /* Conditioning of demangled name because of some platform based deviation
+      */
+    std::vector<std::pair<std::string, std::string>> replacements =
+      {
+        {"std::__cxx11::basic_string<char, std::char_traits<char>, "
+              "std::allocator<char> >", "std::string"},
+        {"[abi:cxx11]", ""},
+        {"std::map<std::string, unsigned int, std::less<std::string >, "
+            "std::allocator<std::pair<std::string const, unsigned int> > >", 
+            "xrt::hw_context::cfg_param_type"}
+      };
+
+    std::string result =
+        find_and_replace_all(std::string(demangled_name), replacements);
+
+    return result;
+  }
+  else
+    // Demangling failed
+    return {mangled_name};  // Return the original mangled name
+}
+
+static std::string find_library_path()
+{
+  std::lock_guard<std::mutex> lock(env_mutex);
+  // NOLINTNEXTLINE(concurrency-mt-unsafe) - protected by env_mutex
+  char* ld_preload = getenv("LD_PRELOAD");
+  if (!ld_preload)
+  {
+    std::cout << "LD_PRELOAD is not set." << std::endl;
+    return "";
+  }
+
+  std::string full_path = std::string(ld_preload);
+  full_path.erase(std::remove(full_path.begin(), full_path.end(), ' '),
+                  full_path.end());
+  return full_path;
+}
+
+/**
+ * This function will update the dispatch table
+ * with address of the functions from original
+ * library.
+ */
+void router::load_func_addr()
+{
+  // Load the shared object file
+  handle = dlopen(lib_name, RTLD_LAZY);
+  if (!handle)
+  {
+    std::lock_guard<std::mutex> lock(dlerror_mutex);
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) - protected by dlerror_mutex
+    const char* error_msg = dlerror();
+    throw std::runtime_error("Error loading shared library: "
+      + std::string(error_msg));
+  }
+
+  /**
+   * Get Function address's which are of interest and ignore others.
+   */
+  for (auto& [demangled_name, mangled_name] : func_mangled)
+  {
+    auto ptr_itr = fname2fptr_map.find(demangled_name);
+
+    if (ptr_itr != fname2fptr_map.end())
+    {
+      void** func_address_slot = ptr_itr->second;
+      /* update the original function address in the dispatch table */
+      *func_address_slot = (dlsym(handle, mangled_name.c_str()));
+      if (!func_address_slot)
+        std::cout << "Null Func address received " << std::endl;
+      else
+        fptr2fname_map[*func_address_slot] =
+          std::regex_replace(demangled_name, std::regex(R"(\)\s*const)"),")");
+    }
+    else
+    {
+      //std::cout << "func :: \"" << demangled_name << "\" not found in"
+      //          << "fname2fptr_map\n";
+    }
+  }
+}
+
+/**
+ * This function will read mangled API's from library and perform
+ * Demangling operation.
+ */
+void router::load_symbols()
+{
+  constexpr unsigned int symbol_len = 1024;
+
+  m_path = find_library_path();
+
+  // Open the ELF file
+  std::ifstream elf_file(m_path, std::ios::binary);
+  if (!elf_file.is_open())
+    throw std::runtime_error("Failed to open ELF file: " + m_path);
+
+  // Read the ELF header
+  Elf64_Ehdr elf_header;
   std::array<char, sizeof(Elf64_Ehdr)> buffer{0};
   elf_file.read(buffer.data(), buffer.size());
   memcpy(&elf_header, buffer.data(), buffer.size());
 
   // Check ELF magic number
+  // NOLINTNEXTLINE (bugprone-suspicious-string-compare)
   if (memcmp(static_cast<const void*>(elf_header.e_ident),
               static_cast<const void*>(ELFMAG), SELFMAG))
     throw std::runtime_error("Not an ELF file");
@@ -160,7 +422,11 @@ namespace xrt::tools::xbtracer {
         {"__int64", "long"},
         {"(void)", "()"},
         {"enum ", ""},
-        {"struct std::ratio<1, 1000>", "std::ratio<1l, 1000l>"}
+        {"struct std::ratio<1, 1000>", "std::ratio<1l, 1000l>"},
+        {"std::map<std::string, unsigned int, struct std::less<std::string >, "
+         "std::allocator<struct std::pair<std::string const, unsigned int> > >",
+             "xrt::hw_context::cfg_param_type"},
+        {"void *", "void*"}
       };
 
       std::string demangled_and_conditioned_str =
