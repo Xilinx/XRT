@@ -335,19 +335,9 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
+    xma_core::utils::xma_session_destroy(&session->base);
+
     // Free the session
-    //Let's not chnage in_use and num of encoders
-    //It is better to have different session_id for debugging
-    /*
-    delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
-    */
-    session->base.hw_session.private_do_not_use = nullptr;
-    session->base.plugin_data = nullptr;
-    session->base.stats = NULL;
-    session->encoder_plugin = NULL;
-    //do not change kernel in_use as it maybe in use by another plugin
-    session->base.hw_session.dev_index = -1;
-    session->base.session_signature = NULL;
     free(session);
     session = nullptr;
 

@@ -40,6 +40,8 @@ int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index);
 int32_t check_all_execbo(XmaSession s_handle);
 void logmsg(XmaLogLevelType level, const std::string& tag, const std::string& msg);
 
+void xma_session_destroy(XmaSession *xma_session);
+
 } // namespace utils
 } // namespace xma_core
 

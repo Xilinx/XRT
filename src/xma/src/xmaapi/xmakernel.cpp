@@ -286,17 +286,9 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
+    xma_core::utils::xma_session_destroy(&session->base);
+
     // Free the session
-    /*
-    delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
-    */
-    session->base.hw_session.private_do_not_use = nullptr;
-    session->base.plugin_data = nullptr;
-    session->base.stats = NULL;
-    session->kernel_plugin = NULL;
-    //do not change kernel in_use as it maybe in use by another plugin
-    session->base.hw_session.dev_index = -1;
-    session->base.session_signature = NULL;
     free(session);
     session = nullptr;
 
