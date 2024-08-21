@@ -110,10 +110,9 @@ namespace xdp {
   {
 #ifdef XDP_CLIENT_BUILD
 
-//    if (!mHwCtxImpl || !DeviceDataEntry.valid) {
-//      return;
-//    }
-      assert(mHwCtxImpl && DeviceDataEntry.valid);
+    if (!mHwCtxImpl || !DeviceDataEntry.valid) {
+      return;
+    }
 
     // For client device flow, only 1 device and xclbin is supported now.
     DeviceDataEntry.valid = false;

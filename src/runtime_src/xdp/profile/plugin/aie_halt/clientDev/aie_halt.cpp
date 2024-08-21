@@ -50,8 +50,10 @@ namespace xdp {
   {
   }
 
+#ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable: 4702)
+#endif
   void AIEHaltClientDevImpl::updateDevice(void* hwCtxImpl)
   {
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
@@ -135,8 +137,9 @@ namespace xdp {
       return;
     XAie_ClearTransaction(&aieDevInst);
   }
+#ifdef _WIN32
 #pragma warning(pop)
-
+#endif
   void AIEHaltClientDevImpl::finishflushDevice(void* /*hwCtxImpl*/)
   {
   }
