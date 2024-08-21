@@ -21,6 +21,7 @@
 
 #include "core/edge/common/aie_parser.h"
 #include "xdp/profile/plugin/aie_profile/aie_profile_impl.h"
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xaiefal/xaiefal.hpp"
 
 extern "C" {
@@ -60,7 +61,7 @@ namespace xdp {
                                    const uint8_t channel1,
                                    std::vector<XAie_Events>& startEvents,
                                    std::vector<XAie_Events>& endEvents);
-      uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
+      uint64_t getCounterPayload(XAie_DevInst* aieDevInst,
                                  const tile_type& tile,
                                  const module_type type,
                                  uint8_t column, 
@@ -68,6 +69,32 @@ namespace xdp {
                                  uint16_t startEvent,
                                  const std::string metricSet,
                                  const uint8_t channel);
+
+      uint64_t getAdfProfileAPIPayload(const tile_type& tile, const std::string metricSet);
+
+    private:
+      std::shared_ptr<xaiefal::XAiePerfCounter>
+      configProfileAPICounters(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+                              XAie_ModuleType& xaieModType, const module_type xdpModType,
+                              const std::string& metricSet, XAie_Events startEvent,
+                              XAie_Events endEvent, XAie_Events resetEvent,
+                              int pcIndex, size_t threshold, XAie_Events& retCounterEvent,
+                              std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile);
+
+      std::shared_ptr<xaiefal::XAiePerfCounter>
+      configPCUsingComboEvents(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+                                XAie_ModuleType& xaieModType, const module_type xdpModType,
+                                const std::string& metricSet, XAie_Events startEvent,
+                                XAie_Events endEvent, XAie_Events resetEvent,
+                                int pcIndex, size_t threshold, XAie_Events& retCounterEvent);
+
+      std::shared_ptr<xaiefal::XAiePerfCounter>
+      configIntfLatency(XAie_DevInst* aieDevInst, xaiefal::XAieMod& xaieModule,
+                        XAie_ModuleType& xaieModType, const module_type xdpModType,
+                        const std::string& metricSet, XAie_Events startEvent,
+                        XAie_Events endEvent, XAie_Events resetEvent, int pcIndex,
+                        size_t threshold, XAie_Events& retCounterEvent,
+                        std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource);
 
     private:
       XAie_DevInst*     aieDevInst = nullptr;
@@ -84,7 +111,19 @@ namespace xdp {
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> perfCounters;
       std::vector<std::shared_ptr<xaiefal::XAieStreamPortSelect>> streamPorts;
 
+      bool graphItrBroadcastConfigDone = false;
+      // Graph Iterator broadcast channel event
+      // This event is used to reset/configure the counters in interface tiles
+      XAie_Events graphIteratorBrodcastChannelEvent = XAIE_EVENT_NONE_CORE;
+
+      // This event is asserted in another interface tile
+      XAie_Events latencyUserBrodcastChannelEvent = XAIE_EVENT_NONE_CORE;
+
+      std::unordered_map<aie::profile::adfAPI, aie::profile::adfAPIResourceInfo> adfAPIResourceInfoMap;
+
   };
+
+
 
 }   
 

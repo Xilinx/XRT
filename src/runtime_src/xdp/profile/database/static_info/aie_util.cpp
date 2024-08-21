@@ -29,8 +29,10 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/include/xclbin.h"
 
+#include <algorithm>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <cctype> 
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -398,6 +400,11 @@ namespace xdp::aie {
     }
 
     return startCols;
+  }
+
+  bool isDigitString(const std::string& str)
+  {
+    return std::all_of(str.begin(), str.end(), ::isdigit);
   }
 
   std::vector<uint8_t> getPartitionNumColumnsClient(void* handle)

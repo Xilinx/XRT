@@ -31,6 +31,9 @@
 
 namespace xdp {
 
+// Forwadr declarations of XDP constructs
+struct LatencyConfig;
+
 constexpr unsigned int NUM_CORE_COUNTERS = 4;
 constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
 constexpr unsigned int NUM_SHIM_COUNTERS = 2;
@@ -59,7 +62,7 @@ class AieProfileMetadata {
           "input_throughputs", "output_throughputs", 
           "s2mm_throughputs", "mm2s_throughputs",
           "input_stalls", "output_stalls",
-          "s2mm_stalls", "mm2s_stalls", "packets"}
+          "s2mm_stalls", "mm2s_stalls", "packets", "start_to_bytes_transferred"}
       },
       {
         module_type::mem_tile, {
@@ -86,11 +89,19 @@ class AieProfileMetadata {
     double clockFreqMhz;
     void* handle;
     xrt::hw_context hwContext;
-
+    bool useGraphIterator = false;
+    uint32_t iterationCount = 0;
+    
     std::vector<std::map<tile_type, std::string>> configMetrics;
     std::map<tile_type, std::string> pairConfigMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
+    
+    // Config data structures required for new profile API metrics
+    std::map<tile_type, LatencyConfig> latencyConfigMap;
+    std::map<tile_type, uint32_t> bytesTransferConfigMap;
+    uint32_t defaultTransferBytes = 1;
+    
     const aie::BaseFiletypeImpl* metadataReader = nullptr;
 
   public:
@@ -134,6 +145,23 @@ class AieProfileMetadata {
     }
 
     bool aieMetadataEmpty() { return metadataReader==nullptr; }
+
+    void getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
+                       const std::vector<std::string>& intfTilesLatencyConfigs);
+    void setProfileStartControl(bool graphIteratorEvent);
+    uint32_t processUserSpecifiedBytes(const std::string& strTotalBytes);
+    uint32_t getUserSpecifiedThreshold(const tile_type& tile, const std::string& metricSet);
+    void setUserSpecifiedBytes(const tile_type& tile, const uint32_t& threshold);
+    bool getUseGraphIterator(){return useGraphIterator;}
+    uint32_t getIterationCount(){return iterationCount;}
+
+    bool isSourceTile(const tile_type& tile);
+    bool isValidLatencyTile(const tile_type& tile);
+    uint64_t getIntfLatencyPayload(const tile_type& tile);
+
+    std::vector<tile_type>
+    getTiles(const std::string& graph_name, module_type type, const std::string& kernel_name) const;
+
     const AIEProfileFinalConfig& getAIEProfileConfig() const ;
 };
 

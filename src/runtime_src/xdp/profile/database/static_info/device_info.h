@@ -143,7 +143,7 @@ namespace xdp {
     XDP_CORE_EXPORT
     void addAIECounter(uint32_t i, uint8_t col, uint8_t row, uint8_t num,
                        uint16_t start, uint16_t end, uint8_t reset,
-                       uint32_t load, double freq, const std::string& mod,
+                       uint64_t load, double freq, const std::string& mod,
                        const std::string& aieName) ;
     XDP_CORE_EXPORT
     void addAIECounterResources(uint32_t numCounters, uint32_t numTiles,

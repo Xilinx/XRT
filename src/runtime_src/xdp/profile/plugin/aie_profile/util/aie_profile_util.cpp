@@ -117,6 +117,8 @@ namespace xdp::aie::profile {
       {"packets",                   {XAIE_EVENT_PORT_TLAST_0_PL,       XAIE_EVENT_PORT_TLAST_1_PL}},
       {"input_throughputs",         {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
       {"output_throughputs",        {XAIE_EVENT_GROUP_DMA_ACTIVITY_PL, XAIE_EVENT_PORT_RUNNING_0_PL}},
+      {"start_to_bytes_transferred",{XAIE_EVENT_PORT_RUNNING_1_PL,     XAIE_EVENT_PORT_RUNNING_1_PL}},
+      {"interface_tile_latency",    {XAIE_EVENT_PORT_RUNNING_0_PL,     XAIE_EVENT_PORT_RUNNING_0_PL}},
     };
 
     if (hwGen == 1) {
@@ -392,6 +394,62 @@ namespace xdp::aie::profile {
     if ((mod == XAIE_PL_MOD) && (type == module_type::shim)) 
       return true;
     return false;
+  }
+
+  /****************************************************************************
+   * Check if metric set is from Prof APIs Support
+   ***************************************************************************/
+  bool metricSupportsGraphIterator(std::string metricSet)
+  {
+    std::set<std::string> graphIterMetricSets = {
+      "input_throughputs", "output_throughputs",
+      "start_to_bytes_transferred"
+    };
+
+    return graphIterMetricSets.find(metricSet) != graphIterMetricSets.end();
+  }
+
+  bool profileAPIMetricSet(const std::string metricSet)
+  {
+    // input_throughputs/output_throughputs is already supported, hence excluded here
+    return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
+  }
+
+  uint16_t getAdfApiReservedEventId(const std::string metricSet)
+  {
+    return adfApiMetricSetMap.at(metricSet);
+  }
+
+  std::pair<uint16_t, uint16_t>
+  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType,
+                     const std::string& metricSet,
+                     XAie_Events startEvent, XAie_Events endEvent)
+  {
+    if (aie::profile::profileAPIMetricSet(metricSet)) {
+      uint16_t eventId = aie::profile::getAdfApiReservedEventId(metricSet);
+      return std::make_pair(eventId, eventId);
+    }
+    
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
+    uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
+    return std::make_pair(phyStartEvent, phyEndEvent);
+  }
+
+  uint64_t createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
+                         uint8_t col2, uint8_t row2, uint8_t portID2)
+  {
+    uint64_t payload = (static_cast<uint64_t>(col1) << 40) |
+                       (static_cast<uint64_t>(row1) << 32) |
+                       (static_cast<uint64_t>(portID1) << 24) |
+                       (static_cast<uint64_t>(col2) << 16) |
+                       (static_cast<uint64_t>(row2) << 8) |
+                       (static_cast<uint64_t>(portID2) << 0);
+    return payload;
   }
 
 } // namespace xdp::aie

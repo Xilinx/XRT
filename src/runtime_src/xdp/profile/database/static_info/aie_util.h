@@ -98,6 +98,9 @@ namespace xdp::aie {
   std::vector<uint8_t> getPartitionStartColumnsClient(void* handle);
 
   XDP_CORE_EXPORT
+  bool isDigitString(const std::string& str);
+
+  XDP_CORE_EXPORT
   std::vector<uint8_t> getPartitionNumColumnsClient(void* handle);
 
   XDP_CORE_EXPORT

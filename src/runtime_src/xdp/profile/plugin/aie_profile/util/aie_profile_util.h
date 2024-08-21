@@ -18,6 +18,8 @@
 #define AIE_PROFILE_UTIL_DOT_H
 
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 #include "xdp/profile/plugin/aie_profile/aie_profile_defs.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
@@ -40,6 +42,24 @@ namespace xdp::aie::profile {
     XAIE_MEM_MOD,
     XAIE_PL_MOD,
     XAIE_MEM_MOD
+  };
+
+  #define START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID 3600
+  #define INTF_TILE_LATENCY_REPORT_EVENT_ID          3601
+  enum adfAPI {
+    START_TO_BYTES_TRANSFERRED,
+    INTF_TILE_LATENCY
+  };
+
+  struct adfAPIResourceInfo {
+    uint8_t srcPcIdx;
+    uint8_t destPcIdx;
+    bool isSourceTile = false;
+  };
+
+  const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
+    {"start_to_bytes_transferred", 3600},
+    {"interface_tile_latency",     3601}
   };
 
   /**
@@ -133,6 +153,19 @@ namespace xdp::aie::profile {
    */
   bool isValidType(const module_type type, const XAie_ModuleType mod);
 
+  bool metricSupportsGraphIterator(std::string metricSet);
+  bool profileAPIMetricSet(const std::string metricSet);
+  uint16_t getAdfApiReservedEventId(const std::string metricSet);
+  std::pair<uint16_t, uint16_t>
+  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType, 
+                     const std::string& metricSet,
+                     XAie_Events startEvent, XAie_Events endEvent);
+  inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
+  inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
+  uint64_t createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
+                         uint8_t col2, uint8_t row2, uint8_t portID2);
+ 
 }  // namespace xdp::aie::profile
 
 #endif
