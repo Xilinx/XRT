@@ -7,7 +7,9 @@
 #include "xrt/xrt_uuid.h"
 
 #include "elf_int.h"
+#include "core/common/config_reader.h"
 #include "core/common/error.h"
+#include "core/common/message.h"
 
 #include <elfio/elfio.hpp>
 #include <memory>
@@ -26,6 +28,11 @@ public:
   {
     if (!m_elf.load(fnm))
       throw std::runtime_error(fnm + " is not found or is not a valid ELF file");
+
+    if (xrt_core::config::get_xrt_debug()) {
+      std::string message = "Loaded elf file " + fnm;
+      xrt_core::message::send( xrt_core::message::severity_level::debug, "xrt_elf", message);
+    }
   }
 
   explicit elf_impl(std::istream& stream)
