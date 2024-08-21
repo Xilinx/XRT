@@ -89,17 +89,14 @@ public:
         auto hwctx_obj = dynamic_cast<zynqaie::hwctx_object*>(hwctx_hdl);
 
         if (nullptr != hwctx_obj) {
-          if (!(m_aie_array = hwctx_obj->get_aie_array_from_hwctx()))
-            throw xrt_core::error(-EINVAL, "No AIE presented");
+          m_aie_array = hwctx_obj->get_aie_array_from_hwctx();
         }
       }
       else {
         auto device = xrt_core::get_userpf_device(m_shim);
         auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-        if (!drv->isAieRegistered())
-          throw xrt_core::error(-EINVAL, "No AIE presented");
-
-        m_aie_array = drv->getAieArray();
+        if (drv->isAieRegistered())
+          m_aie_array = drv->getAieArray();
       }
 #endif
     }
