@@ -347,7 +347,7 @@ namespace xdp {
       std::string metricSet;
       uint32_t tranx_no;
       bool isSource;
-      uint8_t portId = -1;
+      uint8_t portId;
       LatencyConfig() = default;
       LatencyConfig(tile_type& s, tile_type& d, std::string m, uint32_t t, bool i) :
         src(s), dest(d), metricSet(m), tranx_no(t), isSource(i) {}

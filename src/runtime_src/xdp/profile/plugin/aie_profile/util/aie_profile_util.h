@@ -58,8 +58,8 @@ namespace xdp::aie::profile {
   };
 
   const std::unordered_map<std::string, uint16_t> adfApiMetricSetMap = {
-    {"start_to_bytes_transferred", 3600},
-    {"interface_tile_latency",     3601}
+    {"start_to_bytes_transferred", static_cast<uint16_t>(3600)},
+    {"interface_tile_latency",     static_cast<uint16_t>(3601)}
   };
 
   /**

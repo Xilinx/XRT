@@ -528,7 +528,8 @@ namespace xdp {
         else {
           if (!graphItrBroadcastConfigDone) {
             XAie_Events bcEvent;
-            aie::profile::configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
+            // aie::profile::configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
+            configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
                 loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
             graphIteratorBrodcastChannelEvent = bcEvent;
             graphItrBroadcastConfigDone = true;
@@ -927,29 +928,122 @@ __done:
       return nullptr;
 
     XAie_LocType tileloc = XAie_TileLoc(tile.col, tile.row);
-    
+
     uint8_t status = -1;
     uint8_t broadcastId  = 10;
 
     if (isSource) {
       // Set up of the brodcast of event over channel
-      ret = XAie_EventBroadcast(aieDevInst, tileloc, XAIE_PL_MOD, broadcastId, XAIE_EVENT_USER_EVENT_0_PL);
-      if (ret != XAIE_OK) {
-        std::stringstream msg;
-        msg << "Event broadcast for latency configuration for module type " << +tile.col << "," << tile.row <<<< "will not be available.\n";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-      }
+      XAie_EventBroadcast(aieDevInst, tileloc, XAIE_PL_MOD, broadcastId, XAIE_EVENT_USER_EVENT_0_PL);
 
-      ret = XAie_EventGenerate(aieDevInst, tileloc, xaieModType, XAIE_EVENT_USER_EVENT_0_PL);
-      if (ret != XAIE_OK) {
-        std::stringstream msg;
-        msg << "User event for latency configuration for tile "<< +tile.col << "," << tile.row << "will not be available.\n";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-      }
+      XAie_EventGenerate(aieDevInst, tileloc, xaieModType, XAIE_EVENT_USER_EVENT_0_PL);
     }
 
     // to use it later for broadcasting
     return pc;
+  }
+
+    /****************************************************************************
+   * Configure the individual AIE events for metric sets related to Profile APIs
+   ***************************************************************************/
+   void AieProfile_EdgeImpl::configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+                      XAie_LocType loc, const XAie_ModuleType xaieModType,
+                      const module_type xdpModType, const std::string metricSet,
+                      uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata)
+  {
+    if (!aie::profile::metricSupportsGraphIterator(metricSet))
+      return;
+
+    if (xdpModType != module_type::core) {
+      auto aieCoreTilesVec = metadata->getTiles("all", module_type::core, "all");
+      if (aieCoreTilesVec.empty()) {
+        std::stringstream msg;
+        msg << "No core tiles available, graph ieration profiling will not be available.\n";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+      }
+
+      // Use the first available core tile to configure the broadcasting
+      uint8_t col = aieCoreTilesVec.begin()->col;
+      uint8_t row = aieCoreTilesVec.begin()->row;
+      auto& xaieTile   = aieDevice->tile(col, row);
+      core = xaieTile.core();
+      loc = XAie_TileLoc(col, row);
+    }
+
+    XAie_Events counterEvent;
+    // Step 1: Configure the graph iterator event
+    // aie::profile::configStartIteration(core, iterCount, counterEvent);
+    configStartIteration(core, iterCount, counterEvent);
+
+    // Step 2: Configure the brodcast of the returned counter event
+    XAie_Events bcChannelEvent;
+    configEventBroadcast(aieDevInst, loc, xdpModType, metricSet, xaieModType,
+                          counterEvent, bcChannelEvent);
+
+    // Store the brodcasted channel event for later use
+    bcEvent = bcChannelEvent;
+  }
+
+  /****************************************************************************
+   * Configure AIE Core module start on graph iteration count threshold
+   ***************************************************************************/
+  bool AieProfile_EdgeImpl::configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
+                            XAie_Events& retCounterEvent)
+  {
+    XAie_ModuleType mod = XAIE_CORE_MOD;
+    // Count up by 1 for every iteration
+    auto pc = core.perfCounter();
+    if (pc->initialize(mod, XAIE_EVENT_INSTR_EVENT_0_CORE,
+                       mod, XAIE_EVENT_INSTR_EVENT_0_CORE) != XAIE_OK)
+      return false;
+    if (pc->reserve() != XAIE_OK)
+      return false;
+
+    xrt_core::message::send(severity_level::debug, "XRT",
+        "Configuring AIE profile to start on iteration " + std::to_string(iteration));
+
+    pc->changeThreshold(iteration);
+
+    XAie_Events counterEvent;
+    pc->getCounterEvent(mod, counterEvent);
+
+    // performance counter event to use it later for broadcasting
+    retCounterEvent = counterEvent;
+    return true;
+  }
+
+  /****************************************************************************
+   * Configure the broadcasting of provided module and event
+   * (Brodcasted from AIE Tile core module)
+   ***************************************************************************/
+  void AieProfile_EdgeImpl::configEventBroadcast(XAie_DevInst* aieDevInst,
+                        const XAie_LocType loc,
+                        const module_type xdpModType,
+                        const std::string metricSet,
+                        const XAie_ModuleType xaieModType,
+                        const XAie_Events bcEvent,
+                        XAie_Events& bcChannelEvent)
+  {
+    if ((xaieModType != XAIE_CORE_MOD) || (xdpModType != module_type::core))
+      return;
+
+    // Each module has 16 broadcast channels (0-15). It is safe to use
+    // later channel Ids considering other channel IDs being used.
+    // Use by default brodcastId 11 for interface_tile_latency start trigger
+    uint8_t brodcastId = 11;
+
+    int driverStatus   = AieRC::XAIE_OK;
+    driverStatus |= XAie_EventBroadcast(aieDevInst, loc, XAIE_CORE_MOD, brodcastId, bcEvent);
+    if (driverStatus!= XAIE_OK) {
+      std::stringstream msg;
+      msg << "Configuration of graph iteration event from core tile "<< +loc.Col << ", " << +loc.Row
+          <<"is unavailable, graph ieration profiling will not be available.\n";
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }
+
+    // This is the broadcast channel event seen in interface tiles
+    // TODO: To be replace with more structured way of procuring events
+    bcChannelEvent = XAIE_EVENT_BROADCAST_A_11_PL;
   }
 
   }

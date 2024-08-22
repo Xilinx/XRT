@@ -692,7 +692,7 @@ namespace xdp {
       // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
         if (graphMetrics[i][2]=="start_to_bytes_transferred") {
-          size_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
+          uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
           for (auto& e : tiles)
             setUserSpecifiedBytes(e, bytes);
         }
@@ -757,7 +757,7 @@ namespace xdp {
       // Grab channel numbers (if specified; memory tiles only)
       if (graphMetrics[i].size() > 3) {
         if (graphMetrics[i][2]=="start_to_bytes_transferred") {
-          size_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
+          uint32_t bytes = processUserSpecifiedBytes(graphMetrics[i][3]);
           for (auto& e : tiles)
             setUserSpecifiedBytes(e, bytes);
         }
@@ -985,8 +985,6 @@ namespace xdp {
   void AieProfileMetadata::getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
                                            const std::vector<std::string>& tileMetricSettings)
   {
-    for(auto &m : tileMetricSettings)
- 
     auto allValidGraphs = metadataReader->getValidGraphs();
     auto allValidPorts  = metadataReader->getValidPorts();
     std::string metricName   = "interface_tile_latency";
@@ -1020,14 +1018,11 @@ namespace xdp {
       if (!aie::isDigitString(tranx_no) || std::numeric_limits<uint32_t>::max() < std::stoul(tranx_no)) {
         return;
       }
-      uint32_t utranx_no = std::stoul(tranx_no);
 
       // Update the latencyConfigMap to store the complete config.
       latencyConfigMap[tileSrc[0]]  = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), true);
       latencyConfigMap[tileDest[0]] = LatencyConfig(tileSrc[0], tileDest[0], metricName, std::stoul(tranx_no), false);
-      for(auto &elm : latencyConfigMap) {
-        elm.first.print(); elm.second.print();
-      }
+
       // Also update the common configMetrics 
       // TODO: Make sure this config doesn't collide with other interface tile config
       configMetrics[moduleIdx][tileSrc[0]]  = metricName;
@@ -1070,9 +1065,9 @@ namespace xdp {
     if (strTotalBytes.empty())  {
       return defaultTransferBytes;
     }
-    int lastIdx = strTotalBytes.size()-1;
+    int lastIdx = static_cast<int>(strTotalBytes.size()-1);
     int totalChars = 0;
-    char unit;
+    char unit = '\0';
     while (lastIdx >= 0 && !std::isdigit(strTotalBytes[lastIdx])) {
       unit = strTotalBytes[lastIdx];
       totalChars++;
@@ -1150,7 +1145,6 @@ namespace xdp {
       return 0;
 
     LatencyConfig latencyCfg = latencyConfigMap.at(tile);
-    latencyConfigMap.at(tile).print();
     return aie::profile::createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_id,
                         latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_id);
   }

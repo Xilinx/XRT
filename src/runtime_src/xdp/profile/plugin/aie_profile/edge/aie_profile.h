@@ -96,6 +96,22 @@ namespace xdp {
                         size_t threshold, XAie_Events& retCounterEvent,
                         std::shared_ptr<AieProfileMetadata> metadata, const tile_type& tile, bool& isSource);
 
+  bool configStartIteration(xaiefal::XAieMod core, uint32_t iteration,
+                            XAie_Events& retCounterEvent);
+
+  void configEventBroadcast(XAie_DevInst* aieDevInst,
+                            const XAie_LocType loc,
+                            const module_type xdpModType,
+                            const std::string metricSet,
+                            const XAie_ModuleType xaieModType,
+                            const XAie_Events bcEvent,
+                            XAie_Events& bcChannelEvent);
+
+   void configGraphIteratorAndBroadcast(xaiefal::XAieDev* aieDevice, XAie_DevInst* aieDevInst, xaiefal::XAieMod core,
+                      XAie_LocType loc, const XAie_ModuleType xaieModType,
+                      const module_type xdpModType, const std::string metricSet,
+                      uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
+
     private:
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
