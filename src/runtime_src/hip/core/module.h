@@ -60,6 +60,8 @@ class module_xclbin : public module
 public:
   module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name);
 
+  module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size);
+
   void
   create_hw_context();
 
@@ -90,6 +92,8 @@ class module_elf : public module
 
 public:
   module_elf(module_xclbin* xclbin_module, const std::string& file_name);
+
+  module_elf(module_xclbin* xclbin_module, void* data, size_t size);
 
   module_xclbin*
   get_xclbin_module() const { return m_xclbin_module; }

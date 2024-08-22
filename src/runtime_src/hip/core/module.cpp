@@ -6,6 +6,8 @@
 
 #include "module.h"
 
+#include <sstream>
+
 namespace xrt::core::hip {
 void
 module_xclbin::
@@ -24,6 +26,15 @@ module_xclbin(std::shared_ptr<context> ctx, const std::string& file_name)
   create_hw_context();
 }
 
+module_xclbin::
+module_xclbin(std::shared_ptr<context> ctx, void* data, size_t size)
+  : module{std::move(ctx), true}
+{
+  std::vector<char> buf(static_cast<char*>(data), static_cast<char*>(data) + size);
+  m_xrt_xclbin = xrt::xclbin{buf};
+  create_hw_context();
+}
+
 module_elf::
 module_elf(module_xclbin* xclbin_module, const std::string& file_name)
   : module{xclbin_module->get_context(), false}
@@ -31,6 +42,18 @@ module_elf(module_xclbin* xclbin_module, const std::string& file_name)
   , m_xrt_elf{xrt::elf{file_name}}
   , m_xrt_module{xrt::module{m_xrt_elf}}
 {
+}
+
+module_elf::
+module_elf(module_xclbin* xclbin_module, void* data, size_t size)
+  : module{xclbin_module->get_context(), false}
+  , m_xclbin_module{xclbin_module}
+{
+  std::istringstream stream;
+  stream.rdbuf()->pubsetbuf(static_cast<char*>(data), size);
+
+  m_xrt_elf = xrt::elf{stream};
+  m_xrt_module = xrt::module{m_xrt_elf};
 }
 
 function::

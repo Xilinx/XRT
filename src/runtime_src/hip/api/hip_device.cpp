@@ -207,8 +207,29 @@ hipDeviceGetName(char* name, int len, hipDevice_t device)
   return hipErrorUnknown;
 }
 
+#if HIP_VERSION >= 60000000
+#undef hipGetDeviceProperties
+
 hipError_t
 hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
+{
+  return hipErrorNotSupported;
+}
+
+hipError_t
+hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* props, int device)
+#else
+#define hipDeviceProp_tR0600 hipDeviceProp_t
+
+hipError_t
+hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* props, int device)
+{
+  return hipErrorNotSupported;
+}
+
+hipError_t
+hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device)
+#endif
 {
   try {
     throw_invalid_value_if(!props, "arg passed is nullptr");
