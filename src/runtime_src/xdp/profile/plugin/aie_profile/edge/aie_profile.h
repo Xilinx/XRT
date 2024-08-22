@@ -112,6 +112,12 @@ namespace xdp {
                       const module_type xdpModType, const std::string metricSet,
                       uint32_t iterCount, XAie_Events& bcEvent, std::shared_ptr<AieProfileMetadata> metadata);
 
+  std::pair<uint16_t, uint16_t>
+  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType, 
+                     const std::string& metricSet,
+                     XAie_Events startEvent, XAie_Events endEvent);
+
     private:
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    

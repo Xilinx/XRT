@@ -27,7 +27,6 @@
 #include "core/common/message.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -919,7 +918,7 @@ namespace xdp {
         uint8_t channelId1 = 1;
         uint32_t bytes = defaultTransferBytes;
         if (metrics[i].size() >= 3) {
-          if (aie::profile::profileAPIMetricSet(metrics[i][1])) {
+          if (profileAPIMetricSet(metrics[i][1])) {
             bytes = processUserSpecifiedBytes(metrics[i][2]);
           }
           else {
@@ -980,6 +979,12 @@ namespace xdp {
     for (auto& t : offTiles) {
       configMetrics[moduleIdx].erase(t);
     }
+  }
+
+  const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
+  {
+    static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
+    return config;
   }
 
   void AieProfileMetadata::getConfigMetricsForintfTilesLatencyConfig(xdp::module_type module,
@@ -1050,9 +1055,6 @@ namespace xdp {
         iterationCount = xrt_core::config::get_aie_profile_settings_start_iteration();
         useGraphIterator = (iterationCount != 0);
       }
-    } else {
-      std::string msg = "Profile start type setting is not provided or is invalid.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
   }
 
@@ -1145,7 +1147,7 @@ namespace xdp {
       return 0;
 
     LatencyConfig latencyCfg = latencyConfigMap.at(tile);
-    return aie::profile::createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_id,
+    return createPayload(latencyCfg.src.col, latencyCfg.src.row, latencyCfg.src.stream_id,
                         latencyCfg.dest.col, latencyCfg.dest.row, latencyCfg.dest.stream_id);
   }
 
@@ -1157,10 +1159,23 @@ namespace xdp {
   return metadataReader->getTiles(graph_name, type, kernel_name);
  }
 
-  const AIEProfileFinalConfig& AieProfileMetadata::getAIEProfileConfig() const
+  uint64_t AieProfileMetadata::createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
+                         uint8_t col2, uint8_t row2, uint8_t portID2)
   {
-    static const AIEProfileFinalConfig config(configMetrics, configChannel0, configChannel1);
-    return config;
+    uint64_t payload = (static_cast<uint64_t>(col1) << 40) |
+                       (static_cast<uint64_t>(row1) << 32) |
+                       (static_cast<uint64_t>(portID1) << 24) |
+                       (static_cast<uint64_t>(col2) << 16) |
+                       (static_cast<uint64_t>(row2) << 8) |
+                       (static_cast<uint64_t>(portID2) << 0);
+    return payload;
   }
+
+  bool AieProfileMetadata::profileAPIMetricSet(const std::string metricSet)
+  {
+    // input_throughputs/output_throughputs is already supported, hence excluded here
+    return adfApiMetricSetMap.find(metricSet) != adfApiMetricSetMap.end();
+  }
+
 
 }  // namespace xdp

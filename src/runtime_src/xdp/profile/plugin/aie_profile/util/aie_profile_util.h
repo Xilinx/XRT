@@ -156,16 +156,9 @@ namespace xdp::aie::profile {
   bool metricSupportsGraphIterator(std::string metricSet);
   bool profileAPIMetricSet(const std::string metricSet);
   uint16_t getAdfApiReservedEventId(const std::string metricSet);
-  std::pair<uint16_t, uint16_t>
-  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
-                     XAie_ModuleType& xaieModType, module_type xdpModType, 
-                     const std::string& metricSet,
-                     XAie_Events startEvent, XAie_Events endEvent);
   inline bool adfAPIStartToTransferredConfigEvent(uint32_t eventID) { return START_TO_BYTES_TRANSFERRED_REPORT_EVENT_ID==eventID; }
   inline bool adfAPILatencyConfigEvent(uint32_t eventID) { return INTF_TILE_LATENCY_REPORT_EVENT_ID==eventID; }
-  uint64_t createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
-                         uint8_t col2, uint8_t row2, uint8_t portID2);
- 
+
 }  // namespace xdp::aie::profile
 
 #endif

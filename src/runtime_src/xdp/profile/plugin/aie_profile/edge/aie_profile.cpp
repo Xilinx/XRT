@@ -520,20 +520,12 @@ namespace xdp {
                                 metricSet, channel0, channel1, startEvents, endEvents);
        
         // Identify the profiling API metric sets and configure graph events
-        if (!metadata->getUseGraphIterator()) {
-          std::stringstream msg;
-          msg << "Design is not compiled with --graph-iterator-event, profiling on ceratin graoh iteration will be skipped\n";
-          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-        }
-        else {
-          if (!graphItrBroadcastConfigDone) {
-            XAie_Events bcEvent;
-            // aie::profile::configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
-            configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
-                loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
-            graphIteratorBrodcastChannelEvent = bcEvent;
-            graphItrBroadcastConfigDone = true;
-          }
+        if (metadata->getUseGraphIterator() && !graphItrBroadcastConfigDone) {
+          XAie_Events bcEvent = XAIE_EVENT_NONE_CORE;
+          configGraphIteratorAndBroadcast(aieDevice, aieDevInst, xaieModule,
+              loc, mod, type, metricSet, metadata->getIterationCount(), bcEvent, metadata);
+          graphIteratorBrodcastChannelEvent = bcEvent;
+          graphItrBroadcastConfigDone = true;
         }
 
         if (aie::profile::profileAPIMetricSet(metricSet)) {
@@ -612,7 +604,7 @@ namespace xdp {
           perfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
-          auto physicalEventIds = aie::profile::getEventPhysicalId(aieDevInst,
+          auto physicalEventIds = getEventPhysicalId(aieDevInst,
                                      loc, mod, type, metricSet, startEvent, endEvent);
           uint16_t phyStartEvent = physicalEventIds.first;
           uint16_t phyEndEvent   = physicalEventIds.second;
@@ -794,11 +786,11 @@ namespace xdp {
     ret = pc->reserve();
     if (ret != XAIE_OK) return nullptr;
 
-    if (!aie::profile::metricSupportsGraphIterator(metricSet)) {
-      ret = pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
-      if (ret != XAIE_OK)
-        std::cout << "Error: Unable to set the reset event for threshold config of counter"<< std::endl;
-    }
+    // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
+    //   ret = pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
+    //   if (ret != XAIE_OK)
+    //     std::cout << "Error: Unable to set the reset event for threshold config of counter"<< std::endl;
+    // }
 
     if (threshold > 0)
       pc->changeThreshold(threshold);
@@ -844,9 +836,9 @@ namespace xdp {
     XAie_Events counterEvent;
     pc->getCounterEvent(xaieModType, counterEvent);
 
-    if (!aie::profile::metricSupportsGraphIterator(metricSet)) {
-      pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
-    }
+    // if (aie::profile::metricSupportsGraphIterator(metricSet)) {
+    //   pc->changeRstEvent(xaieModType, XAIE_EVENT_BROADCAST_A_11_PL);
+    // }
 
     // Configure the combo events if user has specified valid non zero threshold
     if (threshold==0)
@@ -957,9 +949,10 @@ __done:
     if (xdpModType != module_type::core) {
       auto aieCoreTilesVec = metadata->getTiles("all", module_type::core, "all");
       if (aieCoreTilesVec.empty()) {
-        std::stringstream msg;
-        msg << "No core tiles available, graph ieration profiling will not be available.\n";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        // std::stringstream msg;
+        // msg << "No core tiles available, graph ieration profiling will not be available.\n";
+        // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        return;
       }
 
       // Use the first available core tile to configure the broadcasting
@@ -1044,6 +1037,26 @@ __done:
     // This is the broadcast channel event seen in interface tiles
     // TODO: To be replace with more structured way of procuring events
     bcChannelEvent = XAIE_EVENT_BROADCAST_A_11_PL;
+  }
+
+  std::pair<uint16_t, uint16_t>
+  AieProfile_EdgeImpl::getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
+                     XAie_ModuleType& xaieModType, module_type xdpModType,
+                     const std::string& metricSet,
+                     XAie_Events startEvent, XAie_Events endEvent)
+  {
+    if (aie::profile::profileAPIMetricSet(metricSet)) {
+      uint16_t eventId = aie::profile::getAdfApiReservedEventId(metricSet);
+      return std::make_pair(eventId, eventId);
+    }
+
+    uint8_t tmpStart;
+    uint8_t tmpEnd;
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
+    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
+    uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
+    uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
+    return std::make_pair(phyStartEvent, phyEndEvent);
   }
 
   }

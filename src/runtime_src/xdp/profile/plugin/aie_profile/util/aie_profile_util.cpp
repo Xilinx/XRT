@@ -420,36 +420,7 @@ namespace xdp::aie::profile {
     return adfApiMetricSetMap.at(metricSet);
   }
 
-  std::pair<uint16_t, uint16_t>
-  getEventPhysicalId(XAie_DevInst* aieDevInst, XAie_LocType& tileLoc,
-                     XAie_ModuleType& xaieModType, module_type xdpModType,
-                     const std::string& metricSet,
-                     XAie_Events startEvent, XAie_Events endEvent)
-  {
-    if (aie::profile::profileAPIMetricSet(metricSet)) {
-      uint16_t eventId = aie::profile::getAdfApiReservedEventId(metricSet);
-      return std::make_pair(eventId, eventId);
-    }
-    
-    uint8_t tmpStart;
-    uint8_t tmpEnd;
-    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType, startEvent, &tmpStart);
-    XAie_EventLogicalToPhysicalConv(aieDevInst, tileLoc, xaieModType,   endEvent, &tmpEnd);
-    uint16_t phyStartEvent = tmpStart + aie::profile::getCounterBase(xdpModType);
-    uint16_t phyEndEvent   = tmpEnd   + aie::profile::getCounterBase(xdpModType);
-    return std::make_pair(phyStartEvent, phyEndEvent);
-  }
 
-  uint64_t createPayload(uint8_t col1, uint8_t row1, uint8_t portID1,
-                         uint8_t col2, uint8_t row2, uint8_t portID2)
-  {
-    uint64_t payload = (static_cast<uint64_t>(col1) << 40) |
-                       (static_cast<uint64_t>(row1) << 32) |
-                       (static_cast<uint64_t>(portID1) << 24) |
-                       (static_cast<uint64_t>(col2) << 16) |
-                       (static_cast<uint64_t>(row2) << 8) |
-                       (static_cast<uint64_t>(portID2) << 0);
-    return payload;
-  }
+
 
 } // namespace xdp::aie
