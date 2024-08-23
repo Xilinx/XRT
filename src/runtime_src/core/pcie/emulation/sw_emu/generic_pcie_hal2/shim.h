@@ -236,6 +236,12 @@ namespace xclswemuhal2
         return nullptr;
       }
 
+      std::unique_ptr<xrt_core::graph_handle>
+      open_graph_handle(const char* name, xrt::graph::access_mode am) override
+      {
+        return std::make_unique<xclswemuhal2::SwEmuShim::graph_object>(m_shim, m_uuid, name, am);
+      }
+
       std::unique_ptr<xrt_core::buffer_handle>
       alloc_bo(void* userptr, size_t size, uint64_t flags) override
       {
