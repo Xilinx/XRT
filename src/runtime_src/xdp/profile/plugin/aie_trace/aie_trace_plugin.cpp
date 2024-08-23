@@ -141,13 +141,20 @@ void AieTracePluginUnified::updateAIEDevice(void *handle) {
     xrt_core::message::send(severity_level::warning, "XRT", "AIE Metadata is empty for AIE Trace");
     return;
   }
-  if (AIEData.metadata->configMetricsEmpty()) {
+  if (AIEData.metadata->configMetricsEmpty() && AIEData.metadata->getRuntimeMetrics()) {
     AIEData.valid = false;
     xrt_core::message::send(severity_level::warning, "XRT",
                             AIE_TRACE_TILES_UNAVAILABLE);
     return;
   }
   AIEData.valid = true; // initialize struct
+
+  //TODO: Should be removed in 2025.1 release.
+  if(!AIEData.metadata->getRuntimeMetrics())
+  {
+    xrt_core::message::send(severity_level::warning, "XRT",
+                            "All the event-trace arguments are deprecated except 'runtime'. We recommend to use --event-trace=runtime");
+  }
 
 #ifdef XDP_CLIENT_BUILD
   AIEData.metadata->setHwContext(context);
